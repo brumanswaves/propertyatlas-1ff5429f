@@ -71,6 +71,7 @@ export interface Property {
   scores: PropertyScores;
   ownership: OwnershipRecord;
   sales: SaleRecord[];
+  history: HistoryRecord[];
   timeline: TimelineEvent[];
   features: {
     beachfront: boolean;
