@@ -53,7 +53,7 @@ export function PropertyPanel({ property, onClose }: Props) {
     <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[88vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[420px] md:rounded-l-3xl md:rounded-tr-none md:border-l">
       <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-border md:hidden" />
 
-      <header className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+      <header className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             <MapPin className="h-3 w-3" /> {property.area} · Erf {property.erf}
@@ -76,7 +76,7 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </header>
 
-      <div className="mx-5 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
+      <div className="mx-5 shrink-0 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
@@ -97,7 +97,7 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
+      <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
         {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn(
