@@ -31,6 +31,15 @@ export const Route = createFileRoute("/")({
 
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
+  }, []);
+  function dismissHint() {
+    setHintDismissed(true);
+    try { window.localStorage.setItem("pa.hintDismissed", "1"); } catch {}
+  }
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("satellite");
