@@ -255,7 +255,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
           ],
           "line-blur": 6,
         },
-      }, "parcels-fill");
+      });
+
 
       // ===== Zoning (colored by type) =====
       map.addLayer({
