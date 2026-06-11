@@ -97,6 +97,12 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
+      {/* Insight summary — what investors should know in one line */}
+      <div className="mx-5 mt-3 shrink-0 rounded-xl border border-border bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
+        <span className="font-semibold text-foreground">Insight · </span>
+        {buildInsight(property)}
+      </div>
+
       <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
         {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
@@ -149,7 +155,7 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="Held since" value={new Date(property.ownership.since).toLocaleDateString("en-ZA")} />
               <Row label="Duration" value={`${heldYears} years`} />
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Owner intelligence">
                 <Row label="Registered owner" value={property.ownership.ownerLabel} />
                 <Row label="Other holdings" value="3 properties in region" />
@@ -183,7 +189,7 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Gauge label="Coastal" value={property.scores.coastal} icon={<Waves className="h-3 w-3" />}
                 explain="Beachfront and coastline desirability" />
             </div>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Development feasibility">
                 <Row label="Coverage allowance" value="60%" />
                 <Row label="Bulk allowance" value="0.8" />
@@ -208,7 +214,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                 ))}
               </div>
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Historical imagery">
                 <Row label="2014 aerial" value="Available" />
                 <Row label="2018 aerial" value="Available" />
@@ -235,7 +241,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                 ))}
               </ol>
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Historical aerial imagery">
                 <Row label="Earliest record" value="2009" />
                 <Row label="Imagery snapshots" value="12 available" />
@@ -327,15 +333,24 @@ function Pill({ children, icon, tone = "default" }: { children: React.ReactNode;
   );
 }
 
-function Locked({ children }: { children: React.ReactNode }) {
+function Locked({ children, preview }: { children: React.ReactNode; preview?: string[] }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border">
       <div className="pointer-events-none blur-[3px] saturate-50">{children}</div>
-      <div className="absolute inset-0 grid place-items-center bg-card/70 backdrop-blur-sm">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card/80 p-4 backdrop-blur-sm">
+        {preview && preview.length > 0 && (
+          <ul className="mb-1 flex flex-wrap justify-center gap-1.5">
+            {preview.map((p) => (
+              <li key={p} className="rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border">
+                {p}
+              </li>
+            ))}
+          </ul>
+        )}
         <Link to="/pricing"
           className="flex items-center gap-2 rounded-full bg-gradient-premium px-4 py-2 text-xs font-semibold text-accent-foreground shadow-soft hover:opacity-95">
           <Crown className="h-3.5 w-3.5" />
-          Upgrade to Investor to unlock
+          Unlock with Investor · R199/mo
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
         <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -344,6 +359,26 @@ function Locked({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
+}
+
+function buildInsight(p: Property): string {
+  const last = p.sales[0];
+  const yearsSinceSale = new Date().getFullYear() - new Date(last.date).getFullYear();
+  const vsEst = Math.round((last.price / p.estimatedValue) * 100);
+  const valuation =
+    vsEst < 80 ? "appears under-priced versus the current estimate"
+    : vsEst > 115 ? "last traded above the current estimate"
+    : "appears fairly valued relative to nearby mock sales";
+  const dev =
+    p.scores.development >= 75 ? "strong development potential due to erf size and zoning"
+    : p.scores.development >= 55 ? "moderate development upside"
+    : "limited development upside";
+  const coast = p.features.beachfront
+    ? "Beachfront premium drives long-term appreciation."
+    : p.features.oceanView ? "Ocean-view positioning supports rental demand."
+    : p.features.walkingDistanceToBeach ? "Walking distance to the beach supports liquidity."
+    : "";
+  return `Last traded ${yearsSinceSale}y ago — ${valuation}, with ${dev}. ${coast}`.trim();
 }
 
 // ===== Sales tab with Last sold card, filters, and PDF export =====
@@ -557,7 +592,7 @@ function SalesTab({ property }: { property: Property }) {
         ))}
       </ol>
 
-      <Locked>
+      <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
         <Section title="Comparable sales (within 1 km)">
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -572,7 +607,7 @@ function SalesTab({ property }: { property: Property }) {
           </div>
         </Section>
       </Locked>
-      <Locked>
+      <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
         <Section title="Sale price trend">
           <Row label="3-yr CAGR" value="+7.8%" />
           <Row label="Suburb median" value={formatZAR(4_250_000)} />
