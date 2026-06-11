@@ -16,7 +16,7 @@ export function TopNav() {
           Property<span className="text-primary">Atlas</span>
         </span>
         <span className="ml-1 hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:inline">
-          ZA · St Francis Pilot
+          Pilot · St Francis Bay
         </span>
       </Link>
       <nav className="flex items-center gap-1.5 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur">
