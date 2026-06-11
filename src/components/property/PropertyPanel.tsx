@@ -32,6 +32,7 @@ export function PropertyPanel({ property, onClose }: Props) {
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const tabsAnchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!user || !property) return setSaved(false);
@@ -39,8 +40,16 @@ export function PropertyPanel({ property, onClose }: Props) {
       .maybeSingle().then(({ data }) => setSaved(!!data));
   }, [user, property]);
 
-  useEffect(() => { setTab("overview"); }, [property?.id]);
-  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [tab]);
+  useEffect(() => { setTab("overview"); scrollRef.current?.scrollTo({ top: 0 }); }, [property?.id]);
+
+  function selectTab(id: Tab) {
+    setTab(id);
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      const anchor = tabsAnchorRef.current;
+      if (el && anchor) el.scrollTo({ top: anchor.offsetTop, behavior: "smooth" });
+    });
+  }
 
   if (!property) return null;
 
