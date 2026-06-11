@@ -31,7 +31,7 @@ export function PropertyPanel({ property, onClose }: Props) {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
-  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!user || !property) return setSaved(false);
