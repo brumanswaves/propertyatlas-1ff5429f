@@ -35,6 +35,9 @@ function AtlasHome() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
+    // Deep-link: /?parcel=<id> opens the property panel directly
+    const parcel = new URLSearchParams(window.location.search).get("parcel");
+    if (parcel && getProperty(parcel)) setSelectedId(parcel);
   }, []);
   function dismissHint() {
     setHintDismissed(true);
