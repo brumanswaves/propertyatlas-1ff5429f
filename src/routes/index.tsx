@@ -66,7 +66,7 @@ function AtlasHome() {
       <TopNav />
 
       <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-2 px-4 md:top-24">
-        <div className="pointer-events-auto w-full max-w-xl">
+        <div className="pointer-events-auto relative z-10 w-full max-w-xl">
           <SearchBar onPick={(p) => setSelectedId(p.id)} />
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
