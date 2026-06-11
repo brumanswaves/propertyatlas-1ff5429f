@@ -167,9 +167,15 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     if (!map || !ready) return;
 
     const ensureSetup = () => {
-      if (map.getSource("parcels")) return;
-      map.addSource("parcels", { type: "geojson", data: propertiesToGeoJSON(PROPERTIES), promoteId: "id" });
-      map.addSource("parcel-centroids", { type: "geojson", data: propertiesToCentroidGeoJSON(PROPERTIES), promoteId: "id" });
+      // Guard on the LAYER (style switches can preserve sources but drop layers).
+      if (map.getLayer("parcels-fill")) return;
+      if (!map.getSource("parcels")) {
+        map.addSource("parcels", { type: "geojson", data: propertiesToGeoJSON(PROPERTIES), promoteId: "id" });
+      }
+      if (!map.getSource("parcel-centroids")) {
+        map.addSource("parcel-centroids", { type: "geojson", data: propertiesToCentroidGeoJSON(PROPERTIES), promoteId: "id" });
+      }
+
 
       // ===== Parcel fill — zoom-reveal: subtle at low zoom, vivid at high zoom =====
       map.addLayer({
