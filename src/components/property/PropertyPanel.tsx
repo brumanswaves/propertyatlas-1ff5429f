@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark, BookmarkCheck, Building2, CalendarClock, Camera, ChevronRight, Crown,
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
@@ -18,10 +18,20 @@ interface Props {
 
 type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos" | "timeline";
 
+const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "overview",     label: "Overview",     icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { id: "ownership",    label: "Ownership",    icon: <Users className="h-3.5 w-3.5" /> },
+  { id: "sales",        label: "Sales",        icon: <Banknote className="h-3.5 w-3.5" /> },
+  { id: "intelligence", label: "Intelligence", icon: <Activity className="h-3.5 w-3.5" /> },
+  { id: "photos",       label: "Photos",       icon: <ImageIcon className="h-3.5 w-3.5" /> },
+  { id: "timeline",     label: "Timeline",     icon: <CalendarClock className="h-3.5 w-3.5" /> },
+];
+
 export function PropertyPanel({ property, onClose }: Props) {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!user || !property) return setSaved(false);
@@ -30,6 +40,7 @@ export function PropertyPanel({ property, onClose }: Props) {
   }, [user, property]);
 
   useEffect(() => { setTab("overview"); }, [property?.id]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [tab]);
 
   if (!property) return null;
 
@@ -100,20 +111,31 @@ export function PropertyPanel({ property, onClose }: Props) {
       {/* Why This Property? — Bloomberg-style intelligence card */}
       <WhyCard property={property} />
 
-      <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
-        {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={cn(
-              "relative truncate px-1 py-2 capitalize transition sm:px-3",
-              tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}>
-            {t}
-            {tab === t && <span className="absolute inset-x-1 -bottom-px h-0.5 rounded bg-foreground sm:inset-x-2" />}
-          </button>
-        ))}
+      <div className="mt-3 shrink-0 border-b border-border">
+        <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
+          {TAB_META.map(({ id, label, icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                aria-pressed={active}
+                className={cn(
+                  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {icon}
+                {label}
+                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
+      <div ref={scrollRef} className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
+
         {tab === "overview" && (
           <div className="space-y-4">
             {/* Key investor scores */}
@@ -198,6 +220,12 @@ export function PropertyPanel({ property, onClose }: Props) {
               </div>
             </Section>
             <Section title="St Francis local intelligence">
+              <div className="mb-2.5 grid grid-cols-4 gap-1.5">
+                <LocalBadge label="Beach"   value={`${walkMinutes(property.distances.beachM)}m`}    sub="walk" tone={property.distances.beachM < 1200 ? "accent" : "default"} />
+                <LocalBadge label="Village" value={`${walkMinutes(property.distances.villageM)}m`}  sub="walk" />
+                <LocalBadge label="Golf"    value={`${driveMinutes(property.distances.golfM)}m`}    sub="drive" />
+                <LocalBadge label="Harbour" value={`${driveMinutes(property.distances.harbourM)}m`} sub="drive" />
+              </div>
               <Row label="Beach" value={`${formatM(property.distances.beachM)} · ${walkMinutes(property.distances.beachM)} min walk`} />
               <Row label="St Francis Links (golf)" value={`${formatM(property.distances.golfM)} · ${driveMinutes(property.distances.golfM)} min drive`} />
               <Row label="Port St Francis (harbour)" value={`${formatM(property.distances.harbourM)} · ${driveMinutes(property.distances.harbourM)} min drive`} />
@@ -409,6 +437,19 @@ function Gauge({ label, value, icon, explain }: { label: string; value: number; 
 
 function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium">{children}</span>;
+}
+
+function LocalBadge({ label, value, sub, tone = "default" }: { label: string; value: string; sub: string; tone?: "default" | "accent" }) {
+  return (
+    <div className={cn(
+      "rounded-lg border px-1.5 py-1.5 text-center",
+      tone === "accent" ? "border-accent/40 bg-accent/10" : "border-border bg-background/60",
+    )}>
+      <div className="text-[8.5px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-[13px] font-semibold tabular-nums leading-none text-foreground">{value}</div>
+      <div className="mt-0.5 text-[8.5px] uppercase tracking-wider text-muted-foreground">{sub}</div>
+    </div>
+  );
 }
 
 function ScoreCard({
