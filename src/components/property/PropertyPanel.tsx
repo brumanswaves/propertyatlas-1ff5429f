@@ -502,22 +502,27 @@ function Locked({ children, preview }: { children: React.ReactNode; preview?: st
 function buildInsight(p: Property): string {
   const last = p.sales[0];
   const yearsSinceSale = new Date().getFullYear() - new Date(last.date).getFullYear();
-  const vsEst = Math.round((last.price / p.estimatedValue) * 100);
+  const muniPremium = Math.round((p.estimatedValue / p.municipalValue - 1) * 100);
   const valuation =
-    vsEst < 80 ? "appears under-priced versus the current estimate"
-    : vsEst > 115 ? "last traded above the current estimate"
-    : "appears fairly valued relative to nearby mock sales";
+    muniPremium > 25 ? `Estimated value sits ~${muniPremium}% above municipal value, suggesting market appreciation versus the official roll.`
+    : muniPremium > 0 ? `Estimated value is modestly above municipal value (+${muniPremium}%), consistent with the area trend.`
+    : `Estimated value is broadly in line with municipal value.`;
   const dev =
-    p.scores.development >= 75 ? "strong development potential due to erf size and zoning"
-    : p.scores.development >= 55 ? "moderate development upside"
-    : "limited development upside";
+    p.scores.development >= 75
+      ? `Strong development score (${p.scores.development}/100) driven by erf size, zoning headroom, and proximity to high-value coastal stock.`
+      : p.scores.development >= 55
+      ? `Moderate development score (${p.scores.development}/100); usable bulk subject to municipal approval.`
+      : `Limited development upside (${p.scores.development}/100) — best held for income or use rather than redevelopment.`;
   const coast = p.features.beachfront
-    ? "Beachfront premium drives long-term appreciation."
-    : p.features.oceanView ? "Ocean-view positioning supports rental demand."
-    : p.features.walkingDistanceToBeach ? "Walking distance to the beach supports liquidity."
-    : "";
-  return `Last traded ${yearsSinceSale}y ago — ${valuation}, with ${dev}. ${coast}`.trim();
+    ? "Beachfront positioning anchors long-term appreciation and short-let demand."
+    : p.features.oceanView
+    ? "Ocean-view orientation supports premium short-let yield."
+    : p.features.walkingDistanceToBeach
+    ? "Walking distance to the beach supports liquidity and resale velocity."
+    : "Inland positioning — pricing tracks suburb median rather than coastal premium.";
+  return `Last traded ${yearsSinceSale}y ago. ${valuation} ${dev} ${coast} Comparable sales and ownership history are available on the Investor plan.`;
 }
+
 
 // ===== Sales tab with Last sold card, filters, and PDF export =====
 
