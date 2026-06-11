@@ -4,7 +4,7 @@ import {
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
   Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
 } from "lucide-react";
-import { type Property, type HistoryKind, formatZAR } from "@/data/properties";
+import { type Property, type HistoryKind, formatZAR, walkMinutes, driveMinutes } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -97,20 +97,8 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
-      {/* Investor Insight — premium AI-style summary */}
-      <div className="mx-5 mt-3 shrink-0 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-3 shadow-soft">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-            <Sparkles className="h-3 w-3" /> Investor Insight
-          </div>
-          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
-            AI · Mock
-          </span>
-        </div>
-        <p className="mt-1.5 text-[12px] leading-snug text-foreground/90">
-          {buildInsight(property)}
-        </p>
-      </div>
+      {/* Why This Property? — Bloomberg-style intelligence card */}
+      <WhyCard property={property} />
 
       <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
         {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
@@ -135,6 +123,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                 <span className="text-[10px] text-muted-foreground">Out of 100</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                <SellerProbabilityCard value={property.scores.sellerProbability} heldYears={heldYears} />
                 <ScoreCard
                   label="Investor"
                   value={property.scores.investor}
@@ -157,6 +146,20 @@ export function PropertyPanel({ property, onClose }: Props) {
                   confidence={0.88}
                 />
                 <ScoreCard
+                  label="Appreciation"
+                  value={property.scores.appreciation}
+                  icon={<LineChart className="h-3 w-3" />}
+                  explain="Modelled 5-year capital growth potential."
+                  confidence={Math.max(0.55, property.confidence - 0.15)}
+                />
+                <ScoreCard
+                  label="Rental yield"
+                  value={property.scores.rental}
+                  icon={<Home className="h-3 w-3" />}
+                  explain="Short-let demand & seasonality."
+                  confidence={Math.max(0.6, property.confidence - 0.05)}
+                />
+                <ScoreCard
                   label="Liquidity"
                   value={property.scores.liquidity}
                   icon={<Banknote className="h-3 w-3" />}
@@ -164,12 +167,11 @@ export function PropertyPanel({ property, onClose }: Props) {
                   confidence={Math.max(0.6, property.confidence - 0.1)}
                 />
                 <ScoreCard
-                  label="Appreciation"
-                  value={property.scores.appreciation}
-                  icon={<LineChart className="h-3 w-3" />}
-                  explain="Modelled 5-year capital growth potential."
-                  confidence={Math.max(0.55, property.confidence - 0.15)}
-                  className="col-span-2"
+                  label="Walkability"
+                  value={property.scores.walkability}
+                  icon={<Activity className="h-3 w-3" />}
+                  explain="Beach, retail, amenity proximity."
+                  confidence={0.82}
                 />
               </div>
             </div>
@@ -195,10 +197,13 @@ export function PropertyPanel({ property, onClose }: Props) {
                 {property.features.vacantLand && <Tag>Vacant land</Tag>}
               </div>
             </Section>
-            <Section title="Nearby amenities">
-              <Row label="Beach" value="450 m" />
-              <Row label="St Francis Links" value="2.1 km" />
-              <Row label="Village centre" value="900 m" />
+            <Section title="St Francis local intelligence">
+              <Row label="Beach" value={`${formatM(property.distances.beachM)} · ${walkMinutes(property.distances.beachM)} min walk`} />
+              <Row label="St Francis Links (golf)" value={`${formatM(property.distances.golfM)} · ${driveMinutes(property.distances.golfM)} min drive`} />
+              <Row label="Port St Francis (harbour)" value={`${formatM(property.distances.harbourM)} · ${driveMinutes(property.distances.harbourM)} min drive`} />
+              <Row label="Village centre" value={`${formatM(property.distances.villageM)} · ${walkMinutes(property.distances.villageM)} min walk`} />
+              <Row label="Restaurants" value={`${formatM(property.distances.restaurantsM)} · ${walkMinutes(property.distances.restaurantsM)} min walk`} />
+              <Row label="Lifestyle score" value={`${property.scores.lifestyle} / 100`} />
             </Section>
 
             {/* Premium Investor modules — blurred previews + single CTA */}
@@ -499,28 +504,135 @@ function Locked({ children, preview }: { children: React.ReactNode; preview?: st
   );
 }
 
-function buildInsight(p: Property): string {
-  const last = p.sales[0];
-  const yearsSinceSale = new Date().getFullYear() - new Date(last.date).getFullYear();
+function formatM(m: number): string {
+  if (m >= 1000) return `${(m / 1000).toFixed(1).replace(/\.0$/, "")} km`;
+  return `${m} m`;
+}
+
+interface WhySections {
+  summary: string;
+  opportunities: string[];
+  strengths: string[];
+  risks: string[];
+}
+
+function buildWhy(p: Property): WhySections {
+  const heldYears = 2026 - new Date(p.ownership.since).getFullYear();
   const muniPremium = Math.round((p.estimatedValue / p.municipalValue - 1) * 100);
-  const valuation =
-    muniPremium > 25 ? `Estimated value sits ~${muniPremium}% above municipal value, suggesting market appreciation versus the official roll.`
-    : muniPremium > 0 ? `Estimated value is modestly above municipal value (+${muniPremium}%), consistent with the area trend.`
-    : `Estimated value is broadly in line with municipal value.`;
-  const dev =
-    p.scores.development >= 75
-      ? `Strong development score (${p.scores.development}/100) driven by erf size, zoning headroom, and proximity to high-value coastal stock.`
-      : p.scores.development >= 55
-      ? `Moderate development score (${p.scores.development}/100); usable bulk subject to municipal approval.`
-      : `Limited development upside (${p.scores.development}/100) — best held for income or use rather than redevelopment.`;
-  const coast = p.features.beachfront
-    ? "Beachfront positioning anchors long-term appreciation and short-let demand."
-    : p.features.oceanView
-    ? "Ocean-view orientation supports premium short-let yield."
-    : p.features.walkingDistanceToBeach
-    ? "Walking distance to the beach supports liquidity and resale velocity."
-    : "Inland positioning — pricing tracks suburb median rather than coastal premium.";
-  return `Last traded ${yearsSinceSale}y ago. ${valuation} ${dev} ${coast} Comparable sales and ownership history are available on the Investor plan.`;
+  const typeLabel = p.features.vacantLand ? "vacant residential erf" : `${p.type.toLowerCase()} erf`;
+
+  const summary =
+    `This ${p.sizeSqm.toLocaleString()} m² ${typeLabel} has been held for ${heldYears} years` +
+    (p.scores.development >= 70 ? " and shows above-average development potential due to lot size and zoning headroom." : ".") +
+    ` Estimated market value exceeds municipal value by ${muniPremium}%, ` +
+    (muniPremium >= 50 ? "suggesting strong local demand and pricing power." : "broadly in line with the area trend.") +
+    (p.features.beachfront || p.features.oceanView
+      ? ` Ocean ${p.features.beachfront ? "frontage" : "proximity"} and low ownership turnover support long-term appreciation potential.`
+      : p.distances.beachM < 1200
+      ? ` Walking-distance to the beach supports lifestyle demand and resale velocity.`
+      : ` Inland positioning prices on suburb fundamentals rather than coastal premium.`);
+
+  const opportunities: string[] = [];
+  if (p.scores.development >= 70) opportunities.push(`Development upside (${p.scores.development}/100) — usable bulk subject to municipal approval.`);
+  if (p.scores.sellerProbability >= 65) opportunities.push(`Owner has held ${heldYears}y — modelled seller probability is elevated; off-market approach feasible.`);
+  if (p.scores.rental >= 70 && (p.features.oceanView || p.distances.beachM < 1500)) opportunities.push(`Short-let yield is strong — peak-season demand premium in this micro-pocket.`);
+  if (muniPremium >= 50) opportunities.push(`Municipal value lags market by ${muniPremium}% — rates assessment may be favourable.`);
+  if (opportunities.length === 0) opportunities.push("Stable hold; opportunity profile sits near area median.");
+
+  const strengths: string[] = [];
+  if (p.features.beachfront) strengths.push("Beachfront positioning anchors long-term capital.");
+  else if (p.features.oceanView) strengths.push("Ocean-view orientation commands a pricing premium.");
+  if (p.features.largeErf) strengths.push(`Above-average erf (${p.sizeSqm.toLocaleString()} m²) in a constrained coastal market.`);
+  if (p.scores.liquidity >= 70) strengths.push("High modelled liquidity — sells inside typical area DOM.");
+  if (heldYears >= 10) strengths.push(`Long-term ownership (${heldYears}y) signals a quality micro-location.`);
+  if (strengths.length === 0) strengths.push(`${p.area} fundamentals are stable; lifestyle score ${p.scores.lifestyle}/100.`);
+
+  const risks: string[] = [];
+  if (muniPremium >= 80) risks.push("Market-to-municipal gap is wide — re-rating risk if rolls catch up.");
+  if (p.scores.liquidity < 55) risks.push("Lower-than-area liquidity — expect longer DOM if priced at upper bound.");
+  if (heldYears < 3) risks.push("Recent transfer — comparable basis is thin for this specific erf.");
+  if (p.features.vacantLand) risks.push("Vacant land — carrying costs and approval timeline reduce IRR.");
+  if (p.distances.beachM > 2500 && !p.features.oceanView) risks.push("Beyond comfortable beach walk — limits short-let premium.");
+  if (risks.length === 0) risks.push("No material flags in modelled risk factors.");
+
+  return { summary, opportunities, strengths, risks };
+}
+
+function WhyCard({ property }: { property: Property }) {
+  const why = buildWhy(property);
+  return (
+    <div className="pa-fade-up-delayed mx-5 mt-3 shrink-0 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-3.5 shadow-soft">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-sunrise text-primary-foreground">
+            <Sparkles className="h-3 w-3" />
+          </span>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">Why this property?</div>
+        </div>
+        <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+          AI · Mock
+        </span>
+      </div>
+      <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">{why.summary}</p>
+
+      <div className="mt-3 space-y-2 text-[11.5px]">
+        <WhySection tone="opportunity" title="Opportunities" items={why.opportunities} />
+        <WhySection tone="strength" title="Strengths" items={why.strengths} />
+        <WhySection tone="risk" title="Risks" items={why.risks} />
+      </div>
+    </div>
+  );
+}
+
+function WhySection({ tone, title, items }: { tone: "opportunity" | "strength" | "risk"; title: string; items: string[] }) {
+  const styles = {
+    opportunity: { dot: "bg-accent", label: "text-accent-foreground/80" },
+    strength:    { dot: "bg-success",  label: "text-foreground/80" },
+    risk:        { dot: "bg-destructive/80", label: "text-foreground/80" },
+  }[tone];
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className={cn("h-1.5 w-1.5 rounded-full", styles.dot)} />
+        {title}
+      </div>
+      <ul className="space-y-0.5 pl-3">
+        {items.map((t, i) => (
+          <li key={i} className={cn("leading-snug", styles.label)}>• {t}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SellerProbabilityCard({ value, heldYears }: { value: number; heldYears: number }) {
+  const band = value >= 70 ? "High" : value >= 45 ? "Medium" : "Low";
+  const tone =
+    band === "High" ? "from-accent/20 to-accent/5 border-accent/40 text-accent-foreground"
+    : band === "Medium" ? "from-primary/15 to-primary/5 border-primary/30 text-foreground"
+    : "from-muted to-card border-border text-muted-foreground";
+  const dot = band === "High" ? "bg-accent" : band === "Medium" ? "bg-primary" : "bg-muted-foreground/50";
+  return (
+    <div className={cn("relative col-span-2 overflow-hidden rounded-xl border bg-gradient-to-br p-3", tone)}>
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
+        <span className="flex items-center gap-1.5"><Activity className="h-3 w-3" /> Seller Probability</span>
+        <span className="rounded-full bg-card/70 px-1.5 py-0.5 text-[9px] font-semibold text-foreground/70 ring-1 ring-border">Mock model</span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-3xl font-semibold tabular-nums leading-none text-foreground">{value}</span>
+        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-foreground")}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+          {band}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-card/60">
+        <div className="pa-score-bar h-full rounded-full bg-gradient-sunrise" style={{ width: `${value}%` }} />
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-foreground/75">
+        Modelled from {heldYears}y tenure, appreciation, owner profile and current market cycle. Indicative — not a forecast.
+      </p>
+    </div>
+  );
 }
 
 

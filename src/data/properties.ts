@@ -27,6 +27,16 @@ export interface PropertyScores {
   oceanView: number;
   appreciation: number;
   rental: number;
+  sellerProbability: number; // 0-100; >70 = High
+  lifestyle: number;
+}
+
+export interface PropertyDistances {
+  beachM: number;
+  harbourM: number;
+  golfM: number;
+  villageM: number;
+  restaurantsM: number;
 }
 
 export interface SaleRecord {
@@ -37,11 +47,11 @@ export interface SaleRecord {
 export type HistoryKind = "sold" | "listed" | "rented" | "withdrawn" | "valuation" | "renovation";
 
 export interface HistoryRecord {
-  date: string;          // ISO yyyy-mm-dd
+  date: string;
   kind: HistoryKind;
-  price?: number;        // sale price or monthly rent
+  price?: number;
   note?: string;
-  party?: string;        // buyer/tenant/agency label
+  party?: string;
 }
 
 export interface OwnershipRecord {
@@ -69,6 +79,7 @@ export interface Property {
   municipalValue: number;
   confidence: number;
   scores: PropertyScores;
+  distances: PropertyDistances;
   ownership: OwnershipRecord;
   sales: SaleRecord[];
   history: HistoryRecord[];
@@ -81,21 +92,30 @@ export interface Property {
     largeErf: boolean;
     vacantLand: boolean;
   };
-  // GeoJSON polygon ring in [lng, lat]
   geometry: [number, number][];
-  centroid: [number, number]; // [lng, lat]
+  centroid: [number, number];
 }
 
-const AREAS: { name: AreaName; center: [number, number]; spread: number }[] = [
-  { name: "Santareme", center: [24.838, -34.155], spread: 0.0035 },
-  { name: "St Francis Bay", center: [24.830, -34.168], spread: 0.0055 },
-  { name: "Port St Francis", center: [24.847, -34.185], spread: 0.0035 },
-  { name: "Cape St Francis", center: [24.838, -34.203], spread: 0.0055 },
-  { name: "Oyster Bay", center: [24.667, -34.172], spread: 0.005 },
+const AREAS: { name: AreaName; center: [number, number]; spread: number; density: number }[] = [
+  { name: "Santareme",       center: [24.838, -34.155], spread: 0.0042, density: 55 },
+  { name: "St Francis Bay",  center: [24.830, -34.168], spread: 0.0065, density: 95 },
+  { name: "Port St Francis", center: [24.847, -34.185], spread: 0.0040, density: 50 },
+  { name: "Cape St Francis", center: [24.838, -34.203], spread: 0.0062, density: 70 },
+  { name: "Oyster Bay",      center: [24.667, -34.172], spread: 0.0055, density: 45 },
 ];
 
+// Local St Francis landmarks for distance computation (mock)
+const LANDMARKS = {
+  beachLng: 24.8475,             // approx coast line (N-S)
+  oysterBayBeachLng: 24.6655,
+  harbour: [24.8470, -34.1855] as [number, number],     // Port St Francis
+  golf:    [24.8125, -34.1790] as [number, number],     // St Francis Links
+  village: [24.8360, -34.1685] as [number, number],     // St Francis village centre
+  restaurants: [24.8390, -34.1672] as [number, number], // ~Anchorage / Harbour
+};
+
 const TYPES: PropertyType[] = [
-  "Residential", "Residential", "Residential",
+  "Residential", "Residential", "Residential", "Residential",
   "Vacant Land", "Vacant Land",
   "Commercial", "Agricultural",
 ];
@@ -116,17 +136,31 @@ function seeded(i: number): number {
 const M_PER_DEG_LAT = 111_000;
 const M_PER_DEG_LNG_AT_34 = 92_000;
 
+function metersBetween(a: [number, number], b: [number, number]): number {
+  const dx = (a[0] - b[0]) * M_PER_DEG_LNG_AT_34;
+  const dy = (a[1] - b[1]) * M_PER_DEG_LAT;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function rectPolygon(cx: number, cy: number, wMeters: number, hMeters: number, rotateRad: number): [number, number][] {
   const dx = wMeters / M_PER_DEG_LNG_AT_34 / 2;
   const dy = hMeters / M_PER_DEG_LAT / 2;
   const cos = Math.cos(rotateRad), sin = Math.sin(rotateRad);
   const corners: [number, number][] = [[-dx, -dy], [dx, -dy], [dx, dy], [-dx, dy]];
   const rotated = corners.map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos] as [number, number]);
-  return [...rotated, rotated[0]]; // closed ring
+  return [...rotated, rotated[0]];
 }
 
 export function formatZAR(n: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(n);
+}
+
+export function walkMinutes(meters: number): number {
+  return Math.max(1, Math.round(meters / 80)); // ~4.8 km/h
+}
+
+export function driveMinutes(meters: number): number {
+  return Math.max(1, Math.round(meters / 500)); // ~30 km/h local
 }
 
 const AGENCIES = ["Pam Golding", "Seeff", "Chas Everitt", "RE/MAX Coastal", "Harcourts"];
@@ -137,11 +171,9 @@ function buildHistory(idx: number, lastSaleYear: number, lastSalePrice: number, 
   const now = 2026;
   const cutoff = now - 10;
 
-  // Latest sale + listing before it
   records.push({ date: `${lastSaleYear}-06-14`, kind: "sold", price: lastSalePrice, party: AGENCIES[idx % AGENCIES.length] });
   records.push({ date: `${lastSaleYear}-02-03`, kind: "listed", price: Math.round(lastSalePrice * 1.08), party: AGENCIES[idx % AGENCIES.length] });
 
-  // Rental cycles between sales (skip for vacant land)
   if (!vacant) {
     const monthlyRent = Math.round((est * 0.0055) / 100) * 100;
     for (let y = lastSaleYear + 1; y <= now && y - lastSaleYear <= 8; y += 2) {
@@ -156,20 +188,17 @@ function buildHistory(idx: number, lastSaleYear: number, lastSalePrice: number, 
     }
   }
 
-  // Previous sale
   const prevSaleYear = lastSaleYear - 6;
   if (prevSaleYear >= cutoff) {
     records.push({ date: `${prevSaleYear}-03-22`, kind: "sold", price: Math.round(lastSalePrice * 0.62), party: AGENCIES[(idx + 2) % AGENCIES.length] });
     records.push({ date: `${prevSaleYear - 1}-10-11`, kind: "withdrawn", note: "Listing withdrawn", party: AGENCIES[(idx + 1) % AGENCIES.length] });
   }
 
-  // Valuations
   records.push({ date: `${lastSaleYear - 2}-09-01`, kind: "valuation", price: Math.round(est * 0.82), note: "Municipal revaluation" });
   if (lastSaleYear - 5 >= cutoff) {
     records.push({ date: `${lastSaleYear - 5}-09-01`, kind: "valuation", price: Math.round(est * 0.55), note: "Municipal revaluation" });
   }
 
-  // Renovations
   if (!vacant && seeded(idx + 77) > 0.55 && lastSaleYear - 4 >= cutoff) {
     records.push({ date: `${lastSaleYear - 4}-02-18`, kind: "renovation", note: "Renovation permit issued" });
   }
@@ -182,9 +211,8 @@ function buildHistory(idx: number, lastSaleYear: number, lastSalePrice: number, 
 function generateProperties(): Property[] {
   const out: Property[] = [];
   let idx = 0;
-  for (const { name: area, center, spread } of AREAS) {
-    const count = 9 + Math.floor(seeded(area.length) * 4);
-    for (let i = 0; i < count; i++) {
+  for (const { name: area, center, spread, density } of AREAS) {
+    for (let i = 0; i < density; i++) {
       idx++;
       const r = Math.sqrt(seeded(idx + 1)) * spread;
       const theta = seeded(idx + 2) * Math.PI * 2;
@@ -203,15 +231,21 @@ function generateProperties(): Property[] {
       const rot = (seeded(idx + 6) - 0.5) * 0.6;
       const geometry = rectPolygon(cx, cy, wM, hM, rot);
 
-      // Distance from coast (rough: coast runs roughly N-S near lng 24.85 in St Francis)
-      // Treat parcels with lng > 24.844 (for SFB cluster) or close to area boundary as beachfront candidates.
-      const distToCoastDeg = Math.abs(cx - (area === "Oyster Bay" ? 24.665 : 24.847));
-      const beachfront = distToCoastDeg < 0.0008 && seeded(idx + 7) > 0.35;
-      const oceanView = beachfront || (distToCoastDeg < 0.002 && seeded(idx + 8) > 0.45);
-      const walkToBeach = distToCoastDeg < 0.004;
+      const coastLng = area === "Oyster Bay" ? LANDMARKS.oysterBayBeachLng : LANDMARKS.beachLng;
+      const distToCoastDeg = Math.abs(cx - coastLng);
+      const beachfront = distToCoastDeg < 0.0009 && seeded(idx + 7) > 0.35;
+      const oceanView = beachfront || (distToCoastDeg < 0.0022 && seeded(idx + 8) > 0.45);
+      const walkToBeach = distToCoastDeg < 0.0045;
       const largeErf = sizeSqm > 1500;
       const cornerLot = seeded(idx + 9) > 0.82;
       const vacant = type === "Vacant Land";
+
+      // Distances (m) to local landmarks
+      const beachM = Math.round(distToCoastDeg * M_PER_DEG_LNG_AT_34);
+      const harbourM = Math.round(metersBetween([cx, cy], LANDMARKS.harbour));
+      const golfM = Math.round(metersBetween([cx, cy], LANDMARKS.golf));
+      const villageM = Math.round(metersBetween([cx, cy], LANDMARKS.village));
+      const restaurantsM = Math.round(metersBetween([cx, cy], LANDMARKS.restaurants));
 
       const baseRand = seeded(idx + 10);
       const baseValue =
@@ -236,6 +270,20 @@ function generateProperties(): Property[] {
       const rental = Math.round(40 + seeded(idx + 21) * 45 + (oceanView ? 10 : 0));
       const coastal = beachfront ? 98 : oceanView ? 82 : walkToBeach ? 60 : Math.round(20 + seeded(idx + 22) * 40);
 
+      // Lifestyle: weighted blend of nearby amenities (walking-distance)
+      const beachLifestyle = beachM < 500 ? 95 : beachM < 1200 ? 75 : beachM < 2500 ? 55 : 30;
+      const golfLifestyle = golfM < 2000 ? 85 : golfM < 5000 ? 60 : 35;
+      const villageLifestyle = villageM < 800 ? 90 : villageM < 2000 ? 65 : 40;
+      const lifestyle = Math.round(beachLifestyle * 0.45 + golfLifestyle * 0.2 + villageLifestyle * 0.35);
+
+      // Seller probability — modelled from ownership tenure, appreciation, market cycle
+      // Long-held (>12y) + strong appreciation + Individual owner = higher probability
+      const tenureSignal = heldYears >= 14 ? 35 : heldYears >= 9 ? 22 : heldYears >= 5 ? 10 : 4;
+      const apprSignal = appreciation >= 75 ? 22 : appreciation >= 60 ? 14 : 6;
+      const ownerSignal = owner === "Individual" ? 18 : owner === "Trust" ? 8 : 12;
+      const marketSignal = 8 + seeded(idx + 33) * 16; // mock current market temperature
+      const sellerProbability = Math.round(Math.min(96, Math.max(8, tenureSignal + apprSignal + ownerSignal + marketSignal)));
+
       const status: Property["status"] = heldYears > 10 ? "Held long-term" : heldYears <= 1 ? "Recently sold" : "Off-market";
 
       out.push({
@@ -250,7 +298,8 @@ function generateProperties(): Property[] {
         estimatedValue: est,
         municipalValue: muni,
         confidence: 0.72 + seeded(idx + 24) * 0.25,
-        scores: { investor, development, liquidity, coastal, walkability, oceanView: oceanViewScore, appreciation, rental },
+        scores: { investor, development, liquidity, coastal, walkability, oceanView: oceanViewScore, appreciation, rental, sellerProbability, lifestyle },
+        distances: { beachM, harbourM, golfM, villageM, restaurantsM },
         ownership: {
           type: owner,
           ownerLabel:
@@ -288,7 +337,6 @@ export function getProperty(id: string): Property | undefined {
   return PROPERTIES.find((p) => p.id === id);
 }
 
-// Convert filtered properties into a GeoJSON FeatureCollection for Mapbox.
 export function propertiesToGeoJSON(props: Property[]): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
   return {
     type: "FeatureCollection",
@@ -308,6 +356,10 @@ export function propertiesToGeoJSON(props: Property[]): GeoJSON.FeatureCollectio
         investor: p.scores.investor,
         development: p.scores.development,
         oceanView: p.scores.oceanView,
+        appreciation: p.scores.appreciation,
+        rental: p.scores.rental,
+        sellerProbability: p.scores.sellerProbability,
+        heldYears: 2026 - new Date(p.ownership.since).getFullYear(),
         beachfront: p.features.beachfront,
         vacantLand: p.features.vacantLand,
         largeErf: p.features.largeErf,
@@ -327,7 +379,13 @@ export function propertiesToCentroidGeoJSON(props: Property[]): GeoJSON.FeatureC
         id: p.id,
         estimatedValue: p.estimatedValue,
         investor: p.scores.investor,
+        development: p.scores.development,
+        oceanView: p.scores.oceanView,
+        appreciation: p.scores.appreciation,
+        rental: p.scores.rental,
+        sellerProbability: p.scores.sellerProbability,
         salesRecency: 2026 - new Date(p.sales[0].date).getFullYear(),
+        heldYears: 2026 - new Date(p.ownership.since).getFullYear(),
       },
     })),
   };
