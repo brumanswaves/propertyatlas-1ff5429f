@@ -617,7 +617,7 @@ function buildWhy(p: Property): WhySections {
 function WhyCard({ property }: { property: Property }) {
   const why = buildWhy(property);
   return (
-    <div className="pa-fade-up-delayed mx-5 mt-3 shrink-0 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-3.5 shadow-soft">
+    <div className="pa-fade-up-delayed overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-3.5 shadow-soft">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-sunrise text-primary-foreground">
