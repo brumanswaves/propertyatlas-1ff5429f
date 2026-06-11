@@ -59,7 +59,7 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
         </span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-border bg-card p-4 shadow-panel">
+        <div className="fixed left-2 right-2 top-auto z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-panel md:absolute md:left-auto md:right-0 md:top-full md:max-h-none md:w-72 md:overflow-visible">
           <div className="mb-3">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base map</div>
             <div className="grid grid-cols-4 gap-1.5">

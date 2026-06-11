@@ -83,7 +83,7 @@ export function PropertyPanel({ property, onClose }: Props) {
             {Math.round(property.confidence * 100)}% confidence
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
           <Stat label="Municipal" value={formatZAR(property.municipalValue)} />
           <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
           <Stat label="Last sale" value={formatZAR(lastSale.price)} />
@@ -274,9 +274,9 @@ export function PropertyPanel({ property, onClose }: Props) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/10 px-2.5 py-2">
+    <div className="min-w-0 rounded-xl bg-white/10 px-2.5 py-2">
       <div className="text-[10px] uppercase tracking-wider text-white/60">{label}</div>
-      <div className="mt-0.5 truncate text-[13px] font-semibold">{value}</div>
+      <div className="mt-0.5 text-[12px] font-semibold leading-tight tabular-nums break-words">{value}</div>
     </div>
   );
 }
