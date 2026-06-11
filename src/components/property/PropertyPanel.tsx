@@ -128,6 +128,52 @@ export function PropertyPanel({ property, onClose }: Props) {
       <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Key investor scores */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Investor scorecards</div>
+                <span className="text-[10px] text-muted-foreground">Out of 100</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreCard
+                  label="Investor"
+                  value={property.scores.investor}
+                  icon={<TrendingUp className="h-3 w-3" />}
+                  explain="Composite of liquidity, appreciation, and yield."
+                  confidence={property.confidence}
+                />
+                <ScoreCard
+                  label="Development"
+                  value={property.scores.development}
+                  icon={<Building2 className="h-3 w-3" />}
+                  explain="Zoning, bulk, and lot geometry potential."
+                  confidence={Math.min(0.95, property.confidence + 0.05)}
+                />
+                <ScoreCard
+                  label="Ocean view"
+                  value={property.scores.oceanView}
+                  icon={<Eye className="h-3 w-3" />}
+                  explain="Line-of-sight to ocean from buildable area."
+                  confidence={0.88}
+                />
+                <ScoreCard
+                  label="Liquidity"
+                  value={property.scores.liquidity}
+                  icon={<Banknote className="h-3 w-3" />}
+                  explain="Modelled days-to-sell at fair value."
+                  confidence={Math.max(0.6, property.confidence - 0.1)}
+                />
+                <ScoreCard
+                  label="Appreciation"
+                  value={property.scores.appreciation}
+                  icon={<LineChart className="h-3 w-3" />}
+                  explain="Modelled 5-year capital growth potential."
+                  confidence={Math.max(0.55, property.confidence - 0.15)}
+                  className="col-span-2"
+                />
+              </div>
+            </div>
+
             <Section title="Characteristics">
               <Row label="Type" value={property.type} />
               <Row label="Zoning" value={property.zoning} />
@@ -154,6 +200,35 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="St Francis Links" value="2.1 km" />
               <Row label="Village centre" value="900 m" />
             </Section>
+
+            {/* Premium Investor modules — blurred previews + single CTA */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Investor modules</div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Lock className="h-2.5 w-2.5" /> Premium
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <LockedModule icon={<Users className="h-3 w-3" />} title="Ownership Intelligence" lines={[property.ownership.ownerLabel, "3 properties in region", "4 transfers since 1998"]} />
+                <LockedModule icon={<GitCompare className="h-3 w-3" />} title="Comparable Sales" lines={["14 Marina Dr · R 3.65M", "22 Lyme Rd · R 4.10M", "8 Da Gama Rd · R 3.92M"]} />
+                <LockedModule icon={<CalendarClock className="h-3 w-3" />} title="Transfer Timeline" lines={["2019 · R 2.4M", "2013 · R 1.5M", "2006 · R 780k"]} />
+                <LockedModule icon={<Scale className="h-3 w-3" />} title="Municipal vs Market" lines={[`Muni ${compactZAR(property.municipalValue)}`, `Market ${compactZAR(property.estimatedValue)}`, `+${Math.round((property.estimatedValue / property.municipalValue - 1) * 100)}% premium`]} />
+                <LockedModule icon={<Layers className="h-3 w-3" />} title="Development Feasibility" lines={["Coverage 60% · Bulk 0.8", `Buildable ${Math.round(property.sizeSqm * 0.48).toLocaleString()} m²`, `Indicative GDV ${compactZAR(property.estimatedValue * 2.4)}`]} />
+                <LockedModule icon={<ImageIcon className="h-3 w-3" />} title="Historical Imagery" lines={["2014 aerial", "2018 aerial", "2023 aerial · street view"]} />
+              </div>
+              <Link
+                to="/pricing"
+                className="mt-3 flex items-center justify-center gap-2 rounded-full bg-gradient-premium px-4 py-2.5 text-xs font-semibold text-accent-foreground shadow-soft transition hover:opacity-95"
+              >
+                <Crown className="h-3.5 w-3.5" />
+                Unlock full property intelligence · R199/month
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+                Cancel anytime. Mock pilot data for demonstration.
+              </p>
+            </div>
           </div>
         )}
 
