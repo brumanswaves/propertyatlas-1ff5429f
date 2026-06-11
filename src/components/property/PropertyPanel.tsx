@@ -318,9 +318,9 @@ export function PropertyPanel({ property, onClose }: Props) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-white/10 px-2.5 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-white/60">{label}</div>
-      <div className="mt-0.5 text-[12px] font-semibold leading-tight tabular-nums break-words">{value}</div>
+    <div className="min-w-0 rounded-xl bg-white/15 px-3 py-2.5 ring-1 ring-inset ring-white/10">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-white/75">{label}</div>
+      <div className="mt-0.5 text-[13px] font-semibold leading-tight tabular-nums break-words text-white">{value}</div>
     </div>
   );
 }
