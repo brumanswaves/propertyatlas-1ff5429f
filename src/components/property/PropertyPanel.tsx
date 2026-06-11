@@ -155,7 +155,7 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="Held since" value={new Date(property.ownership.since).toLocaleDateString("en-ZA")} />
               <Row label="Duration" value={`${heldYears} years`} />
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Owner intelligence">
                 <Row label="Registered owner" value={property.ownership.ownerLabel} />
                 <Row label="Other holdings" value="3 properties in region" />
@@ -189,7 +189,7 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Gauge label="Coastal" value={property.scores.coastal} icon={<Waves className="h-3 w-3" />}
                 explain="Beachfront and coastline desirability" />
             </div>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Development feasibility">
                 <Row label="Coverage allowance" value="60%" />
                 <Row label="Bulk allowance" value="0.8" />
@@ -214,7 +214,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                 ))}
               </div>
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Historical imagery">
                 <Row label="2014 aerial" value="Available" />
                 <Row label="2018 aerial" value="Available" />
@@ -241,7 +241,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                 ))}
               </ol>
             </Section>
-            <Locked>
+            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
               <Section title="Historical aerial imagery">
                 <Row label="Earliest record" value="2009" />
                 <Row label="Imagery snapshots" value="12 available" />
@@ -592,7 +592,7 @@ function SalesTab({ property }: { property: Property }) {
         ))}
       </ol>
 
-      <Locked>
+      <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
         <Section title="Comparable sales (within 1 km)">
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -607,7 +607,7 @@ function SalesTab({ property }: { property: Property }) {
           </div>
         </Section>
       </Locked>
-      <Locked>
+      <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
         <Section title="Sale price trend">
           <Row label="3-yr CAGR" value="+7.8%" />
           <Row label="Suburb median" value={formatZAR(4_250_000)} />
