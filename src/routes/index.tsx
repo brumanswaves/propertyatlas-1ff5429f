@@ -107,10 +107,7 @@ function AtlasHome() {
             Starting with the St Francis Bay pilot — built for buyers, investors, developers, and property professionals.
           </p>
         </div>
-      </div>
 
-      {/* Onboarding hint */}
-      {!selected && !hintDismissed && (
         {/* Featured properties quick-launch */}
         {!selected && (
           <div className="pointer-events-auto mt-1 flex max-w-full flex-wrap items-center justify-center gap-1.5 px-2">
