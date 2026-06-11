@@ -52,6 +52,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
 
@@ -92,7 +93,6 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   }, []);
 
   // Switch style (skip redundant set on mount)
-  const currentStyleRef = useRef<MapStyleId | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
