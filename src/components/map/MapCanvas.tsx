@@ -76,32 +76,71 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   // Init map
   useEffect(() => {
     if (!TOKEN || !containerRef.current || mapRef.current) return;
+
+    if (!webglSupported()) {
+      console.error("[PropertyAtlas] WebGL is not available in this browser");
+      setMapError(
+        "Your browser blocked WebGL, which the map needs to render. If you're using Lockdown Mode or Low Power Mode on iPhone, disable it for this site, then tap Retry.",
+      );
+      return;
+    }
+
     mapboxgl.accessToken = TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: STYLE_URLS[mapStyle],
-      center: ST_FRANCIS_CENTER,
-      zoom: 13.2,
-      pitch: 0,
-      attributionControl: false,
-      cooperativeGestures: false,
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: STYLE_URLS[mapStyle],
+        center: ST_FRANCIS_CENTER,
+        zoom: 13.2,
+        pitch: 0,
+        attributionControl: false,
+        cooperativeGestures: false,
+      });
+    } catch (err) {
+      console.error("[PropertyAtlas] Map failed to initialize", err);
+      setMapError("The map engine failed to start on this device. Tap Retry, or try reloading the page.");
+      return;
+    }
+
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
     map.on("load", () => {
+      console.log("[PropertyAtlas] Map loaded");
       map.resize();
       setReady(true);
     });
+    map.on("error", (e) => {
+      console.error("[PropertyAtlas] Map error:", e.error?.message ?? e);
+    });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
+
+    // Recover from GPU context loss (common on iOS Safari under memory pressure)
+    const canvas = map.getCanvas();
+    const onContextLost = () => {
+      console.warn("[PropertyAtlas] WebGL context lost — recreating map");
+      setMapError("The map's graphics context was interrupted (this can happen on mobile). Tap Retry to reload it.");
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost);
+
+    // Extra resizes to defeat iframe/mobile layout races where the
+    // container reports a stale size at init time.
+    const t1 = window.setTimeout(() => map.resize(), 400);
+    const t2 = window.setTimeout(() => map.resize(), 1500);
+
     mapRef.current = map;
     currentStyleRef.current = mapStyle;
     return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
       map.remove();
       mapRef.current = null;
+      setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   // Switch style (skip redundant set on mount)
   useEffect(() => {
