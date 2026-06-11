@@ -76,8 +76,8 @@ export interface Property {
 }
 
 const AREAS: { name: AreaName; center: [number, number]; spread: number }[] = [
-  { name: "Santareme", center: [24.838, -34.155], spread: 0.0045 },
-  { name: "St Francis Bay", center: [24.834, -34.169], spread: 0.0065 },
+  { name: "Santareme", center: [24.838, -34.155], spread: 0.0035 },
+  { name: "St Francis Bay", center: [24.830, -34.168], spread: 0.0055 },
   { name: "Port St Francis", center: [24.847, -34.185], spread: 0.0035 },
   { name: "Cape St Francis", center: [24.838, -34.203], spread: 0.0055 },
   { name: "Oyster Bay", center: [24.667, -34.172], spread: 0.005 },
@@ -271,4 +271,4 @@ export function propertiesToCentroidGeoJSON(props: Property[]): GeoJSON.FeatureC
   };
 }
 
-export const ST_FRANCIS_CENTER: [number, number] = [24.829, -34.157];
+export const ST_FRANCIS_CENTER: [number, number] = [24.830, -34.168];
