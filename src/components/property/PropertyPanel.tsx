@@ -83,7 +83,7 @@ export function PropertyPanel({ property, onClose }: Props) {
             {Math.round(property.confidence * 100)}% confidence
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
           <Stat label="Municipal" value={formatZAR(property.municipalValue)} />
           <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
           <Stat label="Last sale" value={formatZAR(lastSale.price)} />
@@ -161,6 +161,46 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="Price" value={formatZAR(lastSale.price)} />
               <Row label="vs estimate" value={`${Math.round((lastSale.price / property.estimatedValue) * 100)}%`} />
             </Section>
+
+            <Section title="Property history · last 10 years">
+              <ol className="space-y-2">
+                {property.history.map((h, i) => {
+                  const tone =
+                    h.kind === "sold" ? "bg-primary/10 text-primary"
+                    : h.kind === "rented" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : h.kind === "listed" ? "bg-sky-500/10 text-sky-700 dark:text-sky-400"
+                    : h.kind === "withdrawn" ? "bg-muted text-muted-foreground"
+                    : h.kind === "valuation" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                    : "bg-muted text-muted-foreground";
+                  return (
+                    <li key={i} className="flex items-start justify-between gap-2 rounded-lg border border-border p-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", tone)}>
+                            {h.kind}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(h.date).toLocaleDateString("en-ZA", { year: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                        {(h.party || h.note) && (
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {h.party}{h.party && h.note ? " · " : ""}{h.note}
+                          </div>
+                        )}
+                      </div>
+                      {typeof h.price === "number" && (
+                        <div className="shrink-0 text-right">
+                          <div className="text-sm font-semibold tabular-nums">{formatZAR(h.price)}</div>
+                          {h.kind === "rented" && <div className="text-[10px] text-muted-foreground">/ month</div>}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </Section>
+
             <Locked>
               <Section title="Comparable sales (within 1 km)">
                 <div className="space-y-2">
@@ -274,9 +314,9 @@ export function PropertyPanel({ property, onClose }: Props) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/10 px-2.5 py-2">
+    <div className="min-w-0 rounded-xl bg-white/10 px-2.5 py-2">
       <div className="text-[10px] uppercase tracking-wider text-white/60">{label}</div>
-      <div className="mt-0.5 truncate text-[13px] font-semibold">{value}</div>
+      <div className="mt-0.5 text-[12px] font-semibold leading-tight tabular-nums break-words">{value}</div>
     </div>
   );
 }

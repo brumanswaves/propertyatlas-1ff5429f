@@ -34,6 +34,16 @@ export interface SaleRecord {
   price: number;
 }
 
+export type HistoryKind = "sold" | "listed" | "rented" | "withdrawn" | "valuation" | "renovation";
+
+export interface HistoryRecord {
+  date: string;          // ISO yyyy-mm-dd
+  kind: HistoryKind;
+  price?: number;        // sale price or monthly rent
+  note?: string;
+  party?: string;        // buyer/tenant/agency label
+}
+
 export interface OwnershipRecord {
   type: OwnershipType;
   ownerLabel: string;
@@ -61,6 +71,7 @@ export interface Property {
   scores: PropertyScores;
   ownership: OwnershipRecord;
   sales: SaleRecord[];
+  history: HistoryRecord[];
   timeline: TimelineEvent[];
   features: {
     beachfront: boolean;
@@ -116,6 +127,56 @@ function rectPolygon(cx: number, cy: number, wMeters: number, hMeters: number, r
 
 export function formatZAR(n: number): string {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(n);
+}
+
+const AGENCIES = ["Pam Golding", "Seeff", "Chas Everitt", "RE/MAX Coastal", "Harcourts"];
+const TENANTS = ["Family relocation", "Holiday let", "Long-let tenant", "Corporate let"];
+
+function buildHistory(idx: number, lastSaleYear: number, lastSalePrice: number, est: number, vacant: boolean): HistoryRecord[] {
+  const records: HistoryRecord[] = [];
+  const now = 2026;
+  const cutoff = now - 10;
+
+  // Latest sale + listing before it
+  records.push({ date: `${lastSaleYear}-06-14`, kind: "sold", price: lastSalePrice, party: AGENCIES[idx % AGENCIES.length] });
+  records.push({ date: `${lastSaleYear}-02-03`, kind: "listed", price: Math.round(lastSalePrice * 1.08), party: AGENCIES[idx % AGENCIES.length] });
+
+  // Rental cycles between sales (skip for vacant land)
+  if (!vacant) {
+    const monthlyRent = Math.round((est * 0.0055) / 100) * 100;
+    for (let y = lastSaleYear + 1; y <= now && y - lastSaleYear <= 8; y += 2) {
+      if (y < cutoff) continue;
+      records.push({
+        date: `${y}-${String(1 + ((idx + y) % 11)).padStart(2, "0")}-05`,
+        kind: "rented",
+        price: Math.round(monthlyRent * (0.92 + seeded(idx + y) * 0.25)),
+        party: TENANTS[(idx + y) % TENANTS.length],
+        note: "12-month lease",
+      });
+    }
+  }
+
+  // Previous sale
+  const prevSaleYear = lastSaleYear - 6;
+  if (prevSaleYear >= cutoff) {
+    records.push({ date: `${prevSaleYear}-03-22`, kind: "sold", price: Math.round(lastSalePrice * 0.62), party: AGENCIES[(idx + 2) % AGENCIES.length] });
+    records.push({ date: `${prevSaleYear - 1}-10-11`, kind: "withdrawn", note: "Listing withdrawn", party: AGENCIES[(idx + 1) % AGENCIES.length] });
+  }
+
+  // Valuations
+  records.push({ date: `${lastSaleYear - 2}-09-01`, kind: "valuation", price: Math.round(est * 0.82), note: "Municipal revaluation" });
+  if (lastSaleYear - 5 >= cutoff) {
+    records.push({ date: `${lastSaleYear - 5}-09-01`, kind: "valuation", price: Math.round(est * 0.55), note: "Municipal revaluation" });
+  }
+
+  // Renovations
+  if (!vacant && seeded(idx + 77) > 0.55 && lastSaleYear - 4 >= cutoff) {
+    records.push({ date: `${lastSaleYear - 4}-02-18`, kind: "renovation", note: "Renovation permit issued" });
+  }
+
+  return records
+    .filter((r) => Number(r.date.slice(0, 4)) >= cutoff)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 function generateProperties(): Property[] {
@@ -203,6 +264,7 @@ function generateProperties(): Property[] {
           { date: `${lastSaleYear - 6}-03-22`, price: Math.round(lastSalePrice * 0.62) },
           { date: `${lastSaleYear - 11}-08-09`, price: Math.round(lastSalePrice * 0.38) },
         ],
+        history: buildHistory(idx, lastSaleYear, lastSalePrice, est, vacant),
         timeline: [
           { date: `${lastSaleYear}-06-14`, title: "Transferred to current owner", kind: "transfer" },
           { date: `${lastSaleYear - 2}-09-01`, title: "Municipal revaluation", kind: "valuation" },
