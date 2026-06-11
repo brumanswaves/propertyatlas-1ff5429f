@@ -396,7 +396,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
             ],
             "heatmap-color": colorExpr as any,
           },
-        }, "parcels-fill");
+        }, map.getLayer("parcels-fill") ? "parcels-fill" : undefined);
       }
 
       // ===== Interactivity =====
