@@ -111,20 +111,31 @@ export function PropertyPanel({ property, onClose }: Props) {
       {/* Why This Property? — Bloomberg-style intelligence card */}
       <WhyCard property={property} />
 
-      <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
-        {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={cn(
-              "relative truncate px-1 py-2 capitalize transition sm:px-3",
-              tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}>
-            {t}
-            {tab === t && <span className="absolute inset-x-1 -bottom-px h-0.5 rounded bg-foreground sm:inset-x-2" />}
-          </button>
-        ))}
+      <div className="mt-3 shrink-0 border-b border-border">
+        <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
+          {TAB_META.map(({ id, label, icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                aria-pressed={active}
+                className={cn(
+                  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {icon}
+                {label}
+                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
+      <div ref={scrollRef} className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
+
         {tab === "overview" && (
           <div className="space-y-4">
             {/* Key investor scores */}
