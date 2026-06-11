@@ -76,22 +76,24 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </header>
 
-      <div className="mx-5 overflow-hidden rounded-2xl bg-gradient-brand p-4 text-white shadow-soft">
+      <div className="mx-5 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
+          <div className="min-w-0">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
+            <div className="mt-0.5 text-2xl font-semibold leading-none tracking-tight tabular-nums sm:text-3xl">
+              {formatZAR(property.estimatedValue)}
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
             <BadgeCheck className="h-3 w-3" />
-            {Math.round(property.confidence * 100)}% confidence
+            {Math.round(property.confidence * 100)}%
           </span>
         </div>
-        <div className="mt-1 text-3xl font-semibold leading-none tracking-tight tabular-nums">
-          {formatZAR(property.estimatedValue)}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+        <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-[11px] sm:grid-cols-2 sm:gap-2">
           <Stat label="Municipal" value={formatZAR(property.municipalValue)} />
-          <Stat label="Price / m²" value={`R ${ppm.toLocaleString()}`} />
+          <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
           <Stat label="Last sale" value={formatZAR(lastSale.price)} />
-          <Stat label="Held" value={`${heldYears} yrs`} />
+          <Stat label="Held" value={`${heldYears}y`} />
         </div>
       </div>
 
