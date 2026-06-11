@@ -333,15 +333,24 @@ function Pill({ children, icon, tone = "default" }: { children: React.ReactNode;
   );
 }
 
-function Locked({ children }: { children: React.ReactNode }) {
+function Locked({ children, preview }: { children: React.ReactNode; preview?: string[] }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border">
       <div className="pointer-events-none blur-[3px] saturate-50">{children}</div>
-      <div className="absolute inset-0 grid place-items-center bg-card/70 backdrop-blur-sm">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card/80 p-4 backdrop-blur-sm">
+        {preview && preview.length > 0 && (
+          <ul className="mb-1 flex flex-wrap justify-center gap-1.5">
+            {preview.map((p) => (
+              <li key={p} className="rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border">
+                {p}
+              </li>
+            ))}
+          </ul>
+        )}
         <Link to="/pricing"
           className="flex items-center gap-2 rounded-full bg-gradient-premium px-4 py-2 text-xs font-semibold text-accent-foreground shadow-soft hover:opacity-95">
           <Crown className="h-3.5 w-3.5" />
-          Upgrade to Investor to unlock
+          Unlock with Investor · R199/mo
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
         <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -350,6 +359,26 @@ function Locked({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
+}
+
+function buildInsight(p: Property): string {
+  const last = p.sales[0];
+  const yearsSinceSale = new Date().getFullYear() - new Date(last.date).getFullYear();
+  const vsEst = Math.round((last.price / p.estimatedValue) * 100);
+  const valuation =
+    vsEst < 80 ? "appears under-priced versus the current estimate"
+    : vsEst > 115 ? "last traded above the current estimate"
+    : "appears fairly valued relative to nearby mock sales";
+  const dev =
+    p.scores.development >= 75 ? "strong development potential due to erf size and zoning"
+    : p.scores.development >= 55 ? "moderate development upside"
+    : "limited development upside";
+  const coast = p.features.beachfront
+    ? "Beachfront premium drives long-term appreciation."
+    : p.features.oceanView ? "Ocean-view positioning supports rental demand."
+    : p.features.walkingDistanceToBeach ? "Walking distance to the beach supports liquidity."
+    : "";
+  return `Last traded ${yearsSinceSale}y ago — ${valuation}, with ${dev}. ${coast}`.trim();
 }
 
 // ===== Sales tab with Last sold card, filters, and PDF export =====
