@@ -77,9 +77,13 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
-    map.on("load", () => setReady(true));
+    map.on("load", () => {
+      map.resize();
+      setReady(true);
+    });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
     mapRef.current = map;
+    currentStyleRef.current = mapStyle;
     return () => {
       map.remove();
       mapRef.current = null;
@@ -87,10 +91,13 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Switch style
+  // Switch style (skip redundant set on mount)
+  const currentStyleRef = useRef<MapStyleId | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (currentStyleRef.current === mapStyle) return;
+    currentStyleRef.current = mapStyle;
     map.setStyle(STYLE_URLS[mapStyle]);
   }, [mapStyle]);
 
