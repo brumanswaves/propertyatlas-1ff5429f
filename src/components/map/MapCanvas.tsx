@@ -25,11 +25,13 @@ export const STYLE_URLS: Record<MapStyleId, string> = {
 export interface MapLayers {
   parcels: boolean;
   zoning: boolean;
-  valueHeat: boolean;
-  salesHeat: boolean;
   investorHeat: boolean;
-  oceanView: boolean;
-  development: boolean;
+  developmentHeat: boolean;
+  oceanViewHeat: boolean;
+  appreciationHeat: boolean;
+  rentalHeat: boolean;
+  longHeldHeat: boolean;
+  sellerHeat: boolean;
 }
 
 interface Props {
@@ -41,12 +43,20 @@ interface Props {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  Residential: "#60a5fa",
+  Residential: "#5cbdb9",
   Commercial: "#a78bfa",
   Industrial: "#fb923c",
   Agricultural: "#86efac",
   "Vacant Land": "#fde68a",
 };
+
+// Brand palette (mirrors styles.css Sunrise Sand)
+const C_OCEAN = "#1a3a52";
+const C_TEAL = "#5cbdb9";
+const C_GOLD = "#d4842a";
+const C_SAND = "#faf5ec";
+const C_SEAGREEN = "#3ea58f";
+const C_CORAL = "#e08562";
 
 function webglSupported(): boolean {
   try {
@@ -61,6 +71,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const pulseMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
@@ -92,7 +103,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         container: containerRef.current,
         style: STYLE_URLS[mapStyle],
         center: ST_FRANCIS_CENTER,
-        zoom: 13.2,
+        zoom: 13.4,
         pitch: 0,
         attributionControl: false,
         cooperativeGestures: false,
@@ -116,7 +127,6 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
 
-    // Recover from GPU context loss (common on iOS Safari under memory pressure)
     const canvas = map.getCanvas();
     const onContextLost = () => {
       console.warn("[PropertyAtlas] WebGL context lost — recreating map");
@@ -124,8 +134,6 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     };
     canvas.addEventListener("webglcontextlost", onContextLost);
 
-    // Extra resizes to defeat iframe/mobile layout races where the
-    // container reports a stale size at init time.
     const t1 = window.setTimeout(() => map.resize(), 400);
     const t2 = window.setTimeout(() => map.resize(), 1500);
 
@@ -135,6 +143,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       canvas.removeEventListener("webglcontextlost", onContextLost);
+      pulseMarkerRef.current?.remove();
+      pulseMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -142,7 +152,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryKey]);
 
-  // Switch style (skip redundant set on mount)
+  // Switch style
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -161,7 +171,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
       map.addSource("parcels", { type: "geojson", data: propertiesToGeoJSON(PROPERTIES), promoteId: "id" });
       map.addSource("parcel-centroids", { type: "geojson", data: propertiesToCentroidGeoJSON(PROPERTIES), promoteId: "id" });
 
-      // Parcel fill
+      // ===== Parcel fill — zoom-reveal: subtle at low zoom, vivid at high zoom =====
       map.addLayer({
         id: "parcels-fill",
         type: "fill",
@@ -169,20 +179,31 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         paint: {
           "fill-color": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], "#f59e0b",
-            ["boolean", ["feature-state", "hover"], false], "#fbbf24",
-            ["boolean", ["feature-state", "filtered"], true], "#3b82f6",
+            ["boolean", ["feature-state", "selected"], false], C_GOLD,
+            ["boolean", ["feature-state", "hover"], false], C_TEAL,
+            ["boolean", ["feature-state", "filtered"], true], C_TEAL,
             "rgba(120,120,120,0.15)",
           ],
           "fill-opacity": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], 0.65,
-            ["boolean", ["feature-state", "filtered"], true], 0.35,
-            0.1,
+            ["boolean", ["feature-state", "selected"], false],
+              ["interpolate", ["linear"], ["zoom"], 12, 0.5, 16, 0.65],
+            ["boolean", ["feature-state", "hover"], false],
+              ["interpolate", ["linear"], ["zoom"], 12, 0.35, 16, 0.5],
+            ["boolean", ["feature-state", "filtered"], true],
+              // Zoom-reveal: faint when zoomed out, prominent when zoomed in
+              ["interpolate", ["linear"], ["zoom"],
+                12, 0.04,
+                13.5, 0.10,
+                15, 0.22,
+                17, 0.32,
+              ],
+            0.05,
           ],
         },
       });
-      // Parcel outline
+
+      // ===== Parcel outline — elegant, zoom-reveal =====
       map.addLayer({
         id: "parcels-outline",
         type: "line",
@@ -190,20 +211,51 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         paint: {
           "line-color": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], "#f59e0b",
+            ["boolean", ["feature-state", "selected"], false], C_GOLD,
+            ["boolean", ["feature-state", "hover"], false], C_GOLD,
             "#ffffff",
           ],
           "line-width": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], 3,
-            ["boolean", ["feature-state", "hover"], false], 2,
-            0.8,
+            ["boolean", ["feature-state", "selected"], false],
+              ["interpolate", ["linear"], ["zoom"], 12, 2, 17, 4],
+            ["boolean", ["feature-state", "hover"], false],
+              ["interpolate", ["linear"], ["zoom"], 12, 1.5, 17, 3],
+            ["interpolate", ["linear"], ["zoom"], 12, 0.3, 14, 0.6, 16, 1.1, 17, 1.4],
           ],
-          "line-opacity": 0.9,
+          "line-opacity": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false], 1,
+            ["boolean", ["feature-state", "hover"], false], 1,
+            ["interpolate", ["linear"], ["zoom"], 12, 0.25, 14, 0.55, 16, 0.9],
+          ],
         },
       });
 
-      // Zoning layer (colored by type)
+      // Hover-glow halo (wide soft line, only visible when hovered)
+      map.addLayer({
+        id: "parcels-hover-glow",
+        type: "line",
+        source: "parcels",
+        paint: {
+          "line-color": C_GOLD,
+          "line-width": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false], 10,
+            ["boolean", ["feature-state", "selected"], false], 14,
+            0,
+          ],
+          "line-opacity": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false], 0.35,
+            ["boolean", ["feature-state", "hover"], false], 0.25,
+            0,
+          ],
+          "line-blur": 6,
+        },
+      }, "parcels-fill");
+
+      // ===== Zoning (colored by type) =====
       map.addLayer({
         id: "parcels-zoning",
         type: "fill",
@@ -223,99 +275,128 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         },
       });
 
-      // Ocean view layer
-      map.addLayer({
-        id: "parcels-oceanview",
-        type: "fill",
-        source: "parcels",
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": [
-            "step", ["get", "oceanView"],
-            "rgba(15,118,110,0.12)", 50,
-            "#5eead4", 75,
-            "#0ea5e9",
+      // ===== HEATMAPS — dramatic, palette-driven, story-telling =====
+      const HEATS: { id: string; weightProp: string; weightRange: [number, number]; ramp: Array<[number, string]> }[] = [
+        {
+          id: "heat-investor",
+          weightProp: "investor",
+          weightRange: [40, 100],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.25, "#1a3a52"],
+            [0.55, "#3ea58f"],
+            [0.8, "#d4842a"],
+            [1, "#e08562"],
           ],
-          "fill-opacity": 0.55,
         },
-      });
+        {
+          id: "heat-development",
+          weightProp: "development",
+          weightRange: [40, 100],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#1a3a52"],
+            [0.6, "#5cbdb9"],
+            [0.85, "#a3e635"],
+            [1, "#d4842a"],
+          ],
+        },
+        {
+          id: "heat-oceanview",
+          weightProp: "oceanView",
+          weightRange: [30, 100],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#0c2340"],
+            [0.55, "#1a3a52"],
+            [0.8, "#5cbdb9"],
+            [1, "#c0f0ee"],
+          ],
+        },
+        {
+          id: "heat-appreciation",
+          weightProp: "appreciation",
+          weightRange: [40, 100],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#1a3a52"],
+            [0.6, "#3ea58f"],
+            [0.85, "#d4842a"],
+            [1, "#f4a261"],
+          ],
+        },
+        {
+          id: "heat-rental",
+          weightProp: "rental",
+          weightRange: [40, 100],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#1a3a52"],
+            [0.6, "#5cbdb9"],
+            [0.85, "#3ea58f"],
+            [1, "#d4842a"],
+          ],
+        },
+        {
+          id: "heat-longheld",
+          weightProp: "heldYears",
+          weightRange: [3, 18],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#1a3a52"],
+            [0.6, "#5b3a8a"],
+            [0.85, "#d4842a"],
+            [1, "#e08562"],
+          ],
+        },
+        {
+          id: "heat-seller",
+          weightProp: "sellerProbability",
+          weightRange: [30, 95],
+          ramp: [
+            [0, "rgba(0,0,0,0)"],
+            [0.3, "#1a3a52"],
+            [0.6, "#3ea58f"],
+            [0.85, "#d4842a"],
+            [1, "#c0392b"],
+          ],
+        },
+      ];
 
-      // Development opportunity layer
-      map.addLayer({
-        id: "parcels-development",
-        type: "fill",
-        source: "parcels",
-        layout: { visibility: "none" },
-        filter: ["any",
-          ["==", ["get", "vacantLand"], true],
-          [">=", ["get", "development"], 70],
-          ["==", ["get", "largeErf"], true],
-        ],
-        paint: { "fill-color": "#a3e635", "fill-opacity": 0.55 },
-      });
+      for (const h of HEATS) {
+        const colorExpr: any[] = ["interpolate", ["linear"], ["heatmap-density"]];
+        for (const [stop, color] of h.ramp) {
+          colorExpr.push(stop, color);
+        }
+        map.addLayer({
+          id: h.id,
+          type: "heatmap",
+          source: "parcel-centroids",
+          layout: { visibility: "none" },
+          paint: {
+            "heatmap-weight": [
+              "interpolate", ["linear"], ["get", h.weightProp],
+              h.weightRange[0], 0,
+              h.weightRange[1], 1,
+            ],
+            "heatmap-intensity": [
+              "interpolate", ["linear"], ["zoom"],
+              11, 1, 16, 2.6,
+            ],
+            "heatmap-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              11, 22, 14, 38, 16, 60,
+            ],
+            "heatmap-opacity": [
+              "interpolate", ["linear"], ["zoom"],
+              11, 0.75, 15, 0.7, 16.5, 0.45,
+            ],
+            "heatmap-color": colorExpr as any,
+          },
+        }, "parcels-fill");
+      }
 
-      // Heatmaps
-      map.addLayer({
-        id: "heat-value",
-        type: "heatmap",
-        source: "parcel-centroids",
-        layout: { visibility: "none" },
-        paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "estimatedValue"], 0, 0, 15000000, 1],
-          "heatmap-intensity": 1.2,
-          "heatmap-radius": 38,
-          "heatmap-opacity": 0.75,
-          "heatmap-color": [
-            "interpolate", ["linear"], ["heatmap-density"],
-            0, "rgba(0,0,0,0)",
-            0.2, "#1e3a8a",
-            0.5, "#0ea5e9",
-            0.8, "#facc15",
-            1, "#ef4444",
-          ],
-        },
-      });
-      map.addLayer({
-        id: "heat-sales",
-        type: "heatmap",
-        source: "parcel-centroids",
-        layout: { visibility: "none" },
-        paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "salesRecency"], 0, 1, 12, 0.05],
-          "heatmap-intensity": 1,
-          "heatmap-radius": 36,
-          "heatmap-opacity": 0.7,
-          "heatmap-color": [
-            "interpolate", ["linear"], ["heatmap-density"],
-            0, "rgba(0,0,0,0)",
-            0.4, "#7c3aed",
-            0.8, "#ec4899",
-            1, "#fde68a",
-          ],
-        },
-      });
-      map.addLayer({
-        id: "heat-investor",
-        type: "heatmap",
-        source: "parcel-centroids",
-        layout: { visibility: "none" },
-        paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "investor"], 40, 0, 100, 1],
-          "heatmap-intensity": 1.4,
-          "heatmap-radius": 40,
-          "heatmap-opacity": 0.7,
-          "heatmap-color": [
-            "interpolate", ["linear"], ["heatmap-density"],
-            0, "rgba(0,0,0,0)",
-            0.3, "#064e3b",
-            0.6, "#10b981",
-            0.9, "#fde047",
-            1, "#f97316",
-          ],
-        },
-      });
-
-      // Interactivity
+      // ===== Interactivity =====
       let hoveredId: string | null = null;
 
       map.on("mousemove", "parcels-fill", (e) => {
@@ -330,13 +411,17 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         map.setFeatureState({ source: "parcels", id }, { hover: true });
 
         const html = `
-          <div style="font-family: Inter, sans-serif; min-width: 180px">
-            <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em">${f.properties?.area}</div>
-            <div style="font-weight: 600; font-size: 13px; color: #111827">${f.properties?.street}</div>
-            <div style="font-size: 12px; color: #2563eb; font-weight: 600; margin-top: 2px">${formatZAR(Number(f.properties?.estimatedValue ?? 0))}</div>
+          <div style="font-family: Inter, sans-serif; min-width: 200px">
+            <div style="font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight:600">${f.properties?.area} · Erf ${f.properties?.erf}</div>
+            <div style="font-weight: 600; font-size: 13px; color: #111827; margin-top: 2px">${f.properties?.street}</div>
+            <div style="font-size: 14px; color: ${C_OCEAN}; font-weight: 700; margin-top: 4px; letter-spacing: -0.01em">${formatZAR(Number(f.properties?.estimatedValue ?? 0))}</div>
+            <div style="margin-top:6px; display:flex; gap:6px; font-size:10px; font-weight:600">
+              <span style="background:${C_OCEAN}1a; color:${C_OCEAN}; padding:2px 6px; border-radius:999px">Investor ${f.properties?.investor}</span>
+              <span style="background:${C_GOLD}1a; color:${C_GOLD}; padding:2px 6px; border-radius:999px">Dev ${f.properties?.development}</span>
+            </div>
           </div>`;
         if (!popupRef.current) {
-          popupRef.current = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 8, className: "pa-popup" });
+          popupRef.current = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: "pa-popup" });
         }
         popupRef.current.setLngLat(e.lngLat).setHTML(html).addTo(map);
       });
@@ -378,12 +463,15 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     const set = (id: string, v: boolean) => map.getLayer(id) && map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
     set("parcels-fill", layers.parcels);
     set("parcels-outline", layers.parcels);
+    set("parcels-hover-glow", layers.parcels);
     set("parcels-zoning", layers.zoning);
-    set("parcels-oceanview", layers.oceanView);
-    set("parcels-development", layers.development);
-    set("heat-value", layers.valueHeat);
-    set("heat-sales", layers.salesHeat);
     set("heat-investor", layers.investorHeat);
+    set("heat-development", layers.developmentHeat);
+    set("heat-oceanview", layers.oceanViewHeat);
+    set("heat-appreciation", layers.appreciationHeat);
+    set("heat-rental", layers.rentalHeat);
+    set("heat-longheld", layers.longHeldHeat);
+    set("heat-seller", layers.sellerHeat);
   }, [layers, styleVersion, ready]);
 
   // Update filtered feature state
@@ -395,7 +483,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     }
   }, [filteredIds, styleVersion, ready]);
 
-  // Update selection + fly to selected
+  // Update selection + fly to selected + pulse marker
   const prevSelectedRef = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
@@ -406,16 +494,34 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     if (selectedId) {
       map.setFeatureState({ source: "parcels", id: selectedId }, { selected: true });
       const p = PROPERTIES.find((x) => x.id === selectedId);
-      if (p) map.flyTo({ center: p.centroid, zoom: Math.max(map.getZoom(), 16), duration: 900, essential: true });
+      if (p) {
+        map.flyTo({
+          center: p.centroid,
+          zoom: Math.max(map.getZoom(), 16.2),
+          duration: 1100,
+          essential: true,
+          curve: 1.4,
+        });
+        // Place pulsing marker
+        pulseMarkerRef.current?.remove();
+        const el = document.createElement("div");
+        el.className = "pa-pulse-marker";
+        pulseMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat(p.centroid)
+          .addTo(map);
+      }
+    } else {
+      pulseMarkerRef.current?.remove();
+      pulseMarkerRef.current = null;
     }
     prevSelectedRef.current = selectedId;
   }, [selectedId, styleVersion, ready]);
 
   if (!TOKEN) {
     return (
-      <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-slate-900 to-slate-700 text-white">
+      <div className="absolute inset-0 grid place-items-center bg-gradient-ocean text-white">
         <div className="max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center backdrop-blur">
-          <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-amber-400" />
+          <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-accent" />
           <div className="text-base font-semibold">Mapbox token missing</div>
           <p className="mt-1 text-sm text-white/70">
             Set <code className="rounded bg-white/10 px-1">VITE_MAPBOX_ACCESS_TOKEN</code> in your environment to load the map.
@@ -433,9 +539,9 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         aria-label="St Francis Bay property map"
       />
       {mapError && (
-        <div className="absolute inset-0 z-10 grid place-items-center bg-gradient-to-br from-slate-900 to-slate-700 p-4 text-white">
+        <div className="absolute inset-0 z-10 grid place-items-center bg-gradient-ocean p-4 text-white">
           <div className="max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center backdrop-blur">
-            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-amber-400" />
+            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-accent" />
             <div className="text-base font-semibold">Map couldn't render</div>
             <p className="mt-1 text-sm text-white/70">{mapError}</p>
             <button
@@ -444,7 +550,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
                 setMapError(null);
                 setRetryKey((k) => k + 1);
               }}
-              className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white/90"
+              className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-foreground transition hover:bg-white/90"
             >
               Retry
             </button>

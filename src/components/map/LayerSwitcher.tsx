@@ -21,23 +21,25 @@ const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: strin
   {
     title: "Parcels",
     items: [
-      { key: "parcels", label: "Property Parcels" },
-      { key: "zoning", label: "Zoning", hint: "Colored by type" },
+      { key: "parcels", label: "Property Parcels", hint: "Reveal as you zoom" },
+      { key: "zoning", label: "Zoning", hint: "Colored by use type" },
     ],
   },
   {
-    title: "Heatmaps",
+    title: "Opportunity Heatmaps",
     items: [
-      { key: "valueHeat", label: "Property Value" },
-      { key: "salesHeat", label: "Sales Activity" },
-      { key: "investorHeat", label: "Investor Opportunity" },
+      { key: "investorHeat", label: "Investor Opportunity", hint: "Composite investor score" },
+      { key: "developmentHeat", label: "Development Opportunity", hint: "Bulk, zoning, lot size" },
+      { key: "sellerHeat", label: "Seller Probability", hint: "Likely-to-sell signal" },
     ],
   },
   {
-    title: "Intelligence Overlays",
+    title: "Lifestyle Heatmaps",
     items: [
-      { key: "oceanView", label: "Ocean View" },
-      { key: "development", label: "Development Opportunity" },
+      { key: "oceanViewHeat", label: "Ocean View", hint: "Coastal line-of-sight" },
+      { key: "appreciationHeat", label: "Appreciation Potential", hint: "5-year growth model" },
+      { key: "rentalHeat", label: "Rental Yield", hint: "Short-let demand" },
+      { key: "longHeldHeat", label: "Long-Term Ownership", hint: "Tenure-rich pockets" },
     ],
   },
 ];
@@ -50,7 +52,7 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full bg-card/95 px-3.5 py-2.5 text-xs font-medium shadow-soft backdrop-blur hover:bg-card"
+        className="flex items-center gap-2 rounded-full bg-card/95 px-3.5 py-2.5 text-xs font-medium shadow-soft backdrop-blur transition hover:bg-card hover:shadow-glow"
       >
         <Layers className="h-3.5 w-3.5" />
         Layers
@@ -60,13 +62,11 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
       </button>
       {open && (
         <>
-          {/* Mobile backdrop */}
           <div
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-sm md:hidden"
           />
-          <div className="fixed inset-x-2 bottom-2 z-40 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-80 md:max-h-[80vh]">
-            {/* Sticky header */}
+          <div className="pa-fade-up fixed inset-x-2 bottom-2 z-40 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-80 md:max-h-[80vh]">
             <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur md:hidden">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Layers className="h-4 w-4" /> Map Layers
@@ -89,7 +89,7 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
                         onClick={() => onStyleChange(s.id)}
                         className={cn(
                           "flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2.5 text-[10px] font-medium transition",
-                          active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted",
+                          active ? "border-primary bg-primary text-primary-foreground shadow-soft" : "border-border text-muted-foreground hover:bg-muted",
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -118,7 +118,6 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
                             <div className="truncate font-medium">{it.label}</div>
                             {it.hint && <div className="truncate text-[11px] text-muted-foreground">{it.hint}</div>}
                           </div>
-                          {/* Toggle switch */}
                           <button
                             type="button"
                             role="switch"
@@ -156,9 +155,11 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
 export const DEFAULT_LAYERS: MapLayers = {
   parcels: true,
   zoning: false,
-  valueHeat: false,
-  salesHeat: false,
   investorHeat: false,
-  oceanView: false,
-  development: false,
+  developmentHeat: false,
+  oceanViewHeat: false,
+  appreciationHeat: false,
+  rentalHeat: false,
+  longHeldHeat: false,
+  sellerHeat: false,
 };
