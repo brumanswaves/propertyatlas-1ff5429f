@@ -34,6 +34,16 @@ export interface SaleRecord {
   price: number;
 }
 
+export type HistoryKind = "sold" | "listed" | "rented" | "withdrawn" | "valuation" | "renovation";
+
+export interface HistoryRecord {
+  date: string;          // ISO yyyy-mm-dd
+  kind: HistoryKind;
+  price?: number;        // sale price or monthly rent
+  note?: string;
+  party?: string;        // buyer/tenant/agency label
+}
+
 export interface OwnershipRecord {
   type: OwnershipType;
   ownerLabel: string;
