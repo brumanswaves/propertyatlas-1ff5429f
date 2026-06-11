@@ -439,6 +439,19 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium">{children}</span>;
 }
 
+function LocalBadge({ label, value, sub, tone = "default" }: { label: string; value: string; sub: string; tone?: "default" | "accent" }) {
+  return (
+    <div className={cn(
+      "rounded-lg border px-1.5 py-1.5 text-center",
+      tone === "accent" ? "border-accent/40 bg-accent/10" : "border-border bg-background/60",
+    )}>
+      <div className="text-[8.5px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-[13px] font-semibold tabular-nums leading-none text-foreground">{value}</div>
+      <div className="mt-0.5 text-[8.5px] uppercase tracking-wider text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
 function ScoreCard({
   label, value, icon, explain, confidence, className,
 }: { label: string; value: number; icon: React.ReactNode; explain: string; confidence: number; className?: string }) {
