@@ -378,6 +378,7 @@ export function PropertyPanel({ property, onClose }: Props) {
             </Locked>
           </div>
         )}
+        </div>
       </div>
     </aside>
   );
