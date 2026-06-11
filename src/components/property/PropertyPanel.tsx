@@ -220,6 +220,12 @@ export function PropertyPanel({ property, onClose }: Props) {
               </div>
             </Section>
             <Section title="St Francis local intelligence">
+              <div className="mb-2.5 grid grid-cols-4 gap-1.5">
+                <LocalBadge label="Beach"   value={`${walkMinutes(property.distances.beachM)}m`}    sub="walk" tone={property.distances.beachM < 1200 ? "accent" : "default"} />
+                <LocalBadge label="Village" value={`${walkMinutes(property.distances.villageM)}m`}  sub="walk" />
+                <LocalBadge label="Golf"    value={`${driveMinutes(property.distances.golfM)}m`}    sub="drive" />
+                <LocalBadge label="Harbour" value={`${driveMinutes(property.distances.harbourM)}m`} sub="drive" />
+              </div>
               <Row label="Beach" value={`${formatM(property.distances.beachM)} · ${walkMinutes(property.distances.beachM)} min walk`} />
               <Row label="St Francis Links (golf)" value={`${formatM(property.distances.golfM)} · ${driveMinutes(property.distances.golfM)} min drive`} />
               <Row label="Port St Francis (harbour)" value={`${formatM(property.distances.harbourM)} · ${driveMinutes(property.distances.harbourM)} min drive`} />
