@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark, BookmarkCheck, Building2, CalendarClock, Camera, ChevronRight, Crown,
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
-  Download, Filter, BadgeCheck,
+  Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
 } from "lucide-react";
 import { type Property, type HistoryKind, formatZAR } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -97,10 +97,19 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
-      {/* Insight summary — what investors should know in one line */}
-      <div className="mx-5 mt-3 shrink-0 rounded-xl border border-border bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
-        <span className="font-semibold text-foreground">Insight · </span>
-        {buildInsight(property)}
+      {/* Investor Insight — premium AI-style summary */}
+      <div className="mx-5 mt-3 shrink-0 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-3 shadow-soft">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+            <Sparkles className="h-3 w-3" /> Investor Insight
+          </div>
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+            AI · Mock
+          </span>
+        </div>
+        <p className="mt-1.5 text-[12px] leading-snug text-foreground/90">
+          {buildInsight(property)}
+        </p>
       </div>
 
       <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
@@ -119,6 +128,52 @@ export function PropertyPanel({ property, onClose }: Props) {
       <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Key investor scores */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Investor scorecards</div>
+                <span className="text-[10px] text-muted-foreground">Out of 100</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreCard
+                  label="Investor"
+                  value={property.scores.investor}
+                  icon={<TrendingUp className="h-3 w-3" />}
+                  explain="Composite of liquidity, appreciation, and yield."
+                  confidence={property.confidence}
+                />
+                <ScoreCard
+                  label="Development"
+                  value={property.scores.development}
+                  icon={<Building2 className="h-3 w-3" />}
+                  explain="Zoning, bulk, and lot geometry potential."
+                  confidence={Math.min(0.95, property.confidence + 0.05)}
+                />
+                <ScoreCard
+                  label="Ocean view"
+                  value={property.scores.oceanView}
+                  icon={<Eye className="h-3 w-3" />}
+                  explain="Line-of-sight to ocean from buildable area."
+                  confidence={0.88}
+                />
+                <ScoreCard
+                  label="Liquidity"
+                  value={property.scores.liquidity}
+                  icon={<Banknote className="h-3 w-3" />}
+                  explain="Modelled days-to-sell at fair value."
+                  confidence={Math.max(0.6, property.confidence - 0.1)}
+                />
+                <ScoreCard
+                  label="Appreciation"
+                  value={property.scores.appreciation}
+                  icon={<LineChart className="h-3 w-3" />}
+                  explain="Modelled 5-year capital growth potential."
+                  confidence={Math.max(0.55, property.confidence - 0.15)}
+                  className="col-span-2"
+                />
+              </div>
+            </div>
+
             <Section title="Characteristics">
               <Row label="Type" value={property.type} />
               <Row label="Zoning" value={property.zoning} />
@@ -145,6 +200,35 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="St Francis Links" value="2.1 km" />
               <Row label="Village centre" value="900 m" />
             </Section>
+
+            {/* Premium Investor modules — blurred previews + single CTA */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Investor modules</div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Lock className="h-2.5 w-2.5" /> Premium
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <LockedModule icon={<Users className="h-3 w-3" />} title="Ownership Intelligence" lines={[property.ownership.ownerLabel, "3 properties in region", "4 transfers since 1998"]} />
+                <LockedModule icon={<GitCompare className="h-3 w-3" />} title="Comparable Sales" lines={["14 Marina Dr · R 3.65M", "22 Lyme Rd · R 4.10M", "8 Da Gama Rd · R 3.92M"]} />
+                <LockedModule icon={<CalendarClock className="h-3 w-3" />} title="Transfer Timeline" lines={["2019 · R 2.4M", "2013 · R 1.5M", "2006 · R 780k"]} />
+                <LockedModule icon={<Scale className="h-3 w-3" />} title="Municipal vs Market" lines={[`Muni ${compactZAR(property.municipalValue)}`, `Market ${compactZAR(property.estimatedValue)}`, `+${Math.round((property.estimatedValue / property.municipalValue - 1) * 100)}% premium`]} />
+                <LockedModule icon={<Layers className="h-3 w-3" />} title="Development Feasibility" lines={["Coverage 60% · Bulk 0.8", `Buildable ${Math.round(property.sizeSqm * 0.48).toLocaleString()} m²`, `Indicative GDV ${compactZAR(property.estimatedValue * 2.4)}`]} />
+                <LockedModule icon={<ImageIcon className="h-3 w-3" />} title="Historical Imagery" lines={["2014 aerial", "2018 aerial", "2023 aerial · street view"]} />
+              </div>
+              <Link
+                to="/pricing"
+                className="mt-3 flex items-center justify-center gap-2 rounded-full bg-gradient-premium px-4 py-2.5 text-xs font-semibold text-accent-foreground shadow-soft transition hover:opacity-95"
+              >
+                <Crown className="h-3.5 w-3.5" />
+                Unlock full property intelligence · R199/month
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+                Cancel anytime. Mock pilot data for demonstration.
+              </p>
+            </div>
           </div>
         )}
 
@@ -322,6 +406,60 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium">{children}</span>;
 }
 
+function ScoreCard({
+  label, value, icon, explain, confidence, className,
+}: { label: string; value: number; icon: React.ReactNode; explain: string; confidence: number; className?: string }) {
+  const tone =
+    value >= 80 ? "text-emerald-600 dark:text-emerald-400"
+    : value >= 60 ? "text-primary"
+    : value >= 40 ? "text-amber-600 dark:text-amber-400"
+    : "text-muted-foreground";
+  const conf = Math.round(confidence * 100);
+  const confLabel = conf >= 85 ? "High" : conf >= 70 ? "Medium" : "Low";
+  return (
+    <div className={cn("rounded-xl border border-border bg-background/60 p-2.5", className)}>
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="flex items-center gap-1">{icon}{label}</span>
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+          {confLabel} · {conf}%
+        </span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className={cn("text-2xl font-semibold tabular-nums leading-none", tone)}>{value}</span>
+        <span className="text-[10px] text-muted-foreground">/ 100</span>
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+          style={{ width: `${Math.min(100, Math.max(2, value))}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground">{explain}</p>
+    </div>
+  );
+}
+
+function LockedModule({
+  icon, title, lines,
+}: { icon: React.ReactNode; title: string; lines: string[] }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="flex items-center gap-1">{icon}{title}</span>
+        <Lock className="h-3 w-3 text-muted-foreground" />
+      </div>
+      <div className="mt-1.5 space-y-0.5 select-none blur-[3.5px] saturate-75">
+        {lines.map((l, i) => (
+          <div key={i} className="truncate text-[11px] font-medium text-foreground/80">{l}</div>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-card to-transparent" />
+    </div>
+  );
+}
+
+
+
 function Pill({ children, icon, tone = "default" }: { children: React.ReactNode; icon?: React.ReactNode; tone?: "default" | "accent" }) {
   return (
     <span className={cn(
@@ -364,22 +502,27 @@ function Locked({ children, preview }: { children: React.ReactNode; preview?: st
 function buildInsight(p: Property): string {
   const last = p.sales[0];
   const yearsSinceSale = new Date().getFullYear() - new Date(last.date).getFullYear();
-  const vsEst = Math.round((last.price / p.estimatedValue) * 100);
+  const muniPremium = Math.round((p.estimatedValue / p.municipalValue - 1) * 100);
   const valuation =
-    vsEst < 80 ? "appears under-priced versus the current estimate"
-    : vsEst > 115 ? "last traded above the current estimate"
-    : "appears fairly valued relative to nearby mock sales";
+    muniPremium > 25 ? `Estimated value sits ~${muniPremium}% above municipal value, suggesting market appreciation versus the official roll.`
+    : muniPremium > 0 ? `Estimated value is modestly above municipal value (+${muniPremium}%), consistent with the area trend.`
+    : `Estimated value is broadly in line with municipal value.`;
   const dev =
-    p.scores.development >= 75 ? "strong development potential due to erf size and zoning"
-    : p.scores.development >= 55 ? "moderate development upside"
-    : "limited development upside";
+    p.scores.development >= 75
+      ? `Strong development score (${p.scores.development}/100) driven by erf size, zoning headroom, and proximity to high-value coastal stock.`
+      : p.scores.development >= 55
+      ? `Moderate development score (${p.scores.development}/100); usable bulk subject to municipal approval.`
+      : `Limited development upside (${p.scores.development}/100) — best held for income or use rather than redevelopment.`;
   const coast = p.features.beachfront
-    ? "Beachfront premium drives long-term appreciation."
-    : p.features.oceanView ? "Ocean-view positioning supports rental demand."
-    : p.features.walkingDistanceToBeach ? "Walking distance to the beach supports liquidity."
-    : "";
-  return `Last traded ${yearsSinceSale}y ago — ${valuation}, with ${dev}. ${coast}`.trim();
+    ? "Beachfront positioning anchors long-term appreciation and short-let demand."
+    : p.features.oceanView
+    ? "Ocean-view orientation supports premium short-let yield."
+    : p.features.walkingDistanceToBeach
+    ? "Walking distance to the beach supports liquidity and resale velocity."
+    : "Inland positioning — pricing tracks suburb median rather than coastal premium.";
+  return `Last traded ${yearsSinceSale}y ago. ${valuation} ${dev} ${coast} Comparable sales and ownership history are available on the Investor plan.`;
 }
+
 
 // ===== Sales tab with Last sold card, filters, and PDF export =====
 
