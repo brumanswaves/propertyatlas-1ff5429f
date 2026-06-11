@@ -97,6 +97,12 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
+      {/* Insight summary — what investors should know in one line */}
+      <div className="mx-5 mt-3 shrink-0 rounded-xl border border-border bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
+        <span className="font-semibold text-foreground">Insight · </span>
+        {buildInsight(property)}
+      </div>
+
       <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
         {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
