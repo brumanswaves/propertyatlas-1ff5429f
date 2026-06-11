@@ -158,34 +158,8 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        {tab === "sales" && (
-          <SalesTab property={property} />
-        )}
+        {tab === "sales" && <SalesTab property={property} />}
 
-            <Locked>
-              <Section title="Comparable sales (within 1 km)">
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
-                      <div>
-                        <div className="font-medium">{14 + i} Marina Dr</div>
-                        <div className="text-xs text-muted-foreground">Sold {2024 - i} · 1,2{i}0 m²</div>
-                      </div>
-                      <div className="text-sm font-semibold">{formatZAR(3_400_000 + i * 250_000)}</div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            </Locked>
-            <Locked>
-              <Section title="Sale price trend">
-                <Row label="3-yr CAGR" value="+7.8%" />
-                <Row label="Suburb median" value={formatZAR(4_250_000)} />
-                <Row label="Days on market" value="62 (median)" />
-              </Section>
-            </Locked>
-          </div>
-        )}
 
         {tab === "intelligence" && (
           <div className="space-y-4">
