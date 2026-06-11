@@ -83,11 +83,45 @@ function AtlasHome() {
           <FilterPanel value={filters} onChange={setFilters} />
           <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} />
         </div>
+
+        {/* Tagline — premium positioning, sits under the search */}
+        <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
+          <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
+            Click any erf. See value, sales history, ownership, zoning, and investment potential.
+          </p>
+          <p className="mt-1.5 text-[11px] text-foreground/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">
+            Starting with the St Francis Bay pilot — built for buyers, investors, developers, and property professionals.
+          </p>
+        </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 left-4 z-20 hidden rounded-full bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
-        Pilot region · St Francis Bay, Eastern Cape · Mock data
+      {/* Onboarding hint */}
+      {!selected && !hintDismissed && (
+        <div className="pointer-events-auto absolute inset-x-4 bottom-20 z-20 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-12 md:left-1/2 md:right-auto md:-translate-x-1/2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-brand text-white">
+            <MousePointerClick className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold leading-tight">Click a parcel to begin</div>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              Open the property intelligence panel: valuation, last sale, ownership, scores, and 10-year history.
+            </p>
+          </div>
+          <button onClick={dismissHint} className="rounded-full p-1 text-muted-foreground hover:bg-muted" aria-label="Dismiss">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute bottom-4 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
+        Pilot region · St Francis Bay, Eastern Cape. Mock data for demonstration — PropertyAtlas does not yet provide official deeds, valuation, or ownership records.
       </div>
+
+      <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
+      <Toaster position="top-center" />
+    </div>
+  );
+}
 
       <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
       <Toaster position="top-center" />
