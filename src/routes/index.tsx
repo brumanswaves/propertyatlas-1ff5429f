@@ -122,9 +122,3 @@ function AtlasHome() {
     </div>
   );
 }
-
-      <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
-      <Toaster position="top-center" />
-    </div>
-  );
-}
