@@ -119,6 +119,9 @@ function PricingPage() {
             </div>
           ))}
         </div>
+        <p className="mx-auto mt-12 max-w-2xl text-center text-[11px] leading-relaxed text-muted-foreground">
+          Pilot data is mock data for demonstration purposes. PropertyAtlas does not yet provide official deeds, valuation, or ownership records.
+        </p>
       </main>
     </div>
   );
