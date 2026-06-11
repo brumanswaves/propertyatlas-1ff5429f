@@ -49,6 +49,7 @@ export function PropertyPanel({ property, onClose }: Props) {
       const anchor = tabsAnchorRef.current;
       if (!el || !anchor) return;
       const target = anchor.offsetTop;
+      console.log("[PA tabs]", { target, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight });
       if (el.scrollTop < target) el.scrollTo({ top: target, behavior: "smooth" });
     }, 30);
   }
