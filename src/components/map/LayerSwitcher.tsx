@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layers, Map as MapIcon, Mountain, Satellite, Moon } from "lucide-react";
+import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MapLayers, MapStyleId } from "./MapCanvas";
 
@@ -59,55 +59,95 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
         </span>
       </button>
       {open && (
-        <div className="fixed left-2 right-2 top-auto z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-panel md:absolute md:left-auto md:right-0 md:top-full md:max-h-none md:w-72 md:overflow-visible">
-          <div className="mb-3">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base map</div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {STYLES.map((s) => {
-                const Icon = s.icon;
-                const active = style === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => onStyleChange(s.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-[10px] font-medium transition",
-                      active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {s.label}
-                  </button>
-                );
-              })}
+        <>
+          {/* Mobile backdrop */}
+          <div
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
+          />
+          <div className="fixed inset-x-2 bottom-2 z-40 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-80 md:max-h-[80vh]">
+            {/* Sticky header */}
+            <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur md:hidden">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Layers className="h-4 w-4" /> Map Layers
+              </div>
+              <button onClick={() => setOpen(false)} className="rounded-full p-1.5 hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain p-4">
+              <div className="mb-4">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base map</div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {STYLES.map((s) => {
+                    const Icon = s.icon;
+                    const active = style === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => onStyleChange(s.id)}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2.5 text-[10px] font-medium transition",
+                          active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="truncate">{s.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {LAYER_GROUPS.map((g) => (
+                <div key={g.title} className="mb-4 last:mb-0">
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</div>
+                  <div className="space-y-1">
+                    {g.items.map((it) => {
+                      const checked = layers[it.key];
+                      return (
+                        <label
+                          key={it.key}
+                          className={cn(
+                            "flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm transition",
+                            checked ? "border-primary/40 bg-primary/5" : "border-transparent hover:bg-muted",
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{it.label}</div>
+                            {it.hint && <div className="truncate text-[11px] text-muted-foreground">{it.hint}</div>}
+                          </div>
+                          {/* Toggle switch */}
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={checked}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onLayersChange({ ...layers, [it.key]: !checked });
+                            }}
+                            className={cn(
+                              "relative h-5 w-9 shrink-0 rounded-full transition",
+                              checked ? "bg-primary" : "bg-muted",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all",
+                                checked ? "left-[18px]" : "left-0.5",
+                              )}
+                            />
+                          </button>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-
-          {LAYER_GROUPS.map((g) => (
-            <div key={g.title} className="mb-3">
-              <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</div>
-              <div className="space-y-1">
-                {g.items.map((it) => (
-                  <label
-                    key={it.key}
-                    className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs hover:bg-muted"
-                  >
-                    <div>
-                      <div className="font-medium">{it.label}</div>
-                      {it.hint && <div className="text-[10px] text-muted-foreground">{it.hint}</div>}
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={layers[it.key]}
-                      onChange={(e) => onLayersChange({ ...layers, [it.key]: e.target.checked })}
-                      className="h-3.5 w-3.5 accent-[var(--color-primary)]"
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        </>
       )}
     </div>
   );
