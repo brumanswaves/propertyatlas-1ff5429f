@@ -76,17 +76,20 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </header>
 
-      <div className="mx-5 rounded-2xl bg-gradient-brand p-4 text-white">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-white/70">Estimated value</div>
-        <div className="mt-0.5 flex items-baseline gap-2">
-          <div className="text-2xl font-semibold tracking-tight">{formatZAR(property.estimatedValue)}</div>
-          <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium">
+      <div className="mx-5 overflow-hidden rounded-2xl bg-gradient-brand p-4 text-white shadow-soft">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
+            <BadgeCheck className="h-3 w-3" />
             {Math.round(property.confidence * 100)}% confidence
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+        <div className="mt-1 text-3xl font-semibold leading-none tracking-tight tabular-nums">
+          {formatZAR(property.estimatedValue)}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
           <Stat label="Municipal" value={formatZAR(property.municipalValue)} />
-          <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
+          <Stat label="Price / m²" value={`R ${ppm.toLocaleString()}`} />
           <Stat label="Last sale" value={formatZAR(lastSale.price)} />
           <Stat label="Held" value={`${heldYears} yrs`} />
         </div>
