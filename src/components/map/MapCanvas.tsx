@@ -368,5 +368,11 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     );
   }
 
-  return <div ref={containerRef} className="absolute inset-0" aria-label="St Francis Bay property map" />;
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      aria-label="St Francis Bay property map"
+    />
+  );
 }
