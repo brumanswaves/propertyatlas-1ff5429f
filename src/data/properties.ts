@@ -109,13 +109,9 @@ function rectPolygon(cx: number, cy: number, wMeters: number, hMeters: number, r
   const dx = wMeters / M_PER_DEG_LNG_AT_34 / 2;
   const dy = hMeters / M_PER_DEG_LAT / 2;
   const cos = Math.cos(rotateRad), sin = Math.sin(rotateRad);
-  const corners: [number, number][] = [
-    [-dx, -dy], [dx, -dy], [dx, dy], [-dx, dy],
-  ];
-  return corners.map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos] as [number, number])
-    .concat([[0, 0]]) // placeholder, replaced below
-    .slice(0, 4)
-    .concat([[cx + corners[0][0] * cos - corners[0][1] * sin, cy + corners[0][0] * sin + corners[0][1] * cos]]); // close ring
+  const corners: [number, number][] = [[-dx, -dy], [dx, -dy], [dx, dy], [-dx, dy]];
+  const rotated = corners.map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos] as [number, number]);
+  return [...rotated, rotated[0]]; // closed ring
 }
 
 export function formatZAR(n: number): string {
