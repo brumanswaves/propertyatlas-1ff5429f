@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Crown, Sparkles } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -63,9 +64,9 @@ const TIERS = [
 
 function PricingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <TopNav />
-      <main className="mx-auto max-w-6xl px-6 pb-24 pt-32">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-32">
         <div className="text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             <Sparkles className="h-3 w-3 text-accent" />
@@ -123,6 +124,7 @@ function PricingPage() {
           Pilot data is mock data for demonstration purposes. PropertyAtlas does not yet provide official deeds, valuation, or ownership records.
         </p>
       </main>
+      <Footer />
     </div>
   );
 }
