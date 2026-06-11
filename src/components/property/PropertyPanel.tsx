@@ -251,9 +251,9 @@ export function PropertyPanel({ property, onClose }: Props) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-white/15 px-3 py-2.5 ring-1 ring-inset ring-white/10">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-white/75">{label}</div>
-      <div className="mt-0.5 text-[13px] font-semibold leading-tight tabular-nums break-words text-white">{value}</div>
+    <div className="min-w-0 rounded-lg bg-white/15 px-2 py-1.5 ring-1 ring-inset ring-white/10 sm:rounded-xl sm:px-3 sm:py-2.5">
+      <div className="text-[9px] font-medium uppercase tracking-wide text-white/75 sm:text-[10px]">{label}</div>
+      <div className="mt-0.5 text-[11px] font-semibold leading-tight tabular-nums break-words text-white sm:text-[13px]">{value}</div>
     </div>
   );
 }
