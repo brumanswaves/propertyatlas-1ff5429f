@@ -48,6 +48,15 @@ const TYPE_COLOR: Record<string, string> = {
   "Vacant Land": "#fde68a",
 };
 
+function webglSupported(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
 export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -55,6 +64,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const filtered = useMemo(
     () => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES),
