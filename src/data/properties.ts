@@ -117,19 +117,19 @@ const BLOCKS: Block[] = [
   // ===== St Francis Bay — canals + village =====
   { area: "St Francis Bay", center: [24.8295, -34.1655], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
   { area: "St Francis Bay", center: [24.8330, -34.1670], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
-  { area: "St Francis Bay", center: [24.8365, -34.1685], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
+  { area: "St Francis Bay", center: [24.8315, -34.1730], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
   { area: "St Francis Bay", center: [24.8300, -34.1700], cols: 12, rows: 6, lotW: 24, lotH: 36, rotation: 0.05 },
   { area: "St Francis Bay", center: [24.8345, -34.1715], cols: 12, rows: 6, lotW: 24, lotH: 36, rotation: 0.05 },
   { area: "St Francis Bay", center: [24.8260, -34.1680], cols: 10, rows: 6, lotW: 26, lotH: 38, rotation: -0.02 },
   // ===== Marina Glades — canal estate, larger erfs =====
-  { area: "Marina Glades", center: [24.8420, -34.1665], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
-  { area: "Marina Glades", center: [24.8455, -34.1685], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
-  { area: "Marina Glades", center: [24.8430, -34.1710], cols: 10, rows: 5, lotW: 30, lotH: 44, rotation: 0.10 },
-  // ===== Santareme — north golf estate, big lots =====
-  { area: "Santareme", center: [24.8350, -34.1545], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
-  { area: "Santareme", center: [24.8390, -34.1565], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
-  { area: "Santareme", center: [24.8420, -34.1590], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
-  { area: "Santareme", center: [24.8360, -34.1590], cols: 8, rows: 5, lotW: 34, lotH: 50, rotation: 0.00 },
+  { area: "Marina Glades", center: [24.8290, -34.1570], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
+  { area: "Marina Glades", center: [24.8320, -34.1590], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
+  { area: "Marina Glades", center: [24.8300, -34.1612], cols: 10, rows: 5, lotW: 30, lotH: 44, rotation: 0.10 },
+  // ===== Santareme — golf estate west, big lots =====
+  { area: "Santareme", center: [24.8230, -34.1615], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8260, -34.1600], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8240, -34.1642], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8205, -34.1630], cols: 8, rows: 5, lotW: 34, lotH: 50, rotation: 0.00 },
   // ===== Port St Francis — harbour area =====
   { area: "Port St Francis", center: [24.8460, -34.1845], cols: 9, rows: 5, lotW: 24, lotH: 36, rotation: 0.20 },
   { area: "Port St Francis", center: [24.8490, -34.1865], cols: 9, rows: 5, lotW: 24, lotH: 36, rotation: 0.20 },
