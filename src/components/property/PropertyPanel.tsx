@@ -448,18 +448,25 @@ function LockedModule({
   icon, title, lines,
 }: { icon: React.ReactNode; title: string; lines: string[] }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-background/60 p-2.5">
+    <Link
+      to="/pricing"
+      className="group relative block overflow-hidden rounded-xl border border-border bg-background/60 p-2.5 text-left transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-soft"
+    >
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <span className="flex items-center gap-1">{icon}{title}</span>
-        <Lock className="h-3 w-3 text-muted-foreground" />
+        <Lock className="h-3 w-3 text-muted-foreground group-hover:text-accent" />
       </div>
       <div className="mt-1.5 space-y-0.5 select-none blur-[3.5px] saturate-75">
         {lines.map((l, i) => (
           <div key={i} className="truncate text-[11px] font-medium text-foreground/80">{l}</div>
         ))}
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-card to-transparent" />
-    </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-8 items-end justify-center bg-gradient-to-t from-card via-card/85 to-transparent">
+        <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent opacity-0 transition-opacity group-hover:opacity-100">
+          Unlock →
+        </span>
+      </div>
+    </Link>
   );
 }
 

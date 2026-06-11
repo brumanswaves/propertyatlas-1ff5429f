@@ -46,15 +46,18 @@ function AtlasHome() {
 
   const selected = selectedId ? getProperty(selectedId) ?? null : null;
 
-  // Curated "Try one of these" featured properties: top investor scores from 3 distinct areas
+  // Curated "Try one of these" featured properties: top investor scores, distinct streets
   const featured = useMemo(() => {
     const sorted = [...PROPERTIES].sort((a, b) => b.scores.investor - a.scores.investor);
     const picks: Property[] = [];
-    const seen = new Set<string>();
+    const seenAreas = new Set<string>();
+    const seenStreets = new Set<string>();
     for (const p of sorted) {
-      if (seen.has(p.area)) continue;
+      const streetKey = p.street.split(",")[0].trim().toLowerCase();
+      if (seenAreas.has(p.area) || seenStreets.has(streetKey)) continue;
       picks.push(p);
-      seen.add(p.area);
+      seenAreas.add(p.area);
+      seenStreets.add(streetKey);
       if (picks.length >= 3) break;
     }
     return picks;
@@ -108,10 +111,10 @@ function AtlasHome() {
           </p>
         </div>
 
-        {/* Featured properties quick-launch */}
+        {/* Featured properties quick-launch — desktop only to keep mobile clean */}
         {!selected && (
-          <div className="pointer-events-auto mt-1 flex max-w-full flex-wrap items-center justify-center gap-1.5 px-2">
-            <span className="hidden items-center gap-1 rounded-full bg-card/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shadow-soft backdrop-blur md:inline-flex">
+          <div className="pointer-events-auto mt-1 hidden max-w-full flex-wrap items-center justify-center gap-1.5 px-2 md:flex">
+            <span className="inline-flex items-center gap-1 rounded-full bg-card/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shadow-soft backdrop-blur">
               <Sparkles className="h-3 w-3 text-accent" /> Try one of these
             </span>
             {featured.map((p) => (
