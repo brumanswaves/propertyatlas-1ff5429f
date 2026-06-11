@@ -258,6 +258,12 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function compactZAR(n: number): string {
+  if (n >= 1_000_000) return `R ${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, "")}M`;
+  if (n >= 1_000) return `R ${Math.round(n / 1_000)}k`;
+  return `R ${n}`;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
