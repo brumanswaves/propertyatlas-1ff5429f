@@ -51,7 +51,7 @@ export function PropertyPanel({ property, onClose }: Props) {
 
   return (
     <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[88vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[420px] md:rounded-l-3xl md:rounded-tr-none md:border-l">
-      <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-border md:hidden" />
+      <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-border md:hidden" />
 
       <header className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0">
