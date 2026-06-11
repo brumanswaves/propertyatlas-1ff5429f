@@ -96,54 +96,56 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </header>
 
-      <div className="mx-5 shrink-0 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
-            <div className="mt-0.5 truncate text-xl font-semibold leading-none tracking-tight tabular-nums sm:text-3xl">
-              {formatZAR(property.estimatedValue)}
+      <div ref={scrollRef} className="scrollbar-thin relative flex-1 overflow-y-auto pb-8">
+        <div className="mx-5 mt-1 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
+              <div className="mt-0.5 truncate text-xl font-semibold leading-none tracking-tight tabular-nums sm:text-3xl">
+                {formatZAR(property.estimatedValue)}
+              </div>
             </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">
+              <BadgeCheck className="h-3 w-3" />
+              {Math.round(property.confidence * 100)}%
+            </span>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">
-            <BadgeCheck className="h-3 w-3" />
-            {Math.round(property.confidence * 100)}%
-          </span>
+          <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-[11px] sm:grid-cols-2 sm:gap-2">
+            <Stat label="Municipal" value={compactZAR(property.municipalValue)} />
+            <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
+            <Stat label="Last sale" value={compactZAR(lastSale.price)} />
+            <Stat label="Held" value={`${heldYears}y`} />
+          </div>
         </div>
-        <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-[11px] sm:grid-cols-2 sm:gap-2">
-          <Stat label="Municipal" value={compactZAR(property.municipalValue)} />
-          <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
-          <Stat label="Last sale" value={compactZAR(lastSale.price)} />
-          <Stat label="Held" value={`${heldYears}y`} />
+
+        {/* Why This Property? — Bloomberg-style intelligence card */}
+        <WhyCard property={property} />
+
+        <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
+          <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
+            {TAB_META.map(({ id, label, icon }) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => selectTab(id)}
+                  aria-pressed={active}
+                  className={cn(
+                    "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition",
+                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {icon}
+                  {label}
+                  {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Why This Property? — Bloomberg-style intelligence card */}
-      <WhyCard property={property} />
+        <div className="px-5 pt-4">
 
-      <div className="mt-3 shrink-0 border-b border-border">
-        <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
-          {TAB_META.map(({ id, label, icon }) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                aria-pressed={active}
-                className={cn(
-                  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition",
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {icon}
-                {label}
-                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div ref={scrollRef} className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-8 pt-4">
 
         {tab === "overview" && (
           <div className="space-y-4">
