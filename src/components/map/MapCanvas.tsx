@@ -426,10 +426,31 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      aria-label="St Francis Bay property map"
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        aria-label="St Francis Bay property map"
+      />
+      {mapError && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-gradient-to-br from-slate-900 to-slate-700 p-4 text-white">
+          <div className="max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center backdrop-blur">
+            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-amber-400" />
+            <div className="text-base font-semibold">Map couldn't render</div>
+            <p className="mt-1 text-sm text-white/70">{mapError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setMapError(null);
+                setRetryKey((k) => k + 1);
+              }}
+              className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
