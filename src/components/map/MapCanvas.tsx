@@ -52,6 +52,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
 
@@ -77,9 +78,13 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
-    map.on("load", () => setReady(true));
+    map.on("load", () => {
+      map.resize();
+      setReady(true);
+    });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
     mapRef.current = map;
+    currentStyleRef.current = mapStyle;
     return () => {
       map.remove();
       mapRef.current = null;
@@ -87,10 +92,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Switch style
+  // Switch style (skip redundant set on mount)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (currentStyleRef.current === mapStyle) return;
+    currentStyleRef.current = mapStyle;
     map.setStyle(STYLE_URLS[mapStyle]);
   }, [mapStyle]);
 
@@ -368,5 +375,11 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     );
   }
 
-  return <div ref={containerRef} className="absolute inset-0" aria-label="St Francis Bay property map" />;
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      aria-label="St Francis Bay property map"
+    />
+  );
 }
