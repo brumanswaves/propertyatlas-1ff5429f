@@ -16,7 +16,9 @@ export type AreaName =
   | "Cape St Francis"
   | "Santareme"
   | "Port St Francis"
+  | "Marina Glades"
   | "Oyster Bay";
+
 
 export interface PropertyScores {
   investor: number;
