@@ -271,4 +271,4 @@ export function propertiesToCentroidGeoJSON(props: Property[]): GeoJSON.FeatureC
   };
 }
 
-export const ST_FRANCIS_CENTER: [number, number] = [24.829, -34.157];
+export const ST_FRANCIS_CENTER: [number, number] = [24.830, -34.168];
