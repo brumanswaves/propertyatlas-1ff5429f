@@ -98,13 +98,52 @@ export interface Property {
   centroid: [number, number];
 }
 
-const AREAS: { name: AreaName; center: [number, number]; spread: number; density: number }[] = [
-  { name: "Santareme",       center: [24.838, -34.155], spread: 0.0042, density: 55 },
-  { name: "St Francis Bay",  center: [24.830, -34.168], spread: 0.0065, density: 95 },
-  { name: "Port St Francis", center: [24.847, -34.185], spread: 0.0040, density: 50 },
-  { name: "Cape St Francis", center: [24.838, -34.203], spread: 0.0062, density: 70 },
-  { name: "Oyster Bay",      center: [24.667, -34.172], spread: 0.0055, density: 45 },
+// Neighborhood "blocks" — each block lays out a grid of parcels with realistic
+// lot widths/depths. Multiple blocks per area produce contiguous coverage that
+// reads as a real cadastral map at zoom. Replace with real parcel GeoJSON later.
+interface Block {
+  area: AreaName;
+  center: [number, number];
+  cols: number;
+  rows: number;
+  lotW: number;   // meters (street-frontage)
+  lotH: number;   // meters (depth)
+  rotation: number; // radians
+  streetGap?: number; // meters between rows (road)
+  typeBias?: PropertyType;
+}
+
+const BLOCKS: Block[] = [
+  // ===== St Francis Bay — canals + village =====
+  { area: "St Francis Bay", center: [24.8295, -34.1655], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
+  { area: "St Francis Bay", center: [24.8330, -34.1670], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
+  { area: "St Francis Bay", center: [24.8365, -34.1685], cols: 14, rows: 7, lotW: 22, lotH: 34, rotation: 0.08 },
+  { area: "St Francis Bay", center: [24.8300, -34.1700], cols: 12, rows: 6, lotW: 24, lotH: 36, rotation: 0.05 },
+  { area: "St Francis Bay", center: [24.8345, -34.1715], cols: 12, rows: 6, lotW: 24, lotH: 36, rotation: 0.05 },
+  { area: "St Francis Bay", center: [24.8260, -34.1680], cols: 10, rows: 6, lotW: 26, lotH: 38, rotation: -0.02 },
+  // ===== Marina Glades — canal estate, larger erfs =====
+  { area: "Marina Glades", center: [24.8420, -34.1665], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
+  { area: "Marina Glades", center: [24.8455, -34.1685], cols: 10, rows: 6, lotW: 28, lotH: 42, rotation: 0.12 },
+  { area: "Marina Glades", center: [24.8430, -34.1710], cols: 10, rows: 5, lotW: 30, lotH: 44, rotation: 0.10 },
+  // ===== Santareme — north golf estate, big lots =====
+  { area: "Santareme", center: [24.8350, -34.1545], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8390, -34.1565], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8420, -34.1590], cols: 9, rows: 5, lotW: 32, lotH: 48, rotation: -0.05 },
+  { area: "Santareme", center: [24.8360, -34.1590], cols: 8, rows: 5, lotW: 34, lotH: 50, rotation: 0.00 },
+  // ===== Port St Francis — harbour area =====
+  { area: "Port St Francis", center: [24.8460, -34.1845], cols: 9, rows: 5, lotW: 24, lotH: 36, rotation: 0.20 },
+  { area: "Port St Francis", center: [24.8490, -34.1865], cols: 9, rows: 5, lotW: 24, lotH: 36, rotation: 0.20 },
+  { area: "Port St Francis", center: [24.8475, -34.1825], cols: 8, rows: 4, lotW: 26, lotH: 38, rotation: 0.15 },
+  // ===== Cape St Francis — coastal, lighthouse area =====
+  { area: "Cape St Francis", center: [24.8345, -34.2010], cols: 11, rows: 6, lotW: 26, lotH: 38, rotation: -0.10 },
+  { area: "Cape St Francis", center: [24.8385, -34.2030], cols: 11, rows: 6, lotW: 26, lotH: 38, rotation: -0.10 },
+  { area: "Cape St Francis", center: [24.8410, -34.2055], cols: 10, rows: 5, lotW: 28, lotH: 40, rotation: -0.08 },
+  { area: "Cape St Francis", center: [24.8350, -34.2055], cols: 10, rows: 5, lotW: 28, lotH: 40, rotation: -0.08 },
+  // ===== Oyster Bay — small coastal village =====
+  { area: "Oyster Bay", center: [24.6680, -34.1720], cols: 9, rows: 5, lotW: 26, lotH: 38, rotation: 0.05 },
+  { area: "Oyster Bay", center: [24.6710, -34.1740], cols: 9, rows: 5, lotW: 26, lotH: 38, rotation: 0.05 },
 ];
+
 
 // Local St Francis landmarks for distance computation (mock)
 const LANDMARKS = {
