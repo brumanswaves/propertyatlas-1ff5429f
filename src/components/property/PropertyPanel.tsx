@@ -44,16 +44,9 @@ export function PropertyPanel({ property, onClose }: Props) {
 
   function selectTab(id: Tab) {
     setTab(id);
-    window.setTimeout(() => {
-      const el = scrollRef.current;
-      const anchor = tabsAnchorRef.current;
-      if (!el || !anchor) return;
-      const target = Math.min(anchor.offsetTop, el.scrollHeight - el.clientHeight);
-      console.log("[PA tabs]", { target, scrollTop: el.scrollTop });
-      if (el.scrollTop < target) el.scrollTop = target;
-      console.log("[PA tabs after]", { scrollTop: el.scrollTop });
-    }, 30);
+    requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: 0 }); });
   }
+
 
   if (!property) return null;
 
@@ -122,9 +115,6 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         </div>
 
-        {/* Why This Property? — Bloomberg-style intelligence card */}
-        <WhyCard property={property} />
-
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
           <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
             {TAB_META.map(({ id, label, icon }) => {
@@ -153,6 +143,8 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Why This Property? — Bloomberg-style intelligence card */}
+            <WhyCard property={property} />
             {/* Key investor scores */}
             <div>
               <div className="mb-2 flex items-center justify-between">
