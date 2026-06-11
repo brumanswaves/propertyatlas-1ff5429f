@@ -221,10 +221,10 @@ function generateProperties(): Property[] {
 
       const type = TYPES[Math.floor(seeded(idx + 3) * TYPES.length)];
       const sizeSqm = type === "Agricultural"
-        ? Math.round(5_000 + seeded(idx + 4) * 25_000)
+        ? Math.round(8_000 + seeded(idx + 4) * 30_000)
         : type === "Vacant Land"
-          ? Math.round(700 + seeded(idx + 4) * 1_800)
-          : Math.round(450 + seeded(idx + 4) * 1_400);
+          ? Math.round(1_400 + seeded(idx + 4) * 2_400)
+          : Math.round(900 + seeded(idx + 4) * 2_200);
       const side = Math.sqrt(sizeSqm);
       const wM = side * (0.85 + seeded(idx + 5) * 0.3);
       const hM = sizeSqm / wM;
