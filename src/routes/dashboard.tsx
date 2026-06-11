@@ -261,7 +261,6 @@ function PropertyCard({ p, highlight }: { p: Property; highlight?: boolean }) {
   return (
     <Link
       to="/"
-      search={{ id: p.id } as never}
       className={`group block rounded-2xl border bg-card p-4 transition hover:-translate-y-0.5 hover:shadow-soft ${
         highlight ? "border-accent/40" : "border-border"
       }`}
