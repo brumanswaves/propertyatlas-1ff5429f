@@ -97,10 +97,19 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
-      {/* Insight summary — what investors should know in one line */}
-      <div className="mx-5 mt-3 shrink-0 rounded-xl border border-border bg-background/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
-        <span className="font-semibold text-foreground">Insight · </span>
-        {buildInsight(property)}
+      {/* Investor Insight — premium AI-style summary */}
+      <div className="mx-5 mt-3 shrink-0 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-3 shadow-soft">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+            <Sparkles className="h-3 w-3" /> Investor Insight
+          </div>
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+            AI · Mock
+          </span>
+        </div>
+        <p className="mt-1.5 text-[12px] leading-snug text-foreground/90">
+          {buildInsight(property)}
+        </p>
       </div>
 
       <div className="mt-3 grid shrink-0 grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
