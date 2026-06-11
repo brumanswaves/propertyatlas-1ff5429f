@@ -34,70 +34,85 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-ocean: var(--ocean);
   --color-coast: var(--coast);
-  --color-land: var(--land);
-  --color-parcel: var(--parcel);
-  --color-parcel-hover: var(--parcel-hover);
-  --color-parcel-selected: var(--parcel-selected);
+  --color-teal: var(--teal);
+  --color-sand: var(--sand);
+  --color-gold: var(--gold);
+  --color-success: var(--success);
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* Brand palette */
-  --brand: oklch(0.34 0.09 248);             /* #0B3B60 deep navy */
-  --brand-foreground: oklch(0.98 0.005 240);
-  --accent: oklch(0.78 0.17 70);             /* #F59E0B amber */
-  --accent-foreground: oklch(0.22 0.04 250);
+  /* === Sunrise Sand palette — coastal South Africa premium === */
+  /* Deep ocean blue */
+  --brand: oklch(0.32 0.06 240);              /* #1a3a52 */
+  --brand-foreground: oklch(0.98 0.01 90);
+  /* Coastal teal */
+  --teal: oklch(0.78 0.10 195);                /* #5cbdb9 */
+  /* Warm gold (sunrise) */
+  --gold: oklch(0.71 0.16 60);                 /* #d4842a */
+  /* Soft sand background */
+  --sand: oklch(0.97 0.02 85);                 /* #faf5ec */
 
-  /* Semantic */
-  --background: oklch(0.985 0.004 240);      /* #F7F9FB */
-  --foreground: oklch(0.24 0.04 250);        /* #1E293B */
-  --card: oklch(1 0 0);
+  --ocean: var(--brand);
+  --coast: var(--teal);
+
+  /* Semantic mappings */
+  --background: var(--sand);
+  --foreground: oklch(0.24 0.04 240);          /* deep slate-navy */
+  --card: oklch(0.995 0.005 85);               /* near-white warm */
   --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
+  --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.52 0.18 256);           /* #1F6FEB */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.008 240);
+
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.98 0.01 90);
+  --accent: var(--gold);
+  --accent-foreground: oklch(0.22 0.03 240);
+  --secondary: oklch(0.94 0.025 85);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.955 0.008 240);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --destructive: oklch(0.6 0.22 27);
+  --muted: oklch(0.93 0.02 80);
+  --muted-foreground: oklch(0.46 0.03 240);
+
+  --success: oklch(0.62 0.10 175);             /* sea green */
+  --destructive: oklch(0.58 0.21 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.008 240);
-  --input: oklch(0.91 0.008 240);
-  --ring: oklch(0.52 0.18 256);
 
-  /* Map */
-  --ocean: oklch(0.78 0.08 220);
-  --coast: oklch(0.92 0.05 90);
-  --land: oklch(0.94 0.02 130);
-  --parcel: oklch(0.88 0.01 240);
-  --parcel-hover: oklch(0.78 0.12 256);
-  --parcel-selected: oklch(0.62 0.2 70);
+  --border: oklch(0.88 0.02 80);
+  --input: oklch(0.88 0.02 80);
+  --ring: var(--teal);
 
-  --gradient-brand: linear-gradient(135deg, oklch(0.34 0.09 248), oklch(0.52 0.18 256));
-  --gradient-premium: linear-gradient(135deg, oklch(0.78 0.17 70), oklch(0.68 0.2 50));
-  --shadow-panel: 0 20px 50px -20px oklch(0.34 0.09 248 / 0.25);
-  --shadow-soft: 0 4px 14px -4px oklch(0.34 0.09 248 / 0.12);
+  /* Premium gradients */
+  --gradient-brand: linear-gradient(135deg, oklch(0.32 0.06 240), oklch(0.46 0.08 220));
+  --gradient-ocean: linear-gradient(135deg, oklch(0.32 0.06 240) 0%, oklch(0.55 0.10 215) 60%, oklch(0.78 0.10 195) 100%);
+  --gradient-sunrise: linear-gradient(135deg, oklch(0.74 0.16 50) 0%, oklch(0.71 0.16 60) 50%, oklch(0.66 0.18 35) 100%);
+  --gradient-premium: var(--gradient-sunrise);
+  --gradient-sand: linear-gradient(180deg, oklch(0.98 0.015 85), oklch(0.94 0.025 85));
+
+  --shadow-panel: 0 24px 60px -24px oklch(0.32 0.06 240 / 0.28),
+                  0 2px 6px -2px oklch(0.32 0.06 240 / 0.08);
+  --shadow-soft: 0 4px 14px -4px oklch(0.32 0.06 240 / 0.14);
+  --shadow-glow: 0 0 0 4px oklch(0.71 0.16 60 / 0.18), 0 8px 24px -6px oklch(0.71 0.16 60 / 0.35);
 }
 
 .dark {
-  --background: oklch(0.18 0.03 250);
-  --foreground: oklch(0.96 0.005 240);
-  --card: oklch(0.22 0.04 250);
+  --background: oklch(0.16 0.025 240);
+  --foreground: oklch(0.96 0.01 85);
+  --card: oklch(0.22 0.03 240);
   --card-foreground: var(--foreground);
-  --popover: oklch(0.22 0.04 250);
+  --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.6 0.18 256);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.26 0.04 250);
+  --primary: oklch(0.78 0.10 195);
+  --primary-foreground: oklch(0.18 0.03 240);
+  --secondary: oklch(0.26 0.03 240);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.26 0.04 250);
-  --muted-foreground: oklch(0.72 0.02 250);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.18 256);
+  --muted: oklch(0.26 0.03 240);
+  --muted-foreground: oklch(0.72 0.02 220);
+  --accent: oklch(0.74 0.16 55);
+  --accent-foreground: oklch(0.18 0.03 240);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.78 0.10 195);
 }
 
 @layer base {
@@ -115,12 +130,92 @@
 
 @layer utilities {
   .bg-gradient-brand { background-image: var(--gradient-brand); }
+  .bg-gradient-ocean { background-image: var(--gradient-ocean); }
+  .bg-gradient-sunrise { background-image: var(--gradient-sunrise); }
   .bg-gradient-premium { background-image: var(--gradient-premium); }
+  .bg-gradient-sand { background-image: var(--gradient-sand); }
   .shadow-panel { box-shadow: var(--shadow-panel); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
   .text-balance { text-wrap: balance; }
   .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: oklch(0.85 0.01 240); border-radius: 999px;
+    background: oklch(0.84 0.02 80); border-radius: 999px;
   }
 }
+
+/* === Micro-interactions === */
+@keyframes pa-pulse-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.85; }
+  80%  { opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
+}
+@keyframes pa-pulse-dot {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.12); }
+}
+@keyframes pa-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pa-score-fill {
+  from { width: 0%; }
+}
+@keyframes pa-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.pa-pulse-marker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.pa-pulse-marker::before,
+.pa-pulse-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  border-radius: 999px;
+}
+.pa-pulse-marker::before {
+  width: 14px; height: 14px;
+  background: oklch(0.71 0.16 60);
+  box-shadow: 0 0 0 3px oklch(1 0 0 / 0.9), 0 0 18px oklch(0.71 0.16 60 / 0.65);
+  transform: translate(-50%, -50%);
+  animation: pa-pulse-dot 1.8s ease-in-out infinite;
+}
+.pa-pulse-marker::after {
+  width: 14px; height: 14px;
+  border: 2px solid oklch(0.71 0.16 60);
+  transform: translate(-50%, -50%);
+  animation: pa-pulse-ring 1.8s ease-out infinite;
+}
+
+.pa-fade-up { animation: pa-fade-up 0.35s ease-out both; }
+.pa-fade-up-delayed { animation: pa-fade-up 0.45s ease-out 0.08s both; }
+
+.pa-score-bar {
+  animation: pa-score-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.pa-locked-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(1 0 0 / 0.35) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: pa-shimmer 2.4s linear infinite;
+}
+
+/* Mapbox popup branding */
+.pa-popup .mapboxgl-popup-content {
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 30px -10px oklch(0.32 0.06 240 / 0.35);
+  border: 1px solid oklch(0.88 0.02 80);
+}
+.pa-popup .mapboxgl-popup-tip { display: none; }
