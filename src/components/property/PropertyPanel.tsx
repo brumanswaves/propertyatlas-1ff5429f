@@ -406,6 +406,60 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium">{children}</span>;
 }
 
+function ScoreCard({
+  label, value, icon, explain, confidence, className,
+}: { label: string; value: number; icon: React.ReactNode; explain: string; confidence: number; className?: string }) {
+  const tone =
+    value >= 80 ? "text-emerald-600 dark:text-emerald-400"
+    : value >= 60 ? "text-primary"
+    : value >= 40 ? "text-amber-600 dark:text-amber-400"
+    : "text-muted-foreground";
+  const conf = Math.round(confidence * 100);
+  const confLabel = conf >= 85 ? "High" : conf >= 70 ? "Medium" : "Low";
+  return (
+    <div className={cn("rounded-xl border border-border bg-background/60 p-2.5", className)}>
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="flex items-center gap-1">{icon}{label}</span>
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+          {confLabel} · {conf}%
+        </span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className={cn("text-2xl font-semibold tabular-nums leading-none", tone)}>{value}</span>
+        <span className="text-[10px] text-muted-foreground">/ 100</span>
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+          style={{ width: `${Math.min(100, Math.max(2, value))}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground">{explain}</p>
+    </div>
+  );
+}
+
+function LockedModule({
+  icon, title, lines,
+}: { icon: React.ReactNode; title: string; lines: string[] }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="flex items-center gap-1">{icon}{title}</span>
+        <Lock className="h-3 w-3 text-muted-foreground" />
+      </div>
+      <div className="mt-1.5 space-y-0.5 select-none blur-[3.5px] saturate-75">
+        {lines.map((l, i) => (
+          <div key={i} className="truncate text-[11px] font-medium text-foreground/80">{l}</div>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-card to-transparent" />
+    </div>
+  );
+}
+
+
+
 function Pill({ children, icon, tone = "default" }: { children: React.ReactNode; icon?: React.ReactNode; tone?: "default" | "accent" }) {
   return (
     <span className={cn(
