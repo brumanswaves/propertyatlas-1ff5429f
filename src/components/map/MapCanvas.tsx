@@ -48,6 +48,15 @@ const TYPE_COLOR: Record<string, string> = {
   "Vacant Land": "#fde68a",
 };
 
+function webglSupported(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
 export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -55,6 +64,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const filtered = useMemo(
     () => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES),
@@ -65,32 +76,71 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   // Init map
   useEffect(() => {
     if (!TOKEN || !containerRef.current || mapRef.current) return;
+
+    if (!webglSupported()) {
+      console.error("[PropertyAtlas] WebGL is not available in this browser");
+      setMapError(
+        "Your browser blocked WebGL, which the map needs to render. If you're using Lockdown Mode or Low Power Mode on iPhone, disable it for this site, then tap Retry.",
+      );
+      return;
+    }
+
     mapboxgl.accessToken = TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: STYLE_URLS[mapStyle],
-      center: ST_FRANCIS_CENTER,
-      zoom: 13.2,
-      pitch: 0,
-      attributionControl: false,
-      cooperativeGestures: false,
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: STYLE_URLS[mapStyle],
+        center: ST_FRANCIS_CENTER,
+        zoom: 13.2,
+        pitch: 0,
+        attributionControl: false,
+        cooperativeGestures: false,
+      });
+    } catch (err) {
+      console.error("[PropertyAtlas] Map failed to initialize", err);
+      setMapError("The map engine failed to start on this device. Tap Retry, or try reloading the page.");
+      return;
+    }
+
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
     map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
     map.on("load", () => {
+      console.log("[PropertyAtlas] Map loaded");
       map.resize();
       setReady(true);
     });
+    map.on("error", (e) => {
+      console.error("[PropertyAtlas] Map error:", e.error?.message ?? e);
+    });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
+
+    // Recover from GPU context loss (common on iOS Safari under memory pressure)
+    const canvas = map.getCanvas();
+    const onContextLost = () => {
+      console.warn("[PropertyAtlas] WebGL context lost — recreating map");
+      setMapError("The map's graphics context was interrupted (this can happen on mobile). Tap Retry to reload it.");
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost);
+
+    // Extra resizes to defeat iframe/mobile layout races where the
+    // container reports a stale size at init time.
+    const t1 = window.setTimeout(() => map.resize(), 400);
+    const t2 = window.setTimeout(() => map.resize(), 1500);
+
     mapRef.current = map;
     currentStyleRef.current = mapStyle;
     return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
       map.remove();
       mapRef.current = null;
+      setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   // Switch style (skip redundant set on mount)
   useEffect(() => {
@@ -376,10 +426,31 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      aria-label="St Francis Bay property map"
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        aria-label="St Francis Bay property map"
+      />
+      {mapError && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-gradient-to-br from-slate-900 to-slate-700 p-4 text-white">
+          <div className="max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center backdrop-blur">
+            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-amber-400" />
+            <div className="text-base font-semibold">Map couldn't render</div>
+            <p className="mt-1 text-sm text-white/70">{mapError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setMapError(null);
+                setRetryKey((k) => k + 1);
+              }}
+              className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
