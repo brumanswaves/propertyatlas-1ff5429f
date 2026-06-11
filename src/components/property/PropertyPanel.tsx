@@ -337,3 +337,249 @@ function Locked({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+// ===== Sales tab with Last sold card, filters, and PDF export =====
+
+type HistoryFilter = "all" | "sales" | "rentals" | HistoryKind;
+
+const KIND_TONE: Record<HistoryKind, string> = {
+  sold: "bg-primary/10 text-primary border-primary/20",
+  listed: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20",
+  rented: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+  withdrawn: "bg-muted text-muted-foreground border-border",
+  valuation: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  renovation: "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
+};
+
+function SalesTab({ property }: { property: Property }) {
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+
+  const lastSoldRec = useMemo(
+    () => property.history.find((h) => h.kind === "sold"),
+    [property.history],
+  );
+  const lastSoldDate = lastSoldRec?.date ?? property.sales[0].date;
+  const lastSoldPrice = lastSoldRec?.price ?? property.sales[0].price;
+  const lastSoldAgent = lastSoldRec?.party ?? "—";
+  const vsEst = Math.round((lastSoldPrice / property.estimatedValue) * 100);
+
+  const filtered = useMemo(() => {
+    return property.history.filter((h) => {
+      if (filter === "all") return true;
+      if (filter === "sales") return h.kind === "sold" || h.kind === "listed" || h.kind === "withdrawn";
+      if (filter === "rentals") return h.kind === "rented";
+      return h.kind === filter;
+    });
+  }, [property.history, filter]);
+
+  function exportPDF() {
+    const win = window.open("", "_blank", "width=900,height=1100");
+    if (!win) {
+      toast.error("Pop-up blocked. Allow pop-ups to export PDF.");
+      return;
+    }
+    const rows = property.history.map((h) => {
+      const d = new Date(h.date).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" });
+      const price = typeof h.price === "number"
+        ? (h.kind === "rented" ? `${formatZAR(h.price)} / month` : formatZAR(h.price))
+        : "—";
+      const detail = [h.party, h.note].filter(Boolean).join(" · ") || "—";
+      return `<tr>
+        <td>${d}</td>
+        <td><span class="badge badge-${h.kind}">${h.kind}</span></td>
+        <td class="num">${price}</td>
+        <td>${detail}</td>
+      </tr>`;
+    }).join("");
+
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8" />
+      <title>PropertyAtlas · ${property.street} · 10-Year History</title>
+      <style>
+        *{box-sizing:border-box}
+        body{font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;color:#0f172a;margin:32px;}
+        h1{font-size:20px;margin:0 0 4px}
+        h2{font-size:13px;margin:24px 0 8px;text-transform:uppercase;letter-spacing:.08em;color:#64748b}
+        .sub{color:#64748b;margin-bottom:24px}
+        .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+        .card{border:1px solid #e2e8f0;border-radius:10px;padding:12px}
+        .card .l{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b}
+        .card .v{font-size:15px;font-weight:600;margin-top:4px}
+        .hero{background:linear-gradient(135deg,#1e3a8a,#0f172a);color:#fff;border-radius:12px;padding:20px;margin-bottom:24px}
+        .hero .l{color:rgba(255,255,255,.7);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+        .hero .v{font-size:26px;font-weight:700;margin-top:2px}
+        table{width:100%;border-collapse:collapse;font-size:12px}
+        th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+        th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;background:#f8fafc}
+        .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+        .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+        .badge-sold{background:#dbeafe;color:#1d4ed8}
+        .badge-listed{background:#e0f2fe;color:#0369a1}
+        .badge-rented{background:#d1fae5;color:#047857}
+        .badge-withdrawn{background:#f1f5f9;color:#475569}
+        .badge-valuation{background:#fef3c7;color:#b45309}
+        .badge-renovation{background:#ede9fe;color:#6d28d9}
+        footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:10px;display:flex;justify-content:space-between}
+      </style></head><body>
+      <h1>${property.street} · Erf ${property.erf}</h1>
+      <div class="sub">${property.area} · ${property.type} · ${property.sizeSqm.toLocaleString()} m²</div>
+
+      <div class="hero">
+        <div class="l">Last sold</div>
+        <div class="v">${formatZAR(lastSoldPrice)}</div>
+        <div style="margin-top:4px;font-size:12px;opacity:.85">
+          ${new Date(lastSoldDate).toLocaleDateString("en-ZA",{dateStyle:"long"})} · ${lastSoldAgent} · ${vsEst}% of estimate
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card"><div class="l">Estimated value</div><div class="v">${formatZAR(property.estimatedValue)}</div></div>
+        <div class="card"><div class="l">Municipal</div><div class="v">${formatZAR(property.municipalValue)}</div></div>
+        <div class="card"><div class="l">Price / m²</div><div class="v">R ${Math.round(property.estimatedValue/property.sizeSqm).toLocaleString()}</div></div>
+        <div class="card"><div class="l">Owner since</div><div class="v">${new Date(property.ownership.since).getFullYear()}</div></div>
+      </div>
+
+      <h2>10-Year Property History</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Event</th><th class="num">Amount</th><th>Detail</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <footer>
+        <span>PropertyAtlas · Investor Report</span>
+        <span>Generated ${new Date().toLocaleDateString("en-ZA",{dateStyle:"long"})}</span>
+      </footer>
+      <script>window.onload=()=>{setTimeout(()=>window.print(),300);}</script>
+      </body></html>`);
+    win.document.close();
+  }
+
+  const FILTERS: { id: HistoryFilter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "sales", label: "Sales" },
+    { id: "rentals", label: "Rentals" },
+    { id: "sold", label: "Sold" },
+    { id: "listed", label: "Listed" },
+    { id: "rented", label: "Rented" },
+    { id: "withdrawn", label: "Withdrawn" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Last sold summary card */}
+      <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">Last sold</div>
+          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            {vsEst}% of estimate
+          </span>
+        </div>
+        <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{formatZAR(lastSoldPrice)}</div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+          <SoldStat label="Date" value={new Date(lastSoldDate).toLocaleDateString("en-ZA", { dateStyle: "medium" })} />
+          <SoldStat label="Agent" value={lastSoldAgent} />
+          <SoldStat label="Owner type" value={property.ownership.type} />
+        </div>
+      </div>
+
+      {/* Filters + export */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Filter className="h-3 w-3" /> 10-year history
+          </div>
+          <button
+            onClick={exportPDF}
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background transition hover:opacity-90"
+          >
+            <Download className="h-3 w-3" /> Export PDF
+          </button>
+        </div>
+        <div className="scrollbar-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition",
+                  active
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* History list */}
+      <ol className="space-y-2">
+        {filtered.length === 0 && (
+          <li className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+            No records match this filter.
+          </li>
+        )}
+        {filtered.map((h, i) => (
+          <li key={i} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background/50 p-3 text-sm">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", KIND_TONE[h.kind])}>
+                  {h.kind}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(h.date).toLocaleDateString("en-ZA", { year: "numeric", month: "short" })}
+                </span>
+              </div>
+              {(h.party || h.note) && (
+                <div className="mt-1 truncate text-xs text-muted-foreground">
+                  {h.party}{h.party && h.note ? " · " : ""}{h.note}
+                </div>
+              )}
+            </div>
+            {typeof h.price === "number" && (
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-semibold tabular-nums">{formatZAR(h.price)}</div>
+                {h.kind === "rented" && <div className="text-[10px] text-muted-foreground">/ month</div>}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+
+      <Locked>
+        <Section title="Comparable sales (within 1 km)">
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
+                <div>
+                  <div className="font-medium">{14 + i} Marina Dr</div>
+                  <div className="text-xs text-muted-foreground">Sold {2024 - i} · 1,2{i}0 m²</div>
+                </div>
+                <div className="text-sm font-semibold">{formatZAR(3_400_000 + i * 250_000)}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      </Locked>
+      <Locked>
+        <Section title="Sale price trend">
+          <Row label="3-yr CAGR" value="+7.8%" />
+          <Row label="Suburb median" value={formatZAR(4_250_000)} />
+          <Row label="Days on market" value="62 (median)" />
+        </Section>
+      </Locked>
+    </div>
+  );
+}
+
+function SoldStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-card/60 px-2.5 py-1.5 ring-1 ring-inset ring-border">
+      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 truncate text-[12px] font-semibold leading-tight">{value}</div>
+    </div>
+  );
+}
