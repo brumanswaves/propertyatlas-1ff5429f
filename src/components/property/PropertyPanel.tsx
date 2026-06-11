@@ -78,13 +78,13 @@ export function PropertyPanel({ property, onClose }: Props) {
 
       <div className="mx-5 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Estimated value</div>
-            <div className="mt-0.5 text-2xl font-semibold leading-none tracking-tight tabular-nums sm:text-3xl">
+            <div className="mt-0.5 truncate text-xl font-semibold leading-none tracking-tight tabular-nums sm:text-3xl">
               {formatZAR(property.estimatedValue)}
             </div>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">
             <BadgeCheck className="h-3 w-3" />
             {Math.round(property.confidence * 100)}%
           </span>
@@ -97,15 +97,15 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </div>
 
-      <div className="scrollbar-thin mt-3 flex gap-1 overflow-x-auto border-b border-border px-5 text-xs font-medium">
+      <div className="mt-3 grid grid-cols-6 gap-0.5 border-b border-border px-2 text-[10px] font-medium sm:flex sm:gap-1 sm:px-5 sm:text-xs">
         {(["overview", "ownership", "sales", "intelligence", "photos", "timeline"] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn(
-              "relative whitespace-nowrap px-3 py-2 capitalize transition",
+              "relative truncate px-1 py-2 capitalize transition sm:px-3",
               tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}>
             {t}
-            {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
+            {tab === t && <span className="absolute inset-x-1 -bottom-px h-0.5 rounded bg-foreground sm:inset-x-2" />}
           </button>
         ))}
       </div>
