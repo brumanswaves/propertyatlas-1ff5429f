@@ -9,11 +9,6 @@ import { PropertyPanel } from "@/components/property/PropertyPanel";
 import { TopNav } from "@/components/layout/TopNav";
 import { getProperty, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
-import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
-import { PropertyPanel } from "@/components/property/PropertyPanel";
-import { TopNav } from "@/components/layout/TopNav";
-import { getProperty, type Property } from "@/data/properties";
-import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
