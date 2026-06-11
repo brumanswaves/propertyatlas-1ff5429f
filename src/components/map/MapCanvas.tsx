@@ -180,30 +180,27 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
           "fill-color": [
             "case",
             ["boolean", ["feature-state", "selected"], false], C_GOLD,
-            ["boolean", ["feature-state", "hover"], false], C_TEAL,
+            ["boolean", ["feature-state", "hover"], false], C_GOLD,
             ["boolean", ["feature-state", "filtered"], true], C_TEAL,
-            "rgba(120,120,120,0.15)",
+            "rgba(120,120,120,0.2)",
           ],
           "fill-opacity": [
             "case",
-            ["boolean", ["feature-state", "selected"], false],
-              ["interpolate", ["linear"], ["zoom"], 12, 0.55, 16, 0.75],
-            ["boolean", ["feature-state", "hover"], false],
-              ["interpolate", ["linear"], ["zoom"], 12, 0.4, 16, 0.6],
+            ["boolean", ["feature-state", "selected"], false], 0.75,
+            ["boolean", ["feature-state", "hover"], false], 0.55,
             ["boolean", ["feature-state", "filtered"], true],
-              // Zoom-reveal: visible when zoomed out, strong when zoomed in
               ["interpolate", ["linear"], ["zoom"],
-                11, 0.08,
-                13, 0.18,
-                15, 0.34,
-                17, 0.48,
+                11, 0.25,
+                13, 0.32,
+                15, 0.42,
+                17, 0.52,
               ],
-            0.05,
+            0.1,
           ],
         },
       });
 
-      // ===== Parcel outline — elegant, zoom-reveal =====
+      // ===== Parcel outline — always visible, demo-plot style =====
       map.addLayer({
         id: "parcels-outline",
         type: "line",
@@ -218,17 +215,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
           "line-width": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
-              ["interpolate", ["linear"], ["zoom"], 12, 2.5, 17, 4.5],
+              ["interpolate", ["linear"], ["zoom"], 11, 2, 17, 5],
             ["boolean", ["feature-state", "hover"], false],
-              ["interpolate", ["linear"], ["zoom"], 12, 2, 17, 3.5],
-            ["interpolate", ["linear"], ["zoom"], 12, 0.6, 14, 1.1, 16, 1.8, 17, 2.2],
+              ["interpolate", ["linear"], ["zoom"], 11, 2, 17, 4],
+            ["interpolate", ["linear"], ["zoom"], 11, 1, 13, 1.4, 15, 2, 17, 2.8],
           ],
-          "line-opacity": [
-            "case",
-            ["boolean", ["feature-state", "selected"], false], 1,
-            ["boolean", ["feature-state", "hover"], false], 1,
-            ["interpolate", ["linear"], ["zoom"], 12, 0.5, 14, 0.8, 16, 1],
-          ],
+          "line-opacity": 1,
         },
       });
 
