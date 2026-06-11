@@ -90,9 +90,9 @@ export function PropertyPanel({ property, onClose }: Props) {
           </span>
         </div>
         <div className="mt-2.5 grid grid-cols-4 gap-1.5 text-[11px] sm:grid-cols-2 sm:gap-2">
-          <Stat label="Municipal" value={formatZAR(property.municipalValue)} />
+          <Stat label="Municipal" value={compactZAR(property.municipalValue)} />
           <Stat label="R / m²" value={`R ${ppm.toLocaleString()}`} />
-          <Stat label="Last sale" value={formatZAR(lastSale.price)} />
+          <Stat label="Last sale" value={compactZAR(lastSale.price)} />
           <Stat label="Held" value={`${heldYears}y`} />
         </div>
       </div>
