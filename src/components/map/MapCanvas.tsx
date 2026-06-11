@@ -215,14 +215,18 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
           "line-width": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
-              ["interpolate", ["linear"], ["zoom"], 11, 2, 17, 5],
+              ["interpolate", ["linear"], ["zoom"], 11, 1.5, 17, 4.5],
             ["boolean", ["feature-state", "hover"], false],
-              ["interpolate", ["linear"], ["zoom"], 11, 2, 17, 4],
-            ["interpolate", ["linear"], ["zoom"], 11, 1, 13, 1.4, 15, 2, 17, 2.8],
+              ["interpolate", ["linear"], ["zoom"], 11, 1.2, 17, 3.5],
+            ["interpolate", ["linear"], ["zoom"], 11, 0.3, 13, 0.7, 15, 1.4, 17, 2.2],
           ],
-          "line-opacity": 1,
+          "line-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            11, 0.35, 13, 0.6, 15, 0.9, 17, 1,
+          ],
         },
       });
+
 
       // Hover-glow halo (wide soft line, only visible when hovered)
       map.addLayer({
