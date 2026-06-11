@@ -44,11 +44,13 @@ export function PropertyPanel({ property, onClose }: Props) {
 
   function selectTab(id: Tab) {
     setTab(id);
-    requestAnimationFrame(() => {
+    window.setTimeout(() => {
       const el = scrollRef.current;
       const anchor = tabsAnchorRef.current;
-      if (el && anchor) el.scrollTo({ top: anchor.offsetTop, behavior: "smooth" });
-    });
+      if (!el || !anchor) return;
+      const target = anchor.offsetTop;
+      if (el.scrollTop < target) el.scrollTo({ top: target, behavior: "smooth" });
+    }, 30);
   }
 
   if (!property) return null;
