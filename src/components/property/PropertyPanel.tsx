@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark, BookmarkCheck, Building2, CalendarClock, Camera, ChevronRight, Crown,
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
-  Download, Filter, BadgeCheck,
+  Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
 } from "lucide-react";
 import { type Property, type HistoryKind, formatZAR } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
