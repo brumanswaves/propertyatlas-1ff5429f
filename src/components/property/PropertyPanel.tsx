@@ -18,10 +18,20 @@ interface Props {
 
 type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos" | "timeline";
 
+const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "overview",     label: "Overview",     icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { id: "ownership",    label: "Ownership",    icon: <Users className="h-3.5 w-3.5" /> },
+  { id: "sales",        label: "Sales",        icon: <Banknote className="h-3.5 w-3.5" /> },
+  { id: "intelligence", label: "Intelligence", icon: <Activity className="h-3.5 w-3.5" /> },
+  { id: "photos",       label: "Photos",       icon: <ImageIcon className="h-3.5 w-3.5" /> },
+  { id: "timeline",     label: "Timeline",     icon: <CalendarClock className="h-3.5 w-3.5" /> },
+];
+
 export function PropertyPanel({ property, onClose }: Props) {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!user || !property) return setSaved(false);
@@ -30,6 +40,7 @@ export function PropertyPanel({ property, onClose }: Props) {
   }, [user, property]);
 
   useEffect(() => { setTab("overview"); }, [property?.id]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [tab]);
 
   if (!property) return null;
 
