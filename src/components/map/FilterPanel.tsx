@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+
 import type { PropertyType } from "@/data/properties";
 import { cn } from "@/lib/utils";
 
@@ -80,51 +81,68 @@ export function FilterPanel({ value, onChange }: Props) {
         <ChevronDown className={cn("h-3.5 w-3.5 transition", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-40 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-panel">
-          <Section title="Property type">
-            <div className="flex flex-wrap gap-1.5">
-              {TYPES.map((t) => (
-                <Chip key={t} active={value.types.includes(t)} onClick={() => toggleType(t)}>{t}</Chip>
-              ))}
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-sm md:hidden"
+          />
+          <div className="pa-fade-up fixed inset-x-2 bottom-2 z-40 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:left-0 md:bottom-auto md:top-full md:mt-2 md:w-80 md:max-h-[80vh]">
+            <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur md:hidden">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <SlidersHorizontal className="h-4 w-4" /> Filters
+              </div>
+              <button onClick={() => setOpen(false)} className="rounded-full p-1.5 hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </Section>
-          <Section title="Location">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={value.beachfrontOnly} onClick={() => onChange({ ...value, beachfrontOnly: !value.beachfrontOnly })}>Beachfront</Chip>
-              <Chip active={value.oceanViewOnly} onClick={() => onChange({ ...value, oceanViewOnly: !value.oceanViewOnly })}>Ocean view</Chip>
-              <Chip active={value.largeErfOnly} onClick={() => onChange({ ...value, largeErfOnly: !value.largeErfOnly })}>Large erf</Chip>
-              <Chip active={value.cornerLotOnly} onClick={() => onChange({ ...value, cornerLotOnly: !value.cornerLotOnly })}>Corner lot</Chip>
+            <div className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain p-4">
+              <Section title="Property type">
+                <div className="flex flex-wrap gap-1.5">
+                  {TYPES.map((t) => (
+                    <Chip key={t} active={value.types.includes(t)} onClick={() => toggleType(t)}>{t}</Chip>
+                  ))}
+                </div>
+              </Section>
+              <Section title="Location">
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip active={value.beachfrontOnly} onClick={() => onChange({ ...value, beachfrontOnly: !value.beachfrontOnly })}>Beachfront</Chip>
+                  <Chip active={value.oceanViewOnly} onClick={() => onChange({ ...value, oceanViewOnly: !value.oceanViewOnly })}>Ocean view</Chip>
+                  <Chip active={value.largeErfOnly} onClick={() => onChange({ ...value, largeErfOnly: !value.largeErfOnly })}>Large erf</Chip>
+                  <Chip active={value.cornerLotOnly} onClick={() => onChange({ ...value, cornerLotOnly: !value.cornerLotOnly })}>Corner lot</Chip>
+                </div>
+              </Section>
+              <Section title="Investment signals">
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip active={value.recentSalesOnly} onClick={() => onChange({ ...value, recentSalesOnly: !value.recentSalesOnly })}>Sold &lt; 12 mo</Chip>
+                  <Chip active={value.longHeldOnly} onClick={() => onChange({ ...value, longHeldOnly: !value.longHeldOnly })}>Held &gt; 10 yrs</Chip>
+                </div>
+              </Section>
+              <Section title="Ownership">
+                <div className="flex flex-wrap gap-1.5">
+                  {OWNERS.map((o) => (
+                    <Chip key={o} active={value.ownership.includes(o)} onClick={() => toggleOwner(o)}>{o}</Chip>
+                  ))}
+                </div>
+              </Section>
+              <Section title={`Min investor score: ${value.minInvestorScore}`}>
+                <input type="range" min={0} max={90} step={5} value={value.minInvestorScore}
+                  onChange={(e) => onChange({ ...value, minInvestorScore: Number(e.target.value) })}
+                  className="w-full accent-[var(--color-primary)]" />
+              </Section>
+              <Section title={`Min development score: ${value.minDevelopmentScore}`}>
+                <input type="range" min={0} max={90} step={5} value={value.minDevelopmentScore}
+                  onChange={(e) => onChange({ ...value, minDevelopmentScore: Number(e.target.value) })}
+                  className="w-full accent-[var(--color-primary)]" />
+              </Section>
+              <button onClick={() => onChange(DEFAULT_FILTERS)}
+                className="mt-1 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted">
+                Reset
+              </button>
             </div>
-          </Section>
-          <Section title="Investment signals">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={value.recentSalesOnly} onClick={() => onChange({ ...value, recentSalesOnly: !value.recentSalesOnly })}>Sold &lt; 12 mo</Chip>
-              <Chip active={value.longHeldOnly} onClick={() => onChange({ ...value, longHeldOnly: !value.longHeldOnly })}>Held &gt; 10 yrs</Chip>
-            </div>
-          </Section>
-          <Section title="Ownership">
-            <div className="flex flex-wrap gap-1.5">
-              {OWNERS.map((o) => (
-                <Chip key={o} active={value.ownership.includes(o)} onClick={() => toggleOwner(o)}>{o}</Chip>
-              ))}
-            </div>
-          </Section>
-          <Section title={`Min investor score: ${value.minInvestorScore}`}>
-            <input type="range" min={0} max={90} step={5} value={value.minInvestorScore}
-              onChange={(e) => onChange({ ...value, minInvestorScore: Number(e.target.value) })}
-              className="w-full accent-[var(--color-primary)]" />
-          </Section>
-          <Section title={`Min development score: ${value.minDevelopmentScore}`}>
-            <input type="range" min={0} max={90} step={5} value={value.minDevelopmentScore}
-              onChange={(e) => onChange({ ...value, minDevelopmentScore: Number(e.target.value) })}
-              className="w-full accent-[var(--color-primary)]" />
-          </Section>
-          <button onClick={() => onChange(DEFAULT_FILTERS)}
-            className="mt-1 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted">
-            Reset
-          </button>
-        </div>
+          </div>
+        </>
       )}
+
     </div>
   );
 }
