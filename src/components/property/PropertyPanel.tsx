@@ -16,7 +16,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos" | "timeline";
+type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos";
 
 const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",     label: "Overview",     icon: <Sparkles className="h-3.5 w-3.5" /> },
@@ -24,7 +24,6 @@ const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "sales",        label: "Sales",        icon: <Banknote className="h-3.5 w-3.5" /> },
   { id: "intelligence", label: "Intelligence", icon: <Activity className="h-3.5 w-3.5" /> },
   { id: "photos",       label: "Photos",       icon: <ImageIcon className="h-3.5 w-3.5" /> },
-  { id: "timeline",     label: "Timeline",     icon: <CalendarClock className="h-3.5 w-3.5" /> },
 ];
 
 export function PropertyPanel({ property, onClose }: Props) {
@@ -66,9 +65,42 @@ export function PropertyPanel({ property, onClose }: Props) {
   const lastSale = property.sales[0];
   const heldYears = new Date().getFullYear() - new Date(property.ownership.since).getFullYear();
 
+  const dragStartY = useRef<number | null>(null);
+  const [dragY, setDragY] = useState(0);
+
+  function onGrabStart(e: React.TouchEvent | React.PointerEvent) {
+    dragStartY.current = "touches" in e ? e.touches[0].clientY : e.clientY;
+    setDragY(0);
+  }
+  function onGrabMove(e: React.TouchEvent | React.PointerEvent) {
+    if (dragStartY.current == null) return;
+    const y = "touches" in e ? e.touches[0].clientY : e.clientY;
+    setDragY(Math.max(0, y - dragStartY.current));
+  }
+  function onGrabEnd() {
+    if (dragStartY.current == null) return;
+    if (dragY > 80) onClose();
+    dragStartY.current = null;
+    setDragY(0);
+  }
+
   return (
-    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[88vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[420px] md:rounded-l-3xl md:rounded-tr-none md:border-l">
-      <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-border md:hidden" />
+    <aside
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[88vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:max-h-none md:w-[420px] md:rounded-l-3xl md:rounded-tr-none md:border-l"
+      style={dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: "none" } : { transition: "transform 0.2s ease-out" }}
+    >
+      <div
+        className="mx-auto mt-2 flex h-6 w-full shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing md:hidden"
+        onTouchStart={onGrabStart}
+        onTouchMove={onGrabMove}
+        onTouchEnd={onGrabEnd}
+        onPointerDown={onGrabStart}
+        onPointerMove={onGrabMove}
+        onPointerUp={onGrabEnd}
+        onPointerCancel={onGrabEnd}
+      >
+        <div className="h-1.5 w-12 rounded-full bg-border" />
+      </div>
 
       <header className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0">
@@ -304,31 +336,6 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        {tab === "timeline" && (
-          <div className="space-y-4">
-            <Section title="Timeline">
-              <ol className="space-y-3 border-l border-border pl-4">
-                {property.timeline.map((e, i) => (
-                  <li key={i} className="relative">
-                    <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full border-2 border-card bg-primary" />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CalendarClock className="h-3 w-3" />
-                      {new Date(e.date).toLocaleDateString("en-ZA", { dateStyle: "medium" })}
-                    </div>
-                    <div className="text-sm font-medium">{e.title}</div>
-                  </li>
-                ))}
-              </ol>
-            </Section>
-            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
-              <Section title="Historical aerial imagery">
-                <Row label="Earliest record" value="2009" />
-                <Row label="Imagery snapshots" value="12 available" />
-                <Row label="Renovation detected" value="2017, 2021" />
-              </Section>
-            </Locked>
-          </div>
-        )}
         </div>
       </div>
     </aside>
