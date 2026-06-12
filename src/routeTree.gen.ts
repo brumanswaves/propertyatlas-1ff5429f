@@ -14,6 +14,7 @@ import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as DataSourcesRouteImport } from './routes/data-sources'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -45,6 +46,11 @@ const PricingRoute = PricingRouteImport.update({
 const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForInvestorsRoute = ForInvestorsRouteImport.update({
+  id: '/for-investors',
+  path: '/for-investors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DisclaimerRoute = DisclaimerRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-investors'
     | '/how-it-works'
     | '/pricing'
     | '/privacy'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-investors'
     | '/how-it-works'
     | '/pricing'
     | '/privacy'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-investors'
     | '/how-it-works'
     | '/pricing'
     | '/privacy'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DataSourcesRoute: typeof DataSourcesRoute
   DisclaimerRoute: typeof DisclaimerRoute
+  ForInvestorsRoute: typeof ForInvestorsRoute
   HowItWorksRoute: typeof HowItWorksRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-investors': {
+      id: '/for-investors'
+      path: '/for-investors'
+      fullPath: '/for-investors'
+      preLoaderRoute: typeof ForInvestorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/disclaimer': {
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DataSourcesRoute: DataSourcesRoute,
   DisclaimerRoute: DisclaimerRoute,
+  ForInvestorsRoute: ForInvestorsRoute,
   HowItWorksRoute: HowItWorksRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
