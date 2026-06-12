@@ -16,6 +16,7 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
+import { Route as ForDevelopersRouteImport } from './routes/for-developers'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as DataSourcesRouteImport } from './routes/data-sources'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -57,6 +58,11 @@ const ForInvestorsRoute = ForInvestorsRouteImport.update({
 const ForHomeownersRoute = ForHomeownersRouteImport.update({
   id: '/for-homeowners',
   path: '/for-homeowners',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForDevelopersRoute = ForDevelopersRouteImport.update({
+  id: '/for-developers',
+  path: '/for-developers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DisclaimerRoute = DisclaimerRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-developers'
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-developers'
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/for-developers'
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DataSourcesRoute: typeof DataSourcesRoute
   DisclaimerRoute: typeof DisclaimerRoute
+  ForDevelopersRoute: typeof ForDevelopersRoute
   ForHomeownersRoute: typeof ForHomeownersRoute
   ForInvestorsRoute: typeof ForInvestorsRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/for-homeowners'
       fullPath: '/for-homeowners'
       preLoaderRoute: typeof ForHomeownersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-developers': {
+      id: '/for-developers'
+      path: '/for-developers'
+      fullPath: '/for-developers'
+      preLoaderRoute: typeof ForDevelopersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/disclaimer': {
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DataSourcesRoute: DataSourcesRoute,
   DisclaimerRoute: DisclaimerRoute,
+  ForDevelopersRoute: ForDevelopersRoute,
   ForHomeownersRoute: ForHomeownersRoute,
   ForInvestorsRoute: ForInvestorsRoute,
   HowItWorksRoute: HowItWorksRoute,
