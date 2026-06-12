@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingPage, Card, SectionHeading, Prose, CTASection } from "@/components/layout/MarketingPage";
-import { Target, Compass, Map, Sparkles, ShieldCheck, TrendingUp } from "lucide-react";
+import { Target, Compass, Map, ShieldCheck, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
