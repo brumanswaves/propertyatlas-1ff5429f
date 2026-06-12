@@ -46,9 +46,6 @@ export function PropertyPanel({ property, onClose }: Props) {
     requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: 0 }); });
   }
 
-
-  if (!property) return null;
-
   async function toggleSave() {
     if (!user) { toast.message("Sign in to save properties"); return; }
     if (saved) {
