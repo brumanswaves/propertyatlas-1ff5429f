@@ -140,9 +140,18 @@ function AuthPage() {
             {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
           </button>
 
+          <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/disclaimer" className="hover:text-foreground">Disclaimer</Link>
+            <Link to="/data-sources" className="hover:text-foreground">Data Sources</Link>
+            <Link to="/contact" className="hover:text-foreground">Contact</Link>
+          </div>
+
           <Toaster position="top-center" />
         </div>
       </div>
+
     </div>
   );
 }
