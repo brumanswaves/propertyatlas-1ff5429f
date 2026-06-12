@@ -145,6 +145,16 @@ export function PropertyPanel({ property, onClose }: Props) {
             <Stat label="Last sale" value={compactZAR(lastSale.price)} />
             <Stat label="Held" value={`${heldYears}y`} />
           </div>
+          <div
+            className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-white/85"
+            title="This value is an automated estimate generated using available data, modelling assumptions, and analytical methods. It is provided for informational purposes only and does not constitute a certified valuation, appraisal, legal opinion, financial advice, investment advice, or professional recommendation. Users should obtain an independent valuation or professional advice before making decisions involving property purchases, sales, financing, development, taxation, or investment."
+          >
+            <span className="h-1 w-1 rounded-full bg-white/70" />
+            Estimate Only • Not a Certified Valuation
+          </div>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-950">
+            Demo Data · Mock property information shown for demonstration
+          </div>
         </div>
 
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
