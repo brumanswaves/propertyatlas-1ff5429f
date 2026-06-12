@@ -184,14 +184,14 @@
 }
 .pa-pulse-marker::before {
   width: 14px; height: 14px;
-  background: oklch(0.71 0.16 60);
-  box-shadow: 0 0 0 3px oklch(1 0 0 / 0.9), 0 0 18px oklch(0.71 0.16 60 / 0.65);
+  background: oklch(0.74 0.14 80);
+  box-shadow: 0 0 0 3px oklch(1 0 0 / 0.9), 0 0 18px oklch(0.74 0.14 80 / 0.65);
   transform: translate(-50%, -50%);
   animation: pa-pulse-dot 1.8s ease-in-out infinite;
 }
 .pa-pulse-marker::after {
   width: 14px; height: 14px;
-  border: 2px solid oklch(0.71 0.16 60);
+  border: 2px solid oklch(0.74 0.14 80);
   transform: translate(-50%, -50%);
   animation: pa-pulse-ring 1.8s ease-out infinite;
 }
