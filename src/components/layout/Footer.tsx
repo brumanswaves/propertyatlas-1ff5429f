@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MapPinned } from "lucide-react";
+import { AtlasPin } from "@/components/brand/AtlasPin";
 
 const LEGAL_LINKS = [
   { to: "/terms", label: "Terms of Use" },
@@ -16,18 +16,20 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 md:grid-cols-4">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-brand text-white">
-              <MapPinned className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-semibold tracking-tight">
-              Property<span className="text-primary">Atlas</span>
+            <AtlasPin className="h-7 w-auto" />
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              PropertyAtlas
             </span>
           </div>
+          <p className="mt-2 text-[11px] font-medium uppercase tracking-wider text-accent">
+            Every Property. Every Story.
+          </p>
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-muted-foreground">
             Map-based property intelligence for South Africa. A research and information
             platform — not a law firm, valuation company, or investment advisor.
           </p>
         </div>
+
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Product</div>
           <ul className="mt-3 space-y-2 text-xs">
