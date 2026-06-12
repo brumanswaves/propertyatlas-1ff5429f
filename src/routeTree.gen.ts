@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PartnershipsRouteImport } from './routes/partnerships'
@@ -36,6 +37,11 @@ const TermsRoute = TermsRouteImport.update({
 const SubscriptionsRoute = SubscriptionsRouteImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
 }
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
 }
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
 }
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
   id:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
   fileRoutesById: FileRoutesById
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  RoadmapRoute: typeof RoadmapRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
 }
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/subscriptions'
       preLoaderRoute: typeof SubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -412,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  RoadmapRoute: RoadmapRoute,
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
 }
