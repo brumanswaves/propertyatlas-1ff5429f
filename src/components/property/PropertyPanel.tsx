@@ -145,6 +145,16 @@ export function PropertyPanel({ property, onClose }: Props) {
             <Stat label="Last sale" value={compactZAR(lastSale.price)} />
             <Stat label="Held" value={`${heldYears}y`} />
           </div>
+          <div
+            className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-white/85"
+            title="This value is an automated estimate generated using available data, modelling assumptions, and analytical methods. It is provided for informational purposes only and does not constitute a certified valuation, appraisal, legal opinion, financial advice, investment advice, or professional recommendation. Users should obtain an independent valuation or professional advice before making decisions involving property purchases, sales, financing, development, taxation, or investment."
+          >
+            <span className="h-1 w-1 rounded-full bg-white/70" />
+            Estimate Only • Not a Certified Valuation
+          </div>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-950">
+            Demo Data · Mock property information shown for demonstration
+          </div>
         </div>
 
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
@@ -598,6 +608,12 @@ function WhyCard({ property }: { property: Property }) {
         <WhySection tone="strength" title="Strengths" items={why.strengths} />
         <WhySection tone="risk" title="Risks" items={why.risks} />
       </div>
+      <p
+        className="mt-3 border-t border-border/60 pt-2 text-[10px] leading-snug text-muted-foreground"
+        title="AI-generated insights are produced using automated analysis and may contain inaccuracies. Do not rely on AI-generated insights as professional advice."
+      >
+        <span className="font-semibold text-foreground/80">AI Generated Insight • Informational Use Only.</span> May contain inaccuracies — not professional advice. <span className="font-semibold text-foreground/80">Estimate Only • Not a Certified Valuation.</span>
+      </p>
     </div>
   );
 }
@@ -748,10 +764,14 @@ function SalesTab({ property }: { property: Property }) {
       </div>
 
       <div class="grid">
-        <div class="card"><div class="l">Estimated value</div><div class="v">${formatZAR(property.estimatedValue)}</div></div>
+        <div class="card"><div class="l">Estimated value</div><div class="v">${formatZAR(property.estimatedValue)}</div><div style="margin-top:4px;font-size:9px;font-weight:600;color:#b45309;text-transform:uppercase;letter-spacing:.04em">Estimate Only • Not a Certified Valuation</div></div>
         <div class="card"><div class="l">Municipal</div><div class="v">${formatZAR(property.municipalValue)}</div></div>
         <div class="card"><div class="l">Price / m²</div><div class="v">R ${Math.round(property.estimatedValue/property.sizeSqm).toLocaleString()}</div></div>
         <div class="card"><div class="l">Owner since</div><div class="v">${new Date(property.ownership.since).getFullYear()}</div></div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:10px;font-size:11px;color:#78350f;line-height:1.5">
+        <strong>Important:</strong> PropertyAtlas estimates are automated informational estimates and are not certified valuations or appraisals. This report is provided for informational purposes only and is not a professional valuation, legal opinion, or investment recommendation.
       </div>
 
       <h2>10-Year Property History</h2>
@@ -1016,7 +1036,14 @@ function IntelligenceTab({ property }: { property: Property }) {
           <Sparkles className="h-3 w-3" /> AI summary
         </div>
         <p className="text-[13px] leading-relaxed text-foreground/90">{summary}</p>
+        <p className="mt-2 border-t border-border/60 pt-2 text-[10px] leading-snug text-muted-foreground">
+          <span className="font-semibold text-foreground/80">AI Generated Insight • Informational Use Only.</span> Generated using automated analysis and may contain inaccuracies. <span className="font-semibold text-foreground/80">Estimate Only • Not a Certified Valuation.</span>
+        </p>
       </div>
+
+      <p className="rounded-xl border border-border bg-card/60 px-3 py-2 text-[10.5px] leading-snug text-muted-foreground">
+        Scores are proprietary informational indicators and should not be interpreted as guarantees, recommendations, forecasts, or professional advice.
+      </p>
 
       <div className="grid grid-cols-2 gap-2">
         <Gauge label="Investor" value={property.scores.investor} icon={<TrendingUp className="h-3 w-3" />} explain="Composite of liquidity, appreciation, and yield" />

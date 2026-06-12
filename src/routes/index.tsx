@@ -7,6 +7,7 @@ import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/Fil
 import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
 import { TopNav } from "@/components/layout/TopNav";
+import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, PROPERTIES, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -155,9 +156,12 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-4 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
-        Pilot region · St Francis Bay, Eastern Cape. Mock data for demonstration — PropertyAtlas does not yet provide official deeds, valuation, or ownership records.
+      <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
+        <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Demo Data</span>
+        Pilot region · St Francis Bay. Mock property information shown for demonstration. Estimates are not certified valuations.
       </div>
+
+      <FooterMini />
 
       <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
       <Toaster position="top-center" />
