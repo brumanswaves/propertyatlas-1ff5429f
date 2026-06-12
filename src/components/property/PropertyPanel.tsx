@@ -125,7 +125,7 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
       </header>
 
-      <div ref={scrollRef} className="scrollbar-thin relative flex-1 overflow-y-auto pb-8">
+      <div ref={scrollRef} className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
         <div className="mx-5 mt-1 overflow-hidden rounded-2xl bg-gradient-brand p-3 text-white shadow-soft">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
