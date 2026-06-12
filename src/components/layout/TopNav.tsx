@@ -1,24 +1,24 @@
 import { Link } from "@tanstack/react-router";
-import { MapPinned, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AtlasPin } from "@/components/brand/AtlasPin";
 
 export function TopNav() {
   const { user } = useAuth();
   return (
     <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4 py-3 md:px-6">
-      <Link to="/" className="flex items-center gap-2 rounded-full bg-card/90 px-3 py-2 shadow-soft backdrop-blur">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-brand text-white">
-          <MapPinned className="h-4 w-4" />
-        </span>
-        <span className="text-sm font-semibold tracking-tight">
-          Property<span className="text-primary">Atlas</span>
+      <Link to="/" className="flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 shadow-soft backdrop-blur ring-1 ring-border/60">
+        <AtlasPin className="h-6 w-auto" />
+        <span className="text-sm font-semibold tracking-tight text-foreground">
+          PropertyAtlas
         </span>
         <span className="ml-1 hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:inline">
           Pilot · St Francis Bay
         </span>
       </Link>
+
       <nav className="flex items-center gap-1.5 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur">
         <Link to="/pricing" className="hidden px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground sm:inline-flex">
           Pricing

@@ -43,24 +43,24 @@
 :root {
   --radius: 0.75rem;
 
-  /* === Sunrise Sand palette — coastal South Africa premium === */
-  /* Deep ocean blue */
-  --brand: oklch(0.32 0.06 240);              /* #1a3a52 */
+  /* === PropertyAtlas Master Brand palette === */
+  /* Deep Ocean Blue #0A3D62 */
+  --brand: oklch(0.36 0.07 240);
   --brand-foreground: oklch(0.98 0.01 90);
-  /* Coastal teal */
-  --teal: oklch(0.78 0.10 195);                /* #5cbdb9 */
-  /* Warm gold (sunrise) */
-  --gold: oklch(0.71 0.16 60);                 /* #d4842a */
-  /* Soft sand background */
-  --sand: oklch(0.97 0.02 85);                 /* #faf5ec */
+  /* Coastal Teal #0F8B8D */
+  --teal: oklch(0.60 0.08 195);
+  /* Warm Gold #D4A017 */
+  --gold: oklch(0.74 0.14 80);
+  /* Sand White #F8F5EF */
+  --sand: oklch(0.97 0.012 85);
 
   --ocean: var(--brand);
   --coast: var(--teal);
 
   /* Semantic mappings */
   --background: var(--sand);
-  --foreground: oklch(0.24 0.04 240);          /* deep slate-navy */
-  --card: oklch(0.995 0.005 85);               /* near-white warm */
+  --foreground: oklch(0.22 0.04 240);           /* deep slate-navy */
+  --card: oklch(1 0 0);                         /* clean white cards */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -69,31 +69,32 @@
   --primary-foreground: oklch(0.98 0.01 90);
   --accent: var(--gold);
   --accent-foreground: oklch(0.22 0.03 240);
-  --secondary: oklch(0.94 0.025 85);
+  --secondary: oklch(0.95 0.018 85);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.93 0.02 80);
+  --muted: oklch(0.94 0.015 80);
   --muted-foreground: oklch(0.46 0.03 240);
 
-  --success: oklch(0.62 0.10 175);             /* sea green */
+  --success: oklch(0.66 0.10 175);              /* sea green #3FAE8C */
   --destructive: oklch(0.58 0.21 27);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.88 0.02 80);
-  --input: oklch(0.88 0.02 80);
+  --border: oklch(0.88 0.018 80);
+  --input: oklch(0.88 0.018 80);
   --ring: var(--teal);
 
-  /* Premium gradients */
-  --gradient-brand: linear-gradient(135deg, oklch(0.32 0.06 240), oklch(0.46 0.08 220));
-  --gradient-ocean: linear-gradient(135deg, oklch(0.32 0.06 240) 0%, oklch(0.55 0.10 215) 60%, oklch(0.78 0.10 195) 100%);
-  --gradient-sunrise: linear-gradient(135deg, oklch(0.74 0.16 50) 0%, oklch(0.71 0.16 60) 50%, oklch(0.66 0.18 35) 100%);
-  --gradient-premium: var(--gradient-sunrise);
-  --gradient-sand: linear-gradient(180deg, oklch(0.98 0.015 85), oklch(0.94 0.025 85));
+  /* Premium gradients — Ocean → Teal → Gold */
+  --gradient-brand: linear-gradient(135deg, oklch(0.36 0.07 240), oklch(0.50 0.08 215));
+  --gradient-ocean: linear-gradient(135deg, oklch(0.36 0.07 240) 0%, oklch(0.50 0.09 215) 60%, oklch(0.60 0.08 195) 100%);
+  --gradient-sunrise: linear-gradient(135deg, oklch(0.60 0.08 195) 0%, oklch(0.68 0.11 130) 55%, oklch(0.74 0.14 80) 100%);
+  --gradient-premium: linear-gradient(135deg, oklch(0.36 0.07 240) 0%, oklch(0.60 0.08 195) 55%, oklch(0.74 0.14 80) 100%);
+  --gradient-sand: linear-gradient(180deg, oklch(0.985 0.008 85), oklch(0.94 0.018 85));
 
-  --shadow-panel: 0 24px 60px -24px oklch(0.32 0.06 240 / 0.28),
-                  0 2px 6px -2px oklch(0.32 0.06 240 / 0.08);
-  --shadow-soft: 0 4px 14px -4px oklch(0.32 0.06 240 / 0.14);
-  --shadow-glow: 0 0 0 4px oklch(0.71 0.16 60 / 0.18), 0 8px 24px -6px oklch(0.71 0.16 60 / 0.35);
+  --shadow-panel: 0 24px 60px -24px oklch(0.36 0.07 240 / 0.28),
+                  0 2px 6px -2px oklch(0.36 0.07 240 / 0.08);
+  --shadow-soft: 0 4px 14px -4px oklch(0.36 0.07 240 / 0.14);
+  --shadow-glow: 0 0 0 4px oklch(0.74 0.14 80 / 0.20), 0 8px 24px -6px oklch(0.74 0.14 80 / 0.38);
 }
+
 
 .dark {
   --background: oklch(0.16 0.025 240);
@@ -183,14 +184,14 @@
 }
 .pa-pulse-marker::before {
   width: 14px; height: 14px;
-  background: oklch(0.71 0.16 60);
-  box-shadow: 0 0 0 3px oklch(1 0 0 / 0.9), 0 0 18px oklch(0.71 0.16 60 / 0.65);
+  background: oklch(0.74 0.14 80);
+  box-shadow: 0 0 0 3px oklch(1 0 0 / 0.9), 0 0 18px oklch(0.74 0.14 80 / 0.65);
   transform: translate(-50%, -50%);
   animation: pa-pulse-dot 1.8s ease-in-out infinite;
 }
 .pa-pulse-marker::after {
   width: 14px; height: 14px;
-  border: 2px solid oklch(0.71 0.16 60);
+  border: 2px solid oklch(0.74 0.14 80);
   transform: translate(-50%, -50%);
   animation: pa-pulse-ring 1.8s ease-out infinite;
 }
