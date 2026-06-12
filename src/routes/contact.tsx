@@ -1,64 +1,137 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail } from "lucide-react";
-import { LegalPage, LegalSection } from "@/components/layout/LegalPage";
-
-const CONTACT_EMAIL = "info@propertyatlas.co.za";
+import { useState } from "react";
+import { MarketingPage, SectionHeading } from "@/components/layout/MarketingPage";
+import { LifeBuoy, Handshake, Database, AlertTriangle, ShieldCheck, Newspaper, MessageSquare, Send } from "lucide-react";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact Us — PropertyAtlas" },
-      { name: "description", content: "Get in touch with PropertyAtlas for questions, corrections, data requests, privacy requests, and support." },
+      { title: "Contact PropertyAtlas" },
+      { name: "description", content: "Get in touch with PropertyAtlas — support, partnerships, data providers, corrections, privacy requests, and media." },
+      { property: "og:title", content: "Contact PropertyAtlas" },
+      { property: "og:description", content: "We respond to every legitimate inquiry." },
     ],
   }),
-  component: ContactPage,
+  component: Contact,
 });
 
-function ContactPage() {
-  const channels: { title: string; body: string }[] = [
-    { title: "Questions", body: "General questions about how PropertyAtlas works or what it covers." },
-    { title: "Corrections", body: "Spotted incorrect information about a property? Let us know and we'll review." },
-    { title: "Data Requests", body: "Request specific datasets, exports, or coverage expansion in your area." },
-    { title: "Privacy Requests", body: "Access, correct, or delete personal information held by PropertyAtlas." },
-    { title: "POPIA Requests", body: "Formal requests under the Protection of Personal Information Act." },
-    { title: "General Support", body: "Account, billing, or technical issues with the platform." },
-  ];
+const TOPICS = [
+  { icon: MessageSquare, label: "General Questions", value: "general" },
+  { icon: LifeBuoy, label: "Support", value: "support" },
+  { icon: Handshake, label: "Partnerships", value: "partnerships" },
+  { icon: Database, label: "Data Providers", value: "data" },
+  { icon: AlertTriangle, label: "Corrections", value: "corrections" },
+  { icon: ShieldCheck, label: "Privacy Requests", value: "privacy" },
+  { icon: Newspaper, label: "Media", value: "media" },
+];
+
+function Contact() {
+  const [topic, setTopic] = useState("general");
+  const [sent, setSent] = useState(false);
 
   return (
-    <LegalPage
-      title="Contact Us"
-      intro="We're a small team. Reach out for any of the topics below and we'll get back to you."
+    <MarketingPage
+      eyebrow="Contact"
+      title="Talk to PropertyAtlas."
+      subtitle="We respond to every legitimate inquiry."
+      intro="Whether you're a homeowner with a question, a journalist with a story, or a data provider exploring a partnership — we'd like to hear from you."
     >
-      <LegalSection title="Email">
-        <a
-          href={`mailto:${CONTACT_EMAIL}`}
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-soft transition hover:border-primary/40 hover:text-primary"
-        >
-          <Mail className="h-4 w-4" />
-          {CONTACT_EMAIL}
-        </a>
-        <p className="text-xs text-muted-foreground">
-          Please include relevant property references (street, area, or PropertyAtlas link) where applicable.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="What You Can Contact Us About">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {channels.map((c) => (
-            <div key={c.title} className="rounded-xl border border-border bg-card/60 p-4">
-              <div className="text-sm font-semibold text-foreground">{c.title}</div>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{c.body}</p>
-            </div>
-          ))}
+      <section>
+        <SectionHeading title="What's this about?" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {TOPICS.map((t) => {
+            const active = topic === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setTopic(t.value)}
+                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+                  active
+                    ? "border-primary bg-primary/5 shadow-soft"
+                    : "border-border bg-card hover:border-primary/40"
+                }`}
+              >
+                <span className={`inline-grid h-9 w-9 place-items-center rounded-xl ${active ? "bg-gradient-brand text-primary-foreground" : "bg-muted text-foreground"}`}>
+                  <t.icon className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-semibold text-foreground">{t.label}</span>
+              </button>
+            );
+          })}
         </div>
-      </LegalSection>
+      </section>
 
-      <LegalSection title="Response Times">
-        <p>
-          We aim to respond within 5 business days. Privacy and POPIA requests are handled in
-          line with our statutory obligations.
-        </p>
-      </LegalSection>
-    </LegalPage>
+      <section className="mt-12 rounded-3xl border border-border bg-card p-6 shadow-soft sm:p-8">
+        <SectionHeading eyebrow="Get in touch" title="Send us a message" />
+        {sent ? (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-sm text-foreground">
+            Thanks — your message has been received. We'll be in touch.
+          </div>
+        ) : (
+          <form
+            className="grid gap-4 sm:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSent(true);
+            }}
+          >
+            <Field label="Your name" name="name" required />
+            <Field label="Email" name="email" type="email" required />
+            <input type="hidden" name="topic" value={topic} />
+            <div className="sm:col-span-2">
+              <Field label="Subject" name="subject" required />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Message</label>
+              <textarea
+                name="message"
+                required
+                rows={6}
+                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder="How can we help?"
+              />
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                By submitting this form you agree to our Privacy Policy. We will only use your information to respond to your inquiry.
+              </p>
+            </div>
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:-translate-y-0.5 hover:shadow-glow"
+              >
+                <Send className="h-4 w-4" />
+                Send message
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </MarketingPage>
+  );
+}
+
+function Field({
+  label,
+  name,
+  type = "text",
+  required,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}{required && <span className="text-accent"> *</span>}
+      </span>
+      <input
+        name={name}
+        type={type}
+        required={required}
+        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+      />
+    </label>
   );
 }

@@ -9,17 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WhyRouteImport } from './routes/why'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PartnershipsRouteImport } from './routes/partnerships'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as ForInvestorsRouteImport } from './routes/for-investors'
+import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
+import { Route as ForDevelopersRouteImport } from './routes/for-developers'
+import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as DataSourcesRouteImport } from './routes/data-sources'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WhyRoute = WhyRouteImport.update({
+  id: '/why',
+  path: '/why',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -30,6 +45,11 @@ const SubscriptionsRoute = SubscriptionsRouteImport.update({
   path: '/subscriptions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -38,6 +58,41 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnershipsRoute = PartnershipsRouteImport.update({
+  id: '/partnerships',
+  path: '/partnerships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForInvestorsRoute = ForInvestorsRouteImport.update({
+  id: '/for-investors',
+  path: '/for-investors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForHomeownersRoute = ForHomeownersRouteImport.update({
+  id: '/for-homeowners',
+  path: '/for-homeowners',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForDevelopersRoute = ForDevelopersRouteImport.update({
+  id: '/for-developers',
+  path: '/for-developers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesRoute = FeaturesRouteImport.update({
+  id: '/features',
+  path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DisclaimerRoute = DisclaimerRouteImport.update({
@@ -65,6 +120,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -73,95 +133,172 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/for-developers': typeof ForDevelopersRoute
+  '/for-homeowners': typeof ForHomeownersRoute
+  '/for-investors': typeof ForInvestorsRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
+  '/why': typeof WhyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/for-developers': typeof ForDevelopersRoute
+  '/for-homeowners': typeof ForHomeownersRoute
+  '/for-investors': typeof ForInvestorsRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
+  '/why': typeof WhyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
+  '/features': typeof FeaturesRoute
+  '/for-developers': typeof ForDevelopersRoute
+  '/for-homeowners': typeof ForHomeownersRoute
+  '/for-investors': typeof ForInvestorsRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
+  '/why': typeof WhyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/auth'
     | '/contact'
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
+    | '/features'
+    | '/for-developers'
+    | '/for-homeowners'
+    | '/for-investors'
+    | '/how-it-works'
+    | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
+    | '/why'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/auth'
     | '/contact'
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
+    | '/features'
+    | '/for-developers'
+    | '/for-homeowners'
+    | '/for-investors'
+    | '/how-it-works'
+    | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
+    | '/why'
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/auth'
     | '/contact'
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
+    | '/features'
+    | '/for-developers'
+    | '/for-homeowners'
+    | '/for-investors'
+    | '/how-it-works'
+    | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/roadmap'
     | '/subscriptions'
     | '/terms'
+    | '/why'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   DataSourcesRoute: typeof DataSourcesRoute
   DisclaimerRoute: typeof DisclaimerRoute
+  FaqRoute: typeof FaqRoute
+  FeaturesRoute: typeof FeaturesRoute
+  ForDevelopersRoute: typeof ForDevelopersRoute
+  ForHomeownersRoute: typeof ForHomeownersRoute
+  ForInvestorsRoute: typeof ForInvestorsRoute
+  HowItWorksRoute: typeof HowItWorksRoute
+  PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  RoadmapRoute: typeof RoadmapRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
+  WhyRoute: typeof WhyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/why': {
+      id: '/why'
+      path: '/why'
+      fullPath: '/why'
+      preLoaderRoute: typeof WhyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -176,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubscriptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -188,6 +332,55 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partnerships': {
+      id: '/partnerships'
+      path: '/partnerships'
+      fullPath: '/partnerships'
+      preLoaderRoute: typeof PartnershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-investors': {
+      id: '/for-investors'
+      path: '/for-investors'
+      fullPath: '/for-investors'
+      preLoaderRoute: typeof ForInvestorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-homeowners': {
+      id: '/for-homeowners'
+      path: '/for-homeowners'
+      fullPath: '/for-homeowners'
+      preLoaderRoute: typeof ForHomeownersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-developers': {
+      id: '/for-developers'
+      path: '/for-developers'
+      fullPath: '/for-developers'
+      preLoaderRoute: typeof ForDevelopersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features': {
+      id: '/features'
+      path: '/features'
+      fullPath: '/features'
+      preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/disclaimer': {
@@ -225,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -237,15 +437,25 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   DataSourcesRoute: DataSourcesRoute,
   DisclaimerRoute: DisclaimerRoute,
+  FaqRoute: FaqRoute,
+  FeaturesRoute: FeaturesRoute,
+  ForDevelopersRoute: ForDevelopersRoute,
+  ForHomeownersRoute: ForHomeownersRoute,
+  ForInvestorsRoute: ForInvestorsRoute,
+  HowItWorksRoute: HowItWorksRoute,
+  PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  RoadmapRoute: RoadmapRoute,
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
+  WhyRoute: WhyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
