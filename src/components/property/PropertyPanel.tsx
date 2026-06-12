@@ -1036,7 +1036,14 @@ function IntelligenceTab({ property }: { property: Property }) {
           <Sparkles className="h-3 w-3" /> AI summary
         </div>
         <p className="text-[13px] leading-relaxed text-foreground/90">{summary}</p>
+        <p className="mt-2 border-t border-border/60 pt-2 text-[10px] leading-snug text-muted-foreground">
+          <span className="font-semibold text-foreground/80">AI Generated Insight • Informational Use Only.</span> Generated using automated analysis and may contain inaccuracies. <span className="font-semibold text-foreground/80">Estimate Only • Not a Certified Valuation.</span>
+        </p>
       </div>
+
+      <p className="rounded-xl border border-border bg-card/60 px-3 py-2 text-[10.5px] leading-snug text-muted-foreground">
+        Scores are proprietary informational indicators and should not be interpreted as guarantees, recommendations, forecasts, or professional advice.
+      </p>
 
       <div className="grid grid-cols-2 gap-2">
         <Gauge label="Investor" value={property.scores.investor} icon={<TrendingUp className="h-3 w-3" />} explain="Composite of liquidity, appreciation, and yield" />
