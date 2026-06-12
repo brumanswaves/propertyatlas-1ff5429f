@@ -277,37 +277,8 @@ export function PropertyPanel({ property, onClose }: Props) {
         {tab === "sales" && <SalesTab property={property} />}
 
 
-        {tab === "intelligence" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Gauge label="Investor" value={property.scores.investor} icon={<TrendingUp className="h-3 w-3" />}
-                explain="Composite of liquidity, appreciation, and yield" />
-              <Gauge label="Development" value={property.scores.development} icon={<Building2 className="h-3 w-3" />}
-                explain="Zoning, bulk, and lot geometry potential" />
-              <Gauge label="Ocean view" value={property.scores.oceanView} icon={<Eye className="h-3 w-3" />}
-                explain="Line-of-sight to ocean from buildable area" />
-              <Gauge label="Walkability" value={property.scores.walkability} icon={<Activity className="h-3 w-3" />}
-                explain="Beach, retail, and amenity proximity" />
-              <Gauge label="Appreciation" value={property.scores.appreciation} icon={<TrendingUp className="h-3 w-3" />}
-                explain="Modelled 5-yr capital growth" />
-              <Gauge label="Rental yield" value={property.scores.rental} icon={<Home className="h-3 w-3" />}
-                explain="Short-let demand & seasonality" />
-              <Gauge label="Liquidity" value={property.scores.liquidity} icon={<Banknote className="h-3 w-3" />}
-                explain="Days-to-sell at fair value" />
-              <Gauge label="Coastal" value={property.scores.coastal} icon={<Waves className="h-3 w-3" />}
-                explain="Beachfront and coastline desirability" />
-            </div>
-            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
-              <Section title="Development feasibility">
-                <Row label="Coverage allowance" value="60%" />
-                <Row label="Bulk allowance" value="0.8" />
-                <Row label="Height limit" value="2 storeys" />
-                <Row label="Buildable area" value={`${Math.round(property.sizeSqm * 0.48).toLocaleString()} m²`} />
-                <Row label="Indicative GDV" value={formatZAR(property.estimatedValue * 2.4)} />
-              </Section>
-            </Locked>
-          </div>
-        )}
+        {tab === "intelligence" && <IntelligenceTab property={property} />}
+
 
         {tab === "photos" && (
           <div className="space-y-4">
@@ -1023,4 +994,106 @@ function OwnershipTab({ property }: { property: Property }) {
       )}
     </div>
   );
+}
+
+function IntelligenceTab({ property }: { property: Property }) {
+  const heldYears = 2026 - new Date(property.ownership.since).getFullYear();
+  const summary = useMemo(() => buildAISummary(property, heldYears), [property, heldYears]);
+  const feas = useMemo(() => buildFeasibility(property), [property]);
+  const upside = Math.round(((feas.gdv - property.estimatedValue) / property.estimatedValue) * 100);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-card to-card p-4 ring-1 ring-inset ring-primary/25">
+        <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+          <Sparkles className="h-3 w-3" /> AI summary
+        </div>
+        <p className="text-[13px] leading-relaxed text-foreground/90">{summary}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Gauge label="Investor" value={property.scores.investor} icon={<TrendingUp className="h-3 w-3" />} explain="Composite of liquidity, appreciation, and yield" />
+        <Gauge label="Development" value={property.scores.development} icon={<Building2 className="h-3 w-3" />} explain="Zoning, bulk, and lot geometry potential" />
+        <Gauge label="Ocean view" value={property.scores.oceanView} icon={<Eye className="h-3 w-3" />} explain="Line-of-sight to ocean from buildable area" />
+        <Gauge label="Walkability" value={property.scores.walkability} icon={<Activity className="h-3 w-3" />} explain="Beach, retail, and amenity proximity" />
+        <Gauge label="Appreciation" value={property.scores.appreciation} icon={<TrendingUp className="h-3 w-3" />} explain="Modelled 5-yr capital growth" />
+        <Gauge label="Rental yield" value={property.scores.rental} icon={<Home className="h-3 w-3" />} explain="Short-let demand & seasonality" />
+        <Gauge label="Liquidity" value={property.scores.liquidity} icon={<Banknote className="h-3 w-3" />} explain="Days-to-sell at fair value" />
+        <Gauge label="Coastal" value={property.scores.coastal} icon={<Waves className="h-3 w-3" />} explain="Beachfront and coastline desirability" />
+      </div>
+
+      <Section title="Development feasibility">
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          <FeasStat label="Buildable" value={`${feas.buildable.toLocaleString()} m²`} />
+          <FeasStat label="Est. GDV" value={compactZAR(feas.gdv)} />
+          <FeasStat label="Upside" value={`${upside >= 0 ? "+" : ""}${upside}%`} tone={upside >= 25 ? "accent" : "default"} />
+        </div>
+        <Row label="Zoning" value={property.zoning} />
+        <Row label="Coverage allowance" value={`${Math.round(feas.coverage * 100)}%`} />
+        <Row label="Bulk (FAR)" value={feas.far.toFixed(2)} />
+        <Row label="Height limit" value={`${feas.storeys} storeys`} />
+        <Row label="Estimated build cost" value={compactZAR(feas.buildCost)} />
+        <Row label="Land cost (current value)" value={compactZAR(property.estimatedValue)} />
+        <Row label="Projected gross margin" value={`${feas.margin}%`} />
+      </Section>
+
+      <Locked preview={["Highest-and-best-use analysis","Comparable new-builds","Plans & permits search","Sensitivity model","Developer brief PDF"]}>
+        <Section title="Premium development modules">
+          <Row label="Highest & best use" value="3-unit short-let stack" />
+          <Row label="Sensitivity (±10% build)" value={`${compactZAR(feas.gdv * 0.9)} – ${compactZAR(feas.gdv * 1.1)}`} />
+          <Row label="Permit pack" value="Concept + zoning brief" />
+        </Section>
+      </Locked>
+    </div>
+  );
+}
+
+function FeasStat({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "accent" }) {
+  return (
+    <div className={cn(
+      "rounded-lg px-2.5 py-2 ring-1 ring-inset",
+      tone === "accent" ? "bg-primary/10 ring-primary/30" : "bg-card/60 ring-border"
+    )}>
+      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={cn("mt-0.5 text-[13px] font-semibold leading-tight", tone === "accent" && "text-primary")}>{value}</div>
+    </div>
+  );
+}
+
+function buildFeasibility(p: Property) {
+  const coverage =
+    p.type === "Commercial" ? 0.75 :
+    p.type === "Vacant Land" ? 0.55 :
+    p.zoning.includes("General") ? 0.65 : 0.50;
+  const far =
+    p.type === "Commercial" ? 1.4 :
+    p.zoning.includes("General") ? 1.0 : 0.8;
+  const storeys = p.type === "Commercial" ? 3 : far >= 1.0 ? 3 : 2;
+  const buildable = Math.round(p.sizeSqm * coverage);
+  const gfa = Math.round(p.sizeSqm * far);
+  const costPerSqm = p.type === "Commercial" ? 16500 : 14500;
+  const buildCost = gfa * costPerSqm;
+  const sellPerSqm = Math.round(p.estimatedValue / Math.max(120, p.sizeSqm * 0.4));
+  const gdv = Math.round(gfa * sellPerSqm * 1.15);
+  const totalCost = buildCost + p.estimatedValue;
+  const margin = Math.max(0, Math.round(((gdv - totalCost) / Math.max(1, gdv)) * 100));
+  return { coverage, far, storeys, buildable, gfa, buildCost, gdv, margin };
+}
+
+function buildAISummary(p: Property, heldYears: number): string {
+  const headline =
+    p.features.beachfront ? "rare beachfront erf"
+    : p.features.oceanView ? "ocean-view stand"
+    : p.features.vacantLand ? "vacant development opportunity"
+    : p.features.largeErf ? "large family erf"
+    : `${p.type.toLowerCase()} property`;
+  const s1 = `${p.street} is a ${p.sizeSqm.toLocaleString()} m² ${headline} in ${p.area}, currently estimated at ${formatZAR(p.estimatedValue)}.`;
+  const sellSignal = p.scores.sellerProbability >= 70 ? "high" : p.scores.sellerProbability >= 45 ? "moderate" : "low";
+  const s2 = `Held by ${p.ownership.type === "Individual" ? "an individual" : `a ${p.ownership.type.toLowerCase()}`} for ${heldYears} years with a ${sellSignal} seller-intent signal (${p.scores.sellerProbability}/100) and an investor score of ${p.scores.investor}/100.`;
+  const angle =
+    p.features.vacantLand ? "Best framed as a build-to-sell or build-to-let development play given zoning headroom."
+    : p.scores.appreciation >= 70 ? "Positioned for above-market capital growth, with a credible short-let yield overlay."
+    : p.scores.rental >= 70 ? "Strongest case is a yield play — proven short-let demand on this stretch."
+    : "Suited to a long-hold lifestyle buyer; capital growth tracks the suburb median.";
+  return `${s1} ${s2} ${angle}`;
 }
