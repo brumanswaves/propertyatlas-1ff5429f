@@ -16,7 +16,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos" | "timeline";
+type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos";
 
 const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",     label: "Overview",     icon: <Sparkles className="h-3.5 w-3.5" /> },
@@ -24,7 +24,6 @@ const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "sales",        label: "Sales",        icon: <Banknote className="h-3.5 w-3.5" /> },
   { id: "intelligence", label: "Intelligence", icon: <Activity className="h-3.5 w-3.5" /> },
   { id: "photos",       label: "Photos",       icon: <ImageIcon className="h-3.5 w-3.5" /> },
-  { id: "timeline",     label: "Timeline",     icon: <CalendarClock className="h-3.5 w-3.5" /> },
 ];
 
 export function PropertyPanel({ property, onClose }: Props) {
