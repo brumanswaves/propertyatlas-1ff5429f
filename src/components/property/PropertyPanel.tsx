@@ -4,7 +4,7 @@ import {
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
   Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
 } from "lucide-react";
-import { type Property, type HistoryKind, formatZAR, walkMinutes, driveMinutes } from "@/data/properties";
+import { type Property, type HistoryKind, formatZAR, walkMinutes, driveMinutes, PROPERTIES } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -272,23 +272,7 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        {tab === "ownership" && (
-          <div className="space-y-4">
-            <Section title="Current owner">
-              <Row label="Type" value={property.ownership.type} />
-              <Row label="Held since" value={new Date(property.ownership.since).toLocaleDateString("en-ZA")} />
-              <Row label="Duration" value={`${heldYears} years`} />
-            </Section>
-            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
-              <Section title="Owner intelligence">
-                <Row label="Registered owner" value={property.ownership.ownerLabel} />
-                <Row label="Other holdings" value="3 properties in region" />
-                <Row label="Previous owner" value="The Bekker Family Trust" />
-                <Row label="Transfer history" value="4 transfers since 1998" />
-              </Section>
-            </Locked>
-          </div>
-        )}
+        {tab === "ownership" && <OwnershipTab property={property} />}
 
         {tab === "sales" && <SalesTab property={property} />}
 
@@ -834,6 +818,11 @@ function SalesTab({ property }: { property: Property }) {
           <SoldStat label="Owner type" value={property.ownership.type} />
         </div>
       </div>
+
+      {/* Transfer price trajectory */}
+      <TransferChart sales={property.sales} estimate={property.estimatedValue} />
+
+
 
       {/* Filters + export */}
       <div className="flex flex-col gap-2">
