@@ -158,7 +158,7 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
 
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
-          <div className="scrollbar-none flex gap-1 overflow-x-auto px-3 sm:px-5">
+          <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
             {TAB_META.map(({ id, label, icon }) => {
               const active = tab === id;
               return (
@@ -167,7 +167,7 @@ export function PropertyPanel({ property, onClose }: Props) {
                   onClick={() => selectTab(id)}
                   aria-pressed={active}
                   className={cn(
-                    "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition",
+                    "relative inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-2.5 text-[11px] font-medium transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
                     active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -179,6 +179,7 @@ export function PropertyPanel({ property, onClose }: Props) {
             })}
           </div>
         </div>
+
 
         <div className="px-5 pt-4">
 
