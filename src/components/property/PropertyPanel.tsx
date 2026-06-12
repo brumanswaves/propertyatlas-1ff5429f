@@ -277,37 +277,8 @@ export function PropertyPanel({ property, onClose }: Props) {
         {tab === "sales" && <SalesTab property={property} />}
 
 
-        {tab === "intelligence" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Gauge label="Investor" value={property.scores.investor} icon={<TrendingUp className="h-3 w-3" />}
-                explain="Composite of liquidity, appreciation, and yield" />
-              <Gauge label="Development" value={property.scores.development} icon={<Building2 className="h-3 w-3" />}
-                explain="Zoning, bulk, and lot geometry potential" />
-              <Gauge label="Ocean view" value={property.scores.oceanView} icon={<Eye className="h-3 w-3" />}
-                explain="Line-of-sight to ocean from buildable area" />
-              <Gauge label="Walkability" value={property.scores.walkability} icon={<Activity className="h-3 w-3" />}
-                explain="Beach, retail, and amenity proximity" />
-              <Gauge label="Appreciation" value={property.scores.appreciation} icon={<TrendingUp className="h-3 w-3" />}
-                explain="Modelled 5-yr capital growth" />
-              <Gauge label="Rental yield" value={property.scores.rental} icon={<Home className="h-3 w-3" />}
-                explain="Short-let demand & seasonality" />
-              <Gauge label="Liquidity" value={property.scores.liquidity} icon={<Banknote className="h-3 w-3" />}
-                explain="Days-to-sell at fair value" />
-              <Gauge label="Coastal" value={property.scores.coastal} icon={<Waves className="h-3 w-3" />}
-                explain="Beachfront and coastline desirability" />
-            </div>
-            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
-              <Section title="Development feasibility">
-                <Row label="Coverage allowance" value="60%" />
-                <Row label="Bulk allowance" value="0.8" />
-                <Row label="Height limit" value="2 storeys" />
-                <Row label="Buildable area" value={`${Math.round(property.sizeSqm * 0.48).toLocaleString()} m²`} />
-                <Row label="Indicative GDV" value={formatZAR(property.estimatedValue * 2.4)} />
-              </Section>
-            </Locked>
-          </div>
-        )}
+        {tab === "intelligence" && <IntelligenceTab property={property} />}
+
 
         {tab === "photos" && (
           <div className="space-y-4">
