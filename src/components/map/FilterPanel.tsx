@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+
 import type { PropertyType } from "@/data/properties";
 import { cn } from "@/lib/utils";
 
