@@ -819,6 +819,11 @@ function SalesTab({ property }: { property: Property }) {
         </div>
       </div>
 
+      {/* Transfer price trajectory */}
+      <TransferChart sales={property.sales} estimate={property.estimatedValue} />
+
+
+
       {/* Filters + export */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
