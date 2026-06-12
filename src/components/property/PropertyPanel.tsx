@@ -46,9 +46,6 @@ export function PropertyPanel({ property, onClose }: Props) {
     requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: 0 }); });
   }
 
-
-  if (!property) return null;
-
   async function toggleSave() {
     if (!user) { toast.message("Sign in to save properties"); return; }
     if (saved) {
@@ -60,10 +57,6 @@ export function PropertyPanel({ property, onClose }: Props) {
       else { setSaved(true); toast.success("Saved to your properties"); }
     }
   }
-
-  const ppm = Math.round(property.estimatedValue / property.sizeSqm);
-  const lastSale = property.sales[0];
-  const heldYears = new Date().getFullYear() - new Date(property.ownership.since).getFullYear();
 
   const dragStartY = useRef<number | null>(null);
   const [dragY, setDragY] = useState(0);
@@ -83,6 +76,13 @@ export function PropertyPanel({ property, onClose }: Props) {
     dragStartY.current = null;
     setDragY(0);
   }
+
+  if (!property) return null;
+
+  const ppm = Math.round(property.estimatedValue / property.sizeSqm);
+  const lastSale = property.sales[0];
+  const heldYears = new Date().getFullYear() - new Date(property.ownership.since).getFullYear();
+
 
   return (
     <aside
