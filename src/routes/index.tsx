@@ -7,6 +7,7 @@ import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/Fil
 import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
 import { TopNav } from "@/components/layout/TopNav";
+import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, PROPERTIES, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
 
