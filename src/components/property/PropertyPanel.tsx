@@ -303,31 +303,6 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        {tab === "timeline" && (
-          <div className="space-y-4">
-            <Section title="Timeline">
-              <ol className="space-y-3 border-l border-border pl-4">
-                {property.timeline.map((e, i) => (
-                  <li key={i} className="relative">
-                    <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full border-2 border-card bg-primary" />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CalendarClock className="h-3 w-3" />
-                      {new Date(e.date).toLocaleDateString("en-ZA", { dateStyle: "medium" })}
-                    </div>
-                    <div className="text-sm font-medium">{e.title}</div>
-                  </li>
-                ))}
-              </ol>
-            </Section>
-            <Locked preview={["Ownership timeline","Comparable sales","Previous transfer prices","Development notes","Historical imagery"]}>
-              <Section title="Historical aerial imagery">
-                <Row label="Earliest record" value="2009" />
-                <Row label="Imagery snapshots" value="12 available" />
-                <Row label="Renovation detected" value="2017, 2021" />
-              </Section>
-            </Locked>
-          </div>
-        )}
         </div>
       </div>
     </aside>
