@@ -608,6 +608,12 @@ function WhyCard({ property }: { property: Property }) {
         <WhySection tone="strength" title="Strengths" items={why.strengths} />
         <WhySection tone="risk" title="Risks" items={why.risks} />
       </div>
+      <p
+        className="mt-3 border-t border-border/60 pt-2 text-[10px] leading-snug text-muted-foreground"
+        title="AI-generated insights are produced using automated analysis and may contain inaccuracies. Do not rely on AI-generated insights as professional advice."
+      >
+        <span className="font-semibold text-foreground/80">AI Generated Insight • Informational Use Only.</span> May contain inaccuracies — not professional advice. <span className="font-semibold text-foreground/80">Estimate Only • Not a Certified Valuation.</span>
+      </p>
     </div>
   );
 }
