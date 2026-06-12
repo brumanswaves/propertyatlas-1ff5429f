@@ -926,3 +926,101 @@ function SoldStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function TransferChart({ sales, estimate }: { sales: Property["sales"]; estimate: number }) {
+  const sorted = [...sales].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const W = 320, H = 120, P = 24;
+  const prices = [...sorted.map((s) => s.price), estimate];
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = Math.max(1, max - min);
+  const xs = sorted.map((_, i) => P + (i * (W - 2 * P)) / Math.max(1, sorted.length - 1));
+  const ys = sorted.map((s) => H - P - ((s.price - min) / range) * (H - 2 * P));
+  const estY = H - P - ((estimate - min) / range) * (H - 2 * P);
+  const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x},${ys[i]}`).join(" ");
+  const areaPath = `${linePath} L${xs[xs.length - 1]},${H - P} L${xs[0]},${H - P} Z`;
+  return (
+    <div className="rounded-xl bg-card/60 p-3 ring-1 ring-inset ring-border">
+      <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Price trajectory</div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        <defs>
+          <linearGradient id="tcGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#tcGrad)" />
+        <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" />
+        <line x1={P} x2={W - P} y1={estY} y2={estY} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity="0.5" />
+        {sorted.map((s, i) => (
+          <g key={s.date}>
+            <circle cx={xs[i]} cy={ys[i]} r="3" fill="hsl(var(--primary))" />
+            <text x={xs[i]} y={H - 6} textAnchor="middle" fontSize="9" fill="currentColor" className="text-muted-foreground">
+              {s.date.slice(0, 4)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function OwnershipTab({ property }: { property: Property }) {
+  const heldYears = 2026 - new Date(property.ownership.since).getFullYear();
+  const sorted = [...property.sales].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const others = PROPERTIES
+    .filter((p) => p.id !== property.id && p.area === property.area && p.ownership.type === property.ownership.type)
+    .sort((a, b) => b.scores.investor - a.scores.investor)
+    .slice(0, 4);
+  return (
+    <div className="space-y-4">
+      <Section title="Owner profile">
+        <Row label="Type" value={property.ownership.type} />
+        <Row label="Registered owner" value={property.ownership.ownerLabel} />
+        <Row label="Held since" value={property.ownership.since} />
+        <Row label="Tenure" value={`${heldYears} yrs`} />
+        <Row label="Seller signal" value={`${property.scores.sellerProbability}/100`} />
+      </Section>
+
+      <Section title="Transfer timeline">
+        <div className="space-y-2">
+          {sorted.map((s, i) => {
+            const prev = sorted[i + 1];
+            const delta = prev ? Math.round(((s.price - prev.price) / prev.price) * 100) : null;
+            return (
+              <div key={s.date} className="flex items-center justify-between rounded-lg bg-card/60 px-3 py-2 ring-1 ring-inset ring-border">
+                <div>
+                  <div className="text-xs font-medium">{s.date}</div>
+                  <div className="text-[10px] text-muted-foreground">{i === 0 ? "Most recent" : "Prior transfer"}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold">{formatZAR(s.price)}</div>
+                  {delta !== null && (
+                    <div className={cn("text-[10px]", delta >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {delta >= 0 ? "+" : ""}{delta}%
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
+      {others.length > 0 && (
+        <Section title={`Other ${property.ownership.type.toLowerCase()} holdings in ${property.area}`}>
+          <div className="space-y-1.5">
+            {others.map((p) => (
+              <Link key={p.id} to="/" search={{ parcel: p.id } as never} className="flex items-center justify-between rounded-lg bg-card/60 px-3 py-2 ring-1 ring-inset ring-border hover:ring-primary/40">
+                <div>
+                  <div className="text-xs font-medium">{p.street}</div>
+                  <div className="text-[10px] text-muted-foreground">Erf {p.erf} · {p.sizeSqm} m²</div>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
