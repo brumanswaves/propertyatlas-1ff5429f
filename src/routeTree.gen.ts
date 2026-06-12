@@ -18,6 +18,7 @@ import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
 import { Route as ForDevelopersRouteImport } from './routes/for-developers'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as DataSourcesRouteImport } from './routes/data-sources'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -71,6 +72,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
   path: '/features',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DisclaimerRoute = DisclaimerRouteImport.update({
   id: '/disclaimer',
   path: '/disclaimer',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
   '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
   '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/data-sources': typeof DataSourcesRoute
   '/disclaimer': typeof DisclaimerRoute
+  '/faq': typeof FaqRoute
   '/features': typeof FeaturesRoute
   '/for-developers': typeof ForDevelopersRoute
   '/for-homeowners': typeof ForHomeownersRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
     | '/features'
     | '/for-developers'
     | '/for-homeowners'
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
     | '/features'
     | '/for-developers'
     | '/for-homeowners'
@@ -208,6 +219,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/data-sources'
     | '/disclaimer'
+    | '/faq'
     | '/features'
     | '/for-developers'
     | '/for-homeowners'
@@ -227,6 +239,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DataSourcesRoute: typeof DataSourcesRoute
   DisclaimerRoute: typeof DisclaimerRoute
+  FaqRoute: typeof FaqRoute
   FeaturesRoute: typeof FeaturesRoute
   ForDevelopersRoute: typeof ForDevelopersRoute
   ForHomeownersRoute: typeof ForHomeownersRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/disclaimer': {
       id: '/disclaimer'
       path: '/disclaimer'
@@ -363,6 +383,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DataSourcesRoute: DataSourcesRoute,
   DisclaimerRoute: DisclaimerRoute,
+  FaqRoute: FaqRoute,
   FeaturesRoute: FeaturesRoute,
   ForDevelopersRoute: ForDevelopersRoute,
   ForHomeownersRoute: ForHomeownersRoute,
