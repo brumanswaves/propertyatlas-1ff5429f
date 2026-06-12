@@ -758,10 +758,14 @@ function SalesTab({ property }: { property: Property }) {
       </div>
 
       <div class="grid">
-        <div class="card"><div class="l">Estimated value</div><div class="v">${formatZAR(property.estimatedValue)}</div></div>
+        <div class="card"><div class="l">Estimated value</div><div class="v">${formatZAR(property.estimatedValue)}</div><div style="margin-top:4px;font-size:9px;font-weight:600;color:#b45309;text-transform:uppercase;letter-spacing:.04em">Estimate Only • Not a Certified Valuation</div></div>
         <div class="card"><div class="l">Municipal</div><div class="v">${formatZAR(property.municipalValue)}</div></div>
         <div class="card"><div class="l">Price / m²</div><div class="v">R ${Math.round(property.estimatedValue/property.sizeSqm).toLocaleString()}</div></div>
         <div class="card"><div class="l">Owner since</div><div class="v">${new Date(property.ownership.since).getFullYear()}</div></div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:10px;font-size:11px;color:#78350f;line-height:1.5">
+        <strong>Important:</strong> PropertyAtlas estimates are automated informational estimates and are not certified valuations or appraisals. This report is provided for informational purposes only and is not a professional valuation, legal opinion, or investment recommendation.
       </div>
 
       <h2>10-Year Property History</h2>
