@@ -79,7 +79,7 @@ function PublicDataDebug() {
           ))}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <DebugButton running={running} label="Test Supabase proxy" onClick={() => run("Supabase proxy", () => runForLayers("Supabase proxy", (layer) => testEdgeProxy(layer, bbox, 400)))} />
+          <DebugButton running={running} label="Test backend proxy" onClick={() => run("Backend proxy", () => runForLayers("Backend proxy", (layer) => testEdgeProxy(layer, bbox, 400)))} />
           <DebugButton running={running} label="Test direct browser fetch" onClick={() => run("Direct browser fetch", () => runForLayers("Direct browser fetch", (layer) => testDirectFetch(layer, bbox, 400)))} />
           <DebugButton running={running} label="Test static CSG GeoJSON" onClick={() => run("Static CSG GeoJSON", async () => [{ id: `${Date.now()}-static-csg`, title: "Static CSG GeoJSON", result: await testStaticGeoJson("csg-parcels") }])} />
           <DebugButton running={running} label="Test static Kouga GeoJSON" onClick={() => run("Static Kouga GeoJSON", async () => [{ id: `${Date.now()}-static-kouga`, title: "Static Kouga GeoJSON", result: await testStaticGeoJson("kouga-zoning") }])} />
