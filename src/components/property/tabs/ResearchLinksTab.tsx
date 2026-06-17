@@ -20,9 +20,9 @@ export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold tracking-tight">Research links</h3>
+        <h3 className="text-sm font-semibold tracking-tight">Outbound research links</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Open public search pages for this property in a new tab. PropertyAtlas does not scrape or store data from these sites.
+          Quick links to search this property on public sites (maps, listing portals, municipal & deeds). PropertyAtlas does not scrape or store data from these sites. To save listings you find, use the <span className="font-medium text-foreground">Listings</span> tab. To order paid reports, use the <span className="font-medium text-foreground">Reports</span> tab.
         </p>
       </div>
 
