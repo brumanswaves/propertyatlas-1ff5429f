@@ -142,6 +142,8 @@ function AdminPage() {
           </p>
         </section>
 
+        <HealthChecks />
+
         <section className="mt-10">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Data provider roadmap</h2>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
