@@ -36,12 +36,20 @@ export interface MapLayers {
   sellerHeat: boolean;
 }
 
+export interface OfficialFeatureSelection {
+  source: "Chief Surveyor-General" | "Kouga Municipality GIS";
+  layer: "csg-parcels" | "kouga-zoning";
+  properties: Record<string, unknown>;
+  lngLat: [number, number];
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   filterFn?: (p: Property) => boolean;
   layers: MapLayers;
   mapStyle: MapStyleId;
+  onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
