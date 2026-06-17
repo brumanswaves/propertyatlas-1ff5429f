@@ -304,6 +304,44 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         },
       });
 
+      // ===== Official public data: CSG cadastral parcels (server-proxied) =====
+      if (!map.getSource("csg-parcels")) {
+        map.addSource("csg-parcels", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      }
+      map.addLayer({
+        id: "csg-parcels-fill",
+        type: "fill",
+        source: "csg-parcels",
+        layout: { visibility: "none" },
+        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.05 },
+      });
+      map.addLayer({
+        id: "csg-parcels-outline",
+        type: "line",
+        source: "csg-parcels",
+        layout: { visibility: "none" },
+        paint: { "line-color": C_SEAGREEN, "line-width": 1.4, "line-opacity": 0.9 },
+      });
+
+      // ===== Official public data: Kouga zoning polygons (server-proxied) =====
+      if (!map.getSource("kouga-zoning")) {
+        map.addSource("kouga-zoning", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      }
+      map.addLayer({
+        id: "kouga-zoning-fill",
+        type: "fill",
+        source: "kouga-zoning",
+        layout: { visibility: "none" },
+        paint: { "fill-color": "#a78bfa", "fill-opacity": 0.35 },
+      });
+      map.addLayer({
+        id: "kouga-zoning-outline",
+        type: "line",
+        source: "kouga-zoning",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#7c3aed", "line-width": 0.8, "line-opacity": 0.7 },
+      });
+
       // ===== HEATMAPS — dramatic, palette-driven, story-telling =====
       const HEATS: { id: string; weightProp: string; weightRange: [number, number]; ramp: Array<[number, string]> }[] = [
         {
