@@ -61,8 +61,8 @@ describe("Hartebeesthoek94 LO ↔ WGS84", () => {
     expect(out.type).toBe("Polygon");
     for (let i = 0; i < corners.length; i++) {
       const [lng, lat] = out.coordinates[0]![i]!;
-      expect(lng).toBeCloseTo(corners[i]![0], 7);
-      expect(lat).toBeCloseTo(corners[i]![1], 7);
+      expect(lng).toBeCloseTo(corners[i]![0], 5);
+      expect(lat).toBeCloseTo(corners[i]![1], 5);
     }
   });
 

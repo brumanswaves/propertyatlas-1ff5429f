@@ -56,7 +56,7 @@ describe("PropertyProvider contract", () => {
       });
 
       it("searchProperties returns an array", async () => {
-        const r = await provider.searchProperties({ query: "test", limit: 3 });
+        const r = await provider.searchProperties({ query: "francis", limit: 3 });
         expect(Array.isArray(r)).toBe(true);
         if (provider.meta.id === "demo") expect(r.length).toBeGreaterThan(0);
       });
@@ -98,7 +98,8 @@ describe("Provider registry lookup", () => {
 describe("Demo provider returns shaped NormalizedProperty", () => {
   it("first property has all required Field<T> envelopes", async () => {
     const demo = getProvider("demo");
-    const list = await demo.searchProperties({ query: "", limit: 1 });
+    const list = await demo.searchProperties({ query: "francis", limit: 1 });
+    expect(list.length).toBeGreaterThan(0);
     const p = list[0]!;
     for (const k of [
       "erf",
