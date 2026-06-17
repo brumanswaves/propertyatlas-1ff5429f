@@ -139,8 +139,8 @@ export const PROVIDER_READINESS: ProviderReadiness[] = [
       {
         id: "kouga-endpoint",
         label: "Confirmed Kouga ArcGIS feature service URL",
-        status: "todo",
-        note: "Awaiting confirmation from municipality",
+        status: "partial",
+        note: "Endpoint is configurable via KOUGA_ZONING_SERVICE_URL (server-side). Set it once the municipality confirms the public feature service URL — no code change required.",
       },
       {
         id: "submunis",
