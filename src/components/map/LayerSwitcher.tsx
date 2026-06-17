@@ -165,7 +165,7 @@ export const DEFAULT_LAYERS: MapLayers = {
   parcels: false,
   zoning: false,
   csgParcels: true,
-  kougaZoning: false,
+  kougaZoning: true,
   investorHeat: false,
   developmentHeat: false,
   oceanViewHeat: false,
