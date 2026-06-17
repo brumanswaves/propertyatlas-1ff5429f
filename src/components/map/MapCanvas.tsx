@@ -114,7 +114,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
         container: containerRef.current,
         style: STYLE_URLS[mapStyle],
         center: ST_FRANCIS_CENTER,
-        zoom: 13.4,
+        zoom: 14,
         pitch: 0,
         attributionControl: false,
         cooperativeGestures: false,
