@@ -42,13 +42,15 @@ function AtlasHome() {
   const [demoMode, setDemoMode] = useState(false);
   const [showTestGeometry, setShowTestGeometry] = useState(false);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
-    csg: { state: "off", count: 0 },
-    kouga: { state: "off", count: 0 },
+    csg: { state: "loading", count: 0 },
+    kouga: { state: "loading", count: 0 },
   });
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
-    setDemoMode(window.localStorage.getItem("pa.demoMode") === "1");
+    const savedDemoMode = window.localStorage.getItem("pa.demoMode") === "1";
+    setDemoMode(savedDemoMode);
+    if (savedDemoMode) setLayers(DEMO_LAYERS);
     const parcel = new URLSearchParams(window.location.search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
   }, []);
