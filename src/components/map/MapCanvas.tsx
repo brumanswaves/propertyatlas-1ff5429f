@@ -184,7 +184,6 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const activeMap = map;
 
     const ensureSetup = () => {
       // Guard on the LAYER (style switches can preserve sources but drop layers).
@@ -575,6 +574,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const activeMap = map;
     if (!layers.csgParcels && !layers.kougaZoning) {
       setLayerMessages({});
       onOfficialStatus?.({
