@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Sparkles, X } from "lucide-react";
+import { MousePointerClick, Plus, Sparkles, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
 import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
+import { AddPropertyDialog } from "@/components/property/AddPropertyDialog";
 import { TopNav } from "@/components/layout/TopNav";
 import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, PROPERTIES, type Property } from "@/data/properties";
