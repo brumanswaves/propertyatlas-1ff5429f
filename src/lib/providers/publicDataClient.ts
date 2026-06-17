@@ -254,5 +254,6 @@ export async function loadOfficialPublicLayer(layer: PublicLayerId, bbox: Public
   attempts.push(...stat.attempts);
   if (stat.features.length > 0) return { ...stat, attempts, official: true, sourceLabel: "Imported Official Public GeoJSON" };
 
-  return emptyResult(layer, attempts, "Official public layers could not load in this environment.");
+  const missingStatic = stat.attempts.some((a) => a.errorMessage === "No imported public GeoJSON file found.");
+  return emptyResult(layer, attempts, missingStatic ? "No imported public GeoJSON file found." : "Official public layers could not load in this environment.");
 }
