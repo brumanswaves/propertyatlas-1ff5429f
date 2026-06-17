@@ -612,6 +612,10 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       if (src) src.setData({ type: "FeatureCollection", features: [] });
     }
 
+    function publishStatus(status: OfficialLayerStatus) {
+      onOfficialStatus?.({ csg: { ...status.csg }, kouga: { ...status.kouga } });
+    }
+
     async function loadLayer(layer: "csg-parcels" | "kouga-zoning", bbox: [number, number, number, number]) {
       const label = layer === "csg-parcels" ? "CSG" : "Kouga";
       const result = await loadOfficialPublicLayer(layer, bbox, 400);
@@ -679,7 +683,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
             status.csg = r.status;
             nextMsgs.csg = r.message;
             setLayerMessages((m) => ({ ...m, csg: r.message }));
-            onOfficialStatus?.(status);
+            publishStatus(status);
           }));
         }
       }
@@ -694,12 +698,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
             status.kouga = r.status;
             nextMsgs.kouga = r.message;
             setLayerMessages((m) => ({ ...m, kouga: r.message }));
-            onOfficialStatus?.(status);
+            publishStatus(status);
           }));
         }
       }
       setLayerMessages((m) => ({ csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined, kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined }));
-      onOfficialStatus?.(status);
+      publishStatus(status);
       await Promise.all(requests);
     };
 
