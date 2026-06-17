@@ -177,6 +177,7 @@ async function fetchArcGis(cfg: UpstreamConfig, bbox: [number, number, number, n
         fetchedAt: new Date().toISOString(),
         upstreamReachable: true,
         count: (fc.features ?? []).length,
+        upstreamUrl: cfg.url,
       },
     };
   } catch (err) {
@@ -195,7 +196,30 @@ export const fetchArcGisLayer = createServerFn({ method: "GET" })
     if (bboxArea(clipped) <= 0) {
       return emptyCollection(cfg, "Bbox outside pilot area (Kouga / St Francis).");
     }
-    return fetchArcGis(cfg, clipped, data.limit);
+    const primary = await fetchArcGis(cfg, clipped, data.limit);
+    const primaryStatus = {
+      reachable: primary.meta.upstreamReachable,
+      count: primary.meta.count,
+      message: primary.meta.upstreamMessage,
+    };
+    if (primary.meta.upstreamReachable && primary.meta.count > 0) {
+      return { ...primary, meta: { ...primary.meta, activeSource: "primary", primaryStatus } };
+    }
+    const fb = FALLBACKS[data.layer];
+    if (!fb) {
+      return { ...primary, meta: { ...primary.meta, activeSource: "primary", primaryStatus } };
+    }
+    const fallback = await fetchArcGis(fb, clipped, data.limit);
+    const fallbackStatus = {
+      reachable: fallback.meta.upstreamReachable,
+      count: fallback.meta.count,
+      message: fallback.meta.upstreamMessage,
+    };
+    if (fallback.meta.upstreamReachable && fallback.meta.count > 0) {
+      return { ...fallback, meta: { ...fallback.meta, activeSource: "fallback", primaryStatus, fallbackStatus } };
+    }
+    // Both failed/empty — return whichever has more diagnostic info (prefer primary's message).
+    return { ...primary, meta: { ...primary.meta, activeSource: "primary", primaryStatus, fallbackStatus } };
   });
 
 // Lightweight health probe used by /admin. HEAD on the MapServer root.
