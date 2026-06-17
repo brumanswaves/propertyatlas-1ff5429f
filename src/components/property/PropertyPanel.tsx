@@ -370,6 +370,7 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         {tab === "research" && (
           <ResearchLinksTab
+            parcelId={property.id}
             ctx={{
               address: property.street,
               area: property.area,
