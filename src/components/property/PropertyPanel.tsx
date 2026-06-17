@@ -347,6 +347,7 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
+        <SourceBadge source="demo" lastUpdated={new Date().toISOString()} />
         </div>
       </div>
     </aside>
