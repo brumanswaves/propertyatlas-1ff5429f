@@ -362,7 +362,44 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        <SourceBadge source="demo" lastUpdated={new Date().toISOString()} />
+        {tab === "research" && (
+          <ResearchLinksTab
+            ctx={{
+              address: property.street,
+              area: property.area,
+              town: property.area,
+              suburb: property.area,
+              municipality: "Kouga Local Municipality",
+              province: "Eastern Cape",
+              erf: property.erf,
+              lng: property.centroid[0],
+              lat: property.centroid[1],
+            } satisfies ResearchContext}
+          />
+        )}
+
+        {tab === "listings" && (
+          <ListingsTab
+            parcelId={property.id}
+            ctx={{
+              address: property.street, area: property.area, town: property.area,
+              suburb: property.area, municipality: "Kouga Local Municipality",
+              province: "Eastern Cape", erf: property.erf,
+            }}
+          />
+        )}
+
+        {tab === "reports" && (
+          <ReportsTab parcelId={property.id} summary={`${property.street}, ${property.area} · Erf ${property.erf}`} />
+        )}
+
+        {tab === "notes" && <NotesTab parcelId={property.id} />}
+
+        {tab === "calculators" && <CalculatorsTab defaultPrice={property.estimatedValue} />}
+
+        {(tab === "overview" || tab === "ownership" || tab === "sales" || tab === "intelligence" || tab === "photos") && (
+          <SourceBadge source="demo" lastUpdated={new Date().toISOString()} />
+        )}
         </div>
       </div>
     </aside>
