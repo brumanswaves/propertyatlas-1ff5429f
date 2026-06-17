@@ -56,6 +56,12 @@ export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parc
         </section>
       ))}
 
+      {parcelId && (
+        <section>
+          <SavedLinksManager parcelId={parcelId} />
+        </section>
+      )}
+
       <ComplianceNotice />
       <SourceBadge source="demo" />
     </div>
