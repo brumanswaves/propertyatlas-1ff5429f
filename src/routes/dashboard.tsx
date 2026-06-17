@@ -136,6 +136,19 @@ function Dashboard() {
           />
         </div>
 
+        {/* Portfolio placeholders — provider-ready slots */}
+        <section className="mt-8">
+          <SectionTitle icon={<LineChart className="h-3.5 w-3.5" />}>Portfolio intelligence</SectionTitle>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <PlaceholderCard label="Estimated portfolio value" value={saved.length ? formatZAR(totalValue) : "Not Available"} note="Estimate Only • Not a Certified Valuation" />
+            <PlaceholderCard label="Total land area" value={saved.length ? `${saved.reduce((s,p)=>s+p.sizeSqm,0).toLocaleString()} m²` : "Not Available"} />
+            <PlaceholderCard label="Properties tracked" value={saved.length.toString()} />
+            <PlaceholderCard label="Reports purchased" value="0" note="Visit /reports to order" />
+            <PlaceholderCard label="Average yield" value="Not Available" note="Activates with Lightstone provider" />
+            <PlaceholderCard label="Municipal exposure" value={saved.length ? "Kouga Local Municipality" : "Not Available"} />
+          </div>
+        </section>
+
         {/* Market pulse */}
         <section className="mt-10">
           <SectionTitle icon={<LineChart className="h-3.5 w-3.5" />}>St Francis Bay market pulse</SectionTitle>
@@ -287,6 +300,17 @@ function PropertyCard({ p, highlight }: { p: Property; highlight?: boolean }) {
         </span>
       </div>
     </Link>
+  );
+}
+
+function PlaceholderCard({ label, value, note }: { label: string; value: string; note?: string }) {
+  const isNa = value === "Not Available";
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${isNa ? "text-muted-foreground italic font-normal" : ""}`}>{value}</div>
+      {note && <div className="mt-1 text-[10px] text-muted-foreground">{note}</div>}
+    </div>
   );
 }
 

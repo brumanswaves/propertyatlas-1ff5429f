@@ -13,6 +13,7 @@ const COMPANY_LINKS = [
 const PRODUCT_LINKS = [
   { to: "/", label: "Map" },
   { to: "/features", label: "Features" },
+  { to: "/reports", label: "Reports" },
   { to: "/pricing", label: "Pricing" },
   { to: "/for-investors", label: "For Investors" },
   { to: "/for-homeowners", label: "For Homeowners" },
