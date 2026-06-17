@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { SourceBadge } from "@/components/data/SourceBadge";
 
 interface Props {
   property: Property | null;
