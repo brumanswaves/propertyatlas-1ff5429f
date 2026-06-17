@@ -43,6 +43,11 @@ export interface OfficialFeatureSelection {
   lngLat: [number, number];
 }
 
+export interface OfficialLayerStatus {
+  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "failed"; count: number; message?: string; source?: string };
+  kouga: { state: "off" | "loading" | "loaded" | "empty" | "failed"; count: number; message?: string };
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -50,6 +55,7 @@ interface Props {
   layers: MapLayers;
   mapStyle: MapStyleId;
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
+  onOfficialStatus?: (s: OfficialLayerStatus) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
