@@ -34,6 +34,7 @@ export const Route = createFileRoute("/")({
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hintDismissed, setHintDismissed] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
