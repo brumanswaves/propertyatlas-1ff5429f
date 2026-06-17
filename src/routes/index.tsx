@@ -40,6 +40,7 @@ function AtlasHome() {
   const [hintDismissed, setHintDismissed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [showTestGeometry, setShowTestGeometry] = useState(false);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "off", count: 0 },
     kouga: { state: "off", count: 0 },
@@ -98,6 +99,7 @@ function AtlasHome() {
         filterFn={filterFn}
         layers={layers}
         mapStyle={mapStyle}
+        showTestGeometry={showTestGeometry}
         onSelectOfficial={(sel) => { setSelectedOfficial(sel); if (sel) setSelectedId(null); }}
         onOfficialStatus={setOfficialStatus}
       />
@@ -124,6 +126,18 @@ function AtlasHome() {
             {demoMode ? <FlaskConical className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
             {demoMode ? "Demo Data" : "Official Public Data Mode"}
           </button>
+          {!demoMode && (
+            <button
+              onClick={() => setShowTestGeometry((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold shadow-soft backdrop-blur transition",
+                showTestGeometry ? "bg-amber-500 text-amber-950 hover:bg-amber-400" : "bg-card/95 text-foreground hover:bg-card",
+              )}
+              title="Show TEST GEOMETRY ONLY files, not official data"
+            >
+              <FlaskConical className="h-3.5 w-3.5" /> Show Test Geometry
+            </button>
+          )}
         </div>
 
         {!demoMode && (
@@ -145,6 +159,20 @@ function AtlasHome() {
           </p>
         </div>
       </div>
+
+      {!demoMode && officialStatus.csg.state !== "loading" && officialStatus.kouga.state !== "loading" && officialStatus.csg.count === 0 && officialStatus.kouga.count === 0 && (
+        <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 text-center shadow-panel backdrop-blur">
+          <p className="text-sm font-semibold text-foreground">
+            Official public layers could not load in this environment. You can still use source links, Demo Mode, or upload official GeoJSON files.
+          </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://csggis.drdlr.gov.za/psv/" target="_blank" rel="noreferrer">Open CSG Viewer</a>
+            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noreferrer">Open Kouga Mapping Portal</a>
+            <button className="rounded-full bg-amber-500 px-3 py-2 text-[11px] font-semibold text-amber-950 hover:bg-amber-400" onClick={toggleDemoMode}>Switch to Demo Mode</button>
+            <a className="rounded-full bg-card px-3 py-2 text-[11px] font-semibold text-foreground ring-1 ring-border hover:bg-muted" href="/admin/public-data-debug">Open Public Data Debug</a>
+          </div>
+        </div>
+      )}
 
       {!selected && !selectedOfficial && !hintDismissed && (
         <div className="pointer-events-auto absolute inset-x-4 bottom-20 z-20 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-12 md:left-1/2 md:right-auto md:-translate-x-1/2">
@@ -206,8 +234,9 @@ function OfficialPill({ label, status }: { label: string; status: OfficialLayerS
   if (status.state === "off") return null;
   const map: Record<string, { tone: string; text: string }> = {
     loading: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: `${label} loading…` },
-    loaded: { tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300", text: `${label} active · ${status.count}` },
-    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: `${label} imported · ${status.count}` },
+    loaded: { tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300", text: label === "CSG" ? `CSG parcels loaded: ${status.count}` : `Kouga zoning loaded: ${status.count}` },
+    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: label === "CSG" ? `Imported CSG GeoJSON loaded: ${status.count}` : `Imported Kouga GeoJSON loaded: ${status.count}` },
+    test: { tone: "bg-amber-500/20 text-amber-800 dark:text-amber-300", text: "Test geometry loaded, not official data" },
     empty: { tone: "bg-amber-500/15 text-amber-800 dark:text-amber-300", text: status.message ?? `${label} empty` },
     failed: { tone: "bg-red-500/20 text-red-800 dark:text-red-300", text: `${label} unavailable` },
   };
