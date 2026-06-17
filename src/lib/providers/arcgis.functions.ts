@@ -58,14 +58,26 @@ const UPSTREAMS: Record<ArcGisQuery["layer"], UpstreamConfig> = {
     outFields: "OBJECTID,PARCEL_KEY,ERF_NO,PORTION_NO,LPI_CODE,EXTENT,PROVINCE,TOWN",
   },
   "kouga-zoning": {
-    // Placeholder — Kouga Hub exposes feature services at runtime URLs that
-    // change per dataset. The /admin readiness page tracks this as In Progress
-    // until the municipality confirms the public service URL.
+    // The Kouga Hub publishes feature services at services*.arcgis.com URLs
+    // that the municipality controls (and occasionally rotates). We read the
+    // confirmed URL from KOUGA_ZONING_SERVICE_URL at request time so an admin
+    // can wire in the official service without a code change.
+    // When unset, the layer renders as "endpoint pending confirmation" and the
+    // /admin readiness page surfaces the blocker.
     url: "",
     source: "Kouga Municipality GIS",
     attribution: "© Kouga Local Municipality, Mapping Portal.",
   },
 };
+
+function resolveUpstream(layer: ArcGisQuery["layer"]): UpstreamConfig {
+  const cfg = UPSTREAMS[layer];
+  if (layer === "kouga-zoning") {
+    const envUrl = process.env.KOUGA_ZONING_SERVICE_URL?.trim();
+    if (envUrl) return { ...cfg, url: envUrl };
+  }
+  return cfg;
+}
 
 export interface ArcGisFeatureCollection {
   type: "FeatureCollection";
