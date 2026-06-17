@@ -79,6 +79,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
   const [styleVersion, setStyleVersion] = useState(0);
   const [mapError, setMapError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [layerMessages, setLayerMessages] = useState<{ csg?: string; kouga?: string }>({});
 
   const filtered = useMemo(
     () => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES),
