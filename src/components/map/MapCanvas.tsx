@@ -571,8 +571,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
       return;
     }
 
-    const CSG_MIN_ZOOM = 14.5;
-    const KOUGA_MIN_ZOOM = 12;
+    const CSG_MIN_ZOOM = 13.5;
+    const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
 
     const load = async () => {
