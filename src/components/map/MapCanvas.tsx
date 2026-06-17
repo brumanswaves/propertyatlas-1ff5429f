@@ -322,14 +322,21 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
         type: "fill",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.05 },
+        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.12 },
       });
       map.addLayer({
         id: "csg-parcels-outline",
         type: "line",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "line-color": C_SEAGREEN, "line-width": 1.4, "line-opacity": 0.9 },
+        paint: { "line-color": "#ffffff", "line-width": 1.6, "line-opacity": 0.95 },
+      });
+      map.addLayer({
+        id: "csg-parcels-outline-glow",
+        type: "line",
+        source: "csg-parcels",
+        layout: { visibility: "none" },
+        paint: { "line-color": C_SEAGREEN, "line-width": 3.5, "line-opacity": 0.45, "line-blur": 2 },
       });
 
       // ===== Official public data: Kouga zoning polygons (server-proxied) =====
