@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "name": "TEST GEOMETRY ONLY - PropertyAtlas Kouga zoning pipeline test",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "label": "TEST GEOMETRY ONLY",
+        "source": "TEST GEOMETRY ONLY",
+        "notice": "Not official Kouga zoning data. Do not use for property research.",
+        "zoning": "TEST ONLY"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[24.8328, -34.1700], [24.8354, -34.1700], [24.8354, -34.1717], [24.8328, -34.1717], [24.8328, -34.1700]]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "name": "TEST GEOMETRY ONLY - PropertyAtlas CSG pipeline test",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "label": "TEST GEOMETRY ONLY",
+        "source": "TEST GEOMETRY ONLY",
+        "notice": "Not official CSG data. Do not use for property research."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[24.8332, -34.1688], [24.8341, -34.1688], [24.8341, -34.1696], [24.8332, -34.1696], [24.8332, -34.1688]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "label": "TEST GEOMETRY ONLY",
+        "source": "TEST GEOMETRY ONLY",
+        "notice": "Not official CSG data. Do not use for property research."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[24.8342, -34.1688], [24.8350, -34.1688], [24.8350, -34.1696], [24.8342, -34.1696], [24.8342, -34.1688]]]
+      }
+    }
+  ]
+}

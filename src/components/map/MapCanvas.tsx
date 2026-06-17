@@ -10,6 +10,7 @@ import {
   type Property,
 } from "@/data/properties";
 import { AlertTriangle } from "lucide-react";
+import { loadOfficialPublicLayer, testStaticGeoJson, type PublicDataResult } from "@/lib/providers/publicDataClient";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
@@ -44,8 +45,8 @@ export interface OfficialFeatureSelection {
 }
 
 export interface OfficialLayerStatus {
-  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "failed"; count: number; message?: string; source?: string };
-  kouga: { state: "off" | "loading" | "loaded" | "empty" | "failed"; count: number; message?: string };
+  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
+  kouga: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
 }
 
 interface Props {
@@ -54,6 +55,7 @@ interface Props {
   filterFn?: (p: Property) => boolean;
   layers: MapLayers;
   mapStyle: MapStyleId;
+  showTestGeometry?: boolean;
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
   onOfficialStatus?: (s: OfficialLayerStatus) => void;
 }
@@ -83,7 +85,7 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial, onOfficialStatus }: Props) {
+export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, showTestGeometry = false, onSelectOfficial, onOfficialStatus }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -568,10 +570,11 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
     set("kouga-zoning-outline", layers.kougaZoning);
   }, [layers, styleVersion, ready]);
 
-  // Fetch CSG / Kouga GeoJSON via the server proxy when toggled or after pan/zoom.
+  // Fetch CSG / Kouga GeoJSON through the public-data fallback chain when toggled or after pan/zoom.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const activeMap = map;
     if (!layers.csgParcels && !layers.kougaZoning) {
       setLayerMessages({});
       onOfficialStatus?.({
@@ -585,25 +588,79 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
     const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
 
-    // Static-import fallback: if live CSG fetch fails, attempt to load a manually-uploaded
-    // GeoJSON file from /public/data/. This file ships empty by default — when present and
-    // valid, we load and label it as "Imported CSG GeoJSON" so the map never silently fakes
-    // official data.
-    const STATIC_CSG_URL = "/data/st-francis-csg-parcels.geojson";
-    async function tryStaticCsg(): Promise<{ features: GeoJSON.Feature[]; count: number } | null> {
-      try {
-        const res = await fetch(STATIC_CSG_URL, { cache: "no-cache" });
-        if (!res.ok) return null;
-        const json = (await res.json()) as GeoJSON.FeatureCollection;
-        if (json?.type !== "FeatureCollection" || !Array.isArray(json.features)) return null;
-        return { features: json.features, count: json.features.length };
-      } catch {
-        return null;
+    function setOfficialSource(id: "csg-parcels" | "kouga-zoning", result: PublicDataResult, testOnly = false) {
+      const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
+      if (!src) return false;
+      src.setData({
+        type: "FeatureCollection",
+        features: result.features.map((feature) => ({
+          ...feature,
+          properties: {
+            ...(feature.properties ?? {}),
+            propertyatlas_source: testOnly ? "TEST GEOMETRY ONLY" : result.sourceLabel,
+            propertyatlas_fallback: result.fallbackUsed,
+            propertyatlas_fetched_at: result.fetchedAt,
+            propertyatlas_test_geometry: testOnly,
+          },
+        })),
+      });
+      return true;
+    }
+
+    function clearOfficialSource(id: "csg-parcels" | "kouga-zoning") {
+      const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
+      if (src) src.setData({ type: "FeatureCollection", features: [] });
+    }
+
+    function publishStatus(status: OfficialLayerStatus) {
+      onOfficialStatus?.({ csg: { ...status.csg }, kouga: { ...status.kouga } });
+    }
+
+    async function loadLayer(layer: "csg-parcels" | "kouga-zoning", bbox: [number, number, number, number]) {
+      const label = layer === "csg-parcels" ? "CSG" : "Kouga";
+      const result = await loadOfficialPublicLayer(layer, bbox, 400);
+      const storageKey = layer === "csg-parcels" ? "pa.arcgis.csg.meta" : "pa.arcgis.kouga.meta";
+      try { window.localStorage.setItem(storageKey, JSON.stringify(result)); } catch {}
+      if (cancelled) return { status: null, message: undefined as string | undefined };
+
+      if (result.features.length > 0) {
+        const sourceUpdated = setOfficialSource(layer, result, false);
+        try { window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated)); } catch {}
+        if (result.fallbackUsed === "static") {
+          return {
+            status: { state: "imported" as const, count: result.features.length, source: result.sourceLabel, message: `Imported ${label} GeoJSON loaded: ${result.features.length}` },
+            message: `Imported ${label} GeoJSON loaded: ${result.features.length}`,
+          };
+        }
+        return {
+          status: { state: "loaded" as const, count: result.features.length, source: result.sourceLabel, message: `${label}${layer === "csg-parcels" ? " parcels" : " zoning"} loaded: ${result.features.length}` },
+          message: undefined,
+        };
       }
+
+      const anySuccessfulZero = result.attempts.some((a) => a.ok && (a.featureCount ?? 0) === 0);
+      if (showTestGeometry) {
+        const test = await testStaticGeoJson(layer, true);
+        if (!cancelled && test.features.length > 0) {
+          const sourceUpdated = setOfficialSource(layer, test, true);
+          try { window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated)); } catch {}
+          return {
+            status: { state: "test" as const, count: test.features.length, source: "TEST GEOMETRY ONLY", message: "Test geometry loaded, not official data" },
+            message: "Test geometry loaded, not official data",
+          };
+        }
+      }
+
+      clearOfficialSource(layer);
+      if (anySuccessfulZero) {
+        const msg = layer === "csg-parcels" ? "CSG returned 0 parcels" : "Kouga returned 0 zoning polygons";
+        return { status: { state: "empty" as const, count: 0, message: msg }, message: msg };
+      }
+      const msg = layer === "csg-parcels" ? "CSG unavailable" : "Kouga unavailable";
+      return { status: { state: "failed" as const, count: 0, message: result.message ?? msg }, message: msg };
     }
 
     const load = async () => {
-      const { fetchArcGisLayer } = await import("@/lib/providers/arcgis.functions");
       const b = map.getBounds();
       if (!b) return;
       const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
@@ -619,97 +676,36 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
         if (zoom < CSG_MIN_ZOOM) {
           nextMsgs.csg = "Zoom in to load official parcel boundaries.";
           status.csg = { state: "empty", count: 0, message: nextMsgs.csg };
-          const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
-          if (src) src.setData({ type: "FeatureCollection", features: [] });
+          clearOfficialSource("csg-parcels");
         } else {
-          requests.push(
-            fetchArcGisLayer({ data: { layer: "csg-parcels", bbox, limit: 400 } }).then(async (fc) => {
-              if (cancelled) return;
-              try { window.localStorage.setItem("pa.arcgis.csg.meta", JSON.stringify(fc.meta)); } catch {}
-              console.info("[PropertyAtlas] CSG parcels", fc.meta);
-              const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
-              if (fc.meta.upstreamReachable && fc.meta.count > 0) {
-                if (src) src.setData({ type: "FeatureCollection", features: fc.features });
-                status.csg = { state: "loaded", count: fc.meta.count, source: fc.meta.source };
-                nextMsgs.csg = undefined;
-              } else if (fc.meta.upstreamReachable && fc.meta.count === 0) {
-                if (src) src.setData({ type: "FeatureCollection", features: [] });
-                status.csg = { state: "empty", count: 0, message: "CSG returned 0 parcels for this area." };
-                nextMsgs.csg = "CSG returned 0 parcels for this area.";
-              } else {
-                // Live fetch failed — try imported static GeoJSON before giving up.
-                const staticFc = await tryStaticCsg();
-                if (staticFc) {
-                  if (src) src.setData({ type: "FeatureCollection", features: staticFc.features });
-                  status.csg = { state: "imported", count: staticFc.count, source: "Imported CSG GeoJSON" };
-                  nextMsgs.csg = `Showing imported CSG GeoJSON (${staticFc.count} parcels). Live server unavailable.`;
-                } else {
-                  if (src) src.setData({ type: "FeatureCollection", features: [] });
-                  status.csg = { state: "failed", count: 0, message: fc.meta.upstreamMessage };
-                  nextMsgs.csg = "CSG server fetch failed. See admin debug.";
-                }
-              }
-              setLayerMessages((m) => ({ ...m, csg: nextMsgs.csg }));
-              onOfficialStatus?.(status);
-            }).catch(async (err) => {
-              console.error("[PropertyAtlas] CSG fetch failed", err);
-              const staticFc = await tryStaticCsg();
-              const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
-              if (staticFc) {
-                if (src) src.setData({ type: "FeatureCollection", features: staticFc.features });
-                status.csg = { state: "imported", count: staticFc.count, source: "Imported CSG GeoJSON" };
-                setLayerMessages((m) => ({ ...m, csg: `Showing imported CSG GeoJSON (${staticFc.count} parcels). Live server unavailable.` }));
-              } else {
-                if (src) src.setData({ type: "FeatureCollection", features: [] });
-                status.csg = { state: "failed", count: 0, message: err instanceof Error ? err.message : "fetch failed" };
-                setLayerMessages((m) => ({ ...m, csg: "CSG server fetch failed. See admin debug." }));
-              }
-              onOfficialStatus?.(status);
-            }),
-          );
+          requests.push(loadLayer("csg-parcels", bbox).then((r) => {
+            if (!r.status) return;
+            status.csg = r.status;
+            nextMsgs.csg = r.message;
+            setLayerMessages((m) => ({ ...m, csg: r.message }));
+            publishStatus(status);
+          }));
         }
       }
       if (layers.kougaZoning) {
         if (zoom < KOUGA_MIN_ZOOM) {
           nextMsgs.kouga = "Zoom in to load Kouga zoning.";
           status.kouga = { state: "empty", count: 0, message: nextMsgs.kouga };
-          const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
-          if (src) src.setData({ type: "FeatureCollection", features: [] });
+          clearOfficialSource("kouga-zoning");
         } else {
-          requests.push(
-            fetchArcGisLayer({ data: { layer: "kouga-zoning", bbox, limit: 400 } }).then((fc) => {
-              if (cancelled) return;
-              try { window.localStorage.setItem("pa.arcgis.kouga.meta", JSON.stringify(fc.meta)); } catch {}
-              console.info("[PropertyAtlas] Kouga zoning", fc.meta);
-              const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
-              if (fc.meta.upstreamReachable && fc.meta.count > 0) {
-                if (src) src.setData({ type: "FeatureCollection", features: fc.features });
-                status.kouga = { state: "loaded", count: fc.meta.count };
-              } else if (fc.meta.upstreamReachable) {
-                if (src) src.setData({ type: "FeatureCollection", features: [] });
-                status.kouga = { state: "empty", count: 0, message: "No Kouga zoning polygons in view." };
-                nextMsgs.kouga = "No Kouga zoning polygons in view.";
-              } else {
-                if (src) src.setData({ type: "FeatureCollection", features: [] });
-                status.kouga = { state: "failed", count: 0, message: fc.meta.upstreamMessage };
-                nextMsgs.kouga = `Kouga zoning fetch failed (${fc.meta.upstreamMessage ?? "upstream error"}). See admin debug.`;
-              }
-              setLayerMessages((m) => ({ ...m, kouga: nextMsgs.kouga }));
-              onOfficialStatus?.(status);
-            }).catch((err) => {
-              console.error("[PropertyAtlas] Kouga fetch failed", err);
-              const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
-              if (src) src.setData({ type: "FeatureCollection", features: [] });
-              status.kouga = { state: "failed", count: 0, message: err instanceof Error ? err.message : "fetch failed" };
-              setLayerMessages((m) => ({ ...m, kouga: "Kouga zoning fetch failed. See admin debug." }));
-              onOfficialStatus?.(status);
-            }),
-          );
+          requests.push(loadLayer("kouga-zoning", bbox).then((r) => {
+            if (!r.status) return;
+            status.kouga = r.status;
+            nextMsgs.kouga = r.message;
+            setLayerMessages((m) => ({ ...m, kouga: r.message }));
+            publishStatus(status);
+          }));
         }
       }
       setLayerMessages((m) => ({ csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined, kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined }));
-      onOfficialStatus?.(status);
+      publishStatus(status);
       await Promise.all(requests);
+      if (!cancelled) publishStatus(status);
     };
 
     void load();
@@ -758,7 +754,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
       map.off("mouseenter", "kouga-zoning-fill", onCsgEnter);
       map.off("mouseleave", "kouga-zoning-fill", onCsgLeave);
     };
-  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion, onOfficialStatus, onSelect, onSelectOfficial]);
+  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion, showTestGeometry, onOfficialStatus, onSelect, onSelectOfficial]);
 
   // Update filtered feature state
   useEffect(() => {
