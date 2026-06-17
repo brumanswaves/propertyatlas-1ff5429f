@@ -539,7 +539,53 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     set("heat-rental", layers.rentalHeat);
     set("heat-longheld", layers.longHeldHeat);
     set("heat-seller", layers.sellerHeat);
+    set("csg-parcels-fill", layers.csgParcels);
+    set("csg-parcels-outline", layers.csgParcels);
+    set("kouga-zoning-fill", layers.kougaZoning);
+    set("kouga-zoning-outline", layers.kougaZoning);
   }, [layers, styleVersion, ready]);
+
+  // Fetch CSG / Kouga GeoJSON via the server proxy when toggled or after pan/zoom.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (!layers.csgParcels && !layers.kougaZoning) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      const { fetchArcGisLayer } = await import("@/lib/providers/arcgis.functions");
+      const b = map.getBounds();
+      if (!b) return;
+      const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+
+      const requests: Promise<unknown>[] = [];
+      if (layers.csgParcels) {
+        requests.push(
+          fetchArcGisLayer({ data: { layer: "csg-parcels", bbox, limit: 400 } }).then((fc) => {
+            if (cancelled) return;
+            const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
+            if (src) src.setData({ type: "FeatureCollection", features: fc.features ?? [] });
+          }).catch(() => { /* swallow — keep map usable */ }),
+        );
+      }
+      if (layers.kougaZoning) {
+        requests.push(
+          fetchArcGisLayer({ data: { layer: "kouga-zoning", bbox, limit: 400 } }).then((fc) => {
+            if (cancelled) return;
+            const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
+            if (src) src.setData({ type: "FeatureCollection", features: fc.features ?? [] });
+          }).catch(() => { /* swallow */ }),
+        );
+      }
+      await Promise.all(requests);
+    };
+
+    void load();
+    const onMove = () => { void load(); };
+    map.on("moveend", onMove);
+    return () => { cancelled = true; map.off("moveend", onMove); };
+  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion]);
 
   // Update filtered feature state
   useEffect(() => {
