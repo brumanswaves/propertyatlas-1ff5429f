@@ -20,6 +20,15 @@ function fullAddress(ctx: ResearchContext): string {
     .filter(Boolean).join(", ");
 }
 
+function isKouga(ctx: ResearchContext): boolean {
+  const muni = (ctx.municipality ?? "").toLowerCase();
+  const town = (ctx.town ?? ctx.area ?? "").toLowerCase();
+  return (
+    muni.includes("kouga") ||
+    /st\s*francis|cape st francis|santareme|sea vista|st francis links|jeffreys|humansdorp|oyster bay/.test(town)
+  );
+}
+
 export interface ResearchLink {
   id: string;
   label: string;
@@ -34,8 +43,9 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
   const ll = ctx.lat != null && ctx.lng != null ? `${ctx.lat},${ctx.lng}` : null;
   const erfStr = ctx.erf ? `erf ${ctx.erf}` : "";
   const muni = ctx.municipality ?? "";
+  const inKouga = isKouga(ctx);
 
-  return [
+  const base: ResearchLink[] = [
     {
       id: "gmaps",
       label: "Google Maps",
@@ -68,18 +78,65 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       href: `https://www.privateproperty.co.za/search?search=${q(addr)}`,
       category: "listings", external: true,
     },
+  ];
+
+  // Kouga-specific official links (pilot area)
+  const kouga: ResearchLink[] = inKouga
+    ? [
+        {
+          id: "kouga-portal",
+          label: "Kouga Municipality",
+          description: "Official Kouga Local Municipality website.",
+          href: "https://www.kouga.gov.za/",
+          category: "official", external: true,
+        },
+        {
+          id: "kouga-mapping",
+          label: "Kouga Mapping Portal",
+          description: "Public ArcGIS Hub for Kouga GIS layers (zoning, planning).",
+          href: "https://mapping-kouga.hub.arcgis.com/",
+          category: "official", external: true,
+        },
+        {
+          id: "kouga-planning",
+          label: "Kouga Planning & Development",
+          description: "Zoning, town planning and building plan information.",
+          href: "https://www.kouga.gov.za/planning-and-development",
+          category: "official", external: true,
+        },
+        {
+          id: "kouga-valroll",
+          label: "Kouga Valuation Roll",
+          description: "Public valuation roll notices and access.",
+          href: "https://www.kouga.gov.za/municipalvaluationrollavail",
+          category: "official", external: true,
+        },
+      ]
+    : [
+        {
+          id: "valuation-roll",
+          label: "Municipal valuation roll",
+          description: "Search the municipality's published valuation roll.",
+          href: `https://www.google.com/search?q=${q(`"valuation roll" ${muni} site:gov.za`)}`,
+          category: "official", external: true,
+        },
+        {
+          id: "muni-gis",
+          label: "Municipal GIS / zoning portal",
+          description: "Find the relevant municipal GIS or zoning viewer.",
+          href: `https://www.google.com/search?q=${q(`${muni} GIS zoning portal`)}`,
+          category: "official", external: true,
+        },
+      ];
+
+  const csg: ResearchLink[] = [
     {
-      id: "valuation-roll",
-      label: "Municipal valuation roll",
-      description: "Search the municipality's published valuation roll.",
-      href: `https://www.google.com/search?q=${q(`"valuation roll" ${muni} site:gov.za`)}`,
-      category: "official", external: true,
-    },
-    {
-      id: "muni-gis",
-      label: "Municipal GIS / zoning portal",
-      description: "Find the relevant municipal GIS or zoning viewer.",
-      href: `https://www.google.com/search?q=${q(`${muni} GIS zoning portal`)}`,
+      id: "csg-viewer",
+      label: "Chief Surveyor-General property viewer",
+      description: "Official cadastral viewer (CSG / DRDLR).",
+      href: ll
+        ? `https://csggis.drdlr.gov.za/psv/?lng=${ctx.lng}&lat=${ctx.lat}`
+        : `https://csggis.drdlr.gov.za/psv/`,
       category: "official", external: true,
     },
     {
@@ -89,6 +146,9 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       href: `https://csg.drdlr.gov.za/`,
       category: "official", external: true,
     },
+  ];
+
+  const deeds: ResearchLink[] = [
     {
       id: "windeed",
       label: "WinDeed search",
@@ -110,6 +170,9 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       href: `https://www.gov.za/services/deeds-registration`,
       category: "deeds", external: true,
     },
+  ];
+
+  const general: ResearchLink[] = [
     {
       id: "google",
       label: "Google search",
@@ -118,6 +181,8 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       category: "general", external: true,
     },
   ];
+
+  return [...base, ...kouga, ...csg, ...deeds, ...general];
 }
 
 export const LISTING_SITES = [

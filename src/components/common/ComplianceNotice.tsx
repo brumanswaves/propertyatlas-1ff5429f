@@ -2,14 +2,20 @@ import { ShieldAlert } from "lucide-react";
 
 interface Props {
   tone?: "default" | "soft";
+  variant?: "research" | "official";
   children?: React.ReactNode;
 }
 
 const DEFAULT_TEXT =
-  "PropertyAtlas helps organize property research from public sources, user notes, and third-party reports. " +
-  "Official records and valuations should be verified through the relevant provider.";
+  "PropertyAtlas organizes research from public sources, user-entered notes, and third-party reports. " +
+  "Always verify official property, zoning, valuation, ownership, and legal information with the relevant provider or municipality.";
 
-export function ComplianceNotice({ tone = "default", children }: Props) {
+const OFFICIAL_TEXT =
+  "Public cadastral and municipal layers shown here are sourced live from official viewers (Chief Surveyor-General, Kouga Municipality). " +
+  "PropertyAtlas does not own or warrant this data — verify with the source before relying on it.";
+
+export function ComplianceNotice({ tone = "default", variant = "research", children }: Props) {
+  const text = children ?? (variant === "official" ? OFFICIAL_TEXT : DEFAULT_TEXT);
   return (
     <div
       className={
@@ -20,7 +26,7 @@ export function ComplianceNotice({ tone = "default", children }: Props) {
       }
     >
       <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <p>{children ?? DEFAULT_TEXT}</p>
+      <p>{text}</p>
     </div>
   );
 }
