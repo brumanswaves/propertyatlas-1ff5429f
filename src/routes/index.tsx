@@ -99,6 +99,7 @@ function AtlasHome() {
         layers={layers}
         mapStyle={mapStyle}
         onSelectOfficial={(sel) => { setSelectedOfficial(sel); if (sel) setSelectedId(null); }}
+        onOfficialStatus={setOfficialStatus}
       />
       <MapLegend layers={layers} />
       <TopNav />
