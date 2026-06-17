@@ -88,6 +88,10 @@ export interface ArcGisFeatureCollection {
     upstreamReachable: boolean;
     upstreamMessage?: string;
     count: number;
+    activeSource?: "primary" | "fallback";
+    primaryStatus?: { reachable: boolean; count: number; message?: string };
+    fallbackStatus?: { reachable: boolean; count: number; message?: string };
+    upstreamUrl?: string;
   };
 }
 
