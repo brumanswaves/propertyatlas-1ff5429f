@@ -105,13 +105,13 @@ function AtlasHome() {
           <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} />
         </div>
 
-        {/* Tagline — premium positioning, sits under the search */}
+        {/* Tagline — repositioned as a public research hub */}
         <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
           <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
-            Click any erf. See value, sales history, ownership, zoning, and investment potential.
+            One place to research a South African property before you buy, sell, or invest.
           </p>
           <p className="mt-1.5 text-[11px] text-foreground/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">
-            Starting with the St Francis Bay pilot — built for buyers, investors, developers, and property professionals.
+            Save every property, link, report, and note in one place. Pilot region — St Francis Bay.
           </p>
         </div>
 
