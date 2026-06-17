@@ -173,25 +173,27 @@ export function PropertyPanel({ property, onClose }: Props) {
         </div>
 
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
-          <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
-            {TAB_META.map(({ id, label, icon }) => {
-              const active = tab === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => selectTab(id)}
-                  aria-pressed={active}
-                  className={cn(
-                    "relative inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-2.5 text-[11px] font-medium transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
-                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {icon}
-                  {label}
-                  {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
-                </button>
-              );
-            })}
+          <div className="relative">
+            <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
+              {TAB_META.map(({ id, label }) => {
+                const active = tab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => selectTab(id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "relative inline-flex shrink-0 items-center whitespace-nowrap px-2 py-2.5 text-[11px] font-medium transition sm:px-2.5",
+                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                    {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent" />
           </div>
         </div>
 

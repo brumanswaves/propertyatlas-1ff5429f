@@ -4,11 +4,11 @@ import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { buildResearchLinks, type ResearchContext, type ResearchLink } from "@/lib/research/links";
 
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
-  maps:     { label: "Maps & street view",   icon: <Map className="h-3.5 w-3.5" /> },
-  listings: { label: "Active listings",      icon: <Building2 className="h-3.5 w-3.5" /> },
-  official: { label: "Official sources",     icon: <Landmark className="h-3.5 w-3.5" /> },
-  deeds:    { label: "Deeds & reports",      icon: <FileText className="h-3.5 w-3.5" /> },
-  general:  { label: "General web",          icon: <Search className="h-3.5 w-3.5" /> },
+  maps:     { label: "Maps & street view",            icon: <Map className="h-3.5 w-3.5" /> },
+  listings: { label: "Search listing portals",        icon: <Building2 className="h-3.5 w-3.5" /> },
+  official: { label: "Municipal & official sources",  icon: <Landmark className="h-3.5 w-3.5" /> },
+  deeds:    { label: "Deeds office & Surveyor General", icon: <FileText className="h-3.5 w-3.5" /> },
+  general:  { label: "General web",                   icon: <Search className="h-3.5 w-3.5" /> },
 };
 
 export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
@@ -20,9 +20,9 @@ export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold tracking-tight">Research links</h3>
+        <h3 className="text-sm font-semibold tracking-tight">Outbound research links</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Open public search pages for this property in a new tab. PropertyAtlas does not scrape or store data from these sites.
+          Quick links to search this property on public sites (maps, listing portals, municipal & deeds). PropertyAtlas does not scrape or store data from these sites. To save listings you find, use the <span className="font-medium text-foreground">Listings</span> tab. To order paid reports, use the <span className="font-medium text-foreground">Reports</span> tab.
         </p>
       </div>
 
