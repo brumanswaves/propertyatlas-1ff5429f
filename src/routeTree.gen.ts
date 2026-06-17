@@ -32,6 +32,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
+import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
 
 const WhyRoute = WhyRouteImport.update({
   id: '/why',
@@ -148,6 +149,11 @@ const AdminReadinessRoute = AdminReadinessRouteImport.update({
   path: '/readiness',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
+  id: '/public-data-debug',
+  path: '/public-data-debug',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRoutesById {
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRouteTypes {
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/public-data-debug'
     | '/admin/readiness'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/public-data-debug'
     | '/admin/readiness'
   id:
     | '__root__'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/public-data-debug'
     | '/admin/readiness'
   fileRoutesById: FileRoutesById
 }
@@ -491,14 +503,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReadinessRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/public-data-debug': {
+      id: '/admin/public-data-debug'
+      path: '/public-data-debug'
+      fullPath: '/admin/public-data-debug'
+      preLoaderRoute: typeof AdminPublicDataDebugRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminPublicDataDebugRoute: typeof AdminPublicDataDebugRoute
   AdminReadinessRoute: typeof AdminReadinessRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminPublicDataDebugRoute: AdminPublicDataDebugRoute,
   AdminReadinessRoute: AdminReadinessRoute,
 }
 
