@@ -756,6 +756,20 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
         aria-label="St Francis Bay property map"
       />
+      {(layerMessages.csg || layerMessages.kouga) && (
+        <div className="pointer-events-none absolute left-1/2 top-44 z-20 -translate-x-1/2 space-y-1">
+          {layerMessages.csg && (
+            <div className="pointer-events-auto rounded-full bg-card/95 px-3 py-1 text-[11px] font-medium text-foreground shadow-soft backdrop-blur">
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />{layerMessages.csg}
+            </div>
+          )}
+          {layerMessages.kouga && (
+            <div className="pointer-events-auto rounded-full bg-card/95 px-3 py-1 text-[11px] font-medium text-foreground shadow-soft backdrop-blur">
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-violet-500 align-middle" />{layerMessages.kouga}
+            </div>
+          )}
+        </div>
+      )}
       {mapError && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-gradient-ocean p-4 text-white">
           <div className="max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center backdrop-blur">
