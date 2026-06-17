@@ -85,10 +85,11 @@ function PublicDataDebug() {
           <DebugButton running={running} label="Test static Kouga GeoJSON" onClick={() => run("Static Kouga GeoJSON", async () => [{ id: `${Date.now()}-static-kouga`, title: "Static Kouga GeoJSON", result: await testStaticGeoJson("kouga-zoning") }])} />
           <DebugButton running={running} label="Test Mapbox rendering with test geometry" onClick={() => run("Mapbox test geometry", async () => {
             const [csg, kouga] = await Promise.all([testStaticGeoJson("csg-parcels", true), testStaticGeoJson("kouga-zoning", true)]);
-            const mapboxSourceUpdated = csg.features.length > 0 || kouga.features.length > 0;
+            const csgUpdated = window.localStorage.getItem("pa.arcgis.csg.meta.sourceUpdated") === "true";
+            const kougaUpdated = window.localStorage.getItem("pa.arcgis.kouga.meta.sourceUpdated") === "true";
             return [
-              { id: `${Date.now()}-test-csg`, title: "Mapbox test geometry: csg-parcels", result: csg, mapboxSourceUpdated },
-              { id: `${Date.now()}-test-kouga`, title: "Mapbox test geometry: kouga-zoning", result: kouga, mapboxSourceUpdated },
+              { id: `${Date.now()}-test-csg`, title: "Mapbox test geometry: csg-parcels", result: csg, mapboxSourceUpdated: csgUpdated },
+              { id: `${Date.now()}-test-kouga`, title: "Mapbox test geometry: kouga-zoning", result: kouga, mapboxSourceUpdated: kougaUpdated },
             ];
           })} />
           <DebugButton running={running} label="Run full fallback chain" onClick={() => run("Full fallback chain", () => runForLayers("Full fallback chain", (layer) => loadOfficialPublicLayer(layer, bbox, 400)))} />
@@ -132,7 +133,7 @@ function ResultCard({ item }: { item: DebugResult }) {
         <Row k="Source label" v={item.result.sourceLabel} />
         <Row k="Official data" v={String(item.result.official)} />
         <Row k="Fetched at" v={item.result.fetchedAt} />
-        <Row k="Whether Mapbox source was updated" v={item.mapboxSourceUpdated == null ? "Only available from live map/test geometry control" : String(item.mapboxSourceUpdated)} />
+        <Row k="Whether Mapbox source was updated" v={item.mapboxSourceUpdated == null ? "No live map source update recorded by this test" : String(item.mapboxSourceUpdated)} />
         {item.result.message && <Row k="Error message" v={item.result.message} />}
       </div>
       <details className="mt-3" open>
