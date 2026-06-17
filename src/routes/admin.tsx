@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ShieldCheck, Database, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Database, AlertCircle, CheckCircle2, CircleDashed } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -191,5 +191,70 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{value}</div>
     </div>
+  );
+}
+
+type HealthRow = { name: string; ok: boolean | null; detail?: string };
+
+function HealthChecks() {
+  const [rows, setRows] = useState<HealthRow[]>([
+    { name: "CSG endpoint reachable", ok: null },
+    { name: "Kouga endpoint reachable", ok: null },
+    { name: "Mapbox token configured", ok: null },
+    { name: "Lovable Cloud backend", ok: null },
+    { name: "Demo data loaded", ok: null },
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { probeUpstream } = await import("@/lib/providers/arcgis.functions");
+      const [csg, kouga] = await Promise.all([
+        probeUpstream({ data: { layer: "csg-parcels" } }).catch((e: unknown) => ({ ok: false, reachable: false, message: e instanceof Error ? e.message : "error" })),
+        probeUpstream({ data: { layer: "kouga-zoning" } }).catch((e: unknown) => ({ ok: false, reachable: false, message: e instanceof Error ? e.message : "error" })),
+      ]);
+      const mapboxOk = typeof import.meta.env.VITE_MAPBOX_ACCESS_TOKEN === "string" && import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.length > 0;
+      const { error: pingErr } = await supabase.from("user_roles").select("user_id", { head: true, count: "exact" }).limit(1);
+      if (cancelled) return;
+      setRows([
+        { name: "CSG endpoint reachable", ok: csg.ok, detail: "status" in csg ? `HTTP ${csg.status}` : csg.message },
+        { name: "Kouga endpoint reachable", ok: kouga.ok, detail: "status" in kouga ? `HTTP ${kouga.status}` : kouga.message ?? "Not configured" },
+        { name: "Mapbox token configured", ok: mapboxOk, detail: mapboxOk ? "VITE_MAPBOX_ACCESS_TOKEN present" : "Missing" },
+        { name: "Lovable Cloud backend", ok: !pingErr, detail: pingErr?.message },
+        { name: "Demo data loaded", ok: PROPERTIES.length > 0, detail: `${PROPERTIES.length} demo parcels` },
+      ]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Health checks</h2>
+      <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr><th className="px-4 py-2 text-left">Check</th><th className="px-4 py-2 text-left">Status</th></tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r) => {
+              const pending = r.ok === null;
+              const ok = r.ok === true;
+              return (
+                <tr key={r.name}>
+                  <td className="px-4 py-3 font-medium">{r.name}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${pending ? "bg-muted text-muted-foreground" : ok ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                      {pending ? <CircleDashed className="h-2.5 w-2.5" /> : ok ? <CheckCircle2 className="h-2.5 w-2.5" /> : <AlertCircle className="h-2.5 w-2.5" />}
+                      {pending ? "checking…" : ok ? "OK" : "Down"}
+                    </span>
+                    {r.detail ? <span className="ml-2 text-[11px] text-muted-foreground">{r.detail}</span> : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
