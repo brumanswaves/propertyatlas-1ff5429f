@@ -52,21 +52,20 @@ interface UpstreamConfig {
 // fn fails gracefully if the upstream rejects the request.
 const UPSTREAMS: Record<ArcGisQuery["layer"], UpstreamConfig> = {
   "csg-parcels": {
-    url: "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/0/query",
+    // Layer 2 = CSG Erven polygon layer (the parcel boundaries we want).
+    url: "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query",
     source: "Chief Surveyor-General",
     attribution: "© Chief Surveyor-General, DRDLR (South Africa). Public viewer.",
-    outFields: "OBJECTID,PARCEL_KEY,ERF_NO,PORTION_NO,LPI_CODE,EXTENT,PROVINCE,TOWN",
+    outFields:
+      "OBJECTID,GID,PRCL_KEY,PRCL_TYPE,LSTATUS,WSTATUS,GEOM_AREA,TAG_X,TAG_Y,TAG_VALUE,ID,DATE_STAMP,PROVINCE,MAJ_REGION,MIN_REGION,PARCEL_NO,PORTION,SS_NAME,DSG_NO,SS_NO,FARM_NAME,SHAPE_Length,SHAPE_Area",
   },
   "kouga-zoning": {
-    // The Kouga Hub publishes feature services at services*.arcgis.com URLs
-    // that the municipality controls (and occasionally rotates). We read the
-    // confirmed URL from KOUGA_ZONING_SERVICE_URL at request time so an admin
-    // can wire in the official service without a code change.
-    // When unset, the layer renders as "endpoint pending confirmation" and the
-    // /admin readiness page surfaces the blocker.
-    url: "",
+    // Default to the public Kouga zoning FeatureServer (layer 1). An admin can
+    // override at runtime via KOUGA_ZONING_SERVICE_URL without a code change.
+    url: "https://services5.arcgis.com/DllnbBENKfts6TQD/ArcGIS/rest/services/Zoning/FeatureServer/1/query",
     source: "Kouga Municipality GIS",
     attribution: "© Kouga Local Municipality, Mapping Portal.",
+    outFields: "OBJECTID,ZONING_TYP,ZONING,ZONING_DES,Shape__Area,Shape__Length",
   },
 };
 
