@@ -136,6 +136,19 @@ function Dashboard() {
           />
         </div>
 
+        {/* Portfolio placeholders — provider-ready slots */}
+        <section className="mt-8">
+          <SectionTitle icon={<LineChart className="h-3.5 w-3.5" />}>Portfolio intelligence</SectionTitle>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <PlaceholderCard label="Estimated portfolio value" value={saved.length ? formatZAR(totalValue) : "Not Available"} note="Estimate Only • Not a Certified Valuation" />
+            <PlaceholderCard label="Total land area" value={saved.length ? `${saved.reduce((s,p)=>s+p.sizeSqm,0).toLocaleString()} m²` : "Not Available"} />
+            <PlaceholderCard label="Properties tracked" value={saved.length.toString()} />
+            <PlaceholderCard label="Reports purchased" value="0" note="Visit /reports to order" />
+            <PlaceholderCard label="Average yield" value="Not Available" note="Activates with Lightstone provider" />
+            <PlaceholderCard label="Municipal exposure" value={saved.length ? "Kouga Local Municipality" : "Not Available"} />
+          </div>
+        </section>
+
         {/* Market pulse */}
         <section className="mt-10">
           <SectionTitle icon={<LineChart className="h-3.5 w-3.5" />}>St Francis Bay market pulse</SectionTitle>
