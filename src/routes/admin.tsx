@@ -216,9 +216,18 @@ function HealthChecks() {
       const mapboxOk = typeof import.meta.env.VITE_MAPBOX_ACCESS_TOKEN === "string" && import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.length > 0;
       const { error: pingErr } = await supabase.from("user_roles").select("user_id", { head: true, count: "exact" }).limit(1);
       if (cancelled) return;
+      const readMeta = (k: string) => {
+        try {
+          const raw = window.localStorage.getItem(k);
+          if (!raw) return undefined;
+          const m = JSON.parse(raw) as { count?: number; fetchedAt?: string; upstreamReachable?: boolean; upstreamMessage?: string };
+          const when = m.fetchedAt ? new Date(m.fetchedAt).toLocaleString() : "—";
+          return `${m.upstreamReachable ? "reachable" : "unreachable"} · ${m.count ?? 0} features · ${when}${m.upstreamMessage ? ` · ${m.upstreamMessage}` : ""}`;
+        } catch { return undefined; }
+      };
       setRows([
-        { name: "CSG endpoint reachable", ok: csg.ok, detail: "status" in csg ? `HTTP ${csg.status}` : csg.message },
-        { name: "Kouga endpoint reachable", ok: kouga.ok, detail: "status" in kouga ? `HTTP ${kouga.status}` : kouga.message ?? "Not configured" },
+        { name: "CSG endpoint reachable", ok: csg.ok, detail: ("status" in csg ? `HTTP ${csg.status}` : csg.message) + (readMeta("pa.arcgis.csg.meta") ? ` — last fetch: ${readMeta("pa.arcgis.csg.meta")}` : "") },
+        { name: "Kouga endpoint reachable", ok: kouga.ok, detail: ("status" in kouga ? `HTTP ${kouga.status}` : kouga.message ?? "Not configured") + (readMeta("pa.arcgis.kouga.meta") ? ` — last fetch: ${readMeta("pa.arcgis.kouga.meta")}` : "") },
         { name: "Mapbox token configured", ok: mapboxOk, detail: mapboxOk ? "VITE_MAPBOX_ACCESS_TOKEN present" : "Missing" },
         { name: "Lovable Cloud backend", ok: !pingErr, detail: pingErr?.message },
         { name: "Demo data loaded", ok: PROPERTIES.length > 0, detail: `${PROPERTIES.length} demo parcels` },
