@@ -1,5 +1,8 @@
 type LayerId = "csg-parcels" | "kouga-zoning";
 type Bbox = [number, number, number, number];
+type JsonGeometry = { type: "Polygon" | "Point" | "MultiLineString"; coordinates: unknown };
+type JsonFeature = { type: "Feature"; geometry: JsonGeometry; properties: Record<string, unknown> };
+type JsonFeatureCollection = { type: "FeatureCollection"; features: JsonFeature[] };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,12 +55,12 @@ function buildUrl(endpoint: string, bbox: Bbox, limit: number, format: "geojson"
   return `${endpoint}?${params.toString()}`;
 }
 
-function convertEsriToGeoJSON(esri: unknown): GeoJSON.FeatureCollection {
-  const out: GeoJSON.Feature[] = [];
+function convertEsriToGeoJSON(esri: unknown): JsonFeatureCollection {
+  const out: JsonFeature[] = [];
   const features = (esri as { features?: Array<{ geometry?: Record<string, unknown>; attributes?: Record<string, unknown> }> })?.features ?? [];
   for (const feature of features) {
     const g = feature.geometry ?? {};
-    let geometry: GeoJSON.Geometry | null = null;
+    let geometry: JsonGeometry | null = null;
     if (Array.isArray((g as { rings?: unknown }).rings)) {
       geometry = { type: "Polygon", coordinates: (g as { rings: number[][][] }).rings };
     } else if (typeof (g as { x?: unknown }).x === "number" && typeof (g as { y?: unknown }).y === "number") {
@@ -65,7 +68,7 @@ function convertEsriToGeoJSON(esri: unknown): GeoJSON.FeatureCollection {
     } else if (Array.isArray((g as { paths?: unknown }).paths)) {
       geometry = { type: "MultiLineString", coordinates: (g as { paths: number[][][] }).paths };
     }
-    if (geometry) out.push({ type: "Feature", geometry, properties: (feature.attributes ?? {}) as GeoJSON.GeoJsonProperties });
+    if (geometry) out.push({ type: "Feature", geometry, properties: (feature.attributes ?? {}) as Record<string, unknown> });
   }
   return { type: "FeatureCollection", features: out };
 }
@@ -79,8 +82,7 @@ async function attempt(layer: LayerId, endpoint: string, bbox: Bbox, limit: numb
     const res = await fetch(requestUrl, {
       signal: controller.signal,
       headers: { Accept: format === "geojson" ? "application/geo+json,application/json" : "application/json" },
-    });
-    clearTimeout(timeout);
+    }).finally(() => clearTimeout(timeout));
     const text = await res.text();
     const responsePreview = text.slice(0, 500);
     if (!res.ok) {
@@ -91,7 +93,7 @@ async function attempt(layer: LayerId, endpoint: string, bbox: Bbox, limit: numb
     if (upstreamError) {
       return { method: "edge", layer, requestUrl, ok: false, httpStatus: res.status, errorMessage: `Upstream error ${upstreamError.code ?? ""}: ${upstreamError.message ?? "unknown"}`.trim(), responsePreview, fallbackUsed: "edge", durationMs: Date.now() - started };
     }
-    const fc = format === "json" ? convertEsriToGeoJSON(parsed) : parsed as GeoJSON.FeatureCollection;
+    const fc = format === "json" ? convertEsriToGeoJSON(parsed) : parsed as JsonFeatureCollection;
     if (fc?.type !== "FeatureCollection" || !Array.isArray(fc.features)) {
       return { method: "edge", layer, requestUrl, ok: false, httpStatus: res.status, errorMessage: "Response was not a GeoJSON FeatureCollection", responsePreview, fallbackUsed: "edge", durationMs: Date.now() - started };
     }
@@ -120,7 +122,7 @@ Deno.serve(async (req) => {
   for (const endpoint of cfg.endpoints) {
     for (const format of ["geojson", "json"] as const) {
       const result = await attempt(body.layer, endpoint, body.bbox, limit, format);
-      const { features, ...diag } = result as typeof result & { features?: GeoJSON.Feature[] };
+      const { features, ...diag } = result as typeof result & { features?: JsonFeature[] };
       attempts.push(diag);
       if (result.ok && features && features.length > 0) {
         return json({
