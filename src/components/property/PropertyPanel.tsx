@@ -204,6 +204,8 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Official public sources strip — probes CSG + Kouga via the server proxy */}
+            <OfficialSourceCard centroid={property.centroid} />
             {/* Why This Property? — Bloomberg-style intelligence card */}
             <WhyCard property={property} />
             {/* Key investor scores */}
