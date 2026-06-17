@@ -13,8 +13,9 @@ import { z } from "zod";
 
 // Allow-list of upstream hosts. Any host not listed here is rejected.
 const ALLOWED_HOSTS = new Set<string>([
-  "csggis.drdlr.gov.za",        // Chief Surveyor-General MapServer
-  "services.arcgis.com",        // ArcGIS Online (Kouga Hub feature services)
+  "csggis.drdlr.gov.za",                  // Chief Surveyor-General (primary)
+  "dffeportal.environment.gov.za",        // DFFE CSG Cadastre mirror (fallback)
+  "services.arcgis.com",                  // ArcGIS Online (Kouga Hub feature services)
   "services1.arcgis.com",
   "services2.arcgis.com",
   "services3.arcgis.com",
@@ -26,11 +27,9 @@ const ALLOWED_HOSTS = new Set<string>([
 ]);
 
 // Pilot-area bbox guard — Kouga / St Francis Bay region only.
-// Keeps requests tightly scoped while the integration is in pilot.
 const PILOT_BBOX = { xmin: 24.5, ymin: -34.4, xmax: 25.4, ymax: -33.9 };
 
 const BboxInput = z.object({
-  // [minLng, minLat, maxLng, maxLat] in WGS84
   bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
   layer: z.enum(["csg-parcels", "kouga-zoning"]),
   limit: z.number().int().min(1).max(1000).optional().default(400),
@@ -39,33 +38,34 @@ const BboxInput = z.object({
 type ArcGisQuery = z.infer<typeof BboxInput>;
 
 interface UpstreamConfig {
-  url: string;            // ArcGIS REST query endpoint (the /query path is appended if missing)
+  url: string;
   attribution: string;
   source: string;
-  /** Optional outFields override; otherwise '*' */
   outFields?: string;
 }
 
-// Endpoint registry. Update here when the licensed/permissioned URLs change.
-// NOTE: ArcGIS layer indices on CSG MapServer change over time — the values
-// below reflect the public CSGSearch service at time of integration. The server
-// fn fails gracefully if the upstream rejects the request.
 const UPSTREAMS: Record<ArcGisQuery["layer"], UpstreamConfig> = {
   "csg-parcels": {
-    // Layer 2 = CSG Erven polygon layer (the parcel boundaries we want).
     url: "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query",
     source: "Chief Surveyor-General",
     attribution: "© Chief Surveyor-General, DRDLR (South Africa). Public viewer.",
-    outFields:
-      "OBJECTID,GID,PRCL_KEY,PRCL_TYPE,LSTATUS,WSTATUS,GEOM_AREA,TAG_X,TAG_Y,TAG_VALUE,ID,DATE_STAMP,PROVINCE,MAJ_REGION,MIN_REGION,PARCEL_NO,PORTION,SS_NAME,DSG_NO,SS_NO,FARM_NAME,SHAPE_Length,SHAPE_Area",
+    outFields: "*",
   },
   "kouga-zoning": {
-    // Default to the public Kouga zoning FeatureServer (layer 1). An admin can
-    // override at runtime via KOUGA_ZONING_SERVICE_URL without a code change.
     url: "https://services5.arcgis.com/DllnbBENKfts6TQD/ArcGIS/rest/services/Zoning/FeatureServer/1/query",
     source: "Kouga Municipality GIS",
     attribution: "© Kouga Local Municipality, Mapping Portal.",
-    outFields: "OBJECTID,ZONING_TYP,ZONING,ZONING_DES,Shape__Area,Shape__Length",
+    outFields: "*",
+  },
+};
+
+// Fallback endpoints attempted when the primary fails or returns 0 features.
+const FALLBACKS: Partial<Record<ArcGisQuery["layer"], UpstreamConfig>> = {
+  "csg-parcels": {
+    url: "https://dffeportal.environment.gov.za/hosting/rest/services/CSG_Cadaster/CSG_Cadastral_Data/MapServer/2/query",
+    source: "DFFE CSG Cadastre Mirror",
+    attribution: "© DFFE CSG Cadastre Mirror (public).",
+    outFields: "*",
   },
 };
 
