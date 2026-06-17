@@ -134,40 +134,175 @@ export type Database = {
         }
         Relationships: []
       }
-      report_orders: {
+      provider_audit_log: {
+        Row: {
+          action: Database["public"]["Enums"]["provider_audit_action"]
+          at: string
+          error_code: string | null
+          id: string
+          latency_ms: number | null
+          meta: Json
+          provider: Database["public"]["Enums"]["provider_id"]
+          purpose: string | null
+          resource_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["provider_audit_action"]
+          at?: string
+          error_code?: string | null
+          id?: string
+          latency_ms?: number | null
+          meta?: Json
+          provider: Database["public"]["Enums"]["provider_id"]
+          purpose?: string | null
+          resource_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["provider_audit_action"]
+          at?: string
+          error_code?: string | null
+          id?: string
+          latency_ms?: number | null
+          meta?: Json
+          provider?: Database["public"]["Enums"]["provider_id"]
+          purpose?: string | null
+          resource_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      provider_cache: {
         Row: {
           created_at: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          payload: Json
+          provider: Database["public"]["Enums"]["provider_id"]
+          resource_id: string
+          resource_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          fetched_at?: string
+          id?: string
+          payload?: Json
+          provider: Database["public"]["Enums"]["provider_id"]
+          resource_id: string
+          resource_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          payload?: Json
+          provider?: Database["public"]["Enums"]["provider_id"]
+          resource_id?: string
+          resource_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_settings: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          is_active: boolean
+          last_checked_at: string | null
+          last_health: string | null
+          provider: Database["public"]["Enums"]["provider_id"]
+          secret_ref: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_health?: string | null
+          provider: Database["public"]["Enums"]["provider_id"]
+          secret_ref?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_health?: string | null
+          provider?: Database["public"]["Enums"]["provider_id"]
+          secret_ref?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_orders: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          failure_reason: string | null
           id: string
           parcel_id: string
           payload: Json
+          pdf_storage_path: string | null
           price_cents: number
           provider: string
+          provider_id: Database["public"]["Enums"]["provider_id"]
+          provider_order_ref: string | null
           report_type: string
           status: string
+          status_enum: Database["public"]["Enums"]["report_order_status"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           parcel_id: string
           payload?: Json
+          pdf_storage_path?: string | null
           price_cents?: number
           provider?: string
+          provider_id?: Database["public"]["Enums"]["provider_id"]
+          provider_order_ref?: string | null
           report_type: string
           status?: string
+          status_enum?: Database["public"]["Enums"]["report_order_status"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           parcel_id?: string
           payload?: Json
+          pdf_storage_path?: string | null
           price_cents?: number
           provider?: string
+          provider_id?: Database["public"]["Enums"]["provider_id"]
+          provider_order_ref?: string | null
           report_type?: string
           status?: string
+          status_enum?: Database["public"]["Enums"]["report_order_status"]
           updated_at?: string
           user_id?: string
         }
@@ -281,6 +416,29 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      provider_audit_action:
+        | "search"
+        | "get_property"
+        | "get_geometry"
+        | "get_ownership"
+        | "get_valuation"
+        | "get_transfers"
+        | "get_reports"
+        | "order_report"
+        | "health"
+      provider_id:
+        | "demo"
+        | "surveyor-general"
+        | "municipal-gis"
+        | "windeed"
+        | "lightstone"
+      report_order_status:
+        | "pending"
+        | "paid"
+        | "fulfilling"
+        | "complete"
+        | "failed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -409,6 +567,32 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      provider_audit_action: [
+        "search",
+        "get_property",
+        "get_geometry",
+        "get_ownership",
+        "get_valuation",
+        "get_transfers",
+        "get_reports",
+        "order_report",
+        "health",
+      ],
+      provider_id: [
+        "demo",
+        "surveyor-general",
+        "municipal-gis",
+        "windeed",
+        "lightstone",
+      ],
+      report_order_status: [
+        "pending",
+        "paid",
+        "fulfilling",
+        "complete",
+        "failed",
+        "cancelled",
+      ],
     },
   },
 } as const

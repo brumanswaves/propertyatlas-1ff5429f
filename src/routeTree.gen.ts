@@ -31,6 +31,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 
 const WhyRoute = WhyRouteImport.update({
   id: '/why',
@@ -142,11 +143,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReadinessRoute = AdminReadinessRouteImport.update({
+  id: '/readiness',
+  path: '/readiness',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
@@ -166,11 +172,12 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
@@ -190,12 +197,13 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/readiness': typeof AdminReadinessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/readiness'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/readiness'
   id:
     | '__root__'
     | '/'
@@ -289,12 +300,13 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/readiness'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
@@ -472,13 +484,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/readiness': {
+      id: '/admin/readiness'
+      path: '/readiness'
+      fullPath: '/admin/readiness'
+      preLoaderRoute: typeof AdminReadinessRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminReadinessRoute: typeof AdminReadinessRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminReadinessRoute: AdminReadinessRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,

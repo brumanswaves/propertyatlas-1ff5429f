@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ShieldCheck, Database, AlertCircle, CheckCircle2 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
@@ -79,6 +79,14 @@ function AdminPage() {
         </span>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Platform control</h1>
         <p className="text-sm text-muted-foreground">Internal monitoring and provider configuration.</p>
+        <div className="mt-4">
+          <Link
+            to="/admin/readiness"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
+          >
+            Provider readiness checklist →
+          </Link>
+        </div>
 
         <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Properties indexed" value={PROPERTIES.length.toString()} />
