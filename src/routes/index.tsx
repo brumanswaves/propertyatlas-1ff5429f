@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MousePointerClick, Plus, X, ShieldCheck, FlaskConical } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection, type OfficialLayerStatus } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
@@ -71,6 +71,16 @@ function AtlasHome() {
     });
   }
 
+  const handleMapSelect = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (id) setSelectedOfficial(null);
+  }, []);
+
+  const handleOfficialSelect = useCallback((sel: OfficialFeatureSelection | null) => {
+    setSelectedOfficial(sel);
+    if (sel) setSelectedId(null);
+  }, []);
+
   const selected = selectedId ? getProperty(selectedId) ?? null : null;
 
   const filterFn = useMemo(() => {
@@ -95,12 +105,12 @@ function AtlasHome() {
       <h1 className="sr-only">PropertyAtlas — Map-based property intelligence for South Africa</h1>
       <MapCanvas
         selectedId={selectedId}
-        onSelect={(id) => { setSelectedId(id); if (id) setSelectedOfficial(null); }}
+        onSelect={handleMapSelect}
         filterFn={filterFn}
         layers={layers}
         mapStyle={mapStyle}
         showTestGeometry={showTestGeometry}
-        onSelectOfficial={(sel) => { setSelectedOfficial(sel); if (sel) setSelectedId(null); }}
+        onSelectOfficial={handleOfficialSelect}
         onOfficialStatus={setOfficialStatus}
       />
       <MapLegend layers={layers} />
