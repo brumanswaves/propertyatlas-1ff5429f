@@ -187,7 +187,7 @@ async function fetchArcGis(cfg: UpstreamConfig, bbox: [number, number, number, n
 export const fetchArcGisLayer = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => BboxInput.parse(data))
   .handler(async ({ data }): Promise<ArcGisFeatureCollection> => {
-    const cfg = UPSTREAMS[data.layer];
+    const cfg = resolveUpstream(data.layer);
     const clipped = clipToPilot(data.bbox);
     if (bboxArea(clipped) <= 0) {
       return emptyCollection(cfg, "Bbox outside pilot area (Kouga / St Francis).");
@@ -201,7 +201,7 @@ export const probeUpstream = createServerFn({ method: "GET" })
     z.object({ layer: z.enum(["csg-parcels", "kouga-zoning"]) }).parse(data),
   )
   .handler(async ({ data }) => {
-    const cfg = UPSTREAMS[data.layer];
+    const cfg = resolveUpstream(data.layer);
     if (!cfg.url) {
       return { ok: false, reachable: false, message: "Endpoint not configured" };
     }
