@@ -3,7 +3,7 @@ import {
   Bookmark, BookmarkCheck, Building2, CalendarClock, Camera, ChevronRight, Crown,
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
   Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
-  Link2, FileText, Calculator, NotebookPen, Tag,
+  Link2, FileText, Calculator, NotebookPen, Tag as TagIcon,
 } from "lucide-react";
 import { type Property, type HistoryKind, formatZAR, walkMinutes, driveMinutes, PROPERTIES } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
