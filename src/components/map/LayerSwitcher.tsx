@@ -21,8 +21,15 @@ const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: strin
   {
     title: "Parcels",
     items: [
-      { key: "parcels", label: "Property Parcels", hint: "Reveal as you zoom" },
-      { key: "zoning", label: "Zoning", hint: "Colored by use type" },
+      { key: "parcels", label: "Demo Parcels", hint: "PropertyAtlas pilot dataset" },
+      { key: "zoning", label: "Demo Zoning", hint: "Colored by use type" },
+    ],
+  },
+  {
+    title: "Official public data",
+    items: [
+      { key: "csgParcels", label: "CSG Parcels", hint: "Chief Surveyor-General — live" },
+      { key: "kougaZoning", label: "Kouga Zoning", hint: "Kouga Municipality GIS — live" },
     ],
   },
   {
@@ -155,6 +162,8 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
 export const DEFAULT_LAYERS: MapLayers = {
   parcels: true,
   zoning: false,
+  csgParcels: false,
+  kougaZoning: false,
   investorHeat: false,
   developmentHeat: false,
   oceanViewHeat: false,

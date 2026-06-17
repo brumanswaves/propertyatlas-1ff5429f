@@ -25,6 +25,8 @@ export const STYLE_URLS: Record<MapStyleId, string> = {
 export interface MapLayers {
   parcels: boolean;
   zoning: boolean;
+  csgParcels: boolean;
+  kougaZoning: boolean;
   investorHeat: boolean;
   developmentHeat: boolean;
   oceanViewHeat: boolean;
