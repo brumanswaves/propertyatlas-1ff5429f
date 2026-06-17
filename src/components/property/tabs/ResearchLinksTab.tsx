@@ -4,11 +4,11 @@ import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { buildResearchLinks, type ResearchContext, type ResearchLink } from "@/lib/research/links";
 
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
-  maps:     { label: "Maps & street view",   icon: <Map className="h-3.5 w-3.5" /> },
-  listings: { label: "Active listings",      icon: <Building2 className="h-3.5 w-3.5" /> },
-  official: { label: "Official sources",     icon: <Landmark className="h-3.5 w-3.5" /> },
-  deeds:    { label: "Deeds & reports",      icon: <FileText className="h-3.5 w-3.5" /> },
-  general:  { label: "General web",          icon: <Search className="h-3.5 w-3.5" /> },
+  maps:     { label: "Maps & street view",            icon: <Map className="h-3.5 w-3.5" /> },
+  listings: { label: "Search listing portals",        icon: <Building2 className="h-3.5 w-3.5" /> },
+  official: { label: "Municipal & official sources",  icon: <Landmark className="h-3.5 w-3.5" /> },
+  deeds:    { label: "Deeds office & Surveyor General", icon: <FileText className="h-3.5 w-3.5" /> },
+  general:  { label: "General web",                   icon: <Search className="h-3.5 w-3.5" /> },
 };
 
 export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
