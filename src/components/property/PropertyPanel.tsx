@@ -11,12 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { SourceBadge } from "@/components/data/SourceBadge";
+import { SourceBadge, FieldSourceBadge, type CadastralSource } from "@/components/data/SourceBadge";
 import { ResearchLinksTab } from "./tabs/ResearchLinksTab";
 import { ListingsTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
+import { OfficialSourceCard } from "./OfficialSourceCard";
 import type { ResearchContext } from "@/lib/research/links";
 
 interface Props {
