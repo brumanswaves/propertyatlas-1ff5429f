@@ -10,6 +10,7 @@ import {
   type Property,
 } from "@/data/properties";
 import { AlertTriangle } from "lucide-react";
+import { loadOfficialPublicLayer, testStaticGeoJson, type PublicDataResult } from "@/lib/providers/publicDataClient";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
@@ -44,8 +45,8 @@ export interface OfficialFeatureSelection {
 }
 
 export interface OfficialLayerStatus {
-  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "failed"; count: number; message?: string; source?: string };
-  kouga: { state: "off" | "loading" | "loaded" | "empty" | "failed"; count: number; message?: string };
+  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
+  kouga: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
 }
 
 interface Props {
@@ -54,6 +55,7 @@ interface Props {
   filterFn?: (p: Property) => boolean;
   layers: MapLayers;
   mapStyle: MapStyleId;
+  showTestGeometry?: boolean;
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
   onOfficialStatus?: (s: OfficialLayerStatus) => void;
 }
@@ -83,7 +85,7 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial, onOfficialStatus }: Props) {
+export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, showTestGeometry = false, onSelectOfficial, onOfficialStatus }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
