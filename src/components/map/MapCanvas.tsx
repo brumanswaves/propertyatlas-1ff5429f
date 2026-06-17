@@ -184,6 +184,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const activeMap = map;
 
     const ensureSetup = () => {
       // Guard on the LAYER (style switches can preserve sources but drop layers).
@@ -588,7 +589,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
     let cancelled = false;
 
     function setOfficialSource(id: "csg-parcels" | "kouga-zoning", result: PublicDataResult, testOnly = false) {
-      const src = map.getSource(id) as mapboxgl.GeoJSONSource | undefined;
+      const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
       if (!src) return false;
       src.setData({
         type: "FeatureCollection",
@@ -607,7 +608,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
     }
 
     function clearOfficialSource(id: "csg-parcels" | "kouga-zoning") {
-      const src = map.getSource(id) as mapboxgl.GeoJSONSource | undefined;
+      const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
       if (src) src.setData({ type: "FeatureCollection", features: [] });
     }
 
