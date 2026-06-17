@@ -35,19 +35,21 @@ function ReportsPage() {
 
   async function order(type: ReportType) {
     if (!user) { toast.message("Sign in to order reports"); return; }
+    const def = REPORT_CATALOG.find((r) => r.id === type);
+    if (!def?.available) { toast.message("This report is coming soon"); return; }
     const provider = getActiveProvider();
     const { error, data } = await supabase.from("report_orders").insert({
       user_id: user.id,
       parcel_id: "demo:sample",
       report_type: type,
-      status: "completed",
-      price_cents: REPORT_CATALOG.find((r) => r.id === type)?.priceCents ?? 0,
+      status: "pending",
+      price_cents: def.priceCents,
       provider: provider.meta.id,
-      payload: { mock: true, generatedAt: new Date().toISOString() },
+      payload: { placeholder: true, createdAt: new Date().toISOString() },
     }).select("id, report_type, status, created_at").single();
     if (error) { toast.error(error.message); return; }
     setOrders((o) => [data, ...o]);
-    toast.success("Mock report generated");
+    toast.success("Order placed (pending) — no payment processed");
   }
 
   return (
@@ -59,8 +61,11 @@ function ReportsPage() {
         </span>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Property intelligence reports</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Professional reports compiled from connected data providers. Reports marked Coming Soon will activate
-          automatically once their underlying provider is connected. Estimate Only • Not a Certified Valuation.
+          Order official third-party reports when you need verified data. Reports marked Coming Soon will activate
+          once their underlying provider is connected. No payment is processed at this stage — orders are logged as pending.
+        </p>
+        <p className="mt-2 max-w-2xl text-xs text-muted-foreground">
+          Reports are provided by third-party data providers. PropertyAtlas does not alter official report data.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

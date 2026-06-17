@@ -41,6 +41,99 @@ export type Database = {
         }
         Relationships: []
       }
+      property_listings: {
+        Row: {
+          agency: string | null
+          agent: string | null
+          asking_price_cents: number | null
+          created_at: string
+          found_at: string | null
+          id: string
+          notes: string | null
+          parcel_id: string
+          status: string
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          agency?: string | null
+          agent?: string | null
+          asking_price_cents?: number | null
+          created_at?: string
+          found_at?: string | null
+          id?: string
+          notes?: string | null
+          parcel_id: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          agency?: string | null
+          agent?: string | null
+          asking_price_cents?: number | null
+          created_at?: string
+          found_at?: string | null
+          id?: string
+          notes?: string | null
+          parcel_id?: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      property_notes: {
+        Row: {
+          agent_contact: string | null
+          checklist: Json
+          cons: string | null
+          created_at: string
+          id: string
+          municipality: string | null
+          parcel_id: string
+          personal: string | null
+          pros: string | null
+          questions: string | null
+          renovation: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_contact?: string | null
+          checklist?: Json
+          cons?: string | null
+          created_at?: string
+          id?: string
+          municipality?: string | null
+          parcel_id: string
+          personal?: string | null
+          pros?: string | null
+          questions?: string | null
+          renovation?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_contact?: string | null
+          checklist?: Json
+          cons?: string | null
+          created_at?: string
+          id?: string
+          municipality?: string | null
+          parcel_id?: string
+          personal?: string | null
+          pros?: string | null
+          questions?: string | null
+          renovation?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       report_orders: {
         Row: {
           created_at: string
@@ -83,32 +176,47 @@ export type Database = {
       saved_properties: {
         Row: {
           created_at: string
+          external_links: Json
           id: string
+          manual_price_cents: number | null
+          manual_value_cents: number | null
           note: string | null
           parcel_id: string
           priority: string
+          research_status: string
           status: string
           tags: string[]
+          user_data: Json
           user_id: string
         }
         Insert: {
           created_at?: string
+          external_links?: Json
           id?: string
+          manual_price_cents?: number | null
+          manual_value_cents?: number | null
           note?: string | null
           parcel_id: string
           priority?: string
+          research_status?: string
           status?: string
           tags?: string[]
+          user_data?: Json
           user_id: string
         }
         Update: {
           created_at?: string
+          external_links?: Json
           id?: string
+          manual_price_cents?: number | null
+          manual_value_cents?: number | null
           note?: string | null
           parcel_id?: string
           priority?: string
+          research_status?: string
           status?: string
           tags?: string[]
+          user_data?: Json
           user_id?: string
         }
         Relationships: []

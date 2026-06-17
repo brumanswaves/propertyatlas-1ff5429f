@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Sparkles, X } from "lucide-react";
+import { MousePointerClick, Plus, Sparkles, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
 import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
+import { AddPropertyDialog } from "@/components/property/AddPropertyDialog";
 import { TopNav } from "@/components/layout/TopNav";
 import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, PROPERTIES, type Property } from "@/data/properties";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/")({
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hintDismissed, setHintDismissed] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
@@ -105,13 +107,13 @@ function AtlasHome() {
           <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} />
         </div>
 
-        {/* Tagline — premium positioning, sits under the search */}
+        {/* Tagline — repositioned as a public research hub */}
         <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
           <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
-            Click any erf. See value, sales history, ownership, zoning, and investment potential.
+            One place to research a South African property before you buy, sell, or invest.
           </p>
           <p className="mt-1.5 text-[11px] text-foreground/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">
-            Starting with the St Francis Bay pilot — built for buyers, investors, developers, and property professionals.
+            Save every property, link, report, and note in one place. Pilot region — St Francis Bay.
           </p>
         </div>
 
@@ -161,9 +163,19 @@ function AtlasHome() {
         Pilot region · St Francis Bay. Mock property information shown for demonstration. Estimates are not certified valuations.
       </div>
 
+      {/* Floating add-property button — manual research workflow */}
+      <button
+        onClick={() => setAddOpen(true)}
+        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-[11px] font-semibold text-background shadow-panel hover:opacity-90 md:bottom-6 md:right-6"
+        title="Add a property to your research"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add property
+      </button>
+
       <FooterMini />
 
       <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
+      {addOpen && <AddPropertyDialog onClose={() => setAddOpen(false)} />}
       <Toaster position="top-center" />
     </div>
   );

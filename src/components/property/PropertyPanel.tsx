@@ -3,6 +3,7 @@ import {
   Bookmark, BookmarkCheck, Building2, CalendarClock, Camera, ChevronRight, Crown,
   GitCompare, Lock, MapPin, Ruler, Share2, TrendingUp, Waves, X, Eye, Activity, Home, Banknote,
   Download, Filter, BadgeCheck, Sparkles, Users, LineChart, Layers, Image as ImageIcon, Scale,
+  Link2, FileText, Calculator, NotebookPen, Tag as TagIcon,
 } from "lucide-react";
 import { type Property, type HistoryKind, formatZAR, walkMinutes, driveMinutes, PROPERTIES } from "@/data/properties";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -11,16 +12,29 @@ import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { SourceBadge } from "@/components/data/SourceBadge";
+import { ResearchLinksTab } from "./tabs/ResearchLinksTab";
+import { ListingsTab } from "./tabs/ListingsTab";
+import { ReportsTab } from "./tabs/ReportsTab";
+import { NotesTab } from "./tabs/NotesTab";
+import { CalculatorsTab } from "./tabs/CalculatorsTab";
+import type { ResearchContext } from "@/lib/research/links";
 
 interface Props {
   property: Property | null;
   onClose: () => void;
 }
 
-type Tab = "overview" | "ownership" | "sales" | "intelligence" | "photos";
+type Tab =
+  | "overview" | "research" | "listings" | "reports" | "notes" | "calculators"
+  | "ownership" | "sales" | "intelligence" | "photos";
 
 const TAB_META: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview",     label: "Overview",     icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { id: "research",     label: "Research",     icon: <Link2 className="h-3.5 w-3.5" /> },
+  { id: "listings",     label: "Listings",     icon: <TagIcon className="h-3.5 w-3.5" /> },
+  { id: "reports",      label: "Reports",      icon: <FileText className="h-3.5 w-3.5" /> },
+  { id: "notes",        label: "Notes",        icon: <NotebookPen className="h-3.5 w-3.5" /> },
+  { id: "calculators",  label: "Calculators",  icon: <Calculator className="h-3.5 w-3.5" /> },
   { id: "ownership",    label: "Ownership",    icon: <Users className="h-3.5 w-3.5" /> },
   { id: "sales",        label: "Sales",        icon: <Banknote className="h-3.5 w-3.5" /> },
   { id: "intelligence", label: "Intelligence", icon: <Activity className="h-3.5 w-3.5" /> },
@@ -348,7 +362,44 @@ export function PropertyPanel({ property, onClose }: Props) {
           </div>
         )}
 
-        <SourceBadge source="demo" lastUpdated={new Date().toISOString()} />
+        {tab === "research" && (
+          <ResearchLinksTab
+            ctx={{
+              address: property.street,
+              area: property.area,
+              town: property.area,
+              suburb: property.area,
+              municipality: "Kouga Local Municipality",
+              province: "Eastern Cape",
+              erf: property.erf,
+              lng: property.centroid[0],
+              lat: property.centroid[1],
+            } satisfies ResearchContext}
+          />
+        )}
+
+        {tab === "listings" && (
+          <ListingsTab
+            parcelId={property.id}
+            ctx={{
+              address: property.street, area: property.area, town: property.area,
+              suburb: property.area, municipality: "Kouga Local Municipality",
+              province: "Eastern Cape", erf: property.erf,
+            }}
+          />
+        )}
+
+        {tab === "reports" && (
+          <ReportsTab parcelId={property.id} summary={`${property.street}, ${property.area} · Erf ${property.erf}`} />
+        )}
+
+        {tab === "notes" && <NotesTab parcelId={property.id} />}
+
+        {tab === "calculators" && <CalculatorsTab defaultPrice={property.estimatedValue} />}
+
+        {(tab === "overview" || tab === "ownership" || tab === "sales" || tab === "intelligence" || tab === "photos") && (
+          <SourceBadge source="demo" lastUpdated={new Date().toISOString()} />
+        )}
         </div>
       </div>
     </aside>

@@ -1,12 +1,13 @@
-// Report marketplace catalog. All reports currently generate mock payloads;
-// "available: false" surfaces a "Coming Soon" button in the UI.
+// Report marketplace catalog. Only Lightstone Property Report runs the
+// placeholder order flow today; others are tagged Coming Soon until their
+// underlying provider integration is wired.
 
 export type ReportType =
-  | "property"
-  | "ownership"
-  | "valuation"
-  | "comparables"
-  | "transfers";
+  | "lightstone_property"
+  | "lightstone_seller"
+  | "windeed_property"
+  | "windeed_avm"
+  | "sg_diagram";
 
 export interface ReportDef {
   id: ReportType;
@@ -20,49 +21,49 @@ export interface ReportDef {
 
 export const REPORT_CATALOG: ReportDef[] = [
   {
-    id: "property",
-    name: "Property Report",
-    description: "Full property snapshot — characteristics, zoning, valuation, neighbourhood context.",
-    priceCents: 19900,
+    id: "lightstone_property",
+    name: "Lightstone Property Report",
+    description: "Comprehensive property snapshot — owner, valuation band, sales history, comparable transfers.",
+    priceCents: 29900,
     available: true,
-    providerHint: "Demo + Municipal GIS",
-    estTurnaround: "Instant (mock)",
+    providerHint: "Lightstone",
+    estTurnaround: "Real-time once provider is connected",
   },
   {
-    id: "ownership",
-    name: "Ownership Report",
-    description: "Current registered owner, ownership type, holding period, related entities (when connected).",
-    priceCents: 14900,
+    id: "lightstone_seller",
+    name: "Lightstone Property Value Seller Report",
+    description: "Seller-focused AVM with suggested asking range and recent comparable activity.",
+    priceCents: 19900,
     available: false,
-    providerHint: "Requires WinDeed integration",
+    providerHint: "Lightstone",
     estTurnaround: "Real-time once connected",
   },
   {
-    id: "valuation",
-    name: "Valuation Report",
-    description: "AVM market estimate, confidence interval, comparable benchmark range.",
+    id: "windeed_property",
+    name: "WinDeed Property Report",
+    description: "Deeds-office property report including registered owner and bond information.",
     priceCents: 24900,
     available: false,
-    providerHint: "Requires Lightstone integration",
+    providerHint: "WinDeed",
     estTurnaround: "Real-time once connected",
   },
   {
-    id: "comparables",
-    name: "Comparable Sales Report",
-    description: "Closest comparable transfers in the last 24 months, with price-per-m² normalisation.",
+    id: "windeed_avm",
+    name: "WinDeed Automated Valuation Report",
+    description: "Automated valuation model output sourced via WinDeed.",
     priceCents: 17900,
-    available: true,
-    providerHint: "Demo dataset",
-    estTurnaround: "Instant (mock)",
+    available: false,
+    providerHint: "WinDeed",
+    estTurnaround: "Real-time once connected",
   },
   {
-    id: "transfers",
-    name: "Transfer History Report",
-    description: "Full deeds-office transfer chain for the parcel, including consideration and deed references.",
-    priceCents: 12900,
+    id: "sg_diagram",
+    name: "Surveyor-General Diagram",
+    description: "Official SG diagram for the registered parcel.",
+    priceCents: 14900,
     available: false,
-    providerHint: "Requires WinDeed integration",
-    estTurnaround: "Real-time once connected",
+    providerHint: "Surveyor-General",
+    estTurnaround: "Manual lookup",
   },
 ];
 
