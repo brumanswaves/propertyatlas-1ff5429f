@@ -83,7 +83,7 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial }: Props) {
+export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial, onOfficialStatus }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
