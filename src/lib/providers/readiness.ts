@@ -89,10 +89,22 @@ export const PROVIDER_READINESS: ProviderReadiness[] = [
   },
   {
     provider: "surveyor-general",
-    name: "Surveyor General (SG)",
-    legal: "DRDLR data-use agreement required",
+    name: "Surveyor General (CSG)",
+    legal: "DRDLR data-use agreement required for storage; public viewer used live",
     items: [
-      ...adapterShared("surveyor-general", "SG"),
+      ...adapterShared("surveyor-general", "CSG"),
+      {
+        id: "live-proxy",
+        label: "Server-side ArcGIS proxy with allow-list",
+        status: "done",
+        ref: "src/lib/providers/arcgis.functions.ts",
+      },
+      {
+        id: "map-toggle",
+        label: "CSG Parcels layer toggle on the map",
+        status: "done",
+        ref: "MapLayers.csgParcels",
+      },
       {
         id: "multipolygon",
         label: "NormalizedGeometry supports MultiPolygon (portions)",
@@ -114,11 +126,27 @@ export const PROVIDER_READINESS: ProviderReadiness[] = [
   },
   {
     provider: "municipal-gis",
-    name: "Municipal GIS",
-    legal: "Per-municipality data licence",
+    name: "Kouga Municipal GIS",
+    legal: "Per-municipality data licence; public Hub used live in pilot",
     items: [
-      ...adapterShared("municipal-gis", "Municipal GIS"),
-      { id: "submunis", label: "Per-municipality sub-adapter registry", status: "todo" },
+      ...adapterShared("municipal-gis", "Kouga"),
+      {
+        id: "live-proxy",
+        label: "Server-side ArcGIS proxy with allow-list",
+        status: "done",
+        ref: "src/lib/providers/arcgis.functions.ts",
+      },
+      {
+        id: "kouga-endpoint",
+        label: "Confirmed Kouga ArcGIS feature service URL",
+        status: "todo",
+        note: "Awaiting confirmation from municipality",
+      },
+      {
+        id: "submunis",
+        label: "Per-municipality sub-adapter registry",
+        status: "todo",
+      },
       { id: "valroll", label: "Valuation roll ingest + refresh cadence", status: "todo" },
       { id: "zoning", label: "Zoning scheme normalization", status: "todo" },
     ],

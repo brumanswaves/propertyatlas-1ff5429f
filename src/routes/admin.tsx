@@ -151,19 +151,21 @@ function AdminPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { label: "Demo data", status: "Active" },
+                  { label: "Demo Provider", status: "Active" },
                   { label: "Public link research", status: "Active" },
-                  { label: "Lightstone reports", status: "Pending integration" },
-                  { label: "WinDeed reports", status: "Pending integration" },
-                  { label: "Surveyor-General data", status: "Pending integration" },
-                  { label: "Municipal GIS", status: "Pending integration" },
+                  { label: "CSG Public Cadastral Provider", status: "In Progress" },
+                  { label: "Kouga Municipal GIS Provider", status: "In Progress" },
+                  { label: "Lightstone Reports", status: "Pending Contract" },
+                  { label: "WinDeed Reports", status: "Pending Contract" },
+                  { label: "Surveyor-General licensed feed", status: "Pending Contract" },
                 ].map((r) => {
                   const ok = r.status === "Active";
+                  const progress = r.status === "In Progress";
                   return (
                     <tr key={r.label}>
                       <td className="px-4 py-3 font-medium">{r.label}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${ok ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${ok ? "bg-emerald-100 text-emerald-700" : progress ? "bg-sky-100 text-sky-800" : "bg-amber-100 text-amber-800"}`}>
                           {ok ? <CheckCircle2 className="h-2.5 w-2.5" /> : <AlertCircle className="h-2.5 w-2.5" />}
                           {r.status}
                         </span>
