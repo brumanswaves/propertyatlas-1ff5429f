@@ -43,6 +43,11 @@ export interface OfficialFeatureSelection {
   lngLat: [number, number];
 }
 
+export interface OfficialLayerStatus {
+  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "failed"; count: number; message?: string; source?: string };
+  kouga: { state: "off" | "loading" | "loaded" | "empty" | "failed"; count: number; message?: string };
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -50,6 +55,7 @@ interface Props {
   layers: MapLayers;
   mapStyle: MapStyleId;
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
+  onOfficialStatus?: (s: OfficialLayerStatus) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -77,7 +83,7 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial }: Props) {
+export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial, onOfficialStatus }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -568,12 +574,33 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
     if (!map || !ready) return;
     if (!layers.csgParcels && !layers.kougaZoning) {
       setLayerMessages({});
+      onOfficialStatus?.({
+        csg: { state: "off", count: 0 },
+        kouga: { state: "off", count: 0 },
+      });
       return;
     }
 
     const CSG_MIN_ZOOM = 13.5;
     const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
+
+    // Static-import fallback: if live CSG fetch fails, attempt to load a manually-uploaded
+    // GeoJSON file from /public/data/. This file ships empty by default — when present and
+    // valid, we load and label it as "Imported CSG GeoJSON" so the map never silently fakes
+    // official data.
+    const STATIC_CSG_URL = "/data/st-francis-csg-parcels.geojson";
+    async function tryStaticCsg(): Promise<{ features: GeoJSON.Feature[]; count: number } | null> {
+      try {
+        const res = await fetch(STATIC_CSG_URL, { cache: "no-cache" });
+        if (!res.ok) return null;
+        const json = (await res.json()) as GeoJSON.FeatureCollection;
+        if (json?.type !== "FeatureCollection" || !Array.isArray(json.features)) return null;
+        return { features: json.features, count: json.features.length };
+      } catch {
+        return null;
+      }
+    }
 
     const load = async () => {
       const { fetchArcGisLayer } = await import("@/lib/providers/arcgis.functions");
@@ -582,30 +609,62 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
       const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
       const zoom = map.getZoom();
       const nextMsgs: { csg?: string; kouga?: string } = {};
+      const status: OfficialLayerStatus = {
+        csg: { state: layers.csgParcels ? "loading" : "off", count: 0 },
+        kouga: { state: layers.kougaZoning ? "loading" : "off", count: 0 },
+      };
 
       const requests: Promise<unknown>[] = [];
       if (layers.csgParcels) {
         if (zoom < CSG_MIN_ZOOM) {
           nextMsgs.csg = "Zoom in to load official parcel boundaries.";
+          status.csg = { state: "empty", count: 0, message: nextMsgs.csg };
           const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
           if (src) src.setData({ type: "FeatureCollection", features: [] });
         } else {
           requests.push(
-            fetchArcGisLayer({ data: { layer: "csg-parcels", bbox, limit: 400 } }).then((fc) => {
+            fetchArcGisLayer({ data: { layer: "csg-parcels", bbox, limit: 400 } }).then(async (fc) => {
               if (cancelled) return;
               try { window.localStorage.setItem("pa.arcgis.csg.meta", JSON.stringify(fc.meta)); } catch {}
               console.info("[PropertyAtlas] CSG parcels", fc.meta);
-              if (!fc.meta.upstreamReachable) {
-                nextMsgs.csg = `CSG parcels could not load. Open official source. (${fc.meta.upstreamMessage ?? "upstream error"})`;
-              } else if (fc.meta.count === 0) {
-                nextMsgs.csg = "No CSG parcels in view.";
-              }
               const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
-              if (src) src.setData({ type: "FeatureCollection", features: fc.features ?? [] });
+              if (fc.meta.upstreamReachable && fc.meta.count > 0) {
+                if (src) src.setData({ type: "FeatureCollection", features: fc.features });
+                status.csg = { state: "loaded", count: fc.meta.count, source: fc.meta.source };
+                nextMsgs.csg = undefined;
+              } else if (fc.meta.upstreamReachable && fc.meta.count === 0) {
+                if (src) src.setData({ type: "FeatureCollection", features: [] });
+                status.csg = { state: "empty", count: 0, message: "CSG returned 0 parcels for this area." };
+                nextMsgs.csg = "CSG returned 0 parcels for this area.";
+              } else {
+                // Live fetch failed — try imported static GeoJSON before giving up.
+                const staticFc = await tryStaticCsg();
+                if (staticFc) {
+                  if (src) src.setData({ type: "FeatureCollection", features: staticFc.features });
+                  status.csg = { state: "imported", count: staticFc.count, source: "Imported CSG GeoJSON" };
+                  nextMsgs.csg = `Showing imported CSG GeoJSON (${staticFc.count} parcels). Live server unavailable.`;
+                } else {
+                  if (src) src.setData({ type: "FeatureCollection", features: [] });
+                  status.csg = { state: "failed", count: 0, message: fc.meta.upstreamMessage };
+                  nextMsgs.csg = "CSG server fetch failed. See admin debug.";
+                }
+              }
               setLayerMessages((m) => ({ ...m, csg: nextMsgs.csg }));
-            }).catch((err) => {
+              onOfficialStatus?.(status);
+            }).catch(async (err) => {
               console.error("[PropertyAtlas] CSG fetch failed", err);
-              setLayerMessages((m) => ({ ...m, csg: "CSG parcels could not load. Open official source." }));
+              const staticFc = await tryStaticCsg();
+              const src = map.getSource("csg-parcels") as mapboxgl.GeoJSONSource | undefined;
+              if (staticFc) {
+                if (src) src.setData({ type: "FeatureCollection", features: staticFc.features });
+                status.csg = { state: "imported", count: staticFc.count, source: "Imported CSG GeoJSON" };
+                setLayerMessages((m) => ({ ...m, csg: `Showing imported CSG GeoJSON (${staticFc.count} parcels). Live server unavailable.` }));
+              } else {
+                if (src) src.setData({ type: "FeatureCollection", features: [] });
+                status.csg = { state: "failed", count: 0, message: err instanceof Error ? err.message : "fetch failed" };
+                setLayerMessages((m) => ({ ...m, csg: "CSG server fetch failed. See admin debug." }));
+              }
+              onOfficialStatus?.(status);
             }),
           );
         }
@@ -613,6 +672,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
       if (layers.kougaZoning) {
         if (zoom < KOUGA_MIN_ZOOM) {
           nextMsgs.kouga = "Zoom in to load Kouga zoning.";
+          status.kouga = { state: "empty", count: 0, message: nextMsgs.kouga };
           const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
           if (src) src.setData({ type: "FeatureCollection", features: [] });
         } else {
@@ -621,22 +681,34 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
               if (cancelled) return;
               try { window.localStorage.setItem("pa.arcgis.kouga.meta", JSON.stringify(fc.meta)); } catch {}
               console.info("[PropertyAtlas] Kouga zoning", fc.meta);
-              if (!fc.meta.upstreamReachable) {
-                nextMsgs.kouga = `Kouga zoning could not load. Open official source. (${fc.meta.upstreamMessage ?? "upstream error"})`;
-              } else if (fc.meta.count === 0) {
-                nextMsgs.kouga = "No Kouga zoning polygons in view.";
-              }
               const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
-              if (src) src.setData({ type: "FeatureCollection", features: fc.features ?? [] });
+              if (fc.meta.upstreamReachable && fc.meta.count > 0) {
+                if (src) src.setData({ type: "FeatureCollection", features: fc.features });
+                status.kouga = { state: "loaded", count: fc.meta.count };
+              } else if (fc.meta.upstreamReachable) {
+                if (src) src.setData({ type: "FeatureCollection", features: [] });
+                status.kouga = { state: "empty", count: 0, message: "No Kouga zoning polygons in view." };
+                nextMsgs.kouga = "No Kouga zoning polygons in view.";
+              } else {
+                if (src) src.setData({ type: "FeatureCollection", features: [] });
+                status.kouga = { state: "failed", count: 0, message: fc.meta.upstreamMessage };
+                nextMsgs.kouga = `Kouga zoning fetch failed (${fc.meta.upstreamMessage ?? "upstream error"}). See admin debug.`;
+              }
               setLayerMessages((m) => ({ ...m, kouga: nextMsgs.kouga }));
+              onOfficialStatus?.(status);
             }).catch((err) => {
               console.error("[PropertyAtlas] Kouga fetch failed", err);
-              setLayerMessages((m) => ({ ...m, kouga: "Kouga zoning could not load. Open official source." }));
+              const src = map.getSource("kouga-zoning") as mapboxgl.GeoJSONSource | undefined;
+              if (src) src.setData({ type: "FeatureCollection", features: [] });
+              status.kouga = { state: "failed", count: 0, message: err instanceof Error ? err.message : "fetch failed" };
+              setLayerMessages((m) => ({ ...m, kouga: "Kouga zoning fetch failed. See admin debug." }));
+              onOfficialStatus?.(status);
             }),
           );
         }
       }
       setLayerMessages((m) => ({ csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined, kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined }));
+      onOfficialStatus?.(status);
       await Promise.all(requests);
     };
 
@@ -686,7 +758,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
       map.off("mouseenter", "kouga-zoning-fill", onCsgEnter);
       map.off("mouseleave", "kouga-zoning-fill", onCsgLeave);
     };
-  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion]);
+  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion, onOfficialStatus, onSelect, onSelectOfficial]);
 
   // Update filtered feature state
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MousePointerClick, Plus, X, ShieldCheck, FlaskConical } from "lucide-react";
-import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection } from "@/components/map/MapCanvas";
+import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection, type OfficialLayerStatus } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
 import { LayerSwitcher, DEFAULT_LAYERS, DEMO_LAYERS } from "@/components/map/LayerSwitcher";
@@ -40,6 +40,10 @@ function AtlasHome() {
   const [hintDismissed, setHintDismissed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
+    csg: { state: "off", count: 0 },
+    kouga: { state: "off", count: 0 },
+  });
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
@@ -95,6 +99,7 @@ function AtlasHome() {
         layers={layers}
         mapStyle={mapStyle}
         onSelectOfficial={(sel) => { setSelectedOfficial(sel); if (sel) setSelectedId(null); }}
+        onOfficialStatus={setOfficialStatus}
       />
       <MapLegend layers={layers} />
       <TopNav />
@@ -120,6 +125,14 @@ function AtlasHome() {
             {demoMode ? "Demo Data" : "Official Public Data Mode"}
           </button>
         </div>
+
+        {!demoMode && (
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
+            <OfficialPill label="CSG" status={officialStatus.csg} />
+            <OfficialPill label="Kouga" status={officialStatus.kouga} />
+          </div>
+        )}
+
 
         <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
           <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
@@ -186,5 +199,23 @@ function AtlasHome() {
       {addOpen && <AddPropertyDialog onClose={() => setAddOpen(false)} />}
       <Toaster position="top-center" />
     </div>
+  );
+}
+
+function OfficialPill({ label, status }: { label: string; status: OfficialLayerStatus["csg"] | OfficialLayerStatus["kouga"] }) {
+  if (status.state === "off") return null;
+  const map: Record<string, { tone: string; text: string }> = {
+    loading: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: `${label} loading…` },
+    loaded: { tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300", text: `${label} active · ${status.count}` },
+    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: `${label} imported · ${status.count}` },
+    empty: { tone: "bg-amber-500/15 text-amber-800 dark:text-amber-300", text: status.message ?? `${label} empty` },
+    failed: { tone: "bg-red-500/20 text-red-800 dark:text-red-300", text: `${label} unavailable` },
+  };
+  const v = map[status.state] ?? map.empty;
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-soft backdrop-blur", v.tone)} title={status.message ?? undefined}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {v.text}
+    </span>
   );
 }
