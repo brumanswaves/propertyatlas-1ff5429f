@@ -40,6 +40,10 @@ function AtlasHome() {
   const [hintDismissed, setHintDismissed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
+    csg: { state: "off", count: 0 },
+    kouga: { state: "off", count: 0 },
+  });
   useEffect(() => {
     if (typeof window === "undefined") return;
     setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
