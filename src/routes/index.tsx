@@ -163,9 +163,19 @@ function AtlasHome() {
         Pilot region · St Francis Bay. Mock property information shown for demonstration. Estimates are not certified valuations.
       </div>
 
+      {/* Floating add-property button — manual research workflow */}
+      <button
+        onClick={() => setAddOpen(true)}
+        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-[11px] font-semibold text-background shadow-panel hover:opacity-90 md:bottom-6 md:right-6"
+        title="Add a property to your research"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add property
+      </button>
+
       <FooterMini />
 
       <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
+      {addOpen && <AddPropertyDialog onClose={() => setAddOpen(false)} />}
       <Toaster position="top-center" />
     </div>
   );
