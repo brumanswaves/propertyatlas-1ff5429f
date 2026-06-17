@@ -35,19 +35,21 @@ function ReportsPage() {
 
   async function order(type: ReportType) {
     if (!user) { toast.message("Sign in to order reports"); return; }
+    const def = REPORT_CATALOG.find((r) => r.id === type);
+    if (!def?.available) { toast.message("This report is coming soon"); return; }
     const provider = getActiveProvider();
     const { error, data } = await supabase.from("report_orders").insert({
       user_id: user.id,
       parcel_id: "demo:sample",
       report_type: type,
-      status: "completed",
-      price_cents: REPORT_CATALOG.find((r) => r.id === type)?.priceCents ?? 0,
+      status: "pending",
+      price_cents: def.priceCents,
       provider: provider.meta.id,
-      payload: { mock: true, generatedAt: new Date().toISOString() },
+      payload: { placeholder: true, createdAt: new Date().toISOString() },
     }).select("id, report_type, status, created_at").single();
     if (error) { toast.error(error.message); return; }
     setOrders((o) => [data, ...o]);
-    toast.success("Mock report generated");
+    toast.success("Order placed (pending) — no payment processed");
   }
 
   return (
