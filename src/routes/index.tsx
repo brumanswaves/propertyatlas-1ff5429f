@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Plus, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MousePointerClick, Plus, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -53,23 +53,6 @@ function AtlasHome() {
 
   const selected = selectedId ? getProperty(selectedId) ?? null : null;
 
-  // Curated "Try one of these" featured properties: top investor scores, distinct streets
-  const featured = useMemo(() => {
-    const sorted = [...PROPERTIES].sort((a, b) => b.scores.investor - a.scores.investor);
-    const picks: Property[] = [];
-    const seenAreas = new Set<string>();
-    const seenStreets = new Set<string>();
-    for (const p of sorted) {
-      const streetKey = p.street.split(",")[0].trim().toLowerCase();
-      if (seenAreas.has(p.area) || seenStreets.has(streetKey)) continue;
-      picks.push(p);
-      seenAreas.add(p.area);
-      seenStreets.add(streetKey);
-      if (picks.length >= 3) break;
-    }
-    return picks;
-  }, []);
-
   const filterFn = useMemo(() => {
     return (p: Property) => {
       if (filters.types.length && !filters.types.includes(p.type)) return false;
@@ -118,28 +101,6 @@ function AtlasHome() {
             Save every property, link, report, and note in one place. Pilot region — St Francis Bay.
           </p>
         </div>
-
-        {/* Featured properties quick-launch — desktop only to keep mobile clean */}
-        {!selected && (
-          <div className="pointer-events-auto mt-1 hidden max-w-full flex-wrap items-center justify-center gap-1.5 px-2 md:flex">
-            <span className="inline-flex items-center gap-1 rounded-full bg-card/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shadow-soft backdrop-blur">
-              <Sparkles className="h-3 w-3 text-accent" /> Try one of these
-            </span>
-            {featured.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedId(p.id)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[11px] font-medium text-foreground shadow-soft backdrop-blur transition hover:bg-card hover:shadow-glow"
-              >
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-brand text-[9px] font-semibold text-white">
-                  {p.scores.investor}
-                </span>
-                <span className="truncate">{p.street.split(",")[0]}</span>
-                <span className="hidden text-muted-foreground sm:inline">· {p.area}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Onboarding hint */}
