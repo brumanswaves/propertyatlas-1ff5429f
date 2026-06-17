@@ -557,6 +557,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, on
     set("heat-seller", layers.sellerHeat);
     set("csg-parcels-fill", layers.csgParcels);
     set("csg-parcels-outline", layers.csgParcels);
+    set("csg-parcels-outline-glow", layers.csgParcels);
     set("kouga-zoning-fill", layers.kougaZoning);
     set("kouga-zoning-outline", layers.kougaZoning);
   }, [layers, styleVersion, ready]);
