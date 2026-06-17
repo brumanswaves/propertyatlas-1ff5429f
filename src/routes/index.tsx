@@ -201,3 +201,21 @@ function AtlasHome() {
     </div>
   );
 }
+
+function OfficialPill({ label, status }: { label: string; status: OfficialLayerStatus["csg"] | OfficialLayerStatus["kouga"] }) {
+  if (status.state === "off") return null;
+  const map: Record<string, { tone: string; text: string }> = {
+    loading: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: `${label} loading…` },
+    loaded: { tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300", text: `${label} active · ${status.count}` },
+    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: `${label} imported · ${status.count}` },
+    empty: { tone: "bg-amber-500/15 text-amber-800 dark:text-amber-300", text: status.message ?? `${label} empty` },
+    failed: { tone: "bg-red-500/20 text-red-800 dark:text-red-300", text: `${label} unavailable` },
+  };
+  const v = map[status.state] ?? map.empty;
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-soft backdrop-blur", v.tone)} title={status.message ?? undefined}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {v.text}
+    </span>
+  );
+}
