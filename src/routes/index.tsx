@@ -126,6 +126,14 @@ function AtlasHome() {
           </button>
         </div>
 
+        {!demoMode && (
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
+            <OfficialPill label="CSG" status={officialStatus.csg} />
+            <OfficialPill label="Kouga" status={officialStatus.kouga} />
+          </div>
+        )}
+
+
         <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
           <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
             One place to research a South African property before you buy, sell, or invest.
