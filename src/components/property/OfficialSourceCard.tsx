@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, AlertCircle, Landmark, ShieldCheck } from "lucide-react";
-import type { ArcGisFeatureCollection } from "@/lib/providers/arcgis.functions";
+import { loadOfficialPublicLayer, type PublicDataResult } from "@/lib/providers/publicDataClient";
 
 interface Props {
   /** Property centroid [lng, lat] — used to build a tight bbox for the probe. */
@@ -11,8 +11,8 @@ const PROBE_HALF_DEG = 0.0035; // ~~ 380m east-west buffer, plenty for a single 
 
 interface ProbeState {
   loading: boolean;
-  csg?: ArcGisFeatureCollection;
-  kouga?: ArcGisFeatureCollection;
+  csg?: PublicDataResult;
+  kouga?: PublicDataResult;
 }
 
 /**
@@ -35,10 +35,9 @@ export function OfficialSourceCard({ centroid }: Props) {
     ];
 
     (async () => {
-      const { fetchArcGisLayer } = await import("@/lib/providers/arcgis.functions");
       const [csg, kouga] = await Promise.all([
-        fetchArcGisLayer({ data: { layer: "csg-parcels", bbox, limit: 5 } }).catch(() => undefined),
-        fetchArcGisLayer({ data: { layer: "kouga-zoning", bbox, limit: 5 } }).catch(() => undefined),
+        loadOfficialPublicLayer("csg-parcels", bbox, 5).catch(() => undefined),
+        loadOfficialPublicLayer("kouga-zoning", bbox, 5).catch(() => undefined),
       ]);
       if (cancelled) return;
       setState({ loading: false, csg, kouga });
@@ -54,8 +53,8 @@ export function OfficialSourceCard({ centroid }: Props) {
     );
   }
 
-  const csgOk = !!state.csg?.meta.upstreamReachable && (state.csg?.meta.count ?? 0) > 0;
-  const kougaOk = !!state.kouga?.meta.upstreamReachable && (state.kouga?.meta.count ?? 0) > 0;
+  const csgOk = (state.csg?.features.length ?? 0) > 0;
+  const kougaOk = (state.kouga?.features.length ?? 0) > 0;
 
   if (!csgOk && !kougaOk) {
     return (
@@ -79,8 +78,8 @@ export function OfficialSourceCard({ centroid }: Props) {
           Icon={ShieldCheck}
           tone="emerald"
           label="Chief Surveyor-General"
-          count={state.csg.meta.count}
-          fetchedAt={state.csg.meta.fetchedAt}
+          count={state.csg.features.length}
+          fetchedAt={state.csg.fetchedAt}
           href={`https://csggis.drdlr.gov.za/psv/?lng=${centroid[0]}&lat=${centroid[1]}`}
         />
       )}
@@ -89,8 +88,8 @@ export function OfficialSourceCard({ centroid }: Props) {
           Icon={Landmark}
           tone="sky"
           label="Kouga Municipality"
-          count={state.kouga.meta.count}
-          fetchedAt={state.kouga.meta.fetchedAt}
+          count={state.kouga.features.length}
+          fetchedAt={state.kouga.fetchedAt}
           href="https://mapping-kouga.hub.arcgis.com/"
         />
       )}
