@@ -133,6 +133,40 @@ function AdminPage() {
             Provider switching is local to this browser and intended for development / staging only.
           </p>
         </section>
+
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Data provider roadmap</h2>
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr><th className="px-4 py-2 text-left">Capability</th><th className="px-4 py-2 text-left">Status</th></tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[
+                  { label: "Demo data", status: "Active" },
+                  { label: "Public link research", status: "Active" },
+                  { label: "Lightstone reports", status: "Pending integration" },
+                  { label: "WinDeed reports", status: "Pending integration" },
+                  { label: "Surveyor-General data", status: "Pending integration" },
+                  { label: "Municipal GIS", status: "Pending integration" },
+                ].map((r) => {
+                  const ok = r.status === "Active";
+                  return (
+                    <tr key={r.label}>
+                      <td className="px-4 py-3 font-medium">{r.label}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${ok ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
+                          {ok ? <CheckCircle2 className="h-2.5 w-2.5" /> : <AlertCircle className="h-2.5 w-2.5" />}
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>
