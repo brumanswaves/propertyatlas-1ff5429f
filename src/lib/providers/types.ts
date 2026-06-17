@@ -73,10 +73,20 @@ export type GeoJSONPolygon = {
   coordinates: [number, number][][];
 };
 
+export type GeoJSONMultiPolygon = {
+  type: "MultiPolygon";
+  coordinates: [number, number][][][];
+};
+
+export type GeoJSONShape = GeoJSONPolygon | GeoJSONMultiPolygon;
+
 export interface NormalizedGeometry {
-  polygon: GeoJSONPolygon | null;
+  /** Polygon or MultiPolygon in WGS84 (EPSG:4326), [lng, lat]. */
+  polygon: GeoJSONShape | null;
   centroid: [number, number] | null;
   source: ProviderId;
+  /** Original CRS the provider returned, before reprojection (e.g. "EPSG:2048" for SA LO19). */
+  sourceCrs?: string;
 }
 
 export interface NormalizedProperty {
