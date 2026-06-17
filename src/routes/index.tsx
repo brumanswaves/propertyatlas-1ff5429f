@@ -96,6 +96,7 @@ function AtlasHome() {
         layers={layers}
         mapStyle={mapStyle}
       />
+      <MapLegend layers={layers} />
       <TopNav />
 
       <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-2 px-4 md:top-24">
