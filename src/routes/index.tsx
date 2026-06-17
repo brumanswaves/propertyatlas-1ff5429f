@@ -5,6 +5,7 @@ import { MapCanvas, type MapLayers, type MapStyleId } from "@/components/map/Map
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
 import { LayerSwitcher, DEFAULT_LAYERS } from "@/components/map/LayerSwitcher";
+import { MapLegend } from "@/components/map/MapLegend";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
 import { AddPropertyDialog } from "@/components/property/AddPropertyDialog";
 import { TopNav } from "@/components/layout/TopNav";
