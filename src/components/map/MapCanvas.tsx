@@ -36,12 +36,20 @@ export interface MapLayers {
   sellerHeat: boolean;
 }
 
+export interface OfficialFeatureSelection {
+  source: "Chief Surveyor-General" | "Kouga Municipality GIS";
+  layer: "csg-parcels" | "kouga-zoning";
+  properties: Record<string, unknown>;
+  lngLat: [number, number];
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   filterFn?: (p: Property) => boolean;
   layers: MapLayers;
   mapStyle: MapStyleId;
+  onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -69,7 +77,7 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: Props) {
+export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, onSelectOfficial }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -106,7 +114,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         container: containerRef.current,
         style: STYLE_URLS[mapStyle],
         center: ST_FRANCIS_CENTER,
-        zoom: 13.4,
+        zoom: 14,
         pitch: 0,
         attributionControl: false,
         cooperativeGestures: false,
@@ -314,14 +322,21 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
         type: "fill",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.05 },
+        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.12 },
       });
       map.addLayer({
         id: "csg-parcels-outline",
         type: "line",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "line-color": C_SEAGREEN, "line-width": 1.4, "line-opacity": 0.9 },
+        paint: { "line-color": "#ffffff", "line-width": 1.6, "line-opacity": 0.95 },
+      });
+      map.addLayer({
+        id: "csg-parcels-outline-glow",
+        type: "line",
+        source: "csg-parcels",
+        layout: { visibility: "none" },
+        paint: { "line-color": C_SEAGREEN, "line-width": 3.5, "line-opacity": 0.45, "line-blur": 2 },
       });
 
       // ===== Official public data: Kouga zoning polygons (server-proxied) =====
@@ -542,6 +557,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     set("heat-seller", layers.sellerHeat);
     set("csg-parcels-fill", layers.csgParcels);
     set("csg-parcels-outline", layers.csgParcels);
+    set("csg-parcels-outline-glow", layers.csgParcels);
     set("kouga-zoning-fill", layers.kougaZoning);
     set("kouga-zoning-outline", layers.kougaZoning);
   }, [layers, styleVersion, ready]);
@@ -555,8 +571,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
       return;
     }
 
-    const CSG_MIN_ZOOM = 14.5;
-    const KOUGA_MIN_ZOOM = 12;
+    const CSG_MIN_ZOOM = 13.5;
+    const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
 
     const load = async () => {
@@ -628,48 +644,28 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle }: 
     const onMove = () => { void load(); };
     map.on("moveend", onMove);
 
-    // Click handlers for public-data layers — show a popup with official fields.
-    const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "Not available from public source" : String(v));
-    const num = (v: unknown) => (typeof v === "number" ? v.toFixed(6) : fmt(v));
+    // Click handlers for public-data layers — surface the official feature in the panel.
     const onCsgClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
       const f = e.features?.[0];
-      if (!f) return;
-      const p = (f.properties ?? {}) as Record<string, unknown>;
-      const html = `
-        <div style="font-family:Inter,sans-serif;min-width:240px;max-width:280px">
-          <div style="font-size:9px;font-weight:700;color:#3ea58f;text-transform:uppercase;letter-spacing:0.08em">Source: Chief Surveyor-General</div>
-          <div style="font-weight:600;font-size:13px;color:#111827;margin-top:4px">Parcel ${fmt(p.PARCEL_NO)}</div>
-          <table style="margin-top:6px;font-size:11px;color:#374151;width:100%">
-            <tr><td style="color:#6b7280">Portion</td><td>${fmt(p.PORTION)}</td></tr>
-            <tr><td style="color:#6b7280">LPI / ID</td><td>${fmt(p.PRCL_KEY ?? p.ID)}</td></tr>
-            <tr><td style="color:#6b7280">Province</td><td>${fmt(p.PROVINCE)}</td></tr>
-            <tr><td style="color:#6b7280">Major region</td><td>${fmt(p.MAJ_REGION)}</td></tr>
-            <tr><td style="color:#6b7280">Minor region</td><td>${fmt(p.MIN_REGION)}</td></tr>
-            <tr><td style="color:#6b7280">Geometry area</td><td>${fmt(p.GEOM_AREA ?? p.SHAPE_Area)} m²</td></tr>
-            <tr><td style="color:#6b7280">Latitude</td><td>${num(e.lngLat.lat)}</td></tr>
-            <tr><td style="color:#6b7280">Longitude</td><td>${num(e.lngLat.lng)}</td></tr>
-          </table>
-          <a href="https://csggis.drdlr.gov.za/psv/" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-block;font-size:11px;font-weight:600;color:#1a3a52;text-decoration:underline">Open official source ↗</a>
-        </div>`;
-      new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: "320px" }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+      if (!f || !onSelectOfficial) return;
+      onSelect(null); // ensure demo panel closes
+      onSelectOfficial({
+        source: "Chief Surveyor-General",
+        layer: "csg-parcels",
+        properties: (f.properties ?? {}) as Record<string, unknown>,
+        lngLat: [e.lngLat.lng, e.lngLat.lat],
+      });
     };
     const onKougaClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
       const f = e.features?.[0];
-      if (!f) return;
-      const p = (f.properties ?? {}) as Record<string, unknown>;
-      const html = `
-        <div style="font-family:Inter,sans-serif;min-width:240px;max-width:280px">
-          <div style="font-size:9px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.08em">Source: Kouga Municipality GIS</div>
-          <div style="font-weight:600;font-size:13px;color:#111827;margin-top:4px">Zoning ${fmt(p.ZONING)}</div>
-          <table style="margin-top:6px;font-size:11px;color:#374151;width:100%">
-            <tr><td style="color:#6b7280">Type</td><td>${fmt(p.ZONING_TYP)}</td></tr>
-            <tr><td style="color:#6b7280">Description</td><td>${fmt(p.ZONING_DES)}</td></tr>
-            <tr><td style="color:#6b7280">Shape area</td><td>${fmt(p.Shape__Area)} m²</td></tr>
-          </table>
-          <p style="margin-top:8px;font-size:10px;color:#92400e;background:#fef3c7;padding:6px 8px;border-radius:6px">Zoning information must be verified with Kouga Municipality before relying on it.</p>
-          <a href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noopener noreferrer" style="margin-top:6px;display:inline-block;font-size:11px;font-weight:600;color:#1a3a52;text-decoration:underline">Open official source ↗</a>
-        </div>`;
-      new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: "320px" }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+      if (!f || !onSelectOfficial) return;
+      onSelect(null);
+      onSelectOfficial({
+        source: "Kouga Municipality GIS",
+        layer: "kouga-zoning",
+        properties: (f.properties ?? {}) as Record<string, unknown>,
+        lngLat: [e.lngLat.lng, e.lngLat.lat],
+      });
     };
     const onCsgEnter = () => { map.getCanvas().style.cursor = "pointer"; };
     const onCsgLeave = () => { map.getCanvas().style.cursor = ""; };
