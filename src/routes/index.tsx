@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MousePointerClick, Plus, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
