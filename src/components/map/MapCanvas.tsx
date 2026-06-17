@@ -705,6 +705,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       setLayerMessages((m) => ({ csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined, kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined }));
       publishStatus(status);
       await Promise.all(requests);
+      if (!cancelled) publishStatus(status);
     };
 
     void load();
