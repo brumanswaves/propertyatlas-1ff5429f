@@ -159,7 +159,23 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
   );
 }
 
+// Default = Official Public Data Mode. Demo parcels are off by default
+// and only re-enabled when the user explicitly opts into Demo Mode.
 export const DEFAULT_LAYERS: MapLayers = {
+  parcels: false,
+  zoning: false,
+  csgParcels: true,
+  kougaZoning: false,
+  investorHeat: false,
+  developmentHeat: false,
+  oceanViewHeat: false,
+  appreciationHeat: false,
+  rentalHeat: false,
+  longHeldHeat: false,
+  sellerHeat: false,
+};
+
+export const DEMO_LAYERS: MapLayers = {
   parcels: true,
   zoning: false,
   csgParcels: false,
