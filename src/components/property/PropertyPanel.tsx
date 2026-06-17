@@ -269,15 +269,16 @@ export function PropertyPanel({ property, onClose }: Props) {
             </div>
 
             <Section title="Characteristics">
-              <Row label="Type" value={property.type} />
-              <Row label="Zoning" value={property.zoning} />
-              <Row label="Erf size" value={`${property.sizeSqm.toLocaleString()} m²`} />
-              <Row label="Status" value={property.status} />
+              <Row label="Type" value={property.type} source="demo" />
+              <Row label="Zoning" value={property.zoning} source="kouga" />
+              <Row label="Erf size" value={`${property.sizeSqm.toLocaleString()} m²`} source="surveyor-general" />
+              <Row label="Status" value={property.status} source="not_verified" />
             </Section>
             <Section title="Valuation">
-              <Row label="Market estimate" value={formatZAR(property.estimatedValue)} />
-              <Row label="Municipal value" value={formatZAR(property.municipalValue)} />
-              <Row label="Confidence" value={`${Math.round(property.confidence * 100)}%`} />
+              <Row label="Market estimate" value={formatZAR(property.estimatedValue)} source="demo" />
+              <Row label="Municipal value" value={formatZAR(property.municipalValue)} source="kouga" />
+              <Row label="Confidence" value={`${Math.round(property.confidence * 100)}%`} source="not_verified" />
+              <Row label="Owner of record" value="Restricted to licensed providers" source="not_available" />
             </Section>
             <Section title="Features">
               <div className="flex flex-wrap gap-1.5">
