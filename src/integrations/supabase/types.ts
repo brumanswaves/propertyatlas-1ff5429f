@@ -134,6 +134,42 @@ export type Database = {
         }
         Relationships: []
       }
+      property_research_links: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          label: string
+          note: string | null
+          parcel_id: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          label: string
+          note?: string | null
+          parcel_id: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          label?: string
+          note?: string | null
+          parcel_id?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       provider_audit_log: {
         Row: {
           action: Database["public"]["Enums"]["provider_audit_action"]

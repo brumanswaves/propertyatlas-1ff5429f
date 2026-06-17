@@ -58,14 +58,26 @@ const UPSTREAMS: Record<ArcGisQuery["layer"], UpstreamConfig> = {
     outFields: "OBJECTID,PARCEL_KEY,ERF_NO,PORTION_NO,LPI_CODE,EXTENT,PROVINCE,TOWN",
   },
   "kouga-zoning": {
-    // Placeholder — Kouga Hub exposes feature services at runtime URLs that
-    // change per dataset. The /admin readiness page tracks this as In Progress
-    // until the municipality confirms the public service URL.
+    // The Kouga Hub publishes feature services at services*.arcgis.com URLs
+    // that the municipality controls (and occasionally rotates). We read the
+    // confirmed URL from KOUGA_ZONING_SERVICE_URL at request time so an admin
+    // can wire in the official service without a code change.
+    // When unset, the layer renders as "endpoint pending confirmation" and the
+    // /admin readiness page surfaces the blocker.
     url: "",
     source: "Kouga Municipality GIS",
     attribution: "© Kouga Local Municipality, Mapping Portal.",
   },
 };
+
+function resolveUpstream(layer: ArcGisQuery["layer"]): UpstreamConfig {
+  const cfg = UPSTREAMS[layer];
+  if (layer === "kouga-zoning") {
+    const envUrl = process.env.KOUGA_ZONING_SERVICE_URL?.trim();
+    if (envUrl) return { ...cfg, url: envUrl };
+  }
+  return cfg;
+}
 
 export interface ArcGisFeatureCollection {
   type: "FeatureCollection";
@@ -175,7 +187,7 @@ async function fetchArcGis(cfg: UpstreamConfig, bbox: [number, number, number, n
 export const fetchArcGisLayer = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => BboxInput.parse(data))
   .handler(async ({ data }): Promise<ArcGisFeatureCollection> => {
-    const cfg = UPSTREAMS[data.layer];
+    const cfg = resolveUpstream(data.layer);
     const clipped = clipToPilot(data.bbox);
     if (bboxArea(clipped) <= 0) {
       return emptyCollection(cfg, "Bbox outside pilot area (Kouga / St Francis).");
@@ -189,7 +201,7 @@ export const probeUpstream = createServerFn({ method: "GET" })
     z.object({ layer: z.enum(["csg-parcels", "kouga-zoning"]) }).parse(data),
   )
   .handler(async ({ data }) => {
-    const cfg = UPSTREAMS[data.layer];
+    const cfg = resolveUpstream(data.layer);
     if (!cfg.url) {
       return { ok: false, reachable: false, message: "Endpoint not configured" };
     }

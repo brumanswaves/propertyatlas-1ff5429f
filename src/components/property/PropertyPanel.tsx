@@ -11,12 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { SourceBadge } from "@/components/data/SourceBadge";
+import { SourceBadge, FieldSourceBadge, type CadastralSource } from "@/components/data/SourceBadge";
 import { ResearchLinksTab } from "./tabs/ResearchLinksTab";
 import { ListingsTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
+import { OfficialSourceCard } from "./OfficialSourceCard";
 import type { ResearchContext } from "@/lib/research/links";
 
 interface Props {
@@ -203,6 +204,8 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Official public sources strip — probes CSG + Kouga via the server proxy */}
+            <OfficialSourceCard centroid={property.centroid} />
             {/* Why This Property? — Bloomberg-style intelligence card */}
             <WhyCard property={property} />
             {/* Key investor scores */}
@@ -266,15 +269,16 @@ export function PropertyPanel({ property, onClose }: Props) {
             </div>
 
             <Section title="Characteristics">
-              <Row label="Type" value={property.type} />
-              <Row label="Zoning" value={property.zoning} />
-              <Row label="Erf size" value={`${property.sizeSqm.toLocaleString()} m²`} />
-              <Row label="Status" value={property.status} />
+              <Row label="Type" value={property.type} source="demo" />
+              <Row label="Zoning" value={property.zoning} source="kouga" />
+              <Row label="Erf size" value={`${property.sizeSqm.toLocaleString()} m²`} source="surveyor-general" />
+              <Row label="Status" value={property.status} source="not_verified" />
             </Section>
             <Section title="Valuation">
-              <Row label="Market estimate" value={formatZAR(property.estimatedValue)} />
-              <Row label="Municipal value" value={formatZAR(property.municipalValue)} />
-              <Row label="Confidence" value={`${Math.round(property.confidence * 100)}%`} />
+              <Row label="Market estimate" value={formatZAR(property.estimatedValue)} source="demo" />
+              <Row label="Municipal value" value={formatZAR(property.municipalValue)} source="kouga" />
+              <Row label="Confidence" value={`${Math.round(property.confidence * 100)}%`} source="not_verified" />
+              <Row label="Owner of record" value="Restricted to licensed providers" source="not_available" />
             </Section>
             <Section title="Features">
               <div className="flex flex-wrap gap-1.5">
@@ -366,6 +370,7 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         {tab === "research" && (
           <ResearchLinksTab
+            parcelId={property.id}
             ctx={{
               address: property.street,
               area: property.area,
@@ -432,11 +437,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, source }: { label: string; value: string; source?: CadastralSource }) {
   return (
-    <div className="flex items-center justify-between py-1 text-sm">
+    <div className="flex items-center justify-between gap-2 py-1 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate font-medium">{value}</span>
+        {source && <FieldSourceBadge source={source} />}
+      </span>
     </div>
   );
 }

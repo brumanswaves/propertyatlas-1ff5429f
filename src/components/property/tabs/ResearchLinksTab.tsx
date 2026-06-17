@@ -2,6 +2,7 @@ import { ExternalLink, Map, Building2, FileText, Search, Landmark } from "lucide
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { buildResearchLinks, type ResearchContext, type ResearchLink } from "@/lib/research/links";
+import { SavedLinksManager } from "@/components/property/SavedLinksManager";
 
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
   maps:     { label: "Maps & street view",            icon: <Map className="h-3.5 w-3.5" /> },
@@ -11,7 +12,7 @@ const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: Rea
   general:  { label: "General web",                   icon: <Search className="h-3.5 w-3.5" /> },
 };
 
-export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
+export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parcelId?: string }) {
   const links = buildResearchLinks(ctx);
   const grouped = (["maps", "listings", "official", "deeds", "general"] as const).map((cat) => ({
     cat, items: links.filter((l) => l.category === cat),
@@ -54,6 +55,12 @@ export function ResearchLinksTab({ ctx }: { ctx: ResearchContext }) {
           </ul>
         </section>
       ))}
+
+      {parcelId && (
+        <section>
+          <SavedLinksManager parcelId={parcelId} />
+        </section>
+      )}
 
       <ComplianceNotice />
       <SourceBadge source="demo" />
