@@ -303,6 +303,17 @@ function PropertyCard({ p, highlight }: { p: Property; highlight?: boolean }) {
   );
 }
 
+function PlaceholderCard({ label, value, note }: { label: string; value: string; note?: string }) {
+  const isNa = value === "Not Available";
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${isNa ? "text-muted-foreground italic font-normal" : ""}`}>{value}</div>
+      {note && <div className="mt-1 text-[10px] text-muted-foreground">{note}</div>}
+    </div>
+  );
+}
+
 function EmptyCard({
   icon, title, body, cta,
 }: { icon: React.ReactNode; title: string; body: string; cta?: { to: string; label: string } }) {
