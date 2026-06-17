@@ -61,8 +61,11 @@ function ReportsPage() {
         </span>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Property intelligence reports</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Professional reports compiled from connected data providers. Reports marked Coming Soon will activate
-          automatically once their underlying provider is connected. Estimate Only • Not a Certified Valuation.
+          Order official third-party reports when you need verified data. Reports marked Coming Soon will activate
+          once their underlying provider is connected. No payment is processed at this stage — orders are logged as pending.
+        </p>
+        <p className="mt-2 max-w-2xl text-xs text-muted-foreground">
+          Reports are provided by third-party data providers. PropertyAtlas does not alter official report data.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
