@@ -125,22 +125,22 @@ function SourceRow({
           </div>
         </div>
       </div>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={(e) => openExternalUrl(href, e)}
         className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background px-2 py-1 text-[10px] font-semibold hover:bg-muted"
       >
         Open <ExternalLink className="h-2.5 w-2.5" />
-      </a>
+      </button>
     </div>
   );
 }
 
 function SourceLink({ href, label }: { href: string; label: string }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted">
+    <button type="button" onClick={(e) => openExternalUrl(href, e)} className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-foreground hover:bg-muted">
       {label} <ExternalLink className="h-2.5 w-2.5" />
-    </a>
+    </button>
   );
 }
+
