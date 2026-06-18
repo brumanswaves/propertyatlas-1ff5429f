@@ -32,6 +32,15 @@ export function buildListingQuery(ctx: ResearchContext): string {
   return `${buildResearchQuery(ctx)} property for sale`;
 }
 
+/** Plain copy-paste search phrase for manual listing searches.
+ *  e.g. "Erf 962 Lovemore Crescent Sea Vista Humansdorp Eastern Cape South Africa" */
+export function buildSearchPhrase(ctx: ResearchContext): string {
+  const erfStr = ctx.erf ? `Erf ${ctx.erf}` : "";
+  const order = [erfStr, ctx.nearestRoad, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"];
+  const parts = order.filter((s) => s && String(s).trim().length > 0) as string[];
+  return Array.from(new Set(parts)).join(" ");
+}
+
 function isKouga(ctx: ResearchContext): boolean {
   const muni = (ctx.municipality ?? "").toLowerCase();
   const town = (ctx.town ?? ctx.area ?? "").toLowerCase();
