@@ -600,18 +600,21 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               </section>
 
 
-              {/* Kouga public GIS enrichment */}
+              {/* Kouga public GIS enrichment — zoning */}
               <section>
-                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kouga Public GIS</div>
-                <div className="space-y-2">
-                  <EnrichmentBlock label="Zoning" state={enrichment?.zoning} hint="No zoning record found from Kouga public GIS." />
-                  <EnrichmentBlock label="Property record (SG)" state={enrichment?.property} hint="No Kouga property record found at this point." configHint="Kouga Properties/SG endpoint not configured yet." />
-                  <EnrichmentBlock label="Ward" state={enrichment?.ward} hint="No Kouga ward record found at this point." configHint="Kouga Wards endpoint not configured yet." />
-                </div>
+                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kouga Zoning</div>
+                <EnrichmentBlock label="Zoning" state={enrichment?.zoning} hint="No zoning record found from Kouga public GIS." />
                 <p className="mt-1.5 text-[10px] text-muted-foreground">
-                  Sourced from the Kouga public ArcGIS Hub. Zoning shown for guidance only — confirm with the municipality before relying on it.
+                  Sourced from the Kouga public ArcGIS Hub. Shown for guidance only — confirm with the municipality before relying on it.
                 </p>
               </section>
+
+              {/* Kouga Public Mapping Record (Surveyor-General properties layer) */}
+              <KougaPropertyPanel state={enrichment?.property} />
+
+              {/* Municipal Context (wards layer) */}
+              <KougaWardPanel state={enrichment?.ward} />
+
 
               <section className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No valuation available</div>
