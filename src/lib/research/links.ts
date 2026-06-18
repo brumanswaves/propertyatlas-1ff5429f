@@ -53,6 +53,8 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
   const muni = ctx.municipality ?? "";
   const inKouga = isKouga(ctx);
 
+  const query = buildResearchQuery(ctx);
+
   const base: ResearchLink[] = [
     {
       id: "gmaps",
@@ -60,7 +62,7 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       description: "View location, surroundings, nearby amenities.",
       href: ll
         ? `https://www.google.com/maps/search/?api=1&query=${q(ll)}`
-        : `https://www.google.com/maps/search/?api=1&query=${q(addr)}`,
+        : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
       category: "maps", external: true,
     },
     {
@@ -69,21 +71,21 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       description: "Walk down the street virtually.",
       href: ll
         ? `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${q(ll)}`
-        : `https://www.google.com/maps?q=${q(addr)}&layer=c`,
+        : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
       category: "maps", external: true,
     },
     {
       id: "property24",
       label: "Property24 search",
-      description: "Look up active listings on Property24.",
-      href: `https://www.property24.com/search?q=${q(addr)}`,
+      description: "Find this property on Property24 via Google site search.",
+      href: `https://www.google.com/search?q=${q(`site:property24.com ${query}`)}`,
       category: "listings", external: true,
     },
     {
       id: "privateproperty",
       label: "Private Property search",
-      description: "Look up active listings on Private Property.",
-      href: `https://www.privateproperty.co.za/search?search=${q(addr)}`,
+      description: "Find this property on Private Property via Google site search.",
+      href: `https://www.google.com/search?q=${q(`site:privateproperty.co.za ${query}`)}`,
       category: "listings", external: true,
     },
   ];
