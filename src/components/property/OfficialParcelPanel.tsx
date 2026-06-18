@@ -401,6 +401,77 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         <div className="px-5 pt-4">
           {tab === "overview" && (
             <div className="space-y-4">
+              {/* Research Snapshot */}
+              <section className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Research Snapshot
+                  </div>
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider", CONFIDENCE_TONE[resolved.addressConfidence])}>
+                    {resolved.addressConfidence}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <SnapshotTile
+                    label="Erf"
+                    value={csg?.erfNumber != null ? `Erf ${csg.erfNumber}` : "—"}
+                    sub={csg?.portion != null && String(csg.portion) !== "0" ? `Portion ${csg.portion}` : undefined}
+                  />
+                  <SnapshotTile
+                    label="Area"
+                    value={csg?.geometryArea != null ? `${Math.round(Number(csg.geometryArea)).toLocaleString("en-ZA")} m²` : "—"}
+                  />
+                  <SnapshotTile
+                    label="Zoning"
+                    value={(() => {
+                      const z = enrichment?.zoning;
+                      if (!z) return "Checking…";
+                      if (z.status === "ok") return String(z.record.attributes.ZONING ?? z.record.attributes.ZONING_TYP ?? "—");
+                      if (z.status === "not-found") return "No record";
+                      return "—";
+                    })()}
+                    sub={(() => {
+                      const z = enrichment?.zoning;
+                      if (z?.status === "ok") {
+                        const t = z.record.attributes.ZONING_TYP;
+                        return t ? String(t) : undefined;
+                      }
+                      return undefined;
+                    })()}
+                  />
+                  <SnapshotTile
+                    label="SG Document"
+                    value={sgDoc.shown ? "Available" : "Not available"}
+                    sub={sgDoc.shown ? undefined : "Insufficient data"}
+                    action={sgDoc.shown ? (
+                      <button
+                        type="button"
+                        onClick={(e) => openExternalUrl(sgDoc.url, e)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+                      >
+                        Open <ExternalLink className="h-2.5 w-2.5" />
+                      </button>
+                    ) : undefined}
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5 text-[11px]">
+                  <div className="min-w-0 truncate text-muted-foreground">
+                    <MapPin className="mr-1 inline h-3 w-3" />
+                    {[csg?.minorRegion, csg?.majorRegion, csg?.province ?? "Eastern Cape"].filter(Boolean).join(" · ")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => openExternalUrl(`https://maps.google.com/?q=${csg?.latitude ?? lat},${csg?.longitude ?? lng}`, e)}
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                  >
+                    Open in Maps <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="mt-1 text-[10px] font-mono text-muted-foreground">
+                  {(csg?.latitude ?? lat).toFixed(5)}, {(csg?.longitude ?? lng).toFixed(5)}
+                </div>
+              </section>
+
               {/* Address / Location card */}
               <section>
                 <div className="mb-1.5 flex items-center justify-between">
