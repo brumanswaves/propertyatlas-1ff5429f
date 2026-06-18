@@ -103,6 +103,8 @@ function PublicDataDebug() {
       <section className="mt-6 space-y-4">
         {results.map((item) => <ResultCard key={item.id} item={item} />)}
       </section>
+
+      <SgDocumentDebug />
     </div>
   );
 }
