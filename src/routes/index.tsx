@@ -52,6 +52,8 @@ function AtlasHome() {
     const savedDemoMode = window.localStorage.getItem("pa.demoMode") === "1";
     setDemoMode(savedDemoMode);
     if (savedDemoMode) setLayers(DEMO_LAYERS);
+    // Test geometry is only togglable from /admin/public-data-debug. Never on by default.
+    setShowTestGeometry(window.localStorage.getItem("pa.testGeometry") === "1");
     const parcel = new URLSearchParams(window.location.search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
   }, []);
