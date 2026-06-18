@@ -588,7 +588,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   onClick={(e) => openExternalUrl(sourceUrl, e)}
                   className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
                 >
-                  Open official source <ExternalLink className="h-3 w-3" />
+                  {sourceLabel} <ExternalLink className="h-3 w-3" />
                 </button>
               </section>
 
