@@ -3,6 +3,8 @@ import { ExternalLink, Plus, Trash2, Link2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { toast } from "sonner";
+import { openExternalUrl } from "@/lib/external";
+
 
 type Row = {
   id: string;
@@ -81,11 +83,11 @@ export function SavedLinksManager({ parcelId }: { parcelId: string }) {
         <ul className="grid gap-1.5">
           {rows.map((r) => (
             <li key={r.id} className="flex items-start gap-2 rounded-xl border border-border bg-card p-2.5">
-              <a
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex min-w-0 flex-1 items-start gap-2"
+              <button
+                type="button"
+                onClick={(e) => openExternalUrl(r.url, e)}
+                className="group flex min-w-0 flex-1 items-start gap-2 text-left"
+                title={r.url}
               >
                 <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-muted text-foreground/70 group-hover:bg-primary/10 group-hover:text-primary">
                   <ExternalLink className="h-3 w-3" />
@@ -96,7 +98,8 @@ export function SavedLinksManager({ parcelId }: { parcelId: string }) {
                   {r.note && <span className="mt-0.5 block text-[10.5px] text-muted-foreground">{r.note}</span>}
                   <span className="mt-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{r.category}</span>
                 </span>
-              </a>
+              </button>
+
               <div className="flex shrink-0 flex-col gap-1">
                 <button type="button" onClick={() => { setEditing(r); setOpen(true); }} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" title="Edit">
                   <Pencil className="h-3 w-3" />
