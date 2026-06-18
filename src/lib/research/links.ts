@@ -20,11 +20,14 @@ function fullAddress(ctx: ResearchContext): string {
     .filter(Boolean).join(", ");
 }
 
-/** Best available research query — never empty. Used by Google / site searches. */
+/** Best available research query — never empty. Erf-first by default. */
 export function buildResearchQuery(ctx: ResearchContext): string {
   const erfStr = ctx.erf ? `Erf ${ctx.erf}` : "";
-  const parts = [ctx.address, erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"]
-    .filter((s) => s && String(s).trim().length > 0) as string[];
+  // Erf-first: if no full street address, prioritize the official erf identity
+  const order = ctx.address
+    ? [ctx.address, erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"]
+    : [erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"];
+  const parts = order.filter((s) => s && String(s).trim().length > 0) as string[];
   return Array.from(new Set(parts)).join(" ");
 }
 
