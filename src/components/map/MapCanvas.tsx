@@ -653,7 +653,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
 
       clearOfficialSource(layer);
       if (anySuccessfulZero) {
-        const msg = layer === "csg-parcels" ? "CSG returned 0 parcels" : "Kouga returned 0 zoning polygons";
+        const msg = layer === "csg-parcels" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view";
         return { status: { state: "empty" as const, count: 0, message: msg }, message: msg };
       }
       const msg = layer === "csg-parcels" ? "CSG unavailable" : "Kouga unavailable";
