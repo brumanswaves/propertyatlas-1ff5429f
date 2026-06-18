@@ -9,24 +9,19 @@ export interface ResearchContext {
   municipality?: string;  // e.g. "Kouga Local Municipality"
   province?: string;      // e.g. "Eastern Cape"
   erf?: string;
+  nearestRoad?: string;
   lng?: number;
   lat?: number;
 }
 
 const q = (s: string) => encodeURIComponent(s.trim());
 
-function fullAddress(ctx: ResearchContext): string {
-  return [ctx.address, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"]
-    .filter(Boolean).join(", ");
-}
-
 /** Best available research query — never empty. Erf-first by default. */
 export function buildResearchQuery(ctx: ResearchContext): string {
   const erfStr = ctx.erf ? `Erf ${ctx.erf}` : "";
-  // Erf-first: if no full street address, prioritize the official erf identity
   const order = ctx.address
-    ? [ctx.address, erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"]
-    : [erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province, "South Africa"];
+    ? [ctx.address, erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"]
+    : [erfStr, ctx.nearestRoad, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"];
   const parts = order.filter((s) => s && String(s).trim().length > 0) as string[];
   return Array.from(new Set(parts)).join(" ");
 }
@@ -40,31 +35,29 @@ function isKouga(ctx: ResearchContext): boolean {
   );
 }
 
+export type ResearchCategory = "maps" | "listings" | "official" | "documents" | "general";
+
 export interface ResearchLink {
   id: string;
   label: string;
   description: string;
   href: string;
-  category: "maps" | "listings" | "official" | "deeds" | "general";
+  category: ResearchCategory;
   external: true;
 }
 
 export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
-  void fullAddress; // legacy helper retained for callers
-  const ll = ctx.lat != null && ctx.lng != null ? `${ctx.lat},${ctx.lng}` : null;
-  const muni = ctx.municipality ?? "";
+  const hasLL = ctx.lat != null && ctx.lng != null;
+  const ll = hasLL ? `${ctx.lat},${ctx.lng}` : null;
   const inKouga = isKouga(ctx);
-
   const query = buildResearchQuery(ctx);
 
-  const base: ResearchLink[] = [
+  const maps: ResearchLink[] = [
     {
       id: "gmaps",
       label: "Google Maps",
       description: "View location, surroundings, nearby amenities.",
-      href: ll
-        ? `https://www.google.com/maps/search/?api=1&query=${q(ll)}`
-        : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
+      href: ll ? `https://maps.google.com/?q=${q(ll)}` : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
       category: "maps", external: true,
     },
     {
@@ -77,134 +70,110 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       category: "maps", external: true,
     },
     {
-      id: "property24",
-      label: "Property24 search",
-      description: "Find this property on Property24 via Google site search.",
-      href: `https://www.google.com/search?q=${q(`site:property24.com ${query}`)}`,
-      category: "listings", external: true,
+      id: "csg-viewer",
+      label: "CSG Property Viewer",
+      description: "Official Chief Surveyor-General cadastral viewer.",
+      href: ll ? `https://csggis.drdlr.gov.za/psv/?lng=${ctx.lng}&lat=${ctx.lat}` : `https://csggis.drdlr.gov.za/psv/`,
+      category: "maps", external: true,
     },
-    {
-      id: "privateproperty",
-      label: "Private Property search",
-      description: "Find this property on Private Property via Google site search.",
-      href: `https://www.google.com/search?q=${q(`site:privateproperty.co.za ${query}`)}`,
-      category: "listings", external: true,
-    },
+    ...(inKouga
+      ? [{
+          id: "kouga-mapping-quick",
+          label: "Kouga Public Map",
+          description: "Kouga ArcGIS Hub public mapping viewer.",
+          href: "https://mapping-kouga.hub.arcgis.com/",
+          category: "maps" as const, external: true as const,
+        }]
+      : []),
   ];
 
-  // Kouga-specific official links (pilot area)
-  const kouga: ResearchLink[] = inKouga
+  const listings: ResearchLink[] = buildListingResearchLinks(ctx).map((l) => ({
+    ...l, category: "listings" as const, external: true as const,
+  }));
+
+  const official: ResearchLink[] = inKouga
     ? [
-        {
-          id: "kouga-portal",
-          label: "Kouga Municipality",
-          description: "Official Kouga Local Municipality website.",
-          href: "https://www.kouga.gov.za/",
-          category: "official", external: true,
-        },
-        {
-          id: "kouga-mapping",
-          label: "Kouga Mapping Portal",
-          description: "Public ArcGIS Hub for Kouga GIS layers (zoning, planning).",
-          href: "https://mapping-kouga.hub.arcgis.com/",
-          category: "official", external: true,
-        },
-        {
-          id: "kouga-planning",
-          label: "Kouga Planning & Development",
-          description: "Zoning, town planning and building plan information.",
-          href: "https://www.kouga.gov.za/planning-and-development",
-          category: "official", external: true,
-        },
-        {
-          id: "kouga-valroll",
-          label: "Kouga Valuation Roll",
-          description: "Public valuation roll notices and access.",
-          href: "https://www.kouga.gov.za/municipalvaluationrollavail",
-          category: "official", external: true,
-        },
+        { id: "kouga-portal", label: "Kouga Municipality", description: "Official Kouga Local Municipality website.",
+          href: "https://www.kouga.gov.za/", category: "official", external: true },
+        { id: "kouga-mapping", label: "Kouga Mapping Portal", description: "Public ArcGIS Hub for Kouga GIS layers (zoning, planning).",
+          href: "https://mapping-kouga.hub.arcgis.com/", category: "official", external: true },
+        { id: "kouga-planning", label: "Kouga Planning & Development", description: "Zoning, town planning and building plan information.",
+          href: "https://www.kouga.gov.za/planning-and-development", category: "official", external: true },
+        { id: "kouga-valroll", label: "Kouga Valuation Roll", description: "Public valuation roll notices and access.",
+          href: "https://www.kouga.gov.za/municipalvaluationrollavail", category: "official", external: true },
       ]
     : [
-        {
-          id: "valuation-roll",
-          label: "Municipal valuation roll",
-          description: "Search the municipality's published valuation roll.",
-          href: `https://www.google.com/search?q=${q(`"valuation roll" ${muni} site:gov.za`)}`,
-          category: "official", external: true,
-        },
-        {
-          id: "muni-gis",
-          label: "Municipal GIS / zoning portal",
-          description: "Find the relevant municipal GIS or zoning viewer.",
-          href: `https://www.google.com/search?q=${q(`${muni} GIS zoning portal`)}`,
-          category: "official", external: true,
-        },
+        { id: "valuation-roll", label: "Municipal valuation roll", description: "Search the municipality's published valuation roll.",
+          href: `https://www.google.com/search?q=${q(`"valuation roll" ${ctx.municipality ?? ""} site:gov.za`)}`,
+          category: "official", external: true },
+        { id: "muni-gis", label: "Municipal GIS / zoning portal", description: "Find the relevant municipal GIS or zoning viewer.",
+          href: `https://www.google.com/search?q=${q(`${ctx.municipality ?? ""} GIS zoning portal`)}`,
+          category: "official", external: true },
       ];
 
-  const csg: ResearchLink[] = [
+  const documents: ResearchLink[] = [
     {
-      id: "csg-viewer",
-      label: "Chief Surveyor-General property viewer",
-      description: "Official cadastral viewer (CSG / DRDLR).",
-      href: ll
-        ? `https://csggis.drdlr.gov.za/psv/?lng=${ctx.lng}&lat=${ctx.lat}`
-        : `https://csggis.drdlr.gov.za/psv/`,
-      category: "official", external: true,
-    },
-    {
-      id: "surveyor-general",
-      label: "Surveyor-General search",
-      description: "Locate the SG diagram for this property.",
-      href: `https://csg.drdlr.gov.za/`,
-      category: "official", external: true,
-    },
-  ];
-
-  const deeds: ResearchLink[] = [
-    {
-      id: "windeed",
-      label: "WinDeed search",
-      description: "Deeds Office search via WinDeed (account required).",
-      href: `https://www.windeed.co.za/`,
-      category: "deeds", external: true,
-    },
-    {
-      id: "lightstone",
-      label: "Lightstone reports",
-      description: "Property report and AVM provider.",
-      href: `https://www.lightstone.co.za/`,
-      category: "deeds", external: true,
+      id: "csg-doc-search",
+      label: "SG Document Search",
+      description: "Search Surveyor-General diagrams and sectional title documents.",
+      href: "https://csg.drdlr.gov.za/",
+      category: "documents", external: true,
     },
     {
       id: "deeds-office",
       label: "Deeds Office information",
       description: "DALRRD Deeds Registration general information.",
-      href: `https://www.gov.za/services/deeds-registration`,
-      category: "deeds", external: true,
+      href: "https://www.gov.za/services/deeds-registration",
+      category: "documents", external: true,
     },
   ];
 
   const general: ResearchLink[] = [
     {
       id: "google",
-      label: "Google search",
+      label: "Google web search",
       description: "General web search for this property.",
       href: `https://www.google.com/search?q=${q(query)}`,
       category: "general", external: true,
     },
   ];
 
-  return [...base, ...kouga, ...csg, ...deeds, ...general];
+  return [...maps, ...listings, ...official, ...documents, ...general];
 }
 
+// ===== Listings (Google site-search; no scraping) =====
+
+export interface ListingSearchLink {
+  id: string;
+  label: string;
+  description: string;
+  href: string;
+}
+
+export function buildListingResearchLinks(ctx: ResearchContext): ListingSearchLink[] {
+  const query = buildResearchQuery(ctx);
+  const site = (domain: string) => `https://www.google.com/search?q=${q(`site:${domain} ${query}`)}`;
+  return [
+    { id: "property24",      label: "Search Property24 via Google",       description: "Google site search on property24.com.",       href: site("property24.com") },
+    { id: "privateproperty", label: "Search Private Property via Google", description: "Google site search on privateproperty.co.za.", href: site("privateproperty.co.za") },
+    { id: "pamgolding",      label: "Search Pam Golding via Google",      description: "Google site search on pamgolding.co.za.",      href: site("pamgolding.co.za") },
+    { id: "seeff",           label: "Search Seeff via Google",            description: "Google site search on seeff.com.",             href: site("seeff.com") },
+    { id: "remax",           label: "Search RE/MAX via Google",           description: "Google site search on remax.co.za.",           href: site("remax.co.za") },
+    { id: "rawson",          label: "Search Rawson via Google",           description: "Google site search on rawson.co.za.",          href: site("rawson.co.za") },
+    { id: "google-listings", label: "Google active listings",             description: "General Google search for active listings.",
+      href: `https://www.google.com/search?q=${q(`${query} property for sale`)}` },
+  ];
+}
+
+// Legacy export kept for backwards compatibility with any older callers.
 export const LISTING_SITES = [
-  { id: "property24",      label: "Property24",      url: (a: string) => `https://www.property24.com/search?q=${q(a)}` },
-  { id: "privateproperty", label: "Private Property", url: (a: string) => `https://www.privateproperty.co.za/search?search=${q(a)}` },
-  { id: "pamgolding",      label: "Pam Golding",     url: (a: string) => `https://www.pamgolding.co.za/property-search/properties-for-sale?searchTerm=${q(a)}` },
-  { id: "seeff",           label: "Seeff",           url: (a: string) => `https://www.seeff.com/results/residential/for-sale/?search=${q(a)}` },
-  { id: "remax",           label: "RE/MAX",          url: (a: string) => `https://www.remax.co.za/property-for-sale/?search=${q(a)}` },
-  { id: "rawson",          label: "Rawson",          url: (a: string) => `https://www.rawson.co.za/results?keyword=${q(a)}` },
-  { id: "google-listings", label: "Google search",   url: (a: string) => `https://www.google.com/search?q=${q(`"for sale" ${a}`)}` },
+  { id: "property24",      label: "Property24",       url: (a: string) => `https://www.google.com/search?q=${q(`site:property24.com ${a}`)}` },
+  { id: "privateproperty", label: "Private Property", url: (a: string) => `https://www.google.com/search?q=${q(`site:privateproperty.co.za ${a}`)}` },
+  { id: "pamgolding",      label: "Pam Golding",      url: (a: string) => `https://www.google.com/search?q=${q(`site:pamgolding.co.za ${a}`)}` },
+  { id: "seeff",           label: "Seeff",            url: (a: string) => `https://www.google.com/search?q=${q(`site:seeff.com ${a}`)}` },
+  { id: "remax",           label: "RE/MAX",           url: (a: string) => `https://www.google.com/search?q=${q(`site:remax.co.za ${a}`)}` },
+  { id: "rawson",          label: "Rawson",           url: (a: string) => `https://www.google.com/search?q=${q(`site:rawson.co.za ${a}`)}` },
+  { id: "google-listings", label: "Google search",    url: (a: string) => `https://www.google.com/search?q=${q(`${a} property for sale`)}` },
 ];
 
 export function listingSearchAddress(ctx: ResearchContext): string {

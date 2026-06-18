@@ -7,26 +7,28 @@ import { openExternalUrl, copyToClipboard } from "@/lib/external";
 import { toast } from "sonner";
 
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
-  maps:     { label: "Maps & street view",            icon: <Map className="h-3.5 w-3.5" /> },
-  listings: { label: "Search listing portals",        icon: <Building2 className="h-3.5 w-3.5" /> },
-  official: { label: "Municipal & official sources",  icon: <Landmark className="h-3.5 w-3.5" /> },
-  deeds:    { label: "Deeds office & Surveyor General", icon: <FileText className="h-3.5 w-3.5" /> },
-  general:  { label: "General web",                   icon: <Search className="h-3.5 w-3.5" /> },
+  maps:      { label: "Map & location",                icon: <Map className="h-3.5 w-3.5" /> },
+  listings:  { label: "Listings (Google site search)", icon: <Building2 className="h-3.5 w-3.5" /> },
+  official:  { label: "Municipal",                     icon: <Landmark className="h-3.5 w-3.5" /> },
+  documents: { label: "Official documents",            icon: <FileText className="h-3.5 w-3.5" /> },
+  general:   { label: "General web",                   icon: <Search className="h-3.5 w-3.5" /> },
 };
 
 export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parcelId?: string }) {
   const links = buildResearchLinks(ctx);
-  const grouped = (["maps", "listings", "official", "deeds", "general"] as const).map((cat) => ({
+  const grouped = (["maps", "listings", "official", "documents", "general"] as const).map((cat) => ({
     cat, items: links.filter((l) => l.category === cat),
   }));
+
 
   return (
     <div className="space-y-5">
       <div>
         <h3 className="text-sm font-semibold tracking-tight">Outbound research links</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Quick links to search this property on public sites (maps, listing portals, municipal & deeds). PropertyAtlas does not scrape or store data from these sites. To save listings you find, use the <span className="font-medium text-foreground">Listings</span> tab. To order paid reports, use the <span className="font-medium text-foreground">Reports</span> tab.
+          Quick links to research this property on public sites. Listing-portal searches run as Google site searches so you get reliable results instead of empty portal pages. PropertyAtlas does not scrape listing portals — these searches open external sites so you can save any listing you find. Paid deeds/AVM reports (Lightstone, WinDeed) are in the <span className="font-medium text-foreground">Reports</span> tab.
         </p>
+
       </div>
 
       {grouped.map(({ cat, items }) => (

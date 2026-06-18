@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Plus, Trash2, Save } from "lucide-react";
-import { LISTING_SITES, listingSearchAddress, type ResearchContext } from "@/lib/research/links";
+import { ExternalLink, Plus, Trash2, Copy } from "lucide-react";
+import { buildListingResearchLinks, listingSearchAddress, type ResearchContext } from "@/lib/research/links";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { openExternalUrl, copyToClipboard } from "@/lib/external";
 import { toast } from "sonner";
+
 
 const STATUSES = ["For Sale", "Under Offer", "Sold", "Off Market", "Watching"] as const;
 type Status = typeof STATUSES[number];
@@ -28,6 +30,9 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
     url: "", asking_price: "", agent: "", agency: "", notes: "", status: "For Sale",
   });
   const addr = listingSearchAddress(ctx) || "St Francis Bay";
+  void addr;
+  const listingLinks = buildListingResearchLinks(ctx);
+
 
   useEffect(() => {
     if (!user) return;
@@ -70,20 +75,38 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
 
       <section>
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Search active listings</div>
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          PropertyAtlas does not scrape listing portals. These searches open Google site-searches in a new tab so you can browse the portal directly and save any listing you find.
+        </p>
         <div className="flex flex-wrap gap-2">
-          {LISTING_SITES.map((s) => (
-            <a
-              key={s.id}
-              href={s.url(addr)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:bg-muted"
-            >
-              <ExternalLink className="h-3 w-3" /> {s.label}
-            </a>
+          {listingLinks.map((s) => (
+            <span key={s.id} className="inline-flex items-center overflow-hidden rounded-full border border-border bg-card text-[11px] font-medium hover:bg-muted">
+              <button
+                type="button"
+                onClick={(e) => openExternalUrl(s.href, e)}
+                title={s.href}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5"
+              >
+                <ExternalLink className="h-3 w-3" /> {s.label}
+              </button>
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const ok = await copyToClipboard(s.href);
+                  if (ok) toast.success("Link copied"); else toast.error("Could not copy link");
+                }}
+                title="Copy link"
+                aria-label="Copy link"
+                className="border-l border-border px-2 py-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+            </span>
           ))}
         </div>
       </section>
+
 
       <section>
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Add a listing you found</div>
@@ -121,10 +144,11 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">{l.status}</span>
                     {l.url && (
-                      <a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                      <button type="button" onClick={(e) => openExternalUrl(l.url!, e)} className="inline-flex items-center gap-1 text-primary hover:underline">
                         Open listing <ExternalLink className="h-3 w-3" />
-                      </a>
+                      </button>
                     )}
+
                   </div>
                   <div className="mt-1 font-semibold tabular-nums">
                     {l.asking_price_cents ? `R ${(l.asking_price_cents / 100).toLocaleString("en-ZA")}` : "Price not entered"}
