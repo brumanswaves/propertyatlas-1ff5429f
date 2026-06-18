@@ -3,6 +3,8 @@ import { ExternalLink, Plus, Trash2, Link2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { toast } from "sonner";
+import { openExternalUrl } from "@/lib/external";
+
 
 type Row = {
   id: string;

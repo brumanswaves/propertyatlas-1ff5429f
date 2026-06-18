@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, AlertCircle, Landmark, ShieldCheck } from "lucide-react";
 import { loadOfficialPublicLayer, type PublicDataResult } from "@/lib/providers/publicDataClient";
+import { openExternalUrl } from "@/lib/external";
+
 
 interface Props {
   /** Property centroid [lng, lat] — used to build a tight bbox for the probe. */
