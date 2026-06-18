@@ -25,7 +25,7 @@ export const REPORT_CATALOG: ReportDef[] = [
     name: "Lightstone Property Report",
     description: "Comprehensive property snapshot — owner, valuation band, sales history, comparable transfers.",
     priceCents: 29900,
-    available: true,
+    available: false,
     providerHint: "Lightstone",
     estTurnaround: "Real-time once provider is connected",
   },
