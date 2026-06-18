@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, AlertCircle, Landmark, ShieldCheck } from "lucide-react";
 import { loadOfficialPublicLayer, type PublicDataResult } from "@/lib/providers/publicDataClient";
 import { openExternalUrl } from "@/lib/external";
+import { CSG_VIEWER_URL, KOUGA_MAPPING_URL } from "@/lib/external-urls";
 
 
 interface Props {
