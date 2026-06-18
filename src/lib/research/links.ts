@@ -87,8 +87,8 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
     {
       id: "csg-viewer",
       label: "CSG Property Viewer",
-      description: "Official Chief Surveyor-General cadastral viewer.",
-      href: ll ? `https://csggis.drdlr.gov.za/psv/?lng=${ctx.lng}&lat=${ctx.lat}` : `https://csggis.drdlr.gov.za/psv/`,
+      description: "Official Chief Surveyor-General Experience Builder viewer.",
+      href: CSG_VIEWER_URL,
       category: "maps", external: true,
     },
     ...(inKouga
@@ -96,7 +96,7 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
           id: "kouga-mapping-quick",
           label: "Kouga Public Map",
           description: "Kouga ArcGIS Hub public mapping viewer.",
-          href: "https://mapping-kouga.hub.arcgis.com/",
+          href: KOUGA_MAPPING_URL,
           category: "maps" as const, external: true as const,
         }]
       : []),
