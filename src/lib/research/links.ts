@@ -47,9 +47,8 @@ export interface ResearchLink {
 }
 
 export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
-  const addr = fullAddress(ctx);
+  void fullAddress; // legacy helper retained for callers
   const ll = ctx.lat != null && ctx.lng != null ? `${ctx.lat},${ctx.lng}` : null;
-  const erfStr = ctx.erf ? `erf ${ctx.erf}` : "";
   const muni = ctx.municipality ?? "";
   const inKouga = isKouga(ctx);
 
