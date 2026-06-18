@@ -105,7 +105,9 @@ function PublicDataDebug() {
       </section>
 
       <KougaEndpointStatus />
+      <KougaLiveProbe />
       <SgDocumentDebug />
+
     </div>
   );
 }
