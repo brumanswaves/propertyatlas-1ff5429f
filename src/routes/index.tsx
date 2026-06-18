@@ -127,7 +127,7 @@ function AtlasHome() {
         </div>
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
           <FilterPanel value={filters} onChange={setFilters} />
-          <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} />
+          <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} officialStatus={officialStatus} />
           <button
             onClick={toggleDemoMode}
             className={cn(
@@ -141,18 +141,6 @@ function AtlasHome() {
             {demoMode ? <FlaskConical className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
             {demoMode ? "Demo Data" : "Official Public Data Mode"}
           </button>
-          {!demoMode && (
-            <button
-              onClick={() => setShowTestGeometry((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold shadow-soft backdrop-blur transition",
-                showTestGeometry ? "bg-amber-500 text-amber-950 hover:bg-amber-400" : "bg-card/95 text-foreground hover:bg-card",
-              )}
-              title="Show TEST GEOMETRY ONLY files, not official data"
-            >
-              <FlaskConical className="h-3.5 w-3.5" /> Show Test Geometry
-            </button>
-          )}
         </div>
 
         {!demoMode && (
