@@ -13,6 +13,7 @@ import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import { openExternalUrl } from "@/lib/external";
 import { toast } from "sonner";
 
 interface Props {
@@ -95,7 +96,7 @@ async function reverseGeocode(lng: number, lat: number): Promise<Geo | null> {
   }
 }
 
-type AddressSource = "Official Address" | "User Entered" | "Approximate Address" | "Nearest Road Only" | "Location Only";
+type AddressSource = "Official Address" | "User Entered" | "Approximate Address" | "Nearest Road Only" | "Erf Only";
 
 interface UserAddress {
   streetNumber?: string;
@@ -164,27 +165,28 @@ function resolveOfficialParcelLocation(opts: {
     };
   }
 
-  // 3. Mapbox returned only a road name
+  // 3. Mapbox returned only a road name — never promote to title
   const road = geo?.nearestRoad ?? geo?.streetName;
+  const regionSubtitle = [minorRegion, majorRegion, province ?? "Eastern Cape"].filter(Boolean).join(" · ");
   if (road) {
     return {
       displayTitle: erfLabel,
-      displaySubtitle: [`Near ${road}`, geo?.suburb ?? minorRegion, "Nearest Road Only"].filter(Boolean).join(" · "),
+      displaySubtitle: regionSubtitle,
       nearestRoad: road,
       addressConfidence: "Nearest Road Only",
       addressSource: "Nearest Road Only",
-      researchQuery: [erfLabel, road, geo?.suburb ?? minorRegion, geo?.place ?? majorRegion, province, "South Africa"]
+      researchQuery: [erfLabel, minorRegion, majorRegion, province ?? "Eastern Cape", road, "South Africa"]
         .filter(Boolean).join(" "),
     };
   }
 
-  // 4. Coordinates + region only
+  // 4. Coordinates + region only — erf-first identity
   return {
     displayTitle: erfLabel,
-    displaySubtitle: [minorRegion, majorRegion, province].filter(Boolean).join(" · "),
-    addressConfidence: "Location Only",
-    addressSource: "Location Only",
-    researchQuery: [erfLabel, minorRegion, majorRegion, province, "South Africa"].filter(Boolean).join(" "),
+    displaySubtitle: regionSubtitle,
+    addressConfidence: "Erf Only",
+    addressSource: "Erf Only",
+    researchQuery: [erfLabel, minorRegion, majorRegion, province ?? "Eastern Cape", "South Africa"].filter(Boolean).join(" "),
   };
 }
 
@@ -193,7 +195,7 @@ const CONFIDENCE_TONE: Record<AddressSource, string> = {
   "User Entered": "bg-sky-500/20 text-sky-800 dark:text-sky-300",
   "Approximate Address": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
   "Nearest Road Only": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  "Location Only": "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  "Erf Only": "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 };
 
 function userAddrKey(parcelId: string) { return `pa.userAddress.${parcelId}`; }
@@ -404,7 +406,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     <Row label="Address source" value={resolved.addressSource} />
                   </dl>
                   <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
-                    Approximate address from map location. Not an official registered address unless marked Official Address.
+                    Street address is not available from the CSG public cadastral layer. Add or verify the street address manually, or order a third-party report.
                   </div>
                   <div className="flex items-center justify-between border-t border-border px-3 py-2">
                     <button
@@ -473,10 +475,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 </section>
               )}
 
-              <a href={sourceUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline">
+              <button
+                type="button"
+                onClick={(e) => openExternalUrl(sourceUrl, e)}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
+              >
                 Open official source <ExternalLink className="h-3 w-3" />
-              </a>
+              </button>
 
               <section className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No valuation available</div>
