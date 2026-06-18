@@ -268,6 +268,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     user: userAddr,
   }), [csg, geo, userAddr, lat, lng]);
 
+  const sgDoc = useMemo(() => buildSgDocumentUrl({
+    lpi: csg?.lpi,
+    parcelKey: csg?.parcelKey,
+    erfNumber: csg?.erfNumber,
+    portion: csg?.portion,
+    province: csg?.province,
+    majorRegion: csg?.majorRegion,
+    minorRegion: csg?.minorRegion,
+  }), [csg]);
+
   const sourceUrl = isCsg ? "https://csggis.drdlr.gov.za/psv/" : "https://mapping-kouga.hub.arcgis.com/";
 
   const researchCtx: ResearchContext = {
