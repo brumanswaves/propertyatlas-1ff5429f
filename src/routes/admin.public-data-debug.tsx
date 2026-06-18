@@ -180,6 +180,38 @@ function AttemptCard({ attempt }: { attempt: PublicDataAttempt }) {
   );
 }
 
+function TestGeometryToggle() {
+  const [on, setOn] = useState(false);
+  useEffect(() => { setOn(window.localStorage.getItem("pa.testGeometry") === "1"); }, []);
+  function toggle() {
+    const next = !on;
+    setOn(next);
+    try { window.localStorage.setItem("pa.testGeometry", next ? "1" : "0"); } catch {}
+  }
+  return (
+    <div className="mt-4 rounded-xl border border-border bg-card p-3 text-[12px]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-foreground">Show Test Geometry on main map</div>
+          <div className="text-[11px] text-muted-foreground">
+            Loads <code>TEST GEOMETRY ONLY</code> shapes. Not official data. Defaults to OFF. Reload the home page after toggling.
+          </div>
+        </div>
+        <button onClick={toggle}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? "bg-amber-500" : "bg-muted"}`}
+          aria-pressed={on}>
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+        </button>
+      </div>
+      {on && (
+        <div className="mt-2 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+          TEST GEOMETRY ONLY — NOT OFFICIAL DATA
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-1">
