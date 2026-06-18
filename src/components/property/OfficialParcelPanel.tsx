@@ -324,7 +324,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         user_id: user.id,
         parcel_id: parcelId,
         external_links: [{ label: isCsg ? "CSG Viewer" : "Kouga Mapping Portal", url: sourceUrl, category: "official" }],
-        user_data: userData,
+        user_data: userData as unknown as Record<string, unknown> as never,
       });
       if (error) toast.error(error.message);
       else { setSaved(true); toast.success("Saved to your properties"); }
