@@ -26,6 +26,11 @@ export function buildResearchQuery(ctx: ResearchContext): string {
   return Array.from(new Set(parts)).join(" ");
 }
 
+/** Listing-targeted query: research query + "property for sale". */
+export function buildListingQuery(ctx: ResearchContext): string {
+  return `${buildResearchQuery(ctx)} property for sale`;
+}
+
 function isKouga(ctx: ResearchContext): boolean {
   const muni = (ctx.municipality ?? "").toLowerCase();
   const town = (ctx.town ?? ctx.area ?? "").toLowerCase();
@@ -132,7 +137,7 @@ export interface ListingSearchLink {
 }
 
 export function buildListingResearchLinks(ctx: ResearchContext): ListingSearchLink[] {
-  const query = buildResearchQuery(ctx);
+  const query = buildListingQuery(ctx);
   const site = (domain: string) => `https://www.google.com/search?q=${q(`site:${domain} ${query}`)}`;
   return [
     { id: "property24",      label: "Search Property24 via Google",       description: "Google site search on property24.com.",       href: site("property24.com") },
@@ -141,8 +146,8 @@ export function buildListingResearchLinks(ctx: ResearchContext): ListingSearchLi
     { id: "seeff",           label: "Search Seeff via Google",            description: "Google site search on seeff.com.",             href: site("seeff.com") },
     { id: "remax",           label: "Search RE/MAX via Google",           description: "Google site search on remax.co.za.",           href: site("remax.co.za") },
     { id: "rawson",          label: "Search Rawson via Google",           description: "Google site search on rawson.co.za.",          href: site("rawson.co.za") },
-    { id: "google-listings", label: "Google active listings",             description: "General Google search for active listings.",
-      href: `https://www.google.com/search?q=${q(`${query} property for sale`)}` },
+    { id: "google-listings", label: "Search all web listings",            description: "General Google search for active listings.",
+      href: `https://www.google.com/search?q=${q(query)}` },
   ];
 }
 
