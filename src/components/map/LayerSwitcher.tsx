@@ -162,6 +162,22 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
                         </label>
                       );
                     })}
+                    {g.title === "Official public data" && (kougaUnavailable || csgUnavailable) && (
+                      <div className="mt-2 space-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-900 dark:text-amber-200">
+                        {csgUnavailable && (
+                          <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current view.</div>
+                        )}
+                        {kougaUnavailable && (
+                          <>
+                            <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Zoning layer unavailable. Open Kouga Mapping Portal.</div>
+                            <a href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                              Open Kouga Mapping Portal <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
