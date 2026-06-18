@@ -269,3 +269,41 @@ function DebugInput({ label, value, onChange }: { label: string; value: string; 
     </label>
   );
 }
+
+import { KOUGA_ZONING_QUERY_URL, KOUGA_PROPERTIES_SG_URL, KOUGA_WARDS_URL } from "@/lib/providers/kougaEnrichment";
+
+function KougaEndpointStatus() {
+  const rows: Array<{ name: string; env?: string; url: string | null }> = [
+    { name: "Zoning (hardcoded)", url: KOUGA_ZONING_QUERY_URL },
+    { name: "Properties / SG", env: "VITE_KOUGA_PROPERTIES_SG_URL", url: KOUGA_PROPERTIES_SG_URL },
+    { name: "Wards",            env: "VITE_KOUGA_WARDS_URL",        url: KOUGA_WARDS_URL },
+  ];
+  return (
+    <section className="mt-10 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">Kouga public GIS endpoints</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Zoning is hardcoded and discovered. Properties/SG and Wards are optional config slots — when missing, the property panel shows a clean "Endpoint not configured" state instead of an error.
+      </p>
+      <ul className="mt-3 space-y-2 text-[12px]">
+        {rows.map((r) => (
+          <li key={r.name} className="rounded-lg border border-border bg-background p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-foreground">{r.name}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${r.url ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
+                {r.url ? "Configured" : "Missing"}
+              </span>
+            </div>
+            {r.env && (
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                {r.url
+                  ? <>Env var: <code className="font-mono">{r.env}</code></>
+                  : <>Missing endpoint: <code className="font-mono">{r.env}</code></>}
+              </div>
+            )}
+            {r.url && <div className="mt-1 break-all font-mono text-[10px] text-muted-foreground">{r.url}</div>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
