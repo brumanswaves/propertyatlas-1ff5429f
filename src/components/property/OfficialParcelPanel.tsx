@@ -10,6 +10,8 @@ import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
 import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
+import { fetchKougaEnrichment, type KougaEnrichment } from "@/lib/providers/kougaEnrichment";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -244,6 +246,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       .maybeSingle().then(({ data }) => setSaved(!!data));
   }, [user, parcelId]);
 
+  const [enrichment, setEnrichment] = useState<KougaEnrichment | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setEnrichment(null);
+    fetchKougaEnrichment(csg?.longitude ?? lng, csg?.latitude ?? lat).then((e) => {
+      if (!cancelled) setEnrichment(e);
+    });
+    return () => { cancelled = true; };
+  }, [parcelId, lng, lat, csg?.longitude, csg?.latitude]);
+
   const resolved = useMemo(() => resolveOfficialParcelLocation({
     erfNumber: csg?.erfNumber,
     portion: csg?.portion,
@@ -475,13 +487,62 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 </section>
               )}
 
-              <button
-                type="button"
-                onClick={(e) => openExternalUrl(sourceUrl, e)}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
-              >
-                Open official source <ExternalLink className="h-3 w-3" />
-              </button>
+              {(() => {
+                const sg = buildSgDocumentUrl({
+                  lpi: csg?.lpi,
+                  parcelKey: csg?.parcelKey,
+                  erfNumber: csg?.erfNumber,
+                  portion: csg?.portion,
+                  province: csg?.province,
+                  majorRegion: csg?.majorRegion,
+                  minorRegion: csg?.minorRegion,
+                });
+                return (
+                  <section className="space-y-2">
+                    {sg.shown ? (
+                      <button
+                        type="button"
+                        onClick={(e) => openExternalUrl(sg.url, e)}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
+                      >
+                        <FileText className="h-3 w-3" /> Open SG Document List <ExternalLink className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5">
+                        <div className="text-[12px] font-medium text-foreground">SG document link not available for this erf yet.</div>
+                        <div className="mt-0.5 text-[10.5px] text-muted-foreground">{sg.reason}</div>
+                        <button
+                          type="button"
+                          onClick={(e) => openExternalUrl(sg.fallbackUrl, e)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/80"
+                        >
+                          Open CSG Property Viewer <ExternalLink className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => openExternalUrl(sourceUrl, e)}
+                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
+                    >
+                      Open official source <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </section>
+                );
+              })()}
+
+              {/* Kouga public GIS enrichment */}
+              <section>
+                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kouga Public GIS</div>
+                <div className="space-y-2">
+                  <EnrichmentBlock label="Zoning" state={enrichment?.zoning} hint="No zoning record found from Kouga public GIS." />
+                  <EnrichmentBlock label="Property record (SG)" state={enrichment?.property} hint="No Kouga property record found at this point." configHint="Kouga Properties/SG endpoint not configured yet." />
+                  <EnrichmentBlock label="Ward" state={enrichment?.ward} hint="No Kouga ward record found at this point." configHint="Kouga Wards endpoint not configured yet." />
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  Sourced from the Kouga public ArcGIS Hub. Zoning shown for guidance only — confirm with the municipality before relying on it.
+                </p>
+              </section>
 
               <section className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No valuation available</div>
@@ -536,6 +597,59 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline justify-between gap-3 px-3 py-2">
       <dt className="text-[11px] text-muted-foreground">{label}</dt>
       <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function EnrichmentBlock({
+  label, state, hint, configHint,
+}: {
+  label: string;
+  state: import("@/lib/providers/kougaEnrichment").KougaEnrichmentState | undefined;
+  hint: string;
+  configHint?: string;
+}) {
+  if (!state) {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> checking Kouga public GIS…
+      </div>
+    );
+  }
+  if (state.status === "not-configured") {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> {configHint ?? "Endpoint not configured."}
+      </div>
+    );
+  }
+  if (state.status === "not-found") {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> {hint}
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+        <span className="font-semibold">{label}:</span> Could not reach Kouga GIS ({state.message}).
+      </div>
+    );
+  }
+  const attrs = state.record.attributes;
+  const entries = Object.entries(attrs).filter(([, v]) => v !== null && v !== undefined && v !== "");
+  return (
+    <div className="rounded-lg border border-border bg-background">
+      <div className="border-b border-border px-3 py-1.5 text-[11px] font-semibold text-foreground">{label}</div>
+      <dl className="divide-y divide-border text-[11.5px]">
+        {entries.slice(0, 8).map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
+            <dt className="truncate text-muted-foreground">{k}</dt>
+            <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{String(v)}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
