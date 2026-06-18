@@ -268,6 +268,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     user: userAddr,
   }), [csg, geo, userAddr, lat, lng]);
 
+  const sgDoc = useMemo(() => buildSgDocumentUrl({
+    lpi: csg?.lpi,
+    parcelKey: csg?.parcelKey,
+    erfNumber: csg?.erfNumber,
+    portion: csg?.portion,
+    province: csg?.province,
+    majorRegion: csg?.majorRegion,
+    minorRegion: csg?.minorRegion,
+  }), [csg]);
+
   const sourceUrl = isCsg ? "https://csggis.drdlr.gov.za/psv/" : "https://mapping-kouga.hub.arcgis.com/";
 
   const researchCtx: ResearchContext = {
@@ -391,6 +401,77 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         <div className="px-5 pt-4">
           {tab === "overview" && (
             <div className="space-y-4">
+              {/* Research Snapshot */}
+              <section className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Research Snapshot
+                  </div>
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider", CONFIDENCE_TONE[resolved.addressConfidence])}>
+                    {resolved.addressConfidence}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <SnapshotTile
+                    label="Erf"
+                    value={csg?.erfNumber != null ? `Erf ${csg.erfNumber}` : "—"}
+                    sub={csg?.portion != null && String(csg.portion) !== "0" ? `Portion ${csg.portion}` : undefined}
+                  />
+                  <SnapshotTile
+                    label="Area"
+                    value={csg?.geometryArea != null ? `${Math.round(Number(csg.geometryArea)).toLocaleString("en-ZA")} m²` : "—"}
+                  />
+                  <SnapshotTile
+                    label="Zoning"
+                    value={(() => {
+                      const z = enrichment?.zoning;
+                      if (!z) return "Checking…";
+                      if (z.status === "ok") return String(z.record.attributes.ZONING ?? z.record.attributes.ZONING_TYP ?? "—");
+                      if (z.status === "not-found") return "No record";
+                      return "—";
+                    })()}
+                    sub={(() => {
+                      const z = enrichment?.zoning;
+                      if (z?.status === "ok") {
+                        const t = z.record.attributes.ZONING_TYP;
+                        return t ? String(t) : undefined;
+                      }
+                      return undefined;
+                    })()}
+                  />
+                  <SnapshotTile
+                    label="SG Document"
+                    value={sgDoc.shown ? "Available" : "Not available"}
+                    sub={sgDoc.shown ? undefined : "Insufficient data"}
+                    action={sgDoc.shown ? (
+                      <button
+                        type="button"
+                        onClick={(e) => openExternalUrl(sgDoc.url, e)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+                      >
+                        Open <ExternalLink className="h-2.5 w-2.5" />
+                      </button>
+                    ) : undefined}
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5 text-[11px]">
+                  <div className="min-w-0 truncate text-muted-foreground">
+                    <MapPin className="mr-1 inline h-3 w-3" />
+                    {[csg?.minorRegion, csg?.majorRegion, csg?.province ?? "Eastern Cape"].filter(Boolean).join(" · ")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => openExternalUrl(`https://maps.google.com/?q=${csg?.latitude ?? lat},${csg?.longitude ?? lng}`, e)}
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                  >
+                    Open in Maps <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="mt-1 text-[10px] font-mono text-muted-foreground">
+                  {(csg?.latitude ?? lat).toFixed(5)}, {(csg?.longitude ?? lng).toFixed(5)}
+                </div>
+              </section>
+
               {/* Address / Location card */}
               <section>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -487,49 +568,37 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 </section>
               )}
 
-              {(() => {
-                const sg = buildSgDocumentUrl({
-                  lpi: csg?.lpi,
-                  parcelKey: csg?.parcelKey,
-                  erfNumber: csg?.erfNumber,
-                  portion: csg?.portion,
-                  province: csg?.province,
-                  majorRegion: csg?.majorRegion,
-                  minorRegion: csg?.minorRegion,
-                });
-                return (
-                  <section className="space-y-2">
-                    {sg.shown ? (
-                      <button
-                        type="button"
-                        onClick={(e) => openExternalUrl(sg.url, e)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
-                      >
-                        <FileText className="h-3 w-3" /> Open SG Document List <ExternalLink className="h-3 w-3" />
-                      </button>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5">
-                        <div className="text-[12px] font-medium text-foreground">SG document link not available for this erf yet.</div>
-                        <div className="mt-0.5 text-[10.5px] text-muted-foreground">{sg.reason}</div>
-                        <button
-                          type="button"
-                          onClick={(e) => openExternalUrl(sg.fallbackUrl, e)}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/80"
-                        >
-                          Open CSG Property Viewer <ExternalLink className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
+              <section className="space-y-2">
+                {sgDoc.shown ? (
+                  <button
+                    type="button"
+                    onClick={(e) => openExternalUrl(sgDoc.url, e)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
+                  >
+                    <FileText className="h-3 w-3" /> Open SG Document List <ExternalLink className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5">
+                    <div className="text-[12px] font-medium text-foreground">SG document link not available for this erf yet.</div>
+                    <div className="mt-0.5 text-[10.5px] text-muted-foreground">{sgDoc.reason}</div>
                     <button
                       type="button"
-                      onClick={(e) => openExternalUrl(sourceUrl, e)}
-                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
+                      onClick={(e) => openExternalUrl(sgDoc.fallbackUrl, e)}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/80"
                     >
-                      Open official source <ExternalLink className="h-3 w-3" />
+                      Open CSG Property Viewer <ExternalLink className="h-3 w-3" />
                     </button>
-                  </section>
-                );
-              })()}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => openExternalUrl(sourceUrl, e)}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground underline-offset-2 hover:underline"
+                >
+                  Open official source <ExternalLink className="h-3 w-3" />
+                </button>
+              </section>
+
 
               {/* Kouga public GIS enrichment */}
               <section>
@@ -650,6 +719,19 @@ function EnrichmentBlock({
           </div>
         ))}
       </dl>
+    </div>
+  );
+}
+
+function SnapshotTile({ label, value, sub, action }: { label: string; value: string; sub?: string; action?: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-background px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+        {action}
+      </div>
+      <div className="mt-0.5 truncate text-[13px] font-semibold text-foreground">{value}</div>
+      {sub && <div className="truncate text-[10px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }
