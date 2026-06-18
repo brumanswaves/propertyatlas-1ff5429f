@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Plus, Trash2, Copy, BookmarkCheck, ChevronDown } from "lucide-react";
-import { buildListingResearchLinks, type ResearchContext } from "@/lib/research/links";
+import { buildListingResearchLinks, buildSearchPhrase, type ResearchContext } from "@/lib/research/links";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
