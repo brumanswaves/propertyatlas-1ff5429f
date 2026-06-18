@@ -151,21 +151,8 @@ function resolveOfficialParcelLocation(opts: {
     };
   }
 
-  // 2. Mapbox full address (street number + street name)
-  if (geo?.streetNumber && geo?.streetName) {
-    const street = `${geo.streetNumber} ${geo.streetName}`;
-    return {
-      displayTitle: street,
-      displaySubtitle: [erfLabel, geo.suburb ?? minorRegion, "Approximate Address"].filter(Boolean).join(" · "),
-      approximateAddress: street,
-      streetNumber: geo.streetNumber,
-      streetName: geo.streetName,
-      addressConfidence: "Approximate Address",
-      addressSource: "Approximate Address",
-      researchQuery: [street, erfLabel, geo.suburb ?? minorRegion, geo.place ?? majorRegion, province, "South Africa"]
-        .filter(Boolean).join(" "),
-    };
-  }
+  // 2. Mapbox helper context only — never promote a guessed full address into the title.
+  //    The official identity is the erf. Treat any street name as "nearest road" hint only.
 
   // 3. Mapbox returned only a road name — never promote to title
   const road = geo?.nearestRoad ?? geo?.streetName;
@@ -628,34 +615,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
           {tab === "research" && <ResearchLinksTab ctx={researchCtx} parcelId={parcelId} />}
           {tab === "listings" && <ListingsTab parcelId={parcelId} ctx={researchCtx} />}
-          {tab === "reports" && (
-            <div className="space-y-4">
-              <ReportsTab parcelId={parcelId} summary={summary} />
-              <div className="space-y-2">
-                {[
-                  { name: "Lightstone Property Report", desc: "Ownership, valuation, transfers, bonds, comparables." },
-                  { name: "Lightstone Seller Report", desc: "Likely-to-sell signals and seller intelligence." },
-                  { name: "WinDeed Property Report", desc: "Deeds office search: ownership and bond history." },
-                  { name: "Surveyor-General Diagram", desc: "Approved SG diagram for the erf." },
-                ].map((r) => (
-                  <div key={r.name} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
-                        <FileText className="h-3.5 w-3.5" /> {r.name}
-                      </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{r.desc}</div>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                      <Lock className="h-2.5 w-2.5" /> Coming soon
-                    </span>
-                  </div>
-                ))}
-                <p className="text-[10px] text-muted-foreground">
-                  Official ownership, transfer history, bonds, comparable sales, and valuations require a third-party report.
-                </p>
-              </div>
-            </div>
-          )}
+          {tab === "reports" && <ReportsTab parcelId={parcelId} summary={summary} />}
           {tab === "notes" && <NotesTab parcelId={parcelId} />}
           {tab === "calculators" && <CalculatorsTab />}
         </div>

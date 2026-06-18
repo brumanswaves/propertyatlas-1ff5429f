@@ -1,6 +1,6 @@
-// Safely open an external URL in a real new browser tab.
-// Avoids being captured by an embed/iframe (e.g. Lovable preview) which causes
-// some destinations (Google search) to render a "blocked" page.
+// Safely open an external URL in a single new browser tab.
+// Single window.open call with a short debounce to prevent double-opens
+// from rapid clicks or duplicate handlers. Falls back to clipboard if blocked.
 import { toast } from "sonner";
 
 export function isExternalUrl(url: string): boolean {
@@ -31,6 +31,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+let lastOpenedUrl = "";
+let lastOpenedAt = 0;
+const DEBOUNCE_MS = 750;
+
 export function openExternalUrl(
   url: string,
   e?: { preventDefault?: () => void; stopPropagation?: () => void } | null,
@@ -41,16 +45,15 @@ export function openExternalUrl(
     toast.error("Invalid external link");
     return false;
   }
-  // Try to break out of any embed/iframe by targeting the top window first.
-  try {
-    const top = typeof window !== "undefined" ? window.top ?? window : null;
-    const w = top?.open(url, "_blank", "noopener,noreferrer");
-    if (w) return true;
-  } catch {
-    /* cross-origin top — fall through */
+  const now = Date.now();
+  if (lastOpenedUrl === url && now - lastOpenedAt < DEBOUNCE_MS) {
+    return false;
   }
-  const w2 = window.open(url, "_blank", "noopener,noreferrer");
-  if (w2) return true;
+  lastOpenedUrl = url;
+  lastOpenedAt = now;
+
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (win) return true;
   // Popup blocked — fallback: copy link
   copyToClipboard(url).then((ok) => {
     if (ok) toast.message("Popup blocked. Link copied to clipboard.");

@@ -87,10 +87,6 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       : []),
   ];
 
-  const listings: ResearchLink[] = buildListingResearchLinks(ctx).map((l) => ({
-    ...l, category: "listings" as const, external: true as const,
-  }));
-
   const official: ResearchLink[] = inKouga
     ? [
         { id: "kouga-portal", label: "Kouga Municipality", description: "Official Kouga Local Municipality website.",
@@ -111,23 +107,6 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
           category: "official", external: true },
       ];
 
-  const documents: ResearchLink[] = [
-    {
-      id: "csg-doc-search",
-      label: "SG Document Search",
-      description: "Search Surveyor-General diagrams and sectional title documents.",
-      href: "https://csg.drdlr.gov.za/",
-      category: "documents", external: true,
-    },
-    {
-      id: "deeds-office",
-      label: "Deeds Office information",
-      description: "DALRRD Deeds Registration general information.",
-      href: "https://www.gov.za/services/deeds-registration",
-      category: "documents", external: true,
-    },
-  ];
-
   const general: ResearchLink[] = [
     {
       id: "google",
@@ -138,7 +117,9 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
     },
   ];
 
-  return [...maps, ...listings, ...official, ...documents, ...general];
+  // Listings and official-document buttons are intentionally excluded here.
+  // Listings live in the Listings tab; SG documents live in Overview/Reports.
+  return [...maps, ...official, ...general];
 }
 
 // ===== Listings (Google site-search; no scraping) =====

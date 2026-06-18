@@ -14,11 +14,17 @@
 export const KOUGA_ZONING_QUERY_URL =
   "https://services5.arcgis.com/DllnbBENKfts6TQD/ArcGIS/rest/services/Zoning/FeatureServer/1/query";
 
+// Discovered defaults from the Kouga Public Mapping Viewer. Env vars override.
+const DEFAULT_KOUGA_PROPERTIES_SG_URL =
+  "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query";
+const DEFAULT_KOUGA_WARDS_URL =
+  "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/kougaWardBoundary2026/FeatureServer/0/query";
+
 export const KOUGA_PROPERTIES_SG_URL =
-  (import.meta.env.VITE_KOUGA_PROPERTIES_SG_URL as string | undefined) ?? null;
+  (import.meta.env.VITE_KOUGA_PROPERTIES_SG_URL as string | undefined) || DEFAULT_KOUGA_PROPERTIES_SG_URL;
 
 export const KOUGA_WARDS_URL =
-  (import.meta.env.VITE_KOUGA_WARDS_URL as string | undefined) ?? null;
+  (import.meta.env.VITE_KOUGA_WARDS_URL as string | undefined) || DEFAULT_KOUGA_WARDS_URL;
 
 export type MatchMethod = "point" | "envelope";
 
@@ -43,7 +49,8 @@ interface PointOpts {
 }
 
 function buildPointQueryUrl({ endpoint, lng, lat }: PointOpts): string {
-  const geometry = `${lng},${lat}`;
+  // ArcGIS JSON geometry — more robust than "x,y" string for point queries.
+  const geometry = JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } });
   const params = new URLSearchParams({
     f: "json",
     where: "1=1",
