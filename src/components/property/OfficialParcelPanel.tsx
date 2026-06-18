@@ -600,3 +600,56 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function EnrichmentBlock({
+  label, state, hint, configHint,
+}: {
+  label: string;
+  state: import("@/lib/providers/kougaEnrichment").KougaEnrichmentState | undefined;
+  hint: string;
+  configHint?: string;
+}) {
+  if (!state) {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> checking Kouga public GIS…
+      </div>
+    );
+  }
+  if (state.status === "not-configured") {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> {configHint ?? "Endpoint not configured."}
+      </div>
+    );
+  }
+  if (state.status === "not-found") {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="font-semibold text-foreground">{label}:</span> {hint}
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+        <span className="font-semibold">{label}:</span> Could not reach Kouga GIS ({state.message}).
+      </div>
+    );
+  }
+  const attrs = state.record.attributes;
+  const entries = Object.entries(attrs).filter(([, v]) => v !== null && v !== undefined && v !== "");
+  return (
+    <div className="rounded-lg border border-border bg-background">
+      <div className="border-b border-border px-3 py-1.5 text-[11px] font-semibold text-foreground">{label}</div>
+      <dl className="divide-y divide-border text-[11.5px]">
+        {entries.slice(0, 8).map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
+            <dt className="truncate text-muted-foreground">{k}</dt>
+            <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{String(v)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
