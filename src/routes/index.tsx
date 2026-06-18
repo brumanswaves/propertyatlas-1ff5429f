@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MousePointerClick, Plus, X, ShieldCheck, FlaskConical } from "lucide-react";
+void FlaskConical;
 import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection, type OfficialLayerStatus } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -51,6 +52,8 @@ function AtlasHome() {
     const savedDemoMode = window.localStorage.getItem("pa.demoMode") === "1";
     setDemoMode(savedDemoMode);
     if (savedDemoMode) setLayers(DEMO_LAYERS);
+    // Test geometry is only togglable from /admin/public-data-debug. Never on by default.
+    setShowTestGeometry(window.localStorage.getItem("pa.testGeometry") === "1");
     const parcel = new URLSearchParams(window.location.search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
   }, []);
@@ -124,7 +127,7 @@ function AtlasHome() {
         </div>
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
           <FilterPanel value={filters} onChange={setFilters} />
-          <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} />
+          <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} officialStatus={officialStatus} />
           <button
             onClick={toggleDemoMode}
             className={cn(
@@ -138,18 +141,6 @@ function AtlasHome() {
             {demoMode ? <FlaskConical className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
             {demoMode ? "Demo Data" : "Official Public Data Mode"}
           </button>
-          {!demoMode && (
-            <button
-              onClick={() => setShowTestGeometry((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold shadow-soft backdrop-blur transition",
-                showTestGeometry ? "bg-amber-500 text-amber-950 hover:bg-amber-400" : "bg-card/95 text-foreground hover:bg-card",
-              )}
-              title="Show TEST GEOMETRY ONLY files, not official data"
-            >
-              <FlaskConical className="h-3.5 w-3.5" /> Show Test Geometry
-            </button>
-          )}
         </div>
 
         {!demoMode && (
@@ -247,10 +238,10 @@ function OfficialPill({ label, status }: { label: string; status: OfficialLayerS
   const map: Record<string, { tone: string; text: string }> = {
     loading: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: `${label} loading…` },
     loaded: { tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300", text: label === "CSG" ? `CSG parcels loaded: ${status.count}` : `Kouga zoning loaded: ${status.count}` },
-    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: label === "CSG" ? `Imported CSG GeoJSON loaded: ${status.count}` : `Imported Kouga GeoJSON loaded: ${status.count}` },
-    test: { tone: "bg-amber-500/20 text-amber-800 dark:text-amber-300", text: "Test geometry loaded, not official data" },
-    empty: { tone: "bg-amber-500/15 text-amber-800 dark:text-amber-300", text: status.message ?? `${label} empty` },
-    failed: { tone: "bg-red-500/20 text-red-800 dark:text-red-300", text: `${label} unavailable` },
+    imported: { tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300", text: label === "CSG" ? `CSG parcels loaded (imported): ${status.count}` : `Kouga zoning loaded (imported): ${status.count}` },
+    test: { tone: "bg-amber-500/20 text-amber-800 dark:text-amber-300", text: "TEST GEOMETRY ONLY — not official data" },
+    empty: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: label === "CSG" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view" },
+    failed: { tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", text: label === "CSG" ? "CSG unavailable" : "Kouga zoning unavailable" },
   };
   const v = map[status.state] ?? map.empty;
   return (

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   loadOfficialPublicLayer,
   testDirectFetch,
@@ -57,6 +57,9 @@ function PublicDataDebug() {
       <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-[12px] text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
         <strong>Compliance:</strong> test geometry is labelled TEST GEOMETRY ONLY and is not official data. Official layers only count as loaded when real endpoint or imported official GeoJSON features are present.
       </div>
+
+      <TestGeometryToggle />
+
 
       <section className="mt-6 rounded-xl border border-border bg-card p-4">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Test bbox</div>
@@ -173,6 +176,38 @@ function AttemptCard({ attempt }: { attempt: PublicDataAttempt }) {
           </details>
         )}
       </div>
+    </div>
+  );
+}
+
+function TestGeometryToggle() {
+  const [on, setOn] = useState(false);
+  useEffect(() => { setOn(window.localStorage.getItem("pa.testGeometry") === "1"); }, []);
+  function toggle() {
+    const next = !on;
+    setOn(next);
+    try { window.localStorage.setItem("pa.testGeometry", next ? "1" : "0"); } catch {}
+  }
+  return (
+    <div className="mt-4 rounded-xl border border-border bg-card p-3 text-[12px]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-foreground">Show Test Geometry on main map</div>
+          <div className="text-[11px] text-muted-foreground">
+            Loads <code>TEST GEOMETRY ONLY</code> shapes. Not official data. Defaults to OFF. Reload the home page after toggling.
+          </div>
+        </div>
+        <button onClick={toggle}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? "bg-amber-500" : "bg-muted"}`}
+          aria-pressed={on}>
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+        </button>
+      </div>
+      {on && (
+        <div className="mt-2 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+          TEST GEOMETRY ONLY — NOT OFFICIAL DATA
+        </div>
+      )}
     </div>
   );
 }

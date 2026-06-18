@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X, ExternalLink, ShieldCheck, FileText, Lock, MapPin, Sparkles, Link2,
-  Tag as TagIcon, NotebookPen, Calculator, Bookmark, BookmarkCheck, Share2,
+  Tag as TagIcon, NotebookPen, Calculator, Bookmark, BookmarkCheck, Share2, Pencil, Save as SaveIcon,
 } from "lucide-react";
 import type { OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ResearchLinksTab } from "./tabs/ResearchLinksTab";
@@ -9,7 +9,7 @@ import { ListingsTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
-import type { ResearchContext } from "@/lib/research/links";
+import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -39,7 +39,6 @@ function normalizeCsg(p: Record<string, unknown>) {
     geometryArea: (p.GEOM_AREA ?? p.SHAPE_Area) as number | undefined,
     longitude: p.TAG_X as number | undefined,
     latitude: p.TAG_Y as number | undefined,
-    street: (p.STREET ?? p.STREET_NAM ?? p.ADDRESS) as string | undefined,
   };
 }
 
@@ -66,7 +65,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
-async function reverseGeocode(lng: number, lat: number): Promise<{ address?: string; suburb?: string; place?: string } | null> {
+type Geo = {
+  streetNumber?: string;
+  streetName?: string;
+  nearestRoad?: string;
+  suburb?: string;
+  place?: string;
+};
+
+async function reverseGeocode(lng: number, lat: number): Promise<Geo | null> {
   if (!MAPBOX_TOKEN) return null;
   try {
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,neighborhood,locality,place&limit=1`;
@@ -78,11 +85,126 @@ async function reverseGeocode(lng: number, lat: number): Promise<{ address?: str
     const ctx: Array<{ id: string; text: string }> = feat.context ?? [];
     const suburb = ctx.find((c) => c.id.startsWith("neighborhood") || c.id.startsWith("locality"))?.text;
     const place = ctx.find((c) => c.id.startsWith("place"))?.text;
-    const address = feat.place_type?.includes("address") ? (feat.address ? `${feat.address} ${feat.text}` : feat.text) : undefined;
-    return { address, suburb, place };
+    const isAddress = feat.place_type?.includes("address");
+    const streetNumber = isAddress && feat.address ? String(feat.address) : undefined;
+    const streetName = isAddress ? (feat.text as string | undefined) : undefined;
+    const nearestRoad = isAddress && !streetNumber ? (feat.text as string | undefined) : undefined;
+    return { streetNumber, streetName, nearestRoad, suburb, place };
   } catch {
     return null;
   }
+}
+
+type AddressSource = "Official Address" | "User Entered" | "Approximate Address" | "Nearest Road Only" | "Location Only";
+
+interface UserAddress {
+  streetNumber?: string;
+  streetName?: string;
+  suburb?: string;
+  town?: string;
+  province?: string;
+  notes?: string;
+}
+
+interface ResolvedLocation {
+  displayTitle: string;
+  displaySubtitle: string;
+  approximateAddress?: string;
+  nearestRoad?: string;
+  streetNumber?: string;
+  streetName?: string;
+  addressConfidence: AddressSource;
+  addressSource: AddressSource;
+  researchQuery: string;
+}
+
+function resolveOfficialParcelLocation(opts: {
+  erfNumber?: string | number;
+  portion?: string | number;
+  minorRegion?: string;
+  majorRegion?: string;
+  province?: string;
+  latitude: number;
+  longitude: number;
+  geo: Geo | null;
+  user?: UserAddress | null;
+}): ResolvedLocation {
+  const { erfNumber, minorRegion, majorRegion, province, geo, user } = opts;
+  const erfLabel = erfNumber != null ? `Erf ${erfNumber}` : "Erf";
+
+  // 1. User-entered (when meaningful)
+  if (user && (user.streetNumber || user.streetName)) {
+    const street = [user.streetNumber, user.streetName].filter(Boolean).join(" ");
+    return {
+      displayTitle: street || erfLabel,
+      displaySubtitle: [erfLabel, user.suburb ?? minorRegion, "User Entered"].filter(Boolean).join(" · "),
+      approximateAddress: street,
+      streetNumber: user.streetNumber,
+      streetName: user.streetName,
+      addressConfidence: "User Entered",
+      addressSource: "User Entered",
+      researchQuery: [street, erfLabel, user.suburb ?? minorRegion, user.town ?? majorRegion, user.province ?? province, "South Africa"]
+        .filter(Boolean).join(" "),
+    };
+  }
+
+  // 2. Mapbox full address (street number + street name)
+  if (geo?.streetNumber && geo?.streetName) {
+    const street = `${geo.streetNumber} ${geo.streetName}`;
+    return {
+      displayTitle: street,
+      displaySubtitle: [erfLabel, geo.suburb ?? minorRegion, "Approximate Address"].filter(Boolean).join(" · "),
+      approximateAddress: street,
+      streetNumber: geo.streetNumber,
+      streetName: geo.streetName,
+      addressConfidence: "Approximate Address",
+      addressSource: "Approximate Address",
+      researchQuery: [street, erfLabel, geo.suburb ?? minorRegion, geo.place ?? majorRegion, province, "South Africa"]
+        .filter(Boolean).join(" "),
+    };
+  }
+
+  // 3. Mapbox returned only a road name
+  const road = geo?.nearestRoad ?? geo?.streetName;
+  if (road) {
+    return {
+      displayTitle: erfLabel,
+      displaySubtitle: [`Near ${road}`, geo?.suburb ?? minorRegion, "Nearest Road Only"].filter(Boolean).join(" · "),
+      nearestRoad: road,
+      addressConfidence: "Nearest Road Only",
+      addressSource: "Nearest Road Only",
+      researchQuery: [erfLabel, road, geo?.suburb ?? minorRegion, geo?.place ?? majorRegion, province, "South Africa"]
+        .filter(Boolean).join(" "),
+    };
+  }
+
+  // 4. Coordinates + region only
+  return {
+    displayTitle: erfLabel,
+    displaySubtitle: [minorRegion, majorRegion, province].filter(Boolean).join(" · "),
+    addressConfidence: "Location Only",
+    addressSource: "Location Only",
+    researchQuery: [erfLabel, minorRegion, majorRegion, province, "South Africa"].filter(Boolean).join(" "),
+  };
+}
+
+const CONFIDENCE_TONE: Record<AddressSource, string> = {
+  "Official Address": "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
+  "User Entered": "bg-sky-500/20 text-sky-800 dark:text-sky-300",
+  "Approximate Address": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  "Nearest Road Only": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  "Location Only": "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+};
+
+function userAddrKey(parcelId: string) { return `pa.userAddress.${parcelId}`; }
+function readUserAddress(parcelId: string): UserAddress | null {
+  try { const v = window.localStorage.getItem(userAddrKey(parcelId)); return v ? JSON.parse(v) as UserAddress : null; } catch { return null; }
+}
+function writeUserAddress(parcelId: string, a: UserAddress | null) {
+  try {
+    if (!a) window.localStorage.removeItem(userAddrKey(parcelId));
+    else window.localStorage.setItem(userAddrKey(parcelId), JSON.stringify(a));
+  } catch {}
 }
 
 export function OfficialParcelPanel({ selection, onClose }: Props) {
@@ -91,7 +213,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const csg = useMemo(() => (isCsg ? normalizeCsg(selection.properties) : null), [selection, isCsg]);
   const kouga = useMemo(() => (!isCsg ? normalizeKouga(selection.properties) : null), [selection, isCsg]);
   const [tab, setTab] = useState<Tab>("overview");
-  const [geo, setGeo] = useState<{ address?: string; suburb?: string; place?: string } | null>(null);
+  const [geo, setGeo] = useState<Geo | null>(null);
   const [saved, setSaved] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const fetchedAt = useMemo(() => new Date().toLocaleString(), [selection]);
@@ -100,7 +222,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const parcelKey = (csg?.parcelKey ?? csg?.lpi ?? String(selection.properties.OBJECTID ?? "unknown")) as string;
   const parcelId = isCsg ? `csg:${parcelKey}` : `kouga:${parcelKey}`;
 
+  const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<UserAddress>({});
+
   useEffect(() => { setTab("overview"); scrollRef.current?.scrollTo({ top: 0 }); }, [parcelId]);
+  useEffect(() => { const a = readUserAddress(parcelId); setUserAddr(a); setDraft(a ?? {}); setEditing(false); }, [parcelId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,30 +242,51 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       .maybeSingle().then(({ data }) => setSaved(!!data));
   }, [user, parcelId]);
 
-  const addressLine = geo?.address;
-  const suburb = geo?.suburb ?? csg?.minorRegion;
-  const place = geo?.place ?? csg?.majorRegion;
-  const headerTitle = addressLine ?? (isCsg ? `Erf ${csg?.erfNumber ?? "—"}` : `Zoning ${kouga?.zoningCode ?? "—"}`);
-  const headerSub = [suburb, place, csg?.province].filter(Boolean).join(", ");
+  const resolved = useMemo(() => resolveOfficialParcelLocation({
+    erfNumber: csg?.erfNumber,
+    portion: csg?.portion,
+    minorRegion: csg?.minorRegion,
+    majorRegion: csg?.majorRegion,
+    province: csg?.province ?? "Eastern Cape",
+    latitude: csg?.latitude ?? lat,
+    longitude: csg?.longitude ?? lng,
+    geo,
+    user: userAddr,
+  }), [csg, geo, userAddr, lat, lng]);
 
   const sourceUrl = isCsg ? "https://csggis.drdlr.gov.za/psv/" : "https://mapping-kouga.hub.arcgis.com/";
 
   const researchCtx: ResearchContext = {
-    address: addressLine,
-    area: suburb ?? place,
-    town: place,
-    suburb,
+    address: resolved.approximateAddress,
+    area: csg?.minorRegion,
+    town: userAddr?.town ?? csg?.majorRegion,
+    suburb: userAddr?.suburb ?? csg?.minorRegion,
     municipality: "Kouga Local Municipality",
-    province: csg?.province ?? "Eastern Cape",
+    province: userAddr?.province ?? csg?.province ?? "Eastern Cape",
     erf: csg?.erfNumber != null ? String(csg.erfNumber) : undefined,
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   };
+  // Ensure researchQuery aligns with our resolver
+  void buildResearchQuery(researchCtx);
 
-  const summary = [
-    isCsg ? `Erf ${csg?.erfNumber ?? ""}` : `Zoning ${kouga?.zoningCode ?? ""}`,
-    suburb, place, csg?.province,
-  ].filter(Boolean).join(", ");
+  const summary = resolved.displayTitle + (resolved.displaySubtitle ? ` — ${resolved.displaySubtitle}` : "");
+
+  function saveDraft() {
+    const cleaned: UserAddress = {
+      streetNumber: draft.streetNumber?.trim() || undefined,
+      streetName: draft.streetName?.trim() || undefined,
+      suburb: draft.suburb?.trim() || undefined,
+      town: draft.town?.trim() || undefined,
+      province: draft.province?.trim() || undefined,
+      notes: draft.notes?.trim() || undefined,
+    };
+    const isEmpty = !Object.values(cleaned).some(Boolean);
+    writeUserAddress(parcelId, isEmpty ? null : cleaned);
+    setUserAddr(isEmpty ? null : cleaned);
+    setEditing(false);
+    toast.success(isEmpty ? "Cleared address override" : "Address saved");
+  }
 
   async function toggleSave() {
     if (!user) { toast.message("Sign in to save properties"); return; }
@@ -148,26 +296,35 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     } else {
       const userData = {
         provider: csg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
+        displayTitle: resolved.displayTitle,
+        displaySubtitle: resolved.displaySubtitle,
+        approximateAddress: resolved.approximateAddress ?? null,
+        streetNumber: resolved.streetNumber ?? null,
+        streetName: resolved.streetName ?? null,
+        nearestRoad: resolved.nearestRoad ?? null,
         erfNumber: csg?.erfNumber ?? null,
         portion: csg?.portion ?? null,
         lpi: csg?.lpi ?? null,
         parcelKey: csg?.parcelKey ?? null,
-        approximateAddress: addressLine ?? null,
-        suburb: suburb ?? null,
-        majorRegion: place ?? null,
         province: csg?.province ?? null,
+        majorRegion: csg?.majorRegion ?? null,
+        minorRegion: csg?.minorRegion ?? null,
         geometryArea: csg?.geometryArea ?? null,
         zoningCode: (kouga?.zoningCode as string | number | null) ?? null,
         zoningType: (kouga?.zoningType as string | number | null) ?? null,
         lng: csg?.longitude ?? lng,
         lat: csg?.latitude ?? lat,
+        addressSource: resolved.addressSource,
+        addressConfidence: resolved.addressConfidence,
+        researchQuery: resolved.researchQuery,
+        userEntered: userAddr ?? null,
         fetchedAt: new Date().toISOString(),
       };
       const { error } = await supabase.from("saved_properties").insert({
         user_id: user.id,
         parcel_id: parcelId,
         external_links: [{ label: isCsg ? "CSG Viewer" : "Kouga Mapping Portal", url: sourceUrl, category: "official" }],
-        user_data: userData,
+        user_data: userData as unknown as Record<string, unknown> as never,
       });
       if (error) toast.error(error.message);
       else { setSaved(true); toast.success("Saved to your properties"); }
@@ -184,13 +341,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </span>
             <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-foreground">{isCsg ? "CSG" : "Kouga"}</span>
           </div>
-          <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground">{headerTitle}</h2>
-          {addressLine && isCsg && csg?.erfNumber != null && (
-            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">Erf {csg.erfNumber}{suburb ? ` · ${suburb}` : ""}</div>
-          )}
-          {!addressLine && headerSub && (
+          <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground">{resolved.displayTitle}</h2>
+          {resolved.displaySubtitle && (
             <div className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-              <MapPin className="h-3 w-3" /> {headerSub}
+              <MapPin className="h-3 w-3" /> {resolved.displaySubtitle}
             </div>
           )}
         </div>
@@ -223,26 +377,70 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         <div className="px-5 pt-4">
           {tab === "overview" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-900 dark:text-emerald-200">
-                Official Public Cadastral Record · {csg ? "Chief Surveyor-General" : "Kouga Municipality GIS"}
-                <div className="mt-0.5 text-[10px] opacity-80">Last fetched: {fetchedAt}</div>
-              </div>
-
+              {/* Address / Location card */}
               <section>
-                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Address</div>
-                <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-                  <div className="text-[13px] font-medium text-foreground">
-                    {addressLine ?? "Address not available from public source."}
+                <div className="mb-1.5 flex items-center justify-between">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Address / Location</div>
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider", CONFIDENCE_TONE[resolved.addressConfidence])}>
+                    {resolved.addressConfidence}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-border bg-background">
+                  <div className="px-3 py-2.5">
+                    <div className="text-[13px] font-medium text-foreground">{resolved.displayTitle}</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{resolved.displaySubtitle || "Location only — coordinates and region."}</div>
                   </div>
-                  <div className="mt-0.5 text-[10px] text-muted-foreground">
-                    {addressLine ? "Approximate address from map location · not an official registered address." : "No address returned from reverse geocoding."}
+                  <dl className="divide-y divide-border border-t border-border text-[12px]">
+                    {csg?.erfNumber != null && <Row label="Erf number" value={fmt(csg.erfNumber)} />}
+                    {csg?.portion != null && <Row label="Portion" value={fmt(csg.portion)} />}
+                    {resolved.streetNumber && <Row label="Street number" value={resolved.streetNumber} />}
+                    {resolved.streetName && <Row label="Street name" value={resolved.streetName} />}
+                    {resolved.nearestRoad && <Row label="Nearest road" value={resolved.nearestRoad} />}
+                    <Row label="Minor region" value={fmt(userAddr?.suburb ?? csg?.minorRegion)} />
+                    <Row label="Major region" value={fmt(userAddr?.town ?? csg?.majorRegion)} />
+                    <Row label="Province" value={fmt(userAddr?.province ?? csg?.province)} />
+                    <Row label="Latitude" value={fmt((csg?.latitude ?? lat).toFixed(6))} />
+                    <Row label="Longitude" value={fmt((csg?.longitude ?? lng).toFixed(6))} />
+                    <Row label="Address source" value={resolved.addressSource} />
+                  </dl>
+                  <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                    Approximate address from map location. Not an official registered address unless marked Official Address.
                   </div>
+                  <div className="flex items-center justify-between border-t border-border px-3 py-2">
+                    <button
+                      onClick={() => setEditing((e) => !e)}
+                      className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/80"
+                    >
+                      <Pencil className="h-3 w-3" /> {editing ? "Cancel" : "Edit address"}
+                    </button>
+                    {userAddr && !editing && (
+                      <button onClick={() => { writeUserAddress(parcelId, null); setUserAddr(null); setDraft({}); toast.success("Cleared override"); }}
+                        className="text-[11px] text-muted-foreground underline-offset-2 hover:underline">Clear override</button>
+                    )}
+                  </div>
+                  {editing && (
+                    <div className="space-y-2 border-t border-border px-3 py-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        <input className="col-span-1 rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="No." value={draft.streetNumber ?? ""} onChange={(e) => setDraft((d) => ({ ...d, streetNumber: e.target.value }))} />
+                        <input className="col-span-2 rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="Street name" value={draft.streetName ?? ""} onChange={(e) => setDraft((d) => ({ ...d, streetName: e.target.value }))} />
+                      </div>
+                      <input className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="Suburb" value={draft.suburb ?? ""} onChange={(e) => setDraft((d) => ({ ...d, suburb: e.target.value }))} />
+                      <input className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="Town" value={draft.town ?? ""} onChange={(e) => setDraft((d) => ({ ...d, town: e.target.value }))} />
+                      <input className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="Province" value={draft.province ?? ""} onChange={(e) => setDraft((d) => ({ ...d, province: e.target.value }))} />
+                      <textarea className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[12px]" placeholder="Notes" rows={2} value={draft.notes ?? ""} onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))} />
+                      <button onClick={saveDraft} className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90">
+                        <SaveIcon className="h-3 w-3" /> Save address
+                      </button>
+                      <p className="text-[10px] text-muted-foreground">Stored locally as User Entered. Does not modify the official CSG record.</p>
+                    </div>
+                  )}
                 </div>
               </section>
 
+              {/* Official Cadastral Record */}
               {csg && (
                 <section>
-                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Official Public Cadastral Record</div>
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Official Cadastral Record</div>
                   <dl className="divide-y divide-border rounded-xl border border-border text-[12px]">
                     <Row label="Source" value={csg.provider} />
                     <Row label="Erf number" value={fmt(csg.erfNumber)} />
@@ -253,8 +451,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     <Row label="Major region" value={fmt(csg.majorRegion)} />
                     <Row label="Minor region" value={fmt(csg.minorRegion)} />
                     <Row label="Geometry area (m²)" value={fmt(csg.geometryArea)} />
-                    <Row label="Latitude" value={fmt(csg.latitude ?? lat.toFixed(6))} />
-                    <Row label="Longitude" value={fmt(csg.longitude ?? lng.toFixed(6))} />
+                    <Row label="Latitude" value={fmt((csg.latitude ?? lat).toFixed(6))} />
+                    <Row label="Longitude" value={fmt((csg.longitude ?? lng).toFixed(6))} />
                     <Row label="Last fetched" value={fetchedAt} />
                   </dl>
                 </section>
@@ -283,8 +481,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               <section className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No valuation available</div>
                 <p className="mt-1 text-[12px] text-foreground">
-                  Official ownership, transfer history, bonds, comparable sales, and valuations require a third-party
-                  report. Open the Reports tab to order one when available.
+                  No valuation available from this public source. Order a Lightstone or WinDeed report for valuation,
+                  ownership, transfers, bonds, and comparable sales.
                 </p>
               </section>
             </div>

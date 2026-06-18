@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X } from "lucide-react";
+import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X, ExternalLink, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MapLayers, MapStyleId } from "./MapCanvas";
+import type { MapLayers, MapStyleId, OfficialLayerStatus } from "./MapCanvas";
 
 interface Props {
   layers: MapLayers;
   onLayersChange: (l: MapLayers) => void;
   style: MapStyleId;
   onStyleChange: (s: MapStyleId) => void;
+  officialStatus?: OfficialLayerStatus;
 }
 
 const STYLES: { id: MapStyleId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -51,9 +52,22 @@ const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: strin
   },
 ];
 
-export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: Props) {
+export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, officialStatus }: Props) {
   const [open, setOpen] = useState(false);
-  const activeLayers = Object.values(layers).filter(Boolean).length;
+  // Only count layers that are toggled on AND, for official layers, actually loaded features.
+  const officialOn = (key: "csgParcels" | "kougaZoning") => {
+    if (!layers[key]) return false;
+    const s = key === "csgParcels" ? officialStatus?.csg.state : officialStatus?.kouga.state;
+    if (!officialStatus) return true;
+    return s === "loaded" || s === "imported" || s === "test";
+  };
+  const otherKeys = (Object.keys(layers) as (keyof MapLayers)[]).filter((k) => k !== "csgParcels" && k !== "kougaZoning");
+  const activeLayers =
+    (officialOn("csgParcels") ? 1 : 0) +
+    (officialOn("kougaZoning") ? 1 : 0) +
+    otherKeys.filter((k) => layers[k]).length;
+  const kougaUnavailable = layers.kougaZoning && officialStatus && (officialStatus.kouga.state === "empty" || officialStatus.kouga.state === "failed");
+  const csgUnavailable = layers.csgParcels && officialStatus && (officialStatus.csg.state === "empty" || officialStatus.csg.state === "failed");
 
   return (
     <div className="relative">
@@ -148,6 +162,22 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: 
                         </label>
                       );
                     })}
+                    {g.title === "Official public data" && (kougaUnavailable || csgUnavailable) && (
+                      <div className="mt-2 space-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-900 dark:text-amber-200">
+                        {csgUnavailable && (
+                          <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current view.</div>
+                        )}
+                        {kougaUnavailable && (
+                          <>
+                            <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Zoning layer unavailable. Open Kouga Mapping Portal.</div>
+                            <a href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                              Open Kouga Mapping Portal <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
