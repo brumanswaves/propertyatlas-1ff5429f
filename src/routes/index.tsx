@@ -169,7 +169,7 @@ function AtlasHome() {
             Official public layers could not load in this environment. You can still use source links, Demo Mode, or upload official GeoJSON files.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://csggis.drdlr.gov.za/psv/" target="_blank" rel="noreferrer">Open CSG Viewer</a>
+            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://csggis.drdlr.gov.za/portal/apps/experiencebuilder/experience/?id=a9a8f908e82c443b9cb7bede69f5985e" target="_blank" rel="noreferrer">Open CSG Viewer</a>
             <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noreferrer">Open Kouga Mapping Portal</a>
             <button className="rounded-full bg-amber-500 px-3 py-2 text-[11px] font-semibold text-amber-950 hover:bg-amber-400" onClick={toggleDemoMode}>Switch to Demo Mode</button>
             <a className="rounded-full bg-card px-3 py-2 text-[11px] font-semibold text-foreground ring-1 ring-border hover:bg-muted" href="/admin/public-data-debug">Open Public Data Debug</a>
