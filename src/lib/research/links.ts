@@ -187,7 +187,7 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       id: "google",
       label: "Google search",
       description: "General web search for this property.",
-      href: `https://www.google.com/search?q=${q(`${addr} ${erfStr}`)}`,
+      href: `https://www.google.com/search?q=${q(query)}`,
       category: "general", external: true,
     },
   ];
