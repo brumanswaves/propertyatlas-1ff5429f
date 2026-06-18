@@ -137,7 +137,7 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
   return [...maps, ...official, ...general];
 }
 
-// ===== Listings (Google site-search; no scraping) =====
+// ===== Listings (open the portal home; let the user search manually) =====
 
 export interface ListingSearchLink {
   id: string;
@@ -146,32 +146,22 @@ export interface ListingSearchLink {
   href: string;
 }
 
-export function buildListingResearchLinks(ctx: ResearchContext): ListingSearchLink[] {
-  const query = buildListingQuery(ctx);
-  const site = (domain: string) => `https://www.google.com/search?q=${q(`site:${domain} ${query}`)}`;
-  return [
-    { id: "property24",      label: "Search Property24 via Google",       description: "Google site search on property24.com.",       href: site("property24.com") },
-    { id: "privateproperty", label: "Search Private Property via Google", description: "Google site search on privateproperty.co.za.", href: site("privateproperty.co.za") },
-    { id: "pamgolding",      label: "Search Pam Golding via Google",      description: "Google site search on pamgolding.co.za.",      href: site("pamgolding.co.za") },
-    { id: "seeff",           label: "Search Seeff via Google",            description: "Google site search on seeff.com.",             href: site("seeff.com") },
-    { id: "remax",           label: "Search RE/MAX via Google",           description: "Google site search on remax.co.za.",           href: site("remax.co.za") },
-    { id: "rawson",          label: "Search Rawson via Google",           description: "Google site search on rawson.co.za.",          href: site("rawson.co.za") },
-    { id: "google-listings", label: "Search all web listings",            description: "General Google search for active listings.",
-      href: `https://www.google.com/search?q=${q(query)}` },
-  ];
+/** Returns links that open each portal's home page so users can search manually. */
+export function buildListingResearchLinks(_ctx: ResearchContext): ListingSearchLink[] {
+  return LISTING_PORTALS.map((p) => ({
+    id: p.id,
+    label: `Open ${p.label}`,
+    description: `Open ${p.label} and search manually.`,
+    href: p.url,
+  }));
 }
 
 // Legacy export kept for backwards compatibility with any older callers.
-export const LISTING_SITES = [
-  { id: "property24",      label: "Property24",       url: (a: string) => `https://www.google.com/search?q=${q(`site:property24.com ${a}`)}` },
-  { id: "privateproperty", label: "Private Property", url: (a: string) => `https://www.google.com/search?q=${q(`site:privateproperty.co.za ${a}`)}` },
-  { id: "pamgolding",      label: "Pam Golding",      url: (a: string) => `https://www.google.com/search?q=${q(`site:pamgolding.co.za ${a}`)}` },
-  { id: "seeff",           label: "Seeff",            url: (a: string) => `https://www.google.com/search?q=${q(`site:seeff.com ${a}`)}` },
-  { id: "remax",           label: "RE/MAX",           url: (a: string) => `https://www.google.com/search?q=${q(`site:remax.co.za ${a}`)}` },
-  { id: "rawson",          label: "Rawson",           url: (a: string) => `https://www.google.com/search?q=${q(`site:rawson.co.za ${a}`)}` },
-  { id: "google-listings", label: "Google search",    url: (a: string) => `https://www.google.com/search?q=${q(`${a} property for sale`)}` },
-];
+export const LISTING_SITES = LISTING_PORTALS.map((p) => ({
+  id: p.id, label: p.label, url: (_a: string) => p.url,
+}));
 
 export function listingSearchAddress(ctx: ResearchContext): string {
   return [ctx.address, ctx.area ?? ctx.suburb, ctx.town].filter(Boolean).join(" ");
 }
+
