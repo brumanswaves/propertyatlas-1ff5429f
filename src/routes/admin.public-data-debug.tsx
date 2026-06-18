@@ -222,3 +222,49 @@ function Row({ k, v }: { k: string; v: string }) {
     </div>
   );
 }
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
+
+function SgDocumentDebug() {
+  const [lpi, setLpi] = useState("C01900000000007480000");
+  const [erf, setErf] = useState("394");
+  const [portion, setPortion] = useState("0");
+  const [province, setProvince] = useState("Eastern Cape");
+  const [majorRegion, setMajor] = useState("Humansdorp");
+  const [minorRegion, setMinor] = useState("St Francis Bay");
+
+  const result = buildSgDocumentUrl({ lpi, erfNumber: erf, portion, province, majorRegion, minorRegion });
+
+  return (
+    <section className="mt-10 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">SG Document URL builder</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Tests the best-effort CSG document-list URL logic used by the property panel. Edit the fields below to see why the URL is or is not shown.
+      </p>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+        <DebugInput label="LPI" value={lpi} onChange={setLpi} />
+        <DebugInput label="Erf number" value={erf} onChange={setErf} />
+        <DebugInput label="Portion" value={portion} onChange={setPortion} />
+        <DebugInput label="Province" value={province} onChange={setProvince} />
+        <DebugInput label="Major region" value={majorRegion} onChange={setMajor} />
+        <DebugInput label="Minor region" value={minorRegion} onChange={setMinor} />
+      </div>
+
+      <dl className="mt-5 space-y-1 rounded-lg border border-border bg-background p-3 text-[11px]">
+        <Row k="Shown" v={result.shown ? "yes" : "no"} />
+        <Row k="Reason" v={result.reason} />
+        <Row k="Generated URL" v={result.shown ? result.url : "— (hidden)"} />
+        <Row k="Fallback URL" v={result.fallbackUrl} />
+        <Row k="Fields used" v={JSON.stringify(result.fieldsUsed)} />
+      </dl>
+    </section>
+  );
+}
+
+function DebugInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[11px]" />
+    </label>
+  );
+}
