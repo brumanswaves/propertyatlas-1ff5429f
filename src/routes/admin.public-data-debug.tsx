@@ -58,6 +58,9 @@ function PublicDataDebug() {
         <strong>Compliance:</strong> test geometry is labelled TEST GEOMETRY ONLY and is not official data. Official layers only count as loaded when real endpoint or imported official GeoJSON features are present.
       </div>
 
+      <TestGeometryToggle />
+
+
       <section className="mt-6 rounded-xl border border-border bg-card p-4">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Test bbox</div>
         <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
