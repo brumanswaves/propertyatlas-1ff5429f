@@ -10,6 +10,8 @@ import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
 import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
+import { fetchKougaEnrichment, type KougaEnrichment } from "@/lib/providers/kougaEnrichment";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
