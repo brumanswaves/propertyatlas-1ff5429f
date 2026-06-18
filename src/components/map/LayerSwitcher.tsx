@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X } from "lucide-react";
+import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X, ExternalLink, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MapLayers, MapStyleId } from "./MapCanvas";
+import type { MapLayers, MapStyleId, OfficialLayerStatus } from "./MapCanvas";
 
 interface Props {
   layers: MapLayers;
   onLayersChange: (l: MapLayers) => void;
   style: MapStyleId;
   onStyleChange: (s: MapStyleId) => void;
+  officialStatus?: OfficialLayerStatus;
 }
 
 const STYLES: { id: MapStyleId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
