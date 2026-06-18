@@ -50,6 +50,7 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
     url: "", portal: "", asking_price: "", agent: "", agency: "", notes: "", status: "For Sale",
   });
   const listingLinks = buildListingResearchLinks(ctx);
+  const searchPhrase = buildSearchPhrase(ctx);
 
   useEffect(() => {
     if (!user) return;
