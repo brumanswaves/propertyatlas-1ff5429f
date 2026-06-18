@@ -66,8 +66,8 @@ export function OfficialSourceCard({ centroid }: Props) {
         <div>
           No official public source returned results for this area. You can still open the public viewers below.
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <SourceLink href={`${CSG_VIEWER_URL}`} label="CSG viewer" />
-            <SourceLink href=KOUGA_MAPPING_URL label="Kouga portal" />
+            <SourceLink href={CSG_VIEWER_URL} label="CSG viewer" />
+            <SourceLink href={KOUGA_MAPPING_URL} label="Kouga portal" />
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@ export function OfficialSourceCard({ centroid }: Props) {
           label="Chief Surveyor-General"
           count={state.csg.features.length}
           fetchedAt={state.csg.fetchedAt}
-          href={`${CSG_VIEWER_URL}`}
+          href={CSG_VIEWER_URL}
         />
       )}
       {kougaOk && state.kouga && (
@@ -93,7 +93,7 @@ export function OfficialSourceCard({ centroid }: Props) {
           label="Kouga Municipality"
           count={state.kouga.features.length}
           fetchedAt={state.kouga.fetchedAt}
-          href=KOUGA_MAPPING_URL
+          href={KOUGA_MAPPING_URL}
         />
       )}
     </div>
