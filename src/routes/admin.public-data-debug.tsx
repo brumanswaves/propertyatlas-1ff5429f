@@ -309,3 +309,80 @@ function KougaEndpointStatus() {
     </section>
   );
 }
+
+import { fetchKougaEnrichment, type KougaEnrichmentState } from "@/lib/providers/kougaEnrichment";
+
+function KougaLiveProbe() {
+  const [lng, setLng] = useState("24.9112");
+  const [lat, setLat] = useState("-34.0490");
+  const [busy, setBusy] = useState(false);
+  const [out, setOut] = useState<null | Awaited<ReturnType<typeof fetchKougaEnrichment>>>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true); setErr(null); setOut(null);
+    try {
+      const lo = Number(lng), la = Number(lat);
+      if (!Number.isFinite(lo) || !Number.isFinite(la)) throw new Error("Invalid coordinates");
+      setOut(await fetchKougaEnrichment(lo, la));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <section className="mt-6 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">Kouga live probe</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Fires the real Kouga ArcGIS queries at a point. Default coords are Jeffreys Bay.</p>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <label className="text-xs">Lng<input className="ml-2 w-32 rounded border border-border bg-background px-2 py-1 font-mono text-xs" value={lng} onChange={(e) => setLng(e.target.value)} /></label>
+        <label className="text-xs">Lat<input className="ml-2 w-32 rounded border border-border bg-background px-2 py-1 font-mono text-xs" value={lat} onChange={(e) => setLat(e.target.value)} /></label>
+        <button onClick={run} disabled={busy} className="rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background disabled:opacity-50">{busy ? "Probing…" : "Probe at point"}</button>
+      </div>
+      {err && <div className="mt-3 text-xs text-amber-700 dark:text-amber-400">{err}</div>}
+      {out && (
+        <div className="mt-4 space-y-3">
+          <ProbeRow label="Zoning" state={out.zoning} />
+          <ProbeRow label="Properties / SG" state={out.property} />
+          <ProbeRow label="Wards" state={out.ward} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProbeRow({ label, state }: { label: string; state: KougaEnrichmentState }) {
+  return (
+    <div className="rounded-lg border border-border bg-background p-3 text-[11px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-semibold text-foreground">{label}</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase">{state.status}</span>
+      </div>
+      {state.status !== "not-configured" && (
+        <div className="mt-2 space-y-1">
+          {state.attemptUrls.map((u, i) => (
+            <div key={i} className="break-all font-mono text-[10px] text-muted-foreground">{i + 1}. {u}</div>
+          ))}
+        </div>
+      )}
+      {state.status === "ok" && (
+        <div className="mt-2 space-y-1">
+          <div className="text-[10px] text-muted-foreground">Feature count: <span className="font-semibold text-foreground">{state.record.featureCount}</span> · Match method: <span className="font-semibold text-foreground">{state.record.matchMethod}</span></div>
+          <details className="mt-1">
+            <summary className="cursor-pointer text-[10px] text-muted-foreground">First feature attributes</summary>
+            <pre className="mt-1 max-h-64 overflow-auto rounded border border-border bg-muted/40 p-2 text-[10px]">{JSON.stringify(state.record.attributes, null, 2)}</pre>
+          </details>
+        </div>
+      )}
+      {state.status === "error" && (
+        <div className="mt-2 text-[10px] text-amber-700 dark:text-amber-400">Error: {state.message}{state.httpStatus ? ` (HTTP ${state.httpStatus})` : ""}</div>
+      )}
+      {state.status === "not-found" && (
+        <div className="mt-2 text-[10px] text-muted-foreground">No matching feature at this point (point + envelope tried where applicable).</div>
+      )}
+      {state.status === "not-configured" && (
+        <div className="mt-2 text-[10px] text-muted-foreground">Endpoint not configured.</div>
+      )}
+    </div>
+  );
+}
