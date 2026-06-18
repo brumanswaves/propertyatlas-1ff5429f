@@ -52,9 +52,22 @@ const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: strin
   },
 ];
 
-export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange }: Props) {
+export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, officialStatus }: Props) {
   const [open, setOpen] = useState(false);
-  const activeLayers = Object.values(layers).filter(Boolean).length;
+  // Only count layers that are toggled on AND, for official layers, actually loaded features.
+  const officialOn = (key: "csgParcels" | "kougaZoning") => {
+    if (!layers[key]) return false;
+    const s = key === "csgParcels" ? officialStatus?.csg.state : officialStatus?.kouga.state;
+    if (!officialStatus) return true;
+    return s === "loaded" || s === "imported" || s === "test";
+  };
+  const otherKeys = (Object.keys(layers) as (keyof MapLayers)[]).filter((k) => k !== "csgParcels" && k !== "kougaZoning");
+  const activeLayers =
+    (officialOn("csgParcels") ? 1 : 0) +
+    (officialOn("kougaZoning") ? 1 : 0) +
+    otherKeys.filter((k) => layers[k]).length;
+  const kougaUnavailable = layers.kougaZoning && officialStatus && (officialStatus.kouga.state === "empty" || officialStatus.kouga.state === "failed");
+  const csgUnavailable = layers.csgParcels && officialStatus && (officialStatus.csg.state === "empty" || officialStatus.csg.state === "failed");
 
   return (
     <div className="relative">
