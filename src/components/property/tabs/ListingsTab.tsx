@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Plus, Trash2, Copy, BookmarkCheck, ChevronDown } from "lucide-react";
-import { buildListingResearchLinks, type ResearchContext } from "@/lib/research/links";
+import { buildListingResearchLinks, buildSearchPhrase, type ResearchContext } from "@/lib/research/links";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -50,6 +50,7 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
     url: "", portal: "", asking_price: "", agent: "", agency: "", notes: "", status: "For Sale",
   });
   const listingLinks = buildListingResearchLinks(ctx);
+  const searchPhrase = buildSearchPhrase(ctx);
 
   useEffect(() => {
     if (!user) return;
@@ -91,11 +92,11 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
       <div>
         <h3 className="text-sm font-semibold tracking-tight">Listings</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          PropertyAtlas does not scrape listing portals and cannot confirm whether a listing is active. Use the searches below, then save any listing you find under this erf.
+          PropertyAtlas does not currently have a live listing feed. Use the portal searches below, then save any listing URL you find under this erf.
         </p>
       </div>
 
-      {/* Saved status — never claims "no listing exists" */}
+      {/* Saved status — honest about what we know */}
       <section className={`rounded-2xl border ${hasSaved ? "border-emerald-500/40 bg-emerald-500/5" : "border-dashed border-border bg-muted/20"} p-3`}>
         {hasSaved ? (
           <div className="flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">
@@ -105,52 +106,48 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
           <div className="text-[12px]">
             <div className="font-semibold text-foreground">No saved listing yet</div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
-              Use the external listing searches below. If you find a listing, save it here.
+              Live listing feed not connected. Search a portal below and save any listing you find.
             </div>
           </div>
         )}
       </section>
 
-      {/* How it works */}
-      <section className="rounded-2xl border border-border bg-card p-3">
-        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">How saving a listing works</div>
-        <ol className="ml-4 list-decimal space-y-0.5 text-[11.5px] text-muted-foreground">
-          <li>Click a portal search below.</li>
-          <li>Find the listing on the external site.</li>
-          <li>Copy the listing URL.</li>
-          <li>Paste it into "Add listing manually" and save.</li>
-        </ol>
-      </section>
-
+      {/* Portal searches — open the portal home; user searches manually */}
       <section>
-        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Search active listings</div>
+        <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Search listing portals</div>
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          Open the listing portal, search the erf/address manually, then save any listing URL you find. PropertyAtlas does not yet verify live listing availability.
+        </p>
         <div className="flex flex-wrap gap-2">
           {listingLinks.map((s) => (
-            <span key={s.id} className="inline-flex items-center overflow-hidden rounded-full border border-border bg-card text-[11px] font-medium hover:bg-muted">
-              <button
-                type="button"
-                onClick={(e) => openExternalUrl(s.href, e)}
-                title={s.href}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5"
-              >
-                <ExternalLink className="h-3 w-3" /> {s.label}
-              </button>
-              <button
-                type="button"
-                onClick={async (e) => {
-                  e.preventDefault(); e.stopPropagation();
-                  const ok = await copyToClipboard(s.href);
-                  if (ok) toast.success("Link copied"); else toast.error("Could not copy link");
-                }}
-                title="Copy link"
-                aria-label="Copy link"
-                className="border-l border-border px-2 py-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="h-3 w-3" />
-              </button>
-            </span>
+            <button
+              key={s.id}
+              type="button"
+              onClick={(e) => openExternalUrl(s.href, e)}
+              title={s.href}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:bg-muted"
+            >
+              <ExternalLink className="h-3 w-3" /> {s.label}
+            </button>
           ))}
         </div>
+
+        {searchPhrase && (
+          <div className="mt-3 rounded-xl border border-border bg-muted/20 p-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Search phrase</div>
+            <div className="mt-0.5 break-words text-[12px] font-medium text-foreground">{searchPhrase}</div>
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await copyToClipboard(searchPhrase);
+                if (ok) toast.success("Search phrase copied"); else toast.error("Could not copy");
+              }}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90"
+            >
+              <Copy className="h-3 w-3" /> Copy search phrase
+            </button>
+          </div>
+        )}
       </section>
 
       <section>

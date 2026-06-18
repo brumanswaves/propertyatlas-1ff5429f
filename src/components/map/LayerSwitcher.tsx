@@ -18,36 +18,14 @@ const STYLES: { id: MapStyleId; label: string; icon: React.ComponentType<{ class
   { id: "dark", label: "Dark", icon: Moon },
 ];
 
+// Normal users only see official public-data layers. Demo and heatmap layers
+// are kept in MapLayers but are only exposed via the admin debug area.
 const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: string; hint?: string }[] }[] = [
   {
     title: "Official public data",
     items: [
       { key: "csgParcels", label: "CSG Parcels", hint: "Chief Surveyor-General — live cadastral" },
       { key: "kougaZoning", label: "Kouga Zoning", hint: "Kouga Municipality GIS — live" },
-    ],
-  },
-  {
-    title: "Demo",
-    items: [
-      { key: "parcels", label: "Demo Parcels", hint: "PropertyAtlas pilot dataset" },
-      { key: "zoning", label: "Demo Zoning", hint: "Colored by use type" },
-    ],
-  },
-  {
-    title: "Opportunity Heatmaps (demo)",
-    items: [
-      { key: "investorHeat", label: "Investor Opportunity", hint: "Composite investor score" },
-      { key: "developmentHeat", label: "Development Opportunity", hint: "Bulk, zoning, lot size" },
-      { key: "sellerHeat", label: "Seller Probability", hint: "Likely-to-sell signal" },
-    ],
-  },
-  {
-    title: "Lifestyle Heatmaps (demo)",
-    items: [
-      { key: "oceanViewHeat", label: "Ocean View", hint: "Coastal line-of-sight" },
-      { key: "appreciationHeat", label: "Appreciation Potential", hint: "5-year growth model" },
-      { key: "rentalHeat", label: "Rental Yield", hint: "Short-let demand" },
-      { key: "longHeldHeat", label: "Long-Term Ownership", hint: "Tenure-rich pockets" },
     ],
   },
 ];

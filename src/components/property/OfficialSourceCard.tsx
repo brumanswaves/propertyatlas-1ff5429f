@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, AlertCircle, Landmark, ShieldCheck } from "lucide-react";
 import { loadOfficialPublicLayer, type PublicDataResult } from "@/lib/providers/publicDataClient";
 import { openExternalUrl } from "@/lib/external";
+import { CSG_VIEWER_URL, KOUGA_MAPPING_URL } from "@/lib/external-urls";
 
 
 interface Props {
@@ -65,8 +66,8 @@ export function OfficialSourceCard({ centroid }: Props) {
         <div>
           No official public source returned results for this area. You can still open the public viewers below.
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <SourceLink href={`https://csggis.drdlr.gov.za/psv/?lng=${centroid[0]}&lat=${centroid[1]}`} label="CSG viewer" />
-            <SourceLink href="https://mapping-kouga.hub.arcgis.com/" label="Kouga portal" />
+            <SourceLink href={CSG_VIEWER_URL} label="CSG viewer" />
+            <SourceLink href={KOUGA_MAPPING_URL} label="Kouga portal" />
           </div>
         </div>
       </div>
@@ -82,7 +83,7 @@ export function OfficialSourceCard({ centroid }: Props) {
           label="Chief Surveyor-General"
           count={state.csg.features.length}
           fetchedAt={state.csg.fetchedAt}
-          href={`https://csggis.drdlr.gov.za/psv/?lng=${centroid[0]}&lat=${centroid[1]}`}
+          href={CSG_VIEWER_URL}
         />
       )}
       {kougaOk && state.kouga && (
@@ -92,7 +93,7 @@ export function OfficialSourceCard({ centroid }: Props) {
           label="Kouga Municipality"
           count={state.kouga.features.length}
           fetchedAt={state.kouga.fetchedAt}
-          href="https://mapping-kouga.hub.arcgis.com/"
+          href={KOUGA_MAPPING_URL}
         />
       )}
     </div>

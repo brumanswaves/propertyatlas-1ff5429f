@@ -103,37 +103,9 @@ export function FilterPanel({ value, onChange }: Props) {
                   ))}
                 </div>
               </Section>
-              <Section title="Location">
-                <div className="flex flex-wrap gap-1.5">
-                  <Chip active={value.beachfrontOnly} onClick={() => onChange({ ...value, beachfrontOnly: !value.beachfrontOnly })}>Beachfront</Chip>
-                  <Chip active={value.oceanViewOnly} onClick={() => onChange({ ...value, oceanViewOnly: !value.oceanViewOnly })}>Ocean view</Chip>
-                  <Chip active={value.largeErfOnly} onClick={() => onChange({ ...value, largeErfOnly: !value.largeErfOnly })}>Large erf</Chip>
-                  <Chip active={value.cornerLotOnly} onClick={() => onChange({ ...value, cornerLotOnly: !value.cornerLotOnly })}>Corner lot</Chip>
-                </div>
-              </Section>
-              <Section title="Investment signals">
-                <div className="flex flex-wrap gap-1.5">
-                  <Chip active={value.recentSalesOnly} onClick={() => onChange({ ...value, recentSalesOnly: !value.recentSalesOnly })}>Sold &lt; 12 mo</Chip>
-                  <Chip active={value.longHeldOnly} onClick={() => onChange({ ...value, longHeldOnly: !value.longHeldOnly })}>Held &gt; 10 yrs</Chip>
-                </div>
-              </Section>
-              <Section title="Ownership">
-                <div className="flex flex-wrap gap-1.5">
-                  {OWNERS.map((o) => (
-                    <Chip key={o} active={value.ownership.includes(o)} onClick={() => toggleOwner(o)}>{o}</Chip>
-                  ))}
-                </div>
-              </Section>
-              <Section title={`Min investor score: ${value.minInvestorScore}`}>
-                <input type="range" min={0} max={90} step={5} value={value.minInvestorScore}
-                  onChange={(e) => onChange({ ...value, minInvestorScore: Number(e.target.value) })}
-                  className="w-full accent-[var(--color-primary)]" />
-              </Section>
-              <Section title={`Min development score: ${value.minDevelopmentScore}`}>
-                <input type="range" min={0} max={90} step={5} value={value.minDevelopmentScore}
-                  onChange={(e) => onChange({ ...value, minDevelopmentScore: Number(e.target.value) })}
-                  className="w-full accent-[var(--color-primary)]" />
-              </Section>
+              <p className="mb-3 rounded-lg border border-dashed border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                More filters (Kouga record, municipal context, zoning, SG document, saved by me, notes, listings, report interest) will activate as their data sources come online.
+              </p>
               <button onClick={() => onChange(DEFAULT_FILTERS)}
                 className="mt-1 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted">
                 Reset

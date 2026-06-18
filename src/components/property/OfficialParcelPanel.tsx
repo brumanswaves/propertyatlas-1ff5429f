@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { openExternalUrl } from "@/lib/external";
+import { CSG_VIEWER_URL, KOUGA_PUBLIC_MAP_URL } from "@/lib/external-urls";
 import { toast } from "sonner";
 
 interface Props {
@@ -265,9 +266,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     minorRegion: csg?.minorRegion,
   }), [csg]);
 
-  const sourceUrl = isCsg
-    ? "https://csggis.drdlr.gov.za/psv/"
-    : "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map";
+  const sourceUrl = isCsg ? CSG_VIEWER_URL : KOUGA_PUBLIC_MAP_URL;
   const sourceLabel = isCsg ? "Open CSG Property Viewer" : "Open Kouga Public Map";
 
   const researchCtx: ResearchContext = {
