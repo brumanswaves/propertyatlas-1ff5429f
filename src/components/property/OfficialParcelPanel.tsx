@@ -246,6 +246,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       .maybeSingle().then(({ data }) => setSaved(!!data));
   }, [user, parcelId]);
 
+  const [enrichment, setEnrichment] = useState<KougaEnrichment | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setEnrichment(null);
+    fetchKougaEnrichment(csg?.longitude ?? lng, csg?.latitude ?? lat).then((e) => {
+      if (!cancelled) setEnrichment(e);
+    });
+    return () => { cancelled = true; };
+  }, [parcelId, lng, lat, csg?.longitude, csg?.latitude]);
+
   const resolved = useMemo(() => resolveOfficialParcelLocation({
     erfNumber: csg?.erfNumber,
     portion: csg?.portion,
