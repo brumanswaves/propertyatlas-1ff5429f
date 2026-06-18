@@ -265,16 +265,22 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     minorRegion: csg?.minorRegion,
   }), [csg]);
 
-  const sourceUrl = isCsg ? "https://csggis.drdlr.gov.za/psv/" : "https://mapping-kouga.hub.arcgis.com/";
+  const sourceUrl = isCsg
+    ? "https://csggis.drdlr.gov.za/psv/"
+    : "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map";
+  const sourceLabel = isCsg ? "Open CSG Property Viewer" : "Open Kouga Public Map";
 
   const researchCtx: ResearchContext = {
-    address: resolved.approximateAddress,
+    address: userAddr && (userAddr.streetNumber || userAddr.streetName)
+      ? [userAddr.streetNumber, userAddr.streetName].filter(Boolean).join(" ")
+      : undefined,
     area: csg?.minorRegion,
     town: userAddr?.town ?? csg?.majorRegion,
     suburb: userAddr?.suburb ?? csg?.minorRegion,
     municipality: "Kouga Local Municipality",
     province: userAddr?.province ?? csg?.province ?? "Eastern Cape",
     erf: csg?.erfNumber != null ? String(csg.erfNumber) : undefined,
+    nearestRoad: resolved.nearestRoad ?? resolved.streetName,
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   };
