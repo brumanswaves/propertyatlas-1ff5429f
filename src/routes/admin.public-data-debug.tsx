@@ -104,6 +104,7 @@ function PublicDataDebug() {
         {results.map((item) => <ResultCard key={item.id} item={item} />)}
       </section>
 
+      <KougaEndpointStatus />
       <SgDocumentDebug />
     </div>
   );
