@@ -1,6 +1,7 @@
 // Build outbound public-search URLs for property research.
 // All links target third-party search interfaces — no scraping, no copied data.
-import { CSG_VIEWER_URL, KOUGA_MAPPING_URL, LISTING_PORTALS } from "@/lib/external-urls";
+import { CSG_OFFICIAL_URL, CSG_VIEWER_URL, KOUGA_MAPPING_URL, KOUGA_PUBLIC_MAP_URL, LISTING_PORTALS } from "@/lib/external-urls";
+void KOUGA_PUBLIC_MAP_URL;
 
 export interface ResearchContext {
   address?: string;       // e.g. "14 Marina Dr"
