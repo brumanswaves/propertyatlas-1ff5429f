@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Plus, X, ShieldCheck, FlaskConical } from "lucide-react";
-void FlaskConical;
+import { MousePointerClick, Plus, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection, type OfficialLayerStatus } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
