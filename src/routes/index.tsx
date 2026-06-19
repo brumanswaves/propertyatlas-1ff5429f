@@ -64,16 +64,9 @@ function AtlasHome() {
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("satellite");
 
-  function toggleDemoMode() {
-    setDemoMode((d) => {
-      const next = !d;
-      try { window.localStorage.setItem("pa.demoMode", next ? "1" : "0"); } catch {}
-      setLayers(next ? DEMO_LAYERS : DEFAULT_LAYERS);
-      if (!next) setSelectedId(null);
-      else setSelectedOfficial(null);
-      return next;
-    });
-  }
+  // Demo Mode is no longer exposed in the public map UI. It remains available via
+  // /admin/public-data-debug and is restored from localStorage for admins who set it.
+  void setDemoMode;
 
   const handleMapSelect = useCallback((id: string | null) => {
     setSelectedId(id);
