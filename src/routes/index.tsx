@@ -163,15 +163,14 @@ function AtlasHome() {
         </div>
       </div>
 
-      {!demoMode && officialStatus.csg.state !== "loading" && officialStatus.kouga.state !== "loading" && officialStatus.csg.count === 0 && officialStatus.kouga.count === 0 && (
+      {!demoMode && officialStatus.csg.state !== "loading" && officialStatus.kouga.state !== "loading" && officialStatus.csg.count === 0 && (
         <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 text-center shadow-panel backdrop-blur">
           <p className="text-sm font-semibold text-foreground">
-            Official public layers could not load in this environment. You can still use source links, Demo Mode, or upload official GeoJSON files.
+            Official parcel data is temporarily unavailable. Try again or open source maps.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://csggis.drdlr.gov.za/portal/apps/experiencebuilder/experience/?id=a9a8f908e82c443b9cb7bede69f5985e" target="_blank" rel="noreferrer">Open CSG Viewer</a>
-            <a className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noreferrer">Open Kouga Mapping Portal</a>
-            <button className="rounded-full bg-amber-500 px-3 py-2 text-[11px] font-semibold text-amber-950 hover:bg-amber-400" onClick={toggleDemoMode}>Switch to Demo Mode</button>
+            <button className="rounded-full bg-foreground px-3 py-2 text-[11px] font-semibold text-background hover:opacity-90" onClick={() => window.location.reload()}>Retry official data</button>
+            <a className="rounded-full bg-card px-3 py-2 text-[11px] font-semibold text-foreground ring-1 ring-border hover:bg-muted" href="https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map" target="_blank" rel="noreferrer">Open Kouga Public Map</a>
             <a className="rounded-full bg-card px-3 py-2 text-[11px] font-semibold text-foreground ring-1 ring-border hover:bg-muted" href="/admin/public-data-debug">Open Public Data Debug</a>
           </div>
         </div>
