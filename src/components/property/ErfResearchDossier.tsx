@@ -1,17 +1,36 @@
-import { ExternalLink, FileText, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { BookmarkCheck, ExternalLink, FileText, Save, ShieldCheck, Sparkles } from "lucide-react";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
+import type { ResearchContext } from "@/lib/research/links";
 import {
   RESEARCH_CATEGORY_LABELS,
   type ResearchSourceCategory,
   type ResearchSource,
 } from "@/lib/research/sourceTypes";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { SavedLinksManager } from "./SavedLinksManager";
+import { NotesTab } from "./tabs/NotesTab";
+import { ListingsTab } from "./tabs/ListingsTab";
+import { ReportsTab } from "./tabs/ReportsTab";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
 }
+
+const DOSSIER_STATUSES = [
+  { id: "not_started", label: "Not started" },
+  { id: "researching", label: "Researching" },
+  { id: "needs_paid_report", label: "Needs paid report" },
+  { id: "watchlist", label: "Watchlist" },
+  { id: "interested", label: "Interested" },
+  { id: "passed", label: "Passed" },
+] as const;
 
 const CATEGORY_ORDER: ResearchSourceCategory[] = [
   "csg-sg-documents",
@@ -68,9 +87,45 @@ function dataCompleteness(parcel: NormalizedOfficialParcel): {
   return { known, total: checks.length, score: Math.round((known / checks.length) * 100) };
 }
 
+function toResearchContext(parcel: NormalizedOfficialParcel): ResearchContext {
+  return {
+    area: parcel.suburbOrArea ?? undefined,
+    town: parcel.town ?? parcel.suburbOrArea ?? undefined,
+    suburb: parcel.suburbOrArea ?? undefined,
+    municipality: parcel.municipality ?? undefined,
+    province: parcel.province ?? undefined,
+    erf: parcel.erfNumber != null ? String(parcel.erfNumber) : undefined,
+    lng: parcel.coordinates?.lng,
+    lat: parcel.coordinates?.lat,
+  };
+}
+
 export function ErfResearchDossier({ parcel }: Props) {
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel);
+  const researchCtx = useMemo(() => toResearchContext(parcel), [parcel]);
+  const sgDoc = useMemo(
+    () =>
+      buildSgDocumentUrl({
+        lpi: parcel.lpi,
+        parcelKey: parcel.parcelKey,
+        erfNumber: parcel.erfNumber,
+        portion: parcel.portion,
+        province: parcel.province,
+        majorRegion: parcel.municipality,
+        minorRegion: parcel.suburbOrArea,
+      }),
+    [parcel],
+  );
+  const summary = [
+    parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "Official parcel",
+    parcel.suburbOrArea,
+    parcel.municipality,
+    parcel.province,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const listingSources = sources.filter((source) => source.category === "listings-market-evidence");
   const grouped = CATEGORY_ORDER.map((category) => ({
     category,
     sources: sources.filter((source) => source.category === category),
@@ -133,10 +188,10 @@ export function ErfResearchDossier({ parcel }: Props) {
         <MissingList fields={parcel.missingFields} />
       </section>
 
+      <DossierStatusControl parcel={parcel} />
+
       <section className="rounded-2xl border border-border bg-card p-4">
-        <div className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <FileText className="h-3.5 w-3.5" /> Public source checklist
-        </div>
+        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>Research Checklist</SectionTitle>
         <div className="space-y-4">
           {grouped.map((group) => (
             <div key={group.category}>
@@ -153,7 +208,57 @@ export function ErfResearchDossier({ parcel }: Props) {
         </div>
       </section>
 
-      <PlaceholderGrid />
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Notes and Evidence</SectionTitle>
+        <div className="mt-3 space-y-5">
+          <SavedLinksManager parcelId={parcel.id} />
+          <NotesTab parcelId={parcel.id} showSourceBadge={false} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Listing Research</SectionTitle>
+        <ListingSearchStrip sources={listingSources} />
+        <div className="mt-4">
+          <ListingsTab parcelId={parcel.id} ctx={researchCtx} showSourceBadge={false} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Calculators</SectionTitle>
+        <OfficialCalculatorPanel />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Paid Reports</SectionTitle>
+        <p className="mb-3 text-[12px] text-muted-foreground">
+          Paid provider data not yet attached.
+        </p>
+        <PaidReportSlots />
+        <div className="mt-4">
+          <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-dashed border-border bg-card/70 p-4">
+        <SectionTitle>Sponsored/Partner Next Steps</SectionTitle>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {["Conveyancer", "Bond originator", "Town planner", "Architect / engineer"].map(
+            (label) => (
+              <div key={label} className="rounded-xl border border-border bg-background p-3">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Partner slot
+                </span>
+                <div className="mt-2 text-[13px] font-semibold">{label}</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  Clearly labelled future partner placement. No sponsor recommendation is active
+                  yet.
+                </p>
+              </div>
+            ),
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -236,6 +341,15 @@ function MissingList({ fields }: { fields: string[] }) {
   );
 }
 
+function SectionTitle({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {icon}
+      <span>{children}</span>
+    </div>
+  );
+}
+
 function SourceCard({ source }: { source: ResearchSource }) {
   const disabled =
     !source.url || source.status === "unavailable" || source.status === "paid-report";
@@ -292,35 +406,282 @@ function SourceCard({ source }: { source: ResearchSource }) {
   );
 }
 
-function PlaceholderGrid() {
-  const items = [
-    [
-      "Paid reports",
-      "Lightstone, WinDeed, deeds, valuation and comparables slots. Paid provider data not yet attached.",
-    ],
-    [
-      "Notes and evidence",
-      "Save notes, tags, links, listings, report interests and manual findings against this parcel id.",
-    ],
-    [
-      "Calculators",
-      "Transfer duty, bond, build, flip, yield and developer scenarios will use user-entered assumptions.",
-    ],
-    [
-      "Sponsored / partner help",
-      "Clearly labelled conveyancer, planner, architect, engineer and finance partner slots can live here later.",
-    ],
-  ];
+type DossierStatusId = (typeof DOSSIER_STATUSES)[number]["id"];
+
+function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) {
+  const { user } = useAuth();
+  const [status, setStatus] = useState<DossierStatusId>("not_started");
+  const [tagsText, setTagsText] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!user) {
+      setLoaded(true);
+      return () => {
+        alive = false;
+      };
+    }
+
+    setLoaded(false);
+    supabase
+      .from("saved_properties")
+      .select("research_status,tags")
+      .eq("user_id", user.id)
+      .eq("parcel_id", parcel.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) {
+          toast.error(error.message);
+        }
+        const savedStatus = data?.research_status;
+        if (savedStatus && DOSSIER_STATUSES.some((item) => item.id === savedStatus)) {
+          setStatus(savedStatus as DossierStatusId);
+        } else {
+          setStatus("not_started");
+        }
+        setTagsText((data?.tags ?? []).join(", "));
+        setLoaded(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [parcel.id, user]);
+
+  async function save() {
+    if (!user) {
+      toast.message("Sign in to save this dossier status");
+      return;
+    }
+
+    setSaving(true);
+    const tags = tagsText
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    const { error } = await supabase.from("saved_properties").upsert(
+      {
+        user_id: user.id,
+        parcel_id: parcel.id,
+        research_status: status,
+        status,
+        tags,
+      },
+      { onConflict: "user_id,parcel_id" },
+    );
+
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Dossier status saved");
+  }
+
   return (
-    <section className="grid gap-3 sm:grid-cols-2">
-      {items.map(([title, body]) => (
-        <div key={title} className="rounded-2xl border border-dashed border-border bg-card/70 p-4">
-          <h4 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {title}
-          </h4>
-          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{body}</p>
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <SectionTitle icon={<BookmarkCheck className="h-3.5 w-3.5" />}>
+            Dossier Status
+          </SectionTitle>
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            Save a private research state against this official parcel id. This does not attach
+            ownership, valuation, transfer or rates data.
+          </p>
+        </div>
+        {!user && (
+          <span className="rounded-full border border-dashed border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
+            Sign in to save status
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_220px]">
+        <div className="flex flex-wrap gap-2">
+          {DOSSIER_STATUSES.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              disabled={!loaded}
+              onClick={() => setStatus(item.id)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition disabled:opacity-60",
+                status === item.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background hover:bg-muted",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={tagsText}
+            onChange={(event) => setTagsText(event.target.value)}
+            placeholder="Tags, comma separated"
+            className="min-w-0 flex-1 rounded-full border border-border bg-background px-3 py-1.5 text-[11px]"
+          />
+          <button
+            type="button"
+            disabled={saving || !loaded}
+            onClick={save}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90 disabled:opacity-60"
+          >
+            <Save className="h-3 w-3" /> {saving ? "Saving" : "Save"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ListingSearchStrip({ sources }: { sources: ResearchSource[] }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] leading-relaxed text-muted-foreground">
+        These listing searches are unverified. Save only URLs you have manually checked against the
+        erf, coordinates, agency details, or other evidence.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {sources.map((source) => {
+          const disabled = !source.url || source.status === "unavailable";
+          return disabled ? (
+            <span
+              key={source.id}
+              className="rounded-full border border-dashed border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+              title={
+                source.missingFields.length > 0
+                  ? `Missing: ${source.missingFields.join(", ")}`
+                  : source.complianceNote
+              }
+            >
+              {source.name}
+            </span>
+          ) : (
+            <a
+              key={source.id}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+              title={source.complianceNote}
+            >
+              <ExternalLink className="h-3 w-3" />
+              {source.name}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function toNumber(value: string): number {
+  const parsed = Number(value.replace(/[^\d.]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatRand(value: number): string {
+  return `R ${Math.round(value).toLocaleString("en-ZA")}`;
+}
+
+function OfficialCalculatorPanel() {
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [buildCost, setBuildCost] = useState("");
+  const [holdingCost, setHoldingCost] = useState("");
+  const [transferDuty, setTransferDuty] = useState("");
+  const [resalePrice, setResalePrice] = useState("");
+  const [targetProfit, setTargetProfit] = useState("");
+
+  const purchase = toNumber(purchasePrice);
+  const build = toNumber(buildCost);
+  const holding = toNumber(holdingCost);
+  const transfer = toNumber(transferDuty);
+  const resale = toNumber(resalePrice);
+  const profitTarget = toNumber(targetProfit);
+  const landPlusBuild = purchase + build;
+  const totalCost = landPlusBuild + holding + transfer;
+  const flipProfit = resale - totalCost;
+  const targetOffer =
+    resale > 0 ? Math.max(0, resale - build - holding - transfer - profitTarget) : 0;
+
+  const fields = [
+    ["Purchase price", purchasePrice, setPurchasePrice],
+    ["Build / improvement cost", buildCost, setBuildCost],
+    ["Holding costs", holdingCost, setHoldingCost],
+    ["Transfer duty estimate", transferDuty, setTransferDuty],
+    ["Expected resale / exit price", resalePrice, setResalePrice],
+    ["Target profit", targetProfit, setTargetProfit],
+  ] as const;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] leading-relaxed text-muted-foreground">
+        Estimates only. Enter your own assumptions; PropertyAtlas is not attaching official
+        valuation, rates, transfer or paid provider data here.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {fields.map(([label, value, setter]) => (
+          <label key={label} className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {label}
+            </span>
+            <input
+              inputMode="decimal"
+              value={value}
+              onChange={(event) => setter(event.target.value)}
+              placeholder="R 0"
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </label>
+        ))}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <ResultTile label="Total land/build/holding" value={formatRand(totalCost)} />
+        <ResultTile label="Estimated flip profit" value={formatRand(flipProfit)} />
+        <ResultTile label="Target offer price" value={formatRand(targetOffer)} />
+      </div>
+    </div>
+  );
+}
+
+function ResultTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-background p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function PaidReportSlots() {
+  const slots = [
+    "Lightstone",
+    "WinDeed",
+    "Deeds/ownership report",
+    "Valuation report",
+    "Comparable sales report",
+  ];
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {slots.map((slot) => (
+        <div key={slot} className="rounded-xl border border-border bg-background p-3">
+          <div className="text-[13px] font-semibold">{slot}</div>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Paid provider data not yet attached.
+          </p>
         </div>
       ))}
-    </section>
+    </div>
   );
 }

@@ -52,4 +52,23 @@ describe("public source registry", () => {
     expect(paid?.url).toBeNull();
     expect(paid?.complianceNote).toContain("not yet attached");
   });
+
+  it("generates unverified listing research URLs when enough fields exist", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const listingIds = [
+      "property24-search",
+      "private-property-search",
+      "google-listing-search",
+      "google-images-market-evidence",
+      "google-maps-listing-context",
+    ];
+
+    for (const id of listingIds) {
+      const source = sources.find((item) => item.id === id);
+
+      expect(source?.status).toBe("open-search");
+      expect(source?.url).toBeTruthy();
+      expect(source?.complianceNote.toLowerCase()).toContain("verif");
+    }
+  });
 });

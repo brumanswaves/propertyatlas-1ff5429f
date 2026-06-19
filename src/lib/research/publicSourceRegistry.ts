@@ -3,7 +3,6 @@ import {
   CSG_VIEWER_URL,
   KOUGA_MAPPING_URL,
   KOUGA_PUBLIC_MAP_URL,
-  LISTING_PORTALS,
 } from "@/lib/external-urls";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import type {
@@ -207,18 +206,46 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
       google(`${baseQuery(ctx)} DFFE SAHRA SAHRIS flood coastal wetland geology risk`),
   },
   {
-    id: "listing-portals",
+    id: "property24-search",
     category: "listings-market-evidence",
-    name: "Property listing portals",
-    sourceType: "public-web",
+    name: "Property24 search",
+    sourceType: "generated-search",
     defaultStatus: "open-search",
     missingStatus: "manual-check",
     reveals: "Possible active listings, asking prices, agent context, and market evidence.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Open listing portals",
+    actionLabel: "Open Property24",
     complianceNote:
       "External listing results are unverified unless the user saves and confirms them.",
-    buildUrl: () => LISTING_PORTALS[0]?.url ?? null,
+    buildUrl: (ctx) => google(`site:property24.com ${baseQuery(ctx)} property for sale`),
+  },
+  {
+    id: "private-property-search",
+    category: "listings-market-evidence",
+    name: "Private Property search",
+    sourceType: "generated-search",
+    defaultStatus: "open-search",
+    missingStatus: "manual-check",
+    reveals: "Possible active listings, asking prices, agent context, and market evidence.",
+    requiredFields: ["suburbOrArea"],
+    actionLabel: "Open Private Property",
+    complianceNote:
+      "External listing results are unverified unless the user saves and confirms them.",
+    buildUrl: (ctx) => google(`site:privateproperty.co.za ${baseQuery(ctx)} property for sale`),
+  },
+  {
+    id: "google-listing-search",
+    category: "listings-market-evidence",
+    name: "Google listing search",
+    sourceType: "generated-search",
+    defaultStatus: "open-search",
+    missingStatus: "manual-check",
+    reveals: "Agency pages, old listings, auction references, and public market evidence.",
+    requiredFields: ["erfNumber", "suburbOrArea"],
+    actionLabel: "Search Google",
+    complianceNote:
+      "Generated search. Results may be nearby or unrelated and must be verified manually.",
+    buildUrl: (ctx) => google(`${baseQuery(ctx)} property for sale listing`),
   },
   {
     id: "google-images-market-evidence",
@@ -234,6 +261,22 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     complianceNote:
       "Generated public search. Results may be unrelated and must be verified manually.",
     buildUrl: (ctx) => googleImages(`${baseQuery(ctx)} property`),
+  },
+  {
+    id: "google-maps-listing-context",
+    category: "listings-market-evidence",
+    name: "Google Maps context",
+    sourceType: "public-web",
+    defaultStatus: "open-search",
+    missingStatus: "manual-check",
+    reveals: "Location, access, surrounding properties, nearby amenities, and Street View context.",
+    requiredFields: ["coordinates"],
+    actionLabel: "Open Google Maps",
+    complianceNote: "Map context is not listing evidence by itself. Verify all findings manually.",
+    buildUrl: (ctx) => {
+      const coords = coordsQuery(ctx);
+      return coords ? `https://maps.google.com/?q=${encodeURIComponent(coords)}` : null;
+    },
   },
   {
     id: "neighbourhood-schools-amenities",
