@@ -9,16 +9,17 @@ import { toast } from "sonner";
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
   maps:      { label: "Map & location", icon: <Map className="h-3.5 w-3.5" /> },
   listings:  { label: "Listings",        icon: <Building2 className="h-3.5 w-3.5" /> },
-  official:  { label: "Municipal",       icon: <Landmark className="h-3.5 w-3.5" /> },
+  municipal: { label: "Municipal",       icon: <Landmark className="h-3.5 w-3.5" /> },
+  official:  { label: "Official",        icon: <FileText className="h-3.5 w-3.5" /> },
   documents: { label: "Documents",       icon: <FileText className="h-3.5 w-3.5" /> },
   general:   { label: "General web",     icon: <Search className="h-3.5 w-3.5" /> },
 };
 
 export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parcelId?: string }) {
   const links = buildResearchLinks(ctx);
-  const grouped = (["maps", "official", "general"] as const).map((cat) => ({
+  const grouped = (["maps", "municipal", "official", "general"] as const).map((cat) => ({
     cat, items: links.filter((l) => l.category === cat),
-  }));
+  })).filter((g) => g.items.length > 0);
 
 
   return (
