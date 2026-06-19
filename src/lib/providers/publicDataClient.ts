@@ -245,18 +245,22 @@ export async function testStaticGeoJson(layer: PublicLayerId, test = false): Pro
 
 export async function loadOfficialPublicLayer(layer: PublicLayerId, bbox: PublicBbox, limit = 400): Promise<PublicDataResult> {
   const attempts: PublicDataAttempt[] = [];
-  const edge = await testEdgeProxy(layer, bbox, limit);
-  attempts.push(...edge.attempts);
-  if (edge.features.length > 0) return { ...edge, attempts, official: true };
 
+  // PRIMARY: direct browser fetch (Kouga SG Properties layer 32 is first in endpoints list, CORS-enabled)
   const direct = await testDirectFetch(layer, bbox, limit);
   attempts.push(...direct.attempts);
   if (direct.features.length > 0) return { ...direct, attempts, official: true };
 
+  // SECONDARY: edge proxy (handles CORS-restricted national CSG endpoints)
+  const edge = await testEdgeProxy(layer, bbox, limit);
+  attempts.push(...edge.attempts);
+  if (edge.features.length > 0) return { ...edge, attempts, official: true };
+
+  // TERTIARY: imported static GeoJSON file
   const stat = await testStaticGeoJson(layer, false);
   attempts.push(...stat.attempts);
   if (stat.features.length > 0) return { ...stat, attempts, official: true, sourceLabel: "Imported Official Public GeoJSON" };
 
   const missingStatic = stat.attempts.some((a) => a.errorMessage === "No imported public GeoJSON file found.");
-  return emptyResult(layer, attempts, missingStatic ? "No imported public GeoJSON file found." : "Official public layers could not load in this environment.");
+  return emptyResult(layer, attempts, missingStatic ? "Official parcel data is temporarily unavailable. Try again or open source maps." : "Official parcel data is temporarily unavailable. Try again or open source maps.");
 }
