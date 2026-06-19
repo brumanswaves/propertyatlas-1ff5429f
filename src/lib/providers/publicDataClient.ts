@@ -191,7 +191,7 @@ export async function testDirectFetch(layer: PublicLayerId, bbox: PublicBbox, li
     for (const format of ["geojson", "json"] as const) {
       const requestUrl = buildArcGisUrl(endpoint, bbox, limit, format);
       try {
-      const res = await fetchWithTimeout(requestUrl, { headers: { Accept: format === "geojson" ? "application/geo+json,application/json" : "application/json" } }, 3500);
+      const res = await fetchWithTimeout(requestUrl, { headers: { Accept: format === "geojson" ? "application/geo+json,application/json" : "application/json" } }, 9000);
         if (!res.ok) {
           const preview = (await res.text().catch(() => "")).slice(0, 500);
           attempts.push({ method: "direct", layer, requestUrl, ok: false, httpStatus: res.status, errorMessage: `HTTP ${res.status}`, responsePreview: preview, fallbackUsed: "direct" });
