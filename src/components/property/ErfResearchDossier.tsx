@@ -21,7 +21,17 @@ import { ReportsTab } from "./tabs/ReportsTab";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
+  view?: DossierView;
+  onSelectView?: (view: DossierView) => void;
 }
+
+export type DossierView =
+  | "overview"
+  | "research"
+  | "listings"
+  | "reports"
+  | "notes"
+  | "calculators";
 
 const DOSSIER_STATUSES = [
   { id: "not_started", label: "Not started" },
@@ -107,7 +117,7 @@ function toResearchContext(parcel: NormalizedOfficialParcel): ResearchContext {
   };
 }
 
-export function ErfResearchDossier({ parcel }: Props) {
+export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: Props) {
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel);
   const researchCtx = useMemo(() => toResearchContext(parcel), [parcel]);
@@ -137,6 +147,104 @@ export function ErfResearchDossier({ parcel }: Props) {
     group,
     sources: sources.filter((source) => source.dossierGroup === group),
   })).filter((group) => group.sources.length > 0);
+  const nextSteps = [
+    [
+      "Open Research tab",
+      "Review official, municipal, environmental, and generated source cards.",
+      "research",
+    ],
+    [
+      "Search listings",
+      "Run unverified public listing searches and save matching URLs manually.",
+      "listings",
+    ],
+    [
+      "Check reports",
+      "Mark paid report interest for ownership, valuation, deeds, or comparables.",
+      "reports",
+    ],
+    ["Save evidence", "Capture notes and source links against this normalized parcel id.", "notes"],
+    [
+      "Run estimates",
+      "Use your own assumptions for transfer, holding, flip, and offer scenarios.",
+      "calculators",
+    ],
+  ] as const;
+
+  if (view === "research") {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>
+          Public Source Library
+        </SectionTitle>
+        <div className="space-y-4">
+          {grouped.map((group) => (
+            <div key={group.group}>
+              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
+                {RESEARCH_DOSSIER_GROUP_LABELS[group.group]}
+              </h4>
+              <div className="grid gap-2">
+                {group.sources.map((source) => (
+                  <SourceCard key={source.id} source={source} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (view === "listings") {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Listing Research</SectionTitle>
+        <ListingSearchStrip sources={listingSources} />
+        <div className="mt-4">
+          <ListingsTab parcelId={parcel.id} ctx={researchCtx} showSourceBadge={false} />
+        </div>
+      </section>
+    );
+  }
+
+  if (view === "reports") {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Paid Reports</SectionTitle>
+        <p className="mb-3 text-[12px] text-muted-foreground">
+          Paid provider data not yet attached.
+        </p>
+        <PaidReportSlots />
+        <div className="mt-4">
+          <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
+        </div>
+      </section>
+    );
+  }
+
+  if (view === "notes") {
+    return (
+      <div className="space-y-4">
+        <DossierStatusControl parcel={parcel} />
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <SectionTitle>User Workspace</SectionTitle>
+          <div className="mt-3 space-y-5">
+            <SavedLinksManager parcelId={parcel.id} />
+            <NotesTab parcelId={parcel.id} showSourceBadge={false} />
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (view === "calculators") {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Calculators</SectionTitle>
+        <OfficialCalculatorPanel />
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -215,77 +323,20 @@ export function ErfResearchDossier({ parcel }: Props) {
         <MissingList fields={parcel.missingFields} />
       </section>
 
-      <DossierStatusControl parcel={parcel} />
-
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>
-          Public Source Library
-        </SectionTitle>
-        <div className="space-y-4">
-          {grouped.map((group) => (
-            <div key={group.group}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
-                {RESEARCH_DOSSIER_GROUP_LABELS[group.group]}
-              </h4>
-              <div className="grid gap-2">
-                {group.sources.map((source) => (
-                  <SourceCard key={source.id} source={source} />
-                ))}
-              </div>
-            </div>
+        <SectionTitle>Recommended Next Steps</SectionTitle>
+        <div className="grid gap-2">
+          {nextSteps.map(([label, body, target]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => onSelectView?.(target)}
+              className="rounded-xl border border-border bg-background p-3 text-left hover:bg-muted/40"
+            >
+              <div className="text-[12px] font-semibold">{label}</div>
+              <div className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{body}</div>
+            </button>
           ))}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>User Workspace</SectionTitle>
-        <div className="mt-3 space-y-5">
-          <SavedLinksManager parcelId={parcel.id} />
-          <NotesTab parcelId={parcel.id} showSourceBadge={false} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Listing Research</SectionTitle>
-        <ListingSearchStrip sources={listingSources} />
-        <div className="mt-4">
-          <ListingsTab parcelId={parcel.id} ctx={researchCtx} showSourceBadge={false} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Calculators</SectionTitle>
-        <OfficialCalculatorPanel />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Paid Reports</SectionTitle>
-        <p className="mb-3 text-[12px] text-muted-foreground">
-          Paid provider data not yet attached.
-        </p>
-        <PaidReportSlots />
-        <div className="mt-4">
-          <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-dashed border-border bg-card/70 p-4">
-        <SectionTitle>Sponsored/Partner Next Steps</SectionTitle>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {["Conveyancer", "Bond originator", "Town planner", "Architect / engineer"].map(
-            (label) => (
-              <div key={label} className="rounded-xl border border-border bg-background p-3">
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Partner slot
-                </span>
-                <div className="mt-2 text-[13px] font-semibold">{label}</div>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                  Clearly labelled future partner placement. No sponsor recommendation is active
-                  yet.
-                </p>
-              </div>
-            ),
-          )}
         </div>
       </section>
     </div>
