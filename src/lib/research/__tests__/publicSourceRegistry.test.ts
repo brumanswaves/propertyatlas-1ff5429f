@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildPublicResearchSources } from "../publicSourceRegistry";
+import { matchesErf962HarbourRoad } from "../seedParcels/erf962HarbourRoad";
 
 const baseParcel: NormalizedOfficialParcel = {
   id: "csg:lpi:c01900000000007480000",
@@ -18,6 +19,17 @@ const baseParcel: NormalizedOfficialParcel = {
   coordinates: { lng: 24.83, lat: -34.16 },
   knownFields: [],
   missingFields: [],
+};
+
+const erf962Parcel: NormalizedOfficialParcel = {
+  ...baseParcel,
+  id: "csg:lpi:c03400140000096200000",
+  erfNumber: "962",
+  portion: "0",
+  lpi: "C03400140000096200000",
+  parcelKey: "E108C034001400000962000000",
+  suburbOrArea: "Santareme / St Francis Bay / Sea Vista",
+  knownFields: [{ label: "Address", value: "8 Harbour Road", source: "Seed fixture" }],
 };
 
 describe("public source registry", () => {
@@ -70,5 +82,52 @@ describe("public source registry", () => {
       expect(source?.url).toBeTruthy();
       expect(source?.complianceNote.toLowerCase()).toContain("verif");
     }
+  });
+
+  it("detects Erf 962 Harbour Road and includes parcel-specific evidence", () => {
+    const sources = buildPublicResearchSources(erf962Parcel);
+    const valuation = sources.find((source) => source.id === "erf-962-kouga-valuation-roll-2014");
+
+    expect(matchesErf962HarbourRoad(erf962Parcel)).toBe(true);
+    expect(valuation?.parcelSpecific).toBe(true);
+    expect(valuation?.confidence).toBe("confirmed_for_parcel");
+    expect(valuation?.fieldsFound).toContain("Historic municipal value: R1,700,000");
+    expect(valuation?.complianceNote).toContain("not current market value");
+  });
+
+  it("adds Erf 962 generated searches", () => {
+    const sources = buildPublicResearchSources(erf962Parcel);
+    const queries = sources
+      .filter((source) => source.dossierGroup === "generated-searches")
+      .map((source) => source.name);
+
+    expect(queries).toContain(`"8 Harbour Road" "St Francis Bay"`);
+    expect(queries).toContain(`"SEA VISTA" "00000962"`);
+    expect(queries).toContain(`site:airbnb.com "8 Harbour Road" "Saint Francis Bay"`);
+  });
+
+  it("groups sources for the dossier library", () => {
+    const sources = buildPublicResearchSources(erf962Parcel);
+
+    expect(sources.some((source) => source.dossierGroup === "official-parcel-identity")).toBe(true);
+    expect(sources.some((source) => source.dossierGroup === "municipal-evidence")).toBe(true);
+    expect(sources.some((source) => source.dossierGroup === "rental-tourism")).toBe(true);
+    expect(sources.some((source) => source.dossierGroup === "paid-reports")).toBe(true);
+  });
+
+  it("does not add Erf 962 evidence to other parcels", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+
+    expect(
+      sources.find((source) => source.id === "erf-962-kouga-valuation-roll-2014"),
+    ).toBeUndefined();
+  });
+
+  it("does not fabricate owner names or current valuation fields", () => {
+    const sources = buildPublicResearchSources(erf962Parcel);
+    const foundFields = sources.flatMap((source) => source.fieldsFound ?? []);
+
+    expect(foundFields.some((field) => /owner/i.test(field))).toBe(false);
+    expect(foundFields.some((field) => /current (market )?value/i.test(field))).toBe(false);
   });
 });

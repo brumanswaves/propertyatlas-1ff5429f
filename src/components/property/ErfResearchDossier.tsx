@@ -6,8 +6,8 @@ import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry"
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import type { ResearchContext } from "@/lib/research/links";
 import {
-  RESEARCH_CATEGORY_LABELS,
-  type ResearchSourceCategory,
+  RESEARCH_DOSSIER_GROUP_LABELS,
+  type ResearchDossierGroup,
   type ResearchSource,
 } from "@/lib/research/sourceTypes";
 import { cn } from "@/lib/utils";
@@ -32,18 +32,17 @@ const DOSSIER_STATUSES = [
   { id: "passed", label: "Passed" },
 ] as const;
 
-const CATEGORY_ORDER: ResearchSourceCategory[] = [
-  "csg-sg-documents",
+const DOSSIER_GROUP_ORDER: ResearchDossierGroup[] = [
+  "official-parcel-identity",
+  "municipal-evidence",
+  "planning-zoning",
   "deeds-ownership",
-  "municipal-valuation-rates",
-  "zoning-land-use",
-  "planning-notices",
-  "environmental-heritage-risk",
-  "listings-market-evidence",
-  "neighbourhood-intelligence",
-  "roads-access-infrastructure",
-  "legal-entity-distress",
-  "tenders-catalysts",
+  "market-intelligence",
+  "building-improvement",
+  "rental-tourism",
+  "environmental-coastal-risk",
+  "generated-searches",
+  "user-workspace",
   "paid-reports",
 ];
 
@@ -64,6 +63,14 @@ const TYPE_LABEL: Record<ResearchSource["sourceType"], string> = {
   "user-supplied": "User supplied",
   sponsored: "Sponsored",
   unavailable: "Unavailable",
+};
+
+const CONFIDENCE_LABEL: Record<NonNullable<ResearchSource["confidence"]>, string> = {
+  confirmed_for_parcel: "Confirmed for parcel",
+  official_relevant: "Official relevant",
+  external_relevant: "External relevant",
+  paid_report: "Paid report",
+  future_integration: "Future integration",
 };
 
 function dataCompleteness(parcel: NormalizedOfficialParcel): {
@@ -126,9 +133,9 @@ export function ErfResearchDossier({ parcel }: Props) {
     .filter(Boolean)
     .join(", ");
   const listingSources = sources.filter((source) => source.category === "listings-market-evidence");
-  const grouped = CATEGORY_ORDER.map((category) => ({
-    category,
-    sources: sources.filter((source) => source.category === category),
+  const grouped = DOSSIER_GROUP_ORDER.map((group) => ({
+    group,
+    sources: sources.filter((source) => source.dossierGroup === group),
   })).filter((group) => group.sources.length > 0);
 
   return (
@@ -177,6 +184,26 @@ export function ErfResearchDossier({ parcel }: Props) {
           paid reports if higher confidence is needed. External searches may return nearby or
           unrelated results and must be verified manually.
         </p>
+        <div className="mt-3 space-y-1.5 rounded-xl border border-border bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
+          <p>
+            PropertyAtlas organizes public and third-party property research links. It is not a
+            deeds office, municipality, attorney, conveyancer, valuer, surveyor or financial
+            advisor. Verify all information with the relevant official source before making
+            decisions.
+          </p>
+          <p>
+            Estimated values and historical municipal valuations are informational only and are not
+            formal valuations.
+          </p>
+          <p>
+            Some records require paid third-party reports from providers such as Lightstone,
+            WinDeed, SearchWorks or DeedsWeb.
+          </p>
+          <p>
+            Owner and deeds information may be restricted, paid, outdated or subject to lawful-use
+            requirements.
+          </p>
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
@@ -191,12 +218,14 @@ export function ErfResearchDossier({ parcel }: Props) {
       <DossierStatusControl parcel={parcel} />
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>Research Checklist</SectionTitle>
+        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>
+          Public Source Library
+        </SectionTitle>
         <div className="space-y-4">
           {grouped.map((group) => (
-            <div key={group.category}>
+            <div key={group.group}>
               <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
-                {RESEARCH_CATEGORY_LABELS[group.category]}
+                {RESEARCH_DOSSIER_GROUP_LABELS[group.group]}
               </h4>
               <div className="grid gap-2">
                 {group.sources.map((source) => (
@@ -209,7 +238,7 @@ export function ErfResearchDossier({ parcel }: Props) {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Notes and Evidence</SectionTitle>
+        <SectionTitle>User Workspace</SectionTitle>
         <div className="mt-3 space-y-5">
           <SavedLinksManager parcelId={parcel.id} />
           <NotesTab parcelId={parcel.id} showSourceBadge={false} />
@@ -375,12 +404,31 @@ function SourceCard({ source }: { source: ResearchSource }) {
         <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
           {TYPE_LABEL[source.sourceType]}
         </span>
+        {source.confidence && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {CONFIDENCE_LABEL[source.confidence]}
+          </span>
+        )}
+        {source.parcelSpecific && (
+          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            Parcel-specific evidence
+          </span>
+        )}
         {source.missingFields.length > 0 && (
           <span className="text-[10.5px] text-muted-foreground">
             Missing: {source.missingFields.join(", ")}
           </span>
         )}
       </div>
+      {source.fieldsFound && source.fieldsFound.length > 0 && (
+        <ul className="mt-2 grid gap-1 text-[10.5px] text-muted-foreground">
+          {source.fieldsFound.map((field) => (
+            <li key={field} className="rounded-lg bg-muted/40 px-2 py-1">
+              {field}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
         {source.complianceNote}
       </p>

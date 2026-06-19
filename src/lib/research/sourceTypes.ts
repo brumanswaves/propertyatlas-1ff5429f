@@ -1,6 +1,14 @@
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 
 export type ResearchSourceCategory =
+  | "official"
+  | "municipal"
+  | "market"
+  | "reports"
+  | "rental"
+  | "environmental"
+  | "search"
+  | "saved_evidence"
   | "csg-sg-documents"
   | "deeds-ownership"
   | "municipal-valuation-rates"
@@ -31,6 +39,26 @@ export type ResearchSourceStatus =
   | "paid-report"
   | "unavailable";
 
+export type ResearchSourceConfidence =
+  | "confirmed_for_parcel"
+  | "official_relevant"
+  | "external_relevant"
+  | "paid_report"
+  | "future_integration";
+
+export type ResearchDossierGroup =
+  | "official-parcel-identity"
+  | "municipal-evidence"
+  | "planning-zoning"
+  | "deeds-ownership"
+  | "market-intelligence"
+  | "building-improvement"
+  | "rental-tourism"
+  | "environmental-coastal-risk"
+  | "generated-searches"
+  | "user-workspace"
+  | "paid-reports";
+
 export type ParcelFieldKey =
   | "erfNumber"
   | "portion"
@@ -53,9 +81,15 @@ export interface ResearchSourceDefinition {
   defaultStatus: ResearchSourceStatus;
   missingStatus?: ResearchSourceStatus;
   reveals: string;
+  description?: string;
+  helpsWith?: string;
+  fieldsFound?: string[];
   requiredFields: ParcelFieldKey[];
   actionLabel: string;
   complianceNote: string;
+  confidence?: ResearchSourceConfidence;
+  parcelSpecific?: boolean;
+  dossierGroup?: ResearchDossierGroup;
   buildUrl?: (ctx: ResearchSourceContext) => string | null;
 }
 
@@ -66,6 +100,14 @@ export interface ResearchSource extends ResearchSourceDefinition {
 }
 
 export const RESEARCH_CATEGORY_LABELS: Record<ResearchSourceCategory, string> = {
+  official: "Official",
+  municipal: "Municipal",
+  market: "Market",
+  reports: "Reports",
+  rental: "Rental",
+  environmental: "Environmental",
+  search: "Search",
+  saved_evidence: "Saved evidence",
   "csg-sg-documents": "CSG and SG documents",
   "deeds-ownership": "Deeds and ownership research",
   "municipal-valuation-rates": "Municipal valuation roll, rates, and taxes",
@@ -78,4 +120,18 @@ export const RESEARCH_CATEGORY_LABELS: Record<ResearchSourceCategory, string> = 
   "legal-entity-distress": "Legal, entity, estate, and distress research",
   "tenders-catalysts": "Public tenders and future area catalysts",
   "paid-reports": "Paid reports",
+};
+
+export const RESEARCH_DOSSIER_GROUP_LABELS: Record<ResearchDossierGroup, string> = {
+  "official-parcel-identity": "Official Parcel Identity",
+  "municipal-evidence": "Municipal Evidence",
+  "planning-zoning": "Planning and Zoning",
+  "deeds-ownership": "Deeds and Ownership",
+  "market-intelligence": "Market Intelligence",
+  "building-improvement": "Building and Improvement Clues",
+  "rental-tourism": "Rental and Tourism Intelligence",
+  "environmental-coastal-risk": "Environmental and Coastal Risk",
+  "generated-searches": "Generated Searches",
+  "user-workspace": "User Workspace",
+  "paid-reports": "Paid Reports",
 };
