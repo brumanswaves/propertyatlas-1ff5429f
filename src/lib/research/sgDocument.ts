@@ -1,13 +1,18 @@
 // Best-effort builder for a CSG (Chief Surveyor-General) document-list URL.
 //
-// Honesty rule: we do not currently have a tested, parcel-scoped CSG
-// document-list URL. The legacy csggis.drdlr.gov.za/psv/ endpoint does not
-// resolve reliably for end users, and we have no validated builder for a
-// per-erf document list. Until that integration is real, we always return
-// shown=false and let the caller surface the working CSG Property Viewer
-// (Experience Builder) as a fallback.
+// Pattern (validated by the user):
+//   https://csg.dlrrd.gov.za/esio/listdocument.jsp
+//     ?office=SGCTN&Noffice=8
+//     &regDivision={regDivision}      // 8-char registration division code (e.g. C0340014)
+//     &Erf={paddedErf}                // 8 digits, left-padded with 0
+//     &Portion={paddedPortion}        // 5 digits, left-padded with 0
+//     &FarmName=
+//
+// We only return shown=true when we have a registration-division code that
+// looks valid AND an erf number. Otherwise the UI falls back to the always-
+// available CSG Property Viewer link.
 
-import { CSG_VIEWER_URL } from "@/lib/external-urls";
+import { CSG_VIEWER_URL, SG_DOCUMENT_BASE } from "@/lib/external-urls";
 
 export interface SgDocumentInput {
   lpi?: string | null;
@@ -17,19 +22,35 @@ export interface SgDocumentInput {
   province?: string | null;
   majorRegion?: string | null;
   minorRegion?: string | null;
+  /** Optional registration division code if the caller already has it. */
+  regDivision?: string | null;
 }
 
 export interface SgDocumentResult {
-  /** True when we built a URL we're willing to expose as a "document list" link. */
   shown: boolean;
-  /** The constructed URL when shown=true; otherwise empty. */
   url: string;
-  /** Always-available fallback link to the CSG Property Viewer. */
   fallbackUrl: string;
-  /** Why we did or did not build the document URL — surfaced in admin debug. */
   reason: string;
-  /** Echo of the fields we used to evaluate — surfaced in admin debug. */
   fieldsUsed: Record<string, string | number | null | undefined>;
+}
+
+/** Extract an 8-char registration-division code (letter + 7 digits) from any input. */
+function extractRegDivision(...candidates: (string | null | undefined)[]): string | null {
+  for (const c of candidates) {
+    if (!c) continue;
+    const s = String(c).toUpperCase().replace(/\s+/g, "");
+    const m = s.match(/[A-Z]\d{7}/);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+function padNumeric(value: string | number | null | undefined, width: number): string | null {
+  if (value === null || value === undefined) return null;
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length > width) return null;
+  return digits.padStart(width, "0");
 }
 
 export function buildSgDocumentUrl(input: SgDocumentInput): SgDocumentResult {
@@ -41,15 +62,40 @@ export function buildSgDocumentUrl(input: SgDocumentInput): SgDocumentResult {
     province: input.province ?? null,
     majorRegion: input.majorRegion ?? null,
     minorRegion: input.minorRegion ?? null,
+    regDivision: input.regDivision ?? null,
   };
 
-  // No validated per-erf SG document URL is available yet — always hide the
-  // button and let the UI show the CSG Property Viewer fallback instead.
+  const regDivision = extractRegDivision(
+    input.regDivision,
+    input.minorRegion,
+    input.parcelKey,
+    input.lpi,
+  );
+  const paddedErf = padNumeric(input.erfNumber, 8);
+  const paddedPortion = padNumeric(input.portion ?? 0, 5);
+
+  if (!regDivision || !paddedErf || !paddedPortion) {
+    return {
+      shown: false,
+      url: "",
+      fallbackUrl: CSG_VIEWER_URL,
+      reason: `Insufficient fields for SG document URL (regDivision=${regDivision ?? "—"}, erf=${paddedErf ?? "—"}).`,
+      fieldsUsed,
+    };
+  }
+
+  const url =
+    `${SG_DOCUMENT_BASE}?office=SGCTN&Noffice=8` +
+    `&regDivision=${encodeURIComponent(regDivision)}` +
+    `&Erf=${paddedErf}` +
+    `&Portion=${paddedPortion}` +
+    `&FarmName=`;
+
   return {
-    shown: false,
-    url: "",
+    shown: true,
+    url,
     fallbackUrl: CSG_VIEWER_URL,
-    reason: "No validated parcel-scoped CSG document-list URL is available yet.",
+    reason: "Built from registration division + padded erf/portion.",
     fieldsUsed,
   };
 }

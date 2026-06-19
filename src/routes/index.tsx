@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Plus, X, ShieldCheck, FlaskConical } from "lucide-react";
-void FlaskConical;
+import { MousePointerClick, Plus, X } from "lucide-react";
 import { MapCanvas, type MapLayers, type MapStyleId, type OfficialFeatureSelection, type OfficialLayerStatus } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -65,16 +64,9 @@ function AtlasHome() {
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("satellite");
 
-  function toggleDemoMode() {
-    setDemoMode((d) => {
-      const next = !d;
-      try { window.localStorage.setItem("pa.demoMode", next ? "1" : "0"); } catch {}
-      setLayers(next ? DEMO_LAYERS : DEFAULT_LAYERS);
-      if (!next) setSelectedId(null);
-      else setSelectedOfficial(null);
-      return next;
-    });
-  }
+  // Demo Mode is no longer exposed in the public map UI. It remains available via
+  // /admin/public-data-debug and is restored from localStorage for admins who set it.
+  void setDemoMode;
 
   const handleMapSelect = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -128,19 +120,6 @@ function AtlasHome() {
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
           <FilterPanel value={filters} onChange={setFilters} />
           <LayerSwitcher layers={layers} onLayersChange={setLayers} style={mapStyle} onStyleChange={setMapStyle} officialStatus={officialStatus} />
-          <button
-            onClick={toggleDemoMode}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold shadow-soft backdrop-blur transition",
-              demoMode
-                ? "bg-amber-500 text-amber-950 hover:bg-amber-400"
-                : "bg-emerald-600 text-white hover:bg-emerald-500",
-            )}
-            title={demoMode ? "Switch back to Official Public Data Mode" : "Enable Demo Mode"}
-          >
-            {demoMode ? <FlaskConical className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-            {demoMode ? "Demo Data" : "Official Public Data Mode"}
-          </button>
         </div>
 
         {!demoMode && (
@@ -156,9 +135,7 @@ function AtlasHome() {
             One place to research a South African property before you buy, sell, or invest.
           </p>
           <p className="mt-1.5 text-[11px] text-foreground/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">
-            {demoMode
-              ? "Demo Mode · mock parcels and scores for demonstration."
-              : "Official Public Data Mode · CSG cadastral parcels and Kouga zoning. Pilot — St Francis Bay."}
+            Official Public Data Mode · CSG cadastral parcels and Kouga zoning. Pilot — St Francis Bay.
           </p>
         </div>
       </div>

@@ -5,6 +5,12 @@
 export const CSG_VIEWER_URL =
   "https://csggis.drdlr.gov.za/portal/apps/experiencebuilder/experience/?id=a9a8f908e82c443b9cb7bede69f5985e";
 
+/** Official CSG home — always-available fallback when a per-erf URL is not buildable. */
+export const CSG_OFFICIAL_URL = "https://csg.dlrrd.gov.za/";
+
+/** Base for SG document-list lookups (esio). */
+export const SG_DOCUMENT_BASE = "https://csg.dlrrd.gov.za/esio/listdocument.jsp";
+
 export const KOUGA_MAPPING_URL = "https://mapping-kouga.hub.arcgis.com/";
 export const KOUGA_PUBLIC_MAP_URL =
   "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map";

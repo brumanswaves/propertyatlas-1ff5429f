@@ -87,14 +87,54 @@ export function ListingsTab({ parcelId, ctx }: { parcelId: string; ctx: Research
 
   const hasSaved = items.length > 0;
 
+  const hasLatLng = ctx.lat != null && ctx.lng != null;
+  const coordStr = hasLatLng ? `${ctx.lat},${ctx.lng}` : "";
+  const erfDetails = [
+    ctx.erf ? `Erf ${ctx.erf}` : null,
+    ctx.nearestRoad ?? null,
+    ctx.suburb ?? ctx.area ?? null,
+    ctx.town ?? null,
+    ctx.province ?? "Eastern Cape",
+    hasLatLng ? `${ctx.lat?.toFixed(6)}, ${ctx.lng?.toFixed(6)}` : null,
+  ].filter(Boolean).join(" · ");
+
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold tracking-tight">Listings</h3>
+        <h3 className="text-sm font-semibold tracking-tight">Listing Search Assistant</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
           PropertyAtlas does not currently have a live listing feed. Use the portal searches below, then save any listing URL you find under this erf.
         </p>
       </div>
+
+      {/* Selected erf details + quick copy/open-at-erf tools */}
+      <section className="rounded-2xl border border-border bg-card p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Selected erf</div>
+        <div className="mt-1 text-[12px] font-medium text-foreground">{erfDetails || "No erf details available"}</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" onClick={async () => { if (await copyToClipboard(erfDetails)) toast.success("Erf details copied"); }}
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted">
+            <Copy className="h-3 w-3" /> Copy erf details
+          </button>
+          {hasLatLng && (
+            <>
+              <button type="button" onClick={async () => { if (await copyToClipboard(coordStr)) toast.success("Coordinates copied"); }}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted">
+                <Copy className="h-3 w-3" /> Copy coordinates
+              </button>
+              <button type="button" onClick={(e) => openExternalUrl(`https://maps.google.com/?q=${encodeURIComponent(coordStr)}`, e)}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted">
+                <ExternalLink className="h-3 w-3" /> Open Google Maps at erf
+              </button>
+              <button type="button" onClick={(e) => openExternalUrl(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(coordStr)}`, e)}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted">
+                <ExternalLink className="h-3 w-3" /> Open Street View
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
 
       {/* Saved status — honest about what we know */}
       <section className={`rounded-2xl border ${hasSaved ? "border-emerald-500/40 bg-emerald-500/5" : "border-dashed border-border bg-muted/20"} p-3`}>

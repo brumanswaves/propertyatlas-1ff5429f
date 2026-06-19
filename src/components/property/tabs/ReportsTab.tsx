@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
-import { FileText, Lock, BellRing, BookmarkPlus, Check } from "lucide-react";
+import { FileText, Lock, BellRing, BookmarkPlus, Check, ExternalLink } from "lucide-react";
 import { REPORT_CATALOG, formatPrice } from "@/lib/reports/catalog";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { openExternalUrl } from "@/lib/external";
+import type { SgDocumentResult } from "@/lib/research/sgDocument";
+import { CSG_OFFICIAL_URL } from "@/lib/external-urls";
 import { toast } from "sonner";
 
 type InterestKind = "notify" | "save";
 
-export function ReportsTab({ parcelId, summary }: { parcelId: string; summary: string }) {
+export function ReportsTab({ parcelId, summary, sgDoc }: { parcelId: string; summary: string; sgDoc?: SgDocumentResult }) {
   const { user } = useAuth();
   const [interests, setInterests] = useState<Record<string, InterestKind>>({});
 
@@ -29,7 +32,6 @@ export function ReportsTab({ parcelId, summary }: { parcelId: string; summary: s
     const next = { ...interests, [reportId]: kind };
     persist(next);
     if (user) {
-      // Best-effort persist; ignore failure (table optional).
       try {
         await supabase.from("report_orders").insert({
           user_id: user.id,
@@ -57,6 +59,7 @@ export function ReportsTab({ parcelId, summary }: { parcelId: string; summary: s
       <div className="grid gap-3">
         {REPORT_CATALOG.map((r) => {
           const interest = interests[r.id];
+          const isSg = r.id === "sg_diagram";
           return (
             <article key={r.id} className="rounded-2xl border border-border bg-card p-3">
               <div className="flex items-start justify-between gap-3">
@@ -71,31 +74,52 @@ export function ReportsTab({ parcelId, summary }: { parcelId: string; summary: s
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[13px] font-semibold tabular-nums text-muted-foreground">{formatPrice(r.priceCents)}</div>
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    <Lock className="h-2.5 w-2.5" /> Coming Soon
-                  </span>
+                  <div className="text-[13px] font-semibold tabular-nums text-muted-foreground">{isSg ? "Official source" : formatPrice(r.priceCents)}</div>
+                  {!isSg && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                      <Lock className="h-2.5 w-2.5" /> Coming Soon
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-2.5">
-                <button
-                  type="button"
-                  onClick={() => record(r.id, "notify")}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
-                >
-                  <BellRing className="h-3 w-3" /> Notify me
-                </button>
-                <button
-                  type="button"
-                  onClick={() => record(r.id, "save")}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
-                >
-                  <BookmarkPlus className="h-3 w-3" /> Save report interest
-                </button>
-                {interest && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                    <Check className="h-2.5 w-2.5" /> {interest === "notify" ? "Notify requested" : "Saved"}
-                  </span>
+                {isSg ? (
+                  <>
+                    {sgDoc?.shown ? (
+                      <button type="button" onClick={(e) => openExternalUrl(sgDoc.url, e)}
+                        className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90">
+                        <ExternalLink className="h-3 w-3" /> Open SG Document List
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">SG document list not available for this erf yet.</span>
+                    )}
+                    <button type="button" onClick={(e) => openExternalUrl(CSG_OFFICIAL_URL, e)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted">
+                      <ExternalLink className="h-3 w-3" /> Open CSG Official Site
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => record(r.id, "notify")}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+                    >
+                      <BellRing className="h-3 w-3" /> Notify me
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => record(r.id, "save")}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+                    >
+                      <BookmarkPlus className="h-3 w-3" /> Save report interest
+                    </button>
+                    {interest && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                        <Check className="h-2.5 w-2.5" /> {interest === "notify" ? "Notify requested" : "Saved"}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </article>

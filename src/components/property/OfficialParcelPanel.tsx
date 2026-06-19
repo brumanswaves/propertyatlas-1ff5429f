@@ -620,7 +620,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
           {tab === "research" && <ResearchLinksTab ctx={researchCtx} parcelId={parcelId} />}
           {tab === "listings" && <ListingsTab parcelId={parcelId} ctx={researchCtx} />}
-          {tab === "reports" && <ReportsTab parcelId={parcelId} summary={summary} />}
+          {tab === "reports" && <ReportsTab parcelId={parcelId} summary={summary} sgDoc={sgDoc} />}
           {tab === "notes" && <NotesTab parcelId={parcelId} />}
           {tab === "calculators" && <CalculatorsTab />}
         </div>
