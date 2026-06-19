@@ -95,6 +95,95 @@ describe("public source registry", () => {
     expect(valuation?.complianceNote).toContain("not current market value");
   });
 
+  it("matches Erf 962 by exact LPI", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: null,
+        lpi: "C03400140000096200000",
+        parcelKey: null,
+        suburbOrArea: null,
+        knownFields: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("matches Erf 962 by exact parcel key", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: null,
+        lpi: null,
+        parcelKey: "E108C034001400000962000000",
+        suburbOrArea: null,
+        knownFields: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("matches Erf 962 by 8 Harbour Road text", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: null,
+        lpi: null,
+        parcelKey: null,
+        suburbOrArea: null,
+        knownFields: [{ label: "Address", value: "8 Harbour Road", source: "Test" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("matches Erf 962 portion 0 only with supporting location context", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: "962",
+        portion: "0",
+        lpi: null,
+        parcelKey: null,
+        municipality: "Kouga Local Municipality",
+        province: "Eastern Cape",
+        suburbOrArea: "Santareme",
+        knownFields: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not match Erf 962 portion 0 without location context", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: "962",
+        portion: "0",
+        lpi: null,
+        parcelKey: null,
+        municipality: null,
+        province: null,
+        suburbOrArea: null,
+        town: null,
+        knownFields: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("does not match another municipality/province Erf 962 portion 0", () => {
+    expect(
+      matchesErf962HarbourRoad({
+        ...baseParcel,
+        erfNumber: "962",
+        portion: "0",
+        lpi: null,
+        parcelKey: null,
+        municipality: "City of Cape Town",
+        province: "Western Cape",
+        suburbOrArea: "Claremont",
+        town: "Cape Town",
+        knownFields: [],
+      }),
+    ).toBe(false);
+  });
+
   it("adds Erf 962 generated searches", () => {
     const sources = buildPublicResearchSources(erf962Parcel);
     const queries = sources

@@ -29,6 +29,17 @@ export const ERF_962_GENERATED_QUERIES = [
   `site:airbnb.com "8 Harbour Road" "Saint Francis Bay"`,
 ];
 
+const ERF_962_LOCATION_CONTEXT = [
+  "kouga",
+  "eastern cape",
+  "st francis bay",
+  "saint francis bay",
+  "santareme",
+  "sea vista",
+  "harbour road",
+  "8 harbour road",
+];
+
 export function matchesErf962HarbourRoad(parcel: NormalizedOfficialParcel): boolean {
   const haystack = [
     parcel.id,
@@ -40,7 +51,7 @@ export function matchesErf962HarbourRoad(parcel: NormalizedOfficialParcel): bool
     parcel.town,
     parcel.municipality,
     parcel.province,
-    ...parcel.knownFields.map((field) => field.value),
+    ...(parcel.knownFields ?? []).map((field) => field.value),
   ]
     .filter(Boolean)
     .join(" ")
@@ -50,7 +61,8 @@ export function matchesErf962HarbourRoad(parcel: NormalizedOfficialParcel): bool
   if (String(parcel.parcelKey ?? "").toUpperCase() === ERF_962_IDENTITY.parcelKey) return true;
   if (
     String(parcel.erfNumber ?? "").trim() === "962" &&
-    String(parcel.portion ?? "0").trim() === "0"
+    String(parcel.portion ?? "0").trim() === "0" &&
+    ERF_962_LOCATION_CONTEXT.some((context) => haystack.includes(context))
   ) {
     return true;
   }
