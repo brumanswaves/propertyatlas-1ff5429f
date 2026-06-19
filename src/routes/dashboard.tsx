@@ -1,18 +1,32 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Bookmark, MapPinned, FileText, NotebookPen, Link2, Calculator, ClipboardList, Sparkles, ArrowUpRight, ChevronRight,
+  Bookmark,
+  MapPinned,
+  FileText,
+  NotebookPen,
+  Link2,
+  Calculator,
+  ClipboardList,
+  Sparkles,
+  ArrowUpRight,
+  ChevronRight,
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { isDemoParcelId, isOfficialParcelId } from "@/lib/parcels/officialParcelId";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — PropertyAtlas" },
-      { name: "description", content: "Your saved parcels, notes, listings, report interests, and due-diligence checklist." },
+      {
+        name: "description",
+        content:
+          "Your saved parcels, notes, listings, report interests, and due-diligence checklist.",
+      },
       { property: "og:url", content: "/dashboard" },
     ],
     links: [{ rel: "canonical", href: "/dashboard" }],
@@ -27,9 +41,27 @@ interface Counts {
   reportInterests: number;
 }
 
-interface SavedRow { parcel_id: string; created_at: string | null }
-interface ListingRow { id: string; parcel_id: string; url: string | null; status: string; asking_price_cents: number | null; created_at: string | null }
-interface ActivityRow { kind: string; label: string; at: string }
+interface SavedRow {
+  parcel_id: string;
+  created_at: string | null;
+  research_status: string | null;
+  status: string | null;
+  tags: string[] | null;
+  user_data: unknown;
+}
+interface ListingRow {
+  id: string;
+  parcel_id: string;
+  url: string | null;
+  status: string;
+  asking_price_cents: number | null;
+  created_at: string | null;
+}
+interface ActivityRow {
+  kind: string;
+  label: string;
+  at: string;
+}
 
 const CHECKLIST = [
   "Verify ownership (Lightstone / WinDeed report when available)",
@@ -47,7 +79,12 @@ function Dashboard() {
   const navigate = useNavigate();
   const [saved, setSaved] = useState<SavedRow[]>([]);
   const [listings, setListings] = useState<ListingRow[]>([]);
-  const [counts, setCounts] = useState<Counts>({ savedProperties: 0, notesProperties: 0, savedListings: 0, reportInterests: 0 });
+  const [counts, setCounts] = useState<Counts>({
+    savedProperties: 0,
+    notesProperties: 0,
+    savedListings: 0,
+    reportInterests: 0,
+  });
   const [activity, setActivity] = useState<ActivityRow[]>([]);
 
   useEffect(() => {
@@ -58,9 +95,17 @@ function Dashboard() {
     if (!user) return;
     (async () => {
       const [s, n, l] = await Promise.all([
-        supabase.from("saved_properties").select("parcel_id, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase
+          .from("saved_properties")
+          .select("parcel_id, created_at, research_status, status, tags, user_data")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
         supabase.from("property_notes").select("parcel_id, updated_at").eq("user_id", user.id),
-        supabase.from("property_listings").select("id, parcel_id, url, status, asking_price_cents, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase
+          .from("property_listings")
+          .select("id, parcel_id, url, status, asking_price_cents, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ]);
       const savedRows = (s.data ?? []) as SavedRow[];
       const noteRows = (n.data ?? []) as { parcel_id: string; updated_at: string | null }[];
@@ -75,10 +120,14 @@ function Dashboard() {
             try {
               const v = JSON.parse(window.localStorage.getItem(k) ?? "{}");
               reportInterests += Object.keys(v).length;
-            } catch {}
+            } catch {
+              // Ignore malformed local report-interest payloads.
+            }
           }
         }
-      } catch {}
+      } catch {
+        // localStorage can be unavailable in restricted browser contexts.
+      }
 
       setSaved(savedRows);
       setListings(listingRows);
@@ -90,9 +139,21 @@ function Dashboard() {
       });
 
       const act: ActivityRow[] = [
-        ...savedRows.slice(0, 5).map((r) => ({ kind: "saved", label: `Saved ${r.parcel_id}`, at: r.created_at ?? "" })),
-        ...noteRows.slice(0, 5).map((r) => ({ kind: "note", label: `Added note to ${r.parcel_id}`, at: r.updated_at ?? "" })),
-        ...listingRows.slice(0, 5).map((r) => ({ kind: "listing", label: `Saved listing for ${r.parcel_id}`, at: r.created_at ?? "" })),
+        ...savedRows.slice(0, 5).map((r) => ({
+          kind: "saved",
+          label: `Saved ${savedTitle(r)}`,
+          at: r.created_at ?? "",
+        })),
+        ...noteRows.slice(0, 5).map((r) => ({
+          kind: "note",
+          label: `Added note to ${r.parcel_id}`,
+          at: r.updated_at ?? "",
+        })),
+        ...listingRows.slice(0, 5).map((r) => ({
+          kind: "listing",
+          label: `Saved listing for ${r.parcel_id}`,
+          at: r.created_at ?? "",
+        })),
       ]
         .filter((r) => r.at)
         .sort((a, b) => (a.at < b.at ? 1 : -1))
@@ -112,8 +173,12 @@ function Dashboard() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <Sparkles className="h-3 w-3 text-accent" /> Research workspace
             </span>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Your research</h1>
-            <p className="text-sm text-muted-foreground">Saved parcels, notes, listings, and report interests.</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+              Your research
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Saved parcels, notes, listings, and report interests.
+            </p>
           </div>
           <Link
             to="/"
@@ -124,10 +189,26 @@ function Dashboard() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard icon={<Bookmark className="h-4 w-4" />} label="Saved properties" value={counts.savedProperties} />
-          <KpiCard icon={<NotebookPen className="h-4 w-4" />} label="Properties with notes" value={counts.notesProperties} />
-          <KpiCard icon={<Link2 className="h-4 w-4" />} label="Listings saved" value={counts.savedListings} />
-          <KpiCard icon={<FileText className="h-4 w-4" />} label="Report interests" value={counts.reportInterests} />
+          <KpiCard
+            icon={<Bookmark className="h-4 w-4" />}
+            label="Saved properties"
+            value={counts.savedProperties}
+          />
+          <KpiCard
+            icon={<NotebookPen className="h-4 w-4" />}
+            label="Properties with notes"
+            value={counts.notesProperties}
+          />
+          <KpiCard
+            icon={<Link2 className="h-4 w-4" />}
+            label="Listings saved"
+            value={counts.savedListings}
+          />
+          <KpiCard
+            icon={<FileText className="h-4 w-4" />}
+            label="Report interests"
+            value={counts.reportInterests}
+          />
         </div>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-2">
@@ -148,9 +229,14 @@ function Dashboard() {
             ) : (
               <ul className="divide-y divide-border">
                 {activity.map((a, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 py-2 text-[12.5px]">
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 py-2 text-[12.5px]"
+                  >
                     <span className="truncate text-foreground">{a.label}</span>
-                    <span className="shrink-0 text-[10.5px] text-muted-foreground">{new Date(a.at).toLocaleDateString("en-ZA")}</span>
+                    <span className="shrink-0 text-[10.5px] text-muted-foreground">
+                      {new Date(a.at).toLocaleDateString("en-ZA")}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -170,15 +256,7 @@ function Dashboard() {
           ) : (
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {saved.map((p) => (
-                <li key={p.parcel_id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{p.parcel_id}</div>
-                    <div className="text-[10.5px] text-muted-foreground">Saved {p.created_at ? new Date(p.created_at).toLocaleDateString("en-ZA") : ""}</div>
-                  </div>
-                  <Link to="/" search={{ parcel: p.parcel_id } as never} className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline">
-                    Open on map <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </li>
+                <SavedPropertyRow key={p.parcel_id} row={p} />
               ))}
             </ul>
           )}
@@ -195,18 +273,30 @@ function Dashboard() {
           ) : (
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {listings.map((l) => (
-                <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <li
+                  key={l.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">{l.status}</span>
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">
+                        {l.status}
+                      </span>
                       <span className="truncate font-medium">{l.parcel_id}</span>
                     </div>
                     {l.asking_price_cents != null && (
-                      <div className="text-[11px] tabular-nums text-muted-foreground">R {(l.asking_price_cents / 100).toLocaleString("en-ZA")}</div>
+                      <div className="text-[11px] tabular-nums text-muted-foreground">
+                        R {(l.asking_price_cents / 100).toLocaleString("en-ZA")}
+                      </div>
                     )}
                   </div>
                   {l.url && (
-                    <a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline">
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
+                    >
                       Open <ArrowUpRight className="h-3 w-3" />
                     </a>
                   )}
@@ -231,10 +321,119 @@ function Dashboard() {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringField(data: unknown, key: string): string | null {
+  if (!isRecord(data)) return null;
+  const value = data[key];
+  return value === null || value === undefined || String(value).trim() === ""
+    ? null
+    : String(value);
+}
+
+function savedTitle(row: SavedRow): string {
+  const title =
+    stringField(row.user_data, "displayTitle") ??
+    stringField(row.user_data, "address") ??
+    stringField(row.user_data, "researchQuery");
+  if (title) return title;
+  const erf = stringField(row.user_data, "erfNumber") ?? stringField(row.user_data, "erf");
+  return erf
+    ? `Erf ${erf}`
+    : isOfficialParcelId(row.parcel_id)
+      ? "Official parcel dossier"
+      : row.parcel_id;
+}
+
+function formatDate(value: string | null): string {
+  return value ? new Date(value).toLocaleDateString("en-ZA") : "Unknown date";
+}
+
+function SavedPropertyRow({ row }: { row: SavedRow }) {
+  const official = isOfficialParcelId(row.parcel_id);
+  const demo = isDemoParcelId(row.parcel_id);
+  const title = savedTitle(row);
+  const erf = stringField(row.user_data, "erfNumber") ?? stringField(row.user_data, "erf");
+  const portion = stringField(row.user_data, "portion");
+  const municipality =
+    stringField(row.user_data, "municipality") ?? stringField(row.user_data, "majorRegion");
+  const province = stringField(row.user_data, "province");
+  const status = row.research_status || row.status;
+  const tags = row.tags ?? [];
+
+  return (
+    <li className="flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {official && (
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              Official parcel / Erf Research Dossier
+            </span>
+          )}
+          {demo && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              Demo property
+            </span>
+          )}
+          {status && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {status.replace(/_/g, " ")}
+            </span>
+          )}
+        </div>
+        <div className="mt-1 truncate font-medium">{title}</div>
+        <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10.5px] text-muted-foreground">
+          {erf && <span>Erf {erf}</span>}
+          {portion && <span>Portion {portion}</span>}
+          {municipality && <span>{municipality}</span>}
+          {province && <span>{province}</span>}
+          <span>Saved {formatDate(row.created_at)}</span>
+        </div>
+        <div className="mt-1 break-all font-mono text-[10px] text-muted-foreground">
+          {row.parcel_id}
+        </div>
+        {tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border px-2 py-0.5 text-[9px] text-muted-foreground"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {demo ? (
+        <Link
+          to="/"
+          search={{ parcel: row.parcel_id } as never}
+          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
+        >
+          Open on map <ChevronRight className="h-3 w-3" />
+        </Link>
+      ) : (
+        <Link
+          to="/"
+          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
+        >
+          Open map and search this parcel <ChevronRight className="h-3 w-3" />
+        </Link>
+      )}
+    </li>
+  );
+}
+
 function SectionTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      <span className="grid h-5 w-5 place-items-center rounded-md bg-muted text-foreground/70">{icon}</span>
+      <span className="grid h-5 w-5 place-items-center rounded-md bg-muted text-foreground/70">
+        {icon}
+      </span>
       {children}
     </div>
   );
@@ -252,11 +451,21 @@ function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function Panel({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Panel({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        <span className="grid h-5 w-5 place-items-center rounded-md bg-muted text-foreground/70">{icon}</span>
+        <span className="grid h-5 w-5 place-items-center rounded-md bg-muted text-foreground/70">
+          {icon}
+        </span>
         {title}
       </div>
       {children}
@@ -269,15 +478,28 @@ function EmptyInline({ body }: { body: string }) {
 }
 
 function EmptyCard({
-  icon, title, body, cta,
-}: { icon: React.ReactNode; title: string; body: string; cta?: { to: string; label: string } }) {
+  icon,
+  title,
+  body,
+  cta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  cta?: { to: string; label: string };
+}) {
   return (
     <div className="mt-3 rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-      <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">{icon}</div>
+      <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">
+        {icon}
+      </div>
       <p className="mt-3 text-sm font-medium">{title}</p>
       <p className="mt-1 text-xs text-muted-foreground">{body}</p>
       {cta && (
-        <Link to={cta.to} className="mt-4 inline-flex rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background">
+        <Link
+          to={cta.to}
+          className="mt-4 inline-flex rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background"
+        >
           {cta.label}
         </Link>
       )}
