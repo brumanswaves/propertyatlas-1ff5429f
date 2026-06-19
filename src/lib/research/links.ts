@@ -97,31 +97,40 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
           id: "kouga-mapping-quick",
           label: "Kouga Public Map",
           description: "Kouga ArcGIS Hub public mapping viewer.",
+          href: KOUGA_PUBLIC_MAP_URL,
+          category: "maps" as const, external: true as const,
+        }, {
+          id: "kouga-mapping-hub",
+          label: "Kouga Mapping Portal",
+          description: "Kouga ArcGIS Hub — zoning, planning, public layers.",
           href: KOUGA_MAPPING_URL,
           category: "maps" as const, external: true as const,
         }]
       : []),
   ];
 
-  const official: ResearchLink[] = inKouga
+  const municipal: ResearchLink[] = inKouga
     ? [
         { id: "kouga-portal", label: "Kouga Municipality", description: "Official Kouga Local Municipality website.",
-          href: "https://www.kouga.gov.za/", category: "official", external: true },
-        { id: "kouga-mapping", label: "Kouga Mapping Portal", description: "Public ArcGIS Hub for Kouga GIS layers (zoning, planning).",
-          href: "https://mapping-kouga.hub.arcgis.com/", category: "official", external: true },
+          href: "https://www.kouga.gov.za/", category: "municipal", external: true },
         { id: "kouga-planning", label: "Kouga Planning & Development", description: "Zoning, town planning and building plan information.",
-          href: "https://www.kouga.gov.za/planning-and-development", category: "official", external: true },
+          href: "https://www.kouga.gov.za/planning-and-development", category: "municipal", external: true },
         { id: "kouga-valroll", label: "Kouga Valuation Roll", description: "Public valuation roll notices and access.",
-          href: "https://www.kouga.gov.za/municipalvaluationrollavail", category: "official", external: true },
+          href: "https://www.kouga.gov.za/municipalvaluationrollavail", category: "municipal", external: true },
       ]
     : [
         { id: "valuation-roll", label: "Municipal valuation roll", description: "Search the municipality's published valuation roll.",
           href: `https://www.google.com/search?q=${q(`"valuation roll" ${ctx.municipality ?? ""} site:gov.za`)}`,
-          category: "official", external: true },
+          category: "municipal", external: true },
         { id: "muni-gis", label: "Municipal GIS / zoning portal", description: "Find the relevant municipal GIS or zoning viewer.",
           href: `https://www.google.com/search?q=${q(`${ctx.municipality ?? ""} GIS zoning portal`)}`,
-          category: "official", external: true },
+          category: "municipal", external: true },
       ];
+
+  const official: ResearchLink[] = [
+    { id: "csg-official", label: "CSG Official Site", description: "Chief Surveyor-General official home — always-available fallback.",
+      href: CSG_OFFICIAL_URL, category: "official", external: true },
+  ];
 
   const general: ResearchLink[] = [
     {
