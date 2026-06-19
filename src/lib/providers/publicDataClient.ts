@@ -37,11 +37,14 @@ interface EndpointConfig {
 
 export const PUBLIC_LAYER_CONFIG: Record<PublicLayerId, EndpointConfig> = {
   "csg-parcels": {
-    sourceLabel: "Chief Surveyor-General",
-    officialSourceUrl: "https://csggis.drdlr.gov.za/psv/",
+    sourceLabel: "Kouga SG Properties (Public Mapping Viewer)",
+    officialSourceUrl: "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map",
     staticUrl: "/data/st-francis-csg-parcels.geojson",
     testUrl: "/data/test-csg-parcels.geojson",
     endpoints: [
+      // PRIMARY: Kouga Public Mapping Viewer — SG Properties layer 32 (FeatureServer, CORS-enabled)
+      "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query",
+      // Fallback: National CSG endpoints (frequently rate-limited / CORS-restricted from browser)
       "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query",
       "https://dffeportal.environment.gov.za/hosting/rest/services/CSG_Cadaster/CSG_Cadastral_Data/MapServer/2/query",
     ],
