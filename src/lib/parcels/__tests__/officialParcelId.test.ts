@@ -1,0 +1,71 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  buildOfficialParcelId,
+  isDemoParcelId,
+  isOfficialParcelId,
+  normalizeParcelIdPart,
+} from "../officialParcelId";
+
+describe("official parcel ids", () => {
+  it("keeps existing demo parcel ids unchanged", () => {
+    expect(buildOfficialParcelId({ source: "demo", demoId: "parcel-123" })).toBe("parcel-123");
+    expect(isDemoParcelId("parcel-123")).toBe(true);
+    expect(isOfficialParcelId("parcel-123")).toBe(false);
+  });
+
+  it("uses CSG id priority before display-like fields", () => {
+    expect(
+      buildOfficialParcelId({
+        source: "csg",
+        lpi: "C01900000000007480000",
+        parcelKey: "PK-1",
+        erfNumber: "748",
+        portion: 0,
+        municipality: "Kouga Local Municipality",
+        province: "Eastern Cape",
+      }),
+    ).toBe("csg:lpi:c01900000000007480000");
+
+    expect(
+      buildOfficialParcelId({
+        source: "csg",
+        parcelKey: "PK 1/2",
+        erfNumber: "748",
+        portion: 0,
+        municipality: "Kouga Local Municipality",
+        province: "Eastern Cape",
+      }),
+    ).toBe("csg:parcel-key:pk-1-2");
+  });
+
+  it("uses erf identity only when the full erf context is present", () => {
+    expect(
+      buildOfficialParcelId({
+        source: "csg",
+        erfNumber: "748",
+        portion: 0,
+        municipality: "Kouga Local Municipality",
+        province: "Eastern Cape",
+      }),
+    ).toBe("csg:erf:eastern-cape:kouga-local-municipality:748:0");
+  });
+
+  it("uses Kouga layer and object id for zoning-only features", () => {
+    expect(buildOfficialParcelId({ source: "kouga", layer: "kouga-zoning", objectId: 42 })).toBe(
+      "kouga:kouga-zoning:42",
+    );
+  });
+
+  it("falls back to rounded coordinates only as a last resort", () => {
+    expect(buildOfficialParcelId({ source: "csg", lng: 24.8301234, lat: -34.1689876 })).toBe(
+      "official:point:24.830123:-34.168988",
+    );
+  });
+
+  it("normalizes url-safe parts deterministically", () => {
+    expect(normalizeParcelIdPart(" Kouga Local Municipality / Ward 1 ")).toBe(
+      "kouga-local-municipality-ward-1",
+    );
+  });
+});

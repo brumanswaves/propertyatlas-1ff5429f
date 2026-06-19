@@ -19,6 +19,7 @@ import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
 import { OfficialSourceCard } from "./OfficialSourceCard";
 import type { ResearchContext } from "@/lib/research/links";
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 
 interface Props {
   property: Property | null;
@@ -98,6 +99,13 @@ export function PropertyPanel({ property, onClose }: Props) {
   const ppm = Math.round(property.estimatedValue / property.sizeSqm);
   const lastSale = property.sales[0];
   const heldYears = new Date().getFullYear() - new Date(property.ownership.since).getFullYear();
+  const sgDoc = buildSgDocumentUrl({
+    erfNumber: property.erf,
+    portion: 0,
+    province: "Eastern Cape",
+    majorRegion: "Kouga Local Municipality",
+    minorRegion: property.area,
+  });
 
 
   return (
@@ -175,8 +183,14 @@ export function PropertyPanel({ property, onClose }: Props) {
 
         <div ref={tabsAnchorRef} className="sticky top-0 z-10 mt-3 border-b border-border bg-card">
           <div className="relative">
+            <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:hidden">
+              <span>Property sections</span>
+              <span className="inline-flex items-center gap-1">
+                Swipe for more <ChevronRight className="h-3 w-3" />
+              </span>
+            </div>
             <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
-              {TAB_META.map(({ id, label }) => {
+              {TAB_META.map(({ id, label, icon }) => {
                 const active = tab === id;
                 return (
                   <button
@@ -184,16 +198,18 @@ export function PropertyPanel({ property, onClose }: Props) {
                     onClick={() => selectTab(id)}
                     aria-pressed={active}
                     className={cn(
-                      "relative inline-flex shrink-0 items-center whitespace-nowrap px-2 py-2.5 text-[11px] font-medium transition sm:px-2.5",
-                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                      "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-2.5 py-2.5 text-[11px] font-medium transition sm:px-2.5",
+                      active ? "bg-muted/70 text-foreground" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                     )}
                   >
+                    <span className={cn("sm:hidden", active ? "text-primary" : "text-muted-foreground")}>{icon}</span>
                     {label}
                     {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
                   </button>
                 );
               })}
             </div>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-card to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent" />
           </div>
         </div>
@@ -397,7 +413,7 @@ export function PropertyPanel({ property, onClose }: Props) {
         )}
 
         {tab === "reports" && (
-          <ReportsTab parcelId={property.id} summary={`${property.street}, ${property.area} · Erf ${property.erf}`} />
+          <ReportsTab parcelId={property.id} summary={`${property.street}, ${property.area} · Erf ${property.erf}`} sgDoc={sgDoc} />
         )}
 
         {tab === "notes" && <NotesTab parcelId={property.id} />}

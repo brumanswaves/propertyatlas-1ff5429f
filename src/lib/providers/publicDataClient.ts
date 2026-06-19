@@ -30,7 +30,7 @@ export interface PublicDataResult {
 interface EndpointConfig {
   sourceLabel: string;
   officialSourceUrl: string;
-  staticUrl: string;
+  staticUrl?: string;
   testUrl: string;
   endpoints: string[];
 }
@@ -39,7 +39,6 @@ export const PUBLIC_LAYER_CONFIG: Record<PublicLayerId, EndpointConfig> = {
   "csg-parcels": {
     sourceLabel: "Kouga SG Properties (Public Mapping Viewer)",
     officialSourceUrl: "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map",
-    staticUrl: "/data/st-francis-csg-parcels.geojson",
     testUrl: "/data/test-csg-parcels.geojson",
     endpoints: [
       // PRIMARY: Kouga Public Mapping Viewer — SG Properties layer 32 (FeatureServer, CORS-enabled)
@@ -52,7 +51,6 @@ export const PUBLIC_LAYER_CONFIG: Record<PublicLayerId, EndpointConfig> = {
   "kouga-zoning": {
     sourceLabel: "Kouga Municipality GIS",
     officialSourceUrl: "https://mapping-kouga.hub.arcgis.com/",
-    staticUrl: "/data/kouga-zoning.geojson",
     testUrl: "/data/test-kouga-zoning.geojson",
     endpoints: ["https://services5.arcgis.com/DllnbBENKfts6TQD/ArcGIS/rest/services/Zoning/FeatureServer/1/query"],
   },
@@ -215,6 +213,17 @@ export async function testStaticGeoJson(layer: PublicLayerId, test = false): Pro
   const requestUrl = test ? cfg.testUrl : cfg.staticUrl;
   const method: PublicDataFallback = test ? "test" : "static";
   const attempts: PublicDataAttempt[] = [];
+  if (!requestUrl) {
+    attempts.push({
+      method,
+      layer,
+      requestUrl: "No imported official GeoJSON configured",
+      ok: false,
+      errorMessage: "No imported official GeoJSON configured.",
+      fallbackUsed: method,
+    });
+    return emptyResult(layer, attempts, "No imported official GeoJSON configured.");
+  }
   try {
     const res = await fetch(requestUrl, { cache: "no-cache" });
     const text = await res.text().catch(() => "");

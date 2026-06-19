@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { AdminGuard } from "@/components/admin/AdminGuard";
 import {
   loadOfficialPublicLayer,
   testDirectFetch,
@@ -27,6 +28,14 @@ type DebugResult = {
 };
 
 function PublicDataDebug() {
+  return (
+    <AdminGuard>
+      <PublicDataDebugContent />
+    </AdminGuard>
+  );
+}
+
+function PublicDataDebugContent() {
   const [bbox, setBbox] = useState<PublicBbox>(ST_FRANCIS_BBOX);
   const [results, setResults] = useState<DebugResult[]>([]);
   const [running, setRunning] = useState<string | null>(null);

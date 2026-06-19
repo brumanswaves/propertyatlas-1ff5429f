@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X, ExternalLink, ShieldCheck, FileText, Lock, MapPin, Sparkles, Link2,
   Tag as TagIcon, NotebookPen, Calculator, Bookmark, BookmarkCheck, Share2, Pencil, Save as SaveIcon,
+  ChevronRight,
 } from "lucide-react";
 import type { OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ResearchLinksTab } from "./tabs/ResearchLinksTab";
@@ -9,9 +10,11 @@ import { ListingsTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { CalculatorsTab } from "./tabs/CalculatorsTab";
+import { ErfResearchDossier } from "./ErfResearchDossier";
 import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { fetchKougaEnrichment, type KougaEnrichment } from "@/lib/providers/kougaEnrichment";
+import { buildOfficialParcelId, type NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -196,29 +199,44 @@ function writeUserAddress(parcelId: string, a: UserAddress | null) {
   try {
     if (!a) window.localStorage.removeItem(userAddrKey(parcelId));
     else window.localStorage.setItem(userAddrKey(parcelId), JSON.stringify(a));
-  } catch {}
+  } catch {
+    // localStorage may be unavailable in private or restricted browser contexts.
+  }
 }
 
 export function OfficialParcelPanel({ selection, onClose }: Props) {
   const { user } = useAuth();
   const isCsg = selection.layer === "csg-parcels";
-  const csg = useMemo(() => (isCsg ? normalizeCsg(selection.properties) : null), [selection, isCsg]);
-  const kouga = useMemo(() => (!isCsg ? normalizeKouga(selection.properties) : null), [selection, isCsg]);
+  const csg = useMemo(() => (isCsg ? normalizeCsg(selection.properties) : null), [selection.properties, isCsg]);
+  const kouga = useMemo(() => (!isCsg ? normalizeKouga(selection.properties) : null), [selection.properties, isCsg]);
   const [tab, setTab] = useState<Tab>("overview");
   const [geo, setGeo] = useState<Geo | null>(null);
   const [saved, setSaved] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const fetchedAt = useMemo(() => new Date().toLocaleString(), [selection]);
 
   const [lng, lat] = selection.lngLat;
-  const parcelKey = (csg?.parcelKey ?? csg?.lpi ?? String(selection.properties.OBJECTID ?? "unknown")) as string;
-  const parcelId = isCsg ? `csg:${parcelKey}` : `kouga:${parcelKey}`;
+  const objectId = selection.properties.OBJECTID ?? selection.properties.ObjectID ?? selection.properties.objectid;
+  const parcelId = buildOfficialParcelId({
+    source: isCsg ? "csg" : "kouga",
+    layer: selection.layer,
+    objectId: objectId as string | number | null | undefined,
+    lpi: csg?.lpi,
+    parcelKey: csg?.parcelKey,
+    erfNumber: csg?.erfNumber,
+    portion: csg?.portion ?? 0,
+    municipality: "Kouga Local Municipality",
+    province: csg?.province ?? "Eastern Cape",
+    lng: csg?.longitude ?? lng,
+    lat: csg?.latitude ?? lat,
+  });
+  const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<UserAddress>({});
 
   useEffect(() => { setTab("overview"); scrollRef.current?.scrollTo({ top: 0 }); }, [parcelId]);
+  useEffect(() => { setFetchedAt(new Date().toLocaleString()); }, [parcelId]);
   useEffect(() => { const a = readUserAddress(parcelId); setUserAddr(a); setDraft(a ?? {}); setEditing(false); }, [parcelId]);
 
   useEffect(() => {
@@ -287,6 +305,61 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   void buildResearchQuery(researchCtx);
 
   const summary = resolved.displayTitle + (resolved.displaySubtitle ? ` — ${resolved.displaySubtitle}` : "");
+  const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
+    const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
+    const knownFields: NormalizedOfficialParcel["knownFields"] = [];
+    const pushKnown = (label: string, value: unknown, source: string) => {
+      if (value === null || value === undefined || value === "") return;
+      knownFields.push({ label, value: String(value), source });
+    };
+
+    if (csg) {
+      pushKnown("Erf number", csg.erfNumber, "Chief Surveyor-General");
+      pushKnown("Portion", csg.portion, "Chief Surveyor-General");
+      pushKnown("LPI / ID", csg.lpi, "Chief Surveyor-General");
+      pushKnown("Parcel key", csg.parcelKey, "Chief Surveyor-General");
+      pushKnown("Province", csg.province, "Chief Surveyor-General");
+      pushKnown("Major region", csg.majorRegion, "Chief Surveyor-General");
+      pushKnown("Minor region", csg.minorRegion, "Chief Surveyor-General");
+      pushKnown("Geometry area", csg.geometryArea, "Chief Surveyor-General");
+    }
+
+    if (kouga) {
+      pushKnown("Zoning code", kouga.zoningCode, "Kouga Municipality GIS");
+      pushKnown("Zoning type", kouga.zoningType, "Kouga Municipality GIS");
+      pushKnown("Zoning description", kouga.zoningDescription, "Kouga Municipality GIS");
+      pushKnown("Shape area", kouga.shapeArea, "Kouga Municipality GIS");
+    }
+
+    pushKnown("Longitude", coords.lng.toFixed(6), "Map click");
+    pushKnown("Latitude", coords.lat.toFixed(6), "Map click");
+
+    return {
+      id: parcelId,
+      source: isCsg ? "csg" : "kouga",
+      sourceLabel: isCsg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
+      layer: selection.layer,
+      erfNumber: csg?.erfNumber ?? null,
+      portion: csg?.portion ?? null,
+      lpi: csg?.lpi ?? null,
+      parcelKey: csg?.parcelKey ?? null,
+      objectId: objectId as string | number | null | undefined,
+      municipality: "Kouga Local Municipality",
+      province: csg?.province ?? userAddr?.province ?? "Eastern Cape",
+      suburbOrArea: userAddr?.suburb ?? csg?.minorRegion ?? resolved.displaySubtitle ?? null,
+      town: userAddr?.town ?? csg?.majorRegion ?? null,
+      coordinates: coords,
+      knownFields,
+      missingFields: [
+        "Ownership",
+        "Valuation",
+        "Transfers",
+        "Rates and taxes",
+        "Paid provider reports",
+      ],
+      rawProperties: selection.properties,
+    };
+  }, [csg, kouga, lat, lng, objectId, parcelId, resolved.displaySubtitle, selection.layer, selection.properties, isCsg, userAddr]);
 
   function saveDraft() {
     const cleaned: UserAddress = {
@@ -375,24 +448,47 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
       <div ref={scrollRef} className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
         <div className="sticky top-0 z-10 border-b border-border bg-card">
-          <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
-            {TABS.map(({ id, label }) => {
+          <div className="relative">
+            <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:hidden">
+              <span>Public-data sections</span>
+              <span className="inline-flex items-center gap-1">
+                Swipe for more <ChevronRight className="h-3 w-3" />
+              </span>
+            </div>
+            <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
+              {TABS.map(({ id, label, icon }) => {
               const active = tab === id;
               return (
                 <button key={id} onClick={() => { setTab(id); requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 })); }}
-                  className={cn("relative inline-flex shrink-0 items-center whitespace-nowrap px-2.5 py-2.5 text-[11px] font-medium transition",
-                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  className={cn("relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-2.5 py-2.5 text-[11px] font-medium transition",
+                    active ? "bg-muted/70 text-foreground" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
+                  <span className={cn("sm:hidden", active ? "text-primary" : "text-muted-foreground")}>{icon}</span>
                   {label}
                   {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />}
                 </button>
               );
             })}
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-card to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent" />
           </div>
         </div>
 
         <div className="px-5 pt-4">
           {tab === "overview" && (
             <div className="space-y-4">
+              <ErfResearchDossier parcel={normalizedParcel} />
+
+              <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-[12px] leading-relaxed text-foreground">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Official public-data parcel
+                </div>
+                <p className="mt-1 text-muted-foreground">
+                  This panel shows fields returned by the public CSG/Kouga sources for the clicked geometry. Full ownership,
+                  valuation, intelligence, and richer research tabs are available only for demo records or future enriched records.
+                </p>
+              </section>
+
               {/* Research Snapshot */}
               <section className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
                 <div className="mb-2.5 flex items-center justify-between gap-2">

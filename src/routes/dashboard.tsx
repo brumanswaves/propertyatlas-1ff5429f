@@ -175,7 +175,7 @@ function Dashboard() {
                     <div className="truncate font-medium">{p.parcel_id}</div>
                     <div className="text-[10.5px] text-muted-foreground">Saved {p.created_at ? new Date(p.created_at).toLocaleDateString("en-ZA") : ""}</div>
                   </div>
-                  <Link to="/" className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline">
+                  <Link to="/" search={{ parcel: p.parcel_id } as never} className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline">
                     Open on map <ChevronRight className="h-3 w-3" />
                   </Link>
                 </li>

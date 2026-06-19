@@ -1,5 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
   ArrowLeft,
@@ -10,8 +9,7 @@ import {
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
-import { useAuth } from "@/lib/auth/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { AdminGuard } from "@/components/admin/AdminGuard";
 import {
   PROVIDER_READINESS,
   type ReadinessStatus,
@@ -38,40 +36,14 @@ const STATUS_META: Record<
 };
 
 function ReadinessPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  return (
+    <AdminGuard>
+      <ReadinessContent />
+    </AdminGuard>
+  );
+}
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
-  }, [user]);
-
-  if (!user || isAdmin === null) return null;
-  if (isAdmin === false) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <TopNav />
-        <main className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16 pt-28">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-            <h1 className="text-lg font-semibold text-amber-900">Admin access required</h1>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
+function ReadinessContent() {
   const totals = PROVIDER_READINESS.map((p) => {
     const done = p.items.filter((i) => i.status === "done").length;
     return { id: p.provider, done, total: p.items.length };

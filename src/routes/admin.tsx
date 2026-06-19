@@ -1,12 +1,12 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ShieldCheck, Database, AlertCircle, CheckCircle2, CircleDashed } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
-import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { listProviders, getActiveProviderId, setActiveProviderId } from "@/lib/providers/registry";
 import { PROPERTIES } from "@/data/properties";
+import { AdminGuard } from "@/components/admin/AdminGuard";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -19,24 +19,22 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  return (
+    <AdminGuard>
+      <AdminContent />
+    </AdminGuard>
+  );
+}
+
+function AdminContent() {
   const [activeId, setActiveId] = useState(getActiveProviderId());
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [healths, setHealths] = useState<Record<string, { status: string; message?: string }>>({});
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
     supabase.from("report_orders").select("id", { count: "exact", head: true })
       .then(({ count }) => setOrderCount(count ?? 0));
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     Promise.all(listProviders().map(async (p) => [p.meta.id, await p.health()] as const))
@@ -46,29 +44,6 @@ function AdminPage() {
         setHealths(next);
       });
   }, []);
-
-  if (!user) return null;
-
-  if (isAdmin === false) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <TopNav />
-        <main className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16 pt-28">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-            <h1 className="text-lg font-semibold text-amber-900">Admin access required</h1>
-            <p className="mt-2 text-sm text-amber-800">
-              Your account doesn't have the <code>admin</code> role. Ask a workspace owner to grant access via the
-              <code className="mx-1 rounded bg-amber-100 px-1">user_roles</code> table.
-            </p>
-            <p className="mt-2 text-xs text-amber-700">Signed in as {user.email}</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (isAdmin === null) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
