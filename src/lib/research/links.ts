@@ -144,7 +144,7 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
 
   // Listings and official-document buttons are intentionally excluded here.
   // Listings live in the Listings tab; SG documents live in Overview/Reports.
-  return [...maps, ...official, ...general];
+  return [...maps, ...municipal, ...official, ...general];
 }
 
 // ===== Listings (open the portal home; let the user search manually) =====
