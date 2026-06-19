@@ -51,7 +51,7 @@ function isKouga(ctx: ResearchContext): boolean {
   );
 }
 
-export type ResearchCategory = "maps" | "listings" | "official" | "documents" | "general";
+export type ResearchCategory = "maps" | "listings" | "municipal" | "official" | "documents" | "general";
 
 export interface ResearchLink {
   id: string;
