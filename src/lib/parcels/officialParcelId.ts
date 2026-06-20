@@ -65,6 +65,27 @@ export function isOfficialParcelId(id: string | null | undefined): boolean {
   return /^(csg|kouga|manual|official):/.test(id.trim().toLowerCase());
 }
 
+export function buildSavedParcelMapSearch(parcelId: string | null | undefined): {
+  parcel?: string;
+  officialParcel?: string;
+} {
+  if (isDemoParcelId(parcelId)) return { parcel: parcelId.trim() };
+  if (isOfficialParcelId(parcelId)) return { officialParcel: parcelId.trim() };
+  return {};
+}
+
+export function parseOfficialParcelSearch(search: string): string | null {
+  const officialParcel = new URLSearchParams(search).get("officialParcel");
+  return isOfficialParcelId(officialParcel) ? officialParcel : null;
+}
+
+export function shouldShowOfficialParcelReopenFallback(
+  search: string,
+  hasSelectedOfficial: boolean,
+): boolean {
+  return Boolean(parseOfficialParcelSearch(search) && !hasSelectedOfficial);
+}
+
 export function buildOfficialParcelId(input: OfficialParcelIdInput): string {
   if (input.source === "demo") {
     if (input.demoId && isDemoParcelId(input.demoId)) return input.demoId;

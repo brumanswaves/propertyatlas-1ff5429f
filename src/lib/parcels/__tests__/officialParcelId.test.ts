@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSavedParcelMapSearch,
   buildOfficialParcelId,
   isDemoParcelId,
   isOfficialParcelId,
   normalizeParcelIdPart,
+  parseOfficialParcelSearch,
+  shouldShowOfficialParcelReopenFallback,
 } from "../officialParcelId";
 
 describe("official parcel ids", () => {
@@ -67,5 +70,37 @@ describe("official parcel ids", () => {
     expect(normalizeParcelIdPart(" Kouga Local Municipality / Ward 1 ")).toBe(
       "kouga-local-municipality-ward-1",
     );
+  });
+
+  it("keeps demo saved parcel reopen URLs on the parcel query param", () => {
+    expect(buildSavedParcelMapSearch("parcel-123")).toEqual({ parcel: "parcel-123" });
+  });
+
+  it("uses the officialParcel query param for saved official dossiers", () => {
+    expect(buildSavedParcelMapSearch("csg:lpi:c03400140000096200000")).toEqual({
+      officialParcel: "csg:lpi:c03400140000096200000",
+    });
+  });
+
+  it("parses official parcel reopen query params only for official ids", () => {
+    expect(parseOfficialParcelSearch("?officialParcel=csg:lpi:c03400140000096200000")).toBe(
+      "csg:lpi:c03400140000096200000",
+    );
+    expect(parseOfficialParcelSearch("?officialParcel=parcel-123")).toBeNull();
+  });
+
+  it("shows unresolved official reopen fallback without fabricating a selection", () => {
+    expect(
+      shouldShowOfficialParcelReopenFallback(
+        "?officialParcel=csg:parcel-key:e108c034001400000962000000",
+        false,
+      ),
+    ).toBe(true);
+    expect(
+      shouldShowOfficialParcelReopenFallback(
+        "?officialParcel=csg:parcel-key:e108c034001400000962000000",
+        true,
+      ),
+    ).toBe(false);
   });
 });

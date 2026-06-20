@@ -16,7 +16,11 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { isDemoParcelId, isOfficialParcelId } from "@/lib/parcels/officialParcelId";
+import {
+  buildSavedParcelMapSearch,
+  isDemoParcelId,
+  isOfficialParcelId,
+} from "@/lib/parcels/officialParcelId";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -419,6 +423,7 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
       ) : (
         <Link
           to="/"
+          search={buildSavedParcelMapSearch(row.parcel_id) as never}
           className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
         >
           Open map and search this parcel <ChevronRight className="h-3 w-3" />
