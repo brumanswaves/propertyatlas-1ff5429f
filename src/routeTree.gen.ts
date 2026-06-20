@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PartnershipsRouteImport } from './routes/partnerships'
@@ -57,6 +58,11 @@ const RoadmapRoute = RoadmapRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/roadmap': typeof RoadmapRoute
   '/subscriptions': typeof SubscriptionsRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/profile'
     | '/reports'
     | '/roadmap'
     | '/subscriptions'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/profile'
     | '/reports'
     | '/roadmap'
     | '/subscriptions'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/partnerships'
     | '/pricing'
     | '/privacy'
+    | '/profile'
     | '/reports'
     | '/roadmap'
     | '/subscriptions'
@@ -333,6 +345,7 @@ export interface RootRouteChildren {
   PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
   RoadmapRoute: typeof RoadmapRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -543,6 +563,7 @@ const rootRouteChildren: RootRouteChildren = {
   PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
   RoadmapRoute: RoadmapRoute,
   SubscriptionsRoute: SubscriptionsRoute,

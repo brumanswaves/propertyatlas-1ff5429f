@@ -15,6 +15,7 @@ import {
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/useAuth";
+import { getUserGreetingName } from "@/lib/auth/profile";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildSavedParcelMapSearch,
@@ -81,6 +82,7 @@ const CHECKLIST = [
 function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const greetingName = getUserGreetingName(user);
   const [saved, setSaved] = useState<SavedRow[]>([]);
   const [listings, setListings] = useState<ListingRow[]>([]);
   const [counts, setCounts] = useState<Counts>({
@@ -178,7 +180,7 @@ function Dashboard() {
               <Sparkles className="h-3 w-3 text-accent" /> Research workspace
             </span>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              Your research
+              Hello {greetingName}
             </h1>
             <p className="text-sm text-muted-foreground">
               Saved parcels, notes, listings, and report interests.
