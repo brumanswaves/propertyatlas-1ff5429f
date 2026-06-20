@@ -22,6 +22,7 @@ import { getProperty, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
+  clearSavedOfficialReopenSearch,
   parseOfficialParcelReopenSearch,
   type OfficialParcelReopenRequest,
 } from "@/lib/parcels/officialParcelId";
@@ -94,19 +95,42 @@ function AtlasHome() {
   // /admin/public-data-debug and is restored from localStorage for admins who set it.
   void setDemoMode;
 
-  const handleMapSelect = useCallback((id: string | null) => {
-    setSelectedId(id);
-    if (id) setSelectedOfficial(null);
+  const clearSavedReopenUrl = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const nextSearch = clearSavedOfficialReopenSearch(window.location.search);
+    const nextUrl = `${window.location.pathname}${nextSearch}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
   }, []);
 
-  const handleOfficialSelect = useCallback((sel: OfficialFeatureSelection | null) => {
-    setSelectedOfficial(sel);
-    if (sel) {
-      setSelectedId(null);
-      setRequestedOfficialParcel(null);
-      setOfficialReopenStatus("resolved");
-    }
-  }, []);
+  const clearSavedReopenState = useCallback(() => {
+    setRequestedOfficialParcel(null);
+    setOfficialReopenStatus("idle");
+    clearSavedReopenUrl();
+  }, [clearSavedReopenUrl]);
+
+  const handleMapSelect = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      if (id) {
+        setSelectedOfficial(null);
+        clearSavedReopenState();
+      }
+    },
+    [clearSavedReopenState],
+  );
+
+  const handleOfficialSelect = useCallback(
+    (sel: OfficialFeatureSelection | null) => {
+      setSelectedOfficial(sel);
+      if (sel) {
+        setSelectedId(null);
+        setRequestedOfficialParcel(null);
+        setOfficialReopenStatus("resolved");
+        clearSavedReopenUrl();
+      }
+    },
+    [clearSavedReopenUrl],
+  );
 
   const selected = selectedId ? (getProperty(selectedId) ?? null) : null;
   const showOfficialReopenCard = Boolean(requestedOfficialParcel && !selectedOfficial);
@@ -160,7 +184,13 @@ function AtlasHome() {
 
       <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-2 px-4 md:top-24">
         <div className="pointer-events-auto relative z-10 w-full max-w-xl">
-          <SearchBar onPick={(p) => setSelectedId(p.id)} />
+          <SearchBar
+            onPick={(p) => {
+              setSelectedId(p.id);
+              setSelectedOfficial(null);
+              clearSavedReopenState();
+            }}
+          />
         </div>
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
           <FilterPanel value={filters} onChange={setFilters} />
@@ -225,17 +255,27 @@ function AtlasHome() {
         )}
 
       {showOfficialReopenCard && (
-        <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 shadow-panel backdrop-blur">
-          <p className="text-sm font-semibold text-foreground">
-            {officialReopenStatus === "not-found"
-              ? "Saved official parcel"
-              : "Finding saved official parcel…"}
-          </p>
+        <div className="pointer-events-auto absolute right-4 top-[13.5rem] z-20 w-[min(92vw,26rem)] rounded-xl border border-border bg-card/95 p-4 shadow-panel backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">
+              {officialReopenStatus === "not-found"
+                ? "Saved official parcel"
+                : "Finding saved official parcel..."}
+            </p>
+            <button
+              type="button"
+              onClick={clearSavedReopenState}
+              className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+              aria-label="Dismiss saved official parcel helper"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             {officialReopenStatus === "not-found"
               ? officialReopenTarget
-                ? "We centered the map on the saved parcel area, but could not automatically match the official outline. Click the official parcel outline to reopen the live public-data dossier."
-                : "Open the map and click the official parcel outline to reopen the live public-data dossier."
+                ? "Could not auto-open this saved parcel. The map is centered near the saved area. Click the official parcel outline to open the live dossier."
+                : "Could not auto-open this saved parcel. Click the official parcel outline to open the live dossier."
               : "We centered the map on the saved parcel area and are matching the official parcel outline."}
           </p>
           <div className="mt-3 space-y-1 rounded-xl bg-muted/60 p-3 text-[11px]">

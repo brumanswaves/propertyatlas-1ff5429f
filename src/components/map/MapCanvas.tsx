@@ -125,6 +125,20 @@ function layersForOfficialReopenRequest(
   return ["csg-parcels", "kouga-zoning"];
 }
 
+function officialReopenLayersReady(
+  map: mapboxgl.Map,
+  request: OfficialParcelReopenRequest,
+): boolean {
+  return layersForOfficialReopenRequest(request).some((layer) => {
+    const renderedLayerId = OFFICIAL_REOPEN_FILL_LAYERS[layer];
+    return (
+      Boolean(map.getSource(layer)) &&
+      Boolean(map.getLayer(renderedLayerId)) &&
+      map.getLayoutProperty(renderedLayerId, "visibility") !== "none"
+    );
+  });
+}
+
 function featureSelectionPoint(
   feature: mapboxgl.MapboxGeoJSONFeature,
   request: OfficialParcelReopenRequest,
@@ -291,6 +305,7 @@ export function MapCanvas({
   const [mapError, setMapError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [layerMessages, setLayerMessages] = useState<{ csg?: string; kouga?: string }>({});
+  const [officialDataVersion, setOfficialDataVersion] = useState(0);
 
   const filtered = useMemo(() => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES), [filterFn]);
   const filteredIds = useMemo(() => new Set(filtered.map((p) => p.id)), [filtered]);
@@ -885,12 +900,16 @@ export function MapCanvas({
           },
         })),
       });
+      setOfficialDataVersion((version) => version + 1);
       return true;
     }
 
     function clearOfficialSource(id: "csg-parcels" | "kouga-zoning") {
       const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
-      if (src) src.setData({ type: "FeatureCollection", features: [] });
+      if (src) {
+        src.setData({ type: "FeatureCollection", features: [] });
+        setOfficialDataVersion((version) => version + 1);
+      }
     }
 
     function publishStatus(status: OfficialLayerStatus) {
@@ -1172,8 +1191,9 @@ export function MapCanvas({
 
     let cancelled = false;
     let timer: number | null = null;
+    let idleHandler: (() => void) | null = null;
     let attempts = 0;
-    const maxAttempts = 16;
+    const maxAttempts = 24;
     const requestKey = [
       officialReopenRequest.id,
       officialReopenRequest.lng ?? "",
@@ -1184,15 +1204,31 @@ export function MapCanvas({
     onOfficialReopenStatus?.("searching");
 
     const schedule = (delay: number) => {
+      if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(resolve, delay);
+    };
+
+    const waitForIdle = () => {
+      if (idleHandler) map.off("idle", idleHandler);
+      idleHandler = () => {
+        idleHandler = null;
+        resolve();
+      };
+      map.once("idle", idleHandler);
     };
 
     const resolve = () => {
       if (cancelled) return;
       attempts += 1;
 
-      if (!map.isStyleLoaded()) {
+      if (!map.isStyleLoaded() || !officialReopenLayersReady(map, officialReopenRequest)) {
         if (attempts < maxAttempts) schedule(450);
+        else onOfficialReopenStatus?.("not-found");
+        return;
+      }
+
+      if (map.isMoving()) {
+        if (attempts < maxAttempts) waitForIdle();
         else onOfficialReopenStatus?.("not-found");
         return;
       }
@@ -1228,11 +1264,13 @@ export function MapCanvas({
     return () => {
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
+      if (idleHandler) map.off("idle", idleHandler);
     };
   }, [
     officialReopenRequest,
     ready,
     styleVersion,
+    officialDataVersion,
     layers.csgParcels,
     layers.kougaZoning,
     onOfficialReopenStatus,

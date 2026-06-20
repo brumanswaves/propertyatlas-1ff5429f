@@ -78,6 +78,7 @@ export interface SavedOfficialParcelSearchHints {
 
 export interface OfficialParcelReopenRequest {
   id: string;
+  fromSaved: boolean;
   title?: string;
   erf?: string;
   portion?: string;
@@ -91,6 +92,7 @@ export interface OfficialParcelReopenRequest {
 export interface SavedParcelMapSearch {
   parcel?: string;
   officialParcel?: string;
+  fromSaved?: string;
   title?: string;
   erf?: string;
   portion?: string;
@@ -100,6 +102,19 @@ export interface SavedParcelMapSearch {
   lat?: string;
   zoom?: string;
 }
+
+export const SAVED_OFFICIAL_REOPEN_SEARCH_KEYS = [
+  "officialParcel",
+  "fromSaved",
+  "lat",
+  "lng",
+  "zoom",
+  "title",
+  "erf",
+  "portion",
+  "municipality",
+  "province",
+];
 
 function cleanSearchText(value: string | number | null | undefined): string | undefined {
   if (value === null || value === undefined) return undefined;
@@ -126,6 +141,7 @@ export function buildSavedParcelMapSearch(
   if (isOfficialParcelId(cleanedParcelId)) {
     const search: SavedParcelMapSearch = {
       officialParcel: cleanedParcelId,
+      fromSaved: "1",
     };
     const lng = parseBoundedNumber(hints.lng, -180, 180);
     const lat = parseBoundedNumber(hints.lat, -90, 90);
@@ -150,18 +166,22 @@ export function buildSavedParcelMapSearch(
 }
 
 export function parseOfficialParcelSearch(search: string): string | null {
-  return parseOfficialParcelReopenSearch(search)?.id ?? null;
+  const params = new URLSearchParams(search);
+  const officialParcel = cleanSearchText(params.get("officialParcel"));
+  return officialParcel && isOfficialParcelId(officialParcel) ? officialParcel : null;
 }
 
 export function parseOfficialParcelReopenSearch(
   search: string,
 ): OfficialParcelReopenRequest | null {
   const params = new URLSearchParams(search);
+  const fromSaved = params.get("fromSaved") === "1";
   const officialParcel = cleanSearchText(params.get("officialParcel"));
-  if (!officialParcel || !isOfficialParcelId(officialParcel)) return null;
+  if (!fromSaved || !officialParcel || !isOfficialParcelId(officialParcel)) return null;
 
   return {
     id: officialParcel,
+    fromSaved,
     title: cleanSearchText(params.get("title")),
     erf: cleanSearchText(params.get("erf")),
     portion: cleanSearchText(params.get("portion")),
@@ -173,11 +193,18 @@ export function parseOfficialParcelReopenSearch(
   };
 }
 
+export function clearSavedOfficialReopenSearch(search: string): string {
+  const params = new URLSearchParams(search);
+  for (const key of SAVED_OFFICIAL_REOPEN_SEARCH_KEYS) params.delete(key);
+  const next = params.toString();
+  return next ? `?${next}` : "";
+}
+
 export function shouldShowOfficialParcelReopenFallback(
   search: string,
   hasSelectedOfficial: boolean,
 ): boolean {
-  return Boolean(parseOfficialParcelSearch(search) && !hasSelectedOfficial);
+  return Boolean(parseOfficialParcelReopenSearch(search) && !hasSelectedOfficial);
 }
 
 export type OfficialFeatureLayer = "csg-parcels" | "kouga-zoning";
@@ -199,6 +226,17 @@ const CSG_CONTEXT_KEYS = [
 ];
 const KOUGA_OBJECT_ID_KEYS = ["OBJECTID", "ObjectID", "objectid", "FID", "fid", "ID", "id"];
 
+export interface OfficialFeatureIdentity {
+  layer: OfficialFeatureLayer;
+  lpi?: string | null;
+  parcelKey?: string | null;
+  erfNumber?: string | null;
+  portion?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+  objectId?: string | null;
+}
+
 function firstPropertyValue(
   properties: Record<string, unknown> | null | undefined,
   keys: string[],
@@ -207,6 +245,17 @@ function firstPropertyValue(
   for (const key of keys) {
     const value = properties[key];
     if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value as string | number;
+    }
+  }
+  const normalizedKeys = new Set(keys.map((key) => key.toLowerCase()));
+  for (const [key, value] of Object.entries(properties)) {
+    if (
+      normalizedKeys.has(key.toLowerCase()) &&
+      value !== null &&
+      value !== undefined &&
+      String(value).trim() !== ""
+    ) {
       return value as string | number;
     }
   }
@@ -232,7 +281,7 @@ function contextMatchesRequestedPlace(
 ): boolean {
   if (!properties) return false;
   const contextParts = CSG_CONTEXT_KEYS.flatMap((key) => {
-    const value = properties[key];
+    const value = firstPropertyValue(properties, [key]);
     return value === null || value === undefined ? [] : [String(value)];
   });
   const context = contextParts
@@ -250,6 +299,22 @@ function contextMatchesRequestedPlace(
   return provinceOk && municipalityOk;
 }
 
+export function extractOfficialFeatureIdentity(
+  layer: OfficialFeatureLayer,
+  properties: Record<string, unknown> | null | undefined,
+): OfficialFeatureIdentity {
+  return {
+    layer,
+    lpi: normalizedPropertyValue(properties, CSG_LPI_KEYS),
+    parcelKey: normalizedPropertyValue(properties, CSG_PARCEL_KEY_KEYS),
+    erfNumber: normalizedPropertyValue(properties, CSG_ERF_KEYS),
+    portion: normalizedPropertyValue(properties, CSG_PORTION_KEYS),
+    municipality: normalizedPropertyValue(properties, ["MUNICIPALITY", "MUNIC_NAME", "MAJ_REGION"]),
+    province: normalizedPropertyValue(properties, ["PROVINCE", "PROV_NAME"]),
+    objectId: normalizedPropertyValue(properties, KOUGA_OBJECT_ID_KEYS),
+  };
+}
+
 export function officialFeatureMatchesSavedParcelId(
   officialParcelId: string | null | undefined,
   layer: OfficialFeatureLayer,
@@ -257,15 +322,14 @@ export function officialFeatureMatchesSavedParcelId(
 ): boolean {
   if (!officialParcelId || !isOfficialParcelId(officialParcelId)) return false;
   const normalizedId = officialParcelId.trim().toLowerCase();
+  const identity = extractOfficialFeatureIdentity(layer, properties);
 
   if (layer === "csg-parcels") {
-    const lpi = normalizedPropertyValue(properties, CSG_LPI_KEYS);
     const lpiTail = normalizedTail(normalizedId, "csg:lpi:");
-    if (lpiTail) return lpi === lpiTail;
+    if (lpiTail) return identity.lpi === lpiTail;
 
-    const parcelKey = normalizedPropertyValue(properties, CSG_PARCEL_KEY_KEYS);
     const parcelKeyTail = normalizedTail(normalizedId, "csg:parcel-key:");
-    if (parcelKeyTail) return parcelKey === parcelKeyTail;
+    if (parcelKeyTail) return identity.parcelKey === parcelKeyTail;
 
     if (normalizedId.startsWith("csg:erf:")) {
       const [, , requestedProvince, requestedMunicipality, requestedErf, requestedPortion] =
@@ -273,11 +337,9 @@ export function officialFeatureMatchesSavedParcelId(
       if (!requestedProvince || !requestedMunicipality || !requestedErf || !requestedPortion) {
         return false;
       }
-      const erf = normalizedPropertyValue(properties, CSG_ERF_KEYS);
-      const portion = normalizedPropertyValue(properties, CSG_PORTION_KEYS) ?? "0";
       return (
-        erf === requestedErf &&
-        portion === requestedPortion &&
+        identity.erfNumber === requestedErf &&
+        (identity.portion ?? "0") === requestedPortion &&
         contextMatchesRequestedPlace(properties, requestedProvince, requestedMunicipality)
       );
     }
@@ -287,8 +349,7 @@ export function officialFeatureMatchesSavedParcelId(
     const [, requestedLayer, requestedObjectId] = normalizedId.split(":");
     if (!requestedLayer || !requestedObjectId) return false;
     const layerOk = normalizeParcelIdPart(layer) === requestedLayer;
-    const objectId = normalizedPropertyValue(properties, KOUGA_OBJECT_ID_KEYS);
-    return layerOk && objectId === requestedObjectId;
+    return layerOk && identity.objectId === requestedObjectId;
   }
 
   return false;
