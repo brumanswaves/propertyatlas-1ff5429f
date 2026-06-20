@@ -6,6 +6,7 @@ import {
   isDemoParcelId,
   isOfficialParcelId,
   normalizeParcelIdPart,
+  parseOfficialParcelReopenSearch,
   parseOfficialParcelSearch,
   shouldShowOfficialParcelReopenFallback,
 } from "../officialParcelId";
@@ -82,11 +83,65 @@ describe("official parcel ids", () => {
     });
   });
 
+  it("adds saved official parcel location and identity hints when available", () => {
+    expect(
+      buildSavedParcelMapSearch("csg:lpi:c03400140000096200000", {
+        title: "Erf 962 Harbour Road",
+        erf: 962,
+        portion: 0,
+        municipality: "Kouga",
+        province: "Eastern Cape",
+        lng: "24.830123",
+        lat: "-34.168988",
+        zoom: 17,
+      }),
+    ).toEqual({
+      officialParcel: "csg:lpi:c03400140000096200000",
+      title: "Erf 962 Harbour Road",
+      erf: "962",
+      portion: "0",
+      municipality: "Kouga",
+      province: "Eastern Cape",
+      lng: "24.830123",
+      lat: "-34.168988",
+      zoom: "17",
+    });
+  });
+
+  it("does not add invalid official parcel coordinates", () => {
+    expect(
+      buildSavedParcelMapSearch("csg:lpi:c03400140000096200000", {
+        lng: "999",
+        lat: "-34.168988",
+      }),
+    ).toEqual({
+      officialParcel: "csg:lpi:c03400140000096200000",
+    });
+  });
+
   it("parses official parcel reopen query params only for official ids", () => {
     expect(parseOfficialParcelSearch("?officialParcel=csg:lpi:c03400140000096200000")).toBe(
       "csg:lpi:c03400140000096200000",
     );
     expect(parseOfficialParcelSearch("?officialParcel=parcel-123")).toBeNull();
+  });
+
+  it("parses saved official parcel reopen metadata", () => {
+    expect(
+      parseOfficialParcelReopenSearch(
+        "?officialParcel=csg:lpi:c03400140000096200000&title=Erf+962&erf=962&portion=0&municipality=Kouga&province=Eastern+Cape&lng=24.830123&lat=-34.168988&zoom=17",
+      ),
+    ).toEqual({
+      id: "csg:lpi:c03400140000096200000",
+      title: "Erf 962",
+      erf: "962",
+      portion: "0",
+      municipality: "Kouga",
+      province: "Eastern Cape",
+      lng: 24.830123,
+      lat: -34.168988,
+      zoom: 17,
+    });
   });
 
   it("shows unresolved official reopen fallback without fabricating a selection", () => {

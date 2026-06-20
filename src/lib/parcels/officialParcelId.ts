@@ -65,18 +65,111 @@ export function isOfficialParcelId(id: string | null | undefined): boolean {
   return /^(csg|kouga|manual|official):/.test(id.trim().toLowerCase());
 }
 
-export function buildSavedParcelMapSearch(parcelId: string | null | undefined): {
+export interface SavedOfficialParcelSearchHints {
+  title?: string | null;
+  erf?: string | number | null;
+  portion?: string | number | null;
+  municipality?: string | null;
+  province?: string | null;
+  lng?: string | number | null;
+  lat?: string | number | null;
+  zoom?: string | number | null;
+}
+
+export interface OfficialParcelReopenRequest {
+  id: string;
+  title?: string;
+  erf?: string;
+  portion?: string;
+  municipality?: string;
+  province?: string;
+  lng?: number;
+  lat?: number;
+  zoom?: number;
+}
+
+export interface SavedParcelMapSearch {
   parcel?: string;
   officialParcel?: string;
-} {
+  title?: string;
+  erf?: string;
+  portion?: string;
+  municipality?: string;
+  province?: string;
+  lng?: string;
+  lat?: string;
+  zoom?: string;
+}
+
+function cleanSearchText(value: string | number | null | undefined): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const text = String(value).trim();
+  return text || undefined;
+}
+
+function parseBoundedNumber(
+  value: string | number | null | undefined,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : undefined;
+}
+
+export function buildSavedParcelMapSearch(
+  parcelId: string | null | undefined,
+  hints: SavedOfficialParcelSearchHints = {},
+): SavedParcelMapSearch {
   if (isDemoParcelId(parcelId)) return { parcel: parcelId.trim() };
-  if (isOfficialParcelId(parcelId)) return { officialParcel: parcelId.trim() };
+  if (isOfficialParcelId(parcelId)) {
+    const search: SavedParcelMapSearch = {
+      officialParcel: parcelId.trim(),
+    };
+    const lng = parseBoundedNumber(hints.lng, -180, 180);
+    const lat = parseBoundedNumber(hints.lat, -90, 90);
+    if (lng !== undefined && lat !== undefined) {
+      search.lng = String(lng);
+      search.lat = String(lat);
+      search.zoom = String(parseBoundedNumber(hints.zoom, 1, 22) ?? 17);
+    }
+    const title = cleanSearchText(hints.title);
+    const erf = cleanSearchText(hints.erf);
+    const portion = cleanSearchText(hints.portion);
+    const municipality = cleanSearchText(hints.municipality);
+    const province = cleanSearchText(hints.province);
+    if (title) search.title = title;
+    if (erf) search.erf = erf;
+    if (portion) search.portion = portion;
+    if (municipality) search.municipality = municipality;
+    if (province) search.province = province;
+    return search;
+  }
   return {};
 }
 
 export function parseOfficialParcelSearch(search: string): string | null {
-  const officialParcel = new URLSearchParams(search).get("officialParcel");
-  return isOfficialParcelId(officialParcel) ? officialParcel : null;
+  return parseOfficialParcelReopenSearch(search)?.id ?? null;
+}
+
+export function parseOfficialParcelReopenSearch(
+  search: string,
+): OfficialParcelReopenRequest | null {
+  const params = new URLSearchParams(search);
+  const officialParcel = params.get("officialParcel");
+  if (!isOfficialParcelId(officialParcel)) return null;
+
+  return {
+    id: officialParcel,
+    title: cleanSearchText(params.get("title")),
+    erf: cleanSearchText(params.get("erf")),
+    portion: cleanSearchText(params.get("portion")),
+    municipality: cleanSearchText(params.get("municipality")),
+    province: cleanSearchText(params.get("province")),
+    lng: parseBoundedNumber(params.get("lng"), -180, 180),
+    lat: parseBoundedNumber(params.get("lat"), -90, 90),
+    zoom: parseBoundedNumber(params.get("zoom"), 1, 22),
+  };
 }
 
 export function shouldShowOfficialParcelReopenFallback(

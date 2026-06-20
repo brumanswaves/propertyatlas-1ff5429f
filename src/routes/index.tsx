@@ -20,7 +20,10 @@ import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { parseOfficialParcelSearch } from "@/lib/parcels/officialParcelId";
+import {
+  parseOfficialParcelReopenSearch,
+  type OfficialParcelReopenRequest,
+} from "@/lib/parcels/officialParcelId";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,7 +50,8 @@ export const Route = createFileRoute("/")({
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
-  const [requestedOfficialParcelId, setRequestedOfficialParcelId] = useState<string | null>(null);
+  const [requestedOfficialParcel, setRequestedOfficialParcel] =
+    useState<OfficialParcelReopenRequest | null>(null);
   const [hintDismissed, setHintDismissed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
@@ -67,7 +71,7 @@ function AtlasHome() {
     const search = window.location.search;
     const parcel = new URLSearchParams(search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
-    setRequestedOfficialParcelId(parseOfficialParcelSearch(search));
+    setRequestedOfficialParcel(parseOfficialParcelReopenSearch(search));
   }, []);
   function dismissHint() {
     setHintDismissed(true);
@@ -94,12 +98,22 @@ function AtlasHome() {
     setSelectedOfficial(sel);
     if (sel) {
       setSelectedId(null);
-      setRequestedOfficialParcelId(null);
+      setRequestedOfficialParcel(null);
     }
   }, []);
 
   const selected = selectedId ? (getProperty(selectedId) ?? null) : null;
-  const showOfficialReopenFallback = Boolean(requestedOfficialParcelId && !selectedOfficial);
+  const showOfficialReopenFallback = Boolean(requestedOfficialParcel && !selectedOfficial);
+  const officialReopenTarget = useMemo(() => {
+    if (requestedOfficialParcel?.lng === undefined || requestedOfficialParcel.lat === undefined) {
+      return null;
+    }
+    return {
+      lng: requestedOfficialParcel.lng,
+      lat: requestedOfficialParcel.lat,
+      zoom: requestedOfficialParcel.zoom ?? 17,
+    };
+  }, [requestedOfficialParcel]);
 
   const filterFn = useMemo(() => {
     return (p: Property) => {
@@ -131,6 +145,7 @@ function AtlasHome() {
         showTestGeometry={showTestGeometry}
         onSelectOfficial={handleOfficialSelect}
         onOfficialStatus={setOfficialStatus}
+        officialReopenTarget={officialReopenTarget}
       />
       <MapLegend layers={layers} />
       <TopNav />
@@ -202,15 +217,34 @@ function AtlasHome() {
         )}
 
       {showOfficialReopenFallback && (
-        <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 text-center shadow-panel backdrop-blur">
-          <p className="text-sm font-semibold text-foreground">
-            Open the map and search/click this parcel again.
+        <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 shadow-panel backdrop-blur">
+          <p className="text-sm font-semibold text-foreground">Saved official parcel</p>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            {officialReopenTarget
+              ? "We centered the map on the saved parcel area. Click the official parcel outline to reopen the live public-data dossier."
+              : "Open the map and click the official parcel outline to reopen the live public-data dossier."}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Exact official parcel reopen requires provider-side lookup.
-          </p>
-          <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground">
-            {requestedOfficialParcelId}
+          <div className="mt-3 space-y-1 rounded-xl bg-muted/60 p-3 text-[11px]">
+            {requestedOfficialParcel?.title && (
+              <div className="font-semibold text-foreground">{requestedOfficialParcel.title}</div>
+            )}
+            <div className="flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
+              {requestedOfficialParcel?.erf && <span>Erf {requestedOfficialParcel.erf}</span>}
+              {requestedOfficialParcel?.portion && (
+                <span>Portion {requestedOfficialParcel.portion}</span>
+              )}
+              {requestedOfficialParcel?.municipality && (
+                <span>{requestedOfficialParcel.municipality}</span>
+              )}
+              {requestedOfficialParcel?.province && <span>{requestedOfficialParcel.province}</span>}
+            </div>
+            <div className="break-all font-mono text-[10px] text-muted-foreground">
+              {requestedOfficialParcel?.id}
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+            Exact automatic reopen requires provider-side parcel lookup. No geometry has been
+            fabricated.
           </p>
         </div>
       )}

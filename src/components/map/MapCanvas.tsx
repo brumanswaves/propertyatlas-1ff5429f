@@ -10,7 +10,11 @@ import {
   type Property,
 } from "@/data/properties";
 import { AlertTriangle } from "lucide-react";
-import { loadOfficialPublicLayer, testStaticGeoJson, type PublicDataResult } from "@/lib/providers/publicDataClient";
+import {
+  loadOfficialPublicLayer,
+  testStaticGeoJson,
+  type PublicDataResult,
+} from "@/lib/providers/publicDataClient";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
@@ -45,8 +49,24 @@ export interface OfficialFeatureSelection {
 }
 
 export interface OfficialLayerStatus {
-  csg: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
-  kouga: { state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed"; count: number; message?: string; source?: string };
+  csg: {
+    state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed";
+    count: number;
+    message?: string;
+    source?: string;
+  };
+  kouga: {
+    state: "off" | "loading" | "loaded" | "empty" | "imported" | "test" | "failed";
+    count: number;
+    message?: string;
+    source?: string;
+  };
+}
+
+export interface OfficialReopenTarget {
+  lng: number;
+  lat: number;
+  zoom: number;
 }
 
 interface Props {
@@ -58,6 +78,7 @@ interface Props {
   showTestGeometry?: boolean;
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
   onOfficialStatus?: (s: OfficialLayerStatus) => void;
+  officialReopenTarget?: OfficialReopenTarget | null;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -85,7 +106,17 @@ function webglSupported(): boolean {
   }
 }
 
-export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, showTestGeometry = false, onSelectOfficial, onOfficialStatus }: Props) {
+export function MapCanvas({
+  selectedId,
+  onSelect,
+  filterFn,
+  layers,
+  mapStyle,
+  showTestGeometry = false,
+  onSelectOfficial,
+  onOfficialStatus,
+  officialReopenTarget,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -97,10 +128,7 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
   const [retryKey, setRetryKey] = useState(0);
   const [layerMessages, setLayerMessages] = useState<{ csg?: string; kouga?: string }>({});
 
-  const filtered = useMemo(
-    () => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES),
-    [filterFn],
-  );
+  const filtered = useMemo(() => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES), [filterFn]);
   const filteredIds = useMemo(() => new Set(filtered.map((p) => p.id)), [filtered]);
 
   // Init map
@@ -129,12 +157,23 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       });
     } catch (err) {
       console.error("[PropertyAtlas] Map failed to initialize", err);
-      setMapError("The map engine failed to start on this device. Tap Retry, or try reloading the page.");
+      setMapError(
+        "The map engine failed to start on this device. Tap Retry, or try reloading the page.",
+      );
       return;
     }
 
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }), "bottom-right");
-    map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), "bottom-right");
+    map.addControl(
+      new mapboxgl.NavigationControl({ visualizePitch: true, showCompass: true }),
+      "bottom-right",
+    );
+    map.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+      }),
+      "bottom-right",
+    );
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
     map.on("load", () => {
       console.log("[PropertyAtlas] Map loaded");
@@ -149,7 +188,9 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
     const canvas = map.getCanvas();
     const onContextLost = () => {
       console.warn("[PropertyAtlas] WebGL context lost — recreating map");
-      setMapError("The map's graphics context was interrupted (this can happen on mobile). Tap Retry to reload it.");
+      setMapError(
+        "The map's graphics context was interrupted (this can happen on mobile). Tap Retry to reload it.",
+      );
     };
     canvas.addEventListener("webglcontextlost", onContextLost);
 
@@ -189,12 +230,19 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       // Guard on the LAYER (style switches can preserve sources but drop layers).
       if (map.getLayer("parcels-fill")) return;
       if (!map.getSource("parcels")) {
-        map.addSource("parcels", { type: "geojson", data: propertiesToGeoJSON(PROPERTIES), promoteId: "id" });
+        map.addSource("parcels", {
+          type: "geojson",
+          data: propertiesToGeoJSON(PROPERTIES),
+          promoteId: "id",
+        });
       }
       if (!map.getSource("parcel-centroids")) {
-        map.addSource("parcel-centroids", { type: "geojson", data: propertiesToCentroidGeoJSON(PROPERTIES), promoteId: "id" });
+        map.addSource("parcel-centroids", {
+          type: "geojson",
+          data: propertiesToCentroidGeoJSON(PROPERTIES),
+          promoteId: "id",
+        });
       }
-
 
       // ===== Parcel fill — zoom-reveal: subtle at low zoom, vivid at high zoom =====
       map.addLayer({
@@ -204,32 +252,49 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         paint: {
           "fill-color": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], C_GOLD,
-            ["boolean", ["feature-state", "hover"], false], C_GOLD,
-            ["boolean", ["feature-state", "filtered"], true], C_TEAL,
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            ["boolean", ["feature-state", "hover"], false],
+            C_GOLD,
+            ["boolean", ["feature-state", "filtered"], true],
+            C_TEAL,
             "rgba(120,120,120,0.2)",
           ],
           "fill-opacity": [
-            "interpolate", ["linear"], ["zoom"],
-            11, [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            11,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 0.75,
-              ["boolean", ["feature-state", "hover"], false], 0.55,
-              ["boolean", ["feature-state", "filtered"], true], 0.25,
+              ["boolean", ["feature-state", "selected"], false],
+              0.75,
+              ["boolean", ["feature-state", "hover"], false],
+              0.55,
+              ["boolean", ["feature-state", "filtered"], true],
+              0.25,
               0.1,
             ],
-            15, [
+            15,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 0.75,
-              ["boolean", ["feature-state", "hover"], false], 0.55,
-              ["boolean", ["feature-state", "filtered"], true], 0.42,
+              ["boolean", ["feature-state", "selected"], false],
+              0.75,
+              ["boolean", ["feature-state", "hover"], false],
+              0.55,
+              ["boolean", ["feature-state", "filtered"], true],
+              0.42,
               0.1,
             ],
-            17, [
+            17,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 0.75,
-              ["boolean", ["feature-state", "hover"], false], 0.55,
-              ["boolean", ["feature-state", "filtered"], true], 0.52,
+              ["boolean", ["feature-state", "selected"], false],
+              0.75,
+              ["boolean", ["feature-state", "hover"], false],
+              0.55,
+              ["boolean", ["feature-state", "filtered"], true],
+              0.52,
               0.1,
             ],
           ],
@@ -244,38 +309,47 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         paint: {
           "line-color": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], C_GOLD,
-            ["boolean", ["feature-state", "hover"], false], C_GOLD,
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            ["boolean", ["feature-state", "hover"], false],
+            C_GOLD,
             "#ffffff",
           ],
           "line-width": [
-            "interpolate", ["linear"], ["zoom"],
-            11, [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            11,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 1.5,
-              ["boolean", ["feature-state", "hover"], false], 1.2,
+              ["boolean", ["feature-state", "selected"], false],
+              1.5,
+              ["boolean", ["feature-state", "hover"], false],
+              1.2,
               0.3,
             ],
-            15, [
+            15,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 3,
-              ["boolean", ["feature-state", "hover"], false], 2.4,
+              ["boolean", ["feature-state", "selected"], false],
+              3,
+              ["boolean", ["feature-state", "hover"], false],
+              2.4,
               1.4,
             ],
-            17, [
+            17,
+            [
               "case",
-              ["boolean", ["feature-state", "selected"], false], 4.5,
-              ["boolean", ["feature-state", "hover"], false], 3.5,
+              ["boolean", ["feature-state", "selected"], false],
+              4.5,
+              ["boolean", ["feature-state", "hover"], false],
+              3.5,
               2.2,
             ],
           ],
-          "line-opacity": [
-            "interpolate", ["linear"], ["zoom"],
-            11, 0.35, 13, 0.6, 15, 0.9, 17, 1,
-          ],
+          "line-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.35, 13, 0.6, 15, 0.9, 17, 1],
         },
       });
-
 
       // Hover-glow halo (wide soft line, only visible when hovered)
       map.addLayer({
@@ -286,20 +360,23 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
           "line-color": C_GOLD,
           "line-width": [
             "case",
-            ["boolean", ["feature-state", "hover"], false], 10,
-            ["boolean", ["feature-state", "selected"], false], 14,
+            ["boolean", ["feature-state", "hover"], false],
+            10,
+            ["boolean", ["feature-state", "selected"], false],
+            14,
             0,
           ],
           "line-opacity": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], 0.35,
-            ["boolean", ["feature-state", "hover"], false], 0.25,
+            ["boolean", ["feature-state", "selected"], false],
+            0.35,
+            ["boolean", ["feature-state", "hover"], false],
+            0.25,
             0,
           ],
           "line-blur": 6,
         },
       });
-
 
       // ===== Zoning (colored by type) =====
       map.addLayer({
@@ -309,12 +386,18 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         layout: { visibility: "none" },
         paint: {
           "fill-color": [
-            "match", ["get", "type"],
-            "Residential", TYPE_COLOR.Residential,
-            "Commercial", TYPE_COLOR.Commercial,
-            "Industrial", TYPE_COLOR.Industrial,
-            "Agricultural", TYPE_COLOR.Agricultural,
-            "Vacant Land", TYPE_COLOR["Vacant Land"],
+            "match",
+            ["get", "type"],
+            "Residential",
+            TYPE_COLOR.Residential,
+            "Commercial",
+            TYPE_COLOR.Commercial,
+            "Industrial",
+            TYPE_COLOR.Industrial,
+            "Agricultural",
+            TYPE_COLOR.Agricultural,
+            "Vacant Land",
+            TYPE_COLOR["Vacant Land"],
             "#9ca3af",
           ],
           "fill-opacity": 0.55,
@@ -323,7 +406,10 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
 
       // ===== Official public data: CSG cadastral parcels (server-proxied) =====
       if (!map.getSource("csg-parcels")) {
-        map.addSource("csg-parcels", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("csg-parcels", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
       }
       map.addLayer({
         id: "csg-parcels-fill",
@@ -344,12 +430,20 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         type: "line",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "line-color": C_SEAGREEN, "line-width": 3.5, "line-opacity": 0.45, "line-blur": 2 },
+        paint: {
+          "line-color": C_SEAGREEN,
+          "line-width": 3.5,
+          "line-opacity": 0.45,
+          "line-blur": 2,
+        },
       });
 
       // ===== Official public data: Kouga zoning polygons (server-proxied) =====
       if (!map.getSource("kouga-zoning")) {
-        map.addSource("kouga-zoning", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addSource("kouga-zoning", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
       }
       map.addLayer({
         id: "kouga-zoning-fill",
@@ -367,7 +461,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       });
 
       // ===== HEATMAPS — dramatic, palette-driven, story-telling =====
-      const HEATS: { id: string; weightProp: string; weightRange: [number, number]; ramp: Array<[number, string]> }[] = [
+      const HEATS: {
+        id: string;
+        weightProp: string;
+        weightRange: [number, number];
+        ramp: Array<[number, string]>;
+      }[] = [
         {
           id: "heat-investor",
           weightProp: "investor",
@@ -455,36 +554,44 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       ];
 
       for (const h of HEATS) {
-        const colorExpr: any[] = ["interpolate", ["linear"], ["heatmap-density"]];
+        const colorExpr: mapboxgl.Expression = ["interpolate", ["linear"], ["heatmap-density"]];
         for (const [stop, color] of h.ramp) {
           colorExpr.push(stop, color);
         }
-        map.addLayer({
-          id: h.id,
-          type: "heatmap",
-          source: "parcel-centroids",
-          layout: { visibility: "none" },
-          paint: {
-            "heatmap-weight": [
-              "interpolate", ["linear"], ["get", h.weightProp],
-              h.weightRange[0], 0,
-              h.weightRange[1], 1,
-            ],
-            "heatmap-intensity": [
-              "interpolate", ["linear"], ["zoom"],
-              11, 1, 16, 2.6,
-            ],
-            "heatmap-radius": [
-              "interpolate", ["linear"], ["zoom"],
-              11, 22, 14, 38, 16, 60,
-            ],
-            "heatmap-opacity": [
-              "interpolate", ["linear"], ["zoom"],
-              11, 0.75, 15, 0.7, 16.5, 0.45,
-            ],
-            "heatmap-color": colorExpr as any,
+        map.addLayer(
+          {
+            id: h.id,
+            type: "heatmap",
+            source: "parcel-centroids",
+            layout: { visibility: "none" },
+            paint: {
+              "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", h.weightProp],
+                h.weightRange[0],
+                0,
+                h.weightRange[1],
+                1,
+              ],
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 11, 1, 16, 2.6],
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 11, 22, 14, 38, 16, 60],
+              "heatmap-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                11,
+                0.75,
+                15,
+                0.7,
+                16.5,
+                0.45,
+              ],
+              "heatmap-color": colorExpr,
+            },
           },
-        }, map.getLayer("parcels-fill") ? "parcels-fill" : undefined);
+          map.getLayer("parcels-fill") ? "parcels-fill" : undefined,
+        );
       }
 
       // ===== Interactivity =====
@@ -512,7 +619,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
             </div>
           </div>`;
         if (!popupRef.current) {
-          popupRef.current = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: "pa-popup" });
+          popupRef.current = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            offset: 12,
+            className: "pa-popup",
+          });
         }
         popupRef.current.setLngLat(e.lngLat).setHTML(html).addTo(map);
       });
@@ -551,7 +663,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getLayer || !map.getLayer("parcels-fill")) return;
-    const set = (id: string, v: boolean) => map.getLayer(id) && map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
+    const set = (id: string, v: boolean) =>
+      map.getLayer(id) && map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
     set("parcels-fill", layers.parcels);
     set("parcels-outline", layers.parcels);
     set("parcels-hover-glow", layers.parcels);
@@ -588,7 +701,11 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
     const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
 
-    function setOfficialSource(id: "csg-parcels" | "kouga-zoning", result: PublicDataResult, testOnly = false) {
+    function setOfficialSource(
+      id: "csg-parcels" | "kouga-zoning",
+      result: PublicDataResult,
+      testOnly = false,
+    ) {
       const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
       if (!src) return false;
       src.setData({
@@ -616,24 +733,45 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       onOfficialStatus?.({ csg: { ...status.csg }, kouga: { ...status.kouga } });
     }
 
-    async function loadLayer(layer: "csg-parcels" | "kouga-zoning", bbox: [number, number, number, number]) {
+    async function loadLayer(
+      layer: "csg-parcels" | "kouga-zoning",
+      bbox: [number, number, number, number],
+    ) {
       const label = layer === "csg-parcels" ? "CSG" : "Kouga";
       const result = await loadOfficialPublicLayer(layer, bbox, 400);
       const storageKey = layer === "csg-parcels" ? "pa.arcgis.csg.meta" : "pa.arcgis.kouga.meta";
-      try { window.localStorage.setItem(storageKey, JSON.stringify(result)); } catch {}
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(result));
+      } catch {
+        // Ignore storage failures; layer status still updates from the live result.
+      }
       if (cancelled) return { status: null, message: undefined as string | undefined };
 
       if (result.features.length > 0) {
         const sourceUpdated = setOfficialSource(layer, result, false);
-        try { window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated)); } catch {}
+        try {
+          window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated));
+        } catch {
+          // Ignore storage failures; source update state is only diagnostic.
+        }
         if (result.fallbackUsed === "static") {
           return {
-            status: { state: "imported" as const, count: result.features.length, source: result.sourceLabel, message: `Imported ${label} GeoJSON loaded: ${result.features.length}` },
+            status: {
+              state: "imported" as const,
+              count: result.features.length,
+              source: result.sourceLabel,
+              message: `Imported ${label} GeoJSON loaded: ${result.features.length}`,
+            },
             message: `Imported ${label} GeoJSON loaded: ${result.features.length}`,
           };
         }
         return {
-          status: { state: "loaded" as const, count: result.features.length, source: result.sourceLabel, message: `${label}${layer === "csg-parcels" ? " parcels" : " zoning"} loaded: ${result.features.length}` },
+          status: {
+            state: "loaded" as const,
+            count: result.features.length,
+            source: result.sourceLabel,
+            message: `${label}${layer === "csg-parcels" ? " parcels" : " zoning"} loaded: ${result.features.length}`,
+          },
           message: undefined,
         };
       }
@@ -643,9 +781,18 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         const test = await testStaticGeoJson(layer, true);
         if (!cancelled && test.features.length > 0) {
           const sourceUpdated = setOfficialSource(layer, test, true);
-          try { window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated)); } catch {}
+          try {
+            window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated));
+          } catch {
+            // Ignore storage failures; source update state is only diagnostic.
+          }
           return {
-            status: { state: "test" as const, count: test.features.length, source: "TEST GEOMETRY ONLY", message: "Test geometry loaded, not official data" },
+            status: {
+              state: "test" as const,
+              count: test.features.length,
+              source: "TEST GEOMETRY ONLY",
+              message: "Test geometry loaded, not official data",
+            },
             message: "Test geometry loaded, not official data",
           };
         }
@@ -653,17 +800,28 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
 
       clearOfficialSource(layer);
       if (anySuccessfulZero) {
-        const msg = layer === "csg-parcels" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view";
+        const msg =
+          layer === "csg-parcels"
+            ? "No CSG parcels in this view"
+            : "Kouga zoning unavailable for this view";
         return { status: { state: "empty" as const, count: 0, message: msg }, message: msg };
       }
       const msg = layer === "csg-parcels" ? "CSG unavailable" : "Kouga unavailable";
-      return { status: { state: "failed" as const, count: 0, message: result.message ?? msg }, message: msg };
+      return {
+        status: { state: "failed" as const, count: 0, message: result.message ?? msg },
+        message: msg,
+      };
     }
 
     const load = async () => {
       const b = map.getBounds();
       if (!b) return;
-      const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const bbox: [number, number, number, number] = [
+        b.getWest(),
+        b.getSouth(),
+        b.getEast(),
+        b.getNorth(),
+      ];
       const zoom = map.getZoom();
       const nextMsgs: { csg?: string; kouga?: string } = {};
       const status: OfficialLayerStatus = {
@@ -678,13 +836,15 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
           status.csg = { state: "empty", count: 0, message: nextMsgs.csg };
           clearOfficialSource("csg-parcels");
         } else {
-          requests.push(loadLayer("csg-parcels", bbox).then((r) => {
-            if (!r.status) return;
-            status.csg = r.status;
-            nextMsgs.csg = r.message;
-            setLayerMessages((m) => ({ ...m, csg: r.message }));
-            publishStatus(status);
-          }));
+          requests.push(
+            loadLayer("csg-parcels", bbox).then((r) => {
+              if (!r.status) return;
+              status.csg = r.status;
+              nextMsgs.csg = r.message;
+              setLayerMessages((m) => ({ ...m, csg: r.message }));
+              publishStatus(status);
+            }),
+          );
         }
       }
       if (layers.kougaZoning) {
@@ -693,27 +853,36 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
           status.kouga = { state: "empty", count: 0, message: nextMsgs.kouga };
           clearOfficialSource("kouga-zoning");
         } else {
-          requests.push(loadLayer("kouga-zoning", bbox).then((r) => {
-            if (!r.status) return;
-            status.kouga = r.status;
-            nextMsgs.kouga = r.message;
-            setLayerMessages((m) => ({ ...m, kouga: r.message }));
-            publishStatus(status);
-          }));
+          requests.push(
+            loadLayer("kouga-zoning", bbox).then((r) => {
+              if (!r.status) return;
+              status.kouga = r.status;
+              nextMsgs.kouga = r.message;
+              setLayerMessages((m) => ({ ...m, kouga: r.message }));
+              publishStatus(status);
+            }),
+          );
         }
       }
-      setLayerMessages((m) => ({ csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined, kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined }));
+      setLayerMessages((m) => ({
+        csg: layers.csgParcels ? (nextMsgs.csg ?? m.csg) : undefined,
+        kouga: layers.kougaZoning ? (nextMsgs.kouga ?? m.kouga) : undefined,
+      }));
       publishStatus(status);
       await Promise.all(requests);
       if (!cancelled) publishStatus(status);
     };
 
     void load();
-    const onMove = () => { void load(); };
+    const onMove = () => {
+      void load();
+    };
     map.on("moveend", onMove);
 
     // Click handlers for public-data layers — surface the official feature in the panel.
-    const onCsgClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    const onCsgClick = (
+      e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] },
+    ) => {
       const f = e.features?.[0];
       if (!f || !onSelectOfficial) return;
       onSelect(null); // ensure demo panel closes
@@ -724,7 +893,9 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         lngLat: [e.lngLat.lng, e.lngLat.lat],
       });
     };
-    const onKougaClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    const onKougaClick = (
+      e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] },
+    ) => {
       const f = e.features?.[0];
       if (!f || !onSelectOfficial) return;
       onSelect(null);
@@ -735,8 +906,12 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
         lngLat: [e.lngLat.lng, e.lngLat.lat],
       });
     };
-    const onCsgEnter = () => { map.getCanvas().style.cursor = "pointer"; };
-    const onCsgLeave = () => { map.getCanvas().style.cursor = ""; };
+    const onCsgEnter = () => {
+      map.getCanvas().style.cursor = "pointer";
+    };
+    const onCsgLeave = () => {
+      map.getCanvas().style.cursor = "";
+    };
     map.on("click", "csg-parcels-fill", onCsgClick);
     map.on("click", "kouga-zoning-fill", onKougaClick);
     map.on("mouseenter", "csg-parcels-fill", onCsgEnter);
@@ -754,7 +929,16 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
       map.off("mouseenter", "kouga-zoning-fill", onCsgEnter);
       map.off("mouseleave", "kouga-zoning-fill", onCsgLeave);
     };
-  }, [layers.csgParcels, layers.kougaZoning, ready, styleVersion, showTestGeometry, onOfficialStatus, onSelect, onSelectOfficial]);
+  }, [
+    layers.csgParcels,
+    layers.kougaZoning,
+    ready,
+    styleVersion,
+    showTestGeometry,
+    onOfficialStatus,
+    onSelect,
+    onSelectOfficial,
+  ]);
 
   // Update filtered feature state
   useEffect(() => {
@@ -799,6 +983,22 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
     prevSelectedRef.current = selectedId;
   }, [selectedId, styleVersion, ready]);
 
+  const prevOfficialReopenTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !officialReopenTarget) return;
+    const key = `${officialReopenTarget.lng}:${officialReopenTarget.lat}:${officialReopenTarget.zoom}`;
+    if (prevOfficialReopenTargetRef.current === key) return;
+    prevOfficialReopenTargetRef.current = key;
+    map.flyTo({
+      center: [officialReopenTarget.lng, officialReopenTarget.lat],
+      zoom: officialReopenTarget.zoom,
+      duration: 1100,
+      essential: true,
+      curve: 1.35,
+    });
+  }, [officialReopenTarget, ready]);
+
   if (!TOKEN) {
     return (
       <div className="absolute inset-0 grid place-items-center bg-gradient-ocean text-white">
@@ -806,7 +1006,8 @@ export function MapCanvas({ selectedId, onSelect, filterFn, layers, mapStyle, sh
           <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-accent" />
           <div className="text-base font-semibold">Mapbox token missing</div>
           <p className="mt-1 text-sm text-white/70">
-            Set <code className="rounded bg-white/10 px-1">VITE_MAPBOX_ACCESS_TOKEN</code> in your environment to load the map.
+            Set <code className="rounded bg-white/10 px-1">VITE_MAPBOX_ACCESS_TOKEN</code> in your
+            environment to load the map.
           </p>
         </div>
       </div>

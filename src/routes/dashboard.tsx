@@ -364,6 +364,8 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
   const municipality =
     stringField(row.user_data, "municipality") ?? stringField(row.user_data, "majorRegion");
   const province = stringField(row.user_data, "province");
+  const lat = stringField(row.user_data, "lat") ?? stringField(row.user_data, "latitude");
+  const lng = stringField(row.user_data, "lng") ?? stringField(row.user_data, "longitude");
   const status = row.research_status || row.status;
   const tags = row.tags ?? [];
 
@@ -423,7 +425,18 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
       ) : (
         <Link
           to="/"
-          search={buildSavedParcelMapSearch(row.parcel_id) as never}
+          search={
+            buildSavedParcelMapSearch(row.parcel_id, {
+              title,
+              erf,
+              portion,
+              municipality,
+              province,
+              lat,
+              lng,
+              zoom: 17,
+            }) as never
+          }
           className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
         >
           Open map and search this parcel <ChevronRight className="h-3 w-3" />
