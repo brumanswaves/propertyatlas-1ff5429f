@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   X,
-  ExternalLink,
   ShieldCheck,
   FileText,
-  Lock,
   MapPin,
   Sparkles,
   Link2,
@@ -14,15 +12,10 @@ import {
   Bookmark,
   BookmarkCheck,
   Share2,
-  Pencil,
-  Save as SaveIcon,
   ChevronRight,
 } from "lucide-react";
 import type { OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
-import { buildResearchQuery, type ResearchContext } from "@/lib/research/links";
-import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
-import { fetchKougaEnrichment, type KougaEnrichment } from "@/lib/providers/kougaEnrichment";
 import {
   buildOfficialParcelId,
   type NormalizedOfficialParcel,
@@ -30,19 +23,12 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
-import { openExternalUrl } from "@/lib/external";
 import { CSG_VIEWER_URL, KOUGA_PUBLIC_MAP_URL } from "@/lib/external-urls";
 import { toast } from "sonner";
 
 interface Props {
   selection: OfficialFeatureSelection;
   onClose: () => void;
-}
-
-const NA = "Not available from public source";
-function fmt(v: unknown): string {
-  if (v === null || v === undefined || v === "") return NA;
-  return String(v);
 }
 
 function normalizeCsg(p: Record<string, unknown>) {
@@ -73,7 +59,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 }
 
 type Tab = "overview" | "research" | "listings" | "reports" | "notes" | "calculators";
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <Sparkles className="h-3.5 w-3.5" /> },
   { id: "research", label: "Research", icon: <Link2 className="h-3.5 w-3.5" /> },
   { id: "listings", label: "Listings", icon: <TagIcon className="h-3.5 w-3.5" /> },
@@ -224,14 +210,6 @@ function resolveOfficialParcelLocation(opts: {
   };
 }
 
-const CONFIDENCE_TONE: Record<AddressSource, string> = {
-  "Official Address": "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
-  "User Entered": "bg-sky-500/20 text-sky-800 dark:text-sky-300",
-  "Approximate Address": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  "Nearest Road Only": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  "Erf Only": "bg-slate-500/15 text-slate-700 dark:text-slate-300",
-};
-
 function userAddrKey(parcelId: string) {
   return `pa.userAddress.${parcelId}`;
 }
@@ -243,15 +221,6 @@ function readUserAddress(parcelId: string): UserAddress | null {
     return null;
   }
 }
-function writeUserAddress(parcelId: string, a: UserAddress | null) {
-  try {
-    if (!a) window.localStorage.removeItem(userAddrKey(parcelId));
-    else window.localStorage.setItem(userAddrKey(parcelId), JSON.stringify(a));
-  } catch {
-    // localStorage may be unavailable in private or restricted browser contexts.
-  }
-}
-
 export function OfficialParcelPanel({ selection, onClose }: Props) {
   const { user } = useAuth();
   const isCsg = selection.layer === "csg-parcels";
@@ -287,9 +256,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<UserAddress>({});
-
   useEffect(() => {
     setTab("overview");
     scrollRef.current?.scrollTo({ top: 0 });
@@ -300,8 +266,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   useEffect(() => {
     const a = readUserAddress(parcelId);
     setUserAddr(a);
-    setDraft(a ?? {});
-    setEditing(false);
   }, [parcelId]);
 
   useEffect(() => {
@@ -329,18 +293,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       .then(({ data }) => setSaved(!!data));
   }, [user, parcelId]);
 
-  const [enrichment, setEnrichment] = useState<KougaEnrichment | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    setEnrichment(null);
-    fetchKougaEnrichment(csg?.longitude ?? lng, csg?.latitude ?? lat).then((e) => {
-      if (!cancelled) setEnrichment(e);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [parcelId, lng, lat, csg?.longitude, csg?.latitude]);
-
   const resolved = useMemo(
     () =>
       resolveOfficialParcelLocation({
@@ -357,43 +309,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     [csg, geo, userAddr, lat, lng],
   );
 
-  const sgDoc = useMemo(
-    () =>
-      buildSgDocumentUrl({
-        lpi: csg?.lpi,
-        parcelKey: csg?.parcelKey,
-        erfNumber: csg?.erfNumber,
-        portion: csg?.portion,
-        province: csg?.province,
-        majorRegion: csg?.majorRegion,
-        minorRegion: csg?.minorRegion,
-      }),
-    [csg],
-  );
-
   const sourceUrl = isCsg ? CSG_VIEWER_URL : KOUGA_PUBLIC_MAP_URL;
-  const sourceLabel = isCsg ? "Open CSG Property Viewer" : "Open Kouga Public Map";
-
-  const researchCtx: ResearchContext = {
-    address:
-      userAddr && (userAddr.streetNumber || userAddr.streetName)
-        ? [userAddr.streetNumber, userAddr.streetName].filter(Boolean).join(" ")
-        : undefined,
-    area: csg?.minorRegion,
-    town: userAddr?.town ?? csg?.majorRegion,
-    suburb: userAddr?.suburb ?? csg?.minorRegion,
-    municipality: "Kouga Local Municipality",
-    province: userAddr?.province ?? csg?.province ?? "Eastern Cape",
-    erf: csg?.erfNumber != null ? String(csg.erfNumber) : undefined,
-    nearestRoad: resolved.nearestRoad ?? resolved.streetName,
-    lng: csg?.longitude ?? lng,
-    lat: csg?.latitude ?? lat,
-  };
-  // Ensure researchQuery aligns with our resolver
-  void buildResearchQuery(researchCtx);
-
-  const summary =
-    resolved.displayTitle + (resolved.displaySubtitle ? ` — ${resolved.displaySubtitle}` : "");
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
@@ -461,22 +377,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     isCsg,
     userAddr,
   ]);
-
-  function saveDraft() {
-    const cleaned: UserAddress = {
-      streetNumber: draft.streetNumber?.trim() || undefined,
-      streetName: draft.streetName?.trim() || undefined,
-      suburb: draft.suburb?.trim() || undefined,
-      town: draft.town?.trim() || undefined,
-      province: draft.province?.trim() || undefined,
-      notes: draft.notes?.trim() || undefined,
-    };
-    const isEmpty = !Object.values(cleaned).some(Boolean);
-    writeUserAddress(parcelId, isEmpty ? null : cleaned);
-    setUserAddr(isEmpty ? null : cleaned);
-    setEditing(false);
-    toast.success(isEmpty ? "Cleared address override" : "Address saved");
-  }
 
   async function toggleSave() {
     if (!user) {
@@ -642,322 +542,5 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         </div>
       </div>
     </aside>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
-      <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-function EnrichmentBlock({
-  label,
-  state,
-  hint,
-  configHint,
-}: {
-  label: string;
-  state: import("@/lib/providers/kougaEnrichment").KougaEnrichmentState | undefined;
-  hint: string;
-  configHint?: string;
-}) {
-  if (!state) {
-    return (
-      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
-        <span className="font-semibold text-foreground">{label}:</span> checking Kouga public GIS…
-      </div>
-    );
-  }
-  if (state.status === "not-configured") {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
-        <span className="font-semibold text-foreground">{label}:</span>{" "}
-        {configHint ?? "Endpoint not configured."}
-      </div>
-    );
-  }
-  if (state.status === "not-found") {
-    return (
-      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
-        <span className="font-semibold text-foreground">{label}:</span> {hint}
-      </div>
-    );
-  }
-  if (state.status === "error") {
-    return (
-      <div className="rounded-lg border border-border bg-background px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-        <span className="font-semibold">{label}:</span> Could not reach Kouga GIS ({state.message}).
-      </div>
-    );
-  }
-  const attrs = state.record.attributes;
-  const entries = Object.entries(attrs).filter(
-    ([, v]) => v !== null && v !== undefined && v !== "",
-  );
-  return (
-    <div className="rounded-lg border border-border bg-background">
-      <div className="border-b border-border px-3 py-1.5 text-[11px] font-semibold text-foreground">
-        {label}
-      </div>
-      <dl className="divide-y divide-border text-[11.5px]">
-        {entries.slice(0, 8).map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
-            <dt className="truncate text-muted-foreground">{k}</dt>
-            <dd className="max-w-[60%] truncate text-right font-medium text-foreground">
-              {String(v)}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-function SnapshotTile({
-  label,
-  value,
-  sub,
-  action,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-background px-2.5 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </div>
-        {action}
-      </div>
-      <div className="mt-0.5 truncate text-[13px] font-semibold text-foreground">{value}</div>
-      {sub && <div className="truncate text-[10px] text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}
-
-type KougaState = import("@/lib/providers/kougaEnrichment").KougaEnrichmentState;
-
-function pickField(attrs: Record<string, unknown>, keys: string[]): unknown {
-  for (const k of keys) {
-    const v = attrs[k];
-    if (v !== undefined && v !== null && v !== "") return v;
-  }
-  return undefined;
-}
-
-function fmtDate(v: unknown): string | undefined {
-  if (v === undefined || v === null || v === "") return undefined;
-  if (typeof v === "number") {
-    try {
-      return new Date(v).toISOString().slice(0, 10);
-    } catch {
-      return String(v);
-    }
-  }
-  return String(v);
-}
-
-function fmtNum(v: unknown, digits = 2): string | undefined {
-  if (v === undefined || v === null || v === "") return undefined;
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return undefined;
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
-}
-
-function KougaSectionFrame({
-  title,
-  source,
-  matchMethod,
-  children,
-}: {
-  title: string;
-  source: string;
-  matchMethod?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </div>
-        {matchMethod && (
-          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
-            Match: {matchMethod}
-          </span>
-        )}
-      </div>
-      {children}
-      <p className="mt-1.5 text-[10px] text-muted-foreground">Source: {source}</p>
-    </section>
-  );
-}
-
-function StateMessage({
-  title,
-  body,
-  tone = "muted",
-}: {
-  title: string;
-  body: string;
-  tone?: "muted" | "amber";
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-lg border border-border bg-background px-3 py-2 text-[11px]",
-        tone === "amber" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground",
-      )}
-    >
-      <span className="font-semibold text-foreground">{title}:</span> {body}
-    </div>
-  );
-}
-
-function KougaPropertyPanel({ state }: { state: KougaState | undefined }) {
-  const title = "Kouga Public Mapping Record";
-  const source = "Kouga Public Mapping Viewer";
-  if (!state)
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga property record" body="checking Kouga public GIS…" />
-      </KougaSectionFrame>
-    );
-  if (state.status === "not-configured")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga property record" body="Endpoint not configured." />
-      </KougaSectionFrame>
-    );
-  if (state.status === "not-found")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga property record" body="No match for this point." />
-      </KougaSectionFrame>
-    );
-  if (state.status === "error")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage
-          title="Kouga property record"
-          body="Unavailable — try again later."
-          tone="amber"
-        />
-      </KougaSectionFrame>
-    );
-
-  const a = state.record.attributes;
-  const geomArea = pickField(a, ["GEOM_AREA", "Shape__Area", "SHAPE_Area", "SHAPE__Area"]);
-  const geomAreaNum = typeof geomArea === "number" ? geomArea : Number(geomArea);
-  const rows: Array<[string, string | undefined]> = [
-    ["Parcel number", fmt(pickField(a, ["PARCEL_NO", "PARCEL_NUMBER", "PARCELNO"]))],
-    ["21 Digit Code / LPI", fmt(pickField(a, ["LPI", "LPI_CODE", "ID", "TWENTYONE_DIGIT"]))],
-    ["Province", fmt(pickField(a, ["PROVINCE", "PROV_NAME"]))],
-    ["Major region", fmt(pickField(a, ["MAJ_REGION", "MAJOR_REGION"]))],
-    ["Major code", fmt(pickField(a, ["MAJ_CODE", "MAJOR_CODE"]))],
-    ["Minor region", fmt(pickField(a, ["MIN_REGION", "MINOR_REGION"]))],
-    ["Minor code", fmt(pickField(a, ["MIN_CODE", "MINOR_CODE", "REG_DIV"]))],
-    ["Geometry area", Number.isFinite(geomAreaNum) ? fmtNum(geomAreaNum, 2) : undefined],
-    ["Area m²", Number.isFinite(geomAreaNum) ? fmtNum(geomAreaNum, 0) : undefined],
-    ["Area ha", Number.isFinite(geomAreaNum) ? fmtNum(geomAreaNum / 10000, 4) : undefined],
-    [
-      "Modified date",
-      fmtDate(pickField(a, ["MODIFIED", "LAST_EDITED_DATE", "EditDate", "last_edited_date"])),
-    ],
-  ].filter(([, v]) => v !== undefined && v !== NA) as Array<[string, string]>;
-
-  return (
-    <KougaSectionFrame title={title} source={source} matchMethod={state.record.matchMethod}>
-      <div className="rounded-lg border border-border bg-background">
-        <dl className="divide-y divide-border text-[11.5px]">
-          {rows.length === 0 && (
-            <div className="px-3 py-2 text-[11px] text-muted-foreground">
-              Match returned, but no labeled fields recognised.
-            </div>
-          )}
-          {rows.map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
-              <dt className="truncate text-muted-foreground">{k}</dt>
-              <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </KougaSectionFrame>
-  );
-}
-
-function KougaWardPanel({ state }: { state: KougaState | undefined }) {
-  const title = "Municipal Context";
-  const source = "Kouga Public Mapping Viewer";
-  if (!state)
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga ward record" body="checking Kouga public GIS…" />
-      </KougaSectionFrame>
-    );
-  if (state.status === "not-configured")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga ward record" body="Endpoint not configured." />
-      </KougaSectionFrame>
-    );
-  if (state.status === "not-found")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage title="Kouga ward record" body="No match for this point." />
-      </KougaSectionFrame>
-    );
-  if (state.status === "error")
-    return (
-      <KougaSectionFrame title={title} source={source}>
-        <StateMessage
-          title="Kouga ward record"
-          body="Unavailable — try again later."
-          tone="amber"
-        />
-      </KougaSectionFrame>
-    );
-
-  const a = state.record.attributes;
-  const rows: Array<[string, string | undefined]> = [
-    ["Province", fmt(pickField(a, ["PROVINCE", "PROV_NAME"]))],
-    ["Municipality", fmt(pickField(a, ["MUNICIPALITY", "LM_NAME", "MUNIC_NAME", "MUN_NAME"]))],
-    ["Ward number", fmt(pickField(a, ["WARD_NO", "WARDNO", "WARD", "WARDNUMBER", "WARD_NUMBER"]))],
-    ["Ward ID", fmt(pickField(a, ["WARD_ID", "WARDID"]))],
-    ["Voting station", fmt(pickField(a, ["VOTING_STN", "VDNAME", "VOTING_STATION"]))],
-    [
-      "Updated date",
-      fmtDate(pickField(a, ["UPDATED", "EditDate", "LAST_EDITED_DATE", "last_edited_date"])),
-    ],
-    ["Shape area", fmtNum(pickField(a, ["Shape__Area", "SHAPE_Area"]), 2)],
-    ["Shape length", fmtNum(pickField(a, ["Shape__Length", "SHAPE_Length"]), 2)],
-  ].filter(([, v]) => v !== undefined && v !== NA) as Array<[string, string]>;
-
-  return (
-    <KougaSectionFrame title={title} source={source} matchMethod={state.record.matchMethod}>
-      <div className="rounded-lg border border-border bg-background">
-        <dl className="divide-y divide-border text-[11.5px]">
-          {rows.length === 0 && (
-            <div className="px-3 py-2 text-[11px] text-muted-foreground">
-              Match returned, but no labeled fields recognised.
-            </div>
-          )}
-          {rows.map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
-              <dt className="truncate text-muted-foreground">{k}</dt>
-              <dd className="max-w-[60%] truncate text-right font-medium text-foreground">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </KougaSectionFrame>
   );
 }

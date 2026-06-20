@@ -666,7 +666,7 @@ function ListingSearchStrip({ sources }: { sources: ResearchSource[] }) {
           ) : (
             <a
               key={source.id}
-              href={source.url}
+              href={source.url ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"

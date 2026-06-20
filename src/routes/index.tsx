@@ -7,6 +7,7 @@ import {
   type MapStyleId,
   type OfficialFeatureSelection,
   type OfficialLayerStatus,
+  type OfficialReopenResolutionStatus,
 } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -52,6 +53,8 @@ function AtlasHome() {
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
   const [requestedOfficialParcel, setRequestedOfficialParcel] =
     useState<OfficialParcelReopenRequest | null>(null);
+  const [officialReopenStatus, setOfficialReopenStatus] =
+    useState<OfficialReopenResolutionStatus>("idle");
   const [hintDismissed, setHintDismissed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
@@ -71,7 +74,9 @@ function AtlasHome() {
     const search = window.location.search;
     const parcel = new URLSearchParams(search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
-    setRequestedOfficialParcel(parseOfficialParcelReopenSearch(search));
+    const officialRequest = parseOfficialParcelReopenSearch(search);
+    setRequestedOfficialParcel(officialRequest);
+    setOfficialReopenStatus(officialRequest ? "searching" : "idle");
   }, []);
   function dismissHint() {
     setHintDismissed(true);
@@ -99,11 +104,12 @@ function AtlasHome() {
     if (sel) {
       setSelectedId(null);
       setRequestedOfficialParcel(null);
+      setOfficialReopenStatus("resolved");
     }
   }, []);
 
   const selected = selectedId ? (getProperty(selectedId) ?? null) : null;
-  const showOfficialReopenFallback = Boolean(requestedOfficialParcel && !selectedOfficial);
+  const showOfficialReopenCard = Boolean(requestedOfficialParcel && !selectedOfficial);
   const officialReopenTarget = useMemo(() => {
     if (requestedOfficialParcel?.lng === undefined || requestedOfficialParcel.lat === undefined) {
       return null;
@@ -146,6 +152,8 @@ function AtlasHome() {
         onSelectOfficial={handleOfficialSelect}
         onOfficialStatus={setOfficialStatus}
         officialReopenTarget={officialReopenTarget}
+        officialReopenRequest={requestedOfficialParcel}
+        onOfficialReopenStatus={setOfficialReopenStatus}
       />
       <MapLegend layers={layers} />
       <TopNav />
@@ -216,13 +224,19 @@ function AtlasHome() {
           </div>
         )}
 
-      {showOfficialReopenFallback && (
+      {showOfficialReopenCard && (
         <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,42rem)] -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-4 shadow-panel backdrop-blur">
-          <p className="text-sm font-semibold text-foreground">Saved official parcel</p>
+          <p className="text-sm font-semibold text-foreground">
+            {officialReopenStatus === "not-found"
+              ? "Saved official parcel"
+              : "Finding saved official parcel…"}
+          </p>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            {officialReopenTarget
-              ? "We centered the map on the saved parcel area. Click the official parcel outline to reopen the live public-data dossier."
-              : "Open the map and click the official parcel outline to reopen the live public-data dossier."}
+            {officialReopenStatus === "not-found"
+              ? officialReopenTarget
+                ? "We centered the map on the saved parcel area, but could not automatically match the official outline. Click the official parcel outline to reopen the live public-data dossier."
+                : "Open the map and click the official parcel outline to reopen the live public-data dossier."
+              : "We centered the map on the saved parcel area and are matching the official parcel outline."}
           </p>
           <div className="mt-3 space-y-1 rounded-xl bg-muted/60 p-3 text-[11px]">
             {requestedOfficialParcel?.title && (
@@ -243,13 +257,14 @@ function AtlasHome() {
             </div>
           </div>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-            Exact automatic reopen requires provider-side parcel lookup. No geometry has been
-            fabricated.
+            {officialReopenStatus === "not-found"
+              ? "No geometry has been fabricated. Exact automatic reopen requires a matching official feature to be visible in the map."
+              : "No geometry has been fabricated. The live dossier will open if a matching official feature is found."}
           </p>
         </div>
       )}
 
-      {!selected && !selectedOfficial && !hintDismissed && (
+      {!requestedOfficialParcel && !selected && !selectedOfficial && !hintDismissed && (
         <div className="pointer-events-auto absolute inset-x-4 bottom-20 z-20 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-12 md:left-1/2 md:right-auto md:-translate-x-1/2">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-brand text-white">
             <MousePointerClick className="h-4 w-4" />

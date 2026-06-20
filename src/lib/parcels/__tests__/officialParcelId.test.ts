@@ -6,6 +6,7 @@ import {
   isDemoParcelId,
   isOfficialParcelId,
   normalizeParcelIdPart,
+  officialFeatureMatchesSavedParcelId,
   parseOfficialParcelReopenSearch,
   parseOfficialParcelSearch,
   shouldShowOfficialParcelReopenFallback,
@@ -157,5 +158,67 @@ describe("official parcel ids", () => {
         true,
       ),
     ).toBe(false);
+  });
+
+  it("matches rendered CSG features by exact LPI for saved official reopen", () => {
+    expect(
+      officialFeatureMatchesSavedParcelId("csg:lpi:c03400140000096200000", "csg-parcels", {
+        ID: "C03400140000096200000",
+        PRCL_KEY: "E108C034001400000962000000",
+        PARCEL_NO: "962",
+        PORTION: "0",
+      }),
+    ).toBe(true);
+  });
+
+  it("matches rendered CSG features by exact parcel key for saved official reopen", () => {
+    expect(
+      officialFeatureMatchesSavedParcelId(
+        "csg:parcel-key:e108c034001400000962000000",
+        "csg-parcels",
+        {
+          ID: "C03400140000096200000",
+          PRCL_KEY: "E108C034001400000962000000",
+          PARCEL_NO: "962",
+          PORTION: "0",
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it("matches rendered CSG erf ids only when location context also matches", () => {
+    expect(
+      officialFeatureMatchesSavedParcelId(
+        "csg:erf:eastern-cape:kouga-local-municipality:962:0",
+        "csg-parcels",
+        {
+          PARCEL_NO: "962",
+          PORTION: "0",
+          PROVINCE: "Eastern Cape",
+          MUNICIPALITY: "Kouga Local Municipality",
+        },
+      ),
+    ).toBe(true);
+
+    expect(
+      officialFeatureMatchesSavedParcelId(
+        "csg:erf:eastern-cape:kouga-local-municipality:962:0",
+        "csg-parcels",
+        {
+          PARCEL_NO: "962",
+          PORTION: "0",
+          PROVINCE: "Western Cape",
+          MUNICIPALITY: "City of Cape Town",
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it("matches rendered Kouga zoning features by layer and object id", () => {
+    expect(
+      officialFeatureMatchesSavedParcelId("kouga:kouga-zoning:42", "kouga-zoning", {
+        OBJECTID: 42,
+      }),
+    ).toBe(true);
   });
 });

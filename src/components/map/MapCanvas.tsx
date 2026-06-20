@@ -11,6 +11,12 @@ import {
 } from "@/data/properties";
 import { AlertTriangle } from "lucide-react";
 import {
+  isOfficialPointParcelId,
+  officialFeatureMatchesSavedParcelId,
+  type OfficialFeatureLayer,
+  type OfficialParcelReopenRequest,
+} from "@/lib/parcels/officialParcelId";
+import {
   loadOfficialPublicLayer,
   testStaticGeoJson,
   type PublicDataResult,
@@ -69,6 +75,8 @@ export interface OfficialReopenTarget {
   zoom: number;
 }
 
+export type OfficialReopenResolutionStatus = "idle" | "searching" | "resolved" | "not-found";
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -79,6 +87,8 @@ interface Props {
   onSelectOfficial?: (sel: OfficialFeatureSelection | null) => void;
   onOfficialStatus?: (s: OfficialLayerStatus) => void;
   officialReopenTarget?: OfficialReopenTarget | null;
+  officialReopenRequest?: OfficialParcelReopenRequest | null;
+  onOfficialReopenStatus?: (status: OfficialReopenResolutionStatus) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -96,6 +106,158 @@ const C_GOLD = "#d4842a";
 const C_SAND = "#faf5ec";
 const C_SEAGREEN = "#3ea58f";
 const C_CORAL = "#e08562";
+
+const OFFICIAL_REOPEN_FILL_LAYERS: Record<OfficialFeatureLayer, string> = {
+  "csg-parcels": "csg-parcels-fill",
+  "kouga-zoning": "kouga-zoning-fill",
+};
+
+function officialLayerSource(layer: OfficialFeatureLayer): OfficialFeatureSelection["source"] {
+  return layer === "csg-parcels" ? "Chief Surveyor-General" : "Kouga Municipality GIS";
+}
+
+function layersForOfficialReopenRequest(
+  request: OfficialParcelReopenRequest,
+): OfficialFeatureLayer[] {
+  const id = request.id.trim().toLowerCase();
+  if (id.startsWith("csg:")) return ["csg-parcels"];
+  if (id.startsWith("kouga:")) return ["kouga-zoning"];
+  return ["csg-parcels", "kouga-zoning"];
+}
+
+function featureSelectionPoint(
+  feature: mapboxgl.MapboxGeoJSONFeature,
+  request: OfficialParcelReopenRequest,
+  map: mapboxgl.Map,
+): [number, number] {
+  if (request.lng !== undefined && request.lat !== undefined) return [request.lng, request.lat];
+  const center = map.getCenter();
+  const geometry = feature.geometry;
+  if (!geometry || geometry.type === "GeometryCollection") return [center.lng, center.lat];
+
+  const coordinates: [number, number][] = [];
+  const collect = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    if (
+      value.length >= 2 &&
+      typeof value[0] === "number" &&
+      typeof value[1] === "number" &&
+      Number.isFinite(value[0]) &&
+      Number.isFinite(value[1])
+    ) {
+      coordinates.push([value[0], value[1]]);
+      return;
+    }
+    for (const item of value) collect(item);
+  };
+  collect((geometry as { coordinates?: unknown }).coordinates);
+  if (coordinates.length === 0) return [center.lng, center.lat];
+
+  let west = coordinates[0][0];
+  let east = coordinates[0][0];
+  let south = coordinates[0][1];
+  let north = coordinates[0][1];
+  for (const [lng, lat] of coordinates) {
+    west = Math.min(west, lng);
+    east = Math.max(east, lng);
+    south = Math.min(south, lat);
+    north = Math.max(north, lat);
+  }
+  return [(west + east) / 2, (south + north) / 2];
+}
+
+function dedupeRenderedFeatures(
+  features: mapboxgl.MapboxGeoJSONFeature[],
+): mapboxgl.MapboxGeoJSONFeature[] {
+  const seen = new Set<string>();
+  return features.filter((feature, index) => {
+    const layer = feature.layer?.id ?? "unknown";
+    const id = feature.id ?? feature.properties?.OBJECTID ?? feature.properties?.ID ?? index;
+    const key = `${layer}:${String(id)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function queryOfficialReopenFeatures(
+  map: mapboxgl.Map,
+  request: OfficialParcelReopenRequest,
+): Array<{ feature: mapboxgl.MapboxGeoJSONFeature; layer: OfficialFeatureLayer }> {
+  const candidateLayers = layersForOfficialReopenRequest(request).filter((layer) =>
+    map.getLayer(OFFICIAL_REOPEN_FILL_LAYERS[layer]),
+  );
+  if (candidateLayers.length === 0) return [];
+
+  const renderedLayerIds = candidateLayers.map((layer) => OFFICIAL_REOPEN_FILL_LAYERS[layer]);
+  const mapFeature = (feature: mapboxgl.MapboxGeoJSONFeature) => {
+    const matchedLayer = candidateLayers.find(
+      (layer) => OFFICIAL_REOPEN_FILL_LAYERS[layer] === feature.layer?.id,
+    );
+    return matchedLayer ? { feature, layer: matchedLayer } : null;
+  };
+  const toLayeredFeatures = (features: mapboxgl.MapboxGeoJSONFeature[]) =>
+    dedupeRenderedFeatures(features)
+      .map(mapFeature)
+      .filter(
+        (item): item is { feature: mapboxgl.MapboxGeoJSONFeature; layer: OfficialFeatureLayer } =>
+          Boolean(item),
+      );
+
+  const pointFeatures: Array<{
+    feature: mapboxgl.MapboxGeoJSONFeature;
+    layer: OfficialFeatureLayer;
+  }> = [];
+
+  if (request.lng !== undefined && request.lat !== undefined) {
+    const point = map.project([request.lng, request.lat]);
+    const radii = isOfficialPointParcelId(request.id) ? [6, 14] : [8, 24, 64, 120];
+    for (const radius of radii) {
+      const box: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+        [point.x - radius, point.y - radius],
+        [point.x + radius, point.y + radius],
+      ];
+      const features = toLayeredFeatures(
+        map.queryRenderedFeatures(box, { layers: renderedLayerIds }),
+      );
+      if (features.length > 0) {
+        pointFeatures.push(...features);
+        break;
+      }
+    }
+  }
+
+  if (isOfficialPointParcelId(request.id)) return pointFeatures;
+
+  const viewportFeatures = toLayeredFeatures(
+    map.queryRenderedFeatures({ layers: renderedLayerIds }),
+  );
+  const seen = new Set<string>();
+  return [...pointFeatures, ...viewportFeatures].filter(({ feature, layer }, index) => {
+    const id = feature.id ?? feature.properties?.OBJECTID ?? feature.properties?.ID ?? index;
+    const key = `${layer}:${String(id)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function findMatchingOfficialReopenFeature(
+  map: mapboxgl.Map,
+  request: OfficialParcelReopenRequest,
+): { feature: mapboxgl.MapboxGeoJSONFeature; layer: OfficialFeatureLayer } | null {
+  const candidates = queryOfficialReopenFeatures(map, request);
+  if (isOfficialPointParcelId(request.id)) return candidates[0] ?? null;
+  return (
+    candidates.find(({ feature, layer }) =>
+      officialFeatureMatchesSavedParcelId(
+        request.id,
+        layer,
+        (feature.properties ?? {}) as Record<string, unknown>,
+      ),
+    ) ?? null
+  );
+}
 
 function webglSupported(): boolean {
   try {
@@ -116,6 +278,8 @@ export function MapCanvas({
   onSelectOfficial,
   onOfficialStatus,
   officialReopenTarget,
+  officialReopenRequest,
+  onOfficialReopenStatus,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -998,6 +1162,83 @@ export function MapCanvas({
       curve: 1.35,
     });
   }, [officialReopenTarget, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !officialReopenRequest || !onSelectOfficial) {
+      if (!officialReopenRequest) onOfficialReopenStatus?.("idle");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+    const maxAttempts = 16;
+    const requestKey = [
+      officialReopenRequest.id,
+      officialReopenRequest.lng ?? "",
+      officialReopenRequest.lat ?? "",
+      officialReopenRequest.zoom ?? "",
+    ].join(":");
+
+    onOfficialReopenStatus?.("searching");
+
+    const schedule = (delay: number) => {
+      timer = window.setTimeout(resolve, delay);
+    };
+
+    const resolve = () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      if (!map.isStyleLoaded()) {
+        if (attempts < maxAttempts) schedule(450);
+        else onOfficialReopenStatus?.("not-found");
+        return;
+      }
+
+      const match = findMatchingOfficialReopenFeature(map, officialReopenRequest);
+      if (match) {
+        onSelect(null);
+        const lngLat = featureSelectionPoint(match.feature, officialReopenRequest, map);
+        onSelectOfficial({
+          source: officialLayerSource(match.layer),
+          layer: match.layer,
+          properties: (match.feature.properties ?? {}) as Record<string, unknown>,
+          lngLat,
+        });
+        onOfficialReopenStatus?.("resolved");
+        return;
+      }
+
+      if (attempts < maxAttempts) {
+        schedule(attempts < 4 ? 350 : 650);
+        return;
+      }
+
+      console.info("[PropertyAtlas] Saved official parcel could not be auto-resolved", {
+        request: requestKey,
+        attempts,
+      });
+      onOfficialReopenStatus?.("not-found");
+    };
+
+    schedule(350);
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    officialReopenRequest,
+    ready,
+    styleVersion,
+    layers.csgParcels,
+    layers.kougaZoning,
+    onOfficialReopenStatus,
+    onSelect,
+    onSelectOfficial,
+  ]);
 
   if (!TOKEN) {
     return (

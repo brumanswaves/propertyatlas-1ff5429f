@@ -121,10 +121,11 @@ export function buildSavedParcelMapSearch(
   parcelId: string | null | undefined,
   hints: SavedOfficialParcelSearchHints = {},
 ): SavedParcelMapSearch {
-  if (isDemoParcelId(parcelId)) return { parcel: parcelId.trim() };
-  if (isOfficialParcelId(parcelId)) {
+  const cleanedParcelId = cleanSearchText(parcelId);
+  if (isDemoParcelId(cleanedParcelId)) return { parcel: cleanedParcelId };
+  if (isOfficialParcelId(cleanedParcelId)) {
     const search: SavedParcelMapSearch = {
-      officialParcel: parcelId.trim(),
+      officialParcel: cleanedParcelId,
     };
     const lng = parseBoundedNumber(hints.lng, -180, 180);
     const lat = parseBoundedNumber(hints.lat, -90, 90);
@@ -156,8 +157,8 @@ export function parseOfficialParcelReopenSearch(
   search: string,
 ): OfficialParcelReopenRequest | null {
   const params = new URLSearchParams(search);
-  const officialParcel = params.get("officialParcel");
-  if (!isOfficialParcelId(officialParcel)) return null;
+  const officialParcel = cleanSearchText(params.get("officialParcel"));
+  if (!officialParcel || !isOfficialParcelId(officialParcel)) return null;
 
   return {
     id: officialParcel,
@@ -177,6 +178,124 @@ export function shouldShowOfficialParcelReopenFallback(
   hasSelectedOfficial: boolean,
 ): boolean {
   return Boolean(parseOfficialParcelSearch(search) && !hasSelectedOfficial);
+}
+
+export type OfficialFeatureLayer = "csg-parcels" | "kouga-zoning";
+
+const CSG_LPI_KEYS = ["ID", "LPI", "LPI_CODE", "TWENTYONE_DIGIT", "TWENTYONE_DIGIT_CODE"];
+const CSG_PARCEL_KEY_KEYS = ["PRCL_KEY", "PARCEL_KEY", "PRCLKEY"];
+const CSG_ERF_KEYS = ["PARCEL_NO", "TAG_VALUE", "ERF_NO", "ERF", "ERF_NUMBER"];
+const CSG_PORTION_KEYS = ["PORTION", "PORTION_NO", "PTN", "PTN_NO"];
+const CSG_CONTEXT_KEYS = [
+  "PROVINCE",
+  "PROV_NAME",
+  "MAJ_REGION",
+  "MAJOR_REGION",
+  "MIN_REGION",
+  "MINOR_REGION",
+  "MUNICIPALITY",
+  "MUNIC_NAME",
+  "propertyatlas_source",
+];
+const KOUGA_OBJECT_ID_KEYS = ["OBJECTID", "ObjectID", "objectid", "FID", "fid", "ID", "id"];
+
+function firstPropertyValue(
+  properties: Record<string, unknown> | null | undefined,
+  keys: string[],
+): string | number | null {
+  if (!properties) return null;
+  for (const key of keys) {
+    const value = properties[key];
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value as string | number;
+    }
+  }
+  return null;
+}
+
+function normalizedPropertyValue(
+  properties: Record<string, unknown> | null | undefined,
+  keys: string[],
+): string | null {
+  return normalizeParcelIdPart(firstPropertyValue(properties, keys));
+}
+
+function normalizedTail(id: string, prefix: string): string | null {
+  const normalized = id.trim().toLowerCase();
+  return normalized.startsWith(prefix) ? normalized.slice(prefix.length) : null;
+}
+
+function contextMatchesRequestedPlace(
+  properties: Record<string, unknown> | null | undefined,
+  requestedProvince: string,
+  requestedMunicipality: string,
+): boolean {
+  if (!properties) return false;
+  const contextParts = CSG_CONTEXT_KEYS.flatMap((key) => {
+    const value = properties[key];
+    return value === null || value === undefined ? [] : [String(value)];
+  });
+  const context = contextParts
+    .map((part) => normalizeParcelIdPart(part))
+    .filter(Boolean)
+    .join(" ");
+
+  if (!context) return false;
+
+  const provinceOk = context.includes(requestedProvince);
+  const municipalityOk =
+    context.includes(requestedMunicipality) ||
+    (requestedMunicipality.includes("kouga") && context.includes("kouga"));
+
+  return provinceOk && municipalityOk;
+}
+
+export function officialFeatureMatchesSavedParcelId(
+  officialParcelId: string | null | undefined,
+  layer: OfficialFeatureLayer,
+  properties: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!officialParcelId || !isOfficialParcelId(officialParcelId)) return false;
+  const normalizedId = officialParcelId.trim().toLowerCase();
+
+  if (layer === "csg-parcels") {
+    const lpi = normalizedPropertyValue(properties, CSG_LPI_KEYS);
+    const lpiTail = normalizedTail(normalizedId, "csg:lpi:");
+    if (lpiTail) return lpi === lpiTail;
+
+    const parcelKey = normalizedPropertyValue(properties, CSG_PARCEL_KEY_KEYS);
+    const parcelKeyTail = normalizedTail(normalizedId, "csg:parcel-key:");
+    if (parcelKeyTail) return parcelKey === parcelKeyTail;
+
+    if (normalizedId.startsWith("csg:erf:")) {
+      const [, , requestedProvince, requestedMunicipality, requestedErf, requestedPortion] =
+        normalizedId.split(":");
+      if (!requestedProvince || !requestedMunicipality || !requestedErf || !requestedPortion) {
+        return false;
+      }
+      const erf = normalizedPropertyValue(properties, CSG_ERF_KEYS);
+      const portion = normalizedPropertyValue(properties, CSG_PORTION_KEYS) ?? "0";
+      return (
+        erf === requestedErf &&
+        portion === requestedPortion &&
+        contextMatchesRequestedPlace(properties, requestedProvince, requestedMunicipality)
+      );
+    }
+  }
+
+  if (layer === "kouga-zoning" && normalizedId.startsWith("kouga:")) {
+    const [, requestedLayer, requestedObjectId] = normalizedId.split(":");
+    if (!requestedLayer || !requestedObjectId) return false;
+    const layerOk = normalizeParcelIdPart(layer) === requestedLayer;
+    const objectId = normalizedPropertyValue(properties, KOUGA_OBJECT_ID_KEYS);
+    return layerOk && objectId === requestedObjectId;
+  }
+
+  return false;
+}
+
+export function isOfficialPointParcelId(id: string | null | undefined): boolean {
+  return typeof id === "string" && id.trim().toLowerCase().startsWith("official:point:");
 }
 
 export function buildOfficialParcelId(input: OfficialParcelIdInput): string {
