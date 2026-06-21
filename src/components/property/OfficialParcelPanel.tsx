@@ -393,7 +393,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       toast.success("Removed from saved");
     } else {
       const userData = {
+        normalizedParcelId: parcelId,
         provider: csg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
+        sourceLayer: selection.layer,
         displayTitle: resolved.displayTitle,
         displaySubtitle: resolved.displaySubtitle,
         approximateAddress: resolved.approximateAddress ?? null,
@@ -404,7 +406,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         portion: csg?.portion ?? null,
         lpi: csg?.lpi ?? null,
         parcelKey: csg?.parcelKey ?? null,
+        municipality: "Kouga Local Municipality",
         province: csg?.province ?? null,
+        town: csg?.majorRegion ?? null,
         majorRegion: csg?.majorRegion ?? null,
         minorRegion: csg?.minorRegion ?? null,
         geometryArea: csg?.geometryArea ?? null,
@@ -412,6 +416,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         zoningType: (kouga?.zoningType as string | number | null) ?? null,
         lng: csg?.longitude ?? lng,
         lat: csg?.latitude ?? lat,
+        longitude: csg?.longitude ?? lng,
+        latitude: csg?.latitude ?? lat,
         addressSource: resolved.addressSource,
         addressConfidence: resolved.addressConfidence,
         researchQuery: resolved.researchQuery,

@@ -562,6 +562,25 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
+    const userData = {
+      normalizedParcelId: parcel.id,
+      provider: parcel.sourceLabel,
+      sourceLayer: parcel.layer ?? null,
+      displayTitle: parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Official parcel dossier",
+      erfNumber: parcel.erfNumber ?? null,
+      portion: parcel.portion ?? null,
+      lpi: parcel.lpi ?? null,
+      parcelKey: parcel.parcelKey ?? null,
+      municipality: parcel.municipality ?? null,
+      town: parcel.town ?? null,
+      province: parcel.province ?? null,
+      longitude: parcel.coordinates?.lng ?? null,
+      latitude: parcel.coordinates?.lat ?? null,
+      lng: parcel.coordinates?.lng ?? null,
+      lat: parcel.coordinates?.lat ?? null,
+      source: parcel.source,
+      fetchedAt: new Date().toISOString(),
+    };
 
     const { error } = await supabase.from("saved_properties").upsert(
       {
@@ -570,6 +589,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
         research_status: status,
         status,
         tags,
+        user_data: userData as unknown as Record<string, unknown> as never,
       },
       { onConflict: "user_id,parcel_id" },
     );

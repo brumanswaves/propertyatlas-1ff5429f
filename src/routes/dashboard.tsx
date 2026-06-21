@@ -364,7 +364,9 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
   const erf = stringField(row.user_data, "erfNumber") ?? stringField(row.user_data, "erf");
   const portion = stringField(row.user_data, "portion");
   const municipality =
-    stringField(row.user_data, "municipality") ?? stringField(row.user_data, "majorRegion");
+    stringField(row.user_data, "municipality") ??
+    stringField(row.user_data, "town") ??
+    stringField(row.user_data, "majorRegion");
   const province = stringField(row.user_data, "province");
   const lat = stringField(row.user_data, "lat") ?? stringField(row.user_data, "latitude");
   const lng = stringField(row.user_data, "lng") ?? stringField(row.user_data, "longitude");
@@ -436,7 +438,7 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
               province,
               lat,
               lng,
-              zoom: 17,
+              zoom: 18,
             }) as never
           }
           className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"

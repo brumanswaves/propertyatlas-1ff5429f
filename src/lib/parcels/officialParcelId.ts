@@ -148,7 +148,7 @@ export function buildSavedParcelMapSearch(
     if (lng !== undefined && lat !== undefined) {
       search.lng = String(lng);
       search.lat = String(lat);
-      search.zoom = String(parseBoundedNumber(hints.zoom, 1, 22) ?? 17);
+      search.zoom = String(parseBoundedNumber(hints.zoom, 1, 22) ?? 18);
     }
     const title = cleanSearchText(hints.title);
     const erf = cleanSearchText(hints.erf);

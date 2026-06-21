@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
@@ -299,6 +299,10 @@ export function MapCanvas({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const pulseMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const selectedOfficialFeatureRef = useRef<{
+    source: OfficialFeatureLayer;
+    id: string | number;
+  } | null>(null);
   const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
@@ -309,6 +313,38 @@ export function MapCanvas({
 
   const filtered = useMemo(() => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES), [filterFn]);
   const filteredIds = useMemo(() => new Set(filtered.map((p) => p.id)), [filtered]);
+
+  const clearOfficialSelectedFeature = useCallback((map: mapboxgl.Map) => {
+    const selected = selectedOfficialFeatureRef.current;
+    if (selected && map.getSource(selected.source)) {
+      map.setFeatureState({ source: selected.source, id: selected.id }, { selected: false });
+    }
+    selectedOfficialFeatureRef.current = null;
+  }, []);
+
+  const selectOfficialFeature = useCallback(
+    (
+      map: mapboxgl.Map,
+      feature: mapboxgl.MapboxGeoJSONFeature,
+      layer: OfficialFeatureLayer,
+      lngLat: [number, number],
+    ) => {
+      if (!onSelectOfficial) return;
+      clearOfficialSelectedFeature(map);
+      if (feature.id !== undefined && feature.id !== null && map.getSource(layer)) {
+        map.setFeatureState({ source: layer, id: feature.id }, { selected: true });
+        selectedOfficialFeatureRef.current = { source: layer, id: feature.id };
+      }
+      onSelect(null);
+      onSelectOfficial({
+        source: officialLayerSource(layer),
+        layer,
+        properties: (feature.properties ?? {}) as Record<string, unknown>,
+        lngLat,
+      });
+    },
+    [clearOfficialSelectedFeature, onSelect, onSelectOfficial],
+  );
 
   // Init map
   useEffect(() => {
@@ -588,6 +624,7 @@ export function MapCanvas({
         map.addSource("csg-parcels", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
+          generateId: true,
         });
       }
       map.addLayer({
@@ -595,14 +632,31 @@ export function MapCanvas({
         type: "fill",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "fill-color": C_SEAGREEN, "fill-opacity": 0.12 },
+        paint: {
+          "fill-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            C_SEAGREEN,
+          ],
+          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.38, 0.12],
+        },
       });
       map.addLayer({
         id: "csg-parcels-outline",
         type: "line",
         source: "csg-parcels",
         layout: { visibility: "none" },
-        paint: { "line-color": "#ffffff", "line-width": 1.6, "line-opacity": 0.95 },
+        paint: {
+          "line-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            "#ffffff",
+          ],
+          "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 4, 1.6],
+          "line-opacity": 0.95,
+        },
       });
       map.addLayer({
         id: "csg-parcels-outline-glow",
@@ -611,8 +665,8 @@ export function MapCanvas({
         layout: { visibility: "none" },
         paint: {
           "line-color": C_SEAGREEN,
-          "line-width": 3.5,
-          "line-opacity": 0.45,
+          "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 7, 3.5],
+          "line-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.75, 0.45],
           "line-blur": 2,
         },
       });
@@ -622,6 +676,7 @@ export function MapCanvas({
         map.addSource("kouga-zoning", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
+          generateId: true,
         });
       }
       map.addLayer({
@@ -629,14 +684,31 @@ export function MapCanvas({
         type: "fill",
         source: "kouga-zoning",
         layout: { visibility: "none" },
-        paint: { "fill-color": "#a78bfa", "fill-opacity": 0.35 },
+        paint: {
+          "fill-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            "#a78bfa",
+          ],
+          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.48, 0.35],
+        },
       });
       map.addLayer({
         id: "kouga-zoning-outline",
         type: "line",
         source: "kouga-zoning",
         layout: { visibility: "none" },
-        paint: { "line-color": "#7c3aed", "line-width": 0.8, "line-opacity": 0.7 },
+        paint: {
+          "line-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            C_GOLD,
+            "#7c3aed",
+          ],
+          "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 3.5, 0.8],
+          "line-opacity": 0.7,
+        },
       });
 
       // ===== HEATMAPS — dramatic, palette-driven, story-telling =====
@@ -1067,27 +1139,15 @@ export function MapCanvas({
       e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] },
     ) => {
       const f = e.features?.[0];
-      if (!f || !onSelectOfficial) return;
-      onSelect(null); // ensure demo panel closes
-      onSelectOfficial({
-        source: "Chief Surveyor-General",
-        layer: "csg-parcels",
-        properties: (f.properties ?? {}) as Record<string, unknown>,
-        lngLat: [e.lngLat.lng, e.lngLat.lat],
-      });
+      if (!f) return;
+      selectOfficialFeature(map, f, "csg-parcels", [e.lngLat.lng, e.lngLat.lat]);
     };
     const onKougaClick = (
       e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] },
     ) => {
       const f = e.features?.[0];
-      if (!f || !onSelectOfficial) return;
-      onSelect(null);
-      onSelectOfficial({
-        source: "Kouga Municipality GIS",
-        layer: "kouga-zoning",
-        properties: (f.properties ?? {}) as Record<string, unknown>,
-        lngLat: [e.lngLat.lng, e.lngLat.lat],
-      });
+      if (!f) return;
+      selectOfficialFeature(map, f, "kouga-zoning", [e.lngLat.lng, e.lngLat.lat]);
     };
     const onCsgEnter = () => {
       map.getCanvas().style.cursor = "pointer";
@@ -1119,8 +1179,7 @@ export function MapCanvas({
     styleVersion,
     showTestGeometry,
     onOfficialStatus,
-    onSelect,
-    onSelectOfficial,
+    selectOfficialFeature,
   ]);
 
   // Update filtered feature state
@@ -1141,6 +1200,7 @@ export function MapCanvas({
       map.setFeatureState({ source: "parcels", id: prevSelectedRef.current }, { selected: false });
     }
     if (selectedId) {
+      clearOfficialSelectedFeature(map);
       map.setFeatureState({ source: "parcels", id: selectedId }, { selected: true });
       const p = PROPERTIES.find((x) => x.id === selectedId);
       if (p) {
@@ -1164,7 +1224,7 @@ export function MapCanvas({
       pulseMarkerRef.current = null;
     }
     prevSelectedRef.current = selectedId;
-  }, [selectedId, styleVersion, ready]);
+  }, [selectedId, styleVersion, ready, clearOfficialSelectedFeature]);
 
   const prevOfficialReopenTargetRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1235,14 +1295,8 @@ export function MapCanvas({
 
       const match = findMatchingOfficialReopenFeature(map, officialReopenRequest);
       if (match) {
-        onSelect(null);
         const lngLat = featureSelectionPoint(match.feature, officialReopenRequest, map);
-        onSelectOfficial({
-          source: officialLayerSource(match.layer),
-          layer: match.layer,
-          properties: (match.feature.properties ?? {}) as Record<string, unknown>,
-          lngLat,
-        });
+        selectOfficialFeature(map, match.feature, match.layer, lngLat);
         onOfficialReopenStatus?.("resolved");
         return;
       }
@@ -1274,8 +1328,8 @@ export function MapCanvas({
     layers.csgParcels,
     layers.kougaZoning,
     onOfficialReopenStatus,
-    onSelect,
     onSelectOfficial,
+    selectOfficialFeature,
   ]);
 
   if (!TOKEN) {

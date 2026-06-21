@@ -96,7 +96,7 @@ describe("official parcel ids", () => {
         province: "Eastern Cape",
         lng: "24.830123",
         lat: "-34.168988",
-        zoom: 17,
+        zoom: 18,
       }),
     ).toEqual({
       officialParcel: "csg:lpi:c03400140000096200000",
@@ -108,7 +108,7 @@ describe("official parcel ids", () => {
       province: "Eastern Cape",
       lng: "24.830123",
       lat: "-34.168988",
-      zoom: "17",
+      zoom: "18",
     });
   });
 
@@ -134,7 +134,7 @@ describe("official parcel ids", () => {
   it("parses saved official parcel reopen metadata", () => {
     expect(
       parseOfficialParcelReopenSearch(
-        "?officialParcel=csg:lpi:c03400140000096200000&fromSaved=1&title=Erf+962&erf=962&portion=0&municipality=Kouga&province=Eastern+Cape&lng=24.830123&lat=-34.168988&zoom=17",
+        "?officialParcel=csg:lpi:c03400140000096200000&fromSaved=1&title=Erf+962&erf=962&portion=0&municipality=Kouga&province=Eastern+Cape&lng=24.830123&lat=-34.168988&zoom=18",
       ),
     ).toEqual({
       id: "csg:lpi:c03400140000096200000",
@@ -146,7 +146,7 @@ describe("official parcel ids", () => {
       province: "Eastern Cape",
       lng: 24.830123,
       lat: -34.168988,
-      zoom: 17,
+      zoom: 18,
     });
   });
 

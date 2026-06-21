@@ -259,8 +259,8 @@ function AtlasHome() {
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm font-semibold text-foreground">
               {officialReopenStatus === "not-found"
-                ? "Saved official parcel"
-                : "Finding saved official parcel..."}
+                ? "Could not auto-open saved parcel"
+                : "Finding saved official parcel…"}
             </p>
             <button
               type="button"
@@ -274,9 +274,9 @@ function AtlasHome() {
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             {officialReopenStatus === "not-found"
               ? officialReopenTarget
-                ? "Could not auto-open this saved parcel. The map is centered near the saved area. Click the official parcel outline to open the live dossier."
-                : "Could not auto-open this saved parcel. Click the official parcel outline to open the live dossier."
-              : "We centered the map on the saved parcel area and are matching the official parcel outline."}
+                ? "The map is centered near the saved parcel area. Click the official parcel outline to open the live public-data dossier."
+                : "Click the official parcel outline to open the live public-data dossier."
+              : "We are matching the saved parcel to the official map outline."}
           </p>
           <div className="mt-3 space-y-1 rounded-xl bg-muted/60 p-3 text-[11px]">
             {requestedOfficialParcel?.title && (
@@ -298,7 +298,7 @@ function AtlasHome() {
           </div>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
             {officialReopenStatus === "not-found"
-              ? "No geometry has been fabricated. Exact automatic reopen requires a matching official feature to be visible in the map."
+              ? "No geometry has been fabricated."
               : "No geometry has been fabricated. The live dossier will open if a matching official feature is found."}
           </p>
         </div>
