@@ -382,22 +382,22 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   }
 
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-[2rem] border border-amber-200/70 bg-card shadow-sm">
-        <div className="bg-[linear-gradient(135deg,#264f57_0%,#b86f32_58%,#f6dfbf_100%)] p-6 text-white">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1">
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[2.25rem] border border-[#ead6ba] bg-card shadow-[0_18px_45px_rgba(67,45,21,0.10)]">
+        <div className="bg-[linear-gradient(135deg,#264f57_0%,#b86f32_58%,#f6dfbf_100%)] p-7 text-white">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3.5 py-1.5">
               <ShieldCheck className="h-3.5 w-3.5" /> Official public parcel
             </span>
-            <span className="rounded-full bg-white/15 px-3 py-1">Public research dossier</span>
+            <span className="rounded-full bg-white/15 px-3.5 py-1.5">Public research dossier</span>
           </div>
-          <h3 className="mt-4 text-3xl font-semibold tracking-tight">
+          <h3 className="mt-5 text-[2.35rem] font-semibold leading-none tracking-tight">
             {parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "Official erf"}
             {parcel.portion != null && String(parcel.portion) !== "0"
               ? ` / Portion ${parcel.portion}`
               : ""}
           </h3>
-          <p className="mt-2 text-sm text-white/80">
+          <p className="mt-3 text-base text-white/82">
             {parcel.suburbOrArea ?? parcel.municipality ?? parcel.province ?? "South Africa"}
           </p>
         </div>
@@ -416,7 +416,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
 
       <InvestorDueDiligenceProgress stages={dueDiligenceStages} onSelectView={selectWorkflowView} />
 
-      <section className="rounded-[2rem] border border-border bg-card p-5">
+      <section className="rounded-[2rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
         <SectionTitle>Research Readiness</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <InfoTile label="Identity confidence" value={identityConfidence(parcel)} />
@@ -430,22 +430,22 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-border bg-card p-5">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <section className="rounded-[2rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#263735]">
           <Sparkles className="h-3.5 w-3.5 text-primary" /> AI research summary
         </div>
-        <p className="mt-2 text-[13px] leading-relaxed text-foreground">
+        <p className="mt-3 text-[15px] leading-7 text-[#263735]">
           This dossier has public parcel identity fields from {parcel.sourceLabel}. Ownership,
           valuation, transfers, rates and paid provider data are not attached unless a verified
           source or paid report is added.
         </p>
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        <p className="mt-3 text-sm leading-7 text-[#6b5b4d]">
           Next best checks: open the official source links, verify SG documents where available,
           search municipal valuation and zoning sources, save listing evidence manually, and attach
           paid reports if higher confidence is needed. External searches may return nearby or
           unrelated results and must be verified manually.
         </p>
-        <div className="mt-3 space-y-1.5 rounded-xl border border-border bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
+        <div className="mt-4 space-y-2 rounded-2xl border border-[#eadfd1] bg-[#fff8ed] p-4 text-[12.5px] leading-6 text-[#6b5b4d]">
           <p>
             PropertyAtlas organizes public and third-party property research links. It is not a
             deeds office, municipality, attorney, conveyancer, valuer, surveyor or financial
@@ -476,11 +476,11 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         <MissingList fields={parcel.missingFields} />
       </section>
 
-      <section className="rounded-[2rem] border border-border bg-card p-5">
+      <section className="rounded-[2rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
         <SectionTitle>Recommended Next Steps</SectionTitle>
-        <ol className="grid gap-3 text-sm text-foreground">
+        <ol className="grid gap-3 text-[15px] text-[#263735]">
           {WORKFLOW_STEPS.map((step, index) => (
-            <li key={step} className="rounded-2xl border border-border bg-[#fffaf3] p-4">
+            <li key={step} className="rounded-2xl border border-[#eadfd1] bg-[#fffaf3] p-4">
               <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#2f5d62] text-xs font-bold text-white">
                 {index + 1}
               </span>
@@ -494,10 +494,10 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
               key={label}
               type="button"
               onClick={() => onSelectView?.(target)}
-              className="rounded-xl border border-border bg-background p-3 text-left hover:bg-muted/40"
+              className="rounded-2xl border border-[#eadfd1] bg-white/80 p-4 text-left transition hover:bg-[#fff8ed]"
             >
-              <div className="text-[12px] font-semibold">{label}</div>
-              <div className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{body}</div>
+              <div className="text-sm font-semibold text-[#263735]">{label}</div>
+              <div className="mt-1 text-[13px] leading-6 text-[#6b5b4d]">{body}</div>
             </button>
           ))}
         </div>
@@ -520,16 +520,19 @@ function InfoTile({
   mono?: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-background px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="min-w-0 rounded-2xl border border-[#eadfd1] bg-white/80 px-4 py-3 shadow-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-[#8a7562]">
         {label}
       </div>
       <div
-        className={cn("mt-1 truncate text-[13px] font-semibold", mono && "font-mono text-[11px]")}
+        className={cn(
+          "mt-1 truncate text-[15px] font-semibold text-[#263735]",
+          mono && "font-mono text-[12px]",
+        )}
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[10.5px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-[12px] text-[#7f6b59]">{sub}</div>}
     </div>
   );
 }
@@ -544,19 +547,17 @@ function FieldList({
   empty: string;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h4>
+    <section className="rounded-[2rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+      <h4 className="text-sm font-semibold text-[#263735]">{title}</h4>
       {rows.length === 0 ? (
-        <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
+        <p className="mt-3 text-sm text-[#6b5b4d]">{empty}</p>
       ) : (
-        <dl className="mt-2 divide-y divide-border text-[12px]">
+        <dl className="mt-3 divide-y divide-[#eadfd1] text-sm">
           {rows.map((row) => (
-            <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">
-              <dt className="text-muted-foreground">{row.label}</dt>
+            <div key={row.label} className="flex items-baseline justify-between gap-3 py-2">
+              <dt className="text-[#7f6b59]">{row.label}</dt>
               <dd
-                className="max-w-[60%] truncate text-right font-medium"
+                className="max-w-[60%] truncate text-right font-semibold text-[#263735]"
                 title={`${row.value} (${row.source})`}
               >
                 {row.value}
@@ -571,13 +572,11 @@ function FieldList({
 
 function MissingList({ fields }: { fields: string[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Missing or not attached
-      </h4>
-      <ul className="mt-2 grid gap-1.5 text-[12px] text-muted-foreground">
+    <section className="rounded-[2rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+      <h4 className="text-sm font-semibold text-[#263735]">Missing or not attached</h4>
+      <ul className="mt-3 grid gap-2 text-sm text-[#6b5b4d]">
         {fields.map((field) => (
-          <li key={field} className="rounded-lg bg-muted/40 px-2.5 py-1.5">
+          <li key={field} className="rounded-2xl bg-[#fff8ed] px-3 py-2">
             {field}
           </li>
         ))}
@@ -588,7 +587,7 @@ function MissingList({ fields }: { fields: string[] }) {
 
 function SectionTitle({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[#263735]">
       {icon}
       <span>{children}</span>
     </div>
