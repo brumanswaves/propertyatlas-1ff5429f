@@ -18,6 +18,13 @@ import { SavedLinksManager } from "./SavedLinksManager";
 import { NotesTab } from "./tabs/NotesTab";
 import { ListingsTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
+import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
+import { NextBestStep } from "./dossier/NextBestStep";
+import {
+  buildDueDiligenceProgress,
+  buildNextBestStep,
+  type InvestorWorkflowView,
+} from "./dossier/investorWorkflow";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -123,13 +130,11 @@ const RESEARCH_SECTIONS = [
 ] as const;
 
 const WORKFLOW_STEPS = [
-  "Verify parcel identity",
-  "Open SG documents",
-  "Check municipal valuation/zoning",
-  "Search listing evidence",
-  "Save findings",
-  "Run calculator",
-  "Order paid report if needed",
+  "Confirm parcel identity",
+  "Check municipal valuation",
+  "Review zoning and buildability",
+  "Screen environmental and heritage risk",
+  "Save notes or upload paid reports",
 ];
 
 function dataCompleteness(parcel: NormalizedOfficialParcel): {
@@ -251,6 +256,9 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     `${moreSources.length} more`,
   ].join(" / ");
   const knownRows = knownFieldRows(parcel);
+  const nextBestStep = buildNextBestStep(parcel, sources);
+  const dueDiligenceStages = buildDueDiligenceProgress(parcel, sources);
+  const selectWorkflowView = (target: InvestorWorkflowView) => onSelectView?.(target);
   const curatedSections = RESEARCH_SECTIONS.map((section) => ({
     ...section,
     sources: visibleSources.filter(section.match),
@@ -374,26 +382,26 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   }
 
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="bg-gradient-brand p-4 text-white">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5">
-              <ShieldCheck className="h-3 w-3" /> Official public parcel
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-[2rem] border border-amber-200/70 bg-card shadow-sm">
+        <div className="bg-[linear-gradient(135deg,#264f57_0%,#b86f32_58%,#f6dfbf_100%)] p-6 text-white">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1">
+              <ShieldCheck className="h-3.5 w-3.5" /> Official public parcel
             </span>
-            <span className="rounded-full bg-white/15 px-2 py-0.5">Public research dossier</span>
+            <span className="rounded-full bg-white/15 px-3 py-1">Public research dossier</span>
           </div>
-          <h3 className="mt-2 text-lg font-semibold tracking-tight">
+          <h3 className="mt-4 text-3xl font-semibold tracking-tight">
             {parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "Official erf"}
             {parcel.portion != null && String(parcel.portion) !== "0"
               ? ` / Portion ${parcel.portion}`
               : ""}
           </h3>
-          <p className="mt-1 text-xs text-white/75">
+          <p className="mt-2 text-sm text-white/80">
             {parcel.suburbOrArea ?? parcel.municipality ?? parcel.province ?? "South Africa"}
           </p>
         </div>
-        <div className="grid gap-3 p-4 sm:grid-cols-3">
+        <div className="grid gap-3 bg-[#fffaf3] p-5 sm:grid-cols-3">
           <InfoTile label="Source" value={parcel.sourceLabel} />
           <InfoTile label="Normalized parcel id" value={parcel.id} mono />
           <InfoTile
@@ -404,7 +412,11 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <NextBestStep step={nextBestStep} onSelectView={selectWorkflowView} />
+
+      <InvestorDueDiligenceProgress stages={dueDiligenceStages} onSelectView={selectWorkflowView} />
+
+      <section className="rounded-[2rem] border border-border bg-card p-5">
         <SectionTitle>Research Readiness</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <InfoTile label="Identity confidence" value={identityConfidence(parcel)} />
@@ -418,7 +430,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-[2rem] border border-border bg-card p-5">
         <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" /> AI research summary
         </div>
@@ -464,12 +476,12 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         <MissingList fields={parcel.missingFields} />
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Recommended Workflow</SectionTitle>
-        <ol className="grid gap-2 text-[12px] text-foreground sm:grid-cols-2">
+      <section className="rounded-[2rem] border border-border bg-card p-5">
+        <SectionTitle>Recommended Next Steps</SectionTitle>
+        <ol className="grid gap-3 text-sm text-foreground">
           {WORKFLOW_STEPS.map((step, index) => (
-            <li key={step} className="rounded-xl border border-border bg-background p-3">
-              <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+            <li key={step} className="rounded-2xl border border-border bg-[#fffaf3] p-4">
+              <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#2f5d62] text-xs font-bold text-white">
                 {index + 1}
               </span>
               {step}

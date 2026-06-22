@@ -61,7 +61,11 @@ function normalizeKouga(p: Record<string, unknown>) {
 type Tab = "overview" | "research" | "listings" | "reports" | "notes" | "calculators";
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <Sparkles className="h-3.5 w-3.5" /> },
-  { id: "research", label: "Research", icon: <Link2 className="h-3.5 w-3.5" /> },
+  {
+    id: "research",
+    label: "Due Diligence Sources",
+    icon: <Link2 className="h-3.5 w-3.5" />,
+  },
   { id: "listings", label: "Listings", icon: <TagIcon className="h-3.5 w-3.5" /> },
   { id: "reports", label: "Reports", icon: <FileText className="h-3.5 w-3.5" /> },
   { id: "notes", label: "Notes", icon: <NotebookPen className="h-3.5 w-3.5" /> },
