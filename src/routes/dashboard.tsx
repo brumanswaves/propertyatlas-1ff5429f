@@ -11,7 +11,9 @@ import {
   Sparkles,
   ArrowUpRight,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -168,6 +170,25 @@ function Dashboard() {
     })();
   }, [user]);
 
+  async function removeSavedProperty(parcelId: string) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("saved_properties")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("parcel_id", parcelId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setSaved((rows) => rows.filter((row) => row.parcel_id !== parcelId));
+    setCounts((current) => ({
+      ...current,
+      savedProperties: Math.max(0, current.savedProperties - 1),
+    }));
+    toast.success("Saved property removed");
+  }
+
   if (!user) return null;
 
   return (
@@ -262,7 +283,7 @@ function Dashboard() {
           ) : (
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {saved.map((p) => (
-                <SavedPropertyRow key={p.parcel_id} row={p} />
+                <SavedPropertyRow key={p.parcel_id} row={p} onRemove={removeSavedProperty} />
               ))}
             </ul>
           )}
@@ -357,7 +378,13 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleDateString("en-ZA") : "Unknown date";
 }
 
-function SavedPropertyRow({ row }: { row: SavedRow }) {
+function SavedPropertyRow({
+  row,
+  onRemove,
+}: {
+  row: SavedRow;
+  onRemove: (parcelId: string) => Promise<void>;
+}) {
   const official = isOfficialParcelId(row.parcel_id);
   const demo = isDemoParcelId(row.parcel_id);
   const title = savedTitle(row);
@@ -372,9 +399,42 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
   const lng = stringField(row.user_data, "lng") ?? stringField(row.user_data, "longitude");
   const status = row.research_status || row.status;
   const tags = row.tags ?? [];
+  const href = demo
+    ? `/?parcel=${encodeURIComponent(row.parcel_id)}`
+    : buildSavedParcelMapHref(row.parcel_id, {
+        title,
+        erf,
+        portion,
+        municipality,
+        province,
+        lat,
+        lng,
+        zoom: 18,
+      });
+  const open = () => {
+    window.location.assign(href);
+  };
+  const onKeyDown = (event: React.KeyboardEvent<HTMLLIElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      open();
+    }
+  };
+  const remove = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!window.confirm("Remove this saved property?")) return;
+    await onRemove(row.parcel_id);
+  };
 
   return (
-    <li className="flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <li
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={onKeyDown}
+      className="flex cursor-pointer flex-col gap-3 px-4 py-3 text-sm transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           {official && (
@@ -418,31 +478,20 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
         )}
       </div>
 
-      {demo ? (
-        <Link
-          to="/"
-          search={{ parcel: row.parcel_id } as never}
-          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground">
+          Open property <ChevronRight className="h-3 w-3" />
+        </span>
+        <button
+          type="button"
+          onClick={remove}
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={`Remove ${title}`}
         >
-          Open on map <ChevronRight className="h-3 w-3" />
-        </Link>
-      ) : (
-        <a
-          href={buildSavedParcelMapHref(row.parcel_id, {
-            title,
-            erf,
-            portion,
-            municipality,
-            province,
-            lat,
-            lng,
-            zoom: 18,
-          })}
-          className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
-        >
-          Open map and search this parcel <ChevronRight className="h-3 w-3" />
-        </a>
-      )}
+          <Trash2 className="h-3.5 w-3.5" />
+          Remove
+        </button>
+      </div>
     </li>
   );
 }
