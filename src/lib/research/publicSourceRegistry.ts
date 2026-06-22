@@ -15,6 +15,8 @@ import type {
   ResearchSource,
   ResearchSourceContext,
   ResearchSourceDefinition,
+  ResearchSourceQuality,
+  ResearchSourceUsefulness,
 } from "@/lib/research/sourceTypes";
 
 const google = (query: string) => `https://www.google.com/search?q=${encodeURIComponent(query)}`;
@@ -132,6 +134,136 @@ function buildGeneratedSearchDefinitions(ctx: ResearchSourceContext): ResearchSo
       query,
     ),
   );
+}
+
+function hasStrongParcelContext(ctx: ResearchSourceContext): boolean {
+  const p = ctx.parcel;
+  const hasIdentity =
+    hasField(ctx, "lpi") || hasField(ctx, "parcelKey") || hasField(ctx, "erfNumber");
+  const hasPlace =
+    hasField(ctx, "municipality") || hasField(ctx, "province") || hasField(ctx, "suburbOrArea");
+  return hasIdentity && hasPlace;
+}
+
+function inferSourceQuality(
+  definition: ResearchSourceDefinition,
+  ctx: ResearchSourceContext,
+  url: string | null,
+  missingFields: ParcelFieldKey[],
+): ResearchSourceQuality {
+  if (definition.sourceQuality) return definition.sourceQuality;
+  if (definition.sourceType === "paid-provider" || definition.defaultStatus === "paid-report") {
+    return "paid_provider";
+  }
+  if (
+    definition.id === "sg-document-list" &&
+    url &&
+    url !== CSG_OFFICIAL_URL &&
+    missingFields.length === 0
+  ) {
+    return "direct_parcel_link";
+  }
+  if (definition.parcelSpecific && definition.confidence === "confirmed_for_parcel") {
+    return "direct_parcel_link";
+  }
+  if (definition.id === "opendataza-csg-listing" || definition.sourceType === "unavailable") {
+    return "weak_or_deprecated";
+  }
+  if (
+    definition.sourceType === "municipal" ||
+    definition.category === "municipal-valuation-rates"
+  ) {
+    return "municipal_source";
+  }
+  if (definition.sourceType === "official") {
+    return "official_portal";
+  }
+  if (definition.sourceType === "generated-search") {
+    return "generated_search";
+  }
+  if (!hasStrongParcelContext(ctx) && definition.requiredFields.length === 0) {
+    return "weak_or_deprecated";
+  }
+  return "generated_search";
+}
+
+function inferUsefulness(
+  definition: ResearchSourceDefinition,
+  ctx: ResearchSourceContext,
+  quality: ResearchSourceQuality,
+  missingFields: ParcelFieldKey[],
+): ResearchSourceUsefulness {
+  if (definition.userUsefulness) return definition.userUsefulness;
+  if (quality === "weak_or_deprecated" || definition.sourceType === "unavailable") {
+    return "hidden_by_default";
+  }
+  if (
+    quality === "direct_parcel_link" ||
+    ["csg-property-viewer", "csg-official-site", "deedsweb-official"].includes(definition.id)
+  ) {
+    return "primary";
+  }
+  if (
+    [
+      "municipal-valuation-roll",
+      "kouga-mapping-portal",
+      "kouga-public-map-viewer",
+      "kouga-planning-development",
+      "kouga-mapping-zoning",
+    ].includes(definition.id)
+  ) {
+    return "primary";
+  }
+  if (
+    ["property24-search", "private-property-search"].includes(definition.id) &&
+    hasStrongParcelContext(ctx) &&
+    missingFields.length === 0
+  ) {
+    return "primary";
+  }
+  if (quality === "paid_provider") return "secondary";
+  if (definition.sourceType === "generated-search" && !hasStrongParcelContext(ctx)) {
+    return "hidden_by_default";
+  }
+  return "secondary";
+}
+
+function inferActionInstruction(
+  definition: ResearchSourceDefinition,
+  quality: ResearchSourceQuality,
+): string {
+  if (definition.actionInstruction) return definition.actionInstruction;
+  if (definition.id === "sg-document-list") {
+    return "Open the SG document list and confirm the erf, portion, LPI or parcel key before saving evidence.";
+  }
+  if (definition.id === "municipal-valuation-roll") {
+    return "Search the municipal roll, then save only parcel-matched valuation or rates findings.";
+  }
+  if (definition.category === "zoning-land-use" || definition.category === "planning-notices") {
+    return "Check whether zoning or planning results clearly match this erf before relying on them.";
+  }
+  if (definition.category === "listings-market-evidence" || definition.category === "market") {
+    return "Open the search, compare address/erf evidence, and save only verified listing URLs.";
+  }
+  if (definition.category === "deeds-ownership" || definition.id.includes("deeds")) {
+    return "Use this as a lawful ownership/deeds research entry point; do not infer owner data here.";
+  }
+  if (quality === "direct_parcel_link") {
+    return "Open the direct source and confirm the parcel identifiers match this dossier.";
+  }
+  if (quality === "official_portal") {
+    return "Open the official portal, search the known parcel fields, and verify the record manually.";
+  }
+  if (quality === "municipal_source") {
+    return "Open the municipal source and verify valuation, zoning, rates or planning evidence manually.";
+  }
+  if (quality === "generated_search") {
+    return "Open the search and treat every result as unverified until you match it to this erf.";
+  }
+  if (quality === "paid_provider") {
+    return "Use this slot only when a verified paid report is ordered or attached.";
+  }
+  return "Use as a backup discovery source and verify any result against official records.";
 }
 
 export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
@@ -727,12 +859,16 @@ export function buildPublicResearchSources(
       missingFields.length > 0
         ? (definition.missingStatus ?? "manual-check")
         : definition.defaultStatus;
+    const sourceQuality = inferSourceQuality(definition, ctx, url, missingFields);
 
     return {
       ...definition,
       status,
       url,
       missingFields,
+      sourceQuality,
+      userUsefulness: inferUsefulness(definition, ctx, sourceQuality, missingFields),
+      actionInstruction: inferActionInstruction(definition, sourceQuality),
     };
   });
 }

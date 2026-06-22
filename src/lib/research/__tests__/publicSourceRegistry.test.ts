@@ -91,6 +91,8 @@ describe("public source registry", () => {
     expect(matchesErf962HarbourRoad(erf962Parcel)).toBe(true);
     expect(valuation?.parcelSpecific).toBe(true);
     expect(valuation?.confidence).toBe("confirmed_for_parcel");
+    expect(valuation?.sourceQuality).toBe("direct_parcel_link");
+    expect(valuation?.userUsefulness).toBe("primary");
     expect(valuation?.fieldsFound).toContain("Historic municipal value: R1,700,000");
     expect(valuation?.complianceNote).toContain("not current market value");
   });
@@ -202,6 +204,69 @@ describe("public source registry", () => {
     expect(sources.some((source) => source.dossierGroup === "municipal-evidence")).toBe(true);
     expect(sources.some((source) => source.dossierGroup === "rental-tourism")).toBe(true);
     expect(sources.some((source) => source.dossierGroup === "paid-reports")).toBe(true);
+  });
+
+  it("classifies source quality and primary usefulness for premium dossier actions", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const csgViewer = sources.find((source) => source.id === "csg-property-viewer");
+    const valuationRoll = sources.find((source) => source.id === "municipal-valuation-roll");
+    const paidReports = sources.find((source) => source.id === "paid-report-slots");
+
+    expect(csgViewer?.sourceQuality).toBe("official_portal");
+    expect(csgViewer?.userUsefulness).toBe("primary");
+    expect(csgViewer?.actionInstruction).toContain("official portal");
+    expect(valuationRoll?.sourceQuality).toBe("municipal_source");
+    expect(valuationRoll?.userUsefulness).toBe("primary");
+    expect(paidReports?.sourceQuality).toBe("paid_provider");
+    expect(paidReports?.actionInstruction).toContain("verified paid report");
+  });
+
+  it("separates direct or strong sources from weak sources hidden by default", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const primaryIds = sources
+      .filter((source) => source.userUsefulness === "primary")
+      .map((source) => source.id);
+    const moreSourceIds = sources
+      .filter((source) => source.userUsefulness === "hidden_by_default")
+      .map((source) => source.id);
+
+    expect(primaryIds).toContain("csg-property-viewer");
+    expect(primaryIds).toContain("property24-search");
+    expect(primaryIds).toContain("private-property-search");
+    expect(moreSourceIds).toContain("opendataza-csg-listing");
+    expect(moreSourceIds).toContain("sanbi-bgis-future");
+  });
+
+  it("keeps weak generated searches hidden when parcel context is too thin", () => {
+    const sources = buildPublicResearchSources({
+      ...baseParcel,
+      erfNumber: null,
+      lpi: null,
+      parcelKey: null,
+      municipality: null,
+      province: null,
+      suburbOrArea: null,
+      knownFields: [],
+    });
+    const generatedSearches = sources.filter(
+      (source) => source.dossierGroup === "generated-searches",
+    );
+
+    expect(generatedSearches.length).toBeGreaterThan(0);
+    expect(generatedSearches.every((source) => source.userUsefulness === "hidden_by_default")).toBe(
+      true,
+    );
+  });
+
+  it("generates generic official parcel source actions without fabricating data", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const sgDocuments = sources.find((source) => source.id === "sg-document-list");
+    const deedsGuidance = sources.find((source) => source.id === "govza-deeds-guidance");
+
+    expect(sgDocuments?.sourceQuality).toBe("direct_parcel_link");
+    expect(sgDocuments?.actionInstruction).toContain("confirm the erf");
+    expect(deedsGuidance?.sourceQuality).toBe("official_portal");
+    expect(deedsGuidance?.reveals.toLowerCase()).not.toContain("owner name");
   });
 
   it("does not add Erf 962 evidence to other parcels", () => {

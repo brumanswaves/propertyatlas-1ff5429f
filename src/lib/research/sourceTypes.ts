@@ -46,6 +46,16 @@ export type ResearchSourceConfidence =
   | "paid_report"
   | "future_integration";
 
+export type ResearchSourceQuality =
+  | "direct_parcel_link"
+  | "official_portal"
+  | "municipal_source"
+  | "generated_search"
+  | "paid_provider"
+  | "weak_or_deprecated";
+
+export type ResearchSourceUsefulness = "primary" | "secondary" | "hidden_by_default";
+
 export type ResearchDossierGroup =
   | "official-parcel-identity"
   | "municipal-evidence"
@@ -88,6 +98,9 @@ export interface ResearchSourceDefinition {
   actionLabel: string;
   complianceNote: string;
   confidence?: ResearchSourceConfidence;
+  sourceQuality?: ResearchSourceQuality;
+  userUsefulness?: ResearchSourceUsefulness;
+  actionInstruction?: string;
   parcelSpecific?: boolean;
   dossierGroup?: ResearchDossierGroup;
   buildUrl?: (ctx: ResearchSourceContext) => string | null;
@@ -134,4 +147,19 @@ export const RESEARCH_DOSSIER_GROUP_LABELS: Record<ResearchDossierGroup, string>
   "generated-searches": "Generated Searches",
   "user-workspace": "User Workspace",
   "paid-reports": "Paid Reports",
+};
+
+export const RESEARCH_SOURCE_QUALITY_LABELS: Record<ResearchSourceQuality, string> = {
+  direct_parcel_link: "Direct parcel link",
+  official_portal: "Official portal",
+  municipal_source: "Municipal source",
+  generated_search: "Generated search",
+  paid_provider: "Paid provider",
+  weak_or_deprecated: "More source",
+};
+
+export const RESEARCH_SOURCE_USEFULNESS_LABELS: Record<ResearchSourceUsefulness, string> = {
+  primary: "Primary",
+  secondary: "Secondary",
+  hidden_by_default: "More source",
 };

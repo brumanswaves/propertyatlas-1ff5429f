@@ -6,8 +6,8 @@ import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry"
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import type { ResearchContext } from "@/lib/research/links";
 import {
-  RESEARCH_DOSSIER_GROUP_LABELS,
-  type ResearchDossierGroup,
+  RESEARCH_SOURCE_QUALITY_LABELS,
+  RESEARCH_SOURCE_USEFULNESS_LABELS,
   type ResearchSource,
 } from "@/lib/research/sourceTypes";
 import { cn } from "@/lib/utils";
@@ -42,20 +42,6 @@ const DOSSIER_STATUSES = [
   { id: "passed", label: "Passed" },
 ] as const;
 
-const DOSSIER_GROUP_ORDER: ResearchDossierGroup[] = [
-  "official-parcel-identity",
-  "municipal-evidence",
-  "planning-zoning",
-  "deeds-ownership",
-  "market-intelligence",
-  "building-improvement",
-  "rental-tourism",
-  "environmental-coastal-risk",
-  "generated-searches",
-  "user-workspace",
-  "paid-reports",
-];
-
 const STATUS_TONE: Record<ResearchSource["status"], string> = {
   available: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
   "open-search": "bg-sky-500/15 text-sky-800 dark:text-sky-300",
@@ -83,6 +69,69 @@ const CONFIDENCE_LABEL: Record<NonNullable<ResearchSource["confidence"]>, string
   future_integration: "Future integration",
 };
 
+const RESEARCH_SECTIONS = [
+  {
+    id: "official-identity",
+    title: "Official parcel identity",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "official-parcel-identity" ||
+      source.category === "csg-sg-documents" ||
+      source.category === "official",
+  },
+  {
+    id: "municipal-valuation",
+    title: "Municipal valuation and rates",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "municipal-evidence" ||
+      source.category === "municipal-valuation-rates",
+  },
+  {
+    id: "zoning-planning",
+    title: "Zoning and planning",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "planning-zoning" ||
+      source.category === "zoning-land-use" ||
+      source.category === "planning-notices",
+  },
+  {
+    id: "listings-market",
+    title: "Listings and market evidence",
+    match: (source: ResearchSource) =>
+      source.category === "listings-market-evidence" ||
+      source.dossierGroup === "market-intelligence",
+  },
+  {
+    id: "environment-risk",
+    title: "Environmental and coastal risk",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "environmental-coastal-risk" ||
+      source.category === "environmental-heritage-risk" ||
+      source.category === "environmental",
+  },
+  {
+    id: "ownership-deeds",
+    title: "Ownership and deeds",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "deeds-ownership" || source.category === "deeds-ownership",
+  },
+  {
+    id: "paid-reports",
+    title: "Paid reports",
+    match: (source: ResearchSource) =>
+      source.dossierGroup === "paid-reports" || source.category === "paid-reports",
+  },
+] as const;
+
+const WORKFLOW_STEPS = [
+  "Verify parcel identity",
+  "Open SG documents",
+  "Check municipal valuation/zoning",
+  "Search listing evidence",
+  "Save findings",
+  "Run calculator",
+  "Order paid report if needed",
+];
+
 function dataCompleteness(parcel: NormalizedOfficialParcel): {
   score: number;
   known: number;
@@ -102,6 +151,51 @@ function dataCompleteness(parcel: NormalizedOfficialParcel): {
     (value) => value !== null && value !== undefined && String(value).trim() !== "",
   ).length;
   return { known, total: checks.length, score: Math.round((known / checks.length) * 100) };
+}
+
+function identityConfidence(parcel: NormalizedOfficialParcel): string {
+  if (parcel.lpi || parcel.parcelKey) return "High";
+  if (parcel.erfNumber && parcel.portion && (parcel.municipality || parcel.province)) {
+    return "Medium";
+  }
+  if (parcel.coordinates) return "Approximate";
+  return "Needs verification";
+}
+
+function knownFieldRows(parcel: NormalizedOfficialParcel): NormalizedOfficialParcel["knownFields"] {
+  const generated = [
+    parcel.erfNumber != null
+      ? { label: "Erf number", value: String(parcel.erfNumber), source: parcel.sourceLabel }
+      : null,
+    parcel.portion != null
+      ? { label: "Portion", value: String(parcel.portion), source: parcel.sourceLabel }
+      : null,
+    parcel.lpi ? { label: "LPI", value: parcel.lpi, source: parcel.sourceLabel } : null,
+    parcel.parcelKey
+      ? { label: "Parcel key", value: parcel.parcelKey, source: parcel.sourceLabel }
+      : null,
+    parcel.municipality
+      ? { label: "Municipality", value: parcel.municipality, source: parcel.sourceLabel }
+      : null,
+    parcel.province
+      ? { label: "Province", value: parcel.province, source: parcel.sourceLabel }
+      : null,
+    parcel.suburbOrArea
+      ? { label: "Suburb / area", value: parcel.suburbOrArea, source: parcel.sourceLabel }
+      : null,
+    parcel.coordinates
+      ? {
+          label: "Coordinates",
+          value: `${parcel.coordinates.lat}, ${parcel.coordinates.lng}`,
+          source: parcel.sourceLabel,
+        }
+      : null,
+  ].filter((row): row is NormalizedOfficialParcel["knownFields"][number] => row !== null);
+  const existingKeys = new Set(parcel.knownFields.map((field) => field.label.toLowerCase()));
+  return [
+    ...parcel.knownFields,
+    ...generated.filter((field) => !existingKeys.has(field.label.toLowerCase())),
+  ];
 }
 
 function toResearchContext(parcel: NormalizedOfficialParcel): ResearchContext {
@@ -143,10 +237,24 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     .filter(Boolean)
     .join(", ");
   const listingSources = sources.filter((source) => source.category === "listings-market-evidence");
-  const grouped = DOSSIER_GROUP_ORDER.map((group) => ({
-    group,
-    sources: sources.filter((source) => source.dossierGroup === group),
-  })).filter((group) => group.sources.length > 0);
+  const primarySources = sources.filter((source) => source.userUsefulness === "primary");
+  const secondarySources = sources.filter((source) => source.userUsefulness === "secondary");
+  const moreSources = sources.filter((source) => source.userUsefulness === "hidden_by_default");
+  const visibleSources = [...primarySources, ...secondarySources];
+  const bestNextAction =
+    primarySources.find((source) => source.url && source.status !== "paid-report") ??
+    primarySources[0] ??
+    sources[0];
+  const sourceQualitySummary = [
+    `${primarySources.length} primary`,
+    `${secondarySources.length} secondary`,
+    `${moreSources.length} more`,
+  ].join(" / ");
+  const knownRows = knownFieldRows(parcel);
+  const curatedSections = RESEARCH_SECTIONS.map((section) => ({
+    ...section,
+    sources: visibleSources.filter(section.match),
+  })).filter((section) => section.sources.length > 0);
   const nextSteps = [
     [
       "Open Research tab",
@@ -173,25 +281,44 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
 
   if (view === "research") {
     return (
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>
-          Public Source Library
-        </SectionTitle>
-        <div className="space-y-4">
-          {grouped.map((group) => (
-            <div key={group.group}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
-                {RESEARCH_DOSSIER_GROUP_LABELS[group.group]}
-              </h4>
-              <div className="grid gap-2">
-                {group.sources.map((source) => (
-                  <SourceCard key={source.id} source={source} />
-                ))}
-              </div>
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>Best next actions</SectionTitle>
+          <div className="grid gap-2">
+            {primarySources.slice(0, 4).map((source) => (
+              <SourceCard key={source.id} source={source} featured />
+            ))}
+          </div>
+        </section>
+
+        {curatedSections.map((section) => (
+          <section key={section.id} className="rounded-2xl border border-border bg-card p-4">
+            <SectionTitle>{section.title}</SectionTitle>
+            <div className="grid gap-2">
+              {section.sources.map((source) => (
+                <SourceCard
+                  key={source.id}
+                  source={source}
+                  featured={source.userUsefulness === "primary"}
+                />
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </section>
+        ))}
+
+        {moreSources.length > 0 && (
+          <details className="rounded-2xl border border-dashed border-border bg-card p-4">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              More sources ({moreSources.length})
+            </summary>
+            <div className="mt-3 grid gap-2">
+              {moreSources.map((source) => (
+                <SourceCard key={source.id} source={source} />
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
     );
   }
 
@@ -278,6 +405,20 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
+        <SectionTitle>Research Readiness</SectionTitle>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <InfoTile label="Identity confidence" value={identityConfidence(parcel)} />
+          <InfoTile label="Known fields" value={String(knownRows.length)} />
+          <InfoTile label="Missing fields" value={String(parcel.missingFields.length)} />
+          <InfoTile
+            label="Best next action"
+            value={bestNextAction?.name ?? "Verify parcel identity"}
+          />
+          <InfoTile label="Source quality" value={sourceQualitySummary} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" /> AI research summary
         </div>
@@ -317,16 +458,26 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
       <section className="grid gap-3 sm:grid-cols-2">
         <FieldList
           title="Known public fields"
-          rows={parcel.knownFields}
+          rows={knownRows}
           empty="No public identity fields were recognized."
         />
         <MissingList fields={parcel.missingFields} />
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Recommended Next Steps</SectionTitle>
-        <div className="grid gap-2">
-          {nextSteps.map(([label, body, target]) => (
+        <SectionTitle>Recommended Workflow</SectionTitle>
+        <ol className="grid gap-2 text-[12px] text-foreground sm:grid-cols-2">
+          {WORKFLOW_STEPS.map((step, index) => (
+            <li key={step} className="rounded-xl border border-border bg-background p-3">
+              <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                {index + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {nextSteps.slice(0, 4).map(([label, body, target]) => (
             <button
               key={label}
               type="button"
@@ -339,6 +490,8 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
           ))}
         </div>
       </section>
+
+      <ManualResearchFields parcel={parcel} />
     </div>
   );
 }
@@ -430,11 +583,16 @@ function SectionTitle({ children, icon }: { children: ReactNode; icon?: ReactNod
   );
 }
 
-function SourceCard({ source }: { source: ResearchSource }) {
+function SourceCard({ source, featured = false }: { source: ResearchSource; featured?: boolean }) {
   const disabled =
     !source.url || source.status === "unavailable" || source.status === "paid-report";
   return (
-    <article className="rounded-xl border border-border bg-background p-3">
+    <article
+      className={cn(
+        "rounded-xl border bg-background p-3",
+        featured ? "border-primary/40 shadow-sm ring-1 ring-primary/10" : "border-border",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] font-semibold">{source.name}</div>
@@ -455,6 +613,23 @@ function SourceCard({ source }: { source: ResearchSource }) {
         <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
           {TYPE_LABEL[source.sourceType]}
         </span>
+        {source.sourceQuality && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {RESEARCH_SOURCE_QUALITY_LABELS[source.sourceQuality]}
+          </span>
+        )}
+        {source.userUsefulness && (
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+              source.userUsefulness === "primary"
+                ? "bg-primary/15 text-primary"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {RESEARCH_SOURCE_USEFULNESS_LABELS[source.userUsefulness]}
+          </span>
+        )}
         {source.confidence && (
           <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
             {CONFIDENCE_LABEL[source.confidence]}
@@ -480,6 +655,11 @@ function SourceCard({ source }: { source: ResearchSource }) {
           ))}
         </ul>
       )}
+      {source.actionInstruction && (
+        <p className="mt-2 rounded-lg bg-muted/35 px-2.5 py-2 text-[10.5px] leading-relaxed text-foreground">
+          {source.actionInstruction}
+        </p>
+      )}
       <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
         {source.complianceNote}
       </p>
@@ -502,6 +682,175 @@ function SourceCard({ source }: { source: ResearchSource }) {
         </a>
       )}
     </article>
+  );
+}
+
+type ManualResearchForm = {
+  askingPrice: string;
+  municipalValue: string;
+  zoningNote: string;
+  ratesNote: string;
+  agentName: string;
+  listingUrl: string;
+  userConfidenceNote: string;
+};
+
+const EMPTY_MANUAL_RESEARCH: ManualResearchForm = {
+  askingPrice: "",
+  municipalValue: "",
+  zoningNote: "",
+  ratesNote: "",
+  agentName: "",
+  listingUrl: "",
+  userConfidenceNote: "",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringFromRecord(record: Record<string, unknown>, key: keyof ManualResearchForm): string {
+  const value = record[key];
+  return typeof value === "string" ? value : "";
+}
+
+function ManualResearchFields({ parcel }: { parcel: NormalizedOfficialParcel }) {
+  const { user } = useAuth();
+  const [form, setForm] = useState<ManualResearchForm>(EMPTY_MANUAL_RESEARCH);
+  const [existingUserData, setExistingUserData] = useState<Record<string, unknown>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoaded(false);
+
+    if (!user) {
+      setExistingUserData({});
+      setForm(EMPTY_MANUAL_RESEARCH);
+      setLoaded(true);
+      return () => {
+        alive = false;
+      };
+    }
+
+    supabase
+      .from("saved_properties")
+      .select("user_data")
+      .eq("user_id", user.id)
+      .eq("parcel_id", parcel.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) toast.error(error.message);
+        const userData = isRecord(data?.user_data) ? data.user_data : {};
+        const manualResearch = isRecord(userData.manualResearch) ? userData.manualResearch : {};
+        setExistingUserData(userData);
+        setForm({
+          askingPrice: stringFromRecord(manualResearch, "askingPrice"),
+          municipalValue: stringFromRecord(manualResearch, "municipalValue"),
+          zoningNote: stringFromRecord(manualResearch, "zoningNote"),
+          ratesNote: stringFromRecord(manualResearch, "ratesNote"),
+          agentName: stringFromRecord(manualResearch, "agentName"),
+          listingUrl: stringFromRecord(manualResearch, "listingUrl"),
+          userConfidenceNote: stringFromRecord(manualResearch, "userConfidenceNote"),
+        });
+        setLoaded(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [parcel.id, user]);
+
+  async function saveManualResearch() {
+    if (!user) {
+      toast.message("Sign in to save manual research fields");
+      return;
+    }
+
+    setSaving(true);
+    const userData = {
+      ...existingUserData,
+      normalizedParcelId: parcel.id,
+      displayTitle:
+        existingUserData.displayTitle ??
+        (parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Official parcel dossier"),
+      erfNumber: parcel.erfNumber ?? existingUserData.erfNumber ?? null,
+      portion: parcel.portion ?? existingUserData.portion ?? null,
+      lpi: parcel.lpi ?? existingUserData.lpi ?? null,
+      parcelKey: parcel.parcelKey ?? existingUserData.parcelKey ?? null,
+      municipality: parcel.municipality ?? existingUserData.municipality ?? null,
+      province: parcel.province ?? existingUserData.province ?? null,
+      latitude: parcel.coordinates?.lat ?? existingUserData.latitude ?? null,
+      longitude: parcel.coordinates?.lng ?? existingUserData.longitude ?? null,
+      lat: parcel.coordinates?.lat ?? existingUserData.lat ?? null,
+      lng: parcel.coordinates?.lng ?? existingUserData.lng ?? null,
+      manualResearch: form,
+      manualResearchUpdatedAt: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.from("saved_properties").upsert(
+      {
+        user_id: user.id,
+        parcel_id: parcel.id,
+        user_data: userData as unknown as Record<string, unknown> as never,
+      },
+      { onConflict: "user_id,parcel_id" },
+    );
+
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setExistingUserData(userData);
+    toast.success("Manual research fields saved");
+  }
+
+  const fields = [
+    ["Asking price", "askingPrice", "e.g. R 2,400,000"],
+    ["Municipal value", "municipalValue", "e.g. R 1,700,000"],
+    ["Zoning note", "zoningNote", "User-entered zoning note"],
+    ["Rates note", "ratesNote", "User-entered rates note"],
+    ["Agent name", "agentName", "Agent or agency contact"],
+    ["Listing URL", "listingUrl", "Verified listing URL"],
+    ["Confidence note", "userConfidenceNote", "Why you trust or question this evidence"],
+  ] as const;
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <SectionTitle>Manual Research Fields</SectionTitle>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
+        Private user-entered fields saved against this normalized parcel id. These are not official
+        parcel data and do not attach verified ownership, valuation, transfer, rates or zoning data.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {fields.map(([label, key, placeholder]) => (
+          <label key={key} className={key === "userConfidenceNote" ? "sm:col-span-2" : ""}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {label}
+            </span>
+            <input
+              value={form[key]}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, [key]: event.target.value }))
+              }
+              placeholder={placeholder}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </label>
+        ))}
+      </div>
+      <button
+        type="button"
+        disabled={!loaded || saving}
+        onClick={saveManualResearch}
+        className="mt-3 inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90 disabled:opacity-60"
+      >
+        <Save className="h-3 w-3" /> {saving ? "Saving" : "Save manual fields"}
+      </button>
+    </section>
   );
 }
 
