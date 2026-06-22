@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildOfficialParcelSearchParams,
   buildSavedParcelMapSearch,
   buildOfficialParcelId,
   clearSavedOfficialReopenSearch,
@@ -112,6 +113,24 @@ describe("official parcel ids", () => {
     });
   });
 
+  it("builds unquoted saved official parcel URL search params", () => {
+    const params = buildOfficialParcelSearchParams("csg:lpi:c03400140000192700000", {
+      title: "Erf 1927",
+      erf: 1927,
+      portion: 0,
+      municipality: "HUMANSDORP",
+      province: "EASTERN CAPE",
+      lng: "24.8534310692288",
+      lat: "-34.1878922943233",
+      zoom: 18,
+    });
+    expect(params).toBe(
+      "officialParcel=csg%3Alpi%3Ac03400140000192700000&fromSaved=1&lng=24.8534310692288&lat=-34.1878922943233&zoom=18&title=Erf+1927&erf=1927&portion=0&municipality=HUMANSDORP&province=EASTERN+CAPE",
+    );
+    expect(params).not.toContain('"');
+    expect(params).not.toContain("%22");
+  });
+
   it("does not add invalid official parcel coordinates", () => {
     expect(
       buildSavedParcelMapSearch("csg:lpi:c03400140000096200000", {
@@ -146,6 +165,25 @@ describe("official parcel ids", () => {
       province: "Eastern Cape",
       lng: 24.830123,
       lat: -34.168988,
+      zoom: 18,
+    });
+  });
+
+  it("parses accidentally quoted saved official parcel reopen metadata", () => {
+    expect(
+      parseOfficialParcelReopenSearch(
+        '?officialParcel="csg:lpi:c03400140000192700000"&fromSaved="1"&title="Erf 1927"&erf="1927"&portion="0"&municipality="HUMANSDORP"&province="EASTERN CAPE"&lng="24.8534310692288"&lat="-34.1878922943233"&zoom="18"',
+      ),
+    ).toEqual({
+      id: "csg:lpi:c03400140000192700000",
+      fromSaved: true,
+      title: "Erf 1927",
+      erf: "1927",
+      portion: "0",
+      municipality: "HUMANSDORP",
+      province: "EASTERN CAPE",
+      lng: 24.8534310692288,
+      lat: -34.1878922943233,
       zoom: 18,
     });
   });

@@ -103,6 +103,18 @@ export interface SavedParcelMapSearch {
   zoom?: string;
 }
 
+export function stripWrappingQuotes(value: string | number | null | undefined): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  let text = String(value).trim();
+  while (
+    text.length >= 2 &&
+    ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))
+  ) {
+    text = text.slice(1, -1).trim();
+  }
+  return text || undefined;
+}
+
 export const SAVED_OFFICIAL_REOPEN_SEARCH_KEYS = [
   "officialParcel",
   "fromSaved",
@@ -117,9 +129,7 @@ export const SAVED_OFFICIAL_REOPEN_SEARCH_KEYS = [
 ];
 
 function cleanSearchText(value: string | number | null | undefined): string | undefined {
-  if (value === null || value === undefined) return undefined;
-  const text = String(value).trim();
-  return text || undefined;
+  return stripWrappingQuotes(value);
 }
 
 function parseBoundedNumber(
@@ -127,8 +137,9 @@ function parseBoundedNumber(
   min: number,
   max: number,
 ): number | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
-  const parsed = Number(value);
+  const text = cleanSearchText(value);
+  if (!text) return undefined;
+  const parsed = Number(text);
   return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : undefined;
 }
 
@@ -165,6 +176,26 @@ export function buildSavedParcelMapSearch(
   return {};
 }
 
+export function buildOfficialParcelSearchParams(
+  parcelId: string | null | undefined,
+  hints: SavedOfficialParcelSearchHints = {},
+): string {
+  const search = buildSavedParcelMapSearch(parcelId, hints);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (value !== undefined && value !== "") params.set(key, value);
+  }
+  return params.toString();
+}
+
+export function buildSavedParcelMapHref(
+  parcelId: string | null | undefined,
+  hints: SavedOfficialParcelSearchHints = {},
+): string {
+  const params = buildOfficialParcelSearchParams(parcelId, hints);
+  return params ? `/?${params}` : "/";
+}
+
 export function parseOfficialParcelSearch(search: string): string | null {
   const params = new URLSearchParams(search);
   const officialParcel = cleanSearchText(params.get("officialParcel"));
@@ -175,7 +206,7 @@ export function parseOfficialParcelReopenSearch(
   search: string,
 ): OfficialParcelReopenRequest | null {
   const params = new URLSearchParams(search);
-  const fromSaved = params.get("fromSaved") === "1";
+  const fromSaved = cleanSearchText(params.get("fromSaved")) === "1";
   const officialParcel = cleanSearchText(params.get("officialParcel"));
   if (!fromSaved || !officialParcel || !isOfficialParcelId(officialParcel)) return null;
 

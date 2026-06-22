@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { getUserGreetingName } from "@/lib/auth/profile";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  buildSavedParcelMapSearch,
+  buildSavedParcelMapHref,
   isDemoParcelId,
   isOfficialParcelId,
 } from "@/lib/parcels/officialParcelId";
@@ -427,24 +427,21 @@ function SavedPropertyRow({ row }: { row: SavedRow }) {
           Open on map <ChevronRight className="h-3 w-3" />
         </Link>
       ) : (
-        <Link
-          to="/"
-          search={
-            buildSavedParcelMapSearch(row.parcel_id, {
-              title,
-              erf,
-              portion,
-              municipality,
-              province,
-              lat,
-              lng,
-              zoom: 18,
-            }) as never
-          }
+        <a
+          href={buildSavedParcelMapHref(row.parcel_id, {
+            title,
+            erf,
+            portion,
+            municipality,
+            province,
+            lat,
+            lng,
+            zoom: 18,
+          })}
           className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
         >
           Open map and search this parcel <ChevronRight className="h-3 w-3" />
-        </Link>
+        </a>
       )}
     </li>
   );
