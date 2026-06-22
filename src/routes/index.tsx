@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { MousePointerClick, Plus, X } from "lucide-react";
 import {
   MapCanvas,
+  type MapDebugStatus,
   type MapLayers,
   type MapStyleId,
   type OfficialFeatureSelection,
@@ -60,6 +61,9 @@ function AtlasHome() {
   const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [showTestGeometry, setShowTestGeometry] = useState(false);
+  const [debugReopenEnabled, setDebugReopenEnabled] = useState(false);
+  const [debugSearchParams, setDebugSearchParams] = useState<Record<string, string | null>>({});
+  const [mapDebugStatus, setMapDebugStatus] = useState<MapDebugStatus | null>(null);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "loading", count: 0 },
     kouga: { state: "loading", count: 0 },
@@ -73,6 +77,16 @@ function AtlasHome() {
     // Test geometry is only togglable from /admin/public-data-debug. Never on by default.
     setShowTestGeometry(window.localStorage.getItem("pa.testGeometry") === "1");
     const search = window.location.search;
+    const params = new URLSearchParams(search);
+    setDebugReopenEnabled(params.get("debugReopen") === "1");
+    setDebugSearchParams({
+      officialParcel: params.get("officialParcel"),
+      fromSaved: params.get("fromSaved"),
+      lat: params.get("lat"),
+      lng: params.get("lng"),
+      zoom: params.get("zoom"),
+      debugReopen: params.get("debugReopen"),
+    });
     const parcel = new URLSearchParams(search).get("parcel");
     if (parcel && getProperty(parcel)) setSelectedId(parcel);
     const officialRequest = parseOfficialParcelReopenSearch(search);
@@ -178,9 +192,18 @@ function AtlasHome() {
         officialReopenTarget={officialReopenTarget}
         officialReopenRequest={requestedOfficialParcel}
         onOfficialReopenStatus={setOfficialReopenStatus}
+        onDebugStatus={debugReopenEnabled ? setMapDebugStatus : undefined}
       />
       <MapLegend layers={layers} />
       <TopNav />
+
+      {debugReopenEnabled && (
+        <DebugReopenPanel
+          searchParams={debugSearchParams}
+          mapStatus={mapDebugStatus}
+          reopenStatus={officialReopenStatus}
+        />
+      )}
 
       <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-2 px-4 md:top-24">
         <div className="pointer-events-auto relative z-10 w-full max-w-xl">
@@ -367,6 +390,58 @@ function AtlasHome() {
       )}
       {addOpen && <AddPropertyDialog onClose={() => setAddOpen(false)} />}
       <Toaster position="top-center" />
+    </div>
+  );
+}
+
+function DebugReopenPanel({
+  searchParams,
+  mapStatus,
+  reopenStatus,
+}: {
+  searchParams: Record<string, string | null>;
+  mapStatus: MapDebugStatus | null;
+  reopenStatus: OfficialReopenResolutionStatus;
+}) {
+  const yesNo = (value: boolean | undefined) =>
+    value === undefined ? "unknown" : value ? "yes" : "no";
+  const paramRows = ["officialParcel", "fromSaved", "lat", "lng", "zoom", "debugReopen"];
+
+  return (
+    <div className="pointer-events-auto absolute bottom-4 left-4 z-50 w-[min(94vw,28rem)] rounded-xl border-4 border-red-500 bg-black p-4 font-mono text-xs text-white shadow-2xl">
+      <div className="text-base font-black uppercase tracking-wide text-red-300">
+        PROPERTYATLAS DEBUG BUILD
+      </div>
+      <div className="mt-1 text-sm font-bold text-yellow-300">
+        Build label: saved-reopen-debug-v1
+      </div>
+
+      <div className="mt-3 font-bold text-red-200">Current URL search params:</div>
+      <dl className="mt-1 grid grid-cols-[8rem_1fr] gap-x-2 gap-y-1">
+        {paramRows.map((key) => (
+          <Fragment key={key}>
+            <dt className="text-slate-300">{key}</dt>
+            <dd className="break-all text-white">{searchParams[key] ?? "(missing)"}</dd>
+          </Fragment>
+        ))}
+      </dl>
+
+      <div className="mt-3 font-bold text-red-200">Map status:</div>
+      <dl className="mt-1 grid grid-cols-[10rem_1fr] gap-x-2 gap-y-1">
+        <dt className="text-slate-300">map loaded</dt>
+        <dd>{yesNo(mapStatus?.mapLoaded)}</dd>
+        <dt className="text-slate-300">CSG source exists</dt>
+        <dd>{yesNo(mapStatus?.csgSourceExists)}</dd>
+        <dt className="text-slate-300">CSG layer exists</dt>
+        <dd>{yesNo(mapStatus?.csgLayerExists)}</dd>
+        <dt className="text-slate-300">Kouga source exists</dt>
+        <dd>{yesNo(mapStatus?.kougaSourceExists)}</dd>
+        <dt className="text-slate-300">Kouga layer exists</dt>
+        <dd>{yesNo(mapStatus?.kougaLayerExists)}</dd>
+      </dl>
+
+      <div className="mt-3 font-bold text-red-200">Saved reopen status:</div>
+      <div className="mt-1 text-lg font-black text-lime-300">{reopenStatus}</div>
     </div>
   );
 }

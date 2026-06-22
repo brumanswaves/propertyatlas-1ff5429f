@@ -77,6 +77,14 @@ export interface OfficialReopenTarget {
 
 export type OfficialReopenResolutionStatus = "idle" | "searching" | "resolved" | "not-found";
 
+export interface MapDebugStatus {
+  mapLoaded: boolean;
+  csgSourceExists: boolean;
+  csgLayerExists: boolean;
+  kougaSourceExists: boolean;
+  kougaLayerExists: boolean;
+}
+
 interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -89,6 +97,7 @@ interface Props {
   officialReopenTarget?: OfficialReopenTarget | null;
   officialReopenRequest?: OfficialParcelReopenRequest | null;
   onOfficialReopenStatus?: (status: OfficialReopenResolutionStatus) => void;
+  onDebugStatus?: (status: MapDebugStatus) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -294,6 +303,7 @@ export function MapCanvas({
   officialReopenTarget,
   officialReopenRequest,
   onOfficialReopenStatus,
+  onDebugStatus,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -313,6 +323,18 @@ export function MapCanvas({
 
   const filtered = useMemo(() => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES), [filterFn]);
   const filteredIds = useMemo(() => new Set(filtered.map((p) => p.id)), [filtered]);
+
+  useEffect(() => {
+    if (!onDebugStatus) return;
+    const map = mapRef.current;
+    onDebugStatus({
+      mapLoaded: Boolean(map && ready),
+      csgSourceExists: Boolean(map?.getSource("csg-parcels")),
+      csgLayerExists: Boolean(map?.getLayer("csg-parcels-fill")),
+      kougaSourceExists: Boolean(map?.getSource("kouga-zoning")),
+      kougaLayerExists: Boolean(map?.getLayer("kouga-zoning-fill")),
+    });
+  }, [onDebugStatus, ready, styleVersion, officialDataVersion, layers]);
 
   const clearOfficialSelectedFeature = useCallback((map: mapboxgl.Map) => {
     const selected = selectedOfficialFeatureRef.current;
