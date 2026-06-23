@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Plus, Trash2, Copy, BookmarkCheck, ChevronDown } from "lucide-react";
-import {
-  buildListingResearchLinks,
-  buildSearchPhrase,
-  type ResearchContext,
-} from "@/lib/research/links";
+import { buildMarketEvidenceWorkflow, type ResearchContext } from "@/lib/research/links";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -75,8 +71,9 @@ export function ListingsTab({
     notes: "",
     status: "For Sale",
   });
-  const listingLinks = buildListingResearchLinks(ctx);
-  const searchPhrase = buildSearchPhrase(ctx);
+  const marketWorkflow = buildMarketEvidenceWorkflow(ctx);
+  const listingLinks = marketWorkflow.portals;
+  const searchPhrase = marketWorkflow.searchPhrase;
 
   useEffect(() => {
     if (!user) return;
@@ -237,8 +234,7 @@ export function ListingsTab({
           Search listing portals
         </div>
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Open the listing portal, search the erf/address manually, then save any listing URL you
-          find. PropertyAtlas does not yet verify live listing availability.
+          {marketWorkflow.instruction} PropertyAtlas does not yet verify live listing availability.
         </p>
         <div className="flex flex-wrap gap-2">
           {listingLinks.map((s) => (

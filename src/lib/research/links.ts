@@ -239,14 +239,28 @@ export interface ListingSearchLink {
   href: string;
 }
 
+export interface MarketEvidenceWorkflow {
+  searchPhrase: string;
+  instruction: string;
+  portals: ListingSearchLink[];
+}
+
 /** Returns links that open each portal's home page so users can search manually. */
 export function buildListingResearchLinks(_ctx: ResearchContext): ListingSearchLink[] {
   return LISTING_PORTALS.map((p) => ({
     id: p.id,
     label: `Open ${p.label}`,
-    description: `Open ${p.label} and search manually.`,
+    description: `Open ${p.label}, paste the search phrase, then save only matching listing URLs.`,
     href: p.url,
   }));
+}
+
+export function buildMarketEvidenceWorkflow(ctx: ResearchContext): MarketEvidenceWorkflow {
+  return {
+    searchPhrase: buildSearchPhrase(ctx),
+    instruction: "Open the portal, paste/search the phrase, then save only matching listing URLs.",
+    portals: buildListingResearchLinks(ctx),
+  };
 }
 
 // Legacy export kept for backwards compatibility with any older callers.

@@ -1,13 +1,6 @@
-// Report marketplace catalog. Only Lightstone Property Report runs the
-// placeholder order flow today; others are tagged Coming Soon until their
-// underlying provider integration is wired.
+// Normal user report actions. Keep this small until provider integrations are live.
 
-export type ReportType =
-  | "lightstone_property"
-  | "lightstone_seller"
-  | "windeed_property"
-  | "windeed_avm"
-  | "sg_diagram";
+export type ReportType = "lightstone_property" | "windeed_property" | "sg_diagram";
 
 export interface ReportDef {
   id: ReportType;
@@ -23,50 +16,39 @@ export const REPORT_CATALOG: ReportDef[] = [
   {
     id: "lightstone_property",
     name: "Lightstone Property Report",
-    description: "Comprehensive property snapshot — owner, valuation band, sales history, comparable transfers.",
-    priceCents: 29900,
+    description:
+      "Coming soon: valuation, comparable sales, ownership and market intelligence when the Lightstone provider is connected.",
+    priceCents: 0,
     available: false,
     providerHint: "Lightstone",
-    estTurnaround: "Real-time once provider is connected",
-  },
-  {
-    id: "lightstone_seller",
-    name: "Lightstone Property Value Seller Report",
-    description: "Seller-focused AVM with suggested asking range and recent comparable activity.",
-    priceCents: 19900,
-    available: false,
-    providerHint: "Lightstone",
-    estTurnaround: "Real-time once connected",
+    estTurnaround: "Coming soon / save interest",
   },
   {
     id: "windeed_property",
     name: "WinDeed Property Report",
-    description: "Deeds-office property report including registered owner and bond information.",
-    priceCents: 24900,
+    description:
+      "Coming soon: deeds-office ownership, bonds and transfer history when the WinDeed provider is connected.",
+    priceCents: 0,
     available: false,
     providerHint: "WinDeed",
-    estTurnaround: "Real-time once connected",
-  },
-  {
-    id: "windeed_avm",
-    name: "WinDeed Automated Valuation Report",
-    description: "Automated valuation model output sourced via WinDeed.",
-    priceCents: 17900,
-    available: false,
-    providerHint: "WinDeed",
-    estTurnaround: "Real-time once connected",
+    estTurnaround: "Coming soon / save interest",
   },
   {
     id: "sg_diagram",
-    name: "Surveyor-General Diagram",
-    description: "Official SG diagram for the registered parcel.",
-    priceCents: 14900,
+    name: "SG Document List",
+    description: "Official Surveyor-General document list when a direct CSG URL can be built.",
+    priceCents: 0,
     available: false,
-    providerHint: "Surveyor-General",
-    estTurnaround: "Manual lookup",
+    providerHint: "Chief Surveyor-General",
+    estTurnaround: "Official public source",
   },
 ];
 
 export function formatPrice(cents: number) {
-  return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(cents / 100);
+  if (cents <= 0) return "Coming soon";
+  return new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
 }

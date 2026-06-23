@@ -70,15 +70,12 @@ interface ActivityRow {
   at: string;
 }
 
-const CHECKLIST = [
-  "Verify ownership (Lightstone / WinDeed report when available)",
-  "Check zoning (Kouga Mapping Portal or municipal source)",
-  "Check SG diagram (CSG Property Viewer)",
-  "Search listings on portals",
-  "Save listing URL if found",
-  "Add notes and questions",
-  "Run a calculator scenario",
-  "Order a verified report when integrations are live",
+const NEXT_ACTIONS = [
+  "Open the map and continue a saved dossier",
+  "Add a note or question to a saved erf",
+  "Use the Listings tab to save matching listing evidence",
+  "Run calculators from a saved property dossier",
+  "Save report interest when Lightstone or WinDeed data is needed",
 ];
 
 function Dashboard() {
@@ -204,7 +201,7 @@ function Dashboard() {
               Hello {greetingName}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Saved parcels, notes, listings, and report interests.
+              Saved research dossiers, notes, listing evidence, and report interests.
             </p>
           </div>
           <Link
@@ -239,9 +236,9 @@ function Dashboard() {
         </div>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-2">
-          <Panel icon={<ClipboardList className="h-3.5 w-3.5" />} title="Due-diligence checklist">
+          <Panel icon={<ClipboardList className="h-3.5 w-3.5" />} title="Next best actions">
             <ul className="space-y-1.5 text-[12.5px]">
-              {CHECKLIST.map((c) => (
+              {NEXT_ACTIONS.map((c) => (
                 <li key={c} className="flex items-start gap-2">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
                   <span className="text-muted-foreground">{c}</span>
@@ -272,7 +269,9 @@ function Dashboard() {
         </section>
 
         <section className="mt-10">
-          <SectionTitle icon={<Bookmark className="h-3.5 w-3.5" />}>Saved properties</SectionTitle>
+          <SectionTitle icon={<Bookmark className="h-3.5 w-3.5" />}>
+            Saved Research Dossiers
+          </SectionTitle>
           {saved.length === 0 ? (
             <EmptyCard
               icon={<Bookmark className="h-5 w-5" />}
@@ -290,12 +289,14 @@ function Dashboard() {
         </section>
 
         <section className="mt-10">
-          <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>Saved listings</SectionTitle>
+          <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>
+            Saved Listing Evidence
+          </SectionTitle>
           {listings.length === 0 ? (
             <EmptyCard
               icon={<Link2 className="h-5 w-5" />}
-              title="No saved listings"
-              body="Live listing feed not connected. Save listings manually from the Listings tab on any parcel."
+              title="No listing evidence saved yet"
+              body="Open a saved property, use the Listings tab, then save any matching listing URL. PropertyAtlas does not run a live listing feed."
             />
           ) : (
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -337,8 +338,8 @@ function Dashboard() {
           <SectionTitle icon={<Calculator className="h-3.5 w-3.5" />}>Calculators</SectionTitle>
           <EmptyCard
             icon={<Calculator className="h-5 w-5" />}
-            title="Run scenarios from the property panel"
-            body="Open a parcel and use the Calculators tab to run yield, holding-cost, flip and development scenarios using your own numbers."
+            title="Calculators live inside each property dossier"
+            body="Open a saved property to run acquisition, rental, bond, flip, BRRRR, development and scenario estimates. Scenarios are not saved yet."
             cta={{ to: "/", label: "Open the map" }}
           />
         </section>

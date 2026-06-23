@@ -1,10 +1,27 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BookmarkCheck, ExternalLink, FileText, Save, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  BookmarkCheck,
+  Copy,
+  ExternalLink,
+  FileText,
+  Save,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
-import type { ResearchContext } from "@/lib/research/links";
+import { buildMarketEvidenceWorkflow, type ResearchContext } from "@/lib/research/links";
+import {
+  calculateAcquisition,
+  calculateBond,
+  calculateBrrrr,
+  calculateBuyHold,
+  calculateDevelopment,
+  calculateFlip,
+  calculateScenarioComparison,
+} from "@/lib/research/calculators";
 import {
   RESEARCH_SOURCE_QUALITY_LABELS,
   RESEARCH_SOURCE_USEFULNESS_LABELS,
@@ -14,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { copyToClipboard, openExternalUrl } from "@/lib/external";
 import { SavedLinksManager } from "./SavedLinksManager";
 import { NotesTab } from "./tabs/NotesTab";
 import { ListingsTab } from "./tabs/ListingsTab";
@@ -216,6 +234,15 @@ function toResearchContext(parcel: NormalizedOfficialParcel): ResearchContext {
   };
 }
 
+function extractDefaultPrice(parcel: NormalizedOfficialParcel): number {
+  const priceField = parcel.knownFields.find((field) =>
+    /asking|price|value|valuation/i.test(`${field.label} ${field.source}`),
+  );
+  if (!priceField) return 0;
+  const value = Number(String(priceField.value).replace(/[^\d.]/g, ""));
+  return Number.isFinite(value) ? value : 0;
+}
+
 export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: Props) {
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel);
@@ -241,7 +268,6 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   ]
     .filter(Boolean)
     .join(", ");
-  const listingSources = sources.filter((source) => source.category === "listings-market-evidence");
   const primarySources = sources.filter((source) => source.userUsefulness === "primary");
   const secondarySources = sources.filter((source) => source.userUsefulness === "secondary");
   const moreSources = sources.filter((source) => source.userUsefulness === "hidden_by_default");
@@ -259,10 +285,11 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   const nextBestStep = buildNextBestStep(parcel, sources);
   const dueDiligenceStages = buildDueDiligenceProgress(parcel, sources);
   const selectWorkflowView = (target: InvestorWorkflowView) => onSelectView?.(target);
+  const marketWorkflow = useMemo(() => buildMarketEvidenceWorkflow(researchCtx), [researchCtx]);
   const curatedSections = RESEARCH_SECTIONS.map((section) => ({
     ...section,
     sources: visibleSources.filter(section.match),
-  })).filter((section) => section.sources.length > 0);
+  })).filter((section) => section.sources.length > 0 || section.id === "listings-market");
   const nextSteps = [
     [
       "Open Research tab",
@@ -302,15 +329,19 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         {curatedSections.map((section) => (
           <section key={section.id} className="rounded-2xl border border-border bg-card p-4">
             <SectionTitle>{section.title}</SectionTitle>
-            <div className="grid gap-2">
-              {section.sources.map((source) => (
-                <SourceCard
-                  key={source.id}
-                  source={source}
-                  featured={source.userUsefulness === "primary"}
-                />
-              ))}
-            </div>
+            {section.id === "listings-market" ? (
+              <MarketEvidenceWorkflowCard workflow={marketWorkflow} />
+            ) : (
+              <div className="grid gap-2">
+                {section.sources.map((source) => (
+                  <SourceCard
+                    key={source.id}
+                    source={source}
+                    featured={source.userUsefulness === "primary"}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         ))}
 
@@ -334,7 +365,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
         <SectionTitle>Listing Research</SectionTitle>
-        <ListingSearchStrip sources={listingSources} />
+        <MarketEvidenceWorkflowCard workflow={marketWorkflow} />
         <div className="mt-4">
           <ListingsTab parcelId={parcel.id} ctx={researchCtx} showSourceBadge={false} />
         </div>
@@ -349,8 +380,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         <p className="mb-3 text-[12px] text-muted-foreground">
           Paid provider data not yet attached.
         </p>
-        <PaidReportSlots />
-        <div className="mt-4">
+        <div className="mt-3">
           <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
         </div>
       </section>
@@ -376,7 +406,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
         <SectionTitle>Calculators</SectionTitle>
-        <OfficialCalculatorPanel />
+        <OfficialCalculatorPanel defaultPrice={extractDefaultPrice(parcel)} />
       </section>
     );
   }
@@ -683,14 +713,13 @@ function SourceCard({ source, featured = false }: { source: ResearchSource; feat
           {source.actionLabel}
         </button>
       ) : (
-        <a
-          href={source.url ?? "#"}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={(event) => openExternalUrl(source.url!, event)}
           className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
         >
           {source.actionLabel} <ExternalLink className="h-3 w-3" />
-        </a>
+        </button>
       )}
     </article>
   );
@@ -1021,42 +1050,50 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
   );
 }
 
-function ListingSearchStrip({ sources }: { sources: ResearchSource[] }) {
+function MarketEvidenceWorkflowCard({
+  workflow,
+}: {
+  workflow: ReturnType<typeof buildMarketEvidenceWorkflow>;
+}) {
   return (
-    <div className="space-y-3">
-      <p className="text-[12px] leading-relaxed text-muted-foreground">
-        These listing searches are unverified. Save only URLs you have manually checked against the
-        erf, coordinates, agency details, or other evidence.
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+      <div className="text-[13px] font-semibold text-foreground">Market evidence workflow</div>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+        {workflow.instruction} Listing evidence is third-party and unverified until you match it to
+        this erf.
       </p>
-      <div className="flex flex-wrap gap-2">
-        {sources.map((source) => {
-          const disabled = !source.url || source.status === "unavailable";
-          return disabled ? (
-            <span
-              key={source.id}
-              className="rounded-full border border-dashed border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              title={
-                source.missingFields.length > 0
-                  ? `Missing: ${source.missingFields.join(", ")}`
-                  : source.complianceNote
-              }
-            >
-              {source.name}
-            </span>
-          ) : (
-            <a
-              key={source.id}
-              href={source.url ?? undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
-              title={source.complianceNote}
-            >
-              <ExternalLink className="h-3 w-3" />
-              {source.name}
-            </a>
-          );
-        })}
+      <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Copyable search phrase
+        </div>
+        <div className="mt-1 break-words text-[13px] font-semibold text-foreground">
+          {workflow.searchPhrase || "No parcel search phrase available yet"}
+        </div>
+        <button
+          type="button"
+          disabled={!workflow.searchPhrase}
+          onClick={async () => {
+            const ok = await copyToClipboard(workflow.searchPhrase);
+            if (ok) toast.success("Search phrase copied");
+            else toast.error("Could not copy search phrase");
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90 disabled:opacity-50"
+        >
+          <Copy className="h-3 w-3" /> Copy search phrase
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {workflow.portals.map((portal) => (
+          <button
+            key={portal.id}
+            type="button"
+            onClick={(event) => openExternalUrl(portal.href, event)}
+            title={portal.description}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+          >
+            <ExternalLink className="h-3 w-3" /> {portal.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -1071,62 +1108,485 @@ function formatRand(value: number): string {
   return `R ${Math.round(value).toLocaleString("en-ZA")}`;
 }
 
-function OfficialCalculatorPanel() {
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [buildCost, setBuildCost] = useState("");
-  const [holdingCost, setHoldingCost] = useState("");
-  const [transferDuty, setTransferDuty] = useState("");
-  const [resalePrice, setResalePrice] = useState("");
-  const [targetProfit, setTargetProfit] = useState("");
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
 
-  const purchase = toNumber(purchasePrice);
-  const build = toNumber(buildCost);
-  const holding = toNumber(holdingCost);
-  const transfer = toNumber(transferDuty);
-  const resale = toNumber(resalePrice);
-  const profitTarget = toNumber(targetProfit);
-  const landPlusBuild = purchase + build;
-  const totalCost = landPlusBuild + holding + transfer;
-  const flipProfit = resale - totalCost;
-  const targetOffer =
-    resale > 0 ? Math.max(0, resale - build - holding - transfer - profitTarget) : 0;
+type CalculatorTab =
+  | "acquisition"
+  | "rental"
+  | "bond"
+  | "flip"
+  | "brrrr"
+  | "development"
+  | "scenarios";
 
-  const fields = [
-    ["Purchase price", purchasePrice, setPurchasePrice],
-    ["Build / improvement cost", buildCost, setBuildCost],
-    ["Holding costs", holdingCost, setHoldingCost],
-    ["Transfer duty estimate", transferDuty, setTransferDuty],
-    ["Expected resale / exit price", resalePrice, setResalePrice],
-    ["Target profit", targetProfit, setTargetProfit],
-  ] as const;
+const CALCULATOR_TABS: { id: CalculatorTab; label: string }[] = [
+  { id: "acquisition", label: "Acquisition" },
+  { id: "rental", label: "Buy & hold" },
+  { id: "bond", label: "Bond" },
+  { id: "flip", label: "Flip" },
+  { id: "brrrr", label: "BRRRR" },
+  { id: "development", label: "Development" },
+  { id: "scenarios", label: "Scenarios" },
+];
+
+function calculatorDefaults(defaultPrice: number): Record<string, string> {
+  const price = defaultPrice > 0 ? String(defaultPrice) : "";
+  return {
+    purchasePrice: price,
+    depositPercent: "10",
+    transferDuty: "",
+    conveyancerFees: "",
+    bondRegistrationFees: "",
+    initiationFees: "6037",
+    inspectionAllowance: "",
+    renovationBudget: "",
+    furnitureBudget: "",
+    cashBuffer: "",
+    monthlyRent: "",
+    vacancyPercent: "5",
+    monthlyRates: "",
+    monthlyLevies: "",
+    insurance: "",
+    maintenancePercent: "5",
+    managementPercent: "8",
+    otherMonthlyCosts: "",
+    monthlyBondPayment: "",
+    interestRate: "11.75",
+    termYears: "20",
+    extraMonthlyPayment: "",
+    acquisitionCosts: "",
+    contingencyPercent: "10",
+    holdingMonths: "6",
+    monthlyHoldingCost: "",
+    expectedResalePrice: "",
+    agentCommissionPercent: "5",
+    sellingCosts: "",
+    targetProfit: "",
+    allInCost: "",
+    afterRepairValue: "",
+    refinanceLtv: "75",
+    refinanceFees: "",
+    monthlyExpenses: "",
+    monthlyDebtService: "",
+    landPrice: price,
+    buildableSqm: "",
+    buildCostPerSqm: "",
+    professionalFeesPercent: "12",
+    municipalServiceCosts: "",
+    financeHoldingCosts: "",
+    expectedGrossValue: "",
+    lowResalePrice: "",
+    baseResalePrice: "",
+    highResalePrice: "",
+    lowRent: "",
+    baseRent: "",
+    highRent: "",
+    lowCost: "",
+    baseCost: "",
+    highCost: "",
+    lowInterestRate: "12.5",
+    baseInterestRate: "11.75",
+    highInterestRate: "11",
+  };
+}
+
+function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
+  const [active, setActive] = useState<CalculatorTab>("acquisition");
+  const [values, setValues] = useState(() => calculatorDefaults(defaultPrice));
+  const n = (key: string) => toNumber(values[key] ?? "");
+  const setValue = (key: string, value: string) =>
+    setValues((current) => ({ ...current, [key]: value }));
+  const reset = () => setValues(calculatorDefaults(defaultPrice));
+
+  const loanAmount = Math.max(0, n("purchasePrice") * (1 - n("depositPercent") / 100));
+  const monthlyBond =
+    n("monthlyBondPayment") ||
+    calculateBond({
+      loanAmount,
+      interestRate: n("interestRate"),
+      termYears: n("termYears"),
+      extraMonthlyPayment: n("extraMonthlyPayment"),
+      monthlyNoi: 0,
+      monthlyRent: n("monthlyRent"),
+    }).monthlyBondPayment;
+  const acquisition = calculateAcquisition({
+    purchasePrice: n("purchasePrice"),
+    depositPercent: n("depositPercent"),
+    transferDuty: n("transferDuty"),
+    conveyancerFees: n("conveyancerFees"),
+    bondRegistrationFees: n("bondRegistrationFees"),
+    initiationFees: n("initiationFees"),
+    inspectionAllowance: n("inspectionAllowance"),
+    renovationBudget: n("renovationBudget"),
+    furnitureBudget: n("furnitureBudget"),
+    cashBuffer: n("cashBuffer"),
+  });
+  const rental = calculateBuyHold({
+    purchasePrice: n("purchasePrice"),
+    totalCashInvested: acquisition.totalCashRequired,
+    monthlyRent: n("monthlyRent"),
+    vacancyPercent: n("vacancyPercent"),
+    monthlyRates: n("monthlyRates"),
+    monthlyLevies: n("monthlyLevies"),
+    insurance: n("insurance"),
+    maintenancePercent: n("maintenancePercent"),
+    managementPercent: n("managementPercent"),
+    otherMonthlyCosts: n("otherMonthlyCosts"),
+    monthlyBondPayment: monthlyBond,
+  });
+  const bond = calculateBond({
+    loanAmount,
+    interestRate: n("interestRate"),
+    termYears: n("termYears"),
+    extraMonthlyPayment: n("extraMonthlyPayment"),
+    monthlyNoi: rental.monthlyNoi,
+    monthlyRent: n("monthlyRent"),
+  });
+  const flip = calculateFlip({
+    purchasePrice: n("purchasePrice"),
+    acquisitionCosts: n("acquisitionCosts"),
+    renovationBudget: n("renovationBudget"),
+    contingencyPercent: n("contingencyPercent"),
+    holdingMonths: n("holdingMonths"),
+    monthlyHoldingCost: n("monthlyHoldingCost"),
+    expectedResalePrice: n("expectedResalePrice"),
+    agentCommissionPercent: n("agentCommissionPercent"),
+    sellingCosts: n("sellingCosts"),
+    targetProfit: n("targetProfit"),
+  });
+  const brrrr = calculateBrrrr({
+    purchasePrice: n("purchasePrice"),
+    renovationBudget: n("renovationBudget"),
+    allInCost: n("allInCost"),
+    afterRepairValue: n("afterRepairValue"),
+    refinanceLtv: n("refinanceLtv"),
+    refinanceFees: n("refinanceFees"),
+    monthlyRent: n("monthlyRent"),
+    monthlyExpenses: n("monthlyExpenses"),
+    monthlyDebtService: n("monthlyDebtService") || monthlyBond,
+  });
+  const development = calculateDevelopment({
+    landPrice: n("landPrice"),
+    buildableSqm: n("buildableSqm"),
+    buildCostPerSqm: n("buildCostPerSqm"),
+    professionalFeesPercent: n("professionalFeesPercent"),
+    contingencyPercent: n("contingencyPercent"),
+    municipalServiceCosts: n("municipalServiceCosts"),
+    financeHoldingCosts: n("financeHoldingCosts"),
+    expectedGrossValue: n("expectedGrossValue"),
+  });
+  const scenarios = calculateScenarioComparison([
+    {
+      label: "Low",
+      resalePrice: n("lowResalePrice"),
+      rent: n("lowRent"),
+      renovationOrBuildCost: n("highCost"),
+      interestRate: n("lowInterestRate"),
+      purchasePrice: n("purchasePrice"),
+      monthlyExpenses: n("monthlyExpenses"),
+      loanAmount,
+      termYears: n("termYears"),
+    },
+    {
+      label: "Base",
+      resalePrice: n("baseResalePrice"),
+      rent: n("baseRent"),
+      renovationOrBuildCost: n("baseCost"),
+      interestRate: n("baseInterestRate"),
+      purchasePrice: n("purchasePrice"),
+      monthlyExpenses: n("monthlyExpenses"),
+      loanAmount,
+      termYears: n("termYears"),
+    },
+    {
+      label: "High",
+      resalePrice: n("highResalePrice"),
+      rent: n("highRent"),
+      renovationOrBuildCost: n("lowCost"),
+      interestRate: n("highInterestRate"),
+      purchasePrice: n("purchasePrice"),
+      monthlyExpenses: n("monthlyExpenses"),
+      loanAmount,
+      termYears: n("termYears"),
+    },
+  ]);
 
   return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
+          Estimates only. Enter your own assumptions; PropertyAtlas is not attaching official
+          valuation, rates, transfer, deeds or paid provider data here.
+        </p>
+        <button
+          type="button"
+          onClick={reset}
+          className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+        >
+          Reset to defaults
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {CALCULATOR_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActive(tab.id)}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold",
+              active === tab.id
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-background",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {active === "acquisition" && (
+        <CalculatorSection
+          fields={[
+            ["Purchase price", "purchasePrice"],
+            ["Deposit percent", "depositPercent"],
+            ["Transfer duty", "transferDuty"],
+            ["Conveyancer / transfer fees", "conveyancerFees"],
+            ["Bond registration fees", "bondRegistrationFees"],
+            ["Initiation fees", "initiationFees"],
+            ["Inspection / survey allowance", "inspectionAllowance"],
+            ["Renovation / improvement budget", "renovationBudget"],
+            ["Furniture / setup budget", "furnitureBudget"],
+            ["Cash buffer", "cashBuffer"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Total cash required", formatRand(acquisition.totalCashRequired)],
+            ["Loan amount", formatRand(acquisition.loanAmount)],
+            ["Loan-to-value", formatPercent(acquisition.loanToValue)],
+            ["Total acquisition cost", formatRand(acquisition.totalAcquisitionCost)],
+            ["Cost basis before financing", formatRand(acquisition.costBasisBeforeFinancing)],
+          ]}
+        />
+      )}
+      {active === "rental" && (
+        <CalculatorSection
+          fields={[
+            ["Monthly rent", "monthlyRent"],
+            ["Vacancy percent", "vacancyPercent"],
+            ["Monthly rates", "monthlyRates"],
+            ["Monthly levies", "monthlyLevies"],
+            ["Insurance", "insurance"],
+            ["Maintenance percent", "maintenancePercent"],
+            ["Property management percent", "managementPercent"],
+            ["Other monthly costs", "otherMonthlyCosts"],
+            ["Bond payment override", "monthlyBondPayment"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Gross yield", formatPercent(rental.grossYield)],
+            ["Net yield", formatPercent(rental.netYield)],
+            ["Monthly NOI", formatRand(rental.monthlyNoi)],
+            ["Annual NOI", formatRand(rental.annualNoi)],
+            ["Cash flow after debt", formatRand(rental.cashFlowAfterDebt)],
+            ["Cash-on-cash return", formatPercent(rental.cashOnCashReturn)],
+            ["Cap rate", formatPercent(rental.capRate)],
+            ["Break-even rent", formatRand(rental.breakEvenRent)],
+          ]}
+        />
+      )}
+      {active === "bond" && (
+        <CalculatorSection
+          fields={[
+            ["Interest rate", "interestRate"],
+            ["Term years", "termYears"],
+            ["Extra monthly payment", "extraMonthlyPayment"],
+            ["Monthly rent", "monthlyRent"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Monthly bond payment", formatRand(bond.monthlyBondPayment)],
+            ["Annual debt service", formatRand(bond.annualDebtService)],
+            ["Total interest", formatRand(bond.totalInterest)],
+            ["Payoff estimate", `${bond.payoffEstimateYears} years`],
+            ["DSCR using rental NOI", bond.dscr.toFixed(2)],
+            ["Break-even occupancy", formatPercent(bond.breakEvenOccupancy)],
+          ]}
+        />
+      )}
+      {active === "flip" && (
+        <CalculatorSection
+          fields={[
+            ["Acquisition costs", "acquisitionCosts"],
+            ["Renovation budget", "renovationBudget"],
+            ["Contingency percent", "contingencyPercent"],
+            ["Holding months", "holdingMonths"],
+            ["Monthly holding cost", "monthlyHoldingCost"],
+            ["Expected resale price", "expectedResalePrice"],
+            ["Agent commission percent", "agentCommissionPercent"],
+            ["Selling costs", "sellingCosts"],
+            ["Target profit", "targetProfit"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Total project cost", formatRand(flip.totalProjectCost)],
+            ["Net sale proceeds", formatRand(flip.netSaleProceeds)],
+            ["Profit", formatRand(flip.profit)],
+            ["ROI", formatPercent(flip.roi)],
+            ["Annualized ROI", formatPercent(flip.annualizedRoi)],
+            ["Required resale price", formatRand(flip.requiredResalePriceForTargetProfit)],
+            ["Maximum purchase price", formatRand(flip.maximumPurchasePriceForTargetProfit)],
+          ]}
+        />
+      )}
+      {active === "brrrr" && (
+        <CalculatorSection
+          fields={[
+            ["Renovation budget", "renovationBudget"],
+            ["All-in cost override", "allInCost"],
+            ["After-repair value", "afterRepairValue"],
+            ["Refinance LTV", "refinanceLtv"],
+            ["Refinance fees", "refinanceFees"],
+            ["Monthly rent", "monthlyRent"],
+            ["Monthly expenses", "monthlyExpenses"],
+            ["Monthly debt service", "monthlyDebtService"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Refinance loan amount", formatRand(brrrr.refinanceLoanAmount)],
+            ["Cash returned", formatRand(brrrr.cashReturned)],
+            ["Cash left in deal", formatRand(brrrr.cashLeftInDeal)],
+            ["Cash-on-cash return", formatPercent(brrrr.cashOnCashReturn)],
+            ["Equity created", formatRand(brrrr.equityCreated)],
+            ["DSCR", brrrr.dscr.toFixed(2)],
+          ]}
+        />
+      )}
+      {active === "development" && (
+        <CalculatorSection
+          fields={[
+            ["Land price", "landPrice"],
+            ["Buildable sqm", "buildableSqm"],
+            ["Build cost per sqm", "buildCostPerSqm"],
+            ["Professional fees percent", "professionalFeesPercent"],
+            ["Contingency percent", "contingencyPercent"],
+            ["Municipal / service costs", "municipalServiceCosts"],
+            ["Finance / holding costs", "financeHoldingCosts"],
+            ["Expected gross sale/rental value", "expectedGrossValue"],
+          ]}
+          values={values}
+          setValue={setValue}
+          results={[
+            ["Hard cost", formatRand(development.hardCost)],
+            ["Soft cost", formatRand(development.softCost)],
+            ["Total development cost", formatRand(development.totalDevelopmentCost)],
+            ["Profit", formatRand(development.profit)],
+            ["Margin", formatPercent(development.margin)],
+            ["Return on cost", formatPercent(development.returnOnCost)],
+            ["Break-even sale price", formatRand(development.breakEvenSalePrice)],
+            ["Price per sqm", formatRand(development.pricePerSqm)],
+          ]}
+        />
+      )}
+      {active === "scenarios" && (
+        <div className="space-y-3">
+          <CalculatorSection
+            fields={[
+              ["Low resale/value", "lowResalePrice"],
+              ["Base resale/value", "baseResalePrice"],
+              ["High resale/value", "highResalePrice"],
+              ["Low rent", "lowRent"],
+              ["Base rent", "baseRent"],
+              ["High rent", "highRent"],
+              ["Low cost", "lowCost"],
+              ["Base cost", "baseCost"],
+              ["High cost", "highCost"],
+              ["Low interest rate", "lowInterestRate"],
+              ["Base interest rate", "baseInterestRate"],
+              ["High interest rate", "highInterestRate"],
+            ]}
+            values={values}
+            setValue={setValue}
+            results={[]}
+          />
+          <div className="grid gap-2 sm:grid-cols-3">
+            {scenarios.map((scenario) => (
+              <div
+                key={scenario.label}
+                className="rounded-xl border border-border bg-background p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold">{scenario.label}</div>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                      scenario.status === "green" && "bg-emerald-500/15 text-emerald-700",
+                      scenario.status === "yellow" && "bg-amber-500/15 text-amber-700",
+                      scenario.status === "red" && "bg-rose-500/15 text-rose-700",
+                    )}
+                  >
+                    {scenario.status}
+                  </span>
+                </div>
+                <div className="mt-2 grid gap-1 text-[12px] text-muted-foreground">
+                  <span>Profit: {formatRand(scenario.profit)}</span>
+                  <span>Monthly cash flow: {formatRand(scenario.monthlyCashFlow)}</span>
+                  <span>DSCR: {scenario.dscr.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
+        Calculator scenarios are not saved yet. Use the Notes tab to save assumptions you want to
+        keep.
+      </div>
+    </div>
+  );
+}
+
+function CalculatorSection({
+  fields,
+  values,
+  setValue,
+  results,
+}: {
+  fields: [string, string][];
+  values: Record<string, string>;
+  setValue: (key: string, value: string) => void;
+  results: [string, string][];
+}) {
+  return (
     <div className="space-y-3">
-      <p className="text-[12px] leading-relaxed text-muted-foreground">
-        Estimates only. Enter your own assumptions; PropertyAtlas is not attaching official
-        valuation, rates, transfer or paid provider data here.
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {fields.map(([label, value, setter]) => (
-          <label key={label} className="block">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map(([label, key]) => (
+          <label key={key} className="block">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {label}
             </span>
             <input
               inputMode="decimal"
-              value={value}
-              onChange={(event) => setter(event.target.value)}
-              placeholder="R 0"
+              value={values[key] ?? ""}
+              onChange={(event) => setValue(key, event.target.value)}
+              placeholder="0"
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
           </label>
         ))}
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        <ResultTile label="Total land/build/holding" value={formatRand(totalCost)} />
-        <ResultTile label="Estimated flip profit" value={formatRand(flipProfit)} />
-        <ResultTile label="Target offer price" value={formatRand(targetOffer)} />
-      </div>
+      {results.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {results.map(([label, value]) => (
+            <ResultTile key={label} label={label} value={value} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1138,29 +1598,6 @@ function ResultTile({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="mt-1 text-sm font-semibold tabular-nums">{value}</div>
-    </div>
-  );
-}
-
-function PaidReportSlots() {
-  const slots = [
-    "Lightstone",
-    "WinDeed",
-    "Deeds/ownership report",
-    "Valuation report",
-    "Comparable sales report",
-  ];
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {slots.map((slot) => (
-        <div key={slot} className="rounded-xl border border-border bg-background p-3">
-          <div className="text-[13px] font-semibold">{slot}</div>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Paid provider data not yet attached.
-          </p>
-        </div>
-      ))}
     </div>
   );
 }

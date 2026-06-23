@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import {
+  CSG_VIEWER_URL,
+  DFFE_EGIS_URL,
+  GOVZA_DEEDS_GUIDANCE_URL,
+  SANBI_BGIS_URL,
+} from "@/lib/external-urls";
+import { REPORT_CATALOG } from "@/lib/reports/catalog";
+import { buildMarketEvidenceWorkflow } from "../links";
 import { buildPublicResearchSources } from "../publicSourceRegistry";
 import { matchesErf962HarbourRoad } from "../seedParcels/erf962HarbourRoad";
 
@@ -65,6 +73,19 @@ describe("public source registry", () => {
     expect(paid?.complianceNote).toContain("not yet attached");
   });
 
+  it("uses tested official entry URLs for key source cards", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+
+    expect(sources.find((source) => source.id === "csg-property-viewer")?.url).toBe(CSG_VIEWER_URL);
+    expect(sources.find((source) => source.id === "dffe-environmental-gis")?.url).toBe(
+      DFFE_EGIS_URL,
+    );
+    expect(sources.find((source) => source.id === "sanbi-bgis")?.url).toBe(SANBI_BGIS_URL);
+    expect(sources.find((source) => source.id === "govza-deeds-guidance")?.url).toBe(
+      GOVZA_DEEDS_GUIDANCE_URL,
+    );
+  });
+
   it("generates unverified listing research URLs when enough fields exist", () => {
     const sources = buildPublicResearchSources(baseParcel);
     const listingIds = [
@@ -79,10 +100,31 @@ describe("public source registry", () => {
       const source = sources.find((item) => item.id === id);
 
       expect(source?.status).toBe("open-search");
-      expect(source?.url).toBeTruthy();
       expect(source?.complianceNote.toLowerCase()).toContain("verif");
-      expect(source?.userUsefulness).not.toBe("primary");
+      expect(source?.userUsefulness).toBe("hidden_by_default");
     }
+  });
+
+  it("uses direct portal buttons for visible market evidence workflow", () => {
+    const workflow = buildMarketEvidenceWorkflow({
+      erf: "962",
+      area: "Santareme",
+      town: "St Francis Bay",
+      province: "Eastern Cape",
+    });
+
+    expect(workflow.searchPhrase).toContain("Erf 962");
+    expect(workflow.portals.map((portal) => portal.href)).toEqual([
+      "https://www.property24.com/",
+      "https://www.privateproperty.co.za/",
+      "https://www.pamgolding.co.za/",
+      "https://www.seeff.com/",
+      "https://www.remax.co.za/",
+      "https://www.rawson.co.za/",
+    ]);
+    expect(workflow.portals.some((portal) => portal.href.includes("google.com/search"))).toBe(
+      false,
+    );
   });
 
   it("detects Erf 962 Harbour Road and includes parcel-specific evidence", () => {
@@ -323,6 +365,17 @@ describe("public source registry", () => {
           source.complianceNote.toLowerCase().includes("public data"),
       ),
     ).toBe(false);
+  });
+
+  it("keeps only one Lightstone and one WinDeed normal report action", () => {
+    const names = REPORT_CATALOG.map((report) => report.name);
+
+    expect(names.filter((name) => /Lightstone/i.test(name))).toEqual([
+      "Lightstone Property Report",
+    ]);
+    expect(names.filter((name) => /WinDeed/i.test(name))).toEqual(["WinDeed Property Report"]);
+    expect(names).not.toContain("Lightstone sample property report");
+    expect(names).not.toContain("WinDeed Automated Valuation Report");
   });
 
   it("does not add Erf 962 evidence to other parcels", () => {

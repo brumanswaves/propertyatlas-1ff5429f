@@ -1,8 +1,11 @@
 import {
   CSG_OFFICIAL_URL,
   CSG_VIEWER_URL,
+  DFFE_EGIS_URL,
+  GOVZA_DEEDS_GUIDANCE_URL,
   KOUGA_MAPPING_URL,
   KOUGA_PUBLIC_MAP_URL,
+  SANBI_BGIS_URL,
 } from "@/lib/external-urls";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import {
@@ -24,7 +27,6 @@ const googleImages = (query: string) =>
   `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
 const KOUGA_VALUATION_ROLL_URL = "https://www.kouga.gov.za/municipalvaluationrollavail";
 const SAHRA_SAHRIS_URL = "https://www.sahra.org.za/sahris/";
-const SANBI_BGIS_URL = "https://bgis.sanbi.org/";
 
 function hasField(ctx: ResearchSourceContext, field: ParcelFieldKey): boolean {
   const p = ctx.parcel;
@@ -400,9 +402,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
       "Read the official process guidance before ordering or relying on deeds registry information.",
     confidence: "official_relevant",
     dossierGroup: "deeds-ownership",
-    buildUrl: fixedUrl(
-      "https://www.gov.za/services/services-residents/place-live/get-deeds-registry-information",
-    ),
+    buildUrl: fixedUrl(GOVZA_DEEDS_GUIDANCE_URL),
   }),
   {
     id: "deeds-office-search",
@@ -428,7 +428,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
   {
     id: "windeed-lightstone-manual",
     category: "deeds-ownership",
-    name: "WinDeed / Lightstone ownership report",
+    name: "Paid ownership and valuation report guidance",
     sourceType: "paid-provider",
     defaultStatus: "paid-report",
     reveals: "Paid ownership, transfer, bonds, and comparable-sales reports when ordered.",
@@ -437,6 +437,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     complianceNote: "Paid provider data not yet attached.",
     confidence: "paid_report",
     dossierGroup: "paid-reports",
+    userUsefulness: "hidden_by_default",
   },
   {
     id: "municipal-valuation-roll",
@@ -603,7 +604,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
       "Open the official environmental GIS entry point and check relevant layers near the parcel location.",
     confidence: "official_relevant",
     dossierGroup: "environmental-coastal-risk",
-    buildUrl: fixedUrl("https://egis.environment.gov.za/"),
+    buildUrl: fixedUrl(DFFE_EGIS_URL),
   }),
   source({
     id: "dffe-coastal-viewer",
@@ -726,7 +727,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     actionLabel: "Manual search",
     complianceNote:
       "Generated Google site search. External listing results are unverified unless the user saves and confirms them.",
-    userUsefulness: "secondary",
+    userUsefulness: "hidden_by_default",
     actionInstruction:
       "Open the search, then match address, erf, suburb and agent details before saving any listing URL.",
     confidence: "external_relevant",
@@ -745,7 +746,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     actionLabel: "Manual search",
     complianceNote:
       "Generated Google site search. External listing results are unverified unless the user saves and confirms them.",
-    userUsefulness: "secondary",
+    userUsefulness: "hidden_by_default",
     actionInstruction:
       "Open the search, then match address, erf, suburb and agent details before saving any listing URL.",
     confidence: "external_relevant",
@@ -802,7 +803,7 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: ["coordinates"],
     actionLabel: "Open Google Maps",
     complianceNote: "Map context is not listing evidence by itself. Verify all findings manually.",
-    userUsefulness: "secondary",
+    userUsefulness: "hidden_by_default",
     actionInstruction:
       "Open the saved coordinates in Google Maps for access and surrounding context; it is not parcel ownership or valuation evidence.",
     confidence: "external_relevant",
@@ -905,58 +906,31 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
   {
     id: "paid-report-slots",
     category: "paid-reports",
-    name: "Lightstone, WinDeed, deeds, valuation, and comparables reports",
+    name: "Lightstone Property Report",
     sourceType: "paid-provider",
     defaultStatus: "paid-report",
-    reveals: "Paid provider reports that can improve confidence when ordered and attached.",
+    reveals:
+      "Future Lightstone property report action for valuation, comparable sales, ownership and market intelligence when connected.",
     requiredFields: [],
-    actionLabel: "Order report / save interest",
+    actionLabel: "Save Lightstone interest",
     complianceNote: "Paid provider data not yet attached.",
     confidence: "paid_report",
     dossierGroup: "paid-reports",
   },
-  ...[
-    ["lightstone-property", "Lightstone Property", "https://www.lightstoneproperty.co.za/"],
-    [
-      "lightstone-sample-property-report",
-      "Lightstone sample property report",
-      "https://www.lightstone.co.za/downloads/sample-reports/Property-Report.pdf",
-    ],
-    ["windeed", "WinDeed", "https://www.windeed.co.za/"],
-    ["windeed-property-report", "WinDeed Property Report", "https://www.windeed.co.za/wpr/"],
-    ["searchworks", "SearchWorks", "https://www.searchworks.co.za/"],
-    ["agentiq-property-search", "AgentIQ", "https://www.agentiq.co.za/Search/PropertySearch"],
-    ["deedsonline", "DEEDSOnline", "https://www.deedsonline.co.za/"],
-    ["mydeedsearch", "MyDeedSearch", "https://www.mydeedsearch.co.za/"],
-    ["1map-propertymap", "1map PropertyMap", "https://www.1map.co.za/products/propertymap"],
-    ["deedscheck", "DeedsCheck", "https://deedscheck.co.za/"],
-    [
-      "edeeds-sg-diagram",
-      "eDeeds SG Diagram service",
-      "https://www.edeeds.co.za/instant-search/instant-sg-surveyor-general-diagram-download/8/45/",
-    ],
-    [
-      "afrigis-landparcel-erven",
-      "AfriGIS Land Parcel Erven",
-      "https://developers.afrigis.co.za/landparcel-erven/",
-    ],
-  ].map(([id, name, url]) =>
-    source({
-      id,
-      category: "reports",
-      name,
-      sourceType: "paid-provider",
-      defaultStatus: "paid-report",
-      reveals: "Paid or commercial property data source that may require a user account or order.",
-      requiredFields: [],
-      actionLabel: "Open provider",
-      complianceNote:
-        "Some records require paid third-party reports. Paid provider data is not attached here.",
-      confidence: "paid_report",
-      dossierGroup: "paid-reports",
-      buildUrl: fixedUrl(url),
-    }),
-  ),
+  {
+    id: "windeed-property-report",
+    category: "paid-reports",
+    name: "WinDeed Property Report",
+    sourceType: "paid-provider",
+    defaultStatus: "paid-report",
+    reveals:
+      "Future WinDeed report action for deeds-office ownership, bonds and transfer history when connected.",
+    requiredFields: [],
+    actionLabel: "Save WinDeed interest",
+    complianceNote: "Paid provider data not yet attached.",
+    confidence: "paid_report",
+    dossierGroup: "paid-reports",
+  },
 ];
 
 export function buildPublicResearchSources(
