@@ -155,7 +155,7 @@ export const RESEARCH_SOURCE_QUALITY_LABELS: Record<ResearchSourceQuality, strin
   municipal_source: "Municipal source",
   generated_search: "Generated search",
   paid_provider: "Paid provider",
-  weak_or_deprecated: "More source",
+  weak_or_deprecated: "Backup/background",
 };
 
 export const RESEARCH_SOURCE_USEFULNESS_LABELS: Record<ResearchSourceUsefulness, string> = {

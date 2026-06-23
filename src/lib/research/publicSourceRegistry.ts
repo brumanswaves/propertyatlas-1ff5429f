@@ -22,6 +22,9 @@ import type {
 const google = (query: string) => `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 const googleImages = (query: string) =>
   `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+const KOUGA_VALUATION_ROLL_URL = "https://www.kouga.gov.za/municipalvaluationrollavail";
+const SAHRA_SAHRIS_URL = "https://www.sahra.org.za/sahris/";
+const SANBI_BGIS_URL = "https://bgis.sanbi.org/";
 
 function hasField(ctx: ResearchSourceContext, field: ParcelFieldKey): boolean {
   const p = ctx.parcel;
@@ -79,6 +82,10 @@ function kougaLikely(ctx: ResearchSourceContext): boolean {
 
 function fixedUrl(url: string): (ctx: ResearchSourceContext) => string {
   return () => url;
+}
+
+function isGeneratedSearchUrl(url: string | null): boolean {
+  return !!url && /^https:\/\/www\.google\.com\/search\?/i.test(url);
 }
 
 function source(definition: ResearchSourceDefinition): ResearchSourceDefinition {
@@ -163,6 +170,9 @@ function inferSourceQuality(
   ) {
     return "direct_parcel_link";
   }
+  if (isGeneratedSearchUrl(url)) {
+    return "generated_search";
+  }
   if (definition.parcelSpecific && definition.confidence === "confirmed_for_parcel") {
     return "direct_parcel_link";
   }
@@ -209,15 +219,8 @@ function inferUsefulness(
       "kouga-mapping-portal",
       "kouga-public-map-viewer",
       "kouga-planning-development",
-      "kouga-mapping-zoning",
-    ].includes(definition.id)
-  ) {
-    return "primary";
-  }
-  if (
-    ["property24-search", "private-property-search"].includes(definition.id) &&
-    hasStrongParcelContext(ctx) &&
-    missingFields.length === 0
+    ].includes(definition.id) &&
+    quality !== "generated_search"
   ) {
     return "primary";
   }
@@ -277,6 +280,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open CSG Viewer",
     complianceNote: "Official public viewer. Verify parcel identity inside the source system.",
+    actionInstruction:
+      "Open the CSG viewer, search or zoom to the erf, and confirm LPI, parcel key, erf and portion against this dossier.",
     confidence: "official_relevant",
     dossierGroup: "official-parcel-identity",
     buildUrl: () => CSG_VIEWER_URL,
@@ -291,6 +296,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open CSG",
     complianceNote: "Official public source. Verify parcel identity inside the source system.",
+    actionInstruction:
+      "Use this as the official fallback portal when a direct SG document link cannot be built.",
     confidence: "official_relevant",
     dossierGroup: "official-parcel-identity",
     buildUrl: fixedUrl("https://csg.dlrrd.gov.za/"),
@@ -305,6 +312,9 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open CSG data",
     complianceNote: "Official public source. Confirm any parcel record in the source system.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Use the CSG data-system entry point only when the viewer or SG document list does not answer the identity question.",
     confidence: "official_relevant",
     dossierGroup: "official-parcel-identity",
     buildUrl: fixedUrl("https://csg.dlrrd.gov.za/data.htm"),
@@ -312,13 +322,18 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
   source({
     id: "opendataza-csg-listing",
     category: "official",
-    name: "OpenDataZA CSG cadastral viewer listing",
+    name: "Historical OpenDataZA CSG viewer listing",
     sourceType: "public-web",
     defaultStatus: "available",
-    reveals: "Public directory listing for the CSG cadastral viewer.",
+    reveals: "Historical public directory entry describing the CSG cadastral viewer.",
     requiredFields: [],
-    actionLabel: "Open listing",
-    complianceNote: "Directory/source discovery link. Verify parcel data with CSG.",
+    actionLabel: "Open background",
+    complianceNote:
+      "Background discovery link only. It is not a live parcel source; verify parcel data with CSG.",
+    sourceQuality: "weak_or_deprecated",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only as historical background for the CSG viewer; do not rely on it for current parcel evidence.",
     confidence: "official_relevant",
     dossierGroup: "official-parcel-identity",
     buildUrl: fixedUrl("https://odza.herokuapp.com/opendataza/resource/14"),
@@ -336,6 +351,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     actionLabel: "Open SG documents",
     complianceNote:
       "Only shown as direct action when enough CSG fields are known. Otherwise use the CSG official site.",
+    actionInstruction:
+      "Open the SG document list and verify the registration division, erf and portion before saving a diagram as evidence.",
     confidence: "official_relevant",
     dossierGroup: "official-parcel-identity",
     buildUrl: ({ parcel }) => {
@@ -362,6 +379,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     actionLabel: "Open DeedsWeb",
     complianceNote:
       "Owner and deeds information may be restricted, paid, outdated or subject to lawful-use requirements.",
+    actionInstruction:
+      "Open DeedsWeb as the lawful registry entry point; search with verified parcel identifiers and attach only verified outputs.",
     confidence: "official_relevant",
     dossierGroup: "deeds-ownership",
     buildUrl: fixedUrl("https://deedsweb.deeds.gov.za/deedsweb/welcome.jsp"),
@@ -376,6 +395,9 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open guidance",
     complianceNote: "Guidance source only. It does not attach owner or deeds data.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Read the official process guidance before ordering or relying on deeds registry information.",
     confidence: "official_relevant",
     dossierGroup: "deeds-ownership",
     buildUrl: fixedUrl(
@@ -389,11 +411,16 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     sourceType: "generated-search",
     defaultStatus: "open-search",
     missingStatus: "manual-check",
-    reveals: "Possible deeds office research entry points for ownership and transfer checks.",
+    reveals:
+      "Backup web discovery for deeds registry guidance, offices, and lawful research paths.",
     requiredFields: ["erfNumber", "province"],
-    actionLabel: "Search deeds sources",
+    actionLabel: "Manual search",
     complianceNote:
-      "Ownership is not displayed unless a verified paid or official source is attached.",
+      "Generated search only. Ownership is not displayed unless a verified paid or official source is attached.",
+    sourceQuality: "generated_search",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only if DeedsWeb or gov.za guidance is insufficient; verify any result before saving it.",
     confidence: "external_relevant",
     dossierGroup: "deeds-ownership",
     buildUrl: (ctx) => google(`${baseQuery(ctx)} Deeds Office DeedsWeb property ownership`),
@@ -422,9 +449,14 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: ["municipality"],
     actionLabel: "Search valuation roll",
     complianceNote: "Rates and municipal values must be verified against the municipality.",
+    actionInstruction:
+      "Open the municipal valuation source, search by erf/portion or address, and save only a parcel-matched roll entry.",
     confidence: "official_relevant",
     dossierGroup: "municipal-evidence",
-    buildUrl: (ctx) => google(`${ctx.parcel.municipality ?? ""} valuation roll ${baseQuery(ctx)}`),
+    buildUrl: (ctx) =>
+      kougaLikely(ctx)
+        ? KOUGA_VALUATION_ROLL_URL
+        : google(`${ctx.parcel.municipality ?? ""} valuation roll ${baseQuery(ctx)}`),
   },
   source({
     id: "kouga-mapping-portal",
@@ -436,6 +468,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open portal",
     complianceNote: "Official municipal portal. Confirm parcel-specific records manually.",
+    actionInstruction:
+      "Open the Kouga ArcGIS hub, choose public map layers, and verify that any zoning or municipal layer matches the selected erf.",
     confidence: "official_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: fixedUrl(KOUGA_MAPPING_URL),
@@ -450,6 +484,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open viewer",
     complianceNote: "Official municipal viewer. Do not infer zoning unless confirmed.",
+    actionInstruction:
+      "Open the Kouga public map, search or zoom to the erf, and confirm zoning or public layers manually.",
     confidence: "official_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: fixedUrl(KOUGA_PUBLIC_MAP_URL),
@@ -464,6 +500,8 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open planning",
     complianceNote: "Municipal source. Verify any parcel-specific planning status directly.",
+    actionInstruction:
+      "Use this municipal department page to confirm planning, building-control, zoning or land-use process questions.",
     confidence: "official_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: fixedUrl("https://www.kouga.gov.za/planning-and-development"),
@@ -471,15 +509,18 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
   {
     id: "kouga-mapping-zoning",
     category: "zoning-land-use",
-    name: "Kouga public mapping and zoning",
+    name: "Municipal mapping and zoning portal",
     sourceType: "municipal",
     defaultStatus: "available",
     missingStatus: "open-search",
     reveals:
       "Municipal GIS layers, zoning viewer context, and public map overlays where available.",
     requiredFields: [],
-    actionLabel: "Open Kouga map",
+    actionLabel: "Open map/search",
     complianceNote: "Confirm zoning with the municipality before relying on it.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Use as a manual zoning portal check; if a Google search opens, find the official municipal GIS result before relying on it.",
     confidence: "official_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: (ctx) =>
@@ -496,8 +537,11 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     missingStatus: "manual-check",
     reveals: "Scheme documents, coverage, height, density, consent use, and land-use rules.",
     requiredFields: ["municipality"],
-    actionLabel: "Search land-use scheme",
+    actionLabel: "Manual search",
     complianceNote: "Generated public web search. Verify against the official municipal document.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Search for the official municipal land-use scheme PDF, then confirm the applicable zone and rules with the municipality.",
     confidence: "external_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: (ctx) =>
@@ -513,9 +557,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     reveals:
       "Rezoning, subdivision, departures, consent use, building plan references, and SPLUMA notices.",
     requiredFields: ["erfNumber", "municipality"],
-    actionLabel: "Search planning notices",
+    actionLabel: "Manual search",
     complianceNote:
       "External searches may return nearby or unrelated results and must be verified manually.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Search for official notices using erf, municipality and suburb; save only notices that clearly match this parcel.",
     confidence: "external_relevant",
     dossierGroup: "planning-zoning",
     buildUrl: (ctx) =>
@@ -530,9 +577,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     missingStatus: "manual-check",
     reveals: "DFFE, SAHRA/SAHRIS, flood, coastal, wetland, and geology risk research paths.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Search risk sources",
+    actionLabel: "Manual search",
     complianceNote:
       "Shown as research checks, not verified risk results unless evidence is attached.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Use this as a broad risk search, then verify any flood, wetland, heritage or geology clue in an official source.",
     confidence: "external_relevant",
     dossierGroup: "environmental-coastal-risk",
     buildUrl: (ctx) =>
@@ -548,9 +598,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open EGIS",
     complianceNote: "General official source. No parcel-specific risk is attached unless verified.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Open the official environmental GIS entry point and check relevant layers near the parcel location.",
     confidence: "official_relevant",
     dossierGroup: "environmental-coastal-risk",
-    buildUrl: fixedUrl("https://www.dffe.gov.za/egis"),
+    buildUrl: fixedUrl("https://egis.environment.gov.za/"),
   }),
   source({
     id: "dffe-coastal-viewer",
@@ -562,6 +615,9 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open coastal viewer",
     complianceNote: "General official source. Verify parcel-specific coastal risk manually.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Use the coastal viewer for nearby coastal context only; do not treat it as parcel-specific risk without layer evidence.",
     confidence: "official_relevant",
     dossierGroup: "environmental-coastal-risk",
     buildUrl: fixedUrl("https://ocims.environment.gov.za/CoastalViewer.html"),
@@ -576,6 +632,10 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open item",
     complianceNote: "Metadata/source discovery link. Verify risk in official layers.",
+    sourceQuality: "weak_or_deprecated",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only if the main coastal viewer is unavailable; this is metadata, not parcel evidence.",
     confidence: "external_relevant",
     dossierGroup: "environmental-coastal-risk",
     buildUrl: fixedUrl("https://www.arcgis.com/home/item.html?id=e934701c777d4e27a01c801fba18e93e"),
@@ -591,6 +651,9 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     actionLabel: "Open SARVA",
     complianceNote:
       "Research context only. Do not treat as parcel-specific risk without verification.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Use for coastal vulnerability context, then verify parcel-specific risk against official layers or a specialist report.",
     confidence: "external_relevant",
     dossierGroup: "environmental-coastal-risk",
     buildUrl: fixedUrl("https://sarva.saeon.ac.za/coastal-vulnerability/"),
@@ -605,6 +668,10 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: [],
     actionLabel: "Open background",
     complianceNote: "Background source only. It does not verify parcel-specific risk.",
+    sourceQuality: "weak_or_deprecated",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only as background reading; it is not a South African parcel risk source.",
     confidence: "external_relevant",
     dossierGroup: "environmental-coastal-risk",
     buildUrl: fixedUrl(
@@ -612,18 +679,40 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     ),
   }),
   source({
-    id: "sanbi-bgis-future",
+    id: "sanbi-bgis",
     category: "environmental",
-    name: "SANBI BGIS and Eastern Cape biodiversity datasets",
-    sourceType: "unavailable",
-    defaultStatus: "unavailable",
-    reveals: "Future biodiversity and conservation planning integration source cards.",
+    name: "SANBI BGIS biodiversity datasets",
+    sourceType: "public-web",
+    defaultStatus: "available",
+    reveals: "South African biodiversity GIS datasets and map viewers for conservation context.",
     requiredFields: [],
-    actionLabel: "Future integration",
+    actionLabel: "Open BGIS",
     complianceNote:
-      "Future integration placeholder. No parcel-specific biodiversity result is attached.",
-    confidence: "future_integration",
+      "Public biodiversity source. No parcel-specific biodiversity result is attached unless verified.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Open BGIS and search relevant biodiversity map viewers or datasets for the parcel area.",
+    confidence: "external_relevant",
     dossierGroup: "environmental-coastal-risk",
+    buildUrl: fixedUrl(SANBI_BGIS_URL),
+  }),
+  source({
+    id: "sahra-sahris",
+    category: "environmental-heritage-risk",
+    name: "SAHRA SAHRIS heritage system",
+    sourceType: "official",
+    defaultStatus: "available",
+    reveals: "Official heritage resource and heritage management system entry point.",
+    requiredFields: [],
+    actionLabel: "Open SAHRIS",
+    complianceNote:
+      "Official heritage source. No heritage status is attached unless manually verified.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Search SAHRIS by place, suburb or coordinates and save only heritage records that clearly match the parcel area.",
+    confidence: "official_relevant",
+    dossierGroup: "environmental-coastal-risk",
+    buildUrl: fixedUrl(SAHRA_SAHRIS_URL),
   }),
   {
     id: "property24-search",
@@ -634,9 +723,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     missingStatus: "manual-check",
     reveals: "Possible active listings, asking prices, agent context, and market evidence.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Open Property24",
+    actionLabel: "Manual search",
     complianceNote:
-      "External listing results are unverified unless the user saves and confirms them.",
+      "Generated Google site search. External listing results are unverified unless the user saves and confirms them.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Open the search, then match address, erf, suburb and agent details before saving any listing URL.",
     confidence: "external_relevant",
     dossierGroup: "market-intelligence",
     buildUrl: (ctx) => google(`site:property24.com ${baseQuery(ctx)} property for sale`),
@@ -650,9 +742,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     missingStatus: "manual-check",
     reveals: "Possible active listings, asking prices, agent context, and market evidence.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Open Private Property",
+    actionLabel: "Manual search",
     complianceNote:
-      "External listing results are unverified unless the user saves and confirms them.",
+      "Generated Google site search. External listing results are unverified unless the user saves and confirms them.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Open the search, then match address, erf, suburb and agent details before saving any listing URL.",
     confidence: "external_relevant",
     dossierGroup: "market-intelligence",
     buildUrl: (ctx) => google(`site:privateproperty.co.za ${baseQuery(ctx)} property for sale`),
@@ -666,9 +761,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     missingStatus: "manual-check",
     reveals: "Agency pages, old listings, auction references, and public market evidence.",
     requiredFields: ["erfNumber", "suburbOrArea"],
-    actionLabel: "Search Google",
+    actionLabel: "Manual search",
     complianceNote:
       "Generated search. Results may be nearby or unrelated and must be verified manually.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only as a broad discovery search; save nothing until the result clearly matches this parcel.",
     confidence: "external_relevant",
     dossierGroup: "generated-searches",
     buildUrl: (ctx) => google(`${baseQuery(ctx)} property for sale listing`),
@@ -683,9 +781,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     reveals:
       "Images, old listings, agency pages, auction references, and surrounding market context.",
     requiredFields: ["erfNumber", "suburbOrArea"],
-    actionLabel: "Search images",
+    actionLabel: "Manual image search",
     complianceNote:
       "Generated public search. Results may be unrelated and must be verified manually.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only for visual clues. Do not copy images, and save only the source URL after manual verification.",
     confidence: "external_relevant",
     dossierGroup: "generated-searches",
     buildUrl: (ctx) => googleImages(`${baseQuery(ctx)} property`),
@@ -701,6 +802,9 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: ["coordinates"],
     actionLabel: "Open Google Maps",
     complianceNote: "Map context is not listing evidence by itself. Verify all findings manually.",
+    userUsefulness: "secondary",
+    actionInstruction:
+      "Open the saved coordinates in Google Maps for access and surrounding context; it is not parcel ownership or valuation evidence.",
     confidence: "external_relevant",
     dossierGroup: "market-intelligence",
     buildUrl: (ctx) => {
@@ -718,9 +822,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     reveals:
       "Neighbourhood amenities, schools, census/demographic sources, and crime-stat references.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Search neighbourhood",
+    actionLabel: "Manual search",
     complianceNote:
       "Contextual public research only. Do not treat search results as verified statistics.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only for broad area context, then verify any claim against a primary source before saving it.",
     confidence: "external_relevant",
     dossierGroup: "market-intelligence",
     buildUrl: (ctx) =>
@@ -737,8 +844,11 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     requiredFields: ["coordinates"],
     actionLabel: "Open map/search",
     complianceNote: "Map and search context must be checked manually.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use for access and road context only; verify infrastructure claims through official municipal or tender documents.",
     confidence: "external_relevant",
-    dossierGroup: "official-parcel-identity",
+    dossierGroup: "market-intelligence",
     buildUrl: (ctx) => {
       const coords = coordsQuery(ctx);
       return coords
@@ -756,9 +866,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     reveals:
       "CIPC, Master of the High Court, liquidation, insolvency, SAFLII, and Gazette research paths.",
     requiredFields: ["suburbOrArea"],
-    actionLabel: "Search legal sources",
+    actionLabel: "Manual search",
     complianceNote:
       "POPIA-sensitive research. Do not infer personal ownership or distress without verified sources.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use only after you have a lawful research basis; do not save personal or distress claims without verified evidence.",
     confidence: "external_relevant",
     dossierGroup: "deeds-ownership",
     buildUrl: (ctx) =>
@@ -776,9 +889,12 @@ export const PUBLIC_SOURCE_DEFINITIONS: ResearchSourceDefinition[] = [
     reveals:
       "eTenders, municipal tenders, IDP/SDF documents, infrastructure projects, and development notices.",
     requiredFields: ["municipality"],
-    actionLabel: "Search catalysts",
+    actionLabel: "Manual search",
     complianceNote:
       "Generated public search. Confirm against official tender and municipal documents.",
+    userUsefulness: "hidden_by_default",
+    actionInstruction:
+      "Use as optional area catalyst research; verify tenders, IDP or SDF references at the official source before saving.",
     confidence: "external_relevant",
     dossierGroup: "market-intelligence",
     buildUrl: (ctx) =>

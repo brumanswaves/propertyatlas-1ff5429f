@@ -7,27 +7,31 @@ import { openExternalUrl, copyToClipboard } from "@/lib/external";
 import { toast } from "sonner";
 
 const CATEGORY_META: Record<ResearchLink["category"], { label: string; icon: React.ReactNode }> = {
-  maps:      { label: "Map & location", icon: <Map className="h-3.5 w-3.5" /> },
-  listings:  { label: "Listings",        icon: <Building2 className="h-3.5 w-3.5" /> },
-  municipal: { label: "Municipal",       icon: <Landmark className="h-3.5 w-3.5" /> },
-  official:  { label: "Official",        icon: <FileText className="h-3.5 w-3.5" /> },
-  documents: { label: "Documents",       icon: <FileText className="h-3.5 w-3.5" /> },
-  general:   { label: "General web",     icon: <Search className="h-3.5 w-3.5" /> },
+  maps: { label: "Map & location", icon: <Map className="h-3.5 w-3.5" /> },
+  listings: { label: "Listings", icon: <Building2 className="h-3.5 w-3.5" /> },
+  municipal: { label: "Municipal", icon: <Landmark className="h-3.5 w-3.5" /> },
+  official: { label: "Official", icon: <FileText className="h-3.5 w-3.5" /> },
+  documents: { label: "Documents", icon: <FileText className="h-3.5 w-3.5" /> },
+  general: { label: "General web", icon: <Search className="h-3.5 w-3.5" /> },
 };
 
 export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parcelId?: string }) {
   const links = buildResearchLinks(ctx);
-  const grouped = (["maps", "municipal", "official", "general"] as const).map((cat) => ({
-    cat, items: links.filter((l) => l.category === cat),
-  })).filter((g) => g.items.length > 0);
-
+  const grouped = (["maps", "municipal", "official", "general"] as const)
+    .map((cat) => ({
+      cat,
+      items: links.filter((l) => l.category === cat),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="space-y-5">
       <div>
         <h3 className="text-sm font-semibold tracking-tight">Outbound research links</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Quick links to research this property on public sites. Listing-portal searches live in the <span className="font-medium text-foreground">Listings</span> tab. Paid deeds/AVM reports live in the <span className="font-medium text-foreground">Reports</span> tab.
+          Quick links to research this property on public sites. Listing-portal searches live in the{" "}
+          <span className="font-medium text-foreground">Listings</span> tab. Paid deeds/AVM reports
+          live in the <span className="font-medium text-foreground">Reports</span> tab.
         </p>
       </div>
 
@@ -50,15 +54,22 @@ export function ResearchLinksTab({ ctx, parcelId }: { ctx: ResearchContext; parc
                       <ExternalLink className="h-3.5 w-3.5" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[12px] font-semibold text-foreground">{l.label}</span>
-                      <span className="mt-0.5 block text-[10.5px] text-muted-foreground">{l.description}</span>
-                      <span className="mt-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">External · new tab</span>
+                      <span className="block truncate text-[12px] font-semibold text-foreground">
+                        {l.label}
+                      </span>
+                      <span className="mt-0.5 block text-[10.5px] text-muted-foreground">
+                        {l.description}
+                      </span>
+                      <span className="mt-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        External · new tab
+                      </span>
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={async (e) => {
-                      e.preventDefault(); e.stopPropagation();
+                      e.preventDefault();
+                      e.stopPropagation();
                       const ok = await copyToClipboard(l.href);
                       if (ok) toast.success("Link copied");
                       else toast.error("Could not copy link");

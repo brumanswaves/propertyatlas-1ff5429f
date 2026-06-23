@@ -81,6 +81,7 @@ describe("public source registry", () => {
       expect(source?.status).toBe("open-search");
       expect(source?.url).toBeTruthy();
       expect(source?.complianceNote.toLowerCase()).toContain("verif");
+      expect(source?.userUsefulness).not.toBe("primary");
     }
   });
 
@@ -214,9 +215,10 @@ describe("public source registry", () => {
 
     expect(csgViewer?.sourceQuality).toBe("official_portal");
     expect(csgViewer?.userUsefulness).toBe("primary");
-    expect(csgViewer?.actionInstruction).toContain("official portal");
+    expect(csgViewer?.actionInstruction).toContain("confirm LPI");
     expect(valuationRoll?.sourceQuality).toBe("municipal_source");
     expect(valuationRoll?.userUsefulness).toBe("primary");
+    expect(valuationRoll?.url).toBe("https://www.kouga.gov.za/municipalvaluationrollavail");
     expect(paidReports?.sourceQuality).toBe("paid_provider");
     expect(paidReports?.actionInstruction).toContain("verified paid report");
   });
@@ -231,10 +233,11 @@ describe("public source registry", () => {
       .map((source) => source.id);
 
     expect(primaryIds).toContain("csg-property-viewer");
-    expect(primaryIds).toContain("property24-search");
-    expect(primaryIds).toContain("private-property-search");
+    expect(primaryIds).toContain("municipal-valuation-roll");
+    expect(primaryIds).not.toContain("property24-search");
+    expect(primaryIds).not.toContain("private-property-search");
     expect(moreSourceIds).toContain("opendataza-csg-listing");
-    expect(moreSourceIds).toContain("sanbi-bgis-future");
+    expect(moreSourceIds).toContain("google-listing-search");
   });
 
   it("keeps weak generated searches hidden when parcel context is too thin", () => {
@@ -264,9 +267,62 @@ describe("public source registry", () => {
     const deedsGuidance = sources.find((source) => source.id === "govza-deeds-guidance");
 
     expect(sgDocuments?.sourceQuality).toBe("direct_parcel_link");
-    expect(sgDocuments?.actionInstruction).toContain("confirm the erf");
+    expect(sgDocuments?.actionInstruction).toContain("registration division");
     expect(deedsGuidance?.sourceQuality).toBe("official_portal");
     expect(deedsGuidance?.reveals.toLowerCase()).not.toContain("owner name");
+  });
+
+  it("keeps generic municipal valuation searches secondary when no direct municipal URL is known", () => {
+    const sources = buildPublicResearchSources({
+      ...baseParcel,
+      municipality: "City of Cape Town",
+      province: "Western Cape",
+      suburbOrArea: "Claremont",
+      town: "Cape Town",
+    });
+    const valuationRoll = sources.find((source) => source.id === "municipal-valuation-roll");
+
+    expect(valuationRoll?.url).toContain("google.com/search");
+    expect(valuationRoll?.sourceQuality).toBe("generated_search");
+    expect(valuationRoll?.userUsefulness).toBe("secondary");
+    expect(valuationRoll?.actionInstruction).toContain("municipal valuation source");
+  });
+
+  it("applies source link health safeguards", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const actionableSources = sources.filter(
+      (source) =>
+        source.status !== "paid-report" &&
+        source.status !== "unavailable" &&
+        source.missingFields.length === 0,
+    );
+    const primaryUrls = sources
+      .filter((source) => source.userUsefulness === "primary" && source.url)
+      .map((source) => source.url);
+
+    expect(actionableSources.every((source) => source.url && source.url !== "#")).toBe(true);
+    expect(new Set(primaryUrls).size).toBe(primaryUrls.length);
+    expect(
+      sources.some(
+        (source) =>
+          source.userUsefulness === "primary" && source.url?.includes("google.com/search"),
+      ),
+    ).toBe(false);
+    expect(
+      sources.some(
+        (source) =>
+          source.sourceQuality === "weak_or_deprecated" &&
+          source.userUsefulness !== "hidden_by_default",
+      ),
+    ).toBe(false);
+    expect(
+      sources.some(
+        (source) =>
+          source.sourceType === "paid-provider" &&
+          source.status !== "paid-report" &&
+          source.complianceNote.toLowerCase().includes("public data"),
+      ),
+    ).toBe(false);
   });
 
   it("does not add Erf 962 evidence to other parcels", () => {

@@ -1,15 +1,21 @@
 // Build outbound public-search URLs for property research.
 // All links target third-party search interfaces — no scraping, no copied data.
-import { CSG_OFFICIAL_URL, CSG_VIEWER_URL, KOUGA_MAPPING_URL, KOUGA_PUBLIC_MAP_URL, LISTING_PORTALS } from "@/lib/external-urls";
+import {
+  CSG_OFFICIAL_URL,
+  CSG_VIEWER_URL,
+  KOUGA_MAPPING_URL,
+  KOUGA_PUBLIC_MAP_URL,
+  LISTING_PORTALS,
+} from "@/lib/external-urls";
 void KOUGA_PUBLIC_MAP_URL;
 
 export interface ResearchContext {
-  address?: string;       // e.g. "14 Marina Dr"
-  area?: string;          // e.g. "St Francis Bay"
-  town?: string;          // e.g. "St Francis Bay"
+  address?: string; // e.g. "14 Marina Dr"
+  area?: string; // e.g. "St Francis Bay"
+  town?: string; // e.g. "St Francis Bay"
   suburb?: string;
-  municipality?: string;  // e.g. "Kouga Local Municipality"
-  province?: string;      // e.g. "Eastern Cape"
+  municipality?: string; // e.g. "Kouga Local Municipality"
+  province?: string; // e.g. "Eastern Cape"
   erf?: string;
   nearestRoad?: string;
   lng?: number;
@@ -22,8 +28,22 @@ const q = (s: string) => encodeURIComponent(s.trim());
 export function buildResearchQuery(ctx: ResearchContext): string {
   const erfStr = ctx.erf ? `Erf ${ctx.erf}` : "";
   const order = ctx.address
-    ? [ctx.address, erfStr, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"]
-    : [erfStr, ctx.nearestRoad, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"];
+    ? [
+        ctx.address,
+        erfStr,
+        ctx.suburb ?? ctx.area,
+        ctx.town,
+        ctx.province ?? "Eastern Cape",
+        "South Africa",
+      ]
+    : [
+        erfStr,
+        ctx.nearestRoad,
+        ctx.suburb ?? ctx.area,
+        ctx.town,
+        ctx.province ?? "Eastern Cape",
+        "South Africa",
+      ];
   const parts = order.filter((s) => s && String(s).trim().length > 0) as string[];
   return Array.from(new Set(parts)).join(" ");
 }
@@ -37,7 +57,14 @@ export function buildListingQuery(ctx: ResearchContext): string {
  *  e.g. "Erf 962 Lovemore Crescent Sea Vista Humansdorp Eastern Cape South Africa" */
 export function buildSearchPhrase(ctx: ResearchContext): string {
   const erfStr = ctx.erf ? `Erf ${ctx.erf}` : "";
-  const order = [erfStr, ctx.nearestRoad, ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape", "South Africa"];
+  const order = [
+    erfStr,
+    ctx.nearestRoad,
+    ctx.suburb ?? ctx.area,
+    ctx.town,
+    ctx.province ?? "Eastern Cape",
+    "South Africa",
+  ];
   const parts = order.filter((s) => s && String(s).trim().length > 0) as string[];
   return Array.from(new Set(parts)).join(" ");
 }
@@ -47,11 +74,19 @@ function isKouga(ctx: ResearchContext): boolean {
   const town = (ctx.town ?? ctx.area ?? "").toLowerCase();
   return (
     muni.includes("kouga") ||
-    /st\s*francis|cape st francis|santareme|sea vista|st francis links|jeffreys|humansdorp|oyster bay/.test(town)
+    /st\s*francis|cape st francis|santareme|sea vista|st francis links|jeffreys|humansdorp|oyster bay/.test(
+      town,
+    )
   );
 }
 
-export type ResearchCategory = "maps" | "listings" | "municipal" | "official" | "documents" | "general";
+export type ResearchCategory =
+  | "maps"
+  | "listings"
+  | "municipal"
+  | "official"
+  | "documents"
+  | "general";
 
 export interface ResearchLink {
   id: string;
@@ -73,8 +108,11 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       id: "gmaps",
       label: "Google Maps",
       description: "View location, surroundings, nearby amenities.",
-      href: ll ? `https://maps.google.com/?q=${q(ll)}` : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
-      category: "maps", external: true,
+      href: ll
+        ? `https://maps.google.com/?q=${q(ll)}`
+        : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
+      category: "maps",
+      external: true,
     },
     {
       id: "streetview",
@@ -83,62 +121,107 @@ export function buildResearchLinks(ctx: ResearchContext): ResearchLink[] {
       href: ll
         ? `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${q(ll)}`
         : `https://www.google.com/maps/search/?api=1&query=${q(query)}`,
-      category: "maps", external: true,
+      category: "maps",
+      external: true,
     },
     {
       id: "csg-viewer",
       label: "CSG Property Viewer",
       description: "Official Chief Surveyor-General Experience Builder viewer.",
       href: CSG_VIEWER_URL,
-      category: "maps", external: true,
+      category: "maps",
+      external: true,
     },
     ...(inKouga
-      ? [{
-          id: "kouga-mapping-quick",
-          label: "Kouga Public Map",
-          description: "Kouga ArcGIS Hub public mapping viewer.",
-          href: KOUGA_PUBLIC_MAP_URL,
-          category: "maps" as const, external: true as const,
-        }, {
-          id: "kouga-mapping-hub",
-          label: "Kouga Mapping Portal",
-          description: "Kouga ArcGIS Hub — zoning, planning, public layers.",
-          href: KOUGA_MAPPING_URL,
-          category: "maps" as const, external: true as const,
-        }]
+      ? [
+          {
+            id: "kouga-mapping-quick",
+            label: "Kouga Public Map",
+            description: "Kouga ArcGIS Hub public mapping viewer.",
+            href: KOUGA_PUBLIC_MAP_URL,
+            category: "maps" as const,
+            external: true as const,
+          },
+          {
+            id: "kouga-mapping-hub",
+            label: "Kouga Mapping Portal",
+            description: "Kouga ArcGIS Hub — zoning, planning, public layers.",
+            href: KOUGA_MAPPING_URL,
+            category: "maps" as const,
+            external: true as const,
+          },
+        ]
       : []),
   ];
 
   const municipal: ResearchLink[] = inKouga
     ? [
-        { id: "kouga-portal", label: "Kouga Municipality", description: "Official Kouga Local Municipality website.",
-          href: "https://www.kouga.gov.za/", category: "municipal", external: true },
-        { id: "kouga-planning", label: "Kouga Planning & Development", description: "Zoning, town planning and building plan information.",
-          href: "https://www.kouga.gov.za/planning-and-development", category: "municipal", external: true },
-        { id: "kouga-valroll", label: "Kouga Valuation Roll", description: "Public valuation roll notices and access.",
-          href: "https://www.kouga.gov.za/municipalvaluationrollavail", category: "municipal", external: true },
+        {
+          id: "kouga-portal",
+          label: "Kouga Municipality",
+          description: "Official Kouga Local Municipality website.",
+          href: "https://www.kouga.gov.za/",
+          category: "municipal",
+          external: true,
+        },
+        {
+          id: "kouga-planning",
+          label: "Kouga Planning & Development",
+          description: "Zoning, town planning and building plan information.",
+          href: "https://www.kouga.gov.za/planning-and-development",
+          category: "municipal",
+          external: true,
+        },
+        {
+          id: "kouga-valroll",
+          label: "Kouga Valuation Roll",
+          description:
+            "Official municipal valuation-roll notice. Search the document library or roll by erf/address after opening.",
+          href: "https://www.kouga.gov.za/municipalvaluationrollavail",
+          category: "municipal",
+          external: true,
+        },
       ]
     : [
-        { id: "valuation-roll", label: "Municipal valuation roll", description: "Search the municipality's published valuation roll.",
+        {
+          id: "valuation-roll",
+          label: "Manual valuation roll search",
+          description:
+            "Generated search for the municipality's valuation roll. Verify any result on the official municipal site.",
           href: `https://www.google.com/search?q=${q(`"valuation roll" ${ctx.municipality ?? ""} site:gov.za`)}`,
-          category: "municipal", external: true },
-        { id: "muni-gis", label: "Municipal GIS / zoning portal", description: "Find the relevant municipal GIS or zoning viewer.",
+          category: "municipal",
+          external: true,
+        },
+        {
+          id: "muni-gis",
+          label: "Manual municipal GIS/zoning search",
+          description: "Generated search for an official municipal GIS or zoning viewer.",
           href: `https://www.google.com/search?q=${q(`${ctx.municipality ?? ""} GIS zoning portal`)}`,
-          category: "municipal", external: true },
+          category: "municipal",
+          external: true,
+        },
       ];
 
   const official: ResearchLink[] = [
-    { id: "csg-official", label: "CSG Official Site", description: "Chief Surveyor-General official home — always-available fallback.",
-      href: CSG_OFFICIAL_URL, category: "official", external: true },
+    {
+      id: "csg-official",
+      label: "CSG Official Site",
+      description: "Chief Surveyor-General official home — always-available fallback.",
+      href: CSG_OFFICIAL_URL,
+      category: "official",
+      external: true,
+    },
   ];
 
   const general: ResearchLink[] = [
     {
       id: "google",
-      label: "Google web search",
-      description: "General web search for this property.",
+      label: "Broad manual web search",
+      description:
+        "Generated web search. Treat results as unverified until they match this property.",
       href: `https://www.google.com/search?q=${q(query)}`,
-      category: "general", external: true,
+      category: "general",
+      external: true,
     },
   ];
 
@@ -168,10 +251,11 @@ export function buildListingResearchLinks(_ctx: ResearchContext): ListingSearchL
 
 // Legacy export kept for backwards compatibility with any older callers.
 export const LISTING_SITES = LISTING_PORTALS.map((p) => ({
-  id: p.id, label: p.label, url: (_a: string) => p.url,
+  id: p.id,
+  label: p.label,
+  url: (_a: string) => p.url,
 }));
 
 export function listingSearchAddress(ctx: ResearchContext): string {
   return [ctx.address, ctx.area ?? ctx.suburb, ctx.town].filter(Boolean).join(" ");
 }
-
