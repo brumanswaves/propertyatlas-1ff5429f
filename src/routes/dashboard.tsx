@@ -247,10 +247,8 @@ function Dashboard() {
             </ul>
           </Panel>
 
-          <Panel icon={<Sparkles className="h-3.5 w-3.5" />} title="Recent activity">
-            {activity.length === 0 ? (
-              <EmptyInline body="No activity yet. Click a parcel on the map to start." />
-            ) : (
+          {activity.length > 0 && (
+            <Panel icon={<Sparkles className="h-3.5 w-3.5" />} title="Recent activity">
               <ul className="divide-y divide-border">
                 {activity.map((a, i) => (
                   <li
@@ -264,8 +262,8 @@ function Dashboard() {
                   </li>
                 ))}
               </ul>
-            )}
-          </Panel>
+            </Panel>
+          )}
         </section>
 
         <section className="mt-10">
@@ -288,17 +286,11 @@ function Dashboard() {
           )}
         </section>
 
-        <section className="mt-10">
-          <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>
-            Saved Listing Evidence
-          </SectionTitle>
-          {listings.length === 0 ? (
-            <EmptyCard
-              icon={<Link2 className="h-5 w-5" />}
-              title="No listing evidence saved yet"
-              body="Open a saved property, use the Listings tab, then save any matching listing URL. PropertyAtlas does not run a live listing feed."
-            />
-          ) : (
+        {listings.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>
+              Saved Listing Evidence
+            </SectionTitle>
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {listings.map((l) => (
                 <li
@@ -331,18 +323,8 @@ function Dashboard() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-
-        <section className="mt-10">
-          <SectionTitle icon={<Calculator className="h-3.5 w-3.5" />}>Calculators</SectionTitle>
-          <EmptyCard
-            icon={<Calculator className="h-5 w-5" />}
-            title="Calculators live inside each property dossier"
-            body="Open a saved property to run acquisition, rental, bond, flip, BRRRR, development and scenario estimates. Scenarios are not saved yet."
-            cta={{ to: "/", label: "Open the map" }}
-          />
-        </section>
+          </section>
+        )}
       </main>
       <Footer />
     </div>
@@ -412,6 +394,7 @@ function SavedPropertyRow({
         lng,
         zoom: 18,
       });
+  const calculatorHref = `${href}${href.includes("?") ? "&" : "?"}tab=calc`;
   const open = () => {
     window.location.assign(href);
   };
@@ -426,6 +409,11 @@ function SavedPropertyRow({
     event.stopPropagation();
     if (!window.confirm("Remove this saved property?")) return;
     await onRemove(row.parcel_id);
+  };
+  const runCalculator = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.assign(calculatorHref);
   };
 
   return (
@@ -480,6 +468,16 @@ function SavedPropertyRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={runCalculator}
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:bg-muted"
+          aria-label={`Run calculator for ${title}`}
+          title="Open the property and use the Calc tab. Calculator scenarios are not saved yet."
+        >
+          <Calculator className="h-3.5 w-3.5" />
+          Run calculator
+        </button>
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground">
           Open property <ChevronRight className="h-3 w-3" />
         </span>

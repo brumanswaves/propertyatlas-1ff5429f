@@ -63,14 +63,20 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <Sparkles className="h-3.5 w-3.5" /> },
   {
     id: "research",
-    label: "Due Diligence Sources",
+    label: "Sources",
     icon: <Link2 className="h-3.5 w-3.5" />,
   },
   { id: "listings", label: "Listings", icon: <TagIcon className="h-3.5 w-3.5" /> },
   { id: "reports", label: "Reports", icon: <FileText className="h-3.5 w-3.5" /> },
   { id: "notes", label: "Notes", icon: <NotebookPen className="h-3.5 w-3.5" /> },
-  { id: "calculators", label: "Calculators", icon: <Calculator className="h-3.5 w-3.5" /> },
+  { id: "calculators", label: "Calc", icon: <Calculator className="h-3.5 w-3.5" /> },
 ];
+
+function readInitialTab(): Tab {
+  if (typeof window === "undefined") return "overview";
+  const value = new URLSearchParams(window.location.search).get("tab");
+  return value === "calc" || value === "calculators" ? "calculators" : "overview";
+}
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
@@ -236,7 +242,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     () => (!isCsg ? normalizeKouga(selection.properties) : null),
     [selection.properties, isCsg],
   );
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(() => readInitialTab());
   const [geo, setGeo] = useState<Geo | null>(null);
   const [saved, setSaved] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -261,7 +267,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
   useEffect(() => {
-    setTab("overview");
+    setTab(readInitialTab());
     scrollRef.current?.scrollTo({ top: 0 });
   }, [parcelId]);
   useEffect(() => {
@@ -449,7 +455,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   return (
-    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[88vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[440px] md:rounded-l-3xl md:rounded-tr-none md:border-l lg:w-[480px]">
+    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[92vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[min(54vw,980px)] md:min-w-[680px] md:rounded-l-3xl md:rounded-tr-none md:border-l xl:max-w-[1040px] max-md:w-full">
       <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 pb-3 pt-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
@@ -502,7 +508,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 Swipe for more <ChevronRight className="h-3 w-3" />
               </span>
             </div>
-            <div className="scrollbar-none flex gap-0.5 overflow-x-auto px-2 sm:px-3">
+            <div className="scrollbar-thin flex gap-1 overflow-x-auto px-2 sm:px-3">
               {TABS.map(({ id, label, icon }) => {
                 const active = tab === id;
                 return (
@@ -513,7 +519,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
                     }}
                     className={cn(
-                      "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-2.5 py-2.5 text-[11px] font-medium transition",
+                      "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-3 py-2.5 text-[12px] font-semibold transition",
                       active
                         ? "bg-muted/70 text-foreground"
                         : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",

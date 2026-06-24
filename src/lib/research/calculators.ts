@@ -67,40 +67,84 @@ export interface BuyHoldInputs {
   purchasePrice: number;
   totalCashInvested: number;
   monthlyRent: number;
+  otherIncome?: number;
   vacancyPercent: number;
   monthlyRates: number;
   monthlyLevies: number;
   insurance: number;
+  utilitiesPaidByOwner?: number;
+  capitalExpenditureReserve?: number;
   maintenancePercent: number;
   managementPercent: number;
   otherMonthlyCosts: number;
   monthlyBondPayment: number;
+  appreciationPercent?: number;
+  rentGrowthPercent?: number;
+  expenseGrowthPercent?: number;
+  holdingPeriodYears?: number;
+  sellingCostPercent?: number;
+  loanAmount?: number;
+  closingCosts?: number;
+  downPayment?: number;
 }
 
 export function calculateBuyHold(input: BuyHoldInputs) {
-  const effectiveRent = input.monthlyRent * (1 - percent(input.vacancyPercent));
+  const grossMonthlyIncome = input.monthlyRent + (input.otherIncome ?? 0);
+  const effectiveRent = grossMonthlyIncome * (1 - percent(input.vacancyPercent));
   const maintenance = input.monthlyRent * percent(input.maintenancePercent);
-  const management = input.monthlyRent * percent(input.managementPercent);
+  const management = grossMonthlyIncome * percent(input.managementPercent);
   const monthlyExpenses =
     input.monthlyRates +
     input.monthlyLevies +
     input.insurance +
+    (input.utilitiesPaidByOwner ?? 0) +
+    (input.capitalExpenditureReserve ?? 0) +
     maintenance +
     management +
     input.otherMonthlyCosts;
   const monthlyNoi = effectiveRent - monthlyExpenses;
   const annualNoi = monthlyNoi * 12;
   const cashFlowAfterDebt = monthlyNoi - input.monthlyBondPayment;
+  const holdingYears = Math.max(0, input.holdingPeriodYears ?? 0);
+  const estimatedFutureValue =
+    input.purchasePrice * Math.pow(1 + percent(input.appreciationPercent ?? 0), holdingYears);
+  const estimatedSaleProceeds = estimatedFutureValue * (1 - percent(input.sellingCostPercent ?? 0));
+  const currentEquity = Math.max(0, input.purchasePrice - (input.loanAmount ?? 0));
+  const equityBuilt = Math.max(0, estimatedSaleProceeds - (input.loanAmount ?? 0) - currentEquity);
+  const totalCashFlow = cashFlowAfterDebt * 12 * holdingYears;
+  const totalProfitOverHolding =
+    estimatedSaleProceeds > 0
+      ? estimatedSaleProceeds - input.purchasePrice + totalCashFlow
+      : totalCashFlow;
+  const annualizedReturn =
+    holdingYears > 0 && input.totalCashInvested > 0
+      ? totalProfitOverHolding / input.totalCashInvested / holdingYears
+      : 0;
   return {
-    grossYield: input.purchasePrice > 0 ? (input.monthlyRent * 12) / input.purchasePrice : 0,
+    grossYield: input.purchasePrice > 0 ? (grossMonthlyIncome * 12) / input.purchasePrice : 0,
     netYield: input.purchasePrice > 0 ? annualNoi / input.purchasePrice : 0,
+    effectiveMonthlyIncome: roundMoney(effectiveRent),
+    monthlyOperatingExpenses: roundMoney(monthlyExpenses),
     monthlyNoi: roundMoney(monthlyNoi),
     annualNoi: roundMoney(annualNoi),
     cashFlowAfterDebt: roundMoney(cashFlowAfterDebt),
+    annualCashFlowAfterDebt: roundMoney(cashFlowAfterDebt * 12),
     cashOnCashReturn:
       input.totalCashInvested > 0 ? (cashFlowAfterDebt * 12) / input.totalCashInvested : 0,
     capRate: input.purchasePrice > 0 ? annualNoi / input.purchasePrice : 0,
     breakEvenRent: roundMoney(monthlyExpenses + input.monthlyBondPayment),
+    breakEvenOccupancy:
+      grossMonthlyIncome > 0
+        ? Math.min(1, (monthlyExpenses + input.monthlyBondPayment) / grossMonthlyIncome)
+        : 0,
+    dscr: input.monthlyBondPayment > 0 ? (monthlyNoi * 12) / (input.monthlyBondPayment * 12) : 0,
+    estimatedFutureValue: roundMoney(estimatedFutureValue),
+    estimatedSaleProceeds: roundMoney(estimatedSaleProceeds),
+    equityBuilt: roundMoney(equityBuilt),
+    totalProfitOverHolding: roundMoney(totalProfitOverHolding),
+    simpleAnnualizedReturn: annualizedReturn,
+    onePercentRuleRatio: input.purchasePrice > 0 ? input.monthlyRent / input.purchasePrice : 0,
+    fiftyPercentRuleNoiEstimate: roundMoney(grossMonthlyIncome * 0.5),
   };
 }
 
@@ -146,6 +190,9 @@ export interface FlipInputs {
   agentCommissionPercent: number;
   sellingCosts: number;
   targetProfit: number;
+  targetRoiPercent?: number;
+  delayMonths?: number;
+  resaleSensitivityPercent?: number;
 }
 
 export function calculateFlip(input: FlipInputs) {
@@ -162,23 +209,32 @@ export function calculateFlip(input: FlipInputs) {
   const profit = netSaleProceeds - totalProjectCost;
   const roi = totalProjectCost > 0 ? profit / totalProjectCost : 0;
   const years = input.holdingMonths > 0 ? input.holdingMonths / 12 : 1;
+  const targetRoiProfit = totalProjectCost * percent(input.targetRoiPercent ?? 0);
+  const requiredTargetProfit = Math.max(input.targetProfit, targetRoiProfit);
+  const seventyPercentRuleOffer = input.expectedResalePrice * 0.7 - input.renovationBudget;
+  const delaySensitivity = (input.delayMonths ?? 0) * input.monthlyHoldingCost;
+  const resaleSensitivity =
+    input.expectedResalePrice * percent(input.resaleSensitivityPercent ?? 0);
   return {
     totalProjectCost: roundMoney(totalProjectCost),
     netSaleProceeds: roundMoney(netSaleProceeds),
     profit: roundMoney(profit),
     roi,
     annualizedRoi: years > 0 ? roi / years : 0,
-    requiredResalePriceForTargetProfit: roundMoney(
-      totalProjectCost + input.sellingCosts + input.targetProfit,
-    ),
+    requiredResalePriceForTargetProfit: roundMoney(totalProjectCost + requiredTargetProfit),
     maximumPurchasePriceForTargetProfit: roundMoney(
       netSaleProceeds -
         input.acquisitionCosts -
         input.renovationBudget -
         contingency -
         holdingCost -
-        input.targetProfit,
+        requiredTargetProfit,
     ),
+    seventyPercentRuleOffer: roundMoney(seventyPercentRuleOffer),
+    contingencyCost: roundMoney(contingency),
+    delaySensitivity: roundMoney(delaySensitivity),
+    resaleDownsideProfit: roundMoney(profit - resaleSensitivity),
+    resaleUpsideProfit: roundMoney(profit + resaleSensitivity),
   };
 }
 
@@ -192,6 +248,7 @@ export interface BrrrrInputs {
   monthlyRent: number;
   monthlyExpenses: number;
   monthlyDebtService: number;
+  targetDscr?: number;
 }
 
 export function calculateBrrrr(input: BrrrrInputs) {
@@ -201,6 +258,7 @@ export function calculateBrrrr(input: BrrrrInputs) {
   const cashLeftInDeal = Math.max(0, allInCost - cashReturned);
   const monthlyNoi = input.monthlyRent - input.monthlyExpenses;
   const cashFlow = monthlyNoi - input.monthlyDebtService;
+  const targetDscr = input.targetDscr ?? 1.2;
   return {
     refinanceLoanAmount: roundMoney(refinanceLoanAmount),
     cashReturned: roundMoney(cashReturned),
@@ -208,6 +266,9 @@ export function calculateBrrrr(input: BrrrrInputs) {
     cashOnCashReturn: cashLeftInDeal > 0 ? (cashFlow * 12) / cashLeftInDeal : 0,
     equityCreated: roundMoney(input.afterRepairValue - refinanceLoanAmount),
     dscr: input.monthlyDebtService > 0 ? monthlyNoi / input.monthlyDebtService : 0,
+    rentNeededForTargetDscr: roundMoney(
+      input.monthlyExpenses + input.monthlyDebtService * targetDscr,
+    ),
   };
 }
 
@@ -256,6 +317,7 @@ export interface ScenarioInput {
   monthlyExpenses: number;
   loanAmount: number;
   termYears: number;
+  cashInvested?: number;
 }
 
 export function calculateScenarioComparison(cases: ScenarioInput[]) {
@@ -265,6 +327,7 @@ export function calculateScenarioComparison(cases: ScenarioInput[]) {
     const profit = item.resalePrice - item.purchasePrice - item.renovationOrBuildCost;
     const cashFlow = monthlyNoi - debt;
     const dscr = debt > 0 ? monthlyNoi / debt : 0;
+    const roi = item.cashInvested && item.cashInvested > 0 ? profit / item.cashInvested : 0;
     const status =
       profit > 0 && cashFlow >= 0 && dscr >= 1.2
         ? "green"
@@ -276,8 +339,24 @@ export function calculateScenarioComparison(cases: ScenarioInput[]) {
       profit: roundMoney(profit),
       monthlyCashFlow: roundMoney(cashFlow),
       dscr,
+      roi,
       status,
     };
+  });
+}
+
+export interface RentalAnalysisInputs extends BuyHoldInputs {
+  loanAmount: number;
+  downPayment: number;
+  closingCosts: number;
+}
+
+export function calculateRentalAnalysis(input: RentalAnalysisInputs) {
+  const totalCashInvested = input.totalCashInvested || input.downPayment + input.closingCosts;
+  return calculateBuyHold({
+    ...input,
+    totalCashInvested,
+    loanAmount: input.loanAmount,
   });
 }
 

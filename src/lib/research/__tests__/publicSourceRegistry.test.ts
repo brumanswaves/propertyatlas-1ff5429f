@@ -114,6 +114,9 @@ describe("public source registry", () => {
     });
 
     expect(workflow.searchPhrase).toContain("Erf 962");
+    expect(workflow.exactSearch).toContain("Erf 962");
+    expect(workflow.areaSearch).toContain("St Francis Bay");
+    expect(workflow.broadSearch).toContain("Cape St Francis property for sale");
     expect(workflow.portals.map((portal) => portal.href)).toEqual([
       "https://www.property24.com/",
       "https://www.privateproperty.co.za/",
@@ -121,10 +124,10 @@ describe("public source registry", () => {
       "https://www.seeff.com/",
       "https://www.remax.co.za/",
       "https://www.rawson.co.za/",
+      "https://www.google.com/maps/search/St%20Francis%20Bay%20property%20for%20sale%20OR%20Cape%20St%20Francis%20property%20for%20sale%20OR%20Sea%20Vista%20property%20for%20sale%20OR%20Humansdorp%20property%20for%20sale",
+      "https://www.google.com/search?q=St%20Francis%20Bay%20property%20for%20sale%20OR%20Cape%20St%20Francis%20property%20for%20sale%20OR%20Sea%20Vista%20property%20for%20sale%20OR%20Humansdorp%20property%20for%20sale",
     ]);
-    expect(workflow.portals.some((portal) => portal.href.includes("google.com/search"))).toBe(
-      false,
-    );
+    expect(workflow.portals.some((portal) => portal.id === "google-web")).toBe(true);
   });
 
   it("detects Erf 962 Harbour Road and includes parcel-specific evidence", () => {

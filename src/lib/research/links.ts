@@ -241,23 +241,90 @@ export interface ListingSearchLink {
 
 export interface MarketEvidenceWorkflow {
   searchPhrase: string;
+  exactSearch: string;
+  areaSearch: string;
+  broadSearch: string;
+  streetSearch?: string;
   instruction: string;
   portals: ListingSearchLink[];
 }
 
 /** Returns links that open each portal's home page so users can search manually. */
-export function buildListingResearchLinks(_ctx: ResearchContext): ListingSearchLink[] {
-  return LISTING_PORTALS.map((p) => ({
-    id: p.id,
-    label: `Open ${p.label}`,
-    description: `Open ${p.label}, paste the search phrase, then save only matching listing URLs.`,
-    href: p.url,
-  }));
+export function buildListingResearchLinks(ctx: ResearchContext): ListingSearchLink[] {
+  const coords = ctx.lat != null && ctx.lng != null ? `${ctx.lat},${ctx.lng}` : null;
+  const broad = buildBroadListingSearch(ctx);
+  return [
+    ...LISTING_PORTALS.map((p) => ({
+      id: p.id,
+      label: `Open ${p.label}`,
+      description: `Open ${p.label}, paste the search phrase, then save only matching listing URLs.`,
+      href: p.url,
+    })),
+    {
+      id: "google-maps",
+      label: "Open Google Maps nearby",
+      description: "Open the selected parcel area in Google Maps for nearby streets and amenities.",
+      href: coords
+        ? `https://maps.google.com/?q=${encodeURIComponent(coords)}`
+        : `https://www.google.com/maps/search/${encodeURIComponent(broad)}`,
+    },
+    {
+      id: "google-web",
+      label: "Open Google web search",
+      description: "Open a broad web search. Verify every result manually before saving it.",
+      href: `https://www.google.com/search?q=${encodeURIComponent(broad)}`,
+    },
+  ];
+}
+
+function uniqueParts(parts: Array<string | undefined | null>): string[] {
+  return Array.from(
+    new Set(parts.map((part) => String(part ?? "").trim()).filter((part) => part.length > 0)),
+  );
+}
+
+export function buildExactListingSearch(ctx: ResearchContext): string {
+  const erf = ctx.erf ? `Erf ${ctx.erf}` : "";
+  return uniqueParts([erf, ctx.suburb ?? ctx.area, ctx.town, ctx.municipality]).join(" ");
+}
+
+export function buildStreetListingSearch(ctx: ResearchContext): string {
+  return uniqueParts([ctx.address ?? ctx.nearestRoad, ctx.suburb ?? ctx.area, ctx.town]).join(" ");
+}
+
+export function buildAreaListingSearch(ctx: ResearchContext): string {
+  return uniqueParts([ctx.suburb ?? ctx.area, ctx.town, ctx.province ?? "Eastern Cape"]).join(" ");
+}
+
+export function buildBroadListingSearch(ctx: ResearchContext): string {
+  const context = uniqueParts([ctx.suburb, ctx.area, ctx.town, ctx.municipality, ctx.province])
+    .join(" ")
+    .toLowerCase();
+  const kougaTerms = [
+    "St Francis Bay property for sale",
+    "Cape St Francis property for sale",
+    "Sea Vista property for sale",
+    "Humansdorp property for sale",
+  ];
+  if (/kouga|st\s*francis|cape st francis|sea vista|santareme|humansdorp/.test(context)) {
+    return kougaTerms.join(" OR ");
+  }
+  const area = buildAreaListingSearch(ctx);
+  return area ? `${area} property for sale` : "South Africa coastal property for sale";
 }
 
 export function buildMarketEvidenceWorkflow(ctx: ResearchContext): MarketEvidenceWorkflow {
+  const exactSearch = buildExactListingSearch(ctx);
+  const streetSearch = buildStreetListingSearch(ctx);
+  const areaSearch = buildAreaListingSearch(ctx);
+  const broadSearch = buildBroadListingSearch(ctx);
   return {
-    searchPhrase: buildSearchPhrase(ctx),
+    searchPhrase:
+      exactSearch || streetSearch || areaSearch || broadSearch || buildSearchPhrase(ctx),
+    exactSearch,
+    streetSearch,
+    areaSearch,
+    broadSearch,
     instruction: "Open the portal, paste/search the phrase, then save only matching listing URLs.",
     portals: buildListingResearchLinks(ctx),
   };
