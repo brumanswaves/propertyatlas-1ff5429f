@@ -10,6 +10,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("md:w-[min(54vw,980px)]");
     expect(panel).toContain("md:min-w-[680px]");
     expect(panel).toContain('label: "Sources"');
+    expect(panel).toContain('label: "Market Evidence"');
     expect(panel).toContain('label: "Calc"');
     expect(panel).toContain("overflow-x-auto");
   });
@@ -23,20 +24,22 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Checked");
   });
 
-  it("renders the market evidence search builder and BRRRR explanation", () => {
+  it("renders the market evidence tab and BRRRR explanation", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const marketEvidence = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(dossier).toContain("Market Evidence Search Builder");
-    expect(dossier).toContain("Copy exact search");
-    expect(dossier).toContain("Copy area search");
-    expect(dossier).toContain("Copy broad search");
+    expect(marketEvidence).toContain("Market Evidence");
+    expect(marketEvidence).toContain("Asset Identity Card");
+    expect(marketEvidence).toContain("Portal Reality Check");
+    expect(marketEvidence).toContain("Search Ladder");
+    expect(marketEvidence).toContain("Saved Market Evidence Ledger");
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
-  it("hides empty listing/calculator dashboard sections and keeps run calculator action", () => {
+  it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {
     const dashboard = read("src/routes/dashboard.tsx");
 
-    expect(dashboard).toContain("listings.length > 0");
+    expect(dashboard).toContain("savedMarketEvidence(row).length > 0");
     expect(dashboard).not.toContain("No listing evidence saved yet");
     expect(dashboard).not.toContain("Calculators live inside each property dossier");
     expect(dashboard).toContain("Run calculator");

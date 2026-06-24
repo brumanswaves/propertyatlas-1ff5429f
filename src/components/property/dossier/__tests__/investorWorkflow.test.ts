@@ -32,6 +32,14 @@ describe("investor dossier workflow", () => {
     expect(step.secondaryView).toBe("research");
   });
 
+  it("advances after the CSG source is completed in session state", () => {
+    const sources = buildPublicResearchSources(baseParcel);
+    const step = buildNextBestStep(baseParcel, sources, new Set(["csg-property-viewer"]));
+
+    expect(step.primaryLabel).not.toBe("Open CSG Property Viewer");
+    expect(step.title).not.toContain("official CSG parcel record");
+  });
+
   it("marks unavailable investor diligence data honestly", () => {
     const sources = buildPublicResearchSources(baseParcel);
     const stages = buildDueDiligenceProgress(baseParcel, sources);

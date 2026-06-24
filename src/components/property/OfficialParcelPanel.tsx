@@ -66,7 +66,7 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
     label: "Sources",
     icon: <Link2 className="h-3.5 w-3.5" />,
   },
-  { id: "listings", label: "Listings", icon: <TagIcon className="h-3.5 w-3.5" /> },
+  { id: "listings", label: "Market Evidence", icon: <TagIcon className="h-3.5 w-3.5" /> },
   { id: "reports", label: "Reports", icon: <FileText className="h-3.5 w-3.5" /> },
   { id: "notes", label: "Notes", icon: <NotebookPen className="h-3.5 w-3.5" /> },
   { id: "calculators", label: "Calc", icon: <Calculator className="h-3.5 w-3.5" /> },

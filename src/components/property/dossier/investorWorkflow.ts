@@ -13,6 +13,7 @@ export type DueDiligenceStatus =
   | "Source link available";
 
 export interface NextBestStepModel {
+  sourceId?: string;
   title: string;
   explanation: string;
   status: DueDiligenceStatus;
@@ -48,10 +49,17 @@ function hasKnownField(parcel: NormalizedOfficialParcel, pattern: RegExp) {
 export function buildNextBestStep(
   parcel: NormalizedOfficialParcel,
   sources: ResearchSource[],
+  completedSourceIds: Set<string> = new Set(),
 ): NextBestStepModel {
-  const csgViewer = sourceById(sources, "csg-property-viewer");
-  const sgDocuments = sourceById(sources, "sg-document-list");
-  const valuationRoll = sourceById(sources, "municipal-valuation-roll");
+  const csgViewer = completedSourceIds.has("csg-property-viewer")
+    ? undefined
+    : sourceById(sources, "csg-property-viewer");
+  const sgDocuments = completedSourceIds.has("sg-document-list")
+    ? undefined
+    : sourceById(sources, "sg-document-list");
+  const valuationRoll = completedSourceIds.has("municipal-valuation-roll")
+    ? undefined
+    : sourceById(sources, "municipal-valuation-roll");
 
   if (csgViewer?.url) {
     return {
@@ -59,6 +67,7 @@ export function buildNextBestStep(
       explanation:
         "Start by confirming that the erf, portion, LPI or parcel key match the official cadastral source before relying on downstream research.",
       status: parcel.lpi || parcel.parcelKey ? "Available" : "Source link available",
+      sourceId: csgViewer.id,
       primaryLabel: "Open CSG Property Viewer",
       primaryUrl: csgViewer.url,
       secondaryLabel: "View due diligence sources",
@@ -72,6 +81,7 @@ export function buildNextBestStep(
       explanation:
         "Use the Surveyor-General document list to verify diagrams or registered parcel documents when the source can be built.",
       status: "Source link available",
+      sourceId: sgDocuments.id,
       primaryLabel: sgDocuments.actionLabel,
       primaryUrl: sgDocuments.url,
       secondaryLabel: "View due diligence sources",
@@ -85,10 +95,25 @@ export function buildNextBestStep(
       explanation:
         "Municipal values and rates clues must be verified at source; they are not attached as confirmed current values here.",
       status: "Source link available",
+      sourceId: valuationRoll.id,
       primaryLabel: valuationRoll.actionLabel,
       primaryUrl: valuationRoll.url,
       secondaryLabel: "Save notes",
       secondaryView: "notes",
+    };
+  }
+
+  if (!completedSourceIds.has("market-evidence")) {
+    return {
+      title: "Build a Market Evidence thesis from saved source URLs.",
+      explanation:
+        "Use portal and agency searches as a workflow, then save only evidence you manually verify.",
+      status: "Source link available",
+      sourceId: "market-evidence",
+      primaryLabel: "Open Market Evidence",
+      primaryView: "listings",
+      secondaryLabel: "Run calculator",
+      secondaryView: "calculators",
     };
   }
 

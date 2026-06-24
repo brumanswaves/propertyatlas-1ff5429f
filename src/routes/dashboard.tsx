@@ -9,7 +9,6 @@ import {
   Calculator,
   ClipboardList,
   Sparkles,
-  ArrowUpRight,
   ChevronRight,
   Trash2,
 } from "lucide-react";
@@ -24,6 +23,12 @@ import {
   isDemoParcelId,
   isOfficialParcelId,
 } from "@/lib/parcels/officialParcelId";
+import { calculateMarketEvidenceSummary } from "@/features/marketEvidence/calculateMarketEvidenceSummary";
+import {
+  CONFIDENCE_LABELS,
+  RELATIONSHIP_LABELS,
+  type SavedMarketEvidence,
+} from "@/features/marketEvidence/types";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -32,7 +37,7 @@ export const Route = createFileRoute("/dashboard")({
       {
         name: "description",
         content:
-          "Your saved parcels, notes, listings, report interests, and due-diligence checklist.",
+          "Your saved parcels, notes, market evidence, report interests, and due-diligence checklist.",
       },
       { property: "og:url", content: "/dashboard" },
     ],
@@ -44,7 +49,7 @@ export const Route = createFileRoute("/dashboard")({
 interface Counts {
   savedProperties: number;
   notesProperties: number;
-  savedListings: number;
+  savedMarketEvidence: number;
   reportInterests: number;
 }
 
@@ -56,14 +61,6 @@ interface SavedRow {
   tags: string[] | null;
   user_data: unknown;
 }
-interface ListingRow {
-  id: string;
-  parcel_id: string;
-  url: string | null;
-  status: string;
-  asking_price_cents: number | null;
-  created_at: string | null;
-}
 interface ActivityRow {
   kind: string;
   label: string;
@@ -73,7 +70,7 @@ interface ActivityRow {
 const NEXT_ACTIONS = [
   "Open the map and continue a saved dossier",
   "Add a note or question to a saved erf",
-  "Use the Listings tab to save matching listing evidence",
+  "Use Market Evidence to save verified source URLs",
   "Run calculators from a saved property dossier",
   "Save report interest when Lightstone or WinDeed data is needed",
 ];
@@ -83,11 +80,10 @@ function Dashboard() {
   const navigate = useNavigate();
   const greetingName = getUserGreetingName(user);
   const [saved, setSaved] = useState<SavedRow[]>([]);
-  const [listings, setListings] = useState<ListingRow[]>([]);
   const [counts, setCounts] = useState<Counts>({
     savedProperties: 0,
     notesProperties: 0,
-    savedListings: 0,
+    savedMarketEvidence: 0,
     reportInterests: 0,
   });
   const [activity, setActivity] = useState<ActivityRow[]>([]);
@@ -99,22 +95,19 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [s, n, l] = await Promise.all([
+      const [s, n] = await Promise.all([
         supabase
           .from("saved_properties")
           .select("parcel_id, created_at, research_status, status, tags, user_data")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
         supabase.from("property_notes").select("parcel_id, updated_at").eq("user_id", user.id),
-        supabase
-          .from("property_listings")
-          .select("id, parcel_id, url, status, asking_price_cents, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
       ]);
       const savedRows = (s.data ?? []) as SavedRow[];
       const noteRows = (n.data ?? []) as { parcel_id: string; updated_at: string | null }[];
-      const listingRows = (l.data ?? []) as ListingRow[];
+      const marketEvidenceRows = savedRows.flatMap((row) =>
+        savedMarketEvidence(row).map((item) => ({ row, item })),
+      );
 
       // Report interest is stored client-side per parcel; count keys with a `pa.reportInterests.` prefix.
       let reportInterests = 0;
@@ -135,11 +128,10 @@ function Dashboard() {
       }
 
       setSaved(savedRows);
-      setListings(listingRows);
       setCounts({
         savedProperties: savedRows.length,
         notesProperties: noteRows.length,
-        savedListings: listingRows.length,
+        savedMarketEvidence: marketEvidenceRows.length,
         reportInterests,
       });
 
@@ -154,10 +146,10 @@ function Dashboard() {
           label: `Added note to ${r.parcel_id}`,
           at: r.updated_at ?? "",
         })),
-        ...listingRows.slice(0, 5).map((r) => ({
-          kind: "listing",
-          label: `Saved listing for ${r.parcel_id}`,
-          at: r.created_at ?? "",
+        ...marketEvidenceRows.slice(0, 5).map(({ row, item }) => ({
+          kind: "market-evidence",
+          label: `Saved market evidence for ${savedTitle(row)}`,
+          at: item.updatedAt ?? item.savedAt ?? "",
         })),
       ]
         .filter((r) => r.at)
@@ -201,7 +193,7 @@ function Dashboard() {
               Hello {greetingName}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Saved research dossiers, notes, listing evidence, and report interests.
+              Saved research dossiers, notes, market evidence, and report interests.
             </p>
           </div>
           <Link
@@ -225,8 +217,8 @@ function Dashboard() {
           />
           <KpiCard
             icon={<Link2 className="h-4 w-4" />}
-            label="Listings saved"
-            value={counts.savedListings}
+            label="Market evidence"
+            value={counts.savedMarketEvidence}
           />
           <KpiCard
             icon={<FileText className="h-4 w-4" />}
@@ -286,42 +278,15 @@ function Dashboard() {
           )}
         </section>
 
-        {listings.length > 0 && (
+        {saved.some((row) => savedMarketEvidence(row).length > 0) && (
           <section className="mt-10">
-            <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>
-              Saved Listing Evidence
-            </SectionTitle>
+            <SectionTitle icon={<Link2 className="h-3.5 w-3.5" />}>Market Evidence</SectionTitle>
             <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-              {listings.map((l) => (
-                <li
-                  key={l.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">
-                        {l.status}
-                      </span>
-                      <span className="truncate font-medium">{l.parcel_id}</span>
-                    </div>
-                    {l.asking_price_cents != null && (
-                      <div className="text-[11px] tabular-nums text-muted-foreground">
-                        R {(l.asking_price_cents / 100).toLocaleString("en-ZA")}
-                      </div>
-                    )}
-                  </div>
-                  {l.url && (
-                    <a
-                      href={l.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground hover:underline"
-                    >
-                      Open <ArrowUpRight className="h-3 w-3" />
-                    </a>
-                  )}
-                </li>
-              ))}
+              {saved
+                .filter((row) => savedMarketEvidence(row).length > 0)
+                .map((row) => (
+                  <MarketEvidenceDashboardRow key={row.parcel_id} row={row} />
+                ))}
             </ul>
           </section>
         )}
@@ -341,6 +306,37 @@ function stringField(data: unknown, key: string): string | null {
   return value === null || value === undefined || String(value).trim() === ""
     ? null
     : String(value);
+}
+
+function savedMarketEvidence(row: SavedRow): SavedMarketEvidence[] {
+  if (!isRecord(row.user_data) || !Array.isArray(row.user_data.savedMarketEvidence)) return [];
+  return row.user_data.savedMarketEvidence
+    .filter(isRecord)
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      parcelId: String(item.parcelId ?? row.parcel_id),
+      sourceUrl: String(item.sourceUrl ?? ""),
+      sourcePortal: String(item.sourcePortal ?? "Other"),
+      title: String(item.title ?? "Saved market evidence"),
+      askingPrice: item.askingPrice == null ? null : Number(item.askingPrice),
+      propertyType: item.propertyType == null ? null : String(item.propertyType),
+      beds: item.beds == null ? null : Number(item.beds),
+      baths: item.baths == null ? null : Number(item.baths),
+      landSizeM2: item.landSizeM2 == null ? null : Number(item.landSizeM2),
+      buildingSizeM2: item.buildingSizeM2 == null ? null : Number(item.buildingSizeM2),
+      relationship: String(item.relationship ?? "weak_comp") as SavedMarketEvidence["relationship"],
+      confidence: String(item.confidence ?? "low") as SavedMarketEvidence["confidence"],
+      includeInSummary: Boolean(item.includeInSummary),
+      notes: item.notes == null ? null : String(item.notes),
+      savedAt: String(item.savedAt ?? row.created_at ?? ""),
+      updatedAt: String(item.updatedAt ?? item.savedAt ?? row.created_at ?? ""),
+    }))
+    .filter((item) => item.sourceUrl);
+}
+
+function formatMoney(value: number | undefined | null): string {
+  if (!value) return "No price entered";
+  return `R ${Math.round(value).toLocaleString("en-ZA")}`;
 }
 
 function savedTitle(row: SavedRow): string {
@@ -491,6 +487,54 @@ function SavedPropertyRow({
           Remove
         </button>
       </div>
+    </li>
+  );
+}
+
+function MarketEvidenceDashboardRow({ row }: { row: SavedRow }) {
+  const evidence = savedMarketEvidence(row);
+  const summary = calculateMarketEvidenceSummary(evidence);
+  const primary = evidence[0];
+  const rate = summary.averageLandPricePerM2
+    ? `Avg land R/m2 ${Math.round(summary.averageLandPricePerM2).toLocaleString("en-ZA")}`
+    : "No R/m2 summary yet";
+
+  return (
+    <li className="flex flex-col gap-3 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0">
+        <div className="font-medium">{savedTitle(row)}</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {evidence.length} evidence item{evidence.length === 1 ? "" : "s"}
+          </span>
+          {primary && (
+            <>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {RELATIONSHIP_LABELS[primary.relationship]}
+              </span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {CONFIDENCE_LABELS[primary.confidence]}
+              </span>
+            </>
+          )}
+        </div>
+        {primary && (
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {formatMoney(primary.askingPrice)} / {rate}
+            {primary.notes ? ` / ${primary.notes}` : ""}
+          </p>
+        )}
+      </div>
+      {primary?.sourceUrl && (
+        <a
+          href={primary.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+        >
+          Open source <ChevronRight className="h-3 w-3" />
+        </a>
+      )}
     </li>
   );
 }

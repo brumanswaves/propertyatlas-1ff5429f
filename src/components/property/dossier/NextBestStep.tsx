@@ -4,14 +4,16 @@ import type { NextBestStepModel, InvestorWorkflowView } from "./investorWorkflow
 interface Props {
   step: NextBestStepModel;
   onSelectView?: (view: InvestorWorkflowView) => void;
+  onPrimaryAction?: (sourceId: string) => void;
 }
 
-export function NextBestStep({ step, onSelectView }: Props) {
+export function NextBestStep({ step, onSelectView, onPrimaryAction }: Props) {
   const primary = step.primaryUrl ? (
     <a
       href={step.primaryUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => step.sourceId && onPrimaryAction?.(step.sourceId)}
       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#1f3f43] px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-[#1f3f43]/15 transition hover:-translate-y-0.5 hover:bg-[#183438]"
     >
       {step.primaryLabel}
@@ -20,7 +22,10 @@ export function NextBestStep({ step, onSelectView }: Props) {
   ) : (
     <button
       type="button"
-      onClick={() => step.primaryView && onSelectView?.(step.primaryView)}
+      onClick={() => {
+        if (step.sourceId) onPrimaryAction?.(step.sourceId);
+        if (step.primaryView) onSelectView?.(step.primaryView);
+      }}
       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#1f3f43] px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-[#1f3f43]/15 transition hover:-translate-y-0.5 hover:bg-[#183438]"
     >
       {step.primaryLabel}

@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { copyToClipboard, openExternalUrl } from "@/lib/external";
 import { SavedLinksManager } from "./SavedLinksManager";
 import { NotesTab } from "./tabs/NotesTab";
-import { ListingsTab } from "./tabs/ListingsTab";
+import { MarketEvidenceTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
 import { NextBestStep } from "./dossier/NextBestStep";
@@ -121,7 +121,7 @@ const RESEARCH_SECTIONS = [
   },
   {
     id: "listings-market",
-    title: "Listings and market evidence",
+    title: "Market Evidence",
     match: (source: ResearchSource) =>
       source.category === "listings-market-evidence" ||
       source.dossierGroup === "market-intelligence",
@@ -287,7 +287,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     `${moreSources.length} more`,
   ].join(" / ");
   const knownRows = knownFieldRows(parcel);
-  const nextBestStep = buildNextBestStep(parcel, sources);
+  const nextBestStep = buildNextBestStep(parcel, sources, completedSourceIds);
   const dueDiligenceStages = buildDueDiligenceProgress(parcel, sources);
   const selectWorkflowView = (target: InvestorWorkflowView) => onSelectView?.(target);
   const marketWorkflow = useMemo(() => buildMarketEvidenceWorkflow(researchCtx), [researchCtx]);
@@ -308,8 +308,8 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
       "research",
     ],
     [
-      "Search listings",
-      "Run unverified public listing searches and save matching URLs manually.",
+      "Build Market Evidence",
+      "Find, classify and save verified market evidence manually.",
       "listings",
     ],
     [
@@ -397,11 +397,8 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   if (view === "listings") {
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Listing Research</SectionTitle>
-        <MarketEvidenceWorkflowCard workflow={marketWorkflow} />
-        <div className="mt-4">
-          <ListingsTab parcelId={parcel.id} ctx={researchCtx} showSourceBadge={false} />
-        </div>
+        <SectionTitle>Market Evidence</SectionTitle>
+        <MarketEvidenceTab parcel={parcel} />
       </section>
     );
   }
@@ -475,7 +472,14 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         </div>
       </section>
 
-      <NextBestStep step={nextBestStep} onSelectView={selectWorkflowView} />
+      <NextBestStep
+        step={nextBestStep}
+        onSelectView={selectWorkflowView}
+        onPrimaryAction={(sourceId) => {
+          const source = sources.find((item) => item.id === sourceId);
+          if (source) markSourceComplete(source);
+        }}
+      />
 
       <InvestorDueDiligenceProgress stages={dueDiligenceStages} onSelectView={selectWorkflowView} />
 
@@ -955,6 +959,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
   const { user } = useAuth();
   const [status, setStatus] = useState<DossierStatusId>("not_started");
   const [tagsText, setTagsText] = useState("");
+  const [existingUserData, setExistingUserData] = useState<Record<string, unknown>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -963,6 +968,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
 
     if (!user) {
       setLoaded(true);
+      setExistingUserData({});
       return () => {
         alive = false;
       };
@@ -971,7 +977,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
     setLoaded(false);
     supabase
       .from("saved_properties")
-      .select("research_status,tags")
+      .select("research_status,tags,user_data")
       .eq("user_id", user.id)
       .eq("parcel_id", parcel.id)
       .maybeSingle()
@@ -980,6 +986,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
         if (error) {
           toast.error(error.message);
         }
+        setExistingUserData(isRecord(data?.user_data) ? data.user_data : {});
         const savedStatus = data?.research_status;
         if (savedStatus && DOSSIER_STATUSES.some((item) => item.id === savedStatus)) {
           setStatus(savedStatus as DossierStatusId);
@@ -1007,6 +1014,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
       .map((tag) => tag.trim())
       .filter(Boolean);
     const userData = {
+      ...existingUserData,
       normalizedParcelId: parcel.id,
       provider: parcel.sourceLabel,
       sourceLayer: parcel.layer ?? null,
@@ -1043,6 +1051,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
       toast.error(error.message);
       return;
     }
+    setExistingUserData(userData);
     toast.success("Dossier status saved");
   }
 
