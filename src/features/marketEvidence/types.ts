@@ -14,6 +14,31 @@ export type MarketEvidenceRelationship =
 
 export type MarketEvidenceConfidence = "high" | "medium" | "low" | "excluded";
 
+export type RadarClassification =
+  | "possible_target_property"
+  | "strong_comp"
+  | "same_street_comp"
+  | "same_node_comp"
+  | "vacant_land_comp"
+  | "nearby_market_comp"
+  | "broader_market_comp"
+  | "weak_comp"
+  | "hidden";
+
+export type RadarSignal =
+  | "erf_number_mentioned"
+  | "exact_address_match"
+  | "street_name_match"
+  | "land_size_exact"
+  | "land_size_close"
+  | "coordinate_close"
+  | "same_micro_market"
+  | "same_suburb"
+  | "same_property_type"
+  | "estate_or_scheme_match"
+  | "vacant_land_match"
+  | "broader_area_match";
+
 export type MarketEvidenceCategory =
   | "residential"
   | "vacant_land"
@@ -76,6 +101,54 @@ export interface MarketEvidencePortalAction {
   opensReliableAreaPage: boolean;
   requiresManualPaste: boolean;
   helperText: string;
+}
+
+export type ListingCandidateSource = "manual_import" | "source_backed_seed";
+
+export interface ListingCandidate {
+  id: string;
+  sourceType: ListingCandidateSource;
+  sourcePortal: string;
+  sourceUrl: string;
+  title: string;
+  askingPrice?: number | null;
+  propertyType?: string | null;
+  locationText?: string | null;
+  microMarket?: string | null;
+  suburb?: string | null;
+  town?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+  streetName?: string | null;
+  descriptionText?: string | null;
+  beds?: number | null;
+  baths?: number | null;
+  landSizeM2?: number | null;
+  buildingSizeM2?: number | null;
+  agencyName?: string | null;
+  imageUrl?: string | null;
+  listingStatus?: string | null;
+  fetchedAt?: string | null;
+  lastSeenAt?: string | null;
+  importedAt?: string | null;
+  rawSourceArea?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface RadarMatch {
+  candidateId: string;
+  score: number;
+  classification: RadarClassification;
+  reasons: string[];
+  distanceMeters?: number;
+  sizeVariancePercent?: number;
+  matchedSignals: RadarSignal[];
+}
+
+export interface RadarCandidateResult {
+  candidate: ListingCandidate;
+  match: RadarMatch;
 }
 
 export interface SavedMarketEvidence {

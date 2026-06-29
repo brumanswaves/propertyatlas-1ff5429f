@@ -30,9 +30,13 @@ describe("official dossier UX guardrails", () => {
 
     expect(marketEvidence).toContain("Market Evidence");
     expect(marketEvidence).toContain("Asset Identity Card");
-    expect(marketEvidence).toContain("Portal Reality Check");
+    expect(marketEvidence).toContain("Active Listing Radar");
+    expect(marketEvidence).toContain("Candidate Triage");
     expect(marketEvidence).toContain("Search Ladder");
     expect(marketEvidence).toContain("Saved Market Evidence Ledger");
+    expect(marketEvidence.indexOf("Active Listing Radar")).toBeLessThan(
+      marketEvidence.indexOf("Search Ladder"),
+    );
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
@@ -44,5 +48,16 @@ describe("official dossier UX guardrails", () => {
     expect(dashboard).not.toContain("Calculators live inside each property dossier");
     expect(dashboard).toContain("Run calculator");
     expect(dashboard).toContain("tab=calc");
+  });
+
+  it("keeps radar candidates separate from verified saved market evidence", () => {
+    const hook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
+    const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+
+    expect(hook).toContain("marketEvidenceCandidates");
+    expect(hook).toContain("dismissedMarketEvidenceCandidateIds");
+    expect(hook).toContain("savedMarketEvidence");
+    expect(tab).toContain("Radar candidates are hypotheses");
+    expect(tab).toContain("Market thesis from verified evidence");
   });
 });

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import {
+  evidenceFromCandidate,
+  runActiveListingRadar,
+  scoreListingCandidate,
+} from "../activeListingRadar";
 import { calculateMarketEvidenceSummary } from "../calculateMarketEvidenceSummary";
 import { generateMarketEvidenceActions } from "../generateMarketEvidenceActions";
-import type { SavedMarketEvidence } from "../types";
+import type { ListingCandidate, SavedMarketEvidence } from "../types";
 
 function parcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -119,6 +124,138 @@ describe("market evidence generation", () => {
     expect(actions.every((action) => action.helperText && action.searchPhrase !== undefined)).toBe(
       true,
     );
+  });
+});
+
+describe("active listing radar", () => {
+  const candidate = (overrides: Partial<ListingCandidate> = {}): ListingCandidate => ({
+    id: "candidate-one",
+    sourceType: "manual_import",
+    sourcePortal: "Property24",
+    sourceUrl: "https://www.property24.com/listing/one",
+    title: "8 Harbour Drive Cape St Francis",
+    askingPrice: 2_750_000,
+    propertyType: "Vacant land",
+    locationText: "8 Harbour Drive, Cape St Francis",
+    microMarket: "Cape St Francis",
+    suburb: "Cape St Francis",
+    town: "St Francis Bay",
+    municipality: "Kouga",
+    province: "Eastern Cape",
+    streetName: "Harbour Drive",
+    descriptionText: "Erf 962 vacant stand near the harbour.",
+    beds: null,
+    baths: null,
+    landSizeM2: 912,
+    buildingSizeM2: null,
+    agencyName: "Source-backed agency",
+    imageUrl: null,
+    listingStatus: "active",
+    fetchedAt: null,
+    lastSeenAt: null,
+    importedAt: "2026-06-01T00:00:00.000Z",
+    rawSourceArea: "Cape St Francis",
+    lat: -34.1001,
+    lng: 24.8001,
+    ...overrides,
+  });
+
+  it("sorts radar candidates by score and hides candidates below threshold", () => {
+    const results = runActiveListingRadar(parcel(), [
+      candidate({ id: "weak", title: "Eastern Cape property", descriptionText: "" }),
+      candidate({ id: "strong" }),
+      candidate({
+        id: "hidden",
+        title: "Johannesburg townhouse",
+        locationText: "Sandton",
+        microMarket: null,
+        suburb: "Sandton",
+        town: "Johannesburg",
+        municipality: "City of Johannesburg",
+        province: "Gauteng",
+        streetName: "Other Road",
+        descriptionText: "Urban townhouse",
+        rawSourceArea: "Sandton",
+        landSizeM2: 111,
+        lat: null,
+        lng: null,
+      }),
+    ]);
+
+    expect(results[0].candidate.id).toBe("strong");
+    expect(results.some((result) => result.candidate.id === "hidden")).toBe(false);
+  });
+
+  it("scores exact address, erf mention and land-size matches high without confirmed labels", () => {
+    const match = scoreListingCandidate(parcel(), candidate());
+
+    expect(match.score).toBeGreaterThanOrEqual(85);
+    expect(match.classification).toBe("possible_target_property");
+    expect(match.matchedSignals).toContain("exact_address_match");
+    expect(match.matchedSignals).toContain("erf_number_mentioned");
+    expect(match.matchedSignals).toContain("land_size_exact");
+    expect(match.classification).not.toContain("confirmed");
+  });
+
+  it("scores street plus micro-market as a comparable", () => {
+    const match = scoreListingCandidate(
+      parcel(),
+      candidate({
+        title: "Harbour Drive coastal plot",
+        locationText: "Harbour Drive",
+        descriptionText: "Vacant stand in Cape St Francis",
+        landSizeM2: 730,
+        lat: null,
+        lng: null,
+      }),
+    );
+
+    expect(match.score).toBeGreaterThanOrEqual(50);
+    expect(["same_street_comp", "same_node_comp"]).toContain(match.classification);
+  });
+
+  it("does not treat same suburb only as a possible target", () => {
+    const match = scoreListingCandidate(
+      parcel(),
+      candidate({
+        title: "Cape St Francis home",
+        locationText: "Cape St Francis",
+        descriptionText: "",
+        streetName: null,
+        landSizeM2: null,
+        lat: null,
+        lng: null,
+      }),
+    );
+
+    expect(match.classification).not.toBe("possible_target_property");
+  });
+
+  it("adds vacant-land signal for vacant-land subject and handles missing coordinates or size", () => {
+    const vacantParcel = parcel({
+      knownFields: [
+        { label: "Zoning description", value: "Vacant undeveloped stand", source: "Kouga" },
+      ],
+    });
+    const match = scoreListingCandidate(
+      vacantParcel,
+      candidate({ landSizeM2: null, lat: null, lng: null }),
+    );
+
+    expect(match.matchedSignals).toContain("vacant_land_match");
+    expect(match.score).toBeGreaterThan(0);
+  });
+
+  it("converts classified candidates to saved evidence without mixing unverified candidates", () => {
+    const match = scoreListingCandidate(parcel(), candidate());
+    const evidence = evidenceFromCandidate(candidate(), match, "same_street_comp");
+    const excluded = evidenceFromCandidate(candidate(), match, "not_related");
+
+    expect(evidence.sourceUrl).toBe("https://www.property24.com/listing/one");
+    expect(evidence.includeInSummary).toBe(true);
+    expect(evidence.notes).toContain("Added from Active Listing Radar");
+    expect(excluded.confidence).toBe("excluded");
+    expect(excluded.includeInSummary).toBe(false);
   });
 });
 

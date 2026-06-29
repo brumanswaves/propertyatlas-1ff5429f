@@ -1,15 +1,31 @@
 import { useMemo, useState } from "react";
-import { BookmarkCheck, Copy, ExternalLink, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  BookmarkCheck,
+  Copy,
+  ExternalLink,
+  Pencil,
+  Plus,
+  Radar,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { copyToClipboard, openExternalUrl } from "@/lib/external";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
+  evidenceFromCandidate,
+  relationshipForRadarClassification,
+  runActiveListingRadar,
+} from "../activeListingRadar";
+import {
   CONFIDENCE_COPY,
   CONFIDENCE_LABELS,
   RELATIONSHIP_LABELS,
+  type ListingCandidate,
   type MarketEvidenceConfidence,
   type MarketEvidenceRelationship,
+  type RadarCandidateResult,
   type SavedMarketEvidence,
 } from "../types";
 import { RELATIONSHIP_OPTIONS } from "../constants";
@@ -20,6 +36,16 @@ import {
 import { useSavedMarketEvidence } from "../hooks/useSavedMarketEvidence";
 
 const CONFIDENCE_OPTIONS: MarketEvidenceConfidence[] = ["high", "medium", "low", "excluded"];
+const RADAR_ACTIONS: Array<{ label: string; relationship: MarketEvidenceRelationship }> = [
+  { label: "Target property", relationship: "target_asset" },
+  { label: "Possible target", relationship: "possible_target_asset" },
+  { label: "Same street comp", relationship: "same_street_comp" },
+  { label: "Same node comp", relationship: "same_node_comp" },
+  { label: "Vacant land comp", relationship: "vacant_land_comp" },
+  { label: "Nearby comp", relationship: "same_suburb_comp" },
+  { label: "Broader comp", relationship: "broader_market_comp" },
+  { label: "Not related", relationship: "not_related" },
+];
 
 function money(value: number | undefined | null) {
   if (!value) return "Not enough priced evidence yet";
@@ -48,7 +74,7 @@ function portalFromUrl(url: string) {
   return "Other";
 }
 
-type Draft = {
+type EvidenceDraft = {
   id?: string;
   sourceUrl: string;
   sourcePortal: string;
@@ -65,7 +91,25 @@ type Draft = {
   notes: string;
 };
 
-function emptyDraft(): Draft {
+type CandidateDraft = {
+  sourceUrl: string;
+  sourcePortal: string;
+  title: string;
+  askingPrice: string;
+  propertyType: string;
+  locationText: string;
+  streetName: string;
+  suburb: string;
+  microMarket: string;
+  beds: string;
+  baths: string;
+  landSizeM2: string;
+  buildingSizeM2: string;
+  agencyName: string;
+  descriptionText: string;
+};
+
+function emptyEvidenceDraft(): EvidenceDraft {
   return {
     sourceUrl: "",
     sourcePortal: "",
@@ -83,7 +127,27 @@ function emptyDraft(): Draft {
   };
 }
 
-function draftFromEvidence(item: SavedMarketEvidence): Draft {
+function emptyCandidateDraft(): CandidateDraft {
+  return {
+    sourceUrl: "",
+    sourcePortal: "",
+    title: "",
+    askingPrice: "",
+    propertyType: "",
+    locationText: "",
+    streetName: "",
+    suburb: "",
+    microMarket: "",
+    beds: "",
+    baths: "",
+    landSizeM2: "",
+    buildingSizeM2: "",
+    agencyName: "",
+    descriptionText: "",
+  };
+}
+
+function draftFromEvidence(item: SavedMarketEvidence): EvidenceDraft {
   return {
     id: item.id,
     sourceUrl: item.sourceUrl,
@@ -105,11 +169,31 @@ function draftFromEvidence(item: SavedMarketEvidence): Draft {
 export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const generated = useMemo(() => generateMarketEvidenceActions(parcel), [parcel]);
   const { context, searchLadder, portalActions } = generated;
-  const { loading, savedPropertyExists, evidence, upsertEvidence, deleteEvidence } =
-    useSavedMarketEvidence(parcel.id);
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft());
-  const [showForm, setShowForm] = useState(false);
+  const {
+    loading,
+    savedPropertyExists,
+    evidence,
+    candidates,
+    dismissedCandidateIds,
+    upsertEvidence,
+    deleteEvidence,
+    upsertCandidate,
+    dismissCandidate,
+  } = useSavedMarketEvidence(parcel.id);
+  const [evidenceDraft, setEvidenceDraft] = useState<EvidenceDraft>(() => emptyEvidenceDraft());
+  const [candidateDraft, setCandidateDraft] = useState<CandidateDraft>(() => emptyCandidateDraft());
+  const [showEvidenceForm, setShowEvidenceForm] = useState(false);
+  const [showCandidateForm, setShowCandidateForm] = useState(false);
+  const [radarHasRun, setRadarHasRun] = useState(false);
   const summary = useMemo(() => calculateMarketEvidenceSummary(evidence), [evidence]);
+  const visibleCandidates = useMemo(
+    () => candidates.filter((candidate) => !dismissedCandidateIds.includes(candidate.id)),
+    [candidates, dismissedCandidateIds],
+  );
+  const radarResults = useMemo(
+    () => runActiveListingRadar(parcel, visibleCandidates),
+    [parcel, visibleCandidates],
+  );
   const hasEvidence = evidence.length > 0;
   const noArea = !context.suburb && !context.town && !context.municipality;
 
@@ -119,36 +203,68 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     else toast.error("Could not copy phrase");
   }
 
-  async function saveDraft() {
-    if (!draft.sourceUrl.trim()) {
+  async function saveEvidenceDraft() {
+    if (!evidenceDraft.sourceUrl.trim()) {
       toast.error("URL is required");
       return;
     }
-    if (!draft.relationship || !draft.confidence) {
-      toast.error("Relationship and confidence are required");
+    await upsertEvidence({
+      id: evidenceDraft.id,
+      sourceUrl: evidenceDraft.sourceUrl.trim(),
+      sourcePortal: evidenceDraft.sourcePortal.trim() || portalFromUrl(evidenceDraft.sourceUrl),
+      title: evidenceDraft.title.trim() || "Saved market evidence",
+      askingPrice: n(evidenceDraft.askingPrice),
+      propertyType: evidenceDraft.propertyType.trim() || null,
+      beds: n(evidenceDraft.beds),
+      baths: n(evidenceDraft.baths),
+      landSizeM2: n(evidenceDraft.landSizeM2),
+      buildingSizeM2: n(evidenceDraft.buildingSizeM2),
+      relationship: evidenceDraft.relationship,
+      confidence: evidenceDraft.confidence,
+      includeInSummary:
+        evidenceDraft.relationship !== "not_related" &&
+        evidenceDraft.confidence !== "excluded" &&
+        evidenceDraft.includeInSummary,
+      notes: evidenceDraft.notes.trim() || null,
+    });
+    setEvidenceDraft(emptyEvidenceDraft());
+    setShowEvidenceForm(false);
+  }
+
+  async function importCandidate() {
+    if (!candidateDraft.sourceUrl.trim()) {
+      toast.error("Candidate URL is required");
       return;
     }
-    await upsertEvidence({
-      id: draft.id,
-      sourceUrl: draft.sourceUrl.trim(),
-      sourcePortal: draft.sourcePortal.trim() || portalFromUrl(draft.sourceUrl),
-      title: draft.title.trim() || "Saved market evidence",
-      askingPrice: n(draft.askingPrice),
-      propertyType: draft.propertyType.trim() || null,
-      beds: n(draft.beds),
-      baths: n(draft.baths),
-      landSizeM2: n(draft.landSizeM2),
-      buildingSizeM2: n(draft.buildingSizeM2),
-      relationship: draft.relationship,
-      confidence: draft.confidence,
-      includeInSummary:
-        draft.relationship !== "not_related" &&
-        draft.confidence !== "excluded" &&
-        draft.includeInSummary,
-      notes: draft.notes.trim() || null,
+    await upsertCandidate({
+      sourceUrl: candidateDraft.sourceUrl.trim(),
+      sourcePortal: candidateDraft.sourcePortal.trim() || portalFromUrl(candidateDraft.sourceUrl),
+      title: candidateDraft.title.trim() || "Imported listing candidate",
+      askingPrice: n(candidateDraft.askingPrice),
+      propertyType: candidateDraft.propertyType.trim() || null,
+      locationText: candidateDraft.locationText.trim() || null,
+      streetName: candidateDraft.streetName.trim() || null,
+      suburb: candidateDraft.suburb.trim() || null,
+      microMarket: candidateDraft.microMarket.trim() || null,
+      town: context.town ?? null,
+      municipality: context.municipality ?? null,
+      province: context.province ?? null,
+      beds: n(candidateDraft.beds),
+      baths: n(candidateDraft.baths),
+      landSizeM2: n(candidateDraft.landSizeM2),
+      buildingSizeM2: n(candidateDraft.buildingSizeM2),
+      agencyName: candidateDraft.agencyName.trim() || null,
+      descriptionText: candidateDraft.descriptionText.trim() || null,
     });
-    setDraft(emptyDraft());
-    setShowForm(false);
+    setCandidateDraft(emptyCandidateDraft());
+    setShowCandidateForm(false);
+  }
+
+  async function saveRadarCandidate(
+    result: RadarCandidateResult,
+    relationship: MarketEvidenceRelationship,
+  ) {
+    await upsertEvidence(evidenceFromCandidate(result.candidate, result.match, relationship));
   }
 
   return (
@@ -159,116 +275,106 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         evidenceCount={evidence.length}
       />
 
-      <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-        <div className="text-sm font-semibold text-foreground">Portal Reality Check</div>
-        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-          Property portals usually market by suburb, street, estate, beds, price, or area. Exact erf
-          searches often return no results. Use the search ladder below, then save useful listings
-          as market evidence.
-        </p>
-        <p className="mt-2 text-[12px] font-semibold text-foreground">
-          {hasEvidence
-            ? `${evidence.length} saved market evidence item${evidence.length === 1 ? "" : "s"} for this erf.`
-            : "No confirmed market evidence has been saved for this erf yet."}
-        </p>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Search Ladder</SectionTitle>
-        {noArea ? (
-          <p className="text-[12px] text-muted-foreground">
-            No area context is available. Use the manual portal actions below and verify any result
-            before saving it.
-          </p>
-        ) : (
-          <div className="grid gap-2">
-            {searchLadder.map((item) => (
-              <article key={item.id} className="rounded-xl border border-border bg-background p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Level {item.level} / {item.label}
-                    </div>
-                    <div className="mt-1 break-words text-sm font-semibold">{item.phrase}</div>
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                      {item.helper}
-                    </p>
-                  </div>
-                  <Badge>{CONFIDENCE_LABELS[item.confidence]}</Badge>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge>{RELATIONSHIP_LABELS[item.relationshipSuggestion]}</Badge>
-                  <button
-                    type="button"
-                    onClick={() => copy(item.phrase)}
-                    className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90"
-                  >
-                    <Copy className="h-3 w-3" /> Copy phrase
-                  </button>
-                </div>
-              </article>
-            ))}
+      <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-amber-50 via-background to-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              <Radar className="h-3.5 w-3.5" /> Active Listing Radar
+            </div>
+            <h3 className="mt-3 text-2xl font-semibold tracking-tight">
+              Scan candidate listings before saving evidence.
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Scan source-backed listing candidates for possible exact matches and nearby comps.
+              Radar results are not confirmed until you verify and save them.
+            </p>
+            <p className="mt-2 text-xs font-semibold text-foreground">
+              Radar candidates are hypotheses. Verify before adding to evidence.
+            </p>
           </div>
+          <div className="grid min-w-[190px] gap-2 text-sm">
+            <Metric label="Candidate pool" value={String(visibleCandidates.length)} />
+            <Metric
+              label="Sources"
+              value={
+                visibleCandidates.length
+                  ? Array.from(new Set(visibleCandidates.map((item) => item.sourcePortal))).join(
+                      ", ",
+                    )
+                  : "Manual import ready"
+              }
+            />
+            <Metric
+              label="Last updated"
+              value={
+                visibleCandidates[0]?.lastSeenAt ??
+                visibleCandidates[0]?.fetchedAt ??
+                visibleCandidates[0]?.importedAt ??
+                "No candidates yet"
+              }
+            />
+          </div>
+        </div>
+        {!savedPropertyExists && (
+          <p className="mt-4 rounded-2xl border border-dashed border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+            Save this property first to import and store listing candidates.
+          </p>
+        )}
+        {visibleCandidates.length === 0 && (
+          <p className="mt-4 rounded-2xl bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+            No listing candidate pool is available for this parcel yet. Import a listing or use the
+            fallback search tools below.
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setRadarHasRun(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
+          >
+            <Radar className="h-4 w-4" /> Run Active Listing Radar
+          </button>
+          <button
+            type="button"
+            disabled={!savedPropertyExists}
+            onClick={() => setShowCandidateForm((value) => !value)}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> Import candidate manually
+          </button>
+        </div>
+        {showCandidateForm && savedPropertyExists && (
+          <CandidateImportForm
+            draft={candidateDraft}
+            setDraft={setCandidateDraft}
+            onSave={importCandidate}
+          />
         )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Portal Action Cards</SectionTitle>
-        <div className="grid gap-2 md:grid-cols-2">
-          {portalActions.map((action, index) => (
-            <article
-              key={action.id}
-              className={cn(
-                "rounded-xl border bg-background p-3",
-                index < 2 ? "border-primary/30 ring-1 ring-primary/10" : "border-border",
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">{action.title}</div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    {action.description}
-                  </p>
-                </div>
-                <Badge>{action.group.replace(/_/g, " ")}</Badge>
-              </div>
-              <div className="mt-2 rounded-lg bg-muted/40 px-2 py-1.5 text-[11px]">
-                <span className="font-semibold">Phrase:</span>{" "}
-                {action.searchPhrase || "Manual search"}
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                {action.helperText}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={(event) => openExternalUrl(action.url, event)}
-                  className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90"
-                >
-                  <ExternalLink className="h-3 w-3" /> Open portal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => copy(action.searchPhrase)}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
-                >
-                  <Copy className="h-3 w-3" /> Copy phrase
-                </button>
-                <button
-                  type="button"
-                  disabled={!savedPropertyExists}
-                  onClick={() => {
-                    setDraft({ ...emptyDraft(), sourcePortal: action.portal, title: action.title });
-                    setShowForm(true);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted disabled:opacity-50"
-                >
-                  <Plus className="h-3 w-3" /> Save evidence
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+        <SectionTitle>Candidate Triage</SectionTitle>
+        {!radarHasRun ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Run Active Listing Radar to score imported candidates against this subject erf.
+          </p>
+        ) : radarResults.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            No visible radar candidates met the minimum signal threshold. Import stronger candidates
+            or use the fallback search tools below.
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-3">
+            {radarResults.map((result) => (
+              <CandidateCard
+                key={result.candidate.id}
+                result={result}
+                onClassify={(relationship) => saveRadarCandidate(result, relationship)}
+                onDismiss={() => dismissCandidate(result.candidate.id)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
@@ -278,8 +384,8 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
             type="button"
             disabled={!savedPropertyExists}
             onClick={() => {
-              setDraft(emptyDraft());
-              setShowForm((value) => !value);
+              setEvidenceDraft(emptyEvidenceDraft());
+              setShowEvidenceForm((value) => !value);
             }}
             className="inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90 disabled:opacity-50"
           >
@@ -291,8 +397,12 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
             Save this property first to store market evidence.
           </p>
         )}
-        {showForm && savedPropertyExists && (
-          <EvidenceForm draft={draft} setDraft={setDraft} onSave={saveDraft} />
+        {showEvidenceForm && savedPropertyExists && (
+          <EvidenceForm
+            draft={evidenceDraft}
+            setDraft={setEvidenceDraft}
+            onSave={saveEvidenceDraft}
+          />
         )}
         {loading ? (
           <p className="mt-3 text-[12px] text-muted-foreground">Loading saved evidence...</p>
@@ -308,8 +418,8 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
                 key={item.id}
                 item={item}
                 onEdit={() => {
-                  setDraft(draftFromEvidence(item));
-                  setShowForm(true);
+                  setEvidenceDraft(draftFromEvidence(item));
+                  setShowEvidenceForm(true);
                 }}
                 onDelete={() => deleteEvidence(item.id)}
               />
@@ -320,7 +430,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
       {hasEvidence && (
         <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <SectionTitle>Market thesis from saved evidence</SectionTitle>
+          <SectionTitle>Market thesis from verified evidence</SectionTitle>
           <p className="mb-3 text-[12px] text-muted-foreground">
             This is a manual thesis from saved evidence, not an automated valuation.
           </p>
@@ -349,6 +459,26 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           )}
         </section>
       )}
+
+      <details className="rounded-2xl border border-border bg-card p-4">
+        <summary className="cursor-pointer text-sm font-semibold tracking-tight text-foreground">
+          Fallback Search Tools
+        </summary>
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          Use these when radar has no candidates or when you want to search portals manually.
+        </p>
+        <div className="mt-4 grid gap-4">
+          <FallbackSearchLadder noArea={noArea} searchLadder={searchLadder} onCopy={copy} />
+          <PortalActionCards
+            portalActions={portalActions}
+            onCopy={copy}
+            onSaveEvidence={(portal, title) => {
+              setEvidenceDraft({ ...emptyEvidenceDraft(), sourcePortal: portal, title });
+              setShowEvidenceForm(true);
+            }}
+          />
+        </div>
+      </details>
     </div>
   );
 }
@@ -437,13 +567,161 @@ function AssetIdentityCard({
   );
 }
 
+function CandidateImportForm({
+  draft,
+  setDraft,
+  onSave,
+}: {
+  draft: CandidateDraft;
+  setDraft: (draft: CandidateDraft) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="mt-4 grid gap-2 rounded-2xl border border-border bg-background/80 p-3">
+      <input
+        className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+        placeholder="Source URL required"
+        value={draft.sourceUrl}
+        onChange={(event) => setDraft({ ...draft, sourceUrl: event.target.value })}
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        {[
+          ["sourcePortal", "Source portal"],
+          ["title", "Listing title"],
+          ["askingPrice", "Asking price"],
+          ["propertyType", "Property type"],
+          ["locationText", "Location text"],
+          ["streetName", "Street name"],
+          ["suburb", "Suburb"],
+          ["microMarket", "Micro-market"],
+          ["beds", "Beds"],
+          ["baths", "Baths"],
+          ["landSizeM2", "Land size m2"],
+          ["buildingSizeM2", "Building size m2"],
+          ["agencyName", "Agency name"],
+        ].map(([key, placeholder]) => (
+          <input
+            key={key}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+            placeholder={placeholder}
+            value={draft[key as keyof CandidateDraft]}
+            onChange={(event) =>
+              setDraft({ ...draft, [key]: event.target.value } as CandidateDraft)
+            }
+          />
+        ))}
+      </div>
+      <textarea
+        className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+        rows={2}
+        placeholder="Notes or description text"
+        value={draft.descriptionText}
+        onChange={(event) => setDraft({ ...draft, descriptionText: event.target.value })}
+      />
+      <button
+        type="button"
+        onClick={onSave}
+        className="inline-flex w-fit items-center gap-1 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
+      >
+        <Plus className="h-3 w-3" /> Import listing candidate
+      </button>
+    </div>
+  );
+}
+
+function CandidateCard({
+  result,
+  onClassify,
+  onDismiss,
+}: {
+  result: RadarCandidateResult;
+  onClassify: (relationship: MarketEvidenceRelationship) => void;
+  onDismiss: () => void;
+}) {
+  const { candidate, match } = result;
+  const suggestion = relationshipForRadarClassification(match.classification);
+  return (
+    <article className="rounded-2xl border border-border bg-background p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge>{match.classification.replace(/_/g, " ")}</Badge>
+            <Badge>{match.score} match strength</Badge>
+            <Badge>Suggested: {RELATIONSHIP_LABELS[suggestion]}</Badge>
+          </div>
+          <h4 className="mt-2 break-words text-base font-semibold">{candidate.title}</h4>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {money(candidate.askingPrice)}{" "}
+            {candidate.propertyType ? ` / ${candidate.propertyType}` : ""}
+          </p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {[candidate.locationText, candidate.streetName, candidate.suburb, candidate.microMarket]
+              .filter(Boolean)
+              .join(" / ") || "Location not supplied"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={(event) => openExternalUrl(candidate.sourceUrl, event)}
+          className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+        >
+          <ExternalLink className="h-3 w-3" /> Source
+        </button>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-4">
+        <Metric
+          label="Land"
+          value={candidate.landSizeM2 ? `${candidate.landSizeM2} m2` : "Unknown"}
+        />
+        <Metric
+          label="Building"
+          value={candidate.buildingSizeM2 ? `${candidate.buildingSizeM2} m2` : "Unknown"}
+        />
+        <Metric label="Beds/Baths" value={`${candidate.beds ?? "-"} / ${candidate.baths ?? "-"}`} />
+        <Metric label="Source" value={candidate.sourcePortal} />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {match.reasons.map((reason) => (
+          <Badge key={reason}>{reason}</Badge>
+        ))}
+        {match.distanceMeters != null && <Badge>{match.distanceMeters}m from parcel</Badge>}
+        {match.sizeVariancePercent != null && (
+          <Badge>{match.sizeVariancePercent}% size variance</Badge>
+        )}
+      </div>
+      <div className="mt-4">
+        <div className="text-[12px] font-semibold">How does this relate to the subject erf?</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RADAR_ACTIONS.map((action) => (
+            <button
+              type="button"
+              key={action.relationship}
+              onClick={() => onClassify(action.relationship)}
+              className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+            >
+              {action.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function EvidenceForm({
   draft,
   setDraft,
   onSave,
 }: {
-  draft: Draft;
-  setDraft: (draft: Draft) => void;
+  draft: EvidenceDraft;
+  setDraft: (draft: EvidenceDraft) => void;
   onSave: () => void;
 }) {
   const includeDefault =
@@ -634,13 +912,141 @@ function EvidenceRow({
   );
 }
 
+function FallbackSearchLadder({
+  noArea,
+  searchLadder,
+  onCopy,
+}: {
+  noArea: boolean;
+  searchLadder: Array<{
+    id: string;
+    level: number;
+    label: string;
+    phrase: string;
+    helper: string;
+    confidence: MarketEvidenceConfidence;
+    relationshipSuggestion: MarketEvidenceRelationship;
+  }>;
+  onCopy: (phrase: string) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-background p-4">
+      <SectionTitle>Search Ladder</SectionTitle>
+      {noArea ? (
+        <p className="text-[12px] text-muted-foreground">
+          No area context is available. Use manual portal actions and verify results carefully.
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-2">
+          {searchLadder.map((item) => (
+            <article key={item.id} className="rounded-xl border border-border bg-card p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Level {item.level} / {item.label}
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold">{item.phrase}</div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    {item.helper}
+                  </p>
+                </div>
+                <Badge>{CONFIDENCE_LABELS[item.confidence]}</Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge>{RELATIONSHIP_LABELS[item.relationshipSuggestion]}</Badge>
+                <button
+                  type="button"
+                  onClick={() => onCopy(item.phrase)}
+                  className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90"
+                >
+                  <Copy className="h-3 w-3" /> Copy phrase
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PortalActionCards({
+  portalActions,
+  onCopy,
+  onSaveEvidence,
+}: {
+  portalActions: Array<{
+    id: string;
+    portal: string;
+    title: string;
+    description: string;
+    url: string;
+    searchPhrase: string;
+    group: string;
+    helperText: string;
+  }>;
+  onCopy: (phrase: string) => void;
+  onSaveEvidence: (portal: string, title: string) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-background p-4">
+      <SectionTitle>Portal Action Cards</SectionTitle>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        {portalActions.map((action) => (
+          <article key={action.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="text-sm font-semibold">{action.title}</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {action.description}
+                </p>
+              </div>
+              <Badge>{action.group.replace(/_/g, " ")}</Badge>
+            </div>
+            <div className="mt-2 rounded-lg bg-muted/40 px-2 py-1.5 text-[11px]">
+              <span className="font-semibold">Phrase:</span>{" "}
+              {action.searchPhrase || "Manual search"}
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              {action.helperText}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={(event) => openExternalUrl(action.url, event)}
+                className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background hover:opacity-90"
+              >
+                <ExternalLink className="h-3 w-3" /> Open portal
+              </button>
+              <button
+                type="button"
+                onClick={() => onCopy(action.searchPhrase)}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+              >
+                <Copy className="h-3 w-3" /> Copy phrase
+              </button>
+              <button
+                type="button"
+                onClick={() => onSaveEvidence(action.portal, action.title)}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+              >
+                <Plus className="h-3 w-3" /> Save evidence
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-background p-3">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold tabular-nums">{value}</div>
+      <div className="mt-1 break-words text-sm font-semibold tabular-nums">{value}</div>
     </div>
   );
 }

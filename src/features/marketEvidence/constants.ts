@@ -66,3 +66,27 @@ export const VACANT_LAND_TERMS = [
   "building plot",
   "erf",
 ];
+
+export const KOUGA_MICRO_MARKETS = [
+  "Cape St Francis",
+  "St Francis Bay",
+  "St Francis On Sea",
+  "Santareme",
+  "Port St Francis",
+  "St Francis Links",
+  "Canals",
+  "Sea Vista",
+  "Humansdorp",
+  "Jeffreys Bay",
+];
+
+export const FUTURE_LISTING_POOL_SOURCES = [
+  "Property24",
+  "Private Property",
+  "Pam Golding",
+  "Seeff",
+  "Chas Everitt",
+  "Rawson",
+  "RE/MAX",
+  "Local agencies",
+];

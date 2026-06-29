@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
-import type { SavedMarketEvidence } from "../types";
+import type { ListingCandidate, SavedMarketEvidence } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -34,11 +34,67 @@ function parseEvidence(value: unknown, parcelId: string): SavedMarketEvidence[] 
     .filter((item) => item.sourceUrl);
 }
 
+function nullableNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableString(value: unknown): string | null {
+  if (value == null) return null;
+  const parsed = String(value).trim();
+  return parsed || null;
+}
+
+function parseCandidates(value: unknown): ListingCandidate[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item) => ({
+      id: String(item.id ?? crypto.randomUUID()),
+      sourceType: item.sourceType === "source_backed_seed" ? "source_backed_seed" : "manual_import",
+      sourcePortal: String(item.sourcePortal ?? "Other"),
+      sourceUrl: String(item.sourceUrl ?? ""),
+      title: String(item.title ?? "Imported listing candidate"),
+      askingPrice: nullableNumber(item.askingPrice),
+      propertyType: nullableString(item.propertyType),
+      locationText: nullableString(item.locationText),
+      microMarket: nullableString(item.microMarket),
+      suburb: nullableString(item.suburb),
+      town: nullableString(item.town),
+      municipality: nullableString(item.municipality),
+      province: nullableString(item.province),
+      streetName: nullableString(item.streetName),
+      descriptionText: nullableString(item.descriptionText),
+      beds: nullableNumber(item.beds),
+      baths: nullableNumber(item.baths),
+      landSizeM2: nullableNumber(item.landSizeM2),
+      buildingSizeM2: nullableNumber(item.buildingSizeM2),
+      agencyName: nullableString(item.agencyName),
+      imageUrl: nullableString(item.imageUrl),
+      listingStatus: nullableString(item.listingStatus),
+      fetchedAt: nullableString(item.fetchedAt),
+      lastSeenAt: nullableString(item.lastSeenAt),
+      importedAt: nullableString(item.importedAt),
+      rawSourceArea: nullableString(item.rawSourceArea),
+      lat: nullableNumber(item.lat),
+      lng: nullableNumber(item.lng),
+    }))
+    .filter((item) => item.sourceUrl);
+}
+
+function parseDismissed(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
 export function useSavedMarketEvidence(parcelId: string) {
   const { user } = useAuth();
   const [savedPropertyExists, setSavedPropertyExists] = useState(false);
   const [userData, setUserData] = useState<Record<string, unknown>>({});
   const [evidence, setEvidence] = useState<SavedMarketEvidence[]>([]);
+  const [candidates, setCandidates] = useState<ListingCandidate[]>([]);
+  const [dismissedCandidateIds, setDismissedCandidateIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +102,8 @@ export function useSavedMarketEvidence(parcelId: string) {
     setLoading(true);
     setSavedPropertyExists(false);
     setEvidence([]);
+    setCandidates([]);
+    setDismissedCandidateIds([]);
     setUserData({});
     if (!user) {
       setLoading(false);
@@ -64,6 +122,8 @@ export function useSavedMarketEvidence(parcelId: string) {
         setSavedPropertyExists(Boolean(data));
         setUserData(raw);
         setEvidence(parseEvidence(raw.savedMarketEvidence, parcelId));
+        setCandidates(parseCandidates(raw.marketEvidenceCandidates));
+        setDismissedCandidateIds(parseDismissed(raw.dismissedMarketEvidenceCandidateIds));
         setLoading(false);
       });
 
@@ -74,12 +134,11 @@ export function useSavedMarketEvidence(parcelId: string) {
 
   const canSave = Boolean(user && savedPropertyExists);
 
-  async function persist(next: SavedMarketEvidence[]) {
+  async function persistUserData(nextUserData: Record<string, unknown>) {
     if (!user || !savedPropertyExists) {
       toast.message("Save this property first to store market evidence.");
       return false;
     }
-    const nextUserData = { ...userData, savedMarketEvidence: next };
     const { error } = await supabase
       .from("saved_properties")
       .update({ user_data: nextUserData as Record<string, unknown> as never })
@@ -90,8 +149,35 @@ export function useSavedMarketEvidence(parcelId: string) {
       return false;
     }
     setUserData(nextUserData);
-    setEvidence(next);
+    setEvidence(parseEvidence(nextUserData.savedMarketEvidence, parcelId));
+    setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
+    setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
     return true;
+  }
+
+  async function persist(next: SavedMarketEvidence[]) {
+    const ok = await persistUserData({ ...userData, savedMarketEvidence: next });
+    if (ok) {
+      setEvidence(next);
+    }
+    return ok;
+  }
+
+  async function persistCandidates(next: ListingCandidate[]) {
+    const ok = await persistUserData({ ...userData, marketEvidenceCandidates: next });
+    if (ok) {
+      setCandidates(next);
+      toast.success("Listing candidate imported");
+    }
+    return ok;
+  }
+
+  async function persistDismissed(next: string[]) {
+    const ok = await persistUserData({ ...userData, dismissedMarketEvidenceCandidateIds: next });
+    if (ok) {
+      setDismissedCandidateIds(next);
+    }
+    return ok;
   }
 
   async function upsertEvidence(
@@ -120,13 +206,40 @@ export function useSavedMarketEvidence(parcelId: string) {
     if (ok) toast.success("Market evidence deleted");
   }
 
+  async function upsertCandidate(
+    item: Omit<ListingCandidate, "id" | "sourceType" | "importedAt"> & {
+      id?: string;
+    },
+  ) {
+    const nextItem: ListingCandidate = {
+      ...item,
+      id: item.id ?? crypto.randomUUID(),
+      sourceType: "manual_import",
+      importedAt: new Date().toISOString(),
+    };
+    const next = [nextItem, ...candidates.filter((candidate) => candidate.id !== nextItem.id)];
+    await persistCandidates(next);
+  }
+
+  async function dismissCandidate(id: string) {
+    if (dismissedCandidateIds.includes(id)) {
+      return;
+    }
+    const ok = await persistDismissed([id, ...dismissedCandidateIds]);
+    if (ok) toast.message("Candidate dismissed for this dossier");
+  }
+
   return {
     user,
     loading,
     savedPropertyExists,
     canSave,
     evidence,
+    candidates,
+    dismissedCandidateIds,
     upsertEvidence,
     deleteEvidence,
+    upsertCandidate,
+    dismissCandidate,
   };
 }
