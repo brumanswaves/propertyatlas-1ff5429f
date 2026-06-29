@@ -15,6 +15,17 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("overflow-x-auto");
   });
 
+  it("keeps mobile official parcel close and save controls visible", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+
+    expect(panel).toContain("max-md:h-[100dvh]");
+    expect(panel).toContain("max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]");
+    expect(panel).toContain("Save erf");
+    expect(panel).toContain("Back to map");
+    expect(panel).toContain("min-h-11");
+    expect(panel).toContain("sticky top-0 z-30");
+  });
+
   it("marks source actions checked in local session state", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
 
@@ -34,6 +45,7 @@ describe("official dossier UX guardrails", () => {
     expect(marketEvidence).toContain("Candidate Triage");
     expect(marketEvidence).toContain("Search Ladder");
     expect(marketEvidence).toContain("Saved Market Evidence Ledger");
+    expect(marketEvidence).toContain("Fallback Search Tools");
     expect(marketEvidence.indexOf("Active Listing Radar")).toBeLessThan(
       marketEvidence.indexOf("Search Ladder"),
     );
@@ -59,5 +71,27 @@ describe("official dossier UX guardrails", () => {
     expect(hook).toContain("savedMarketEvidence");
     expect(tab).toContain("Radar candidates are hypotheses");
     expect(tab).toContain("Market thesis from verified evidence");
+  });
+
+  it("guides radar empty states and weak candidate review", () => {
+    const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+
+    expect(tab).toContain("No listing candidates are loaded for this area yet.");
+    expect(tab).toContain("Active Listing Radar needs source-backed candidates to scan");
+    expect(tab).toContain("Import candidate manually");
+    expect(tab).toContain("Add candidate from URL");
+    expect(tab).toContain("Open fallback search tools");
+    expect(tab).toContain("No candidates cleared the radar threshold.");
+    expect(tab).toContain("Show hidden / weak candidates");
+    expect(tab).toContain("showWeakCandidates");
+  });
+
+  it("uses warmer premium market evidence surfaces", () => {
+    const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+
+    expect(tab).toContain("from-[#fff8ec]");
+    expect(tab).toContain("border-amber-200");
+    expect(tab).toContain("text-stone-950");
+    expect(tab).toContain("from-white to-[#fbf5ea]");
   });
 });

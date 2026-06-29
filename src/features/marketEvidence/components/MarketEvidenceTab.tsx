@@ -17,6 +17,7 @@ import {
   evidenceFromCandidate,
   relationshipForRadarClassification,
   runActiveListingRadar,
+  scoreListingCandidate,
 } from "../activeListingRadar";
 import {
   CONFIDENCE_COPY,
@@ -185,6 +186,8 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
   const [showEvidenceForm, setShowEvidenceForm] = useState(false);
   const [showCandidateForm, setShowCandidateForm] = useState(false);
   const [radarHasRun, setRadarHasRun] = useState(false);
+  const [showWeakCandidates, setShowWeakCandidates] = useState(false);
+  const [fallbackOpen, setFallbackOpen] = useState(false);
   const summary = useMemo(() => calculateMarketEvidenceSummary(evidence), [evidence]);
   const visibleCandidates = useMemo(
     () => candidates.filter((candidate) => !dismissedCandidateIds.includes(candidate.id)),
@@ -194,6 +197,17 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     () => runActiveListingRadar(parcel, visibleCandidates),
     [parcel, visibleCandidates],
   );
+  const allRadarResults = useMemo(
+    () =>
+      visibleCandidates
+        .map((candidate) => ({ candidate, match: scoreListingCandidate(parcel, candidate) }))
+        .sort(
+          (a, b) =>
+            b.match.score - a.match.score || a.candidate.title.localeCompare(b.candidate.title),
+        ),
+    [parcel, visibleCandidates],
+  );
+  const triageResults = showWeakCandidates ? allRadarResults : radarResults;
   const hasEvidence = evidence.length > 0;
   const noArea = !context.suburb && !context.town && !context.municipality;
 
@@ -258,6 +272,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     });
     setCandidateDraft(emptyCandidateDraft());
     setShowCandidateForm(false);
+    setRadarHasRun(true);
   }
 
   async function saveRadarCandidate(
@@ -275,25 +290,26 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         evidenceCount={evidence.length}
       />
 
-      <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-amber-50 via-background to-card p-5 shadow-sm">
+      <section className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-[#fff8ec] via-[#fdfaf4] to-[#f7efe3] p-5 shadow-[0_18px_50px_rgba(120,72,24,0.12)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-200/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-900">
               <Radar className="h-3.5 w-3.5" /> Active Listing Radar
             </div>
-            <h3 className="mt-3 text-2xl font-semibold tracking-tight">
+            <h3 className="mt-3 text-2xl font-semibold tracking-tight text-stone-950">
               Scan candidate listings before saving evidence.
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-stone-700">
               Scan source-backed listing candidates for possible exact matches and nearby comps.
               Radar results are not confirmed until you verify and save them.
             </p>
-            <p className="mt-2 text-xs font-semibold text-foreground">
+            <p className="mt-2 text-xs font-semibold text-stone-900">
               Radar candidates are hypotheses. Verify before adding to evidence.
             </p>
           </div>
           <div className="grid min-w-[190px] gap-2 text-sm">
             <Metric label="Candidate pool" value={String(visibleCandidates.length)} />
+            <Metric label="Imported candidates" value={String(candidates.length)} />
             <Metric
               label="Sources"
               value={
@@ -316,12 +332,12 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           </div>
         </div>
         {!savedPropertyExists && (
-          <p className="mt-4 rounded-2xl border border-dashed border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+          <p className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white/70 px-4 py-3 text-sm text-stone-700">
             Save this property first to import and store listing candidates.
           </p>
         )}
         {visibleCandidates.length === 0 && (
-          <p className="mt-4 rounded-2xl bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+          <p className="mt-4 rounded-2xl bg-white/70 px-4 py-3 text-sm text-stone-700">
             No listing candidate pool is available for this parcel yet. Import a listing or use the
             fallback search tools below.
           </p>
@@ -330,17 +346,35 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           <button
             type="button"
             onClick={() => setRadarHasRun(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-stone-800"
           >
-            <Radar className="h-4 w-4" /> Run Active Listing Radar
+            <Radar className="h-4 w-4" /> Run radar
           </button>
           <button
             type="button"
             disabled={!savedPropertyExists}
             onClick={() => setShowCandidateForm((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 shadow-sm hover:bg-amber-50 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Import candidate manually
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCandidateForm(true);
+              setFallbackOpen(false);
+            }}
+            disabled={!savedPropertyExists}
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/80 px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> Add candidate from URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setFallbackOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/70 px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-50"
+          >
+            Open fallback search tools
           </button>
         </div>
         {showCandidateForm && savedPropertyExists && (
@@ -352,20 +386,49 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl border border-stone-200 bg-[#fffdf8] p-4 shadow-sm">
         <SectionTitle>Candidate Triage</SectionTitle>
         {!radarHasRun ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-stone-600">
             Run Active Listing Radar to score imported candidates against this subject erf.
           </p>
-        ) : radarResults.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            No visible radar candidates met the minimum signal threshold. Import stronger candidates
-            or use the fallback search tools below.
-          </p>
+        ) : visibleCandidates.length === 0 ? (
+          <RadarEmptyState
+            onImport={() => setShowCandidateForm(true)}
+            onFallback={() => setFallbackOpen(true)}
+          />
+        ) : radarResults.length === 0 && !showWeakCandidates ? (
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-stone-700">
+            <div className="font-semibold text-stone-950">
+              No candidates cleared the radar threshold.
+            </div>
+            <p className="mt-1">
+              You can lower the filter or review all imported candidates. Weak candidates are not
+              saved to the thesis unless you classify them.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowWeakCandidates(true)}
+              className="mt-3 rounded-full bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
+            >
+              Show hidden / weak candidates
+            </button>
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
-            {radarResults.map((result) => (
+            {showWeakCandidates && (
+              <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-700">
+                <span>Showing weak and hidden candidates for manual review.</span>
+                <button
+                  type="button"
+                  onClick={() => setShowWeakCandidates(false)}
+                  className="font-semibold text-stone-950"
+                >
+                  Hide weak
+                </button>
+              </div>
+            )}
+            {triageResults.map((result) => (
               <CandidateCard
                 key={result.candidate.id}
                 result={result}
@@ -377,7 +440,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4">
+      <section className="rounded-2xl border border-stone-200 bg-[#fffdf8] p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <SectionTitle>Saved Market Evidence Ledger</SectionTitle>
           <button
@@ -460,7 +523,11 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         </section>
       )}
 
-      <details className="rounded-2xl border border-border bg-card p-4">
+      <details
+        open={fallbackOpen}
+        onToggle={(event) => setFallbackOpen(event.currentTarget.open)}
+        className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4"
+      >
         <summary className="cursor-pointer text-sm font-semibold tracking-tight text-foreground">
           Fallback Search Tools
         </summary>
@@ -629,6 +696,49 @@ function CandidateImportForm({
   );
 }
 
+function RadarEmptyState({
+  onImport,
+  onFallback,
+}: {
+  onImport: () => void;
+  onFallback: () => void;
+}) {
+  return (
+    <div className="mt-3 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-stone-50 p-4 text-sm text-stone-700">
+      <div className="font-semibold text-stone-950">
+        No listing candidates are loaded for this area yet.
+      </div>
+      <p className="mt-1 leading-relaxed">
+        Active Listing Radar needs source-backed candidates to scan. Import a candidate manually
+        now, or use the fallback search tools until the Kouga cached listing pool is added.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onImport}
+          className="rounded-full bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
+        >
+          Import candidate manually
+        </button>
+        <button
+          type="button"
+          onClick={onImport}
+          className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-900 hover:bg-amber-50"
+        >
+          Add candidate from URL
+        </button>
+        <button
+          type="button"
+          onClick={onFallback}
+          className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-stone-50"
+        >
+          Open fallback search tools
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CandidateCard({
   result,
   onClassify,
@@ -641,7 +751,7 @@ function CandidateCard({
   const { candidate, match } = result;
   const suggestion = relationshipForRadarClassification(match.classification);
   return (
-    <article className="rounded-2xl border border-border bg-background p-4">
+    <article className="rounded-2xl border border-stone-200 bg-gradient-to-br from-white to-[#fbf5ea] p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap gap-1.5">
@@ -650,11 +760,11 @@ function CandidateCard({
             <Badge>Suggested: {RELATIONSHIP_LABELS[suggestion]}</Badge>
           </div>
           <h4 className="mt-2 break-words text-base font-semibold">{candidate.title}</h4>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-stone-700">
             {money(candidate.askingPrice)}{" "}
             {candidate.propertyType ? ` / ${candidate.propertyType}` : ""}
           </p>
-          <p className="mt-1 text-[12px] text-muted-foreground">
+          <p className="mt-1 text-[12px] text-stone-600">
             {[candidate.locationText, candidate.streetName, candidate.suburb, candidate.microMarket]
               .filter(Boolean)
               .join(" / ") || "Location not supplied"}
@@ -663,7 +773,7 @@ function CandidateCard({
         <button
           type="button"
           onClick={(event) => openExternalUrl(candidate.sourceUrl, event)}
-          className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+          className="inline-flex items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-900 hover:bg-amber-50"
         >
           <ExternalLink className="h-3 w-3" /> Source
         </button>
@@ -697,7 +807,7 @@ function CandidateCard({
               type="button"
               key={action.relationship}
               onClick={() => onClassify(action.relationship)}
-              className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
+              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-900 hover:bg-amber-50"
             >
               {action.label}
             </button>
@@ -705,7 +815,7 @@ function CandidateCard({
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+            className="rounded-full border border-stone-300 px-3 py-1.5 text-[11px] font-semibold text-stone-600 hover:bg-stone-50"
           >
             Dismiss
           </button>

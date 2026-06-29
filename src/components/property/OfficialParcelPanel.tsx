@@ -455,8 +455,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   return (
-    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex max-h-[92vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[min(54vw,980px)] md:min-w-[680px] md:rounded-l-3xl md:rounded-tr-none md:border-l xl:max-w-[1040px] max-md:w-full">
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 pb-3 pt-4">
+    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel max-md:inset-y-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:rounded-none md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[min(54vw,980px)] md:min-w-[680px] md:rounded-l-3xl md:rounded-tr-none md:border-l xl:max-w-[1040px]">
+      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-border bg-card/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-400">
@@ -475,23 +475,30 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={toggleSave}
-            className="rounded-full p-2 hover:bg-muted"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-stone-900 shadow-sm hover:bg-amber-100 md:min-h-0 md:border-0 md:bg-transparent md:p-2 md:text-foreground md:shadow-none md:hover:bg-muted"
             title={saved ? "Saved" : "Save property"}
+            aria-label={saved ? "Saved erf" : "Save erf"}
           >
             {saved ? (
-              <BookmarkCheck className="h-4 w-4 text-primary" />
+              <BookmarkCheck className="h-4 w-4 text-emerald-700 md:text-primary" />
             ) : (
               <Bookmark className="h-4 w-4" />
             )}
+            <span className="md:hidden">{saved ? "Saved" : "Save erf"}</span>
           </button>
-          <button className="rounded-full p-2 hover:bg-muted" title="Share">
+          <button className="hidden rounded-full p-2 hover:bg-muted md:inline-flex" title="Share">
             <Share2 className="h-4 w-4" />
           </button>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-muted" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-stone-800 md:min-h-0 md:p-2"
+            aria-label="Back to map"
+          >
             <X className="h-4 w-4" />
+            <span className="md:hidden">Map</span>
           </button>
         </div>
       </header>
