@@ -16,10 +16,10 @@ export function ListingsTab({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold tracking-tight">Market Evidence</h3>
+      <h3 className="text-sm font-semibold tracking-tight">Listings & Comps</h3>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-        Market Evidence is available for official parcel dossiers. Open an official public parcel to
-        build a search ladder, save verified evidence, and summarize the market thesis.
+        Listings & Comps is available for official parcel dossiers. Open an official public parcel
+        to confirm the address, search portals, and save useful comps.
       </p>
       {parcelId && (
         <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground">{parcelId}</p>

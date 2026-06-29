@@ -105,12 +105,12 @@ export function buildNextBestStep(
 
   if (!completedSourceIds.has("market-evidence")) {
     return {
-      title: "Build a Market Evidence thesis from saved source URLs.",
+      title: "Build Listings & Comps from saved source URLs.",
       explanation:
         "Use portal and agency searches as a workflow, then save only evidence you manually verify.",
       status: "Source link available",
       sourceId: "market-evidence",
-      primaryLabel: "Open Market Evidence",
+      primaryLabel: "Open Listings & Comps",
       primaryView: "listings",
       secondaryLabel: "Run calculator",
       secondaryView: "calculators",

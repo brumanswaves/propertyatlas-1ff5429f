@@ -10,7 +10,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("md:w-[min(54vw,980px)]");
     expect(panel).toContain("md:min-w-[680px]");
     expect(panel).toContain('label: "Sources"');
-    expect(panel).toContain('label: "Market Evidence"');
+    expect(panel).toContain('label: "Listings & Comps"');
     expect(panel).toContain('label: "Calc"');
     expect(panel).toContain("overflow-x-auto");
   });
@@ -35,20 +35,17 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Checked");
   });
 
-  it("renders the market evidence tab and BRRRR explanation", () => {
+  it("renders the listings and comps tab and BRRRR explanation", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const marketEvidence = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(marketEvidence).toContain("Market Evidence");
-    expect(marketEvidence).toContain("Asset Identity Card");
-    expect(marketEvidence).toContain("Active Listing Radar");
-    expect(marketEvidence).toContain("Candidate Triage");
-    expect(marketEvidence).toContain("Search Ladder");
-    expect(marketEvidence).toContain("Saved Market Evidence Ledger");
-    expect(marketEvidence).toContain("Fallback Search Tools");
-    expect(marketEvidence.indexOf("Active Listing Radar")).toBeLessThan(
-      marketEvidence.indexOf("Search Ladder"),
-    );
+    expect(dossier).toContain("Listings & Comps");
+    expect(marketEvidence).toContain("Find listings and comps for this erf");
+    expect(marketEvidence).toContain("No confirmed street address yet");
+    expect(marketEvidence).toContain("Simple listing searches");
+    expect(marketEvidence).toContain("Saved Comps");
+    expect(marketEvidence).toContain("Comp summary");
+    expect(marketEvidence).not.toContain("Run Active Listing Radar");
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
@@ -62,36 +59,31 @@ describe("official dossier UX guardrails", () => {
     expect(dashboard).toContain("tab=calc");
   });
 
-  it("keeps radar candidates separate from verified saved market evidence", () => {
+  it("keeps saved comps storage compatible with saved market evidence", () => {
     const hook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(hook).toContain("marketEvidenceCandidates");
-    expect(hook).toContain("dismissedMarketEvidenceCandidateIds");
     expect(hook).toContain("savedMarketEvidence");
-    expect(tab).toContain("Radar candidates are hypotheses");
-    expect(tab).toContain("Market thesis from verified evidence");
+    expect(hook).toContain("propertyIdentity");
+    expect(tab).toContain("Saved Comps");
+    expect(tab).toContain("Save comp");
   });
 
-  it("guides radar empty states and weak candidate review", () => {
+  it("keeps Active Listing Radar out of the primary listings and comps flow", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(tab).toContain("No listing candidates are loaded for this area yet.");
-    expect(tab).toContain("Active Listing Radar needs source-backed candidates to scan");
-    expect(tab).toContain("Import candidate manually");
-    expect(tab).toContain("Add candidate from URL");
-    expect(tab).toContain("Open fallback search tools");
-    expect(tab).toContain("No candidates cleared the radar threshold.");
-    expect(tab).toContain("Show hidden / weak candidates");
-    expect(tab).toContain("showWeakCandidates");
+    expect(tab).toContain("Advanced / Experimental tools");
+    expect(tab).toContain("Active Listing Radar is not shown as the primary workflow");
+    expect(tab).not.toContain("Candidate Triage");
+    expect(tab).not.toContain("Show hidden / weak candidates");
   });
 
-  it("uses warmer premium market evidence surfaces", () => {
+  it("uses warmer simple listings and comps surfaces", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("from-[#fff8ec]");
     expect(tab).toContain("border-amber-200");
     expect(tab).toContain("text-stone-950");
-    expect(tab).toContain("from-white to-[#fbf5ea]");
+    expect(tab).toContain("bg-[#fffaf0]");
   });
 });

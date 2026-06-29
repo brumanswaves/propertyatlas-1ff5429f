@@ -127,7 +127,7 @@ export const RESEARCH_CATEGORY_LABELS: Record<ResearchSourceCategory, string> = 
   "zoning-land-use": "Zoning and land use",
   "planning-notices": "Planning applications and public notices",
   "environmental-heritage-risk": "Environmental, heritage, flood, coastal, and geology risk",
-  "listings-market-evidence": "Market Evidence",
+  "listings-market-evidence": "Listings & Comps",
   "neighbourhood-intelligence": "Neighbourhood intelligence",
   "roads-access-infrastructure": "Roads, access, and infrastructure",
   "legal-entity-distress": "Legal, entity, estate, and distress research",

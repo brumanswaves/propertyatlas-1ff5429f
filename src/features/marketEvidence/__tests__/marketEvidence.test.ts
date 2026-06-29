@@ -7,6 +7,7 @@ import {
 } from "../activeListingRadar";
 import { calculateMarketEvidenceSummary } from "../calculateMarketEvidenceSummary";
 import { generateMarketEvidenceActions } from "../generateMarketEvidenceActions";
+import { buildSimpleListingSearches, resolvePropertyIdentity } from "../propertyIdentity";
 import type { ListingCandidate, SavedMarketEvidence } from "../types";
 
 function parcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
@@ -124,6 +125,107 @@ describe("market evidence generation", () => {
     expect(actions.every((action) => action.helperText && action.searchPhrase !== undefined)).toBe(
       true,
     );
+  });
+});
+
+describe("property identity and simple listing searches", () => {
+  it("resolves full addresses with high or medium confidence", () => {
+    const identity = resolvePropertyIdentity(parcel());
+
+    expect(identity.bestAddress).toBe("8 Harbour Drive");
+    expect(["high", "medium"]).toContain(identity.confidence);
+    expect(identity.canSearchExactAddress).toBe(true);
+  });
+
+  it("preserves the Erf 962 Harbour Road showcase identity", () => {
+    const identity = resolvePropertyIdentity(
+      parcel({
+        knownFields: [],
+        suburbOrArea: "Sea Vista",
+        town: "St Francis Bay",
+      }),
+    );
+
+    expect(identity.bestAddress).toBe("8 Harbour Road");
+    expect(identity.addressSource).toBe("seeded_showcase");
+    expect(identity.marketSuburb).toBe("Santareme");
+  });
+
+  it("allows street search but not exact search for street-only parcels", () => {
+    const identity = resolvePropertyIdentity(
+      parcel({
+        erfNumber: "123",
+        lpi: "OTHER",
+        parcelKey: "OTHER",
+        knownFields: [{ label: "Street", value: "Harbour Drive", source: "CSG" }],
+      }),
+    );
+
+    expect(identity.bestAddress).toBeUndefined();
+    expect(identity.canSearchExactAddress).toBe(false);
+    expect(identity.canSearchStreet).toBe(true);
+  });
+
+  it("allows nearby search for suburb-only parcels", () => {
+    const identity = resolvePropertyIdentity(
+      parcel({
+        erfNumber: "123",
+        lpi: "OTHER",
+        parcelKey: "OTHER",
+        knownFields: [],
+        suburbOrArea: "Cape St Francis",
+      }),
+    );
+
+    expect(identity.addressSource).toBe("area_only");
+    expect(identity.canSearchNearby).toBe(true);
+  });
+
+  it("warns when province is missing", () => {
+    const identity = resolvePropertyIdentity(parcel({ province: null }));
+
+    expect(identity.warnings.some((warning) => warning.includes("Province missing"))).toBe(true);
+  });
+
+  it("marks missing address and area as needing confirmation", () => {
+    const identity = resolvePropertyIdentity(
+      parcel({
+        erfNumber: "123",
+        lpi: "OTHER",
+        parcelKey: "OTHER",
+        knownFields: [],
+        suburbOrArea: null,
+        town: null,
+        municipality: null,
+        province: null,
+      }),
+    );
+
+    expect(identity.confidence).toBe("needs_confirmation");
+    expect(identity.canSearchNearby).toBe(false);
+  });
+
+  it("builds limited simple searches from address, street and area context", () => {
+    const identity = resolvePropertyIdentity(parcel());
+    const searches = buildSimpleListingSearches(identity);
+    const labels = searches.map((search) => search.label);
+
+    expect(labels).toContain("Search exact address");
+    expect(labels).toContain("Search same street");
+    expect(labels).toContain("Search nearby comps");
+    expect(searches.length).toBeLessThanOrEqual(5);
+    expect(searches[0].phrase).toContain("8 Harbour");
+  });
+
+  it("does not make Google a primary simple search portal", () => {
+    const searches = buildSimpleListingSearches(resolvePropertyIdentity(parcel()));
+    const portals = searches.flatMap((search) =>
+      search.primaryPortalUrls.map((portal) => portal.portal),
+    );
+
+    expect(portals).toContain("Property24");
+    expect(portals).toContain("Private Property");
+    expect(portals.some((portal) => /Google/i.test(portal))).toBe(false);
   });
 });
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import type { PropertyIdentityOverride } from "../propertyIdentity";
 import type { ListingCandidate, SavedMarketEvidence } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -88,6 +89,17 @@ function parseDismissed(value: unknown): string[] {
   return value.map((item) => String(item)).filter(Boolean);
 }
 
+function parsePropertyIdentity(value: unknown): PropertyIdentityOverride | null {
+  if (!isRecord(value)) return null;
+  return {
+    address: nullableString(value.address),
+    streetName: nullableString(value.streetName),
+    marketSuburb: nullableString(value.marketSuburb),
+    note: nullableString(value.note),
+    confirmedAt: nullableString(value.confirmedAt),
+  };
+}
+
 export function useSavedMarketEvidence(parcelId: string) {
   const { user } = useAuth();
   const [savedPropertyExists, setSavedPropertyExists] = useState(false);
@@ -95,6 +107,7 @@ export function useSavedMarketEvidence(parcelId: string) {
   const [evidence, setEvidence] = useState<SavedMarketEvidence[]>([]);
   const [candidates, setCandidates] = useState<ListingCandidate[]>([]);
   const [dismissedCandidateIds, setDismissedCandidateIds] = useState<string[]>([]);
+  const [propertyIdentity, setPropertyIdentity] = useState<PropertyIdentityOverride | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -104,6 +117,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     setEvidence([]);
     setCandidates([]);
     setDismissedCandidateIds([]);
+    setPropertyIdentity(null);
     setUserData({});
     if (!user) {
       setLoading(false);
@@ -124,6 +138,7 @@ export function useSavedMarketEvidence(parcelId: string) {
         setEvidence(parseEvidence(raw.savedMarketEvidence, parcelId));
         setCandidates(parseCandidates(raw.marketEvidenceCandidates));
         setDismissedCandidateIds(parseDismissed(raw.dismissedMarketEvidenceCandidateIds));
+        setPropertyIdentity(parsePropertyIdentity(raw.propertyIdentity));
         setLoading(false);
       });
 
@@ -152,6 +167,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     setEvidence(parseEvidence(nextUserData.savedMarketEvidence, parcelId));
     setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
     setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
+    setPropertyIdentity(parsePropertyIdentity(nextUserData.propertyIdentity));
     return true;
   }
 
@@ -229,17 +245,31 @@ export function useSavedMarketEvidence(parcelId: string) {
     if (ok) toast.message("Candidate dismissed for this dossier");
   }
 
+  async function savePropertyIdentity(nextIdentity: PropertyIdentityOverride) {
+    const next = {
+      ...nextIdentity,
+      address: nextIdentity.address?.trim() || null,
+      streetName: nextIdentity.streetName?.trim() || null,
+      marketSuburb: nextIdentity.marketSuburb?.trim() || null,
+      note: nextIdentity.note?.trim() || null,
+    };
+    const ok = await persistUserData({ ...userData, propertyIdentity: next });
+    if (ok) toast.success("Property identity saved");
+  }
+
   return {
     user,
     loading,
     savedPropertyExists,
     canSave,
     evidence,
+    propertyIdentity,
     candidates,
     dismissedCandidateIds,
     upsertEvidence,
     deleteEvidence,
     upsertCandidate,
     dismissCandidate,
+    savePropertyIdentity,
   };
 }

@@ -121,7 +121,7 @@ const RESEARCH_SECTIONS = [
   },
   {
     id: "listings-market",
-    title: "Market Evidence",
+    title: "Listings & Comps",
     match: (source: ResearchSource) =>
       source.category === "listings-market-evidence" ||
       source.dossierGroup === "market-intelligence",
@@ -308,7 +308,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
       "research",
     ],
     [
-      "Build Market Evidence",
+      "Build Listings & Comps",
       "Find, classify and save verified market evidence manually.",
       "listings",
     ],
@@ -397,7 +397,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   if (view === "listings") {
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Market Evidence</SectionTitle>
+        <SectionTitle>Listings & Comps</SectionTitle>
         <MarketEvidenceTab parcel={parcel} />
       </section>
     );
