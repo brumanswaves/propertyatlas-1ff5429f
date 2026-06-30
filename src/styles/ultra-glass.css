@@ -1,0 +1,225 @@
+/**
+ * Ultra Glass Command — reusable design tokens & utility classes.
+ *
+ * Foundation only. NOT yet applied to any production screen.
+ * Import from src/styles.css when ready to roll out:
+ *     @import "./styles/ultra-glass.css";
+ *
+ * Design language: navy/orange glassmorphism, Apple-like calm, 24px radii,
+ * soft layered shadows, subtle backdrop blur. See mem://design/ultra-glass-command.
+ */
+
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+:root {
+  /* Brand anchors */
+  --ug-navy: #0D1B2A;
+  --ug-navy-deep: #06152A;
+  --ug-orange: #FF6A00;
+  --ug-orange-soft: #FF8A33;
+  --ug-white: #FFFFFF;
+  --ug-panel: #F2F4F7;
+  --ug-ink: #1F2937;
+  --ug-muted: #64748B;
+
+  /* Glass surfaces */
+  --ug-glass-light-bg: rgba(255, 255, 255, 0.72);
+  --ug-glass-light-border: rgba(13, 27, 42, 0.08);
+  --ug-glass-dark-bg: rgba(13, 27, 42, 0.62);
+  --ug-glass-dark-border: rgba(255, 255, 255, 0.10);
+  --ug-glass-blur: 18px;
+  --ug-glass-blur-strong: 28px;
+
+  /* Radii */
+  --ug-radius-sm: 12px;
+  --ug-radius-md: 18px;
+  --ug-radius-lg: 24px;
+  --ug-radius-xl: 32px;
+
+  /* Spacing — command dashboard rhythm */
+  --ug-space-1: 4px;
+  --ug-space-2: 8px;
+  --ug-space-3: 12px;
+  --ug-space-4: 16px;
+  --ug-space-5: 24px;
+  --ug-space-6: 32px;
+  --ug-space-7: 48px;
+  --ug-gutter: 24px;
+  --ug-section-y: 48px;
+
+  /* Shadows */
+  --ug-shadow-card: 0 1px 2px rgba(13,27,42,0.04),
+                    0 8px 24px -10px rgba(13,27,42,0.18);
+  --ug-shadow-float: 0 12px 40px -12px rgba(13,27,42,0.28),
+                     0 2px 8px -2px rgba(13,27,42,0.10);
+  --ug-shadow-dark: 0 24px 60px -20px rgba(0,0,0,0.55),
+                    0 2px 8px -2px rgba(0,0,0,0.30);
+  --ug-glow-orange: 0 0 0 4px rgba(255,106,0,0.22),
+                    0 12px 32px -8px rgba(255,106,0,0.45);
+
+  /* Motion */
+  --ug-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ug-duration: 240ms;
+}
+
+/* ── Glass card surfaces ────────────────────────────────────────────────── */
+.ug-glass {
+  background: var(--ug-glass-light-bg);
+  border: 1px solid var(--ug-glass-light-border);
+  border-radius: var(--ug-radius-lg);
+  backdrop-filter: blur(var(--ug-glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--ug-glass-blur)) saturate(140%);
+  box-shadow: var(--ug-shadow-card);
+  color: var(--ug-ink);
+}
+
+.ug-glass-dark {
+  background: var(--ug-glass-dark-bg);
+  border: 1px solid var(--ug-glass-dark-border);
+  border-radius: var(--ug-radius-lg);
+  backdrop-filter: blur(var(--ug-glass-blur-strong)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--ug-glass-blur-strong)) saturate(160%);
+  box-shadow: var(--ug-shadow-dark);
+  color: var(--ug-white);
+}
+
+.ug-glass-float {
+  box-shadow: var(--ug-shadow-float);
+}
+
+.ug-soft-border  { border: 1px solid var(--ug-glass-light-border); }
+.ug-soft-border-dark { border: 1px solid var(--ug-glass-dark-border); }
+
+.ug-radius-sm { border-radius: var(--ug-radius-sm); }
+.ug-radius-md { border-radius: var(--ug-radius-md); }
+.ug-radius-lg { border-radius: var(--ug-radius-lg); }
+.ug-radius-xl { border-radius: var(--ug-radius-xl); }
+
+/* ── Command dashboard spacing ──────────────────────────────────────────── */
+.ug-dashboard {
+  display: grid;
+  gap: var(--ug-gutter);
+  padding: var(--ug-section-y) var(--ug-gutter);
+}
+.ug-stack-sm > * + * { margin-top: var(--ug-space-3); }
+.ug-stack    > * + * { margin-top: var(--ug-space-4); }
+.ug-stack-lg > * + * { margin-top: var(--ug-space-5); }
+
+/* ── Premium metric cards ──────────────────────────────────────────────── */
+.ug-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ug-space-2);
+  padding: var(--ug-space-5);
+  background: var(--ug-glass-light-bg);
+  border: 1px solid var(--ug-glass-light-border);
+  border-radius: var(--ug-radius-lg);
+  box-shadow: var(--ug-shadow-card);
+  transition: transform var(--ug-duration) var(--ug-ease),
+              box-shadow var(--ug-duration) var(--ug-ease);
+}
+.ug-metric:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ug-shadow-float);
+}
+.ug-metric__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ug-muted);
+}
+.ug-metric__value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ug-navy);
+  line-height: 1.1;
+}
+.ug-metric__delta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ug-muted);
+}
+.ug-metric--accent { border-color: rgba(255, 106, 0, 0.35); }
+.ug-metric--accent .ug-metric__value { color: var(--ug-orange); }
+
+/* ── Evidence / status badges ──────────────────────────────────────────── */
+.ug-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+.ug-badge--neutral  { background: var(--ug-panel); color: var(--ug-ink); border-color: var(--ug-glass-light-border); }
+.ug-badge--official { background: rgba(13,27,42,0.06); color: var(--ug-navy); border-color: rgba(13,27,42,0.15); }
+.ug-badge--verified { background: rgba(30,158,106,0.10); color: #167852; border-color: rgba(30,158,106,0.30); }
+.ug-badge--pending  { background: rgba(255,106,0,0.10); color: #B84800; border-color: rgba(255,106,0,0.30); }
+.ug-badge--missing  { background: rgba(190,18,60,0.08); color: #9F1239; border-color: rgba(190,18,60,0.25); }
+.ug-badge__dot {
+  width: 6px; height: 6px; border-radius: 999px; background: currentColor;
+}
+
+/* ── Report vault / upload cards ───────────────────────────────────────── */
+.ug-vault-card {
+  padding: var(--ug-space-5);
+  background: var(--ug-glass-light-bg);
+  border: 1px solid var(--ug-glass-light-border);
+  border-radius: var(--ug-radius-lg);
+  box-shadow: var(--ug-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ug-space-3);
+  transition: border-color var(--ug-duration) var(--ug-ease),
+              box-shadow var(--ug-duration) var(--ug-ease);
+}
+.ug-vault-card:hover {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: var(--ug-shadow-float);
+}
+.ug-vault-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ug-navy);
+  letter-spacing: -0.01em;
+}
+.ug-vault-card__meta {
+  font-size: 12px;
+  color: var(--ug-muted);
+}
+
+.ug-upload {
+  padding: var(--ug-space-6);
+  border-radius: var(--ug-radius-lg);
+  border: 1.5px dashed rgba(13, 27, 42, 0.22);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255,106,0,0.06), transparent 60%),
+    var(--ug-glass-light-bg);
+  text-align: center;
+  color: var(--ug-muted);
+  transition: border-color var(--ug-duration) var(--ug-ease),
+              background var(--ug-duration) var(--ug-ease);
+}
+.ug-upload:hover {
+  border-color: var(--ug-orange);
+  color: var(--ug-ink);
+}
+
+/* ── Accent helpers (orange aurora CTA glow, dividers) ─────────────────── */
+.ug-accent-glow {
+  box-shadow: var(--ug-glow-orange);
+}
+.ug-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--ug-glass-light-border) 20%,
+    var(--ug-glass-light-border) 80%,
+    transparent 100%);
+  border: 0;
+}
