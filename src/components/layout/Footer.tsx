@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { AtlasPin } from "@/components/brand/AtlasPin";
+import { BRAND } from "@/lib/brand";
 
 const COMPANY_LINKS = [
   { to: "/about", label: "About" },
-  { to: "/why", label: "Why ErfStoep" },
+  { to: "/why", label: `Why ${BRAND.site}` },
   { to: "/how-it-works", label: "How it works" },
   { to: "/roadmap", label: "Roadmap" },
   { to: "/partnerships", label: "Partnerships" },
@@ -45,10 +46,10 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <div className="flex items-center gap-2">
-            <AtlasPin variant="horizontal" className="h-8 w-auto" title="ErfStoep" />
+            <AtlasPin variant="horizontal" className="h-8 w-auto" title={BRAND.site} />
           </div>
           <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-accent">
-            Every erf. All the facts.
+            {BRAND.tagline}
           </p>
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-muted-foreground">
             South Africa's property intelligence community. A research and information platform —

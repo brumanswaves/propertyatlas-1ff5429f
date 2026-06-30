@@ -1,4 +1,5 @@
 import { ShieldAlert } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 
 interface Props {
   tone?: "default" | "soft";
@@ -7,12 +8,12 @@ interface Props {
 }
 
 const DEFAULT_TEXT =
-  "ErfStoep organizes research from public sources, user-entered notes, and third-party reports. " +
+  `${BRAND.site} organizes research from public sources, user-entered notes, and third-party reports. ` +
   "Always verify official property, zoning, valuation, ownership, and legal information with the relevant provider or municipality.";
 
 const OFFICIAL_TEXT =
   "Public cadastral and municipal layers shown here are sourced live from official viewers (Chief Surveyor-General, Kouga Municipality). " +
-  "ErfStoep does not own or warrant this data — verify with the source before relying on it.";
+  `${BRAND.site} does not own or warrant this data - verify with the source before relying on it.`;
 
 export function ComplianceNotice({ tone = "default", variant = "research", children }: Props) {
   const text = children ?? (variant === "official" ? OFFICIAL_TEXT : DEFAULT_TEXT);

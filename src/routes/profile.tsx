@@ -11,12 +11,13 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { getUserDisplayName } from "@/lib/auth/profile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Profile - ErfStoep" },
-      { name: "description", content: "Manage your ErfStoep profile details." },
+      { title: `Profile - ${BRAND.site}` },
+      { name: "description", content: `Manage your ${BRAND.site} profile details.` },
       { property: "og:url", content: "/profile" },
     ],
     links: [{ rel: "canonical", href: "/profile" }],
@@ -101,7 +102,7 @@ function ProfilePage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                This is your ErfStoep user profile info. It is not official parcel data.
+                This is your {BRAND.site} user profile info. It is not official parcel data.
               </p>
             </div>
           </div>

@@ -29,11 +29,12 @@ import {
   RELATIONSHIP_LABELS,
   type SavedMarketEvidence,
 } from "@/features/marketEvidence/types";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — ErfStoep" },
+      { title: `Dashboard - ${BRAND.site}` },
       {
         name: "description",
         content:

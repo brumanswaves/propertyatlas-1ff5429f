@@ -27,17 +27,18 @@ import {
   parseOfficialParcelReopenSearch,
   type OfficialParcelReopenRequest,
 } from "@/lib/parcels/officialParcelId";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ErfStoep — Every erf. All the facts." },
+      { title: `${BRAND.site} - ${BRAND.tagline}` },
       {
         name: "description",
         content:
-          "Search any erf, understand the facts, compare the market, ask AI, save evidence, and make better property decisions. South Africa's property intelligence platform.",
+          `${BRAND.copy.shortPitch} Click an erf, understand public facts, compare the market, save evidence, and follow due diligence steps.`,
       },
-      { property: "og:title", content: "ErfStoep — Every erf. All the facts." },
+      { property: "og:title", content: `${BRAND.site} - ${BRAND.tagline}` },
       {
         property: "og:description",
         content: "South Africa's property intelligence platform. Search, research, compare, save evidence.",
@@ -179,7 +180,7 @@ function AtlasHome() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
-      <h1 className="sr-only">ErfStoep — Map-based property intelligence for South Africa</h1>
+      <h1 className="sr-only">{BRAND.site} - Map-based property intelligence for South Africa</h1>
       <MapCanvas
         selectedId={selectedId}
         onSelect={handleMapSelect}

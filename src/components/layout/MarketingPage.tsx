@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
 interface MarketingPageProps {
   eyebrow?: string;
@@ -15,7 +16,7 @@ interface MarketingPageProps {
 }
 
 export function MarketingPage({
-  eyebrow = "ErfStoep",
+  eyebrow = BRAND.site,
   title,
   subtitle,
   intro,

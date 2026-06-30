@@ -1,47 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingPage, Card, SectionHeading, CTASection } from "@/components/layout/MarketingPage";
 import { TrendingUp, MapPin, Bell, GitCompare, Layers, History, Activity, Building2, LineChart, Home, Banknote } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/for-investors")({
   head: () => ({
     meta: [
-      { title: "ErfStoep for Investors" },
+      { title: `${BRAND.site} for Investors` },
       { name: "description", content: "Identify opportunities, analyze locations, monitor properties, compare areas, evaluate development potential, and understand property history." },
-      { property: "og:title", content: "ErfStoep for Investors" },
-      { property: "og:description", content: "Investor-grade property intelligence — scores, signals, and history on every parcel." },
+      { property: "og:title", content: `${BRAND.site} for Investors` },
+      { property: "og:description", content: "Investor-grade erf research - public sources, saved evidence, assumptions, and due diligence steps." },
     ],
   }),
   component: ForInvestors,
 });
 
 const SCORES = [
-  { icon: Activity, name: "Investor Score", desc: "Composite of liquidity, appreciation, and yield indicators." },
-  { icon: Building2, name: "Development Score", desc: "Zoning, bulk, and lot geometry potential." },
-  { icon: LineChart, name: "Appreciation Potential", desc: "Modelled value trajectory relative to the suburb." },
-  { icon: Home, name: "Rental Yield Potential", desc: "Indicative gross yield based on area performance." },
-  { icon: Banknote, name: "Seller Probability", desc: "Likelihood the current owner is open to a transaction." },
+  { icon: Activity, name: "Research Readiness", desc: "Known fields, missing checks, and next best due diligence step." },
+  { icon: Building2, name: "Planning Context", desc: "Public zoning and planning links where source-backed data exists." },
+  { icon: LineChart, name: "Market Evidence", desc: "Saved listing and comp URLs that you verify manually." },
+  { icon: Home, name: "Calculator Assumptions", desc: "Yield, holding cost, flip, and target-offer scenarios using your own numbers." },
+  { icon: Banknote, name: "Report Confidence", desc: "Optional Lightstone, WinDeed, SG, and other provider reports when needed." },
 ];
 
 const CAPABILITIES = [
-  { icon: MapPin, title: "Identify opportunities", desc: "Filter the map by score thresholds, ownership tenure, or recent activity to surface candidates." },
-  { icon: TrendingUp, title: "Analyze locations", desc: "Compare suburbs, micro-pockets, and street-level performance side by side." },
+  { icon: MapPin, title: "Identify opportunities", desc: "Click official erfs and build a source-backed dossier around the parcel." },
+  { icon: TrendingUp, title: "Analyze locations", desc: "Compare market context, listing evidence, and your own assumptions side by side." },
   { icon: Bell, title: "Monitor properties", desc: "Add to watchlist and get alerts when something material changes." },
-  { icon: GitCompare, title: "Compare areas", desc: "See pricing, turnover, and ownership patterns across regions." },
-  { icon: Layers, title: "Evaluate development potential", desc: "Zoning, coverage, bulk, and indicative GDV per parcel." },
-  { icon: History, title: "Understand history", desc: "Ownership timelines, transfer prices, and long-term holding patterns." },
+  { icon: GitCompare, title: "Compare areas", desc: "Save useful comps and compare evidence quality before making a call." },
+  { icon: Layers, title: "Evaluate development potential", desc: "Open official zoning, planning, SG, and municipal sources where available." },
+  { icon: History, title: "Track due diligence", desc: `Use ${BRAND.workflow} to see what is known, missing, and worth verifying next.` },
 ];
 
 function ForInvestors() {
   return (
     <MarketingPage
       eyebrow="For Investors"
-      title="Investor-grade intelligence on every parcel."
-      subtitle="Find the right opportunities. Pass on the wrong ones — faster."
-      intro="ErfStoep gives investors a Bloomberg-style view of residential, vacant land, and commercial parcels: scores, signals, sales history, and ownership intelligence in one place."
+      title="Investor-grade research on every erf."
+      subtitle="Find the right opportunities. Pass on the wrong ones - faster."
+      intro={`${BRAND.site} gives investors a map-first command center for public parcel facts, saved evidence, calculators, due diligence steps, and optional provider reports.`}
       heroCta={{ label: "Open the Map", to: "/" }}
     >
       <section>
-        <SectionHeading title="What investors do on ErfStoep" />
+        <SectionHeading title={`What investors do on ${BRAND.site}`} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map((c) => (
             <Card key={c.title} icon={<c.icon className="h-5 w-5" />} title={c.title}>{c.desc}</Card>
@@ -51,9 +52,9 @@ function ForInvestors() {
 
       <section className="mt-12">
         <SectionHeading
-          eyebrow="Proprietary signals"
-          title="Scores that move you to a decision"
-          subtitle="Every score is informational and modelled — not a recommendation, forecast, or professional advice."
+          eyebrow={BRAND.workflow}
+          title="Guided checks that move you to a decision"
+          subtitle="Every prompt is informational - not a recommendation, forecast, valuation, or professional advice."
         />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {SCORES.map((s) => (
@@ -72,7 +73,7 @@ function ForInvestors() {
           ))}
         </div>
         <p className="mt-4 text-[11px] text-muted-foreground">
-          Scores are proprietary informational indicators — not guarantees, recommendations, or forecasts. Estimate Only • Not a Certified Valuation.
+          Workflow prompts are informational indicators - not guarantees, recommendations, forecasts, valuations, or professional advice.
         </p>
       </section>
 

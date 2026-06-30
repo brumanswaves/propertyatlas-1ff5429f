@@ -109,7 +109,7 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("from-[#fff8ec]");
-    expect(tab).toContain("border-amber-200");
+    expect(tab).toContain("border-accent/20");
     expect(tab).toContain("text-stone-950");
     expect(tab).toContain("bg-[#fff8ec]");
   });

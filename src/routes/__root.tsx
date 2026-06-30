@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { BRAND } from "../lib/brand";
 import ogImage from "../assets/erfstoep-og.png.asset.json";
 import favicon32 from "../assets/erfstoep-icon-32.png.asset.json";
 import favicon192 from "../assets/erfstoep-icon-192.png.asset.json";
@@ -89,16 +90,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ErfStoep — Every erf. All the facts." },
-      { name: "description", content: "Search any South African erf, understand the facts, compare the market, ask AI, save evidence. ErfStoep — South Africa's property intelligence platform." },
-      { name: "author", content: "ErfStoep" },
-      { property: "og:title", content: "ErfStoep — Every erf. All the facts." },
-      { property: "og:description", content: "South Africa's property intelligence platform. Search any erf, see the facts, compare the market, ask AI, save evidence." },
+      { title: `${BRAND.site} - ${BRAND.tagline}` },
+      { name: "description", content: `${BRAND.copy.shortPitch} Search any South African erf, understand public facts, compare the market, and save evidence.` },
+      { name: "author", content: BRAND.site },
+      { property: "og:title", content: `${BRAND.site} - ${BRAND.tagline}` },
+      { property: "og:description", content: `${BRAND.copy.whatItDoes} Public-source research, assumptions, reports, and due diligence steps in one map-first workspace.` },
       { property: "og:type", content: "website" },
       { property: "og:image", content: OG_IMAGE_URL },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "ErfStoep — Every erf. All the facts." },
-      { name: "twitter:description", content: "Search any South African erf. Facts, market, AI, evidence." },
+      { name: "twitter:title", content: `${BRAND.site} - ${BRAND.tagline}` },
+      { name: "twitter:description", content: `${BRAND.copy.shortPitch} Facts, market context, evidence, and due diligence.` },
       { name: "twitter:image", content: OG_IMAGE_URL },
     ],
     links: [

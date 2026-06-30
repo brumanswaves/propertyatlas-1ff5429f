@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — ErfStoep" },
-      { name: "description", content: "Sign in or create your ErfStoep account." },
+      { title: `Sign in - ${BRAND.site}` },
+      { name: "description", content: `Sign in or create your ${BRAND.site} account.` },
       { property: "og:url", content: "/auth" },
     ],
     links: [{ rel: "canonical", href: "/auth" }],
@@ -73,14 +74,14 @@ function AuthPage() {
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-gradient-brand p-10 text-white md:flex">
         <Link to="/" className="inline-flex items-center">
-          <AtlasPin variant="white" className="h-9 w-auto" title="ErfStoep" />
+          <AtlasPin variant="white" className="h-9 w-auto" title={BRAND.site} />
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">
-            The map-based property intelligence platform for South Africa.
+            {BRAND.copy.shortPitch}
           </h2>
           <p className="mt-3 text-sm text-white/75">
-            Explore every parcel. See valuations, ownership, and investment scores. Built for buyers, investors, and developers.
+            Click an erf, organize public-source evidence, run your assumptions, and decide what to verify next.
           </p>
         </div>
         <div className="text-xs text-white/60">© ErfStoep · Pilot region: St Francis Bay</div>
