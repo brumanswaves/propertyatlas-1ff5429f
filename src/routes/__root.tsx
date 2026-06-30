@@ -11,6 +11,13 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import ogImage from "../assets/erfstop-og-navy.png.asset.json";
+import faviconSvg from "../assets/erfstop-favicon.svg.asset.json";
+import appleTouch from "../assets/erfstop-apple-touch.png.asset.json";
+
+const OG_IMAGE_URL = ogImage.url;
+const FAVICON_URL = faviconSvg.url;
+const APPLE_TOUCH_URL = appleTouch.url;
 
 function NotFoundComponent() {
   return (
