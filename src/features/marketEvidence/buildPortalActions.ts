@@ -64,7 +64,7 @@ export function buildPortalActions(
       opensReliableAreaPage: false,
       requiresManualPaste: true,
       helperText:
-        "PropertyAtlas is not reading this portal. You choose and save only useful evidence.",
+        "ErfStop is not reading this portal. You choose and save only useful evidence.",
     };
   });
 

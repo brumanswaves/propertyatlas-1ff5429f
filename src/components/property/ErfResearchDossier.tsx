@@ -514,7 +514,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
         </p>
         <div className="mt-4 space-y-2 rounded-2xl border border-[#eadfd1] bg-[#fff8ed] p-4 text-[12.5px] leading-6 text-[#6b5b4d]">
           <p>
-            PropertyAtlas organizes public and third-party property research links. It is not a
+            ErfStop organizes public and third-party property research links. It is not a
             deeds office, municipality, attorney, conveyancer, valuer, surveyor or financial
             advisor. Verify all information with the relevant official source before making
             decisions.
@@ -1463,7 +1463,7 @@ function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-          Estimates only. Enter your own assumptions; PropertyAtlas is not attaching official
+          Estimates only. Enter your own assumptions; ErfStop is not attaching official
           valuation, rates, transfer, deeds or paid provider data here.
         </p>
         <button

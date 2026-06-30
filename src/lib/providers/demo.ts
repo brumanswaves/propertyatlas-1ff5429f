@@ -62,7 +62,7 @@ export const demoProvider: PropertyProvider = {
   meta: {
     id: SOURCE,
     name: "Demo Dataset",
-    description: "PropertyAtlas pilot — St Francis Bay synthetic cadastre.",
+    description: "ErfStop pilot — St Francis Bay synthetic cadastre.",
     status: "active",
     capabilities: { search: true, ownership: true, valuation: true, transfers: true, geometry: true, reports: true },
   },

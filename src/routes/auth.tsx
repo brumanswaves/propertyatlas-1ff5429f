@@ -12,8 +12,8 @@ import { Toaster } from "@/components/ui/sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — PropertyAtlas" },
-      { name: "description", content: "Sign in or create your PropertyAtlas account." },
+      { title: "Sign in — ErfStop" },
+      { name: "description", content: "Sign in or create your ErfStop account." },
       { property: "og:url", content: "/auth" },
     ],
     links: [{ rel: "canonical", href: "/auth" }],
@@ -77,7 +77,7 @@ function AuthPage() {
             <AtlasPin className="h-7 w-auto" />
           </span>
 
-          <span className="text-lg font-semibold tracking-tight">PropertyAtlas</span>
+          <span className="text-lg font-semibold tracking-tight">ErfStop</span>
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">
@@ -87,7 +87,7 @@ function AuthPage() {
             Explore every parcel. See valuations, ownership, and investment scores. Built for buyers, investors, and developers.
           </p>
         </div>
-        <div className="text-xs text-white/60">© PropertyAtlas · Pilot region: St Francis Bay</div>
+        <div className="text-xs text-white/60">© ErfStop · Pilot region: St Francis Bay</div>
       </div>
 
       <div className="flex items-center justify-center p-6">

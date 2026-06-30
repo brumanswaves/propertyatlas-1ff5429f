@@ -6,9 +6,9 @@ import { Footer } from "@/components/layout/Footer";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — PropertyAtlas" },
-      { name: "description", content: "PropertyAtlas is free for public-data parcel research. Pay only for third-party reports once those integrations go live." },
-      { property: "og:title", content: "PropertyAtlas pricing" },
+      { title: "Pricing — ErfStop" },
+      { name: "description", content: "ErfStop is free for public-data parcel research. Pay only for third-party reports once those integrations go live." },
+      { property: "og:title", content: "ErfStop pricing" },
       { property: "og:description", content: "Free public-data research. Pay only for the reports you need." },
       { property: "og:url", content: "/pricing" },
     ],
@@ -94,7 +94,7 @@ function PricingPage() {
             Pay only for the reports you need.
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
-            PropertyAtlas is free to use for public parcel research. Verified ownership, valuation, transfers, bonds, and comparable sales will be available through third-party reports once integrations are connected.
+            ErfStop is free to use for public parcel research. Verified ownership, valuation, transfers, bonds, and comparable sales will be available through third-party reports once integrations are connected.
           </p>
         </div>
 
@@ -134,7 +134,7 @@ function PricingPage() {
           <FileText className="mx-auto h-5 w-5 text-muted-foreground" />
           <p className="mt-2 text-sm font-semibold">No subscriptions. No fake data.</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            PropertyAtlas does not yet provide official deeds, valuation, ownership, transfer, bond, or comparable-sales data.
+            ErfStop does not yet provide official deeds, valuation, ownership, transfer, bond, or comparable-sales data.
             Those will only be shown when delivered through a real third-party report.
           </p>
         </div>

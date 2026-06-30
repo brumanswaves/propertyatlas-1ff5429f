@@ -1,4 +1,4 @@
-// PropertyAtlas v1.5 — Provider abstraction types.
+// ErfStop v1.5 — Provider abstraction types.
 // Normalized data model + compliance metadata so any provider (Demo, SG, Municipal GIS,
 // WinDeed, Lightstone) can be swapped in without frontend changes.
 

@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList, LegalCallout } from "@/components/l
 export const Route = createFileRoute("/disclaimer")({
   head: () => ({
     meta: [
-      { title: "Disclaimer — PropertyAtlas" },
-      { name: "description", content: "PropertyAtlas disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
+      { title: "Disclaimer — ErfStop" },
+      { name: "description", content: "ErfStop disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
     ],
   }),
   component: DisclaimerPage,
@@ -14,15 +14,15 @@ export const Route = createFileRoute("/disclaimer")({
 function DisclaimerPage() {
   return (
     <LegalPage
-      title="PropertyAtlas Disclaimer"
-      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by PropertyAtlas."
+      title="ErfStop Disclaimer"
+      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by ErfStop."
     >
       <LegalCallout>
-        <strong>PropertyAtlas provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
+        <strong>ErfStop provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
       </LegalCallout>
 
-      <LegalSection title="What PropertyAtlas Does Not Provide">
-        <p>PropertyAtlas does not provide:</p>
+      <LegalSection title="What ErfStop Does Not Provide">
+        <p>ErfStop does not provide:</p>
         <LegalList items={[
           "legal advice",
           "financial advice",
@@ -40,11 +40,11 @@ function DisclaimerPage() {
       </LegalSection>
 
       <LegalSection title="No Guarantees">
-        <p>PropertyAtlas makes no guarantees regarding:</p>
+        <p>ErfStop makes no guarantees regarding:</p>
         <LegalList items={["accuracy", "completeness", "timeliness", "suitability"]} />
         <p>Any use of information is entirely at the user's own risk.</p>
         <p>
-          PropertyAtlas shall not be liable for losses arising from reliance on information
+          ErfStop shall not be liable for losses arising from reliance on information
           presented on the platform.
         </p>
       </LegalSection>
@@ -76,7 +76,7 @@ function DisclaimerPage() {
       <LegalSection title="Ownership Data">
         <p>
           Ownership information may be incomplete, delayed, estimated, or unavailable depending
-          on source availability and licensing. PropertyAtlas does not guarantee ownership
+          on source availability and licensing. ErfStop does not guarantee ownership
           records. Users should verify ownership independently through official channels.
         </p>
       </LegalSection>
@@ -98,7 +98,7 @@ function DisclaimerPage() {
 
       <LegalSection title="Mock / Demo Data">
         <p>
-          PropertyAtlas is currently operating in pilot mode. Where mock or demo data is shown,
+          ErfStop is currently operating in pilot mode. Where mock or demo data is shown,
           a visible "Demo Data" notice will appear. This notice is not hidden and should be
           considered an integral part of the displayed information.
         </p>

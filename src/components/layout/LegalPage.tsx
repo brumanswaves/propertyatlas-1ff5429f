@@ -18,7 +18,7 @@ export function LegalPage({
         <article className="mx-auto max-w-3xl">
           <header className="mb-8 border-b border-border pb-6">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-              PropertyAtlas
+              ErfStop
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {title}

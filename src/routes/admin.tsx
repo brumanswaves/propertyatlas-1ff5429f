@@ -11,7 +11,7 @@ import { AdminGuard } from "@/components/admin/AdminGuard";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin — PropertyAtlas" },
+      { title: "Admin — ErfStop" },
       { name: "robots", content: "noindex" },
     ],
   }),

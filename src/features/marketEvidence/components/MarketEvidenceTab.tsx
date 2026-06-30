@@ -982,7 +982,7 @@ function AddressIntelligenceSection({
             identity.bestAddress,
             suggested?.formattedAddress,
             ...candidates.map((candidate) => candidate.formattedAddress),
-          ].filter(Boolean)}
+          ].filter((s): s is string => Boolean(s))}
         />
       )}
     </section>
@@ -1129,7 +1129,7 @@ function RadarConsole({
             Scan cached and imported listing candidates
           </h3>
           <p className="mt-1 text-sm text-stone-700">
-            PropertyAtlas does not scan portals live. Radar only scores source-backed cached or
+            ErfStop does not scan portals live. Radar only scores source-backed cached or
             manually imported candidates.
           </p>
         </div>
