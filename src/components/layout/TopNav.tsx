@@ -35,11 +35,11 @@ export function TopNav() {
     <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6">
       <Link
         to="/"
-        className="flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 shadow-soft backdrop-blur ring-1 ring-border/60"
+        className="flex items-center gap-2 rounded-full bg-card/95 px-3 py-1.5 shadow-soft backdrop-blur ring-1 ring-border/60"
+        aria-label="ErfStop — home"
       >
-        <AtlasPin className="h-6 w-auto" />
-        <span className="text-sm font-semibold tracking-tight text-foreground">PropertyAtlas</span>
-        <span className="ml-1 hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:inline">
+        <AtlasPin variant="horizontal" className="h-7 w-auto" title="ErfStop" />
+        <span className="ml-1 hidden rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[color:var(--brand)] lg:inline">
           Pilot · St Francis Bay
         </span>
       </Link>

@@ -31,16 +31,16 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PropertyAtlas — South Africa Property Intelligence" },
+      { title: "ErfStop — Every erf has a story." },
       {
         name: "description",
         content:
-          "Map-based property intelligence for South Africa. Official public cadastral and zoning data from Chief Surveyor-General and Kouga Municipality.",
+          "Search any South African erf, understand the facts, compare the market, ask AI, save evidence, and make better property decisions.",
       },
-      { property: "og:title", content: "PropertyAtlas — Property Intelligence for South Africa" },
+      { property: "og:title", content: "ErfStop — Every erf has a story." },
       {
         property: "og:description",
-        content: "Official public cadastral and zoning layers, plus saved research.",
+        content: "South Africa's property intelligence community. Search, research, compare, save evidence.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },

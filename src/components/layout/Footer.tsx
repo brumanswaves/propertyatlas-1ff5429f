@@ -45,16 +45,13 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <div className="flex items-center gap-2">
-            <AtlasPin className="h-7 w-auto" />
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              PropertyAtlas
-            </span>
+            <AtlasPin variant="horizontal" className="h-8 w-auto" title="ErfStop" />
           </div>
-          <p className="mt-2 text-[11px] font-medium uppercase tracking-wider text-accent">
-            Every Property. Every Story.
+          <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-accent">
+            Every erf has a story.
           </p>
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Map-based property intelligence for South Africa. A research and information platform —
+            South Africa's property intelligence community. A research and information platform —
             not a brokerage, valuer, advisor, or law firm.
           </p>
         </div>
