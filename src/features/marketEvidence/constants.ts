@@ -78,6 +78,21 @@ export const KOUGA_MICRO_MARKETS = [
   "Sea Vista",
   "Humansdorp",
   "Jeffreys Bay",
+  "Kouga",
+];
+
+export const KOUGA_AREA_SCAN_MARKETS = [
+  "Cape St Francis",
+  "St Francis Bay",
+  "St Francis On Sea",
+  "Santareme",
+  "Port St Francis",
+  "St Francis Links",
+  "Canals",
+  "Sea Vista",
+  "Humansdorp",
+  "Jeffreys Bay",
+  "Kouga",
 ];
 
 export const FUTURE_LISTING_POOL_SOURCES = [

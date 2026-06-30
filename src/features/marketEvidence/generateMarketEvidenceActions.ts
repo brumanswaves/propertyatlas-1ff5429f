@@ -20,5 +20,7 @@ export { buildSearchLadder } from "./buildSearchLadder";
 export { buildPortalActions } from "./buildPortalActions";
 export { calculateMarketEvidenceSummary } from "./calculateMarketEvidenceSummary";
 export * from "./activeListingRadar";
+export * from "./addressIntelligence";
+export * from "./areaRadar";
 export * from "./propertyIdentity";
 export * from "./types";

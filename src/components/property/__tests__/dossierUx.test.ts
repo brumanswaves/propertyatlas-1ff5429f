@@ -41,11 +41,12 @@ describe("official dossier UX guardrails", () => {
 
     expect(dossier).toContain("Listings & Comps");
     expect(marketEvidence).toContain("Find listings and comps for this erf");
+    expect(marketEvidence).toContain("Address Intelligence");
+    expect(marketEvidence).toContain("Active Listing Radar");
     expect(marketEvidence).toContain("No confirmed street address yet");
-    expect(marketEvidence).toContain("Simple listing searches");
-    expect(marketEvidence).toContain("Saved Comps");
-    expect(marketEvidence).toContain("Comp summary");
-    expect(marketEvidence).not.toContain("Run Active Listing Radar");
+    expect(marketEvidence).toContain("Fallback Search Tools");
+    expect(marketEvidence).toContain("Saved Market Evidence");
+    expect(marketEvidence).toContain("Market Thesis from saved evidence");
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
@@ -65,16 +66,19 @@ describe("official dossier UX guardrails", () => {
 
     expect(hook).toContain("savedMarketEvidence");
     expect(hook).toContain("propertyIdentity");
-    expect(tab).toContain("Saved Comps");
+    expect(hook).toContain("marketAddressIntelligence");
+    expect(tab).toContain("Saved Market Evidence");
     expect(tab).toContain("Save comp");
   });
 
-  it("keeps Active Listing Radar out of the primary listings and comps flow", () => {
+  it("keeps Active Listing Radar primary and search tools as fallback", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(tab).toContain("Advanced / Experimental tools");
-    expect(tab).toContain("Active Listing Radar is not shown as the primary workflow");
-    expect(tab).not.toContain("Candidate Triage");
+    expect(tab).toContain("Active Listing Radar");
+    expect(tab).toContain("Find possible exact match");
+    expect(tab).toContain("Search area listings");
+    expect(tab).toContain("Fallback Search Tools");
+    expect(tab).toContain("PropertyAtlas does not scan portals live");
     expect(tab).not.toContain("Show hidden / weak candidates");
   });
 
@@ -84,6 +88,6 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("from-[#fff8ec]");
     expect(tab).toContain("border-amber-200");
     expect(tab).toContain("text-stone-950");
-    expect(tab).toContain("bg-[#fffaf0]");
+    expect(tab).toContain("bg-[#fff8ec]");
   });
 });

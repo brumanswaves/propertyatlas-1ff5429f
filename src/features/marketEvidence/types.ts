@@ -70,6 +70,44 @@ export interface MarketEvidenceContext {
   category: MarketEvidenceCategory;
 }
 
+export type AddressSource =
+  | "official_parcel"
+  | "municipal_record"
+  | "google_reverse_geocode"
+  | "manual_google_maps_whats_here"
+  | "user_entered"
+  | "unknown";
+
+export type AddressConfidence = "high" | "medium" | "low" | "unverified";
+
+export interface AddressCandidate {
+  id: string;
+  formattedAddress: string;
+  streetNumber?: string | null;
+  streetName?: string | null;
+  suburb?: string | null;
+  town?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  source: AddressSource;
+  confidence: AddressConfidence;
+  reason: string;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface MarketAddressIntelligence {
+  selectedAddressId?: string | null;
+  candidates: AddressCandidate[];
+  userConfirmedAddress?: AddressCandidate | null;
+  lastResolvedAt?: string | null;
+  notes?: string | null;
+}
+
 export interface SearchLadderItem {
   id: string;
   level: number;
@@ -149,6 +187,42 @@ export interface RadarMatch {
 export interface RadarCandidateResult {
   candidate: ListingCandidate;
   match: RadarMatch;
+}
+
+export type AreaRadarMode = "exact_match" | "area_listings";
+export type AreaSearchScope = "1km" | "3km" | "10km" | "same_suburb" | "same_town" | "municipality";
+export type AreaRadarSource =
+  | "all"
+  | "Property24"
+  | "Private Property"
+  | "Pam Golding"
+  | "Seeff"
+  | "Chas Everitt"
+  | "Rawson"
+  | "RE/MAX";
+export type AreaRadarPropertyType =
+  | "all"
+  | "house"
+  | "vacant_land"
+  | "farm_smallholding"
+  | "commercial"
+  | "sectional_title";
+export type AreaRadarSortMode =
+  | "best_match"
+  | "nearest_first"
+  | "newest_first"
+  | "price_low_high"
+  | "price_high_low";
+
+export interface AreaRadarOptions {
+  scope: AreaSearchScope;
+  source: AreaRadarSource;
+  propertyType: AreaRadarPropertyType;
+  sort: AreaRadarSortMode;
+}
+
+export interface AreaRadarResult extends RadarCandidateResult {
+  areaReasons: string[];
 }
 
 export interface SavedMarketEvidence {

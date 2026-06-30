@@ -1,6 +1,7 @@
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { resolveMarketEvidenceContext } from "./resolveMarketEvidenceContext";
 import type {
+  AddressCandidate,
   ListingCandidate,
   MarketEvidenceRelationship,
   RadarCandidateResult,
@@ -95,15 +96,21 @@ export function buildRadarReasons(
 export function scoreListingCandidate(
   parcel: NormalizedOfficialParcel,
   candidate: ListingCandidate,
+  marketAddress?: AddressCandidate | null,
 ): RadarMatch {
   const ctx = resolveMarketEvidenceContext(parcel);
+  const address = marketAddress?.formattedAddress ?? ctx.address;
+  const streetName = marketAddress?.streetName ?? ctx.streetName;
+  const suburb = marketAddress?.suburb ?? ctx.suburb;
+  const town = marketAddress?.town ?? ctx.town;
+  const municipality = marketAddress?.municipality ?? ctx.municipality;
   const candidateText = text(candidate);
   const signals: RadarSignal[] = [];
   let score = 0;
   let distanceMeters: number | undefined;
   let sizeVariancePercent: number | undefined;
 
-  if (ctx.address && hasNeedle(candidateText, ctx.address)) {
+  if (address && hasNeedle(candidateText, address)) {
     score += 40;
     pushSignal(signals, "exact_address_match");
   }
@@ -116,9 +123,8 @@ export function scoreListingCandidate(
     pushSignal(signals, "estate_or_scheme_match");
   }
   if (
-    ctx.streetName &&
-    (hasNeedle(candidateText, ctx.streetName) ||
-      clean(candidate.streetName) === clean(ctx.streetName))
+    streetName &&
+    (hasNeedle(candidateText, streetName) || clean(candidate.streetName) === clean(streetName))
   ) {
     score += 25;
     pushSignal(signals, "street_name_match");
@@ -149,13 +155,13 @@ export function scoreListingCandidate(
   if (ctx.marketArea && hasNeedle(candidateText, ctx.marketArea)) {
     score += 15;
     pushSignal(signals, "same_micro_market");
-  } else if (ctx.suburb && hasNeedle(candidateText, ctx.suburb)) {
+  } else if (suburb && hasNeedle(candidateText, suburb)) {
     score += 15;
     pushSignal(signals, "same_micro_market");
   }
   if (
-    (ctx.suburb && clean(candidate.suburb) === clean(ctx.suburb)) ||
-    (ctx.town && clean(candidate.town) === clean(ctx.town))
+    (suburb && clean(candidate.suburb) === clean(suburb)) ||
+    (town && clean(candidate.town) === clean(town))
   ) {
     score += 10;
     pushSignal(signals, "same_suburb");
@@ -170,8 +176,8 @@ export function scoreListingCandidate(
   }
   if (
     !signals.includes("same_micro_market") &&
-    ctx.municipality &&
-    hasNeedle(candidateText, ctx.municipality)
+    municipality &&
+    hasNeedle(candidateText, municipality)
   ) {
     score += 5;
     pushSignal(signals, "broader_area_match");
@@ -191,9 +197,13 @@ export function scoreListingCandidate(
 export function runActiveListingRadar(
   parcel: NormalizedOfficialParcel,
   candidates: ListingCandidate[],
+  marketAddress?: AddressCandidate | null,
 ): RadarCandidateResult[] {
   return candidates
-    .map((candidate) => ({ candidate, match: scoreListingCandidate(parcel, candidate) }))
+    .map((candidate) => ({
+      candidate,
+      match: scoreListingCandidate(parcel, candidate, marketAddress),
+    }))
     .filter((item) => item.match.classification !== "hidden")
     .sort(
       (a, b) => b.match.score - a.match.score || a.candidate.title.localeCompare(b.candidate.title),

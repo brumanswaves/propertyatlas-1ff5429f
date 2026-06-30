@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import { parseMarketAddressIntelligence } from "../addressIntelligence";
 import type { PropertyIdentityOverride } from "../propertyIdentity";
-import type { ListingCandidate, SavedMarketEvidence } from "../types";
+import type { ListingCandidate, MarketAddressIntelligence, SavedMarketEvidence } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -108,6 +109,8 @@ export function useSavedMarketEvidence(parcelId: string) {
   const [candidates, setCandidates] = useState<ListingCandidate[]>([]);
   const [dismissedCandidateIds, setDismissedCandidateIds] = useState<string[]>([]);
   const [propertyIdentity, setPropertyIdentity] = useState<PropertyIdentityOverride | null>(null);
+  const [marketAddressIntelligence, setMarketAddressIntelligence] =
+    useState<MarketAddressIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     setCandidates([]);
     setDismissedCandidateIds([]);
     setPropertyIdentity(null);
+    setMarketAddressIntelligence(null);
     setUserData({});
     if (!user) {
       setLoading(false);
@@ -139,6 +143,7 @@ export function useSavedMarketEvidence(parcelId: string) {
         setCandidates(parseCandidates(raw.marketEvidenceCandidates));
         setDismissedCandidateIds(parseDismissed(raw.dismissedMarketEvidenceCandidateIds));
         setPropertyIdentity(parsePropertyIdentity(raw.propertyIdentity));
+        setMarketAddressIntelligence(parseMarketAddressIntelligence(raw.marketAddressIntelligence));
         setLoading(false);
       });
 
@@ -168,6 +173,9 @@ export function useSavedMarketEvidence(parcelId: string) {
     setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
     setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
     setPropertyIdentity(parsePropertyIdentity(nextUserData.propertyIdentity));
+    setMarketAddressIntelligence(
+      parseMarketAddressIntelligence(nextUserData.marketAddressIntelligence),
+    );
     return true;
   }
 
@@ -257,6 +265,11 @@ export function useSavedMarketEvidence(parcelId: string) {
     if (ok) toast.success("Property identity saved");
   }
 
+  async function saveMarketAddressIntelligence(next: MarketAddressIntelligence) {
+    const ok = await persistUserData({ ...userData, marketAddressIntelligence: next });
+    if (ok) toast.success("Market address updated");
+  }
+
   return {
     user,
     loading,
@@ -264,6 +277,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     canSave,
     evidence,
     propertyIdentity,
+    marketAddressIntelligence,
     candidates,
     dismissedCandidateIds,
     upsertEvidence,
@@ -271,5 +285,6 @@ export function useSavedMarketEvidence(parcelId: string) {
     upsertCandidate,
     dismissCandidate,
     savePropertyIdentity,
+    saveMarketAddressIntelligence,
   };
 }

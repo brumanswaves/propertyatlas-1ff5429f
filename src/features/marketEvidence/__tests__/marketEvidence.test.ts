@@ -5,10 +5,22 @@ import {
   runActiveListingRadar,
   scoreListingCandidate,
 } from "../activeListingRadar";
+import {
+  buildAddressCandidate,
+  googleMapsPointUrl,
+  marketAddressToPropertyIdentityOverride,
+  parseMarketAddressIntelligence,
+} from "../addressIntelligence";
+import {
+  filterCandidatesByArea,
+  filterCandidatesByPropertyType,
+  filterCandidatesBySource,
+  runAreaListingRadar,
+} from "../areaRadar";
 import { calculateMarketEvidenceSummary } from "../calculateMarketEvidenceSummary";
 import { generateMarketEvidenceActions } from "../generateMarketEvidenceActions";
 import { buildSimpleListingSearches, resolvePropertyIdentity } from "../propertyIdentity";
-import type { ListingCandidate, SavedMarketEvidence } from "../types";
+import type { AreaRadarOptions, ListingCandidate, SavedMarketEvidence } from "../types";
 
 function parcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -226,6 +238,151 @@ describe("property identity and simple listing searches", () => {
     expect(portals).toContain("Property24");
     expect(portals).toContain("Private Property");
     expect(portals.some((portal) => /Google/i.test(portal))).toBe(false);
+  });
+});
+
+describe("address intelligence and area radar", () => {
+  const options = (overrides: Partial<AreaRadarOptions> = {}): AreaRadarOptions => ({
+    scope: "10km",
+    source: "all",
+    propertyType: "all",
+    sort: "best_match",
+    ...overrides,
+  });
+  const listing = (overrides: Partial<ListingCandidate> = {}): ListingCandidate => ({
+    id: "area-candidate",
+    sourceType: "manual_import",
+    sourcePortal: "Property24",
+    sourceUrl: "https://www.property24.com/listing/area",
+    title: "Cape St Francis vacant land",
+    askingPrice: 1_500_000,
+    propertyType: "Vacant land",
+    locationText: "Cape St Francis",
+    microMarket: "Cape St Francis",
+    suburb: "Cape St Francis",
+    town: "St Francis Bay",
+    municipality: "Kouga",
+    province: "Eastern Cape",
+    streetName: "Harbour Drive",
+    descriptionText: "Vacant stand in Cape St Francis",
+    beds: null,
+    baths: null,
+    landSizeM2: 900,
+    buildingSizeM2: null,
+    agencyName: null,
+    imageUrl: null,
+    listingStatus: "active",
+    fetchedAt: null,
+    lastSeenAt: "2026-06-01T00:00:00.000Z",
+    importedAt: "2026-06-01T00:00:00.000Z",
+    rawSourceArea: "Cape St Francis",
+    lat: -34.1001,
+    lng: 24.8001,
+    ...overrides,
+  });
+
+  it("builds a Google Maps parcel point URL without requiring an API key", () => {
+    expect(googleMapsPointUrl({ lat: -34.1, lng: 24.8 })).toBe(
+      "https://www.google.com/maps/search/?api=1&query=-34.1,24.8",
+    );
+  });
+
+  it("stores user-entered address intelligence without overwriting official parcel address", () => {
+    const candidate = buildAddressCandidate({
+      formattedAddress: "10 Harbour Drive, Cape St Francis",
+      streetNumber: "10",
+      streetName: "Harbour Drive",
+      suburb: "Cape St Francis",
+      source: "user_entered",
+    });
+    const parsed = parseMarketAddressIntelligence({
+      selectedAddressId: candidate.id,
+      candidates: [candidate],
+      userConfirmedAddress: candidate,
+    });
+    const override = marketAddressToPropertyIdentityOverride(candidate);
+    const official = resolvePropertyIdentity(parcel());
+    const market = resolvePropertyIdentity(parcel(), override);
+
+    expect(parsed?.userConfirmedAddress?.formattedAddress).toBe(
+      "10 Harbour Drive, Cape St Francis",
+    );
+    expect(official.bestAddress).toBe("8 Harbour Drive");
+    expect(market.bestAddress).toBe("10 Harbour Drive, Cape St Francis");
+  });
+
+  it("uses selected market address for radar scoring", () => {
+    const marketAddress = buildAddressCandidate({
+      formattedAddress: "10 Harbour Drive, Cape St Francis",
+      streetName: "Harbour Drive",
+      suburb: "Cape St Francis",
+    });
+    const match = scoreListingCandidate(
+      parcel({ knownFields: [] }),
+      listing({
+        title: "10 Harbour Drive Cape St Francis",
+        locationText: "10 Harbour Drive, Cape St Francis",
+      }),
+      marketAddress,
+    );
+
+    expect(match.matchedSignals).toContain("exact_address_match");
+  });
+
+  it("filters 10km coordinate candidates and keeps text-only area matches", () => {
+    const candidates = [
+      listing({ id: "near", lat: -34.101, lng: 24.801 }),
+      listing({ id: "text-only", lat: null, lng: null, suburb: "Cape St Francis" }),
+      listing({
+        id: "far",
+        title: "Sandton townhouse",
+        locationText: "Sandton",
+        microMarket: null,
+        rawSourceArea: "Sandton",
+        descriptionText: "Urban townhouse",
+        lat: -26.2,
+        lng: 28.0,
+        suburb: "Sandton",
+        town: "Johannesburg",
+      }),
+    ];
+    const filtered = filterCandidatesByArea(parcel(), candidates, options({ scope: "10km" }));
+
+    expect(filtered.map((item) => item.id)).toContain("near");
+    expect(filtered.map((item) => item.id)).toContain("text-only");
+    expect(filtered.map((item) => item.id)).not.toContain("far");
+  });
+
+  it("filters by source and property type", () => {
+    const candidates = [
+      listing({ id: "p24-land", sourcePortal: "Property24", propertyType: "Vacant land" }),
+      listing({
+        id: "seeff-house",
+        sourcePortal: "Seeff",
+        propertyType: "House",
+        title: "Family house",
+        descriptionText: "Residential house",
+      }),
+    ];
+
+    expect(filterCandidatesBySource(candidates, "Property24").map((item) => item.id)).toEqual([
+      "p24-land",
+    ]);
+    expect(
+      filterCandidatesByPropertyType(candidates, "vacant_land").map((item) => item.id),
+    ).toEqual(["p24-land"]);
+  });
+
+  it("runs area radar with candidate area reasons and never claims live portal scan", () => {
+    const results = runAreaListingRadar(
+      parcel(),
+      [listing()],
+      options({ source: "Property24", propertyType: "vacant_land" }),
+    );
+
+    expect(results[0].areaReasons).toContain("within 10km");
+    expect(results[0].areaReasons).toContain("source matches Property24");
+    expect(results[0].areaReasons).toContain("property type matches selected filter");
   });
 });
 
