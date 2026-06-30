@@ -10,7 +10,7 @@ interface AtlasPinProps {
 
 /**
  * ErfStop brand mark — official logo. Backwards-compatible export name (AtlasPin)
- * so all existing imports keep working after the PropertyAtlas → ErfStop rebrand.
+ * so all existing imports keep working after the ErfStop → ErfStop rebrand.
  * Use `variant="mark"` (default) for tight spaces / sidebar / saved cards,
  * `variant="horizontal"` for nav and hero, `variant="white"` on dark green surfaces.
  */

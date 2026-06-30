@@ -5,10 +5,10 @@ import { CheckCircle2, Circle, Sparkles } from "lucide-react";
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
     meta: [
-      { title: "PropertyAtlas Roadmap" },
+      { title: "ErfStop Roadmap" },
       { name: "description", content: "Current pilot in St Francis Bay, planned expansion across the Eastern Cape, Western Cape, and national coverage, plus future features." },
-      { property: "og:title", content: "PropertyAtlas Roadmap" },
-      { property: "og:description", content: "Where PropertyAtlas is today and where it's going next." },
+      { property: "og:title", content: "ErfStop Roadmap" },
+      { property: "og:description", content: "Where ErfStop is today and where it's going next." },
     ],
   }),
   component: Roadmap,
@@ -19,7 +19,7 @@ function Roadmap() {
     <MarketingPage
       eyebrow="Roadmap"
       title="Where we are. Where we're going."
-      subtitle="A high-level view of how PropertyAtlas is expanding."
+      subtitle="A high-level view of how ErfStop is expanding."
       intro="We share our direction openly so users, partners, and municipalities can plan around it. Specific timelines and proprietary strategy are intentionally not included."
     >
       <section className="grid gap-6 md:grid-cols-3">

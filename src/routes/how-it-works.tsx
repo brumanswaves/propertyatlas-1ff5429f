@@ -5,9 +5,9 @@ import { Search, Map, MousePointerClick, BarChart3, Bookmark, Crown } from "luci
 export const Route = createFileRoute("/how-it-works")({
   head: () => ({
     meta: [
-      { title: "How PropertyAtlas Works" },
+      { title: "How ErfStop Works" },
       { name: "description", content: "Search a property, explore the map, click a parcel, review intelligence, save and monitor — and unlock deeper insights with premium tools." },
-      { property: "og:title", content: "How PropertyAtlas Works" },
+      { property: "og:title", content: "How ErfStop Works" },
       { property: "og:description", content: "Six steps from search to deep property intelligence." },
     ],
   }),
@@ -29,7 +29,7 @@ function HowItWorks() {
       eyebrow="How it works"
       title="From a single search to a full property story."
       subtitle="Six steps. One map. Real intelligence."
-      intro="PropertyAtlas is designed around the way real research actually happens — visually, on a map, parcel by parcel."
+      intro="ErfStop is designed around the way real research actually happens — visually, on a map, parcel by parcel."
       heroCta={{ label: "Try the Map", to: "/" }}
     >
       <div className="grid gap-5 sm:grid-cols-2">

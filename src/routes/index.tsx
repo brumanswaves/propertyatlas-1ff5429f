@@ -179,7 +179,7 @@ function AtlasHome() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
-      <h1 className="sr-only">PropertyAtlas — Map-based property intelligence for South Africa</h1>
+      <h1 className="sr-only">ErfStop — Map-based property intelligence for South Africa</h1>
       <MapCanvas
         selectedId={selectedId}
         onSelect={handleMapSelect}

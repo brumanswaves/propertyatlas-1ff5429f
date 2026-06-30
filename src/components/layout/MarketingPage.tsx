@@ -15,7 +15,7 @@ interface MarketingPageProps {
 }
 
 export function MarketingPage({
-  eyebrow = "PropertyAtlas",
+  eyebrow = "ErfStop",
   title,
   subtitle,
   intro,

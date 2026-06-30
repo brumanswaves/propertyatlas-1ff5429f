@@ -7,10 +7,10 @@ import {
 export const Route = createFileRoute("/features")({
   head: () => ({
     meta: [
-      { title: "PropertyAtlas Features" },
+      { title: "ErfStop Features" },
       { name: "description", content: "CSG parcel map, erf research, Kouga public GIS context, research links, listing workspace, notes, calculators, and a future report marketplace." },
-      { property: "og:title", content: "PropertyAtlas Features" },
-      { property: "og:description", content: "Public-data property research for South Africa — what PropertyAtlas does today." },
+      { property: "og:title", content: "ErfStop Features" },
+      { property: "og:description", content: "Public-data property research for South Africa — what ErfStop does today." },
     ],
   }),
   component: Features,

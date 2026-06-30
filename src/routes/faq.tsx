@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "PropertyAtlas FAQ" },
-      { name: "description", content: "Answers to common questions about PropertyAtlas — accuracy, coverage, scores, plans, exports, and ownership records." },
-      { property: "og:title", content: "PropertyAtlas FAQ" },
+      { title: "ErfStop FAQ" },
+      { name: "description", content: "Answers to common questions about ErfStop — accuracy, coverage, scores, plans, exports, and ownership records." },
+      { property: "og:title", content: "ErfStop FAQ" },
       { property: "og:description", content: "Common questions about the platform, scores, and data." },
     ],
   }),
@@ -18,8 +18,8 @@ export const Route = createFileRoute("/faq")({
 
 const QA: Array<{ q: string; a: string }> = [
   {
-    q: "What is PropertyAtlas?",
-    a: "PropertyAtlas is a property intelligence platform. It combines maps, valuation insights, ownership data, sales history, and proprietary scoring into one research tool. It is not a listings website, brokerage, or valuation service.",
+    q: "What is ErfStop?",
+    a: "ErfStop is a property intelligence platform. It combines maps, valuation insights, ownership data, sales history, and proprietary scoring into one research tool. It is not a listings website, brokerage, or valuation service.",
   },
   {
     q: "How accurate are the estimates?",
@@ -27,7 +27,7 @@ const QA: Array<{ q: string; a: string }> = [
   },
   {
     q: "What areas are covered?",
-    a: "PropertyAtlas is currently live as a pilot in the St Francis Bay region. We are expanding gradually — first across the Eastern Cape, then nationally.",
+    a: "ErfStop is currently live as a pilot in the St Francis Bay region. We are expanding gradually — first across the Eastern Cape, then nationally.",
   },
   {
     q: "How often is data updated?",
@@ -51,11 +51,11 @@ const QA: Array<{ q: string; a: string }> = [
   },
   {
     q: "What data sources are used?",
-    a: "PropertyAtlas may incorporate public records, licensed datasets, municipal data, geospatial layers, mapping providers, user submissions, and automated analysis. See the Data Sources page for more.",
+    a: "ErfStop may incorporate public records, licensed datasets, municipal data, geospatial layers, mapping providers, user submissions, and automated analysis. See the Data Sources page for more.",
   },
   {
-    q: "Is PropertyAtlas a valuation service?",
-    a: "No. PropertyAtlas is a research and information platform. All value indications are estimates only and are not certified valuations. We are not a brokerage, valuer, advisor, or law firm.",
+    q: "Is ErfStop a valuation service?",
+    a: "No. ErfStop is a research and information platform. All value indications are estimates only and are not certified valuations. We are not a brokerage, valuer, advisor, or law firm.",
   },
 ];
 
