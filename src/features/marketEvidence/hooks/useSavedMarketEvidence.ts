@@ -54,7 +54,7 @@ function parseCandidates(value: unknown): ListingCandidate[] {
     .filter(isRecord)
     .map((item) => ({
       id: String(item.id ?? crypto.randomUUID()),
-      sourceType: item.sourceType === "source_backed_seed" ? "source_backed_seed" : "manual_import",
+      sourceType: (item.sourceType === "source_backed_seed" ? "source_backed_seed" : "manual_import") as ListingCandidate["sourceType"],
       sourcePortal: String(item.sourcePortal ?? "Other"),
       sourceUrl: String(item.sourceUrl ?? ""),
       title: String(item.title ?? "Imported listing candidate"),
