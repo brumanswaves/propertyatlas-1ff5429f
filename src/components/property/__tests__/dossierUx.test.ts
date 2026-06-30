@@ -26,6 +26,21 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("sticky top-0 z-30");
   });
 
+  it("surfaces ErfStoep intelligence immediately on official map click", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+
+    expect(panel).toContain("Stoep AI First Read");
+    expect(panel).toContain("Early read");
+    expect(panel).toContain("Needs evidence");
+    expect(panel).toContain("Stoep Score");
+    expect(panel).toContain("Evidence status");
+    expect(panel).toContain("Next best step");
+    expect(panel).toContain("Optional confidence upgrade");
+    expect(panel).toContain("You can continue without buying a report");
+    expect(panel).toContain("Open full Erf Research Dossier");
+    expect(panel).toContain("Paid reports improve confidence");
+  });
+
   it("marks source actions checked in local session state", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
 

@@ -78,6 +78,32 @@ function readInitialTab(): Tab {
   return value === "calc" || value === "calculators" ? "calculators" : "overview";
 }
 
+function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
+  if (parcel.lpi || parcel.parcelKey) return "Medium confidence";
+  if (parcel.erfNumber && (parcel.municipality || parcel.province)) return "Needs source check";
+  return "Needs evidence";
+}
+
+function panelNextBestStep(parcel: NormalizedOfficialParcel): string {
+  if (parcel.lpi || parcel.parcelKey) return "Confirm Official Identity";
+  if (parcel.erfNumber) return "Check official CSG / SG sources";
+  return "Save the erf and gather evidence";
+}
+
+function panelFirstRead(parcel: NormalizedOfficialParcel): string {
+  const identity = [
+    parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "this official erf",
+    parcel.portion != null && String(parcel.portion) !== "0" ? `Portion ${parcel.portion}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const location = [parcel.suburbOrArea, parcel.municipality, parcel.province]
+    .filter(Boolean)
+    .join(", ");
+
+  return `${identity}${location ? ` in ${location}` : ""} has enough public context for an early read. Ownership, valuation, zoning, sales history and GIS precision still need verified evidence.`;
+}
+
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
 type Geo = {
@@ -246,6 +272,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const [geo, setGeo] = useState<Geo | null>(null);
   const [saved, setSaved] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const dossierContentRef = useRef<HTMLDivElement | null>(null);
 
   const [lng, lat] = selection.lngLat;
   const objectId =
@@ -454,6 +481,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     }
   }
 
+  function openFullDossier() {
+    setTab("overview");
+    requestAnimationFrame(() => {
+      dossierContentRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   return (
     <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel max-md:inset-y-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:rounded-none md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[min(54vw,980px)] md:min-w-[680px] md:rounded-l-3xl md:rounded-tr-none md:border-l xl:max-w-[1040px]">
       <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-border bg-card/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]">
@@ -507,6 +541,71 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8"
       >
+        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#eadfd1] bg-[linear-gradient(145deg,#fffaf2_0%,#fff6eb_58%,#f7dfbf_100%)] p-4 shadow-[0_14px_36px_rgba(68,49,25,0.08)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#0d1b2a] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+              <Sparkles className="h-3 w-3" /> Stoep AI First Read
+            </span>
+            <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#8a561d] ring-1 ring-[#edcf9c]">
+              Early read
+            </span>
+            <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#9f1239] ring-1 ring-rose-200">
+              Needs evidence
+            </span>
+          </div>
+
+          <p className="mt-3 text-[14px] leading-6 text-[#263735]">
+            {panelFirstRead(normalizedParcel)}
+          </p>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
+                Stoep Score
+              </div>
+              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">Early / estimated</div>
+              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
+                Placeholder only, not a valuation or recommendation.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
+                Evidence status
+              </div>
+              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">
+                {panelIdentityConfidence(normalizedParcel)}
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
+                Optional confidence upgrade available later.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
+                Next best step
+              </div>
+              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">
+                {panelNextBestStep(normalizedParcel)}
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
+                You can continue without buying a report.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={openFullDossier}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0d1b2a] px-4 py-2 text-xs font-semibold text-white hover:bg-[#132840]"
+            >
+              Open full Erf Research Dossier
+            </button>
+            <span className="text-[11px] leading-5 text-[#6b5b4d]">
+              Paid reports improve confidence; they do not unlock the basic workflow.
+            </span>
+          </div>
+        </section>
+
         <div className="sticky top-0 z-10 border-b border-border bg-card">
           <div className="relative">
             <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:hidden">
@@ -550,7 +649,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </div>
 
-        <div className="px-5 pt-4">
+        <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && (
             <ErfResearchDossier parcel={normalizedParcel} onSelectView={(view) => setTab(view)} />
           )}
