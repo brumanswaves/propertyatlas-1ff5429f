@@ -428,7 +428,7 @@ function SavedPropertyRow({
             </span>
           )}
           {demo && (
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
               Demo property
             </span>
           )}

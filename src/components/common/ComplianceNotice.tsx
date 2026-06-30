@@ -22,7 +22,7 @@ export function ComplianceNotice({ tone = "default", variant = "research", child
         "mt-4 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] leading-snug " +
         (tone === "soft"
           ? "border-border/60 bg-muted/40 text-muted-foreground"
-          : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-200")
+          : "border-accent/20 bg-accent/10 text-accent dark:border-accent/30 dark:bg-accent/10 dark:text-accent")
       }
     >
       <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />

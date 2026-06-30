@@ -102,7 +102,7 @@ function PricingPage() {
           {TIERS.map((t) => (
             <div key={t.name} className="relative flex flex-col rounded-3xl border border-border bg-card p-6">
               {t.badge && (
-                <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-accent/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
                   <Lock className="h-3 w-3" /> {t.badge}
                 </span>
               )}

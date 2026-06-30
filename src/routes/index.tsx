@@ -355,7 +355,7 @@ function AtlasHome() {
       <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
         {demoMode ? (
           <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
               Demo Data
             </span>
             Pilot region · St Francis Bay. Mock property information shown for demonstration.
@@ -412,7 +412,7 @@ function DebugReopenPanel({
       <div className="text-base font-black uppercase tracking-wide text-red-300">
         PROPERTYATLAS DEBUG BUILD
       </div>
-      <div className="mt-1 text-sm font-bold text-yellow-300">
+      <div className="mt-1 text-sm font-bold text-accent">
         Build label: saved-reopen-debug-v1
       </div>
 
@@ -474,7 +474,7 @@ function OfficialPill({
           : `Kouga zoning loaded (imported): ${status.count}`,
     },
     test: {
-      tone: "bg-amber-500/20 text-amber-800 dark:text-amber-300",
+      tone: "bg-accent/20 text-accent dark:text-accent",
       text: "TEST GEOMETRY ONLY — not official data",
     },
     empty: {

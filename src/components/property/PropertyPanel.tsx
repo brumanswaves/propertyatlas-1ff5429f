@@ -176,7 +176,7 @@ export function PropertyPanel({ property, onClose }: Props) {
             <span className="h-1 w-1 rounded-full bg-white/70" />
             Estimate Only • Not a Certified Valuation
           </div>
-          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-950">
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
             Demo Data · Mock property information shown for demonstration
           </div>
         </div>
@@ -518,7 +518,7 @@ function ScoreCard({
   const tone =
     value >= 80 ? "text-emerald-600 dark:text-emerald-400"
     : value >= 60 ? "text-primary"
-    : value >= 40 ? "text-amber-600 dark:text-amber-400"
+    : value >= 40 ? "text-accent dark:text-accent"
     : "text-muted-foreground";
   const conf = Math.round(confidence * 100);
   const confLabel = conf >= 85 ? "High" : conf >= 70 ? "Medium" : "Low";
@@ -759,7 +759,7 @@ const KIND_TONE: Record<HistoryKind, string> = {
   listed: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20",
   rented: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
   withdrawn: "bg-muted text-muted-foreground border-border",
-  valuation: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  valuation: "bg-accent/10 text-accent dark:text-accent border-amber-500/20",
   renovation: "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
 };
 

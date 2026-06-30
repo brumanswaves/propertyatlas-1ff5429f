@@ -46,7 +46,7 @@ function Roadmap() {
         />
       </section>
 
-      <section className="mt-12 rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6 text-sm leading-relaxed text-foreground">
+      <section className="mt-12 rounded-3xl border border-accent/30 bg-accent/5 p-6 text-sm leading-relaxed text-foreground">
         Roadmap items are directional and may change. Nothing on this page is a commitment, a forecast, or an obligation to deliver
         any specific feature in any specific timeframe.
       </section>
