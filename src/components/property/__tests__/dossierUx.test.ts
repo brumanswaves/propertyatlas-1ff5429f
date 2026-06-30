@@ -77,9 +77,32 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("Active Listing Radar");
     expect(tab).toContain("Find possible exact match");
     expect(tab).toContain("Search area listings");
+    expect(tab).toContain("Run Area Radar");
+    expect(tab).toContain("Run Exact Radar");
     expect(tab).toContain("Fallback Search Tools");
     expect(tab).toContain("PropertyAtlas does not scan portals live");
+    expect(tab).toContain("Use these manual tools only when the radar has no candidates");
     expect(tab).not.toContain("Show hidden / weak candidates");
+  });
+
+  it("keeps manual address, candidate import and triage actions explicit", () => {
+    const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+
+    expect(tab).toContain("Save market address");
+    expect(tab).toContain(
+      "Address autocomplete is skipped unless a Google Places service is available",
+    );
+    expect(tab).toContain("marketAddressIntelligence");
+    expect(tab).toContain("No listing candidates have been added for this area yet.");
+    expect(tab).toContain("No candidates matched this area/source/type filter.");
+    expect(tab).toContain("Import listing candidate");
+    expect(tab).toContain("Target property");
+    expect(tab).toContain("Same street comp");
+    expect(tab).toContain("Same node comp");
+    expect(tab).toContain("Vacant land comp");
+    expect(tab).toContain("Nearby comp");
+    expect(tab).toContain("Broader comp");
+    expect(tab).toContain("Dismiss");
   });
 
   it("uses warmer simple listings and comps surfaces", () => {

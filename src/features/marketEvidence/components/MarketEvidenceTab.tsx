@@ -132,13 +132,18 @@ type CandidateDraft = {
   propertyType: string;
   locationText: string;
   suburb: string;
+  microMarket: string;
   town: string;
   municipality: string;
   province: string;
   streetName: string;
+  beds: string;
+  baths: string;
   landSizeM2: string;
+  buildingSizeM2: string;
   lat: string;
   lng: string;
+  notes: string;
 };
 
 type AddressDraft = {
@@ -179,13 +184,18 @@ function emptyCandidateDraft(
     propertyType: "",
     locationText: identity.bestAddress ?? "",
     suburb: identity.marketSuburb ?? identity.officialSuburb ?? "",
+    microMarket: identity.marketSuburb ?? identity.officialSuburb ?? "",
     town: identity.town ?? "",
     municipality: identity.municipality ?? "",
     province: identity.province ?? "",
     streetName: identity.streetName ?? "",
+    beds: "",
+    baths: "",
     landSizeM2: identity.landSizeM2 ? String(identity.landSizeM2) : "",
+    buildingSizeM2: "",
     lat: parcel.coordinates?.lat != null ? String(parcel.coordinates.lat) : "",
     lng: parcel.coordinates?.lng != null ? String(parcel.coordinates.lng) : "",
+    notes: "",
   };
 }
 
@@ -302,9 +312,11 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     propertyIdentity,
     marketAddressIntelligence,
     candidates,
+    dismissedCandidateIds,
     upsertEvidence,
     deleteEvidence,
     upsertCandidate,
+    dismissCandidate,
     savePropertyIdentity,
     saveMarketAddressIntelligence,
   } = useSavedMarketEvidence(parcel.id);
@@ -345,18 +357,34 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     sort: "best_match",
   });
   const [radarRan, setRadarRan] = useState(false);
+  const [radarResults, setRadarResults] = useState<Array<RadarCandidateResult | AreaRadarResult>>(
+    [],
+  );
+  const activeCandidates = useMemo(
+    () => candidates.filter((candidate) => !dismissedCandidateIds.includes(candidate.id)),
+    [candidates, dismissedCandidateIds],
+  );
 
   const exactResults = useMemo(
-    () => runActiveListingRadar(parcel, candidates, selectedAddress),
-    [parcel, candidates, selectedAddress],
+    () => runActiveListingRadar(parcel, activeCandidates, selectedAddress),
+    [parcel, activeCandidates, selectedAddress],
   );
   const areaResults = useMemo(
-    () => runAreaListingRadar(parcel, candidates, areaOptions, marketAddressIntelligence),
-    [parcel, candidates, areaOptions, marketAddressIntelligence],
+    () => runAreaListingRadar(parcel, activeCandidates, areaOptions, marketAddressIntelligence),
+    [parcel, activeCandidates, areaOptions, marketAddressIntelligence],
   );
-  const visibleRadarResults = radarMode === "area_listings" ? areaResults : exactResults;
   const mapsUrl = googleMapsPointUrl(parcel.coordinates);
   const areaChips = suggestedAreaChips(identity);
+
+  function runRadar() {
+    setRadarRan(true);
+    setRadarResults(radarMode === "area_listings" ? areaResults : exactResults);
+  }
+
+  useEffect(() => {
+    if (!radarRan) return;
+    setRadarResults(radarMode === "area_listings" ? areaResults : exactResults);
+  }, [areaResults, exactResults, radarMode, radarRan]);
 
   useEffect(() => {
     setIdentityDraft({
@@ -407,7 +435,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       lat: parcel.coordinates?.lat ?? null,
       lng: parcel.coordinates?.lng ?? null,
       source,
-      confidence: "unverified",
+      confidence: "medium",
       reason:
         "Market address is used for portal matching. It does not replace official parcel data.",
     });
@@ -463,17 +491,17 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       askingPrice: n(candidateDraft.askingPrice),
       propertyType: candidateDraft.propertyType.trim() || null,
       locationText: candidateDraft.locationText.trim() || null,
-      microMarket: candidateDraft.suburb.trim() || null,
+      microMarket: candidateDraft.microMarket.trim() || candidateDraft.suburb.trim() || null,
       suburb: candidateDraft.suburb.trim() || null,
       town: candidateDraft.town.trim() || null,
       municipality: candidateDraft.municipality.trim() || null,
       province: candidateDraft.province.trim() || null,
       streetName: candidateDraft.streetName.trim() || null,
-      descriptionText: null,
-      beds: null,
-      baths: null,
+      descriptionText: candidateDraft.notes.trim() || null,
+      beds: n(candidateDraft.beds),
+      baths: n(candidateDraft.baths),
       landSizeM2: n(candidateDraft.landSizeM2),
-      buildingSizeM2: null,
+      buildingSizeM2: n(candidateDraft.buildingSizeM2),
       agencyName: null,
       imageUrl: null,
       listingStatus: "imported",
@@ -526,6 +554,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     relationship: MarketEvidenceRelationship,
   ) {
     await upsertEvidence(evidenceFromCandidate(result.candidate, result.match, relationship));
+    await dismissCandidate(result.candidate.id);
   }
 
   return (
@@ -567,24 +596,20 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         setMode={setRadarMode}
         options={areaOptions}
         setOptions={setAreaOptions}
-        candidates={candidates}
-        results={visibleRadarResults}
+        candidates={activeCandidates}
+        results={radarResults}
         radarRan={radarRan}
         setRadarRan={setRadarRan}
+        onRunRadar={runRadar}
         showCandidateForm={showCandidateForm}
         setShowCandidateForm={setShowCandidateForm}
         candidateDraft={candidateDraft}
         setCandidateDraft={setCandidateDraft}
         onSaveCandidate={saveCandidate}
         onVerifyCandidate={verifyCandidate}
+        onDismissCandidate={dismissCandidate}
         identity={identity}
-        copy={copy}
-      />
-
-      <FallbackSearchTools
-        searches={searches}
-        identity={identity}
-        areaOptions={areaOptions}
+        mapsUrl={mapsUrl}
         copy={copy}
       />
 
@@ -606,6 +631,11 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           <p className="mt-1 text-sm text-emerald-900">
             Simple math from saved comps only. Unverified radar candidates do not affect this.
           </p>
+          {!summary.hasUsablePriceData && (
+            <p className="mt-3 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-2 text-sm text-emerald-900">
+              Saved evidence added. Add price and land size to calculate R/m2.
+            </p>
+          )}
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <Metric label="Saved comps" value={String(summary.totalEvidence)} />
             <Metric label="Included comps" value={String(summary.includedEvidence)} />
@@ -634,6 +664,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           </div>
         </section>
       )}
+
+      <FallbackSearchTools
+        searches={searches}
+        identity={identity}
+        areaOptions={areaOptions}
+        copy={copy}
+      />
     </div>
   );
 }
@@ -941,6 +978,11 @@ function AddressIntelligenceSection({
           onSave={onSave}
           disabled={!savedPropertyExists}
           fallbackArea={identity.marketSuburb ?? identity.town ?? ""}
+          suggestions={[
+            identity.bestAddress,
+            suggested?.formattedAddress,
+            ...candidates.map((candidate) => candidate.formattedAddress),
+          ].filter(Boolean)}
         />
       )}
     </section>
@@ -953,21 +995,29 @@ function AddressForm({
   onSave,
   disabled,
   fallbackArea,
+  suggestions,
 }: {
   draft: AddressDraft;
   setDraft: (draft: AddressDraft) => void;
   onSave: () => void;
   disabled: boolean;
   fallbackArea: string;
+  suggestions: string[];
 }) {
   return (
     <div className="mt-4 grid gap-2 rounded-2xl border border-stone-200 bg-white/80 p-3">
       <input
         className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
         placeholder="Formatted address"
+        list="market-address-suggestions"
         value={draft.formattedAddress}
         onChange={(event) => setDraft({ ...draft, formattedAddress: event.target.value })}
       />
+      <datalist id="market-address-suggestions">
+        {Array.from(new Set(suggestions)).map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
+        ))}
+      </datalist>
       <div className="grid gap-2 sm:grid-cols-2">
         <input
           className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
@@ -1007,13 +1057,17 @@ function AddressForm({
         value={draft.notes}
         onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
       />
+      <p className="text-xs text-stone-600">
+        Address autocomplete is skipped unless a Google Places service is available. Manual entry
+        works without an API key.
+      </p>
       <button
         type="button"
         onClick={onSave}
         disabled={disabled}
         className={`${PILL_PRIMARY} w-fit disabled:opacity-50`}
       >
-        <BookmarkCheck className="h-4 w-4" /> Use selected address
+        <BookmarkCheck className="h-4 w-4" /> Save market address
       </button>
     </div>
   );
@@ -1028,13 +1082,16 @@ function RadarConsole({
   results,
   radarRan,
   setRadarRan,
+  onRunRadar,
   showCandidateForm,
   setShowCandidateForm,
   candidateDraft,
   setCandidateDraft,
   onSaveCandidate,
   onVerifyCandidate,
+  onDismissCandidate,
   identity,
+  mapsUrl,
   copy,
 }: {
   mode: AreaRadarMode;
@@ -1045,6 +1102,7 @@ function RadarConsole({
   results: Array<RadarCandidateResult | AreaRadarResult>;
   radarRan: boolean;
   setRadarRan: (value: boolean) => void;
+  onRunRadar: () => void;
   showCandidateForm: boolean;
   setShowCandidateForm: (value: boolean) => void;
   candidateDraft: CandidateDraft;
@@ -1054,7 +1112,9 @@ function RadarConsole({
     result: RadarCandidateResult | AreaRadarResult,
     relationship: MarketEvidenceRelationship,
   ) => void;
+  onDismissCandidate: (id: string) => void;
   identity: PropertyIdentity;
+  mapsUrl: string | null;
   copy: (phrase: string) => void;
 }) {
   const fallbackPhrase = areaPhrase(identity, options);
@@ -1081,7 +1141,7 @@ function RadarConsole({
           type="button"
           onClick={() => {
             setMode("exact_match");
-            setRadarRan(true);
+            setRadarRan(false);
           }}
           className={mode === "exact_match" ? CHOICE_ACTIVE : CHOICE}
         >
@@ -1091,7 +1151,7 @@ function RadarConsole({
           type="button"
           onClick={() => {
             setMode("area_listings");
-            setRadarRan(true);
+            setRadarRan(false);
           }}
           className={mode === "area_listings" ? CHOICE_ACTIVE : CHOICE}
         >
@@ -1139,8 +1199,8 @@ function RadarConsole({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={() => setRadarRan(true)} className={PILL_PRIMARY}>
-          Run radar
+        <button type="button" onClick={onRunRadar} className={PILL_PRIMARY}>
+          {mode === "area_listings" ? "Run Area Radar" : "Run Exact Radar"}
         </button>
         <button
           type="button"
@@ -1162,7 +1222,7 @@ function RadarConsole({
       {radarRan && candidates.length === 0 && (
         <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white/75 p-4">
           <p className="text-sm font-semibold">
-            No listing candidates are loaded for this area yet.
+            No listing candidates have been added for this area yet.
           </p>
           <p className="mt-1 text-sm text-stone-700">
             Active Listing Radar needs source-backed candidates to scan. Import a candidate manually
@@ -1177,7 +1237,19 @@ function RadarConsole({
               Import candidate manually
             </button>
             <button type="button" onClick={() => copy(fallbackPhrase)} className={PILL_SECONDARY}>
-              Copy fallback search phrase
+              Open fallback search tools
+            </button>
+            {mapsUrl && (
+              <button
+                type="button"
+                onClick={(event) => openExternalUrl(mapsUrl, event)}
+                className={PILL_SECONDARY}
+              >
+                Open Google Maps parcel point
+              </button>
+            )}
+            <button type="button" onClick={() => copy(fallbackPhrase)} className={PILL_SECONDARY}>
+              Choose broader area scan
             </button>
             <button
               type="button"
@@ -1194,12 +1266,42 @@ function RadarConsole({
         <div className="mt-4 rounded-2xl border border-dashed border-stone-300 bg-white/75 p-4">
           <p className="text-sm font-semibold">
             {mode === "area_listings"
-              ? `No cached ${options.source === "all" ? "" : `${options.source} `}candidates are available yet for this area.`
+              ? "No candidates matched this area/source/type filter."
               : "No candidates cleared the radar threshold."}
           </p>
           <p className="mt-1 text-sm text-stone-700">
             Open a portal and use the selected area search below, or import a candidate manually.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setOptions({ ...options, scope: "10km" })}
+              className={PILL_SECONDARY}
+            >
+              Broaden to 10km
+            </button>
+            <button
+              type="button"
+              onClick={() => setOptions({ ...options, source: "all" })}
+              className={PILL_SECONDARY}
+            >
+              Switch source to All sources
+            </button>
+            <button
+              type="button"
+              onClick={() => setOptions({ ...options, propertyType: "all" })}
+              className={PILL_SECONDARY}
+            >
+              Switch property type to All
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCandidateForm(true)}
+              className={PILL_SECONDARY}
+            >
+              Import candidate manually
+            </button>
+          </div>
           <div className="mt-3 rounded-2xl bg-stone-50 px-3 py-2 text-sm font-semibold">
             {fallbackPhrase}
           </div>
@@ -1209,7 +1311,12 @@ function RadarConsole({
       {radarRan && results.length > 0 && (
         <div className="mt-4 grid gap-3">
           {results.map((result) => (
-            <CandidateCard key={result.candidate.id} result={result} onVerify={onVerifyCandidate} />
+            <CandidateCard
+              key={result.candidate.id}
+              result={result}
+              onVerify={onVerifyCandidate}
+              onDismiss={onDismissCandidate}
+            />
           ))}
         </div>
       )}
@@ -1234,8 +1341,9 @@ function FallbackSearchTools({
         Fallback Search Tools
       </summary>
       <p className="mt-2 text-sm text-stone-600">
-        Use these when the cached candidate pool is empty. Google search is fallback only; Google
-        Maps is allowed for address intelligence.
+        Use these manual tools only when the radar has no candidates or when you want to search
+        portals yourself. Google search is fallback only; Google Maps is allowed for address
+        intelligence.
       </p>
       <div className="mt-4 grid gap-3">
         {[
@@ -1396,6 +1504,12 @@ function CandidateForm({
         />
         <input
           className={FIELD}
+          placeholder="Micro-market"
+          value={draft.microMarket}
+          onChange={(event) => setDraft({ ...draft, microMarket: event.target.value })}
+        />
+        <input
+          className={FIELD}
           placeholder="Town"
           value={draft.town}
           onChange={(event) => setDraft({ ...draft, town: event.target.value })}
@@ -1421,6 +1535,27 @@ function CandidateForm({
         />
         <input
           className={FIELD}
+          placeholder="Building size m2"
+          inputMode="decimal"
+          value={draft.buildingSizeM2}
+          onChange={(event) => setDraft({ ...draft, buildingSizeM2: event.target.value })}
+        />
+        <input
+          className={FIELD}
+          placeholder="Beds"
+          inputMode="decimal"
+          value={draft.beds}
+          onChange={(event) => setDraft({ ...draft, beds: event.target.value })}
+        />
+        <input
+          className={FIELD}
+          placeholder="Baths"
+          inputMode="decimal"
+          value={draft.baths}
+          onChange={(event) => setDraft({ ...draft, baths: event.target.value })}
+        />
+        <input
+          className={FIELD}
           placeholder="Latitude optional"
           inputMode="decimal"
           value={draft.lat}
@@ -1434,8 +1569,15 @@ function CandidateForm({
           onChange={(event) => setDraft({ ...draft, lng: event.target.value })}
         />
       </div>
+      <textarea
+        className={FIELD}
+        rows={2}
+        placeholder="Notes or description text"
+        value={draft.notes}
+        onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
+      />
       <button type="button" onClick={onSave} className={`${PILL_PRIMARY} w-fit`}>
-        <BookmarkCheck className="h-4 w-4" /> Import candidate
+        <BookmarkCheck className="h-4 w-4" /> Import listing candidate
       </button>
     </div>
   );
@@ -1444,14 +1586,17 @@ function CandidateForm({
 function CandidateCard({
   result,
   onVerify,
+  onDismiss,
 }: {
   result: RadarCandidateResult | AreaRadarResult;
   onVerify: (
     result: RadarCandidateResult | AreaRadarResult,
     relationship: MarketEvidenceRelationship,
   ) => void;
+  onDismiss: (id: string) => void;
 }) {
   const areaReasons = "areaReasons" in result ? result.areaReasons : [];
+  const classification = result.match.classification.replace(/_/g, " ");
   return (
     <article className="rounded-2xl border border-stone-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1460,8 +1605,19 @@ function CandidateCard({
           <p className="mt-1 text-sm text-stone-600">
             {result.candidate.sourcePortal} · {money(result.candidate.askingPrice)}
           </p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            {classification}
+          </p>
         </div>
         <Badge>{result.match.score} radar score</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 text-sm text-stone-700 sm:grid-cols-2">
+        <div>Property type: {result.candidate.propertyType ?? "Not supplied"}</div>
+        <div>Land size: {result.candidate.landSizeM2 ?? "Not supplied"} m2</div>
+        <div>Building size: {result.candidate.buildingSizeM2 ?? "Not supplied"} m2</div>
+        <div>
+          Location: {result.candidate.locationText ?? result.candidate.suburb ?? "Not supplied"}
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {[...result.match.reasons, ...areaReasons].map((reason) => (
@@ -1471,24 +1627,52 @@ function CandidateCard({
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
+          onClick={() => onVerify(result, "target_asset")}
+          className={PILL_PRIMARY}
+        >
+          Target property
+        </button>
+        <button
+          type="button"
           onClick={() => onVerify(result, "possible_target_asset")}
           className={PILL_PRIMARY}
         >
-          Verify as possible exact listing
+          Possible target
+        </button>
+        <button
+          type="button"
+          onClick={() => onVerify(result, "same_street_comp")}
+          className={PILL_SECONDARY}
+        >
+          Same street comp
+        </button>
+        <button
+          type="button"
+          onClick={() => onVerify(result, "same_node_comp")}
+          className={PILL_SECONDARY}
+        >
+          Same node comp
         </button>
         <button
           type="button"
           onClick={() => onVerify(result, "same_suburb_comp")}
           className={PILL_SECONDARY}
         >
-          Verify as nearby comp
+          Nearby comp
         </button>
         <button
           type="button"
           onClick={() => onVerify(result, "vacant_land_comp")}
           className={PILL_SECONDARY}
         >
-          Verify as vacant land comp
+          Vacant land comp
+        </button>
+        <button
+          type="button"
+          onClick={() => onVerify(result, "broader_market_comp")}
+          className={PILL_SECONDARY}
+        >
+          Broader comp
         </button>
         <button
           type="button"
@@ -1496,6 +1680,13 @@ function CandidateCard({
           className={PILL_SECONDARY}
         >
           Not relevant
+        </button>
+        <button
+          type="button"
+          onClick={() => onDismiss(result.candidate.id)}
+          className={PILL_SECONDARY}
+        >
+          Dismiss
         </button>
       </div>
     </article>
