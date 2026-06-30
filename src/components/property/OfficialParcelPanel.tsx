@@ -489,9 +489,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   return (
-    <aside className="pointer-events-auto fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border border-border bg-card shadow-panel max-md:inset-y-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:rounded-none md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-screen md:max-h-screen md:w-[min(54vw,980px)] md:min-w-[680px] md:rounded-l-3xl md:rounded-tr-none md:border-l xl:max-w-[1040px]">
-      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-border bg-card/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+    <aside className="pointer-events-auto fixed inset-y-0 right-0 z-50 flex h-[100dvh] w-full flex-col border-l border-[#0D1B2A]/10 bg-[#fbf8f1]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl max-md:inset-0 max-md:w-full md:left-auto md:w-[min(88vw,1440px)] md:min-w-[960px] md:rounded-l-[2rem]">
+      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-7">
         <div className="min-w-0">
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
+            Erf Workbench
+          </div>
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="h-3 w-3" /> Official Public Data
@@ -528,11 +531,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </button>
           <button
             onClick={onClose}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-stone-800 md:min-h-0 md:p-2"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#142941] md:px-4"
             aria-label="Back to map"
           >
             <X className="h-4 w-4" />
-            <span className="md:hidden">Map</span>
+            <span className="hidden sm:inline">Back to full map</span>
+            <span className="sm:hidden">Map</span>
           </button>
         </div>
       </header>
@@ -541,8 +545,29 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8"
       >
-        <section className="mx-4 mt-5 overflow-hidden rounded-[1.75rem] border border-[#0D1B2A]/8 bg-white shadow-[0_24px_60px_-24px_rgba(13,27,42,0.22)]">
-          <div className="relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_8%_0%,rgba(255,106,0,0.32),transparent_38%),linear-gradient(135deg,#06152A_0%,#0D1B2A_55%,#18324B_100%)] p-6 text-white sm:p-7">
+        <div className="px-4 pt-4 md:px-7 md:pt-6">
+          <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_15rem]">
+            <div className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/82 p-4 shadow-[0_14px_40px_-28px_rgba(13,27,42,0.35)] backdrop-blur">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                Research this erf
+              </div>
+              <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/72">
+                The live map remains behind this workbench for context. Use Back to full map when
+                you want to browse parcels again.
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white shadow-[0_18px_42px_-24px_rgba(13,27,42,0.55)]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+                Evidence readiness
+              </div>
+              <p className="mt-2 text-lg font-semibold">{panelIdentityConfidence(normalizedParcel)}</p>
+              <p className="mt-1 text-xs leading-5 text-white/70">Needs evidence before decisions.</p>
+            </div>
+          </div>
+        </div>
+
+        <section className="mx-4 overflow-hidden rounded-[1.75rem] border border-[#0D1B2A]/8 bg-white shadow-[0_24px_60px_-24px_rgba(13,27,42,0.22)] md:mx-7">
+          <div className="relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_8%_0%,rgba(255,106,0,0.28),transparent_38%),linear-gradient(135deg,#06152A_0%,#0D1B2A_55%,#18324B_100%)] p-6 text-white sm:p-7">
             <div className="absolute right-[-5rem] top-[-6rem] h-52 w-52 rounded-full bg-[#FF6A00]/22 blur-3xl" />
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
@@ -553,11 +578,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   Early read · needs evidence
                 </span>
               </div>
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FFB86B]">
+                Every erf. All the facts.
+              </p>
               <h3 className="mt-5 text-[26px] font-semibold leading-[1.15] tracking-tight text-white sm:text-[30px]">
                 {resolved.displayTitle}
               </h3>
               <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/82">
                 {panelFirstRead(normalizedParcel)}
+              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/72">
+                Early consultant-style read only: useful for deciding what to inspect next, not a
+                verified ownership, valuation, zoning, sales, slope, buildability, or GIS precision
+                claim.
               </p>
             </div>
 
@@ -583,7 +616,56 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </section>
 
-        <div className="sticky top-0 z-10 mx-4 mt-4 border-b border-[#0D1B2A]/10 bg-white/92 backdrop-blur">
+        <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                Ask Stoep
+              </div>
+              <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                What would you like to explore next?
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "Is this worth investigating?",
+                "What could make this risky?",
+                "What should I verify first?",
+                "Run a land flip check",
+                "Which evidence is missing?",
+              ].map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="rounded-full border border-[#0D1B2A]/10 bg-[#fff8ec] px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff1dc]"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
+          {[
+            ["Strategy Lab", "Choose a scenario"],
+            ["Report Vault", "Upload later if you purchase one"],
+            ["StoepSteps", "Follow the due diligence path"],
+            ["Optional confidence upgrade", "You can continue without buying a report"],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                {label}
+              </div>
+              <p className="mt-2 text-sm font-semibold leading-5 text-[#0D1B2A]">{value}</p>
+            </div>
+          ))}
+        </section>
+
+        <div className="sticky top-0 z-10 mx-4 mt-4 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/92 backdrop-blur md:mx-7">
           <div className="relative">
             <div className="scrollbar-thin flex gap-0.5 overflow-x-auto px-1">
               {TABS.map(({ id, label }) => {

@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("official dossier UX guardrails", () => {
-  it("uses a wider desktop official parcel panel and short scrollable tabs", () => {
+  it("uses a full-screen workbench-style official parcel panel and short scrollable tabs", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("md:w-[min(54vw,980px)]");
-    expect(panel).toContain("md:min-w-[680px]");
+    expect(panel).toContain("md:w-[min(88vw,1440px)]");
+    expect(panel).toContain("md:min-w-[960px]");
+    expect(panel).toContain("Erf Workbench");
+    expect(panel).toContain("Research this erf");
+    expect(panel).toContain("Back to full map");
     expect(panel).toContain('label: "Sources"');
     expect(panel).toContain('label: "Listings & Comps"');
     expect(panel).toContain('label: "Calc"');
@@ -18,10 +21,11 @@ describe("official dossier UX guardrails", () => {
   it("keeps mobile official parcel close and save controls visible", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("max-md:h-[100dvh]");
+    expect(panel).toContain("h-[100dvh]");
     expect(panel).toContain("max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]");
     expect(panel).toContain("Save erf");
     expect(panel).toContain("Back to map");
+    expect(panel).toContain("Back to full map");
     expect(panel).toContain("min-h-11");
     expect(panel).toContain("sticky top-0 z-30");
   });
@@ -29,8 +33,23 @@ describe("official dossier UX guardrails", () => {
   it("surfaces ErfStoep intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
+    expect(panel).toContain("Every erf. All the facts.");
+    expect(panel).toContain("Evidence readiness");
+    expect(panel).toContain("verified ownership, valuation, zoning, sales, slope, buildability");
+    expect(panel).toContain("Ask Stoep");
+    expect(panel).toContain("What would you like to explore next?");
+    expect(panel).toContain("Is this worth investigating?");
+    expect(panel).toContain("What could make this risky?");
+    expect(panel).toContain("What should I verify first?");
+    expect(panel).toContain("Run a land flip check");
+    expect(panel).toContain("Which evidence is missing?");
+    expect(panel).toContain("Strategy Lab");
+    expect(panel).toContain("Report Vault");
+    expect(panel).toContain("Optional confidence upgrade");
+    expect(panel).toContain("You can continue without buying a report");
+    expect(panel).toContain("Upload later if you purchase one");
     expect(panel).toContain("Stoep AI First Read");
-    expect(panel).toContain("Early read · needs evidence");
+    expect(panel).toContain("needs evidence");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).toContain("Next best step");
     expect(panel).toContain("Open full dossier");
