@@ -6,9 +6,9 @@ import { LifeBuoy, Handshake, Database, AlertTriangle, ShieldCheck, Newspaper, M
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact ErfStop" },
-      { name: "description", content: "Get in touch with ErfStop — support, partnerships, data providers, corrections, privacy requests, and media." },
-      { property: "og:title", content: "Contact ErfStop" },
+      { title: "Contact ErfStoep" },
+      { name: "description", content: "Get in touch with ErfStoep — support, partnerships, data providers, corrections, privacy requests, and media." },
+      { property: "og:title", content: "Contact ErfStoep" },
       { property: "og:description", content: "We respond to every legitimate inquiry." },
     ],
   }),
@@ -32,7 +32,7 @@ function Contact() {
   return (
     <MarketingPage
       eyebrow="Contact"
-      title="Talk to ErfStop."
+      title="Talk to ErfStoep."
       subtitle="We respond to every legitimate inquiry."
       intro="Whether you're a homeowner with a question, a journalist with a story, or a data provider exploring a partnership — we'd like to hear from you."
     >

@@ -7,13 +7,13 @@ interface AtlasPinProps {
   className?: string;
   title?: string;
   /**
-   * ErfStop logo variant. The wordmark file is identical in light/dark scenarios — the
+   * ErfStoep logo variant. The wordmark file is identical in light/dark scenarios — the
    * navy "Erf" + orange "Stop" wordmark + house-pin icon reads correctly on both light
    * and dark navy surfaces, so the `white` / `stacked-white` aliases just resolve to the
    * same source. Never recolor, distort, or alter the logo.
    *
    *  - `mark`           → square house-pin icon only (favicons, pins, small cards, mobile)
-   *  - `horizontal`     → full nav logo (icon + ErfStop wordmark) — default for headers
+   *  - `horizontal`     → full nav logo (icon + ErfStoep wordmark) — default for headers
    *  - `horizontal-sm`  → smaller 400px nav logo for tight layouts
    *  - `white`          → alias of `horizontal` (logo works on dark navy bg as-is)
    *  - `stacked` / `stacked-white` / `wordmark` / `wordmark-white` → all resolve to the
@@ -42,13 +42,13 @@ const SRC: Record<NonNullable<AtlasPinProps["variant"]>, string> = {
 };
 
 /**
- * ErfStop brand mark (navy + orange, no slogan). Backwards-compatible name (AtlasPin).
+ * ErfStoep brand mark (navy + orange, no slogan). Backwards-compatible name (AtlasPin).
  * The logo is shipped as a single artwork — do not recolor, crop, distort, or overlay text.
  */
-export function AtlasPin({ className, title = "ErfStop", variant = "mark" }: AtlasPinProps) {
+export function AtlasPin({ className, title = "ErfStoep", variant = "mark" }: AtlasPinProps) {
   return <img src={SRC[variant]} alt={title} className={className} draggable={false} />;
 }
 
-export function ErfStopLogo(props: AtlasPinProps) {
+export function ErfStoepLogo(props: AtlasPinProps) {
   return <AtlasPin {...props} />;
 }

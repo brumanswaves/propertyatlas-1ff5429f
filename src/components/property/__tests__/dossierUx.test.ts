@@ -80,7 +80,7 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("Run Area Radar");
     expect(tab).toContain("Run Exact Radar");
     expect(tab).toContain("Fallback Search Tools");
-    expect(tab).toContain("ErfStop does not scan portals live");
+    expect(tab).toContain("ErfStoep does not scan portals live");
     expect(tab).toContain("Use these manual tools only when the radar has no candidates");
     expect(tab).not.toContain("Show hidden / weak candidates");
   });

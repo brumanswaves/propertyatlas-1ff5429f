@@ -1,11 +1,11 @@
-# ErfStop Codebase Audit
+# ErfStoep Codebase Audit
 
 Audit date: 2026-06-19  
 Scope: full local repository inspection. No application code was edited.
 
 ## 1. Architecture and Framework
 
-ErfStop is a React 19 + TypeScript single-page/SSR-capable application built with TanStack Start, TanStack Router, Vite, Tailwind CSS 4, shadcn/Radix UI primitives, Mapbox GL JS, React Query, Supabase, and Lovable Cloud helpers.
+ErfStoep is a React 19 + TypeScript single-page/SSR-capable application built with TanStack Start, TanStack Router, Vite, Tailwind CSS 4, shadcn/Radix UI primitives, Mapbox GL JS, React Query, Supabase, and Lovable Cloud helpers.
 
 Key architectural layers:
 
@@ -275,7 +275,7 @@ Limitations:
 - No autocomplete over official CSG/Kouga feature attributes.
 - Search is constrained to the synthetic pilot dataset and current hardcoded fields.
 
-This is mostly by design and compliance posture: the UI repeatedly states that ErfStop does not copy/store proprietary listing content from third-party sites.
+This is mostly by design and compliance posture: the UI repeatedly states that ErfStoep does not copy/store proprietary listing content from third-party sites.
 
 ## 9. Deployment Risks
 

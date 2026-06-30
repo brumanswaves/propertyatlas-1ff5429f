@@ -7,12 +7,12 @@ interface Props {
 }
 
 const DEFAULT_TEXT =
-  "ErfStop organizes research from public sources, user-entered notes, and third-party reports. " +
+  "ErfStoep organizes research from public sources, user-entered notes, and third-party reports. " +
   "Always verify official property, zoning, valuation, ownership, and legal information with the relevant provider or municipality.";
 
 const OFFICIAL_TEXT =
   "Public cadastral and municipal layers shown here are sourced live from official viewers (Chief Surveyor-General, Kouga Municipality). " +
-  "ErfStop does not own or warrant this data — verify with the source before relying on it.";
+  "ErfStoep does not own or warrant this data — verify with the source before relying on it.";
 
 export function ComplianceNotice({ tone = "default", variant = "research", children }: Props) {
   const text = children ?? (variant === "official" ? OFFICIAL_TEXT : DEFAULT_TEXT);

@@ -1129,7 +1129,7 @@ function RadarConsole({
             Scan cached and imported listing candidates
           </h3>
           <p className="mt-1 text-sm text-stone-700">
-            ErfStop does not scan portals live. Radar only scores source-backed cached or
+            ErfStoep does not scan portals live. Radar only scores source-backed cached or
             manually imported candidates.
           </p>
         </div>

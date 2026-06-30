@@ -36,9 +36,9 @@ export function TopNav() {
       <Link
         to="/"
         className="flex items-center gap-2 rounded-full bg-card/95 px-3 py-1.5 shadow-soft backdrop-blur ring-1 ring-border/60"
-        aria-label="ErfStop — home"
+        aria-label="ErfStoep — home"
       >
-        <AtlasPin variant="horizontal" className="h-7 w-auto" title="ErfStop" />
+        <AtlasPin variant="horizontal" className="h-7 w-auto" title="ErfStoep" />
         <span className="ml-1 hidden rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[color:var(--brand)] lg:inline">
           Pilot · St Francis Bay
         </span>

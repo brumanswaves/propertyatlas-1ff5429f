@@ -15,8 +15,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Profile - ErfStop" },
-      { name: "description", content: "Manage your ErfStop profile details." },
+      { title: "Profile - ErfStoep" },
+      { name: "description", content: "Manage your ErfStoep profile details." },
       { property: "og:url", content: "/profile" },
     ],
     links: [{ rel: "canonical", href: "/profile" }],
@@ -101,7 +101,7 @@ function ProfilePage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                This is your ErfStop user profile info. It is not official parcel data.
+                This is your ErfStoep user profile info. It is not official parcel data.
               </p>
             </div>
           </div>

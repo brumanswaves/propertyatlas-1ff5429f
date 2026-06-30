@@ -33,7 +33,7 @@ import {
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — ErfStop" },
+      { title: "Dashboard — ErfStoep" },
       {
         name: "description",
         content:

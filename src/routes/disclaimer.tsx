@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList, LegalCallout } from "@/components/l
 export const Route = createFileRoute("/disclaimer")({
   head: () => ({
     meta: [
-      { title: "Disclaimer — ErfStop" },
-      { name: "description", content: "ErfStop disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
+      { title: "Disclaimer — ErfStoep" },
+      { name: "description", content: "ErfStoep disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
     ],
   }),
   component: DisclaimerPage,
@@ -14,15 +14,15 @@ export const Route = createFileRoute("/disclaimer")({
 function DisclaimerPage() {
   return (
     <LegalPage
-      title="ErfStop Disclaimer"
-      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by ErfStop."
+      title="ErfStoep Disclaimer"
+      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by ErfStoep."
     >
       <LegalCallout>
-        <strong>ErfStop provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
+        <strong>ErfStoep provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
       </LegalCallout>
 
-      <LegalSection title="What ErfStop Does Not Provide">
-        <p>ErfStop does not provide:</p>
+      <LegalSection title="What ErfStoep Does Not Provide">
+        <p>ErfStoep does not provide:</p>
         <LegalList items={[
           "legal advice",
           "financial advice",
@@ -40,11 +40,11 @@ function DisclaimerPage() {
       </LegalSection>
 
       <LegalSection title="No Guarantees">
-        <p>ErfStop makes no guarantees regarding:</p>
+        <p>ErfStoep makes no guarantees regarding:</p>
         <LegalList items={["accuracy", "completeness", "timeliness", "suitability"]} />
         <p>Any use of information is entirely at the user's own risk.</p>
         <p>
-          ErfStop shall not be liable for losses arising from reliance on information
+          ErfStoep shall not be liable for losses arising from reliance on information
           presented on the platform.
         </p>
       </LegalSection>
@@ -76,7 +76,7 @@ function DisclaimerPage() {
       <LegalSection title="Ownership Data">
         <p>
           Ownership information may be incomplete, delayed, estimated, or unavailable depending
-          on source availability and licensing. ErfStop does not guarantee ownership
+          on source availability and licensing. ErfStoep does not guarantee ownership
           records. Users should verify ownership independently through official channels.
         </p>
       </LegalSection>
@@ -98,7 +98,7 @@ function DisclaimerPage() {
 
       <LegalSection title="Mock / Demo Data">
         <p>
-          ErfStop is currently operating in pilot mode. Where mock or demo data is shown,
+          ErfStoep is currently operating in pilot mode. Where mock or demo data is shown,
           a visible "Demo Data" notice will appear. This notice is not hidden and should be
           considered an integral part of the displayed information.
         </p>

@@ -64,7 +64,7 @@ export function buildPortalActions(
       opensReliableAreaPage: false,
       requiresManualPaste: true,
       helperText:
-        "ErfStop is not reading this portal. You choose and save only useful evidence.",
+        "ErfStoep is not reading this portal. You choose and save only useful evidence.",
     };
   });
 

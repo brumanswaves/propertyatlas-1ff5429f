@@ -373,7 +373,7 @@ export function MapCanvas({
     if (!TOKEN || !containerRef.current || mapRef.current) return;
 
     if (!webglSupported()) {
-      console.error("[ErfStop] WebGL is not available in this browser");
+      console.error("[ErfStoep] WebGL is not available in this browser");
       setMapError(
         "Your browser blocked WebGL, which the map needs to render. If you're using Lockdown Mode or Low Power Mode on iPhone, disable it for this site, then tap Retry.",
       );
@@ -393,7 +393,7 @@ export function MapCanvas({
         cooperativeGestures: false,
       });
     } catch (err) {
-      console.error("[ErfStop] Map failed to initialize", err);
+      console.error("[ErfStoep] Map failed to initialize", err);
       setMapError(
         "The map engine failed to start on this device. Tap Retry, or try reloading the page.",
       );
@@ -413,18 +413,18 @@ export function MapCanvas({
     );
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
     map.on("load", () => {
-      console.log("[ErfStop] Map loaded");
+      console.log("[ErfStoep] Map loaded");
       map.resize();
       setReady(true);
     });
     map.on("error", (e) => {
-      console.error("[ErfStop] Map error:", e.error?.message ?? e);
+      console.error("[ErfStoep] Map error:", e.error?.message ?? e);
     });
     map.on("style.load", () => setStyleVersion((v) => v + 1));
 
     const canvas = map.getCanvas();
     const onContextLost = () => {
-      console.warn("[ErfStop] WebGL context lost — recreating map");
+      console.warn("[ErfStoep] WebGL context lost — recreating map");
       setMapError(
         "The map's graphics context was interrupted (this can happen on mobile). Tap Retry to reload it.",
       );
@@ -1328,7 +1328,7 @@ export function MapCanvas({
         return;
       }
 
-      console.info("[ErfStop] Saved official parcel could not be auto-resolved", {
+      console.info("[ErfStoep] Saved official parcel could not be auto-resolved", {
         request: requestKey,
         attempts,
       });
