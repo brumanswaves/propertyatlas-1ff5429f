@@ -1,6 +1,6 @@
-import horizontalLogo from "@/assets/erfstop-logo-horizontal.svg.asset.json";
-import whiteLogo from "@/assets/erfstop-logo-white.svg.asset.json";
-import mark from "@/assets/erfstop-mark.svg.asset.json";
+import horizontalLight from "@/assets/erfstop-logo-horizontal-light.svg.asset.json";
+import horizontalDark from "@/assets/erfstop-logo-horizontal-dark.svg.asset.json";
+import mark from "@/assets/erfstop-mark-navy.svg.asset.json";
 
 interface AtlasPinProps {
   className?: string;
@@ -9,17 +9,17 @@ interface AtlasPinProps {
 }
 
 /**
- * ErfStop brand mark — official logo. Backwards-compatible export name (AtlasPin)
- * so all existing imports keep working after the ErfStop → ErfStop rebrand.
- * Use `variant="mark"` (default) for tight spaces / sidebar / saved cards,
- * `variant="horizontal"` for nav and hero, `variant="white"` on dark green surfaces.
+ * ErfStop brand mark — navy/orange identity. Backwards-compatible name (AtlasPin).
+ * - `mark`        → square icon mark, navy on transparent (use anywhere)
+ * - `horizontal`  → full horizontal logo for LIGHT backgrounds (dark text)
+ * - `white`       → full horizontal logo for DARK navy backgrounds (light text)
  */
 export function AtlasPin({ className, title = "ErfStop", variant = "mark" }: AtlasPinProps) {
   const src =
     variant === "horizontal"
-      ? horizontalLogo.url
+      ? horizontalLight.url
       : variant === "white"
-      ? whiteLogo.url
+      ? horizontalDark.url
       : mark.url;
   return <img src={src} alt={title} className={className} draggable={false} />;
 }

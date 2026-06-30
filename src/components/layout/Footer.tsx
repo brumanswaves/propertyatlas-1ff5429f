@@ -48,7 +48,7 @@ export function Footer() {
             <AtlasPin variant="horizontal" className="h-8 w-auto" title="ErfStop" />
           </div>
           <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-accent">
-            Every erf has a story.
+            Every erf. All the facts.
           </p>
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-muted-foreground">
             South Africa's property intelligence community. A research and information platform —

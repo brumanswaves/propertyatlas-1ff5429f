@@ -31,16 +31,16 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ErfStop — Every erf has a story." },
+      { title: "ErfStop — Every erf. All the facts." },
       {
         name: "description",
         content:
-          "Search any South African erf, understand the facts, compare the market, ask AI, save evidence, and make better property decisions.",
+          "Search any erf, understand the facts, compare the market, ask AI, save evidence, and make better property decisions. South Africa's property intelligence platform.",
       },
-      { property: "og:title", content: "ErfStop — Every erf has a story." },
+      { property: "og:title", content: "ErfStop — Every erf. All the facts." },
       {
         property: "og:description",
-        content: "South Africa's property intelligence community. Search, research, compare, save evidence.",
+        content: "South Africa's property intelligence platform. Search, research, compare, save evidence.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },
