@@ -1,27 +1,28 @@
-import horizontalLight from "@/assets/erfstop-logo-horizontal-light.svg.asset.json";
-import horizontalDark from "@/assets/erfstop-logo-horizontal-dark.svg.asset.json";
-import stackedLight from "@/assets/erfstop-logo-stacked-light.svg.asset.json";
-import stackedDark from "@/assets/erfstop-logo-stacked-dark.svg.asset.json";
-import wordmarkLight from "@/assets/erfstop-wordmark-light.svg.asset.json";
-import wordmarkDark from "@/assets/erfstop-wordmark-dark.svg.asset.json";
-import mark from "@/assets/erfstop-mark-navy.svg.asset.json";
+import navLogo from "@/assets/erfstop-nav-800.png.asset.json";
+import navLogoSmall from "@/assets/erfstop-nav-400.png.asset.json";
+import mainLogo from "@/assets/erfstop-logo-main.png.asset.json";
+import icon from "@/assets/erfstop-icon.png.asset.json";
 
 interface AtlasPinProps {
   className?: string;
   title?: string;
   /**
-   * Logo variant:
-   *  - `mark`            → square icon mark (navy on transparent) — favicons, pins, compact UI
-   *  - `horizontal`      → full horizontal logo for LIGHT backgrounds (nav, footer, light cards)
-   *  - `white`           → full horizontal logo for DARK navy backgrounds
-   *  - `stacked`         → stacked icon + wordmark for LIGHT bgs — auth, empty states, centered hero
-   *  - `stacked-white`   → stacked logo on DARK navy bgs
-   *  - `wordmark`        → wordmark only (no icon) for LIGHT bgs — tight inline use
-   *  - `wordmark-white`  → wordmark only for DARK bgs
+   * ErfStop logo variant. The wordmark file is identical in light/dark scenarios — the
+   * navy "Erf" + orange "Stop" wordmark + house-pin icon reads correctly on both light
+   * and dark navy surfaces, so the `white` / `stacked-white` aliases just resolve to the
+   * same source. Never recolor, distort, or alter the logo.
+   *
+   *  - `mark`           → square house-pin icon only (favicons, pins, small cards, mobile)
+   *  - `horizontal`     → full nav logo (icon + ErfStop wordmark) — default for headers
+   *  - `horizontal-sm`  → smaller 400px nav logo for tight layouts
+   *  - `white`          → alias of `horizontal` (logo works on dark navy bg as-is)
+   *  - `stacked` / `stacked-white` / `wordmark` / `wordmark-white` → all resolve to the
+   *    main no-slogan logo. Kept for API compatibility with earlier call sites.
    */
   variant?:
     | "mark"
     | "horizontal"
+    | "horizontal-sm"
     | "white"
     | "stacked"
     | "stacked-white"
@@ -30,15 +31,20 @@ interface AtlasPinProps {
 }
 
 const SRC: Record<NonNullable<AtlasPinProps["variant"]>, string> = {
-  mark: mark.url,
-  horizontal: horizontalLight.url,
-  white: horizontalDark.url,
-  stacked: stackedLight.url,
-  "stacked-white": stackedDark.url,
-  wordmark: wordmarkLight.url,
-  "wordmark-white": wordmarkDark.url,
+  mark: icon.url,
+  horizontal: navLogo.url,
+  "horizontal-sm": navLogoSmall.url,
+  white: navLogo.url,
+  stacked: mainLogo.url,
+  "stacked-white": mainLogo.url,
+  wordmark: navLogo.url,
+  "wordmark-white": navLogo.url,
 };
 
+/**
+ * ErfStop brand mark (navy + orange, no slogan). Backwards-compatible name (AtlasPin).
+ * The logo is shipped as a single artwork — do not recolor, crop, distort, or overlay text.
+ */
 export function AtlasPin({ className, title = "ErfStop", variant = "mark" }: AtlasPinProps) {
   return <img src={SRC[variant]} alt={title} className={className} draggable={false} />;
 }

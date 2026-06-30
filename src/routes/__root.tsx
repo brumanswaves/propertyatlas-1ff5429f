@@ -12,11 +12,15 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import ogImage from "../assets/erfstop-og-navy.png.asset.json";
-import faviconSvg from "../assets/erfstop-favicon.svg.asset.json";
-import appleTouch from "../assets/erfstop-apple-touch.png.asset.json";
+import favicon32 from "../assets/erfstop-favicon-32.png.asset.json";
+import favicon192 from "../assets/erfstop-favicon-192.png.asset.json";
+import favicon512 from "../assets/erfstop-favicon-512.png.asset.json";
+import appleTouch from "../assets/erfstop-apple-touch-180.png.asset.json";
 
 const OG_IMAGE_URL = ogImage.url;
-const FAVICON_URL = faviconSvg.url;
+const FAVICON_32_URL = favicon32.url;
+const FAVICON_192_URL = favicon192.url;
+const FAVICON_512_URL = favicon512.url;
 const APPLE_TOUCH_URL = appleTouch.url;
 
 function NotFoundComponent() {
@@ -98,8 +102,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/svg+xml", href: FAVICON_URL },
-      { rel: "apple-touch-icon", href: APPLE_TOUCH_URL },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: FAVICON_32_URL },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: FAVICON_192_URL },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: FAVICON_512_URL },
+      { rel: "apple-touch-icon", sizes: "180x180", href: APPLE_TOUCH_URL },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
