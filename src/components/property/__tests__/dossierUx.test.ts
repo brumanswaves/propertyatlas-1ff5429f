@@ -50,6 +50,28 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
+  it("renders the ErfStoep intelligence dashboard shell without fake paid data", () => {
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+
+    expect(dossier).toContain("Stoep AI First Read");
+    expect(dossier).toContain("What is this property?");
+    expect(dossier).toContain("Stoep Score placeholder");
+    expect(dossier).toContain("Early signal:");
+    expect(dossier).toContain("StoepSteps preview");
+    expect(dossier).toContain("Property First Read");
+    expect(dossier).toContain("Generate Stoep Report");
+    expect(dossier).toContain("Strategy Lab preview");
+    expect(dossier).toContain("Land Flip");
+    expect(dossier).toContain("Build and Sell");
+    expect(dossier).toContain("Hold vs Cash");
+    expect(dossier).toContain("Max Offer");
+    expect(dossier).toContain("Stoep Reports preview");
+    expect(dossier).toContain("Report Vault / Upload PDF placeholder");
+    expect(dossier).toContain("Purchase Lightstone");
+    expect(dossier).toContain("Purchase WinDeed");
+    expect(dossier).toContain("Paid reports are optional confidence upgrades");
+  });
+
   it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {
     const dashboard = read("src/routes/dashboard.tsx");
 

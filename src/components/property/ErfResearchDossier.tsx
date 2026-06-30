@@ -156,6 +156,45 @@ const WORKFLOW_STEPS = [
   "Save notes or upload paid reports",
 ];
 
+const STOEP_STEPS_PREVIEW = [
+  "Property First Read",
+  "Confirm Official Identity",
+  "Check Buildability",
+  "Check Market Evidence",
+  "Choose Strategy",
+  "Run the Numbers",
+  "Generate Stoep Report",
+  "Improve Confidence",
+];
+
+const STRATEGY_LAB_CARDS = [
+  {
+    title: "Land Flip",
+    body: "Estimate buy, hold and resale assumptions without treating the result as a valuation.",
+  },
+  {
+    title: "Build and Sell",
+    body: "Model land plus build cost, selling price assumptions and rough margin.",
+  },
+  {
+    title: "Hold vs Cash",
+    body: "Compare a hold scenario against cash tied up, rates, finance and maintenance assumptions.",
+  },
+  {
+    title: "Max Offer",
+    body: "Work backwards from target margin and risk buffer to an indicative offer ceiling.",
+  },
+];
+
+const REPORT_VAULT_ITEMS = [
+  { title: "Lightstone", actions: ["Purchase Lightstone", "Upload PDF"] },
+  { title: "WinDeed", actions: ["Purchase WinDeed", "Upload PDF"] },
+  { title: "SG diagram / documents", actions: ["Upload PDF"] },
+  { title: "CSG parcel evidence", actions: ["Upload PDF"] },
+  { title: "Zoning certificate", actions: ["Upload PDF"] },
+  { title: "Title deed or other evidence", actions: ["Upload PDF"] },
+];
+
 function dataCompleteness(parcel: NormalizedOfficialParcel): {
   score: number;
   known: number;
@@ -184,6 +223,47 @@ function identityConfidence(parcel: NormalizedOfficialParcel): string {
   }
   if (parcel.coordinates) return "Approximate";
   return "Needs verification";
+}
+
+function stoepScoreBand(parcel: NormalizedOfficialParcel, completenessScore: number): {
+  label: string;
+  detail: string;
+} {
+  if (parcel.lpi || parcel.parcelKey) {
+    return {
+      label: "Early signal: stronger identity",
+      detail: `${completenessScore}% identity completeness. Estimated only - not a value, rating, or investment recommendation.`,
+    };
+  }
+  if (parcel.erfNumber && (parcel.municipality || parcel.province)) {
+    return {
+      label: "Early signal: needs confirmation",
+      detail: `${completenessScore}% identity completeness. Verify official identifiers before strategy decisions.`,
+    };
+  }
+  return {
+    label: "Early signal: limited evidence",
+    detail: `${completenessScore}% identity completeness. More official evidence is needed before confidence improves.`,
+  };
+}
+
+function stoepFirstRead(parcel: NormalizedOfficialParcel): string {
+  const identity = [
+    parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "an official public erf",
+    parcel.portion != null && String(parcel.portion) !== "0" ? `Portion ${parcel.portion}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const location = [parcel.suburbOrArea, parcel.municipality, parcel.province]
+    .filter(Boolean)
+    .join(", ");
+  const identifier = parcel.lpi
+    ? "It has a CSG LPI, so the official identity can be checked against cadastral sources."
+    : parcel.parcelKey
+      ? "It has a parcel key, so the official identity can be checked against public parcel sources."
+      : "It still needs stronger official identifiers such as an LPI, parcel key, or verified SG record.";
+
+  return `This looks like ${identity}${location ? ` in ${location}` : ""}. ${identifier} ErfStoep can organize the first read, source links, notes, comps, assumptions, and report evidence, but ownership, valuation, zoning, deeds, rates and GIS precision are not confirmed unless verified evidence is added.`;
 }
 
 function knownFieldRows(parcel: NormalizedOfficialParcel): NormalizedOfficialParcel["knownFields"] {
@@ -289,6 +369,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   const knownRows = knownFieldRows(parcel);
   const nextBestStep = buildNextBestStep(parcel, sources, completedSourceIds);
   const dueDiligenceStages = buildDueDiligenceProgress(parcel, sources);
+  const scoreBand = stoepScoreBand(parcel, completeness.score);
   const selectWorkflowView = (target: InvestorWorkflowView) => onSelectView?.(target);
   const marketWorkflow = useMemo(() => buildMarketEvidenceWorkflow(researchCtx), [researchCtx]);
   useEffect(() => {
@@ -469,6 +550,129 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
             value={`${completeness.score}%`}
             sub={`${completeness.known}/${completeness.total} public identity fields`}
           />
+        </div>
+      </section>
+
+      <section className="ug-glass ug-glass-float rounded-[2.25rem] border border-[#eadfd1] bg-[#fffdf9] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="ug-badge ug-badge--pending">Stoep AI First Read</span>
+              <span className="ug-badge ug-badge--official">
+                Confidence: {identityConfidence(parcel)}
+              </span>
+              <span className="ug-badge ug-badge--missing">
+                Missing evidence: {parcel.missingFields.length}
+              </span>
+            </div>
+            <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#0d1b2a]">
+              What is this property?
+            </h3>
+            <p className="mt-3 text-[15px] leading-7 text-[#263735]">
+              {stoepFirstRead(parcel)}
+            </p>
+          </div>
+          <div className="ug-metric ug-metric--accent min-w-[220px]">
+            <span className="ug-metric__label">Stoep Score placeholder</span>
+            <span className="ug-metric__value">Early</span>
+            <span className="ug-metric__delta">{scoreBand.label}</span>
+            <p className="text-[12px] leading-5 text-[#64748b]">{scoreBand.detail}</p>
+          </div>
+        </div>
+        <p className="mt-4 rounded-2xl border border-[#eadfd1] bg-white/70 px-4 py-3 text-[13px] leading-6 text-[#6b5b4d]">
+          The site is useful before any purchase. Paid reports are optional confidence upgrades
+          that can improve evidence and auto-fill fields later; they do not unlock the basic
+          workflow.
+        </p>
+      </section>
+
+      <section className="rounded-[2.25rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <SectionTitle>StoepSteps preview</SectionTitle>
+            <p className="text-[14px] leading-6 text-[#6b5b4d]">
+              A guided workflow for the erf, without forcing you into a wizard.
+            </p>
+          </div>
+          <span className="ug-badge ug-badge--neutral">Shell only</span>
+        </div>
+        <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+          {STOEP_STEPS_PREVIEW.map((step, index) => (
+            <li
+              key={step}
+              className="rounded-2xl border border-[#eadfd1] bg-white/80 p-3 text-sm font-semibold text-[#263735]"
+            >
+              <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#0d1b2a] text-[11px] text-white">
+                {index + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="rounded-[2.25rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+        <SectionTitle>Strategy Lab preview</SectionTitle>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {STRATEGY_LAB_CARDS.map((card) => (
+            <button
+              key={card.title}
+              type="button"
+              onClick={() => onSelectView?.("calculators")}
+              className="rounded-2xl border border-[#eadfd1] bg-white/80 p-4 text-left transition hover:bg-[#fff8ed]"
+            >
+              <div className="text-[15px] font-semibold text-[#263735]">{card.title}</div>
+              <p className="mt-2 text-[13px] leading-6 text-[#6b5b4d]">{card.body}</p>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-[1fr_1.35fr]">
+        <div className="rounded-[2.25rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+          <SectionTitle>Stoep Reports preview</SectionTitle>
+          <p className="text-[14px] leading-7 text-[#263735]">
+            Calculator scenarios can become saved consultation-style Stoep Reports with
+            commentary, charts, risk notes, assumptions, evidence status, and next steps.
+          </p>
+          <button
+            type="button"
+            onClick={() => onSelectView?.("calculators")}
+            className="mt-4 rounded-full bg-[#0d1b2a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#132840]"
+          >
+            Open Strategy Lab
+          </button>
+        </div>
+        <div className="rounded-[2.25rem] border border-[#eadfd1] bg-[#fffdf9] p-5 shadow-sm">
+          <SectionTitle>Report Vault / Upload PDF placeholder</SectionTitle>
+          <p className="mb-4 text-[13px] leading-6 text-[#6b5b4d]">
+            Uploads and purchases are future confidence upgrades. They should improve confidence
+            and auto-fill later, not replace the free/manual dossier workflow.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {REPORT_VAULT_ITEMS.map((item) => (
+              <div key={item.title} className="ug-vault-card">
+                <div>
+                  <div className="ug-vault-card__title">{item.title}</div>
+                  <p className="ug-vault-card__meta">
+                    Optional evidence. Not attached until the user adds or purchases a verified
+                    source.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {item.actions.map((action) => (
+                    <button
+                      key={`${item.title}-${action}`}
+                      type="button"
+                      className="rounded-full border border-[#d9c2a3] bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#263735]"
+                    >
+                      {action}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
