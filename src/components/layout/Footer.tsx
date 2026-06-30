@@ -3,7 +3,7 @@ import { AtlasPin } from "@/components/brand/AtlasPin";
 
 const COMPANY_LINKS = [
   { to: "/about", label: "About" },
-  { to: "/why", label: "Why ErfStop" },
+  { to: "/why", label: "Why ErfStoep" },
   { to: "/how-it-works", label: "How it works" },
   { to: "/roadmap", label: "Roadmap" },
   { to: "/partnerships", label: "Partnerships" },
@@ -45,7 +45,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <div className="flex items-center gap-2">
-            <AtlasPin variant="horizontal" className="h-8 w-auto" title="ErfStop" />
+            <AtlasPin variant="horizontal" className="h-8 w-auto" title="ErfStoep" />
           </div>
           <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-accent">
             Every erf. All the facts.
@@ -63,7 +63,7 @@ export function Footer() {
       <div className="border-t border-border/60 px-6 py-4">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 md:flex-row md:items-center">
           <p className="text-[10px] leading-relaxed text-muted-foreground">
-            © {new Date().getFullYear()} ErfStop. All Rights Reserved.
+            © {new Date().getFullYear()} ErfStoep. All Rights Reserved.
           </p>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
             Pilot data shown is mock data for demonstration purposes. Estimates are not certified valuations.
@@ -102,7 +102,7 @@ export function FooterMini() {
   return (
     <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 hidden border-t border-border/60 bg-card/85 px-4 py-1.5 backdrop-blur md:block">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-        <span>© {new Date().getFullYear()} ErfStop · All Rights Reserved</span>
+        <span>© {new Date().getFullYear()} ErfStoep · All Rights Reserved</span>
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {FOOTER_MINI_LINKS.map((l) => (
             <Link key={l.to} to={l.to} className="hover:text-foreground">{l.label}</Link>

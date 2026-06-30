@@ -20,7 +20,7 @@ const CATEGORIES = ["maps", "listings", "official", "deeds", "general", "other"]
 /**
  * Per-property saved research URLs.
  *
- * ErfStop never scrapes third-party sites. Instead users save the public
+ * ErfStoep never scrapes third-party sites. Instead users save the public
  * URLs they actually use (Google Maps, Street View, Kouga portals, WinDeed and
  * Lightstone search pages, etc.) along with a short note. We only store
  * metadata the user typed — never the page content behind the URL.

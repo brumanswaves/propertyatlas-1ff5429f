@@ -12,8 +12,8 @@ import { Toaster } from "@/components/ui/sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — ErfStop" },
-      { name: "description", content: "Sign in or create your ErfStop account." },
+      { title: "Sign in — ErfStoep" },
+      { name: "description", content: "Sign in or create your ErfStoep account." },
       { property: "og:url", content: "/auth" },
     ],
     links: [{ rel: "canonical", href: "/auth" }],
@@ -73,7 +73,7 @@ function AuthPage() {
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-gradient-brand p-10 text-white md:flex">
         <Link to="/" className="inline-flex items-center">
-          <AtlasPin variant="white" className="h-9 w-auto" title="ErfStop" />
+          <AtlasPin variant="white" className="h-9 w-auto" title="ErfStoep" />
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">
@@ -83,7 +83,7 @@ function AuthPage() {
             Explore every parcel. See valuations, ownership, and investment scores. Built for buyers, investors, and developers.
           </p>
         </div>
-        <div className="text-xs text-white/60">© ErfStop · Pilot region: St Francis Bay</div>
+        <div className="text-xs text-white/60">© ErfStoep · Pilot region: St Francis Bay</div>
       </div>
 
       <div className="flex items-center justify-center p-6">

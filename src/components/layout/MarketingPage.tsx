@@ -15,7 +15,7 @@ interface MarketingPageProps {
 }
 
 export function MarketingPage({
-  eyebrow = "ErfStop",
+  eyebrow = "ErfStoep",
   title,
   subtitle,
   intro,

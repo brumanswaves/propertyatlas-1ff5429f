@@ -1,23 +1,31 @@
-import navLogo from "@/assets/erfstop-nav-800.png.asset.json";
-import navLogoSmall from "@/assets/erfstop-nav-400.png.asset.json";
-import mainLogo from "@/assets/erfstop-logo-main.png.asset.json";
-import icon from "@/assets/erfstop-icon.png.asset.json";
+import navLight from "@/assets/erfstoep-nav-light.png.asset.json";
+import navDark from "@/assets/erfstoep-nav-dark.png.asset.json";
+import mainLight from "@/assets/erfstoep-main-light.png.asset.json";
+import mainDark from "@/assets/erfstoep-main-dark.png.asset.json";
+import stackedLight from "@/assets/erfstoep-stacked-light.png.asset.json";
+import stackedDark from "@/assets/erfstoep-stacked-dark.png.asset.json";
+import wordmarkLight from "@/assets/erfstoep-wordmark-light.png.asset.json";
+import wordmarkDark from "@/assets/erfstoep-wordmark-dark.png.asset.json";
+import mark from "@/assets/erfstoep-mark.png.asset.json";
 
 interface AtlasPinProps {
   className?: string;
   title?: string;
   /**
-   * ErfStop logo variant. The wordmark file is identical in light/dark scenarios — the
-   * navy "Erf" + orange "Stop" wordmark + house-pin icon reads correctly on both light
-   * and dark navy surfaces, so the `white` / `stacked-white` aliases just resolve to the
-   * same source. Never recolor, distort, or alter the logo.
+   * ErfStoep logo variant. The navy/orange brand has explicit light and dark
+   * background variants — use `*-white` / `stacked-white` / `wordmark-white` on
+   * dark navy surfaces (e.g. auth screen, hero overlays).
    *
-   *  - `mark`           → square house-pin icon only (favicons, pins, small cards, mobile)
-   *  - `horizontal`     → full nav logo (icon + ErfStop wordmark) — default for headers
-   *  - `horizontal-sm`  → smaller 400px nav logo for tight layouts
-   *  - `white`          → alias of `horizontal` (logo works on dark navy bg as-is)
-   *  - `stacked` / `stacked-white` / `wordmark` / `wordmark-white` → all resolve to the
-   *    main no-slogan logo. Kept for API compatibility with earlier call sites.
+   *  - `mark`            → square house-pin icon only (favicons, pins, small cards, mobile)
+   *  - `horizontal`      → nav logo (icon + ErfStoep wordmark) for light backgrounds
+   *  - `horizontal-sm`   → alias of `horizontal` (kept for API compatibility)
+   *  - `white`           → nav logo tuned for dark backgrounds
+   *  - `stacked`         → large stacked lockup (icon over wordmark) for light backgrounds
+   *  - `stacked-white`   → stacked lockup for dark backgrounds
+   *  - `wordmark`        → wordmark-only for light backgrounds
+   *  - `wordmark-white`  → wordmark-only for dark backgrounds
+   *
+   * Never recolor, distort, or alter the logo.
    */
   variant?:
     | "mark"
@@ -31,24 +39,28 @@ interface AtlasPinProps {
 }
 
 const SRC: Record<NonNullable<AtlasPinProps["variant"]>, string> = {
-  mark: icon.url,
-  horizontal: navLogo.url,
-  "horizontal-sm": navLogoSmall.url,
-  white: navLogo.url,
-  stacked: mainLogo.url,
-  "stacked-white": mainLogo.url,
-  wordmark: navLogo.url,
-  "wordmark-white": navLogo.url,
+  mark: mark.url,
+  horizontal: navLight.url,
+  "horizontal-sm": navLight.url,
+  white: navDark.url,
+  stacked: stackedLight.url,
+  "stacked-white": stackedDark.url,
+  wordmark: wordmarkLight.url,
+  "wordmark-white": wordmarkDark.url,
 };
 
+// Suppress unused-import noise for assets retained for API completeness.
+void mainLight;
+void mainDark;
+
 /**
- * ErfStop brand mark (navy + orange, no slogan). Backwards-compatible name (AtlasPin).
+ * ErfStoep brand mark (navy + orange, no slogan). Backwards-compatible name (AtlasPin).
  * The logo is shipped as a single artwork — do not recolor, crop, distort, or overlay text.
  */
-export function AtlasPin({ className, title = "ErfStop", variant = "mark" }: AtlasPinProps) {
+export function AtlasPin({ className, title = "ErfStoep", variant = "mark" }: AtlasPinProps) {
   return <img src={SRC[variant]} alt={title} className={className} draggable={false} />;
 }
 
-export function ErfStopLogo(props: AtlasPinProps) {
+export function ErfStoepLogo(props: AtlasPinProps) {
   return <AtlasPin {...props} />;
 }

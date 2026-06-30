@@ -11,11 +11,12 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import ogImage from "../assets/erfstop-og-navy.png.asset.json";
-import favicon32 from "../assets/erfstop-favicon-32.png.asset.json";
-import favicon192 from "../assets/erfstop-favicon-192.png.asset.json";
-import favicon512 from "../assets/erfstop-favicon-512.png.asset.json";
-import appleTouch from "../assets/erfstop-apple-touch-180.png.asset.json";
+import ogImage from "../assets/erfstoep-og.png.asset.json";
+import favicon32 from "../assets/erfstoep-icon-32.png.asset.json";
+import favicon192 from "../assets/erfstoep-icon-192.png.asset.json";
+import favicon512 from "../assets/erfstoep-icon-512.png.asset.json";
+import appleTouch from "../assets/erfstoep-icon-180.png.asset.json";
+
 
 const OG_IMAGE_URL = ogImage.url;
 const FAVICON_32_URL = favicon32.url;
@@ -88,15 +89,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ErfStop — Every erf. All the facts." },
-      { name: "description", content: "Search any South African erf, understand the facts, compare the market, ask AI, save evidence. ErfStop — South Africa's property intelligence platform." },
-      { name: "author", content: "ErfStop" },
-      { property: "og:title", content: "ErfStop — Every erf. All the facts." },
+      { title: "ErfStoep — Every erf. All the facts." },
+      { name: "description", content: "Search any South African erf, understand the facts, compare the market, ask AI, save evidence. ErfStoep — South Africa's property intelligence platform." },
+      { name: "author", content: "ErfStoep" },
+      { property: "og:title", content: "ErfStoep — Every erf. All the facts." },
       { property: "og:description", content: "South Africa's property intelligence platform. Search any erf, see the facts, compare the market, ask AI, save evidence." },
       { property: "og:type", content: "website" },
       { property: "og:image", content: OG_IMAGE_URL },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "ErfStop — Every erf. All the facts." },
+      { name: "twitter:title", content: "ErfStoep — Every erf. All the facts." },
       { name: "twitter:description", content: "Search any South African erf. Facts, market, AI, evidence." },
       { name: "twitter:image", content: OG_IMAGE_URL },
     ],

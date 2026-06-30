@@ -5,9 +5,9 @@ import { TrendingUp, MapPin, Bell, GitCompare, Layers, History, Activity, Buildi
 export const Route = createFileRoute("/for-investors")({
   head: () => ({
     meta: [
-      { title: "ErfStop for Investors" },
+      { title: "ErfStoep for Investors" },
       { name: "description", content: "Identify opportunities, analyze locations, monitor properties, compare areas, evaluate development potential, and understand property history." },
-      { property: "og:title", content: "ErfStop for Investors" },
+      { property: "og:title", content: "ErfStoep for Investors" },
       { property: "og:description", content: "Investor-grade property intelligence — scores, signals, and history on every parcel." },
     ],
   }),
@@ -37,11 +37,11 @@ function ForInvestors() {
       eyebrow="For Investors"
       title="Investor-grade intelligence on every parcel."
       subtitle="Find the right opportunities. Pass on the wrong ones — faster."
-      intro="ErfStop gives investors a Bloomberg-style view of residential, vacant land, and commercial parcels: scores, signals, sales history, and ownership intelligence in one place."
+      intro="ErfStoep gives investors a Bloomberg-style view of residential, vacant land, and commercial parcels: scores, signals, sales history, and ownership intelligence in one place."
       heroCta={{ label: "Open the Map", to: "/" }}
     >
       <section>
-        <SectionHeading title="What investors do on ErfStop" />
+        <SectionHeading title="What investors do on ErfStoep" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map((c) => (
             <Card key={c.title} icon={<c.icon className="h-5 w-5" />} title={c.title}>{c.desc}</Card>

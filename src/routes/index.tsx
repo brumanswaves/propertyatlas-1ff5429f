@@ -31,13 +31,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ErfStop — Every erf. All the facts." },
+      { title: "ErfStoep — Every erf. All the facts." },
       {
         name: "description",
         content:
           "Search any erf, understand the facts, compare the market, ask AI, save evidence, and make better property decisions. South Africa's property intelligence platform.",
       },
-      { property: "og:title", content: "ErfStop — Every erf. All the facts." },
+      { property: "og:title", content: "ErfStoep — Every erf. All the facts." },
       {
         property: "og:description",
         content: "South Africa's property intelligence platform. Search, research, compare, save evidence.",
@@ -179,7 +179,7 @@ function AtlasHome() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
-      <h1 className="sr-only">ErfStop — Map-based property intelligence for South Africa</h1>
+      <h1 className="sr-only">ErfStoep — Map-based property intelligence for South Africa</h1>
       <MapCanvas
         selectedId={selectedId}
         onSelect={handleMapSelect}

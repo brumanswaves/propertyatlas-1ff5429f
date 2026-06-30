@@ -5,9 +5,9 @@ import { Target, Compass, Map, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About ErfStop — Public-Data Property Research" },
-      { name: "description", content: "ErfStop is a public-data property research workspace for South African real estate. Pilot: St Francis Bay and Kouga Municipality." },
-      { property: "og:title", content: "About ErfStop" },
+      { title: "About ErfStoep — Public-Data Property Research" },
+      { name: "description", content: "ErfStoep is a public-data property research workspace for South African real estate. Pilot: St Francis Bay and Kouga Municipality." },
+      { property: "og:title", content: "About ErfStoep" },
       { property: "og:description", content: "Public-data property research workspace. Not a valuer, agency, or deeds provider." },
     ],
   }),
@@ -20,7 +20,7 @@ function AboutPage() {
       eyebrow="About"
       title="Public-data property research, organised."
       subtitle="A workspace for South African property research — built on public sources."
-      intro="ErfStop helps users organise public parcel data, municipal context, listing research, notes, calculators, and third-party report requests in one place. It is not a valuer, estate agency, deeds provider, law firm, or financial adviser."
+      intro="ErfStoep helps users organise public parcel data, municipal context, listing research, notes, calculators, and third-party report requests in one place. It is not a valuer, estate agency, deeds provider, law firm, or financial adviser."
       heroCta={{ label: "Open the Map", to: "/" }}
     >
       <section className="grid gap-4 sm:grid-cols-2">
@@ -36,7 +36,7 @@ function AboutPage() {
         <SectionHeading
           eyebrow="What we do"
           title="A workspace, not a listings site"
-          subtitle="ErfStop focuses on organising research around a parcel — CSG cadastral, municipal context, your notes, listing URLs you've found, and the reports you plan to order."
+          subtitle="ErfStoep focuses on organising research around a parcel — CSG cadastral, municipal context, your notes, listing URLs you've found, and the reports you plan to order."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card icon={<Map className="h-5 w-5" />} title="Map-first">
@@ -52,10 +52,10 @@ function AboutPage() {
       </section>
 
       <section className="mt-12 rounded-3xl border border-border bg-card p-8 shadow-soft">
-        <SectionHeading eyebrow="Honesty" title="What ErfStop does not do (yet)" />
+        <SectionHeading eyebrow="Honesty" title="What ErfStoep does not do (yet)" />
         <Prose>
           <p>
-            ErfStop does not currently provide verified ownership history, transfer history, bonds, AVM valuations,
+            ErfStoep does not currently provide verified ownership history, transfer history, bonds, AVM valuations,
             comparable sales, seller probability, investor scores based on real data, live active-listing detection, or
             confirmed listing availability from Property24 or other portals. These will become available only through
             third-party reports once the relevant integrations go live.
@@ -64,7 +64,7 @@ function AboutPage() {
       </section>
 
       <CTASection
-        title="See ErfStop in action"
+        title="See ErfStoep in action"
         description="Open the live map and click any parcel to see what public data looks like, honestly labelled."
         primary={{ label: "Open the Map", to: "/" }}
         secondary={{ label: "How it works", to: "/how-it-works" }}

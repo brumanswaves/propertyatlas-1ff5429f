@@ -1,14 +1,14 @@
-# ErfStop Product Direction
+# ErfStoep Product Direction
 
 Last updated: 2026-06-19
 
 ## North Star
 
-ErfStop is an AI erf research command center for real South African parcels.
+ErfStoep is an AI erf research command center for real South African parcels.
 
 The first real product is not a fake Zillow clone and not a demo-data property card. The first real product is:
 
-User clicks an official CSG, Kouga, or other public erf -> ErfStop opens an Erf Research Dossier -> the dossier helps the user gather public data, official links, generated searches, calculators, saved notes, saved evidence, listing research, risk checks, and optional paid reports.
+User clicks an official CSG, Kouga, or other public erf -> ErfStoep opens an Erf Research Dossier -> the dossier helps the user gather public data, official links, generated searches, calculators, saved notes, saved evidence, listing research, risk checks, and optional paid reports.
 
 Official parcels are the main product. Demo parcels are examples only.
 
@@ -36,7 +36,7 @@ Official parcels are the main product. Demo parcels are examples only.
    External links, portal searches, paid-provider placeholders, POPIA-sensitive research, and generated summaries must be clearly labelled.
 
 8. One-month MVP goal.
-   Within one month, ErfStop should feel useful and impressive for real official erfs: identify the parcel, show known public fields, generate source-specific research actions, support notes/evidence/listings, provide calculators, and expose paid report/partner slots.
+   Within one month, ErfStoep should feel useful and impressive for real official erfs: identify the parcel, show known public fields, generate source-specific research actions, support notes/evidence/listings, provide calculators, and expose paid report/partner slots.
 
 ## Current Codebase Position
 

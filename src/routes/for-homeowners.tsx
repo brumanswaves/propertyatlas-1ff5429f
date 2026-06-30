@@ -5,9 +5,9 @@ import { Home, Compass, LineChart, Users, MapPin } from "lucide-react";
 export const Route = createFileRoute("/for-homeowners")({
   head: () => ({
     meta: [
-      { title: "ErfStop for Homeowners" },
+      { title: "ErfStoep for Homeowners" },
       { name: "description", content: "Research your property, understand your neighbourhood, track value over time, and stay informed about your local market." },
-      { property: "og:title", content: "ErfStop for Homeowners" },
+      { property: "og:title", content: "ErfStoep for Homeowners" },
       { property: "og:description", content: "Understand your home and your neighbourhood — clearly and honestly." },
     ],
   }),
@@ -20,7 +20,7 @@ function ForHomeowners() {
       eyebrow="For Homeowners"
       title="Know your property. Know your neighbourhood."
       subtitle="Property research that actually helps you understand your home."
-      intro="ErfStop gives homeowners a clear, map-based view of their own property and the area around it — so you can stay informed without sifting through listings."
+      intro="ErfStoep gives homeowners a clear, map-based view of their own property and the area around it — so you can stay informed without sifting through listings."
       heroCta={{ label: "Find Your Property", to: "/" }}
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -40,15 +40,15 @@ function ForHomeowners() {
           Know when comparable properties transact nearby and how your micro-pocket is trending.
         </Card>
         <Card icon={<Home className="h-5 w-5" />} title="Built for you, not the agent" accent>
-          We do not sell your data to brokers. ErfStop is research-first — you stay in control.
+          We do not sell your data to brokers. ErfStoep is research-first — you stay in control.
         </Card>
       </div>
 
       <CTASection
         title="Start with your own property"
-        description="Open the map, search your address, and see what ErfStop knows about your home."
+        description="Open the map, search your address, and see what ErfStoep knows about your home."
         primary={{ label: "Search the Map", to: "/" }}
-        secondary={{ label: "Why ErfStop", to: "/why" }}
+        secondary={{ label: "Why ErfStoep", to: "/why" }}
       />
     </MarketingPage>
   );
