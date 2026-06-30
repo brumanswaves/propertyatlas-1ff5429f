@@ -36,14 +36,12 @@ export function TopNav() {
     <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6">
       <Link
         to="/"
-        className="flex items-center gap-2 rounded-full bg-card/95 px-3 py-1.5 shadow-soft backdrop-blur ring-1 ring-border/60"
+        className="group inline-flex items-center gap-2 rounded-2xl bg-white/85 px-3 py-2 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_24px_-10px_rgba(13,27,42,0.20)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
         aria-label="ErfStoep — home"
       >
         <AtlasPin variant="horizontal" className="h-7 w-auto" title={BRAND.site} />
-        <span className="ml-1 hidden rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[color:var(--brand)] lg:inline">
-          Pilot · St Francis Bay
-        </span>
       </Link>
+
 
       <nav className="hidden items-center gap-1 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur md:flex">
         {PRIMARY_LINKS.map((l) => (
