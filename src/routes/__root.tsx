@@ -11,11 +11,12 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import ogImage from "../assets/erfstop-og-navy.png.asset.json";
-import favicon32 from "../assets/erfstop-favicon-32.png.asset.json";
-import favicon192 from "../assets/erfstop-favicon-192.png.asset.json";
-import favicon512 from "../assets/erfstop-favicon-512.png.asset.json";
-import appleTouch from "../assets/erfstop-apple-touch-180.png.asset.json";
+import ogImage from "../assets/erfstoep-og.png.asset.json";
+import favicon32 from "../assets/erfstoep-icon-32.png.asset.json";
+import favicon192 from "../assets/erfstoep-icon-192.png.asset.json";
+import favicon512 from "../assets/erfstoep-icon-512.png.asset.json";
+import appleTouch from "../assets/erfstoep-icon-180.png.asset.json";
+
 
 const OG_IMAGE_URL = ogImage.url;
 const FAVICON_32_URL = favicon32.url;
