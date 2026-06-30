@@ -547,7 +547,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-white/15">
-                  <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI · First Read
+                  <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI First Read
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6A00]/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#FFD2AD] ring-1 ring-[#FF8A33]/35">
                   Early read · needs evidence
