@@ -541,103 +541,52 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8"
       >
-        <section className="mx-4 mt-5 overflow-hidden rounded-[2rem] border border-[#eadfd1] bg-[#fff8ec] shadow-[0_24px_60px_rgba(45,34,18,0.16)]">
-          <div className="ug-glass-dark ug-glass-float relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_12%_0%,rgba(255,106,0,0.34),transparent_34%),linear-gradient(135deg,#06152A_0%,#0D1B2A_54%,#18324B_100%)] p-5 text-white sm:p-6">
-            <div className="absolute right-[-4rem] top-[-5rem] h-44 w-44 rounded-full bg-[#ff6a00]/25 blur-3xl" />
-            <div className="relative grid gap-5 lg:grid-cols-[1fr_210px] lg:items-end">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="ug-badge bg-white/12 text-white ring-1 ring-white/15">
-                    <Sparkles className="h-3.5 w-3.5 text-[#ffb86b]" /> Stoep AI First Read
-                  </span>
-                  <span className="ug-badge ug-badge--pending border-[#ff8a33]/40 bg-[#ff6a00]/15 text-[#ffd2ad]">
-                    Early read
-                  </span>
-                  <span className="ug-badge border-white/15 bg-white/10 text-white/80">
-                    Needs evidence
-                  </span>
-                </div>
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb86b]">
-                  ErfStoep command dashboard
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                  What is this property?
-                </h3>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-white/82">
-                  {panelFirstRead(normalizedParcel)}
-                </p>
+        <section className="mx-4 mt-5 overflow-hidden rounded-[1.75rem] border border-[#0D1B2A]/8 bg-white shadow-[0_24px_60px_-24px_rgba(13,27,42,0.22)]">
+          <div className="relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_8%_0%,rgba(255,106,0,0.32),transparent_38%),linear-gradient(135deg,#06152A_0%,#0D1B2A_55%,#18324B_100%)] p-6 text-white sm:p-7">
+            <div className="absolute right-[-5rem] top-[-6rem] h-52 w-52 rounded-full bg-[#FF6A00]/22 blur-3xl" />
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-white/15">
+                  <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI · First Read
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6A00]/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#FFD2AD] ring-1 ring-[#FF8A33]/35">
+                  Early read · needs evidence
+                </span>
               </div>
-
-              <div className="rounded-[1.5rem] border border-white/12 bg-white/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur">
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd2ad]">
-                  Early Stoep Score
-                </div>
-                <div className="mt-2 text-4xl font-semibold tracking-tight text-white">--</div>
-                <p className="mt-2 text-sm leading-5 text-white/74">
-                  Early / estimated only. Not a valuation or recommendation.
-                </p>
-              </div>
+              <h3 className="mt-5 text-[26px] font-semibold leading-[1.15] tracking-tight text-white sm:text-[30px]">
+                {resolved.displayTitle}
+              </h3>
+              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/82">
+                {panelFirstRead(normalizedParcel)}
+              </p>
             </div>
 
-            <div className="relative mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-              <div className="rounded-[1.25rem] border border-white/12 bg-white/10 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd2ad]">
-                  <span>Next best step</span>
-                  <span>Evidence status: {panelIdentityConfidence(normalizedParcel)}</span>
+            <div className="relative mt-6 rounded-2xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFD2AD]">
+                    Next best step
+                  </div>
+                  <p className="mt-1 text-[15px] font-semibold leading-snug text-white">
+                    {panelNextBestStep(normalizedParcel)}
+                  </p>
                 </div>
-                <p className="mt-1 text-sm font-semibold text-white">
-                  {panelNextBestStep(normalizedParcel)}
-                </p>
-                <p className="mt-1 text-sm leading-5 text-white/72">
-                  Optional confidence upgrade available later. You can continue without buying a report.
-                </p>
+                <button
+                  type="button"
+                  onClick={openFullDossier}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
+                >
+                  Open full dossier
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={openFullDossier}
-                className="ug-accent-glow inline-flex min-h-11 items-center justify-center rounded-full bg-[#ff6a00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
-              >
-                Open full Erf Research Dossier
-              </button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="ug-metric ug-metric--accent p-4">
-              <span className="ug-metric__label">Identity found</span>
-              <span className="ug-metric__value text-[1.35rem]">
-                {normalizedParcel.erfNumber != null ? "Yes" : "Partial"}
-              </span>
-              <span className="ug-metric__delta">Verify official source</span>
-            </div>
-            <div className="ug-metric p-4">
-              <span className="ug-metric__label">Evidence needed</span>
-              <span className="ug-metric__value text-[1.35rem]">Required</span>
-              <span className="ug-metric__delta">Ownership, value, zoning</span>
-            </div>
-            <div className="ug-metric p-4">
-              <span className="ug-metric__label">Strategy not chosen</span>
-              <span className="ug-metric__value text-[1.35rem]">Open</span>
-              <span className="ug-metric__delta">Run Strategy Lab next</span>
-            </div>
-            <div className="ug-metric p-4">
-              <span className="ug-metric__label">Reports optional</span>
-              <span className="ug-metric__value text-[1.35rem]">Upgrade</span>
-              <span className="ug-metric__delta">Paid reports improve confidence</span>
             </div>
           </div>
         </section>
 
-        <div className="sticky top-0 z-10 mx-4 mt-3 rounded-[1.25rem] border border-[#eadfd1] bg-white/85 shadow-sm backdrop-blur">
+        <div className="sticky top-0 z-10 mx-4 mt-4 border-b border-[#0D1B2A]/10 bg-white/92 backdrop-blur">
           <div className="relative">
-            <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#7b6a58] sm:hidden">
-              <span>Dossier tabs</span>
-              <span className="inline-flex items-center gap-1">
-                Swipe for more <ChevronRight className="h-3 w-3" />
-              </span>
-            </div>
-            <div className="scrollbar-thin flex gap-1 overflow-x-auto px-2 sm:px-3">
-              {TABS.map(({ id, label, icon }) => {
+            <div className="scrollbar-thin flex gap-0.5 overflow-x-auto px-1">
+              {TABS.map(({ id, label }) => {
                 const active = tab === id;
                 return (
                   <button
@@ -647,29 +596,24 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
                     }}
                     className={cn(
-                      "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-3 py-2.5 text-[12px] font-semibold transition",
+                      "relative inline-flex shrink-0 items-center whitespace-nowrap px-4 py-3 text-[13px] font-medium transition",
                       active
-                        ? "bg-[#0d1b2a] text-white shadow-sm"
-                        : "text-[#7b6a58] hover:bg-[#fff4df] hover:text-[#0d1b2a]",
+                        ? "text-[#0D1B2A]"
+                        : "text-[#64748B] hover:text-[#0D1B2A]",
                     )}
                   >
-                    <span
-                      className={cn("sm:hidden", active ? "text-primary" : "text-muted-foreground")}
-                    >
-                      {icon}
-                    </span>
                     {label}
                     {active && (
-                      <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-foreground" />
+                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[#FF6A00]" />
                     )}
                   </button>
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/85 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white/85 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white/92 to-transparent" />
           </div>
         </div>
+
 
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && (
