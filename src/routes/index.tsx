@@ -206,8 +206,16 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-2 px-4 md:top-24">
-        <div className="pointer-events-auto relative z-10 w-full max-w-xl">
+      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-3 px-4 md:top-24">
+        <div className="pointer-events-none hidden max-w-2xl text-center md:block">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
+            {BRAND.site} — {BRAND.tagline}
+          </p>
+          <h2 className="mt-1.5 text-[22px] font-semibold tracking-tight text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.5)]">
+            Research any South African erf.
+          </h2>
+        </div>
+        <div className="pointer-events-auto relative z-10 w-full max-w-2xl">
           <SearchBar
             onPick={(p) => {
               setSelectedId(p.id);
@@ -233,17 +241,8 @@ function AtlasHome() {
             <OfficialPill label="Kouga" status={officialStatus.kouga} />
           </div>
         )}
-
-        <div className="pointer-events-none mt-1 hidden max-w-2xl text-center md:block">
-          <p className="rounded-full bg-card/90 px-4 py-1.5 text-[12px] font-medium text-foreground shadow-soft backdrop-blur">
-            One place to research a South African property before you buy, sell, or invest.
-          </p>
-          <p className="mt-1.5 text-[11px] text-foreground/70 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">
-            Official Public Data Mode · CSG cadastral parcels and Kouga zoning. Pilot — St Francis
-            Bay.
-          </p>
-        </div>
       </div>
+
 
       {!demoMode &&
         officialStatus.csg.state !== "loading" &&
