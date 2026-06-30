@@ -982,7 +982,7 @@ function AddressIntelligenceSection({
             identity.bestAddress,
             suggested?.formattedAddress,
             ...candidates.map((candidate) => candidate.formattedAddress),
-          ].filter(Boolean)}
+          ].filter((s): s is string => Boolean(s))}
         />
       )}
     </section>
