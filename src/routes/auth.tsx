@@ -72,12 +72,8 @@ function AuthPage() {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-gradient-brand p-10 text-white md:flex">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 p-1">
-            <AtlasPin className="h-7 w-auto" />
-          </span>
-
-          <span className="text-lg font-semibold tracking-tight">ErfStop</span>
+        <Link to="/" className="inline-flex items-center">
+          <AtlasPin variant="white" className="h-9 w-auto" title="ErfStop" />
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">

@@ -47,7 +47,7 @@ function ForDevelopers() {
         </div>
       </section>
 
-      <section className="mt-12 rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6 text-sm leading-relaxed text-foreground">
+      <section className="mt-12 rounded-3xl border border-accent/30 bg-accent/5 p-6 text-sm leading-relaxed text-foreground">
         ErfStop is a research and information platform. Zoning, bulk, coverage, and indicative GDV figures are informational
         only and must be confirmed with the relevant municipality and a qualified town planner before any development decision.
       </section>

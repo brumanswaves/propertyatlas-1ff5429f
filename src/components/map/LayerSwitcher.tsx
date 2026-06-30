@@ -141,7 +141,7 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
                       );
                     })}
                     {g.title === "Official public data" && (kougaUnavailable || csgUnavailable) && (
-                      <div className="mt-2 space-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-900 dark:text-amber-200">
+                      <div className="mt-2 space-y-1.5 rounded-lg border border-accent/30 bg-accent/10 p-2 text-[11px] text-accent dark:text-accent">
                         {csgUnavailable && (
                           <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current view.</div>
                         )}

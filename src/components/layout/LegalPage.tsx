@@ -61,7 +61,7 @@ export function LegalList({ items }: { items: string[] }) {
 
 export function LegalCallout({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-[13px] leading-relaxed text-foreground">
+    <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 text-[13px] leading-relaxed text-foreground">
       {children}
     </div>
   );

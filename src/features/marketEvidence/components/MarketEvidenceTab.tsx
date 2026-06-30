@@ -102,11 +102,11 @@ const SORT_MODES: Array<{ value: AreaRadarSortMode; label: string }> = [
 const PILL_PRIMARY =
   "inline-flex items-center gap-1.5 rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800";
 const PILL_SECONDARY =
-  "inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-amber-50";
+  "inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-accent/10";
 const CHOICE =
-  "rounded-2xl border border-stone-200 bg-white/75 px-4 py-3 text-left text-sm font-semibold text-stone-800 hover:bg-amber-50";
+  "rounded-2xl border border-stone-200 bg-white/75 px-4 py-3 text-left text-sm font-semibold text-stone-800 hover:bg-accent/10";
 const CHOICE_ACTIVE =
-  "rounded-2xl border border-amber-300 bg-amber-100 px-4 py-3 text-left text-sm font-semibold text-stone-950 shadow-sm";
+  "rounded-2xl border border-accent/30 bg-accent/15 px-4 py-3 text-left text-sm font-semibold text-stone-950 shadow-sm";
 const FIELD = "rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm";
 
 type CompDraft = {
@@ -626,13 +626,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       />
 
       {evidence.length > 0 && (
-        <section className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-5">
+        <section className="rounded-3xl border border-success/30 bg-success/10 p-5">
           <SectionTitle>Market Thesis from saved evidence</SectionTitle>
-          <p className="mt-1 text-sm text-emerald-900">
+          <p className="mt-1 text-sm text-success">
             Simple math from saved comps only. Unverified radar candidates do not affect this.
           </p>
           {!summary.hasUsablePriceData && (
-            <p className="mt-3 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-2 text-sm text-emerald-900">
+            <p className="mt-3 rounded-2xl border border-success/30 bg-white/70 px-3 py-2 text-sm text-success">
               Saved evidence added. Add price and land size to calculate R/m2.
             </p>
           )}
@@ -656,7 +656,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
                 key={chip}
                 type="button"
                 onClick={() => copy(`${chip} property for sale`)}
-                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-amber-50"
+                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-accent/10"
               >
                 {chip}
               </button>
@@ -697,10 +697,10 @@ function PropertyIdentityCard({
   onSave: () => void;
 }) {
   return (
-    <section className="rounded-3xl border border-amber-200 bg-gradient-to-br from-[#fff8ec] to-[#f8efe2] p-5 shadow-[0_18px_50px_rgba(120,72,24,0.10)]">
+    <section className="rounded-3xl border border-accent/20 bg-gradient-to-br from-[#fff8ec] to-[#f8efe2] p-5 shadow-[0_18px_50px_rgba(120,72,24,0.10)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-amber-200/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-900">
+          <div className="inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-900">
             <Search className="h-3.5 w-3.5" /> Listings & Comps
           </div>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight">
@@ -761,14 +761,14 @@ function PropertyIdentityCard({
           type="button"
           onClick={onConfirm}
           disabled={!savedPropertyExists || !identity.bestAddress}
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
         >
           <CheckCircle2 className="h-4 w-4" /> Confirm address
         </button>
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-amber-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-accent/10"
         >
           <Pencil className="h-4 w-4" /> Edit address
         </button>
@@ -870,9 +870,9 @@ function AddressIntelligenceSection({
       </div>
 
       {selectedAddress ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+        <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4">
           <p className="text-sm font-semibold">{selectedAddress.formattedAddress}</p>
-          <p className="mt-1 text-xs text-emerald-900">
+          <p className="mt-1 text-xs text-success">
             Source: {selectedAddress.source}. Confidence: {selectedAddress.confidence}.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -894,7 +894,7 @@ function AddressIntelligenceSection({
           </div>
         </div>
       ) : suggested ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+        <div className="mt-4 rounded-2xl border border-accent/20 bg-accent/10/70 p-4">
           <p className="text-sm font-semibold">{suggested.formattedAddress}</p>
           <p className="mt-1 text-xs text-stone-700">
             Suggested from {suggested.source}. Verify manually before using.
@@ -922,7 +922,7 @@ function AddressIntelligenceSection({
           </div>
         </div>
       ) : parcel.coordinates ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+        <div className="mt-4 rounded-2xl border border-accent/20 bg-accent/10/70 p-4">
           <p className="text-sm font-semibold">No confirmed market address yet.</p>
           <p className="mt-1 text-sm text-stone-700">
             Open Google Maps at this parcel point. Use "What's here?" if needed, then paste or
@@ -962,7 +962,7 @@ function AddressIntelligenceSection({
               key={candidate.id}
               type="button"
               onClick={() => onUseSuggested(candidate)}
-              className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-left text-xs hover:bg-amber-50"
+              className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-left text-xs hover:bg-accent/10"
             >
               <span className="font-semibold">{candidate.formattedAddress}</span>
               <span className="ml-2 text-stone-500">{candidate.source}</span>
@@ -1119,7 +1119,7 @@ function RadarConsole({
 }) {
   const fallbackPhrase = areaPhrase(identity, options);
   return (
-    <section className="rounded-3xl border border-amber-200 bg-[#fff8ec] p-5 shadow-[0_16px_40px_rgba(120,72,24,0.10)]">
+    <section className="rounded-3xl border border-accent/20 bg-[#fff8ec] p-5 shadow-[0_16px_40px_rgba(120,72,24,0.10)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
@@ -1220,7 +1220,7 @@ function RadarConsole({
       )}
 
       {radarRan && candidates.length === 0 && (
-        <div className="mt-4 rounded-2xl border border-dashed border-amber-300 bg-white/75 p-4">
+        <div className="mt-4 rounded-2xl border border-dashed border-accent/30 bg-white/75 p-4">
           <p className="text-sm font-semibold">
             No listing candidates have been added for this area yet.
           </p>
@@ -1406,7 +1406,7 @@ function SavedCompsSection({
         </button>
       </div>
       {!savedPropertyExists && (
-        <p className="mt-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-stone-700">
+        <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-accent/10 px-3 py-2 text-sm text-stone-700">
           Save this erf first to store comps and edited addresses.
         </p>
       )}
@@ -1880,7 +1880,7 @@ function CompRow({
           <button
             type="button"
             onClick={(event) => openExternalUrl(item.sourceUrl, event)}
-            className="rounded-full p-1.5 hover:bg-amber-50"
+            className="rounded-full p-1.5 hover:bg-accent/10"
             aria-label="Open source"
           >
             <ExternalLink className="h-3.5 w-3.5" />
@@ -1888,7 +1888,7 @@ function CompRow({
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-full p-1.5 hover:bg-amber-50"
+            className="rounded-full p-1.5 hover:bg-accent/10"
             aria-label="Edit comp"
           >
             <Pencil className="h-3.5 w-3.5" />
