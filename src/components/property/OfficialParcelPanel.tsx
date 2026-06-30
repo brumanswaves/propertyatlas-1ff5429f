@@ -541,75 +541,97 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8"
       >
-        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#eadfd1] bg-[linear-gradient(145deg,#fffaf2_0%,#fff6eb_58%,#f7dfbf_100%)] p-4 shadow-[0_14px_36px_rgba(68,49,25,0.08)]">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#0d1b2a] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-              <Sparkles className="h-3 w-3" /> Stoep AI First Read
-            </span>
-            <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#8a561d] ring-1 ring-[#edcf9c]">
-              Early read
-            </span>
-            <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#9f1239] ring-1 ring-rose-200">
-              Needs evidence
-            </span>
+        <section className="mx-4 mt-5 overflow-hidden rounded-[2rem] border border-[#eadfd1] bg-[#fff8ec] shadow-[0_24px_60px_rgba(45,34,18,0.16)]">
+          <div className="ug-glass-dark ug-glass-float relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_12%_0%,rgba(255,106,0,0.34),transparent_34%),linear-gradient(135deg,#06152A_0%,#0D1B2A_54%,#18324B_100%)] p-5 text-white sm:p-6">
+            <div className="absolute right-[-4rem] top-[-5rem] h-44 w-44 rounded-full bg-[#ff6a00]/25 blur-3xl" />
+            <div className="relative grid gap-5 lg:grid-cols-[1fr_210px] lg:items-end">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="ug-badge bg-white/12 text-white ring-1 ring-white/15">
+                    <Sparkles className="h-3.5 w-3.5 text-[#ffb86b]" /> Stoep AI First Read
+                  </span>
+                  <span className="ug-badge ug-badge--pending border-[#ff8a33]/40 bg-[#ff6a00]/15 text-[#ffd2ad]">
+                    Early read
+                  </span>
+                  <span className="ug-badge border-white/15 bg-white/10 text-white/80">
+                    Needs evidence
+                  </span>
+                </div>
+                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb86b]">
+                  ErfStoep command dashboard
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  What is this property?
+                </h3>
+                <p className="mt-3 max-w-2xl text-base leading-7 text-white/82">
+                  {panelFirstRead(normalizedParcel)}
+                </p>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-white/12 bg-white/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur">
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd2ad]">
+                  Early Stoep Score
+                </div>
+                <div className="mt-2 text-4xl font-semibold tracking-tight text-white">--</div>
+                <p className="mt-2 text-sm leading-5 text-white/74">
+                  Early / estimated only. Not a valuation or recommendation.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+              <div className="rounded-[1.25rem] border border-white/12 bg-white/10 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd2ad]">
+                  <span>Next best step</span>
+                  <span>Evidence status: {panelIdentityConfidence(normalizedParcel)}</span>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  {panelNextBestStep(normalizedParcel)}
+                </p>
+                <p className="mt-1 text-sm leading-5 text-white/72">
+                  Optional confidence upgrade available later. You can continue without buying a report.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openFullDossier}
+                className="ug-accent-glow inline-flex min-h-11 items-center justify-center rounded-full bg-[#ff6a00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
+              >
+                Open full Erf Research Dossier
+              </button>
+            </div>
           </div>
 
-          <p className="mt-3 text-[14px] leading-6 text-[#263735]">
-            {panelFirstRead(normalizedParcel)}
-          </p>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
-                Stoep Score
-              </div>
-              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">Early / estimated</div>
-              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
-                Placeholder only, not a valuation or recommendation.
-              </p>
+          <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="ug-metric ug-metric--accent p-4">
+              <span className="ug-metric__label">Identity found</span>
+              <span className="ug-metric__value text-[1.35rem]">
+                {normalizedParcel.erfNumber != null ? "Yes" : "Partial"}
+              </span>
+              <span className="ug-metric__delta">Verify official source</span>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
-                Evidence status
-              </div>
-              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">
-                {panelIdentityConfidence(normalizedParcel)}
-              </div>
-              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
-                Optional confidence upgrade available later.
-              </p>
+            <div className="ug-metric p-4">
+              <span className="ug-metric__label">Evidence needed</span>
+              <span className="ug-metric__value text-[1.35rem]">Required</span>
+              <span className="ug-metric__delta">Ownership, value, zoning</span>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/75 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8a7562]">
-                Next best step
-              </div>
-              <div className="mt-1 text-sm font-semibold text-[#0d1b2a]">
-                {panelNextBestStep(normalizedParcel)}
-              </div>
-              <p className="mt-1 text-[11px] leading-5 text-[#6b5b4d]">
-                You can continue without buying a report.
-              </p>
+            <div className="ug-metric p-4">
+              <span className="ug-metric__label">Strategy not chosen</span>
+              <span className="ug-metric__value text-[1.35rem]">Open</span>
+              <span className="ug-metric__delta">Run Strategy Lab next</span>
             </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={openFullDossier}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#0d1b2a] px-4 py-2 text-xs font-semibold text-white hover:bg-[#132840]"
-            >
-              Open full Erf Research Dossier
-            </button>
-            <span className="text-[11px] leading-5 text-[#6b5b4d]">
-              Paid reports improve confidence; they do not unlock the basic workflow.
-            </span>
+            <div className="ug-metric p-4">
+              <span className="ug-metric__label">Reports optional</span>
+              <span className="ug-metric__value text-[1.35rem]">Upgrade</span>
+              <span className="ug-metric__delta">Paid reports improve confidence</span>
+            </div>
           </div>
         </section>
 
-        <div className="sticky top-0 z-10 border-b border-border bg-card">
+        <div className="sticky top-0 z-10 mx-4 mt-3 rounded-[1.25rem] border border-[#eadfd1] bg-white/85 shadow-sm backdrop-blur">
           <div className="relative">
-            <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:hidden">
-              <span>Public-data sections</span>
+            <div className="flex items-center justify-between px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#7b6a58] sm:hidden">
+              <span>Dossier tabs</span>
               <span className="inline-flex items-center gap-1">
                 Swipe for more <ChevronRight className="h-3 w-3" />
               </span>
@@ -627,8 +649,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     className={cn(
                       "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg px-3 py-2.5 text-[12px] font-semibold transition",
                       active
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                        ? "bg-[#0d1b2a] text-white shadow-sm"
+                        : "text-[#7b6a58] hover:bg-[#fff4df] hover:text-[#0d1b2a]",
                     )}
                   >
                     <span
@@ -644,8 +666,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 );
               })}
             </div>
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-card to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/85 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white/85 to-transparent" />
           </div>
         </div>
 

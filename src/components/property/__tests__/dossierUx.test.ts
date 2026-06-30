@@ -30,11 +30,20 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("Stoep AI First Read");
+    expect(panel).toContain("ErfStoep command dashboard");
+    expect(panel).toContain("What is this property?");
     expect(panel).toContain("Early read");
     expect(panel).toContain("Needs evidence");
-    expect(panel).toContain("Stoep Score");
+    expect(panel).toContain("Early Stoep Score");
     expect(panel).toContain("Evidence status");
     expect(panel).toContain("Next best step");
+    expect(panel).toContain("Identity found");
+    expect(panel).toContain("Evidence needed");
+    expect(panel).toContain("Strategy not chosen");
+    expect(panel).toContain("Reports optional");
+    expect(panel).toContain("Dossier tabs");
+    expect(panel).toContain("ug-glass-dark");
+    expect(panel).toContain("ug-metric");
     expect(panel).toContain("Optional confidence upgrade");
     expect(panel).toContain("You can continue without buying a report");
     expect(panel).toContain("Open full Erf Research Dossier");
