@@ -82,10 +82,9 @@ const WORKBENCH_NAV: { id: Tab; label: string }[] = [
 ];
 
 const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
-  { label: "What should I verify first?", tab: "research" },
-  { label: "Build market evidence", tab: "listings" },
-  { label: "Run a land flip check", tab: "calculators" },
-  { label: "Which evidence is missing?", tab: "overview" },
+  { label: "What is risky?", tab: "research" },
+  { label: "What should I verify?", tab: "research" },
+  { label: "Run the numbers", tab: "calculators" },
 ];
 
 function readInitialTab(): Tab {
@@ -497,13 +496,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     }
   }
 
-  function openFullDossier() {
-    setTab("overview");
-    requestAnimationFrame(() => {
-      dossierContentRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
-  }
-
   function selectWorkbenchTab(nextTab: Tab) {
     setTab(nextTab);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
@@ -613,28 +605,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
-        <div className="px-4 pt-4 md:px-7 md:pt-6">
-          <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_15rem]">
-            <div className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/82 p-4 shadow-[0_14px_40px_-28px_rgba(13,27,42,0.35)] backdrop-blur">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                Research this erf
-              </div>
-              <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/72">
-                The live map remains behind this workbench for context. Use Back to full map when
-                you want to browse parcels again.
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white shadow-[0_18px_42px_-24px_rgba(13,27,42,0.55)]">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
-                Evidence readiness
-              </div>
-              <p className="mt-2 text-lg font-semibold">{panelIdentityConfidence(normalizedParcel)}</p>
-              <p className="mt-1 text-xs leading-5 text-white/70">Needs evidence before decisions.</p>
-            </div>
-          </div>
-        </div>
-
-        <section className="mx-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white/94 shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7">
+        <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white/94 shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
           <div className="relative overflow-hidden rounded-none border-0 bg-white/94 p-6 text-[#0D1B2A] sm:p-7">
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
@@ -661,23 +632,36 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               </p>
             </div>
 
-            <div className="relative mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fff8ec] p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                    Next best step
+                    Recommended next step
                   </div>
-                  <p className="mt-1 text-[15px] font-semibold leading-snug text-[#0D1B2A]">
-                    {panelNextBestStep(normalizedParcel)}
+                  <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
+                    Verify the official parcel identity first.
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">
+                    Start with the official source so every market, strategy and report note is tied
+                    to the correct erf.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={openFullDossier}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
-                >
-                  Open full dossier
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => selectWorkbenchTab("research")}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
+                  >
+                    Check official source
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectWorkbenchTab("calculators")}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                  >
+                    Skip to Strategy Lab
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -690,7 +674,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 Ask Stoep
               </div>
               <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                What would you like to explore next?
+                What do you want to understand first?
               </h3>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -710,10 +694,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
         <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
           {[
-            ["Identity found", "Official CSG/Kouga parcel selected"],
-            ["Evidence needed", "Ownership, valuation, zoning and sales remain unverified"],
-            ["Strategy not chosen", "Use Strategy Lab before deciding"],
-            ["Reports optional", "Continue without buying a report"],
+            ["Identity", "Found"],
+            ["Ownership", "Needs evidence"],
+            ["Market value", "Needs evidence"],
+            ["Strategy", "Not chosen"],
           ].map(([label, value]) => (
             <div
               key={label}
@@ -732,13 +716,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             ["Verify official records", "Open CSG, SG and municipal sources.", "research"],
             ["Build market evidence", "Find listings and comps for this erf.", "listings"],
             ["Run Strategy Lab", "Test flip, build, hold and max offer assumptions.", "calculators"],
-            ["Add or upload evidence", "Report Vault upload is coming soon.", "reports"],
+            ["Add/upload evidence", "Coming soon", "coming-soon"],
           ].map(([label, value, nextTab]) => (
             <button
               key={label}
               type="button"
-              onClick={() => selectWorkbenchTab(nextTab as Tab)}
-              className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)]"
+              onClick={() => {
+                if (nextTab !== "coming-soon") selectWorkbenchTab(nextTab as Tab);
+              }}
+              disabled={nextTab === "coming-soon"}
+              className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#0D1B2A]/10 disabled:hover:shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -784,9 +771,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
 
         <div ref={dossierContentRef} className="px-5 pt-4">
-          {tab === "overview" && (
-            <ErfResearchDossier parcel={normalizedParcel} onSelectView={(view) => setTab(view)} />
-          )}
+          {tab === "overview" && null}
 
           {tab === "research" && <ErfResearchDossier parcel={normalizedParcel} view="research" />}
           {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
