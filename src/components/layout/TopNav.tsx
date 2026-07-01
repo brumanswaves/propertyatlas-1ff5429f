@@ -36,10 +36,10 @@ export function TopNav() {
     <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6">
       <Link
         to="/"
-        className="group inline-flex items-center gap-2 rounded-2xl bg-white/85 px-3 py-2 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_24px_-10px_rgba(13,27,42,0.20)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
+        className="group inline-flex items-center gap-2 rounded-xl bg-white/82 px-2.5 py-1.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_22px_-14px_rgba(13,27,42,0.28)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
         aria-label="ErfStoep — home"
       >
-        <AtlasPin variant="horizontal" className="h-7 w-auto" title={BRAND.site} />
+        <AtlasPin variant="horizontal" className="h-5 w-auto md:h-6" title={BRAND.site} />
       </Link>
 
 

@@ -210,15 +210,15 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-3 px-4 md:top-24">
-        <div className="pointer-events-auto w-full max-w-3xl rounded-[2rem] border border-white/70 bg-[#fbf8f1]/94 p-4 text-center shadow-[0_24px_80px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#FF6A00]">
+      <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex flex-col items-center gap-2.5 px-4 md:top-20">
+        <div className="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-white/70 bg-[#fbf8f1]/92 px-4 py-3 text-center shadow-[0_18px_56px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:px-5 md:py-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
             ErfStoep
           </p>
-          <h2 className="mt-1 text-[26px] font-semibold tracking-tight text-[#0D1B2A] md:text-[34px]">
+          <h2 className="mt-0.5 text-[21px] font-semibold tracking-tight text-[#0D1B2A] md:text-[28px]">
             Every erf. All the facts.
           </h2>
-          <p className="mt-1 text-sm font-medium text-[#0D1B2A]/68">
+          <p className="mt-0.5 text-xs font-medium text-[#0D1B2A]/68 md:text-sm">
             Research any South African erf.
           </p>
         </div>

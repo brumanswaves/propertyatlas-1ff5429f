@@ -51,17 +51,29 @@ export function SearchBar({ onPick }: Props) {
         <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
           <div className="border-b border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3">
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
-              Pilot demo examples
+              Official parcel search guidance
             </div>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              These are demo records, not official parcel/address matches. For official data, zoom in
-              and click a CSG or Kouga parcel outline on the map.
+              No official parcel match found from search yet. Zoom in and click the official parcel
+              outline, or search by address, suburb, LPI, or parcel key.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+              For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.
+            </p>
+          </div>
+
+          <div className="border-b border-[#0D1B2A]/8 bg-white px-4 py-2.5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+              Pilot demo examples
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/55">
+              Demo records are secondary examples, not official parcel/address matches.
             </p>
           </div>
 
           {demoResults.length === 0 && (
             <div className="px-4 py-3 text-sm text-[#0D1B2A]/70">
-              No demo example matched. Try zooming the map and clicking an official parcel outline.
+              No pilot demo example matched.
             </div>
           )}
 
@@ -83,7 +95,7 @@ export function SearchBar({ onPick }: Props) {
                 </div>
               </div>
               <span className="shrink-0 rounded-full bg-[#0D1B2A]/8 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1B2A]/70">
-                Demo
+                Pilot demo example
               </span>
             </button>
           ))}

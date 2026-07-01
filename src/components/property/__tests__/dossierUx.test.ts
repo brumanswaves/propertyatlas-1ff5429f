@@ -7,15 +7,22 @@ describe("official dossier UX guardrails", () => {
   it("keeps the map homepage hero readable and labels demo search results", () => {
     const home = read("src/routes/index.tsx");
     const search = read("src/components/map/SearchBar.tsx");
+    const nav = read("src/components/layout/TopNav.tsx");
 
     expect(home).toContain("ErfStoep");
     expect(home).toContain("Every erf. All the facts.");
     expect(home).toContain("Research any South African erf.");
-    expect(home).toContain("bg-[#fbf8f1]/94");
+    expect(home).toContain("max-w-xl");
+    expect(home).toContain("rounded-[1.35rem]");
+    expect(nav).toContain("rounded-xl");
+    expect(nav).toContain("h-5 w-auto md:h-6");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
+    expect(search).toContain("Official parcel search guidance");
+    expect(search).toContain("No official parcel match found from search yet");
+    expect(search).toContain("For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.");
     expect(search).toContain("Pilot demo examples");
-    expect(search).toContain("not official parcel/address matches");
-    expect(search).toContain("Demo");
+    expect(search).toContain("Demo records are secondary examples");
+    expect(search).toContain("Pilot demo example");
   });
 
   it("renders locate me without storing precise user location", () => {
@@ -29,6 +36,9 @@ describe("official dossier UX guardrails", () => {
     expect(map).toContain(
       "Location permission was not granted. You can still search by address, suburb, erf number, LPI, or parcel key.",
     );
+    expect(map).toContain("position.coords.accuracy");
+    expect(map).toContain("Location accuracy: about");
+    expect(map).toContain("Approximate location. Search or click a parcel for official erf research.");
     expect(map).toContain("map.flyTo({ center: lngLat");
     expect(map).not.toContain("localStorage.setItem(\"userLocation");
     expect(map).not.toContain("supabase.from");

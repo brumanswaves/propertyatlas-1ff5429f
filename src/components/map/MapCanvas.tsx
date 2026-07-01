@@ -484,17 +484,31 @@ export function MapCanvas({
           position.coords.longitude,
           position.coords.latitude,
         ];
-        map.flyTo({ center: lngLat, zoom: 17, duration: 1100, essential: true, curve: 1.35 });
+        const accuracy = position.coords.accuracy;
+        const hasAccuracy = Number.isFinite(accuracy) && accuracy > 0;
+        const targetZoom = hasAccuracy && accuracy > 150 ? 16 : hasAccuracy && accuracy > 60 ? 17 : 18;
+        map.flyTo({ center: lngLat, zoom: targetZoom, duration: 1100, essential: true, curve: 1.35 });
 
         userLocationMarkerRef.current?.remove();
         const el = document.createElement("div");
         el.className =
-          "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.18),0_10px_24px_rgba(13,27,42,0.28)]";
+          "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.18),0_0_0_18px_rgba(255,106,0,0.08),0_10px_24px_rgba(13,27,42,0.28)]";
         userLocationMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
           .setLngLat(lngLat)
           .addTo(map);
 
-        onLocateResult?.("Map centered on your location.");
+        if (hasAccuracy) {
+          const roundedAccuracy = Math.max(1, Math.round(accuracy));
+          const suffix =
+            accuracy > 100
+              ? " Approximate location. Search or click a parcel for official erf research."
+              : " Search or click a parcel for official erf research.";
+          onLocateResult?.(`Location accuracy: about ${roundedAccuracy} meters.${suffix}`);
+        } else {
+          onLocateResult?.(
+            "Map centered on your approximate location. Search or click a parcel for official erf research.",
+          );
+        }
       },
       () => onLocateResult?.(unavailableMessage),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
