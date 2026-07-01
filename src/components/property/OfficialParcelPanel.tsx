@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   ShieldCheck,
-  FileText,
   MapPin,
   Sparkles,
-  Link2,
-  Tag as TagIcon,
-  NotebookPen,
-  Calculator,
   Bookmark,
   BookmarkCheck,
   Share2,
@@ -59,19 +54,6 @@ function normalizeKouga(p: Record<string, unknown>) {
 }
 
 type Tab = "overview" | "research" | "listings" | "reports" | "notes" | "calculators";
-const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
-  { id: "overview", label: "Overview", icon: <Sparkles className="h-3.5 w-3.5" /> },
-  {
-    id: "research",
-    label: "Sources",
-    icon: <Link2 className="h-3.5 w-3.5" />,
-  },
-  { id: "listings", label: "Listings & Comps", icon: <TagIcon className="h-3.5 w-3.5" /> },
-  { id: "reports", label: "Reports", icon: <FileText className="h-3.5 w-3.5" /> },
-  { id: "notes", label: "Notes", icon: <NotebookPen className="h-3.5 w-3.5" /> },
-  { id: "calculators", label: "Strategy", icon: <Calculator className="h-3.5 w-3.5" /> },
-];
-
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
@@ -737,38 +719,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </button>
           ))}
         </section>
-
-        <div className="sticky top-0 z-10 mx-4 mt-4 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/92 backdrop-blur md:mx-7">
-          <div className="relative">
-            <div className="scrollbar-thin flex gap-0.5 overflow-x-auto px-1">
-              {TABS.map(({ id, label }) => {
-                const active = tab === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => {
-                      setTab(id);
-                      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
-                    }}
-                    className={cn(
-                      "relative inline-flex shrink-0 items-center whitespace-nowrap px-4 py-3 text-[13px] font-medium transition",
-                      active
-                        ? "text-[#0D1B2A]"
-                        : "text-[#64748B] hover:text-[#0D1B2A]",
-                    )}
-                  >
-                    {label}
-                    {active && (
-                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[#FF6A00]" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white/92 to-transparent" />
-          </div>
-        </div>
-
 
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && null}

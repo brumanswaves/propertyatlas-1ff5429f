@@ -4,18 +4,33 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("official dossier UX guardrails", () => {
-  it("uses a full-screen workbench-style official parcel panel and short scrollable tabs", () => {
+  it("uses the left rail as the only primary workbench navigation", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("fixed inset-0");
     expect(panel).toContain("Workbench rail");
     expect(panel).toContain("Erf Workbench");
     expect(panel).toContain("Back to full map");
+    expect(panel).toContain('label: "Overview"');
     expect(panel).toContain('label: "Market"');
     expect(panel).toContain('label: "Strategy"');
     expect(panel).toContain('label: "Sources"');
-    expect(panel).toContain('label: "Listings & Comps"');
-    expect(panel).toContain("overflow-x-auto");
+    expect(panel).toContain('label: "Reports"');
+    expect(panel).toContain('label: "Notes"');
+    expect(panel).toContain("WORKBENCH_NAV.map");
+    expect(panel).not.toContain("TABS.map");
+    expect(panel).not.toContain("overflow-x-auto");
+    expect(panel).not.toContain("Listings & Comps</button>");
+    expect(panel).toContain('tab === "research"');
+    expect(panel).toContain('view="research"');
+    expect(panel).toContain('tab === "listings"');
+    expect(panel).toContain('view="listings"');
+    expect(panel).toContain('tab === "reports"');
+    expect(panel).toContain('view="reports"');
+    expect(panel).toContain('tab === "calculators"');
+    expect(panel).toContain('view="calculators"');
+    expect(panel).toContain('tab === "notes"');
+    expect(panel).toContain('view="notes"');
   });
 
   it("keeps mobile official parcel close and save controls visible", () => {
