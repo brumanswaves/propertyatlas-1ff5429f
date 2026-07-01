@@ -69,7 +69,23 @@ const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "listings", label: "Listings & Comps", icon: <TagIcon className="h-3.5 w-3.5" /> },
   { id: "reports", label: "Reports", icon: <FileText className="h-3.5 w-3.5" /> },
   { id: "notes", label: "Notes", icon: <NotebookPen className="h-3.5 w-3.5" /> },
-  { id: "calculators", label: "Calc", icon: <Calculator className="h-3.5 w-3.5" /> },
+  { id: "calculators", label: "Strategy", icon: <Calculator className="h-3.5 w-3.5" /> },
+];
+
+const WORKBENCH_NAV: { id: Tab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "research", label: "Sources" },
+  { id: "listings", label: "Market" },
+  { id: "reports", label: "Reports" },
+  { id: "calculators", label: "Strategy" },
+  { id: "notes", label: "Notes" },
+];
+
+const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
+  { label: "What should I verify first?", tab: "research" },
+  { label: "Build market evidence", tab: "listings" },
+  { label: "Run a land flip check", tab: "calculators" },
+  { label: "Which evidence is missing?", tab: "overview" },
 ];
 
 function readInitialTab(): Tab {
@@ -488,9 +504,61 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
   }
 
+  function selectWorkbenchTab(nextTab: Tab) {
+    setTab(nextTab);
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+  }
+
   return (
-    <aside className="pointer-events-auto fixed inset-y-0 right-0 z-50 flex h-[100dvh] w-full flex-col border-l border-[#0D1B2A]/10 bg-[#fbf8f1]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl max-md:inset-0 max-md:w-full md:left-auto md:w-[min(88vw,1440px)] md:min-w-[960px] md:rounded-l-[2rem]">
-      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-7">
+    <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f7f1e7]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
+      <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col">
+        <div className="mb-8">
+          <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
+            ErfStoep
+          </div>
+          <div className="mt-2 text-xl font-semibold tracking-tight">Workbench rail</div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mb-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/16"
+        >
+          <X className="h-4 w-4" />
+          Back to full map
+        </button>
+        <div className="space-y-1">
+          {WORKBENCH_NAV.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => selectWorkbenchTab(item.id)}
+                className={cn(
+                  "flex min-h-11 w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
+                  active
+                    ? "bg-[#FF6A00] text-white shadow-[0_16px_36px_-18px_rgba(255,106,0,0.8)]"
+                    : "text-white/72 hover:bg-white/10 hover:text-white",
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+                {active && <ChevronRight className="h-4 w-4" />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-auto rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+            Paid reports
+          </div>
+          <p className="mt-2 text-sm leading-6 text-white/72">
+            Optional confidence upgrades. You can continue without buying a report.
+          </p>
+        </div>
+      </nav>
+
+      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:ml-64 md:px-7">
         <div className="min-w-0">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
             Erf Workbench
@@ -543,7 +611,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
       <div
         ref={scrollRef}
-        className="scrollbar-thin relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8"
+        className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
         <div className="px-4 pt-4 md:px-7 md:pt-6">
           <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_15rem]">
@@ -566,41 +634,40 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </div>
 
-        <section className="mx-4 overflow-hidden rounded-[1.75rem] border border-[#0D1B2A]/8 bg-white shadow-[0_24px_60px_-24px_rgba(13,27,42,0.22)] md:mx-7">
-          <div className="relative overflow-hidden rounded-none border-0 bg-[radial-gradient(circle_at_8%_0%,rgba(255,106,0,0.28),transparent_38%),linear-gradient(135deg,#06152A_0%,#0D1B2A_55%,#18324B_100%)] p-6 text-white sm:p-7">
-            <div className="absolute right-[-5rem] top-[-6rem] h-52 w-52 rounded-full bg-[#FF6A00]/22 blur-3xl" />
+        <section className="mx-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white/94 shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7">
+          <div className="relative overflow-hidden rounded-none border-0 bg-white/94 p-6 text-[#0D1B2A] sm:p-7">
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-white/15">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
                   <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI First Read
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6A00]/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#FFD2AD] ring-1 ring-[#FF8A33]/35">
-                  Early read · needs evidence
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#fff3df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9A4A09] ring-1 ring-[#FF8A33]/25">
+                  Early read / needs evidence
                 </span>
               </div>
-              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FFB86B]">
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
                 Every erf. All the facts.
               </p>
-              <h3 className="mt-5 text-[26px] font-semibold leading-[1.15] tracking-tight text-white sm:text-[30px]">
+              <h3 className="mt-5 text-[30px] font-semibold leading-[1.12] tracking-tight text-[#0D1B2A] sm:text-[38px]">
                 {resolved.displayTitle}
               </h3>
-              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-white/82">
+              <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
                 {panelFirstRead(normalizedParcel)}
               </p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/72">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
                 Early consultant-style read only: useful for deciding what to inspect next, not a
                 verified ownership, valuation, zoning, sales, slope, buildability, or GIS precision
                 claim.
               </p>
             </div>
 
-            <div className="relative mt-6 rounded-2xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur">
+            <div className="relative mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fff8ec] p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFD2AD]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
                     Next best step
                   </div>
-                  <p className="mt-1 text-[15px] font-semibold leading-snug text-white">
+                  <p className="mt-1 text-[15px] font-semibold leading-snug text-[#0D1B2A]">
                     {panelNextBestStep(normalizedParcel)}
                   </p>
                 </div>
@@ -627,19 +694,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               </h3>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[
-                "Is this worth investigating?",
-                "What could make this risky?",
-                "What should I verify first?",
-                "Run a land flip check",
-                "Which evidence is missing?",
-              ].map((prompt) => (
+              {ASK_STOEP_PROMPTS.map((prompt) => (
                 <button
-                  key={prompt}
+                  key={prompt.label}
                   type="button"
+                  onClick={() => selectWorkbenchTab(prompt.tab)}
                   className="rounded-full border border-[#0D1B2A]/10 bg-[#fff8ec] px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff1dc]"
                 >
-                  {prompt}
+                  {prompt.label}
                 </button>
               ))}
             </div>
@@ -648,20 +710,44 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
         <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
           {[
-            ["Strategy Lab", "Choose a scenario"],
-            ["Report Vault", "Upload later if you purchase one"],
-            ["StoepSteps", "Follow the due diligence path"],
-            ["Optional confidence upgrade", "You can continue without buying a report"],
+            ["Identity found", "Official CSG/Kouga parcel selected"],
+            ["Evidence needed", "Ownership, valuation, zoning and sales remain unverified"],
+            ["Strategy not chosen", "Use Strategy Lab before deciding"],
+            ["Reports optional", "Continue without buying a report"],
           ].map(([label, value]) => (
             <div
               key={label}
-              className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
+              className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
             >
               <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
                 {label}
               </div>
               <p className="mt-2 text-sm font-semibold leading-5 text-[#0D1B2A]">{value}</p>
             </div>
+          ))}
+        </section>
+
+        <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
+          {[
+            ["Verify official records", "Open CSG, SG and municipal sources.", "research"],
+            ["Build market evidence", "Find listings and comps for this erf.", "listings"],
+            ["Run Strategy Lab", "Test flip, build, hold and max offer assumptions.", "calculators"],
+            ["Add or upload evidence", "Report Vault upload is coming soon.", "reports"],
+          ].map(([label, value, nextTab]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => selectWorkbenchTab(nextTab as Tab)}
+              className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[#0D1B2A]">{label}</div>
+                  <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/62">{value}</p>
+                </div>
+                <ChevronRight className="mt-0.5 h-4 w-4 text-[#FF6A00] transition group-hover:translate-x-0.5" />
+              </div>
+            </button>
           ))}
         </section>
 

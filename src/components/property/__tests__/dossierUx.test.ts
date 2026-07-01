@@ -7,14 +7,15 @@ describe("official dossier UX guardrails", () => {
   it("uses a full-screen workbench-style official parcel panel and short scrollable tabs", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("md:w-[min(88vw,1440px)]");
-    expect(panel).toContain("md:min-w-[960px]");
+    expect(panel).toContain("fixed inset-0");
+    expect(panel).toContain("Workbench rail");
     expect(panel).toContain("Erf Workbench");
     expect(panel).toContain("Research this erf");
     expect(panel).toContain("Back to full map");
+    expect(panel).toContain('label: "Market"');
+    expect(panel).toContain('label: "Strategy"');
     expect(panel).toContain('label: "Sources"');
     expect(panel).toContain('label: "Listings & Comps"');
-    expect(panel).toContain('label: "Calc"');
     expect(panel).toContain("overflow-x-auto");
   });
 
@@ -38,23 +39,27 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("verified ownership, valuation, zoning, sales, slope, buildability");
     expect(panel).toContain("Ask Stoep");
     expect(panel).toContain("What would you like to explore next?");
-    expect(panel).toContain("Is this worth investigating?");
-    expect(panel).toContain("What could make this risky?");
     expect(panel).toContain("What should I verify first?");
+    expect(panel).toContain("Build market evidence");
     expect(panel).toContain("Run a land flip check");
     expect(panel).toContain("Which evidence is missing?");
-    expect(panel).toContain("Strategy Lab");
-    expect(panel).toContain("Report Vault");
-    expect(panel).toContain("Optional confidence upgrade");
+    expect(panel).toContain("Verify official records");
+    expect(panel).toContain("Run Strategy Lab");
+    expect(panel).toContain("Add or upload evidence");
+    expect(panel).toContain("Identity found");
+    expect(panel).toContain("Evidence needed");
+    expect(panel).toContain("Strategy not chosen");
+    expect(panel).toContain("Reports optional");
     expect(panel).toContain("You can continue without buying a report");
-    expect(panel).toContain("Upload later if you purchase one");
+    expect(panel).toContain("Report Vault upload is coming soon");
     expect(panel).toContain("Stoep AI First Read");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).toContain("Next best step");
     expect(panel).toContain("Open full dossier");
     expect(panel).toContain("bg-[#FF6A00]");
-    expect(panel).toContain("bg-[radial-gradient");
+    expect(panel).not.toContain("bg-[radial-gradient");
+    expect(panel).toContain("selectWorkbenchTab");
     expect(panel).toContain("border-b border-[#0D1B2A]/10");
   });
 
