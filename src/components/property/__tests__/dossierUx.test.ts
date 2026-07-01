@@ -63,6 +63,19 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('view="notes"');
   });
 
+  it("shows selected erf map context without faking a second map", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+
+    expect(panel).toContain("Selected erf map context");
+    expect(panel).toContain("Map context coming next");
+    expect(panel).toContain("does not create fake parcel precision");
+    expect(panel).toContain("Coordinates");
+    expect(panel).toContain("formatMapCoordinate");
+    expect(panel).toContain("formatAreaM2");
+    expect(panel).toContain("Back to full map");
+    expect(panel).not.toContain("new mapboxgl.Map");
+  });
+
   it("keeps mobile official parcel close and save controls visible", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 

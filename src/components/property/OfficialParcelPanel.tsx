@@ -101,6 +101,16 @@ function panelFirstRead(parcel: NormalizedOfficialParcel): string {
   return `${identity}${location ? ` in ${location}` : ""} has enough public context for an early read. Ownership, valuation, zoning, sales history and GIS precision still need verified evidence.`;
 }
 
+function formatMapCoordinate(value: number | undefined): string {
+  return Number.isFinite(value) ? value.toFixed(6) : "Not available";
+}
+
+function formatAreaM2(value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "Area not available";
+  return `${Math.round(n).toLocaleString()} m2`;
+}
+
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
 type Geo = {
@@ -650,6 +660,58 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         </section>
 
         <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
+          <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 md:grid-cols-[minmax(0,1fr)_15rem]">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                Selected erf map context
+              </div>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                {resolved.displayTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+                Map context coming next. This card uses the selected official feature context and
+                does not create fake parcel precision.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
+                {normalizedParcel.erfNumber && (
+                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
+                    Erf {normalizedParcel.erfNumber}
+                  </span>
+                )}
+                {normalizedParcel.suburbOrArea && (
+                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
+                    {normalizedParcel.suburbOrArea}
+                  </span>
+                )}
+                <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
+                  {formatAreaM2(csg?.geometryArea ?? kouga?.shapeArea)}
+                </span>
+              </div>
+            </div>
+            <div className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                Coordinates
+              </div>
+              <dl className="mt-2 space-y-1 text-xs text-[#0D1B2A]/70">
+                <div className="flex justify-between gap-3">
+                  <dt>Lat</dt>
+                  <dd className="font-mono">{formatMapCoordinate(normalizedParcel.coordinates?.lat)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt>Lng</dt>
+                  <dd className="font-mono">{formatMapCoordinate(normalizedParcel.coordinates?.lng)}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+              >
+                Back to full map
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
