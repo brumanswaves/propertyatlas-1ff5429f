@@ -63,6 +63,53 @@ const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "notes", label: "Notes" },
 ];
 
+const WORKBENCH_SECTIONS: Record<
+  Tab,
+  { title: string; subtitle: string; guidanceTitle: string; guidance: string }
+> = {
+  overview: {
+    title: "Overview",
+    subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
+    guidanceTitle: "Stoep AI First Read",
+    guidance: "Use this first read to decide what evidence to check next.",
+  },
+  research: {
+    title: "Official Sources",
+    subtitle: "Check public records and source links tied to this erf.",
+    guidanceTitle: "Source-check guidance",
+    guidance:
+      "Start with official and municipal records. Keep ownership, valuation and zoning marked needs evidence until a verified source supports them.",
+  },
+  listings: {
+    title: "Market Evidence",
+    subtitle: "Build comps, listing evidence, and manual market notes.",
+    guidanceTitle: "Comp-building guidance",
+    guidance:
+      "Use listings as evidence to save and compare. Portal results may be nearby or unrelated, so verify each comp before it informs your view.",
+  },
+  reports: {
+    title: "Report Vault",
+    subtitle: "Add or upload Lightstone, WinDeed, SG, zoning, title deed, or other evidence.",
+    guidanceTitle: "Evidence vault guidance",
+    guidance:
+      "Paid reports are optional confidence upgrades. Upload or attach evidence when you have it; the basic workflow still works without a purchase.",
+  },
+  calculators: {
+    title: "Strategy Lab",
+    subtitle: "Run the numbers before deciding whether to buy, hold, flip, or build.",
+    guidanceTitle: "Number-check guidance",
+    guidance:
+      "Treat calculator outputs as estimates from your assumptions, not verified valuations or investment advice.",
+  },
+  notes: {
+    title: "Notes",
+    subtitle: "Capture your research, questions, and decision notes.",
+    guidanceTitle: "Research notes guidance",
+    guidance:
+      "Keep open questions, evidence links and decision notes together so the erf stays reviewable later.",
+  },
+};
+
 const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
   { label: "What is risky?", tab: "research" },
   { label: "What should I verify?", tab: "research" },
@@ -493,6 +540,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
+  const activeSection = WORKBENCH_SECTIONS[tab];
+  const isOverview = tab === "overview";
+
   return (
     <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f7f1e7]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
       <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col">
@@ -597,65 +647,93 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
+        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/82 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.48)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
+          <div className="inline-flex items-center rounded-full bg-[#fff3df] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A4A09] ring-1 ring-[#FF8A33]/20">
+            Workbench / {activeSection.title}
+          </div>
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
+            {activeSection.title}
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66 md:text-base md:leading-7">
+            {activeSection.subtitle}
+          </p>
+        </section>
+
         <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white/94 shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
           <div className="relative overflow-hidden rounded-none border-0 bg-white/94 p-6 text-[#0D1B2A] sm:p-7">
-            <div className="relative">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
-                  <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI First Read
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#fff3df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9A4A09] ring-1 ring-[#FF8A33]/25">
-                  Early read / needs evidence
-                </span>
-              </div>
-              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
-                Every erf. All the facts.
-              </p>
-              <h3 className="mt-5 text-[30px] font-semibold leading-[1.12] tracking-tight text-[#0D1B2A] sm:text-[38px]">
-                {resolved.displayTitle}
-              </h3>
-              <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
-                {panelFirstRead(normalizedParcel)}
-              </p>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
-                Early consultant-style read only: useful for deciding what to inspect next, not a
-                verified ownership, valuation, zoning, sales, slope, buildability, or GIS precision
-                claim.
-              </p>
-            </div>
-
-            <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                    Recommended next step
+            {isOverview ? (
+              <>
+                <div className="relative">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
+                      <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI First Read
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff3df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9A4A09] ring-1 ring-[#FF8A33]/25">
+                      Early read / needs evidence
+                    </span>
                   </div>
-                  <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
-                    Verify the official parcel identity first.
+                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
+                    Every erf. All the facts.
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">
-                    Start with the official source so every market, strategy and report note is tied
-                    to the correct erf.
+                  <h3 className="mt-5 text-[30px] font-semibold leading-[1.12] tracking-tight text-[#0D1B2A] sm:text-[38px]">
+                    {resolved.displayTitle}
+                  </h3>
+                  <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
+                    {panelFirstRead(normalizedParcel)}
+                  </p>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
+                    Early consultant-style read only: useful for deciding what to inspect next, not
+                    a verified ownership, valuation, zoning, sales, slope, buildability, or GIS
+                    precision claim.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => selectWorkbenchTab("research")}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
-                  >
-                    Check official source
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectWorkbenchTab("calculators")}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                  >
-                    Skip to Strategy Lab
-                  </button>
+
+                <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                        Recommended next step
+                      </div>
+                      <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
+                        Verify the official parcel identity first.
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">
+                        Start with the official source so every market, strategy and report note is
+                        tied to the correct erf.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => selectWorkbenchTab("research")}
+                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
+                      >
+                        Check official source
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => selectWorkbenchTab("calculators")}
+                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                      >
+                        Skip to Strategy Lab
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              </>
+            ) : (
+              <div className="relative rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                  {activeSection.guidanceTitle}
+                </div>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+                  {activeSection.title}
+                </h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+                  {activeSection.guidance}
+                </p>
               </div>
-            </div>
+            )}
           </div>
         </section>
 
@@ -712,75 +790,81 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                Ask Stoep
-              </div>
-              <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                What do you want to understand first?
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {ASK_STOEP_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt.label}
-                  type="button"
-                  onClick={() => selectWorkbenchTab(prompt.tab)}
-                  className="rounded-full border border-[#0D1B2A]/10 bg-[#fff8ec] px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff1dc]"
-                >
-                  {prompt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
-          {[
-            ["Identity", "Found"],
-            ["Ownership", "Needs evidence"],
-            ["Market value", "Needs evidence"],
-            ["Strategy", "Not chosen"],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
-            >
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                {label}
-              </div>
-              <p className="mt-2 text-sm font-semibold leading-5 text-[#0D1B2A]">{value}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
-          {[
-            ["Verify official records", "Open CSG, SG and municipal sources.", "research"],
-            ["Build market evidence", "Find listings and comps for this erf.", "listings"],
-            ["Run Strategy Lab", "Test flip, build, hold and max offer assumptions.", "calculators"],
-            ["Add/upload evidence", "Coming soon", "coming-soon"],
-          ].map(([label, value, nextTab]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => {
-                if (nextTab !== "coming-soon") selectWorkbenchTab(nextTab as Tab);
-              }}
-              disabled={nextTab === "coming-soon"}
-              className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#0D1B2A]/10 disabled:hover:shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-[#0D1B2A]">{label}</div>
-                  <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/62">{value}</p>
+          {isOverview && (
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                  Ask Stoep
                 </div>
-                <ChevronRight className="mt-0.5 h-4 w-4 text-[#FF6A00] transition group-hover:translate-x-0.5" />
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                  What do you want to understand first?
+                </h3>
               </div>
-            </button>
-          ))}
+              <div className="flex flex-wrap gap-2">
+                {ASK_STOEP_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt.label}
+                    type="button"
+                    onClick={() => selectWorkbenchTab(prompt.tab)}
+                    className="rounded-full border border-[#0D1B2A]/10 bg-[#fff8ec] px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff1dc]"
+                  >
+                    {prompt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
+
+        {isOverview && (
+          <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
+            {[
+              ["Identity", "Found"],
+              ["Ownership", "Needs evidence"],
+              ["Market value", "Needs evidence"],
+              ["Strategy", "Not chosen"],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  {label}
+                </div>
+                <p className="mt-2 text-sm font-semibold leading-5 text-[#0D1B2A]">{value}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {isOverview && (
+          <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
+            {[
+              ["Verify official records", "Open CSG, SG and municipal sources.", "research"],
+              ["Build market evidence", "Find listings and comps for this erf.", "listings"],
+              ["Run Strategy Lab", "Test flip, build, hold and max offer assumptions.", "calculators"],
+              ["Add/upload evidence", "Coming soon", "coming-soon"],
+            ].map(([label, value, nextTab]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  if (nextTab !== "coming-soon") selectWorkbenchTab(nextTab as Tab);
+                }}
+                disabled={nextTab === "coming-soon"}
+                className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#0D1B2A]/10 disabled:hover:shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-[#0D1B2A]">{label}</div>
+                    <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/62">{value}</p>
+                  </div>
+                  <ChevronRight className="mt-0.5 h-4 w-4 text-[#FF6A00] transition group-hover:translate-x-0.5" />
+                </div>
+              </button>
+            ))}
+          </section>
+        )}
 
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && null}

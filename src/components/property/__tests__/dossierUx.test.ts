@@ -76,6 +76,35 @@ describe("official dossier UX guardrails", () => {
     expect(panel).not.toContain("new mapboxgl.Map");
   });
 
+  it("clarifies the active workbench section and keeps overview as the only first-read section", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+
+    expect(panel).toContain("WORKBENCH_SECTIONS");
+    expect(panel).toContain("Workbench / {activeSection.title}");
+    expect(panel).toContain('title: "Overview"');
+    expect(panel).toContain(
+      "Start with the first read, evidence readiness, and the recommended next step.",
+    );
+    expect(panel).toContain('title: "Official Sources"');
+    expect(panel).toContain("Check public records and source links tied to this erf.");
+    expect(panel).toContain('title: "Market Evidence"');
+    expect(panel).toContain("Build comps, listing evidence, and manual market notes.");
+    expect(panel).toContain('title: "Report Vault"');
+    expect(panel).toContain(
+      "Add or upload Lightstone, WinDeed, SG, zoning, title deed, or other evidence.",
+    );
+    expect(panel).toContain('title: "Strategy Lab"');
+    expect(panel).toContain(
+      "Run the numbers before deciding whether to buy, hold, flip, or build.",
+    );
+    expect(panel).toContain('title: "Notes"');
+    expect(panel).toContain("Capture your research, questions, and decision notes.");
+    expect(panel).toContain("isOverview ? (");
+    expect(panel).toContain("{isOverview && (");
+    expect(panel).toContain("{activeSection.guidanceTitle}");
+    expect(panel).toContain("{activeSection.guidance}");
+  });
+
   it("keeps mobile official parcel close and save controls visible", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
