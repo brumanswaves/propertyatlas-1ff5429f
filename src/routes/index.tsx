@@ -207,13 +207,16 @@ function AtlasHome() {
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center gap-3 px-4 md:top-24">
-        <div className="pointer-events-none hidden max-w-2xl text-center md:block">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            {BRAND.site} — {BRAND.tagline}
+        <div className="pointer-events-auto w-full max-w-3xl rounded-[2rem] border border-white/70 bg-[#fbf8f1]/94 p-4 text-center shadow-[0_24px_80px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:p-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#FF6A00]">
+            ErfStoep
           </p>
-          <h2 className="mt-1.5 text-[22px] font-semibold tracking-tight text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.5)]">
-            Research any South African erf.
+          <h2 className="mt-1 text-[26px] font-semibold tracking-tight text-[#0D1B2A] md:text-[34px]">
+            Every erf. All the facts.
           </h2>
+          <p className="mt-1 text-sm font-medium text-[#0D1B2A]/68">
+            Research any South African erf.
+          </p>
         </div>
         <div className="pointer-events-auto relative z-10 w-full max-w-2xl">
           <SearchBar

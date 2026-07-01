@@ -4,6 +4,20 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("official dossier UX guardrails", () => {
+  it("keeps the map homepage hero readable and labels demo search results", () => {
+    const home = read("src/routes/index.tsx");
+    const search = read("src/components/map/SearchBar.tsx");
+
+    expect(home).toContain("ErfStoep");
+    expect(home).toContain("Every erf. All the facts.");
+    expect(home).toContain("Research any South African erf.");
+    expect(home).toContain("bg-[#fbf8f1]/94");
+    expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
+    expect(search).toContain("Pilot demo examples");
+    expect(search).toContain("not official parcel/address matches");
+    expect(search).toContain("Demo");
+  });
+
   it("uses the left rail as the only primary workbench navigation", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
