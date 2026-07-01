@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { MousePointerClick, Plus, X } from "lucide-react";
+import { LocateFixed, MousePointerClick, Plus, X } from "lucide-react";
 import {
   MapCanvas,
   type MapDebugStatus,
@@ -65,6 +65,8 @@ function AtlasHome() {
   const [debugReopenEnabled, setDebugReopenEnabled] = useState(false);
   const [debugSearchParams, setDebugSearchParams] = useState<Record<string, string | null>>({});
   const [mapDebugStatus, setMapDebugStatus] = useState<MapDebugStatus | null>(null);
+  const [locateRequestId, setLocateRequestId] = useState(0);
+  const [locateMessage, setLocateMessage] = useState<string | null>(null);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "loading", count: 0 },
     kouga: { state: "loading", count: 0 },
@@ -194,6 +196,8 @@ function AtlasHome() {
         officialReopenRequest={requestedOfficialParcel}
         onOfficialReopenStatus={setOfficialReopenStatus}
         onDebugStatus={debugReopenEnabled ? setMapDebugStatus : undefined}
+        locateRequestId={locateRequestId}
+        onLocateResult={setLocateMessage}
       />
       <MapLegend layers={layers} />
       <TopNav />
@@ -228,6 +232,17 @@ function AtlasHome() {
           />
         </div>
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setLocateMessage(null);
+              setLocateRequestId((value) => value + 1);
+            }}
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/70 bg-[#fbf8f1]/95 px-4 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_14px_34px_-22px_rgba(13,27,42,0.45)] backdrop-blur transition hover:bg-white"
+          >
+            <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
+            Locate me
+          </button>
           <FilterPanel value={filters} onChange={setFilters} />
           <LayerSwitcher
             layers={layers}
@@ -242,6 +257,11 @@ function AtlasHome() {
           <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
             <OfficialPill label="CSG" status={officialStatus.csg} />
             <OfficialPill label="Kouga" status={officialStatus.kouga} />
+          </div>
+        )}
+        {locateMessage && (
+          <div className="pointer-events-auto max-w-xl rounded-2xl border border-[#0D1B2A]/10 bg-white/95 px-3 py-2 text-center text-xs font-medium text-[#0D1B2A]/72 shadow-[0_14px_34px_-24px_rgba(13,27,42,0.45)] backdrop-blur">
+            {locateMessage}
           </div>
         )}
       </div>

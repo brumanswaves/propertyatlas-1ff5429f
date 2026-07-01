@@ -98,6 +98,8 @@ interface Props {
   officialReopenRequest?: OfficialParcelReopenRequest | null;
   onOfficialReopenStatus?: (status: OfficialReopenResolutionStatus) => void;
   onDebugStatus?: (status: MapDebugStatus) => void;
+  locateRequestId?: number;
+  onLocateResult?: (message: string | null) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -304,11 +306,14 @@ export function MapCanvas({
   officialReopenRequest,
   onOfficialReopenStatus,
   onDebugStatus,
+  locateRequestId = 0,
+  onLocateResult,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const pulseMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const selectedOfficialFeatureRef = useRef<{
     source: OfficialFeatureLayer;
     id: string | number;
@@ -442,6 +447,8 @@ export function MapCanvas({
       canvas.removeEventListener("webglcontextlost", onContextLost);
       pulseMarkerRef.current?.remove();
       pulseMarkerRef.current = null;
+      userLocationMarkerRef.current?.remove();
+      userLocationMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -457,6 +464,42 @@ export function MapCanvas({
     currentStyleRef.current = mapStyle;
     map.setStyle(STYLE_URLS[mapStyle]);
   }, [mapStyle]);
+
+  useEffect(() => {
+    if (!locateRequestId) return;
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    const unavailableMessage =
+      "Location permission was not granted. You can still search by address, suburb, erf number, LPI, or parcel key.";
+    if (!("geolocation" in navigator)) {
+      onLocateResult?.(unavailableMessage);
+      return;
+    }
+
+    onLocateResult?.("Locating you...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lngLat: [number, number] = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+        map.flyTo({ center: lngLat, zoom: 17, duration: 1100, essential: true, curve: 1.35 });
+
+        userLocationMarkerRef.current?.remove();
+        const el = document.createElement("div");
+        el.className =
+          "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.18),0_10px_24px_rgba(13,27,42,0.28)]";
+        userLocationMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat(lngLat)
+          .addTo(map);
+
+        onLocateResult?.("Map centered on your location.");
+      },
+      () => onLocateResult?.(unavailableMessage),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [locateRequestId, onLocateResult, ready]);
 
   // Add sources + layers (re-run on every style load)
   useEffect(() => {

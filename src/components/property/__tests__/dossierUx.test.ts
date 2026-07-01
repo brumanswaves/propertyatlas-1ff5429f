@@ -18,6 +18,22 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Demo");
   });
 
+  it("renders locate me without storing precise user location", () => {
+    const home = read("src/routes/index.tsx");
+    const map = read("src/components/map/MapCanvas.tsx");
+
+    expect(home).toContain("Locate me");
+    expect(home).toContain("locateRequestId");
+    expect(home).toContain("onLocateResult={setLocateMessage}");
+    expect(map).toContain("navigator.geolocation.getCurrentPosition");
+    expect(map).toContain(
+      "Location permission was not granted. You can still search by address, suburb, erf number, LPI, or parcel key.",
+    );
+    expect(map).toContain("map.flyTo({ center: lngLat");
+    expect(map).not.toContain("localStorage.setItem(\"userLocation");
+    expect(map).not.toContain("supabase.from");
+  });
+
   it("uses the left rail as the only primary workbench navigation", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
