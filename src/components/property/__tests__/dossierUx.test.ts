@@ -31,6 +31,10 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("No official parcel match found yet");
     expect(search).toContain("confidenceLabel");
     expect(search).toContain("showDemoExamples");
+    expect(search).toContain("officialResults.length === 0");
+    expect(search).toContain("!showDemoExamples || officialResults.length > 0");
+    expect(search).toContain("z-[90]");
+    expect(search).toContain("max-h-[min(72vh,32rem)]");
     expect(search).toContain(
       "For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.",
     );

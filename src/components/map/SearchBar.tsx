@@ -36,17 +36,17 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
   }, [officialParcels, q]);
 
   const demoResults = useMemo(() => {
-    if (!q.trim()) return [];
+    if (!q.trim() || !showDemoExamples || officialResults.length > 0) return [];
     const t = q.toLowerCase();
     return PROPERTIES.filter(
       (p) =>
         p.street.toLowerCase().includes(t) || p.area.toLowerCase().includes(t) || p.erf.includes(t),
     ).slice(0, 6);
-  }, [q]);
+  }, [officialResults.length, q, showDemoExamples]);
 
   return (
     <div className="relative w-full max-w-2xl">
-      <div className="group flex items-center gap-2.5 rounded-2xl bg-white/96 px-4 py-3 ring-1 ring-[#0D1B2A]/8 shadow-[0_18px_50px_-20px_rgba(13,27,42,0.38),0_2px_6px_-2px_rgba(13,27,42,0.08)] backdrop-blur-md transition focus-within:bg-white focus-within:ring-2 focus-within:ring-[#FF6A00]/50">
+      <div className="group flex items-center gap-2.5 rounded-2xl bg-white/96 px-3 py-2.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_18px_50px_-20px_rgba(13,27,42,0.38),0_2px_6px_-2px_rgba(13,27,42,0.08)] backdrop-blur-md transition focus-within:bg-white focus-within:ring-2 focus-within:ring-[#FF6A00]/50 md:px-4 md:py-3">
         <Search className="h-4 w-4 shrink-0 text-[#64748B]" />
         <input
           value={q}
@@ -72,7 +72,7 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
       </div>
 
       {open && q.trim() && (
-        <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
+        <div className="absolute left-0 right-0 top-full z-[90] mt-2 max-h-[min(72vh,32rem)] overflow-y-auto rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
           <div className="border-b border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3">
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
               Official parcel search
@@ -126,18 +126,20 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
             </button>
           ))}
 
-          <div className="bg-white px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setShowDemoExamples((value) => !value)}
-              className="inline-flex items-center rounded-full border border-[#0D1B2A]/10 bg-[#fbf8f1] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B] hover:bg-[#f8f3ea]"
-            >
-              {showDemoExamples ? "Hide pilot demo examples" : "Show pilot demo examples"}
-            </button>
-            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/55">
-              Demo records are secondary training examples, not official parcel/address matches.
-            </p>
-          </div>
+          {officialResults.length === 0 && (
+            <div className="bg-white px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setShowDemoExamples((value) => !value)}
+                className="inline-flex items-center rounded-full border border-[#0D1B2A]/10 bg-[#fbf8f1] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B] hover:bg-[#f8f3ea]"
+              >
+                {showDemoExamples ? "Hide pilot demo examples" : "Show pilot demo examples"}
+              </button>
+              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/55">
+                Demo records are secondary training examples, not official parcel/address matches.
+              </p>
+            </div>
+          )}
 
           {showDemoExamples && demoResults.length === 0 && (
             <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm text-[#0D1B2A]/70">
