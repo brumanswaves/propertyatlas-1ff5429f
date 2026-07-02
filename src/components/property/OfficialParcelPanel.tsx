@@ -171,23 +171,36 @@ function SelectedErfMiniMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
+  const coordinateLng = coordinates?.lng;
+  const coordinateLat = coordinates?.lat;
   const hasCoordinates =
-    coordinates &&
-    Number.isFinite(coordinates.lng) &&
-    Number.isFinite(coordinates.lat) &&
-    coordinates.lng >= -180 &&
-    coordinates.lng <= 180 &&
-    coordinates.lat >= -90 &&
-    coordinates.lat <= 90;
+    Number.isFinite(coordinateLng) &&
+    Number.isFinite(coordinateLat) &&
+    coordinateLng !== undefined &&
+    coordinateLat !== undefined &&
+    coordinateLng >= -180 &&
+    coordinateLng <= 180 &&
+    coordinateLat >= -90 &&
+    coordinateLat <= 90;
 
   useEffect(() => {
-    if (!containerRef.current || !coordinates || !hasCoordinates || !MAPBOX_TOKEN) return;
+    setMapFailed(false);
+    if (
+      !containerRef.current ||
+      !hasCoordinates ||
+      !MAPBOX_TOKEN ||
+      coordinateLng === undefined ||
+      coordinateLat === undefined
+    ) {
+      return;
+    }
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: STYLE_URLS.satellite,
-      center: [coordinates.lng, coordinates.lat],
+      center: [coordinateLng, coordinateLat],
       zoom: 17.4,
       pitch: 0,
       bearing: 0,
@@ -201,18 +214,33 @@ function SelectedErfMiniMap({
     markerEl.className =
       "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.20),0_12px_26px_rgba(13,27,42,0.35)]";
     markerRef.current = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
-      .setLngLat([coordinates.lng, coordinates.lat])
+      .setLngLat([coordinateLng, coordinateLat])
       .addTo(map);
 
-    map.once("load", () => map.resize());
-
-    return () => {
-      markerRef.current?.remove();
-      markerRef.current = null;
+    const failTimer = window.setTimeout(() => {
+      setMapFailed(true);
       map.remove();
       mapRef.current = null;
+    }, 7000);
+    map.once("load", () => {
+      window.clearTimeout(failTimer);
+      requestAnimationFrame(() => map.resize());
+    });
+    map.once("error", () => {
+      window.clearTimeout(failTimer);
+      setMapFailed(true);
+      map.remove();
+      mapRef.current = null;
+    });
+
+    return () => {
+      window.clearTimeout(failTimer);
+      markerRef.current?.remove();
+      markerRef.current = null;
+      if (mapRef.current) map.remove();
+      mapRef.current = null;
     };
-  }, [coordinates?.lat, coordinates?.lng, hasCoordinates]);
+  }, [coordinateLat, coordinateLng, hasCoordinates]);
 
   if (!hasCoordinates) {
     return (
@@ -234,6 +262,23 @@ function SelectedErfMiniMap({
           <div className="text-sm font-semibold text-[#0D1B2A]">Mini map unavailable</div>
           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
             The Mapbox token is missing, so the read-only Workbench map cannot render.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (mapFailed) {
+    return (
+      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5 text-center">
+        <div>
+          <div className="text-sm font-semibold text-[#0D1B2A]">Map context could not render</div>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            The read-only mini map failed to load. Use the coordinates and Back to full map action
+            for interactive parcel selection.
+          </p>
+          <p className="mt-3 font-mono text-xs text-[#0D1B2A]/70">
+            {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
           </p>
         </div>
       </div>
@@ -885,7 +930,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 </button>
               </div>
             </div>
-            <SelectedErfMiniMap coordinates={normalizedParcel.coordinates} title={resolved.displayTitle} />
+            <SelectedErfMiniMap
+              coordinates={normalizedParcel.coordinates}
+              title={resolved.displayTitle}
+            />
           </div>
 
           {isOverview && (
@@ -940,7 +988,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             {[
               ["Verify official records", "Open CSG, SG and municipal sources.", "research"],
               ["Build market evidence", "Find listings and comps for this erf.", "listings"],
-              ["Run Strategy Lab", "Test flip, build, hold and max offer assumptions.", "calculators"],
+              [
+                "Run Strategy Lab",
+                "Test flip, build, hold and max offer assumptions.",
+                "calculators",
+              ],
               ["Add/upload evidence", "Coming soon", "coming-soon"],
             ].map(([label, value, nextTab]) => (
               <button

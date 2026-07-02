@@ -28,6 +28,7 @@ function confidenceLabel(confidence: PropertySearchResult["confidence"]): string
 export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Props) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [showDemoExamples, setShowDemoExamples] = useState(false);
 
   const officialResults = useMemo(() => {
     if (!q.trim()) return [];
@@ -52,6 +53,7 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
           onChange={(e) => {
             setQ(e.target.value);
             setOpen(true);
+            setShowDemoExamples(false);
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search address, erf number, suburb, LPI, or parcel key"
@@ -124,43 +126,49 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
             </button>
           ))}
 
-          <div className="border-b border-[#0D1B2A]/8 bg-white px-4 py-2.5">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Pilot demo examples
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/55">
-              Demo records are secondary examples, not official parcel/address matches.
+          <div className="bg-white px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setShowDemoExamples((value) => !value)}
+              className="inline-flex items-center rounded-full border border-[#0D1B2A]/10 bg-[#fbf8f1] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B] hover:bg-[#f8f3ea]"
+            >
+              {showDemoExamples ? "Hide pilot demo examples" : "Show pilot demo examples"}
+            </button>
+            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/55">
+              Demo records are secondary training examples, not official parcel/address matches.
             </p>
           </div>
 
-          {demoResults.length === 0 && (
-            <div className="px-4 py-3 text-sm text-[#0D1B2A]/70">
+          {showDemoExamples && demoResults.length === 0 && (
+            <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm text-[#0D1B2A]/70">
               No pilot demo example matched.
             </div>
           )}
 
-          {demoResults.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => {
-                onPick(r);
-                setOpen(false);
-                setQ("");
-              }}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-[#f8f3ea]"
-            >
-              <div>
-                <div className="font-medium text-[#0D1B2A]">{r.street}</div>
-                <div className="text-xs text-[#0D1B2A]/58">
-                  {r.area} - Erf {r.erf} - {r.type}
+          {showDemoExamples &&
+            demoResults.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => {
+                  onPick(r);
+                  setOpen(false);
+                  setQ("");
+                  setShowDemoExamples(false);
+                }}
+                className="flex w-full items-center justify-between gap-3 border-t border-[#0D1B2A]/8 px-4 py-3 text-left text-sm hover:bg-[#f8f3ea]"
+              >
+                <div>
+                  <div className="font-medium text-[#0D1B2A]">{r.street}</div>
+                  <div className="text-xs text-[#0D1B2A]/58">
+                    {r.area} - Erf {r.erf} - {r.type}
+                  </div>
                 </div>
-              </div>
-              <span className="shrink-0 rounded-full bg-[#0D1B2A]/8 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1B2A]/70">
-                Pilot demo example
-              </span>
-            </button>
-          ))}
+                <span className="shrink-0 rounded-full bg-[#0D1B2A]/8 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1B2A]/70">
+                  Pilot demo example
+                </span>
+              </button>
+            ))}
         </div>
       )}
     </div>

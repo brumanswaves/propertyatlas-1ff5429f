@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Layers, Map as MapIcon, Mountain, Satellite, Moon, X, ExternalLink, AlertTriangle } from "lucide-react";
+import {
+  Layers,
+  Map as MapIcon,
+  Mountain,
+  Satellite,
+  Moon,
+  X,
+  ExternalLink,
+  AlertTriangle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MapLayers, MapStyleId, OfficialLayerStatus } from "./MapCanvas";
 
@@ -11,7 +20,11 @@ interface Props {
   officialStatus?: OfficialLayerStatus;
 }
 
-const STYLES: { id: MapStyleId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const STYLES: {
+  id: MapStyleId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { id: "satellite", label: "Satellite", icon: Satellite },
   { id: "streets", label: "Streets", icon: MapIcon },
   { id: "terrain", label: "Terrain", icon: Mountain },
@@ -20,7 +33,10 @@ const STYLES: { id: MapStyleId; label: string; icon: React.ComponentType<{ class
 
 // Normal users only see official public-data layers. Demo and heatmap layers
 // are kept in MapLayers but are only exposed via the admin debug area.
-const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: string; hint?: string }[] }[] = [
+const LAYER_GROUPS: {
+  title: string;
+  items: { key: keyof MapLayers; label: string; hint?: string }[];
+}[] = [
   {
     title: "Official public data",
     items: [
@@ -30,7 +46,13 @@ const LAYER_GROUPS: { title: string; items: { key: keyof MapLayers; label: strin
   },
 ];
 
-export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, officialStatus }: Props) {
+export function LayerSwitcher({
+  layers,
+  onLayersChange,
+  style,
+  onStyleChange,
+  officialStatus,
+}: Props) {
   const [open, setOpen] = useState(false);
   // Only count layers that are toggled on AND, for official layers, actually loaded features.
   const officialOn = (key: "csgParcels" | "kougaZoning") => {
@@ -39,19 +61,27 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
     if (!officialStatus) return true;
     return s === "loaded" || s === "imported" || s === "test";
   };
-  const otherKeys = (Object.keys(layers) as (keyof MapLayers)[]).filter((k) => k !== "csgParcels" && k !== "kougaZoning");
+  const otherKeys = (Object.keys(layers) as (keyof MapLayers)[]).filter(
+    (k) => k !== "csgParcels" && k !== "kougaZoning",
+  );
   const activeLayers =
     (officialOn("csgParcels") ? 1 : 0) +
     (officialOn("kougaZoning") ? 1 : 0) +
     otherKeys.filter((k) => layers[k]).length;
-  const kougaUnavailable = layers.kougaZoning && officialStatus && (officialStatus.kouga.state === "empty" || officialStatus.kouga.state === "failed");
-  const csgUnavailable = layers.csgParcels && officialStatus && (officialStatus.csg.state === "empty" || officialStatus.csg.state === "failed");
+  const kougaUnavailable =
+    layers.kougaZoning &&
+    officialStatus &&
+    (officialStatus.kouga.state === "empty" || officialStatus.kouga.state === "failed");
+  const csgUnavailable =
+    layers.csgParcels &&
+    officialStatus &&
+    (officialStatus.csg.state === "empty" || officialStatus.csg.state === "failed");
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full bg-card/95 px-3.5 py-2.5 text-xs font-medium shadow-soft backdrop-blur transition hover:bg-card hover:shadow-glow"
+        className="flex min-h-9 items-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/80 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
       >
         <Layers className="h-3.5 w-3.5" />
         Layers
@@ -77,7 +107,9 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
 
             <div className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain p-4">
               <div className="mb-4">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base map</div>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Base map
+                </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {STYLES.map((s) => {
                     const Icon = s.icon;
@@ -88,7 +120,9 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
                         onClick={() => onStyleChange(s.id)}
                         className={cn(
                           "flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2.5 text-[10px] font-medium transition",
-                          active ? "border-primary bg-primary text-primary-foreground shadow-soft" : "border-border text-muted-foreground hover:bg-muted",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                            : "border-border text-muted-foreground hover:bg-muted",
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -101,7 +135,9 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
 
               {LAYER_GROUPS.map((g) => (
                 <div key={g.title} className="mb-4 last:mb-0">
-                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</div>
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {g.title}
+                  </div>
                   <div className="space-y-1">
                     {g.items.map((it) => {
                       const checked = layers[it.key];
@@ -110,12 +146,18 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
                           key={it.key}
                           className={cn(
                             "flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm transition",
-                            checked ? "border-primary/40 bg-primary/5" : "border-transparent hover:bg-muted",
+                            checked
+                              ? "border-primary/40 bg-primary/5"
+                              : "border-transparent hover:bg-muted",
                           )}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-medium">{it.label}</div>
-                            {it.hint && <div className="truncate text-[11px] text-muted-foreground">{it.hint}</div>}
+                            {it.hint && (
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                {it.hint}
+                              </div>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -143,13 +185,23 @@ export function LayerSwitcher({ layers, onLayersChange, style, onStyleChange, of
                     {g.title === "Official public data" && (kougaUnavailable || csgUnavailable) && (
                       <div className="mt-2 space-y-1.5 rounded-lg border border-accent/30 bg-accent/10 p-2 text-[11px] text-accent dark:text-accent">
                         {csgUnavailable && (
-                          <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current view.</div>
+                          <div className="flex items-center gap-1.5">
+                            <AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current
+                            view.
+                          </div>
                         )}
                         {kougaUnavailable && (
                           <>
-                            <div className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Zoning layer unavailable. Open Kouga Mapping Portal.</div>
-                            <a href="https://mapping-kouga.hub.arcgis.com/" target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                            <div className="flex items-center gap-1.5">
+                              <AlertTriangle className="h-3 w-3" /> Zoning layer unavailable. Open
+                              Kouga Mapping Portal.
+                            </div>
+                            <a
+                              href="https://mapping-kouga.hub.arcgis.com/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background"
+                            >
                               Open Kouga Mapping Portal <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           </>

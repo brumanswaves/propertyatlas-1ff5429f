@@ -30,7 +30,13 @@ export const DEFAULT_FILTERS: Filters = {
   longHeldOnly: false,
 };
 
-const TYPES: PropertyType[] = ["Residential", "Vacant Land", "Commercial", "Industrial", "Agricultural"];
+const TYPES: PropertyType[] = [
+  "Residential",
+  "Vacant Land",
+  "Commercial",
+  "Industrial",
+  "Agricultural",
+];
 const OWNERS = ["Individual", "Trust", "Company"] as const;
 
 interface Props {
@@ -61,7 +67,9 @@ export function FilterPanel({ value, onChange }: Props) {
   function toggleOwner(o: (typeof OWNERS)[number]) {
     onChange({
       ...value,
-      ownership: value.ownership.includes(o) ? value.ownership.filter((x) => x !== o) : [...value.ownership, o],
+      ownership: value.ownership.includes(o)
+        ? value.ownership.filter((x) => x !== o)
+        : [...value.ownership, o],
     });
   }
 
@@ -69,7 +77,7 @@ export function FilterPanel({ value, onChange }: Props) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full bg-card/95 px-3.5 py-2.5 text-xs font-medium shadow-soft backdrop-blur hover:bg-card"
+        className="flex min-h-9 items-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/80 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
         Filters
@@ -99,22 +107,26 @@ export function FilterPanel({ value, onChange }: Props) {
               <Section title="Property type">
                 <div className="flex flex-wrap gap-1.5">
                   {TYPES.map((t) => (
-                    <Chip key={t} active={value.types.includes(t)} onClick={() => toggleType(t)}>{t}</Chip>
+                    <Chip key={t} active={value.types.includes(t)} onClick={() => toggleType(t)}>
+                      {t}
+                    </Chip>
                   ))}
                 </div>
               </Section>
               <p className="mb-3 rounded-lg border border-dashed border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                More filters (Kouga record, municipal context, zoning, SG document, saved by me, notes, listings, report interest) will activate as their data sources come online.
+                More filters (Kouga record, municipal context, zoning, SG document, saved by me,
+                notes, listings, report interest) will activate as their data sources come online.
               </p>
-              <button onClick={() => onChange(DEFAULT_FILTERS)}
-                className="mt-1 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted">
+              <button
+                onClick={() => onChange(DEFAULT_FILTERS)}
+                className="mt-1 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+              >
                 Reset
               </button>
             </div>
           </div>
         </>
       )}
-
     </div>
   );
 }
@@ -122,19 +134,33 @@ export function FilterPanel({ value, onChange }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</div>
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </div>
       {children}
     </div>
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted",
-      )}>
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted",
+      )}
+    >
       {children}
     </button>
   );

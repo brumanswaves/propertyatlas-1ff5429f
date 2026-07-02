@@ -44,85 +44,89 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/94 px-3 py-2 shadow-[0_16px_42px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:px-5"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/8 bg-[#fbf8f1]/96 px-3 py-1.5 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl md:px-4"
           : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
       }
     >
-      <div className={mapHeader ? "flex items-center justify-between gap-3" : "contents"}>
-      <Link
-        to="/"
-        className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-white/82 px-2.5 py-1.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_22px_-14px_rgba(13,27,42,0.28)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
-        aria-label="ErfStoep — home"
+      <div
+        className={
+          mapHeader ? "mx-auto flex max-w-[1500px] items-center justify-between gap-3" : "contents"
+        }
       >
-        <AtlasPin variant="horizontal" className="h-5 w-auto md:h-6" title={BRAND.site} />
-      </Link>
+        <Link
+          to="/"
+          className="group inline-flex shrink-0 items-center gap-2 rounded-lg bg-white/78 px-2 py-1 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_18px_-16px_rgba(13,27,42,0.24)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
+          aria-label="ErfStoep — home"
+        >
+          <AtlasPin variant="horizontal" className="h-4 w-auto md:h-5" title={BRAND.site} />
+        </Link>
 
-      {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
+        {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
 
-      <nav className="hidden shrink-0 items-center gap-1 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur md:flex">
-        {PRIMARY_LINKS.map((l) => (
-          <Link
-            key={l.to}
-            to={l.to}
-            activeOptions={{ exact: l.to === "/" }}
-            className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            {l.label}
-          </Link>
-        ))}
-        {user ? (
-          <>
-            <span className="px-3 py-1.5 text-xs font-medium text-foreground">
-              Hello {greetingName}
-            </span>
+        <nav className="hidden shrink-0 items-center gap-0.5 rounded-xl border border-[#0D1B2A]/8 bg-white/72 p-1 shadow-[0_10px_24px_-20px_rgba(13,27,42,0.35)] backdrop-blur md:flex">
+          {PRIMARY_LINKS.map((l) => (
             <Link
-              to="/dashboard"
-              className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+              key={l.to}
+              to={l.to}
+              activeOptions={{ exact: l.to === "/" }}
+              className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+              activeProps={{ className: "text-foreground" }}
             >
-              Dashboard
+              {l.label}
             </Link>
-            <Link
-              to="/profile"
-              className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Profile
-            </Link>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 rounded-full text-xs"
-              onClick={() => supabase.auth.signOut()}
-            >
-              Sign out
-            </Button>
-          </>
-        ) : (
-          <>
-            <Link
-              to="/auth"
-              className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Sign in
-            </Link>
-            <Link to="/auth">
-              <Button size="sm" className="h-8 rounded-full bg-gradient-brand text-xs">
-                <Sparkles className="mr-1 h-3.5 w-3.5" />
-                Start free
+          ))}
+          {user ? (
+            <>
+              <span className="px-3 py-1.5 text-xs font-medium text-foreground">
+                Hello {greetingName}
+              </span>
+              <Link
+                to="/dashboard"
+                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/profile"
+                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+              >
+                Profile
+              </Link>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 rounded-full text-xs"
+                onClick={() => supabase.auth.signOut()}
+              >
+                Sign out
               </Button>
-            </Link>
-          </>
-        )}
-      </nav>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/auth"
+                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+              >
+                Sign in
+              </Link>
+              <Link to="/auth">
+                <Button size="sm" className="h-8 rounded-full bg-gradient-brand text-xs">
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  Start free
+                </Button>
+              </Link>
+            </>
+          )}
+        </nav>
 
-      {/* Mobile trigger */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="grid h-10 w-10 place-items-center rounded-full bg-card/95 shadow-soft ring-1 ring-border/60 backdrop-blur md:hidden"
-        aria-label="Menu"
-      >
-        {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-      </button>
+        {/* Mobile trigger */}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="grid h-10 w-10 place-items-center rounded-full bg-card/95 shadow-soft ring-1 ring-border/60 backdrop-blur md:hidden"
+          aria-label="Menu"
+        >
+          {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
       </div>
 
       {mapHeader && (

@@ -22,16 +22,18 @@ describe("official dossier UX guardrails", () => {
     expect(nav).toContain("center?: ReactNode");
     expect(nav).toContain("mobileCenter?: ReactNode");
     expect(nav).toContain("rounded-xl");
-    expect(nav).toContain("h-5 w-auto md:h-6");
+    expect(nav).toContain("h-4 w-auto md:h-5");
+    expect(nav).toContain("max-w-[1500px]");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
     expect(search).toContain("Official parcel search");
     expect(search).toContain("No official parcel match found yet");
     expect(search).toContain("confidenceLabel");
+    expect(search).toContain("showDemoExamples");
     expect(search).toContain(
       "For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.",
     );
-    expect(search).toContain("Pilot demo examples");
-    expect(search).toContain("Demo records are secondary examples");
+    expect(search).toContain("Show pilot demo examples");
+    expect(search).toContain("Demo records are secondary training examples");
     expect(search).toContain("Pilot demo example");
   });
 
@@ -40,6 +42,7 @@ describe("official dossier UX guardrails", () => {
     const map = read("src/components/map/MapCanvas.tsx");
 
     expect(home).toContain("Locate me");
+    expect(home).toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88");
     expect(home).toContain("locateRequestId");
     expect(home).toContain("onLocateResult={setLocateMessage}");
     expect(map).toContain("navigator.geolocation.getCurrentPosition");
@@ -94,6 +97,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("new mapboxgl.Map");
     expect(panel).toContain("interactive: false");
     expect(panel).toContain("Read-only selected-erf map");
+    expect(panel).toContain("mapFailed");
+    expect(panel).toContain("Map context could not render");
     expect(panel).toContain("Approximate selected-erf context");
     expect(panel).toContain("Coordinates are approximate");
     expect(panel).toContain("Coordinates");
