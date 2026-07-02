@@ -3,7 +3,7 @@ import {
   buildOfficialParcelId,
   extractOfficialFeatureIdentity,
   type OfficialFeatureLayer,
-} from "@/lib/parcels/officialParcelId";
+} from "../parcels/officialParcelId.ts";
 
 export type OfficialParcelFeature = {
   layer: OfficialFeatureLayer;
