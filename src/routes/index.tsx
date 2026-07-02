@@ -286,8 +286,8 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+7.5rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+9.25rem)] md:top-[4.55rem] md:px-4">
-        <div className="pointer-events-auto flex w-full max-w-[25rem] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88 p-1.5 shadow-[0_16px_40px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl sm:w-auto sm:max-w-none">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+9.85rem)] md:top-[4.55rem] md:px-4">
+        <div className="pointer-events-auto flex w-full max-w-[23rem] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/90 p-1.5 shadow-[0_16px_40px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl sm:w-auto sm:max-w-none">
           <button
             type="button"
             onClick={() => {

@@ -31,6 +31,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("No official parcel match found yet");
     expect(search).toContain("confidenceLabel");
     expect(search).toContain("showDemoExamples");
+    expect(search).toContain("canShowDemoFallback");
     expect(search).toContain("officialResults.length === 0");
     expect(search).toContain("!showDemoExamples || officialResults.length > 0");
     expect(search).toContain("z-[90]");
@@ -40,6 +41,8 @@ describe("official dossier UX guardrails", () => {
     );
     expect(search).toContain("Show pilot demo examples");
     expect(search).toContain("setShowDemoExamples(false)");
+    expect(search).toContain("Optional pilot examples");
+    expect(search).toContain("Hidden by default");
     expect(search).toContain("Demo records are secondary training examples");
     expect(search).toContain("Pilot demo example");
     expect(search).toContain("showDemoExamples &&");
@@ -50,11 +53,11 @@ describe("official dossier UX guardrails", () => {
     const map = read("src/components/map/MapCanvas.tsx");
 
     expect(home).toContain("Locate me");
-    expect(home).toContain("top-[calc(env(safe-area-inset-top)+7.5rem)]");
-    expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+9.25rem)]");
-    expect(home).toContain("w-full max-w-[25rem]");
+    expect(home).toContain("top-[calc(env(safe-area-inset-top)+8rem)]");
+    expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+9.85rem)]");
+    expect(home).toContain("w-full max-w-[23rem]");
     expect(home).toContain("sm:w-auto sm:max-w-none");
-    expect(home).toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88");
+    expect(home).toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/90");
     expect(home).toContain("locateRequestId");
     expect(home).toContain("onLocateResult={setLocateMessage}");
     expect(map).toContain("navigator.geolocation.getCurrentPosition");

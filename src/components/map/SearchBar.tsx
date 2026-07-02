@@ -43,6 +43,7 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
         p.street.toLowerCase().includes(t) || p.area.toLowerCase().includes(t) || p.erf.includes(t),
     ).slice(0, 6);
   }, [officialResults.length, q, showDemoExamples]);
+  const canShowDemoFallback = q.trim().length > 0 && officialResults.length === 0;
 
   return (
     <div className="relative w-full max-w-2xl">
@@ -126,17 +127,21 @@ export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Prop
             </button>
           ))}
 
-          {officialResults.length === 0 && (
-            <div className="bg-white px-4 py-3">
+          {canShowDemoFallback && (
+            <div className="border-t border-dashed border-[#0D1B2A]/10 bg-[#fbf8f1]/55 px-4 py-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                Optional pilot examples
+              </div>
               <button
                 type="button"
                 onClick={() => setShowDemoExamples((value) => !value)}
-                className="inline-flex items-center rounded-full border border-[#0D1B2A]/10 bg-[#fbf8f1] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B] hover:bg-[#f8f3ea]"
+                className="mt-2 inline-flex items-center rounded-full border border-[#0D1B2A]/10 bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#64748B] hover:bg-[#f8f3ea]"
               >
                 {showDemoExamples ? "Hide pilot demo examples" : "Show pilot demo examples"}
               </button>
-              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/55">
-                Demo records are secondary training examples, not official parcel/address matches.
+              <p className="mt-1.5 text-[11px] leading-4 text-[#0D1B2A]/50">
+                Hidden by default. Demo records are secondary training examples, not official
+                parcel/address matches.
               </p>
             </div>
           )}
