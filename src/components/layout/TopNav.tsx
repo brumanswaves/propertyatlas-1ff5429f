@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { Sparkles, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -27,23 +28,38 @@ const MOBILE_LINKS = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
-export function TopNav() {
+interface TopNavProps {
+  center?: ReactNode;
+  mobileCenter?: ReactNode;
+  subtitle?: ReactNode;
+}
+
+export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const greetingName = getUserGreetingName(user);
+  const mapHeader = Boolean(center || mobileCenter || subtitle);
 
   return (
-    <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6">
+    <header
+      className={
+        mapHeader
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/94 px-3 py-2 shadow-[0_16px_42px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:px-5"
+          : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
+      }
+    >
+      <div className={mapHeader ? "flex items-center justify-between gap-3" : "contents"}>
       <Link
         to="/"
-        className="group inline-flex items-center gap-2 rounded-xl bg-white/82 px-2.5 py-1.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_22px_-14px_rgba(13,27,42,0.28)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
+        className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-white/82 px-2.5 py-1.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_22px_-14px_rgba(13,27,42,0.28)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
         aria-label="ErfStoep — home"
       >
         <AtlasPin variant="horizontal" className="h-5 w-auto md:h-6" title={BRAND.site} />
       </Link>
 
+      {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
 
-      <nav className="hidden items-center gap-1 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur md:flex">
+      <nav className="hidden shrink-0 items-center gap-1 rounded-full bg-card/90 p-1.5 shadow-soft backdrop-blur md:flex">
         {PRIMARY_LINKS.map((l) => (
           <Link
             key={l.to}
@@ -107,6 +123,24 @@ export function TopNav() {
       >
         {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </button>
+      </div>
+
+      {mapHeader && (
+        <div className="mt-2 grid gap-1.5 md:hidden">
+          {mobileCenter}
+          {subtitle && (
+            <div className="rounded-xl bg-white/78 px-3 py-2 text-center text-xs font-medium text-[#0D1B2A]/70 ring-1 ring-[#0D1B2A]/8">
+              {subtitle}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mapHeader && subtitle && (
+        <div className="mx-auto mt-1 hidden max-w-3xl text-center text-[11px] font-medium text-[#0D1B2A]/62 md:block">
+          {subtitle}
+        </div>
+      )}
 
       {open && (
         <>

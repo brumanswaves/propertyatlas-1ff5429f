@@ -9,11 +9,17 @@ describe("official dossier UX guardrails", () => {
     const search = read("src/components/map/SearchBar.tsx");
     const nav = read("src/components/layout/TopNav.tsx");
 
-    expect(home).toContain("ErfStoep");
+    expect(home).toContain("BRAND.site");
+    expect(nav).toContain("ErfStoep");
     expect(home).toContain("Every erf. All the facts.");
     expect(home).toContain("Research any South African erf.");
-    expect(home).toContain("max-w-xl");
-    expect(home).toContain("rounded-[1.35rem]");
+    expect(home).toContain("center={<SearchBar onPick={handleSearchPick} />}");
+    expect(home).toContain("mobileCenter={<SearchBar onPick={handleSearchPick} />}");
+    expect(home).toContain("headerSubtitle");
+    expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
+    expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
+    expect(nav).toContain("center?: ReactNode");
+    expect(nav).toContain("mobileCenter?: ReactNode");
     expect(nav).toContain("rounded-xl");
     expect(nav).toContain("h-5 w-auto md:h-6");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");

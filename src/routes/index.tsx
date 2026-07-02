@@ -180,6 +180,22 @@ function AtlasHome() {
     };
   }, [filters]);
 
+  const handleSearchPick = useCallback(
+    (p: Property) => {
+      setSelectedId(p.id);
+      setSelectedOfficial(null);
+      clearSavedReopenState();
+    },
+    [clearSavedReopenState],
+  );
+
+  const headerSubtitle = (
+    <span>
+      <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span>{" "}
+      Research any South African erf.
+    </span>
+  );
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
       <h1 className="sr-only">{BRAND.site} - Map-based property intelligence for South Africa</h1>
@@ -200,7 +216,11 @@ function AtlasHome() {
         onLocateResult={setLocateMessage}
       />
       <MapLegend layers={layers} />
-      <TopNav />
+      <TopNav
+        center={<SearchBar onPick={handleSearchPick} />}
+        mobileCenter={<SearchBar onPick={handleSearchPick} />}
+        subtitle={headerSubtitle}
+      />
 
       {debugReopenEnabled && (
         <DebugReopenPanel
@@ -210,27 +230,7 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex flex-col items-center gap-2.5 px-4 md:top-20">
-        <div className="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-white/70 bg-[#fbf8f1]/92 px-4 py-3 text-center shadow-[0_18px_56px_-34px_rgba(13,27,42,0.55)] backdrop-blur-xl md:px-5 md:py-3.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-            ErfStoep
-          </p>
-          <h2 className="mt-0.5 text-[21px] font-semibold tracking-tight text-[#0D1B2A] md:text-[28px]">
-            Every erf. All the facts.
-          </h2>
-          <p className="mt-0.5 text-xs font-medium text-[#0D1B2A]/68 md:text-sm">
-            Research any South African erf.
-          </p>
-        </div>
-        <div className="pointer-events-auto relative z-10 w-full max-w-2xl">
-          <SearchBar
-            onPick={(p) => {
-              setSelectedId(p.id);
-              setSelectedOfficial(null);
-              clearSavedReopenState();
-            }}
-          />
-        </div>
+      <div className="pointer-events-none absolute inset-x-0 top-36 z-20 flex flex-col items-center gap-2.5 px-4 md:top-20">
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
