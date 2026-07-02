@@ -44,7 +44,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/8 bg-[#fbf8f1]/96 px-3 py-1.5 shadow-[0_14px_34px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl md:px-4"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/8 bg-[#fbf8f1]/96 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.375rem)] shadow-[0_14px_34px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl md:px-4 md:pt-1.5"
           : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
       }
     >
@@ -133,7 +133,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
         <div className="mt-2 grid gap-1.5 md:hidden">
           {mobileCenter}
           {subtitle && (
-            <div className="rounded-xl bg-white/78 px-3 py-2 text-center text-xs font-medium text-[#0D1B2A]/70 ring-1 ring-[#0D1B2A]/8">
+            <div className="hidden rounded-xl bg-white/78 px-3 py-1.5 text-center text-[11px] font-medium text-[#0D1B2A]/70 ring-1 ring-[#0D1B2A]/8 sm:block">
               {subtitle}
             </div>
           )}

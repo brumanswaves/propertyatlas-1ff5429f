@@ -19,6 +19,8 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
+    expect(nav).toContain("pt-[calc(env(safe-area-inset-top)+0.375rem)]");
+    expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
     expect(nav).toContain("mobileCenter?: ReactNode");
     expect(nav).toContain("rounded-xl");
@@ -33,8 +35,10 @@ describe("official dossier UX guardrails", () => {
       "For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.",
     );
     expect(search).toContain("Show pilot demo examples");
+    expect(search).toContain("setShowDemoExamples(false)");
     expect(search).toContain("Demo records are secondary training examples");
     expect(search).toContain("Pilot demo example");
+    expect(search).toContain("showDemoExamples &&");
   });
 
   it("renders locate me without storing precise user location", () => {
@@ -42,6 +46,10 @@ describe("official dossier UX guardrails", () => {
     const map = read("src/components/map/MapCanvas.tsx");
 
     expect(home).toContain("Locate me");
+    expect(home).toContain("top-[calc(env(safe-area-inset-top)+7.5rem)]");
+    expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+9.25rem)]");
+    expect(home).toContain("w-full max-w-[25rem]");
+    expect(home).toContain("sm:w-auto sm:max-w-none");
     expect(home).toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88");
     expect(home).toContain("locateRequestId");
     expect(home).toContain("onLocateResult={setLocateMessage}");
@@ -58,6 +66,18 @@ describe("official dossier UX guardrails", () => {
     expect(map).toContain("center: lngLat");
     expect(map).not.toContain('localStorage.setItem("userLocation');
     expect(map).not.toContain("supabase.from");
+  });
+
+  it("keeps map controls cleanly spaced on mobile", () => {
+    const filters = read("src/components/map/FilterPanel.tsx");
+    const layers = read("src/components/map/LayerSwitcher.tsx");
+
+    expect(filters).toContain("min-w-[6.5rem] flex-1 sm:flex-none");
+    expect(filters).toContain("w-full items-center justify-center");
+    expect(filters).toContain("sm:w-auto");
+    expect(layers).toContain("min-w-[6.5rem] flex-1 sm:flex-none");
+    expect(layers).toContain("w-full items-center justify-center");
+    expect(layers).toContain("sm:w-auto");
   });
 
   it("uses the left rail as the only primary workbench navigation", () => {

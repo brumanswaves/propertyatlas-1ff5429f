@@ -286,15 +286,15 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-[7.25rem] z-20 flex flex-col items-center gap-2 px-4 md:top-[4.55rem]">
-        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88 p-1.5 shadow-[0_16px_40px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+7.5rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+9.25rem)] md:top-[4.55rem] md:px-4">
+        <div className="pointer-events-auto flex w-full max-w-[25rem] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/88 p-1.5 shadow-[0_16px_40px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl sm:w-auto sm:max-w-none">
           <button
             type="button"
             onClick={() => {
               setLocateMessage(null);
               setLocateRequestId((value) => value + 1);
             }}
-            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/80 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
+            className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/80 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white sm:flex-none"
           >
             <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
             Locate me
