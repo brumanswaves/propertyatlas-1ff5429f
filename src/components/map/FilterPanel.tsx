@@ -74,10 +74,10 @@ export function FilterPanel({ value, onChange }: Props) {
   }
 
   return (
-    <div className="relative min-w-[6.5rem] flex-1 sm:flex-none">
+    <div className="relative shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-9 w-full items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/80 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white sm:w-auto"
+        className="flex min-h-9 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/90 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
         Filters

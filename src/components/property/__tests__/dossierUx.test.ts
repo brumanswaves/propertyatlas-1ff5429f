@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("official dossier UX guardrails", () => {
-  it("keeps the map homepage hero readable and labels demo search results", () => {
+  it("keeps the map homepage hero readable and removes public demo search results", () => {
     const home = read("src/routes/index.tsx");
     const search = read("src/components/map/SearchBar.tsx");
     const nav = read("src/components/layout/TopNav.tsx");
@@ -29,23 +29,25 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
     expect(search).toContain("Official parcel search");
     expect(search).toContain("No official parcel match found yet");
+    expect(search).toContain("Address suggestions");
+    expect(search).toContain("fetchAddressAutocompleteSuggestions");
+    expect(search).toContain("searchByCoordinate");
+    expect(search).toContain("Address found, but ErfStoep does not yet have an official parcel boundary match for this point.");
+    expect(search).toContain("Selecting this checks the point against loaded official parcels.");
+    expect(search).toContain("Address suggestions are temporarily unavailable.");
     expect(search).toContain("confidenceLabel");
-    expect(search).toContain("showDemoExamples");
-    expect(search).toContain("canShowDemoFallback");
     expect(search).toContain("officialResults.length === 0");
-    expect(search).toContain("!showDemoExamples || officialResults.length > 0");
     expect(search).toContain("z-[90]");
     expect(search).toContain("max-h-[min(72vh,32rem)]");
     expect(search).toContain(
       "For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.",
     );
-    expect(search).toContain("Show pilot demo examples");
-    expect(search).toContain("setShowDemoExamples(false)");
-    expect(search).toContain("Optional pilot examples");
-    expect(search).toContain("Hidden by default");
-    expect(search).toContain("Demo records are secondary training examples");
-    expect(search).toContain("Pilot demo example");
-    expect(search).toContain("showDemoExamples &&");
+    expect(search).not.toContain("PROPERTIES");
+    expect(search).not.toContain("Show pilot demo examples");
+    expect(search).not.toContain("Hide pilot demo examples");
+    expect(search).not.toContain("Optional pilot examples");
+    expect(search).not.toContain("Demo records are secondary");
+    expect(search).not.toContain("Pilot demo example");
   });
 
   it("renders locate me without storing precise user location", () => {
@@ -57,7 +59,8 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+9.85rem)]");
     expect(home).toContain("w-full max-w-[23rem]");
     expect(home).toContain("sm:w-auto sm:max-w-none");
-    expect(home).toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/90");
+    expect(home).toContain("overflow-x-auto");
+    expect(home).not.toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/90");
     expect(home).toContain("locateRequestId");
     expect(home).toContain("onLocateResult={setLocateMessage}");
     expect(map).toContain("navigator.geolocation.getCurrentPosition");
@@ -79,12 +82,12 @@ describe("official dossier UX guardrails", () => {
     const filters = read("src/components/map/FilterPanel.tsx");
     const layers = read("src/components/map/LayerSwitcher.tsx");
 
-    expect(filters).toContain("min-w-[6.5rem] flex-1 sm:flex-none");
-    expect(filters).toContain("w-full items-center justify-center");
-    expect(filters).toContain("sm:w-auto");
-    expect(layers).toContain("min-w-[6.5rem] flex-1 sm:flex-none");
-    expect(layers).toContain("w-full items-center justify-center");
-    expect(layers).toContain("sm:w-auto");
+    expect(filters).toContain("relative shrink-0");
+    expect(filters).toContain("items-center justify-center");
+    expect(filters).not.toContain("min-w-[6.5rem] flex-1 sm:flex-none");
+    expect(layers).toContain("relative shrink-0");
+    expect(layers).toContain("items-center justify-center");
+    expect(layers).not.toContain("min-w-[6.5rem] flex-1 sm:flex-none");
   });
 
   it("uses the left rail as the only primary workbench navigation", () => {
@@ -121,15 +124,18 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Selected erf map");
     expect(panel).toContain("SelectedErfMiniMap");
-    expect(panel).toContain("new mapboxgl.Map");
-    expect(panel).toContain("interactive: false");
+    expect(panel).toContain("staticMapUrl");
+    expect(panel).toContain("satellite-streets-v12/static");
+    expect(panel).toContain("Static selected-erf map preview");
+    expect(panel).toContain("onError={() => setImageFailed(true)}");
+    expect(panel).not.toContain("new mapboxgl.Map");
+    expect(panel).not.toContain("interactive: false");
     expect(panel).toContain("h-64 min-h-[13rem]");
-    expect(panel).toContain("Read-only selected-erf map");
-    expect(panel).toContain("Loading selected-erf map");
-    expect(panel).toContain("setMapLoaded");
-    expect(panel).toContain("mapFailed");
-    expect(panel).toContain("Map context could not render");
-    expect(panel).toContain("Mini map unavailable");
+    expect(panel).not.toContain("Loading selected-erf map");
+    expect(panel).not.toContain("setMapLoaded");
+    expect(panel).not.toContain("mapFailed");
+    expect(panel).toContain("Map preview could not render");
+    expect(panel).toContain("Map preview unavailable");
     expect(panel).toContain("Map context unavailable");
     expect(panel).toContain("Approximate selected-erf context");
     expect(panel).toContain("Approximate map context from selected parcel click");

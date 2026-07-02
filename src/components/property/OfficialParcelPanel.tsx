@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
 import {
   X,
   ShieldCheck,
@@ -10,7 +9,7 @@ import {
   Share2,
   ChevronRight,
 } from "lucide-react";
-import { STYLE_URLS, type OfficialFeatureSelection } from "@/components/map/MapCanvas";
+import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
 import {
   buildOfficialParcelId,
@@ -170,11 +169,7 @@ function SelectedErfMiniMap({
   title: string;
   onBackToMap: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
-  const [mapFailed, setMapFailed] = useState(false);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const coordinateLng = coordinates?.lng;
   const coordinateLat = coordinates?.lat;
   const hasCoordinates =
@@ -188,80 +183,27 @@ function SelectedErfMiniMap({
     coordinateLat <= 90;
 
   useEffect(() => {
-    setMapFailed(false);
-    setMapLoaded(false);
-    if (
-      !containerRef.current ||
-      !hasCoordinates ||
-      !MAPBOX_TOKEN ||
-      coordinateLng === undefined ||
-      coordinateLat === undefined
-    ) {
-      return;
-    }
+    setImageFailed(false);
+  }, [coordinateLat, coordinateLng]);
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: STYLE_URLS.satellite,
-      center: [coordinateLng, coordinateLat],
-      zoom: 17.4,
-      pitch: 0,
-      bearing: 0,
-      interactive: false,
-      attributionControl: false,
-      logoPosition: "bottom-left",
-    });
-    mapRef.current = map;
+  const staticMapUrl =
+    hasCoordinates && MAPBOX_TOKEN && coordinateLng !== undefined && coordinateLat !== undefined
+      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-s+ff6a00(${coordinateLng},${coordinateLat})/${coordinateLng},${coordinateLat},17.2,0/640x360@2x?access_token=${MAPBOX_TOKEN}`
+      : null;
 
-    const markerEl = document.createElement("div");
-    markerEl.className =
-      "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.20),0_12px_26px_rgba(13,27,42,0.35)]";
-    markerRef.current = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
-      .setLngLat([coordinateLng, coordinateLat])
-      .addTo(map);
-
-    const failTimer = window.setTimeout(() => {
-      setMapFailed(true);
-      setMapLoaded(false);
-      map.remove();
-      mapRef.current = null;
-    }, 7000);
-    map.once("load", () => {
-      window.clearTimeout(failTimer);
-      setMapLoaded(true);
-      requestAnimationFrame(() => map.resize());
-    });
-    map.once("error", () => {
-      window.clearTimeout(failTimer);
-      setMapFailed(true);
-      setMapLoaded(false);
-      map.remove();
-      mapRef.current = null;
-    });
-
-    return () => {
-      window.clearTimeout(failTimer);
-      markerRef.current?.remove();
-      markerRef.current = null;
-      if (mapRef.current) map.remove();
-      mapRef.current = null;
-    };
-  }, [coordinateLat, coordinateLng, hasCoordinates]);
-
-  if (!hasCoordinates || !MAPBOX_TOKEN || mapFailed) {
+  if (!hasCoordinates || !MAPBOX_TOKEN || imageFailed || !staticMapUrl) {
     const reason = !hasCoordinates
       ? "No selected-erf coordinate is available for this public feature."
       : !MAPBOX_TOKEN
-        ? "The Mapbox token is missing, so the read-only Workbench map cannot render."
-        : "The read-only mini map failed to load.";
+        ? "The Mapbox token is missing, so the Workbench map preview cannot render."
+        : "The static map preview failed to load.";
     const titleText = !hasCoordinates
       ? "Map context unavailable"
       : !MAPBOX_TOKEN
-        ? "Mini map unavailable"
-        : "Map context could not render";
+        ? "Map preview unavailable"
+        : "Map preview could not render";
     return (
-      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5 text-center">
+      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
         <div className="max-w-xs">
           <div className="text-sm font-semibold text-[#0D1B2A]">{titleText}</div>
           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{reason}</p>
@@ -287,20 +229,16 @@ function SelectedErfMiniMap({
   }
 
   return (
-    <div className="relative h-64 min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#d8d1c3] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
-      <div ref={containerRef} className="absolute inset-0" aria-label={`Mini map for ${title}`} />
-      {!mapLoaded && (
-        <div className="absolute inset-0 grid place-items-center bg-[#fbf8f1] text-center">
-          <div>
-            <div className="text-sm font-semibold text-[#0D1B2A]">Loading selected-erf map</div>
-            <p className="mt-2 text-xs text-[#0D1B2A]/60">
-              Preparing read-only map context for this erf.
-            </p>
-          </div>
-        </div>
-      )}
+    <div className="relative h-64 min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
+      <img
+        src={staticMapUrl}
+        alt={`Static map preview for ${title}`}
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setImageFailed(true)}
+      />
       <div className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-white/86 px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] shadow-[0_10px_24px_-18px_rgba(13,27,42,0.5)] backdrop-blur">
-        Read-only selected-erf map
+        Static selected-erf map preview
       </div>
       <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-xl bg-[#0D1B2A]/86 px-3 py-2 text-[10px] font-medium leading-4 text-white/86 backdrop-blur">
         Approximate selected-erf context. Click Back to full map for interactive parcel selection.
