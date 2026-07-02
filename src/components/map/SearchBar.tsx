@@ -1,23 +1,45 @@
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { PROPERTIES, type Property } from "@/data/properties";
+import { searchOfficialParcels, type PropertySearchResult } from "@/lib/search/propertySearch";
+import type { IndexedOfficialParcel } from "@/lib/search/officialParcelIndex";
 
 interface Props {
   onPick: (p: Property) => void;
+  officialParcels?: IndexedOfficialParcel[];
+  onPickOfficial?: (result: PropertySearchResult) => void;
 }
 
-export function SearchBar({ onPick }: Props) {
+function confidenceLabel(confidence: PropertySearchResult["confidence"]): string {
+  switch (confidence) {
+    case "exact_official_match":
+      return "Exact official match";
+    case "address_inside_official_parcel":
+      return "Address point inside official parcel";
+    case "likely_nearby_parcel":
+      return "Likely official parcel";
+    case "address_only":
+      return "Address/area text only";
+    case "no_match":
+      return "No official match";
+  }
+}
+
+export function SearchBar({ onPick, officialParcels = [], onPickOfficial }: Props) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+
+  const officialResults = useMemo(() => {
+    if (!q.trim()) return [];
+    return searchOfficialParcels(q, officialParcels).slice(0, 8);
+  }, [officialParcels, q]);
 
   const demoResults = useMemo(() => {
     if (!q.trim()) return [];
     const t = q.toLowerCase();
     return PROPERTIES.filter(
       (p) =>
-        p.street.toLowerCase().includes(t) ||
-        p.area.toLowerCase().includes(t) ||
-        p.erf.includes(t),
+        p.street.toLowerCase().includes(t) || p.area.toLowerCase().includes(t) || p.erf.includes(t),
     ).slice(0, 6);
   }, [q]);
 
@@ -51,16 +73,56 @@ export function SearchBar({ onPick }: Props) {
         <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
           <div className="border-b border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3">
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
-              Official parcel search guidance
+              Official parcel search
             </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              No official parcel match found from search yet. Zoom in and click the official parcel
-              outline, or search by address, suburb, LPI, or parcel key.
-            </p>
+            {officialResults.length === 0 && (
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+                No official parcel match found yet. Zoom in and click a CSG or Kouga parcel outline,
+                or search by address, suburb, erf number, LPI, or parcel key.
+              </p>
+            )}
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
               For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.
             </p>
           </div>
+
+          {officialResults.map((result) => (
+            <button
+              key={result.id}
+              type="button"
+              onClick={() => {
+                onPickOfficial?.(result);
+                setOpen(false);
+                setQ("");
+              }}
+              className="flex w-full flex-col gap-2 border-b border-[#0D1B2A]/8 px-4 py-3 text-left hover:bg-[#f8f3ea]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">{result.title}</div>
+                  <div className="text-xs text-[#0D1B2A]/62">{result.subtitle}</div>
+                </div>
+                <span className="shrink-0 rounded-full bg-[#174634]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#174634]">
+                  Official
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 text-[11px] text-[#0D1B2A]/64">
+                <span>{confidenceLabel(result.confidence)}</span>
+                <span aria-hidden="true">-</span>
+                <span>{result.matchReason}</span>
+                <span aria-hidden="true">-</span>
+                <span>{result.sourceLabel}</span>
+              </div>
+              <div className="grid gap-1 text-[11px] text-[#0D1B2A]/58 sm:grid-cols-2">
+                {result.fields.lpi && <span>LPI: {result.fields.lpi}</span>}
+                {result.fields.parcelKey && <span>Parcel key: {result.fields.parcelKey}</span>}
+                {result.fields.municipality && (
+                  <span>Municipality: {result.fields.municipality}</span>
+                )}
+                {result.fields.province && <span>Province: {result.fields.province}</span>}
+              </div>
+            </button>
+          ))}
 
           <div className="border-b border-[#0D1B2A]/8 bg-white px-4 py-2.5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">

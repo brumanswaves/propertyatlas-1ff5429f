@@ -28,6 +28,12 @@ import {
   type OfficialParcelReopenRequest,
 } from "@/lib/parcels/officialParcelId";
 import { BRAND } from "@/lib/brand";
+import {
+  buildOfficialParcelIndex,
+  type OfficialParcelFeature,
+  type IndexedOfficialParcel,
+} from "@/lib/search/officialParcelIndex";
+import type { PropertySearchResult } from "@/lib/search/propertySearch";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,13 +41,13 @@ export const Route = createFileRoute("/")({
       { title: `${BRAND.site} - ${BRAND.tagline}` },
       {
         name: "description",
-        content:
-          `${BRAND.copy.shortPitch} Click an erf, understand public facts, compare the market, save evidence, and follow due diligence steps.`,
+        content: `${BRAND.copy.shortPitch} Click an erf, understand public facts, compare the market, save evidence, and follow due diligence steps.`,
       },
       { property: "og:title", content: `${BRAND.site} - ${BRAND.tagline}` },
       {
         property: "og:description",
-        content: "South Africa's property intelligence platform. Search, research, compare, save evidence.",
+        content:
+          "South Africa's property intelligence platform. Search, research, compare, save evidence.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },
@@ -50,6 +56,18 @@ export const Route = createFileRoute("/")({
   }),
   component: AtlasHome,
 });
+
+function selectionPointForParcel(parcel: IndexedOfficialParcel): [number, number] | null {
+  if (parcel.centroid) return [parcel.centroid.lng, parcel.centroid.lat];
+  const lng = Number(
+    parcel.properties.TAG_X ?? parcel.properties.LONGITUDE ?? parcel.properties.lng,
+  );
+  const lat = Number(
+    parcel.properties.TAG_Y ?? parcel.properties.LATITUDE ?? parcel.properties.lat,
+  );
+  if (Number.isFinite(lng) && Number.isFinite(lat)) return [lng, lat];
+  return null;
+}
 
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -67,6 +85,7 @@ function AtlasHome() {
   const [mapDebugStatus, setMapDebugStatus] = useState<MapDebugStatus | null>(null);
   const [locateRequestId, setLocateRequestId] = useState(0);
   const [locateMessage, setLocateMessage] = useState<string | null>(null);
+  const [officialFeatures, setOfficialFeatures] = useState<OfficialParcelFeature[]>([]);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "loading", count: 0 },
     kouga: { state: "loading", count: 0 },
@@ -150,6 +169,10 @@ function AtlasHome() {
   );
 
   const selected = selectedId ? (getProperty(selectedId) ?? null) : null;
+  const officialParcelIndex = useMemo(
+    () => buildOfficialParcelIndex(officialFeatures),
+    [officialFeatures],
+  );
   const showOfficialReopenCard = Boolean(requestedOfficialParcel && !selectedOfficial);
   const officialReopenTarget = useMemo(() => {
     if (requestedOfficialParcel?.lng === undefined || requestedOfficialParcel.lat === undefined) {
@@ -189,10 +212,30 @@ function AtlasHome() {
     [clearSavedReopenState],
   );
 
+  const handleOfficialSearchPick = useCallback(
+    (result: PropertySearchResult) => {
+      const parcel = result.parcel;
+      if (!parcel) return;
+      const lngLat = selectionPointForParcel(parcel);
+      if (!lngLat) return;
+      setSelectedId(null);
+      setSelectedOfficial({
+        source: parcel.sourceLabel,
+        layer: parcel.layer,
+        properties: parcel.properties,
+        lngLat,
+      });
+      setRequestedOfficialParcel(null);
+      setOfficialReopenStatus("resolved");
+      clearSavedReopenUrl();
+    },
+    [clearSavedReopenUrl],
+  );
+
   const headerSubtitle = (
     <span>
-      <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span>{" "}
-      Research any South African erf.
+      <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span> Research any
+      South African erf.
     </span>
   );
 
@@ -214,11 +257,24 @@ function AtlasHome() {
         onDebugStatus={debugReopenEnabled ? setMapDebugStatus : undefined}
         locateRequestId={locateRequestId}
         onLocateResult={setLocateMessage}
+        onOfficialFeaturesChange={setOfficialFeatures}
       />
       <MapLegend layers={layers} />
       <TopNav
-        center={<SearchBar onPick={handleSearchPick} />}
-        mobileCenter={<SearchBar onPick={handleSearchPick} />}
+        center={
+          <SearchBar
+            onPick={handleSearchPick}
+            officialParcels={officialParcelIndex}
+            onPickOfficial={handleOfficialSearchPick}
+          />
+        }
+        mobileCenter={
+          <SearchBar
+            onPick={handleSearchPick}
+            officialParcels={officialParcelIndex}
+            onPickOfficial={handleOfficialSearchPick}
+          />
+        }
         subtitle={headerSubtitle}
       />
 
@@ -265,7 +321,6 @@ function AtlasHome() {
           </div>
         )}
       </div>
-
 
       {!demoMode &&
         officialStatus.csg.state !== "loading" &&
@@ -435,9 +490,7 @@ function DebugReopenPanel({
       <div className="text-base font-black uppercase tracking-wide text-red-300">
         PROPERTYATLAS DEBUG BUILD
       </div>
-      <div className="mt-1 text-sm font-bold text-accent">
-        Build label: saved-reopen-debug-v1
-      </div>
+      <div className="mt-1 text-sm font-bold text-accent">Build label: saved-reopen-debug-v1</div>
 
       <div className="mt-3 font-bold text-red-200">Current URL search params:</div>
       <dl className="mt-1 grid grid-cols-[8rem_1fr] gap-x-2 gap-y-1">

@@ -21,6 +21,7 @@ import {
   testStaticGeoJson,
   type PublicDataResult,
 } from "@/lib/providers/publicDataClient";
+import type { OfficialParcelFeature } from "@/lib/search/officialParcelIndex";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
@@ -100,6 +101,7 @@ interface Props {
   onDebugStatus?: (status: MapDebugStatus) => void;
   locateRequestId?: number;
   onLocateResult?: (message: string | null) => void;
+  onOfficialFeaturesChange?: (features: OfficialParcelFeature[]) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -308,6 +310,7 @@ export function MapCanvas({
   onDebugStatus,
   locateRequestId = 0,
   onLocateResult,
+  onOfficialFeaturesChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -318,6 +321,10 @@ export function MapCanvas({
     source: OfficialFeatureLayer;
     id: string | number;
   } | null>(null);
+  const officialFeaturesRef = useRef<Record<OfficialFeatureLayer, OfficialParcelFeature[]>>({
+    "csg-parcels": [],
+    "kouga-zoning": [],
+  });
   const currentStyleRef = useRef<MapStyleId | null>(null);
   const [ready, setReady] = useState(false);
   const [styleVersion, setStyleVersion] = useState(0);
@@ -328,6 +335,12 @@ export function MapCanvas({
 
   const filtered = useMemo(() => (filterFn ? PROPERTIES.filter(filterFn) : PROPERTIES), [filterFn]);
   const filteredIds = useMemo(() => new Set(filtered.map((p) => p.id)), [filtered]);
+  const publishOfficialFeatures = useCallback(() => {
+    onOfficialFeaturesChange?.([
+      ...officialFeaturesRef.current["csg-parcels"],
+      ...officialFeaturesRef.current["kouga-zoning"],
+    ]);
+  }, [onOfficialFeaturesChange]);
 
   useEffect(() => {
     if (!onDebugStatus) return;
@@ -480,14 +493,18 @@ export function MapCanvas({
     onLocateResult?.("Locating you...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lngLat: [number, number] = [
-          position.coords.longitude,
-          position.coords.latitude,
-        ];
+        const lngLat: [number, number] = [position.coords.longitude, position.coords.latitude];
         const accuracy = position.coords.accuracy;
         const hasAccuracy = Number.isFinite(accuracy) && accuracy > 0;
-        const targetZoom = hasAccuracy && accuracy > 150 ? 16 : hasAccuracy && accuracy > 60 ? 17 : 18;
-        map.flyTo({ center: lngLat, zoom: targetZoom, duration: 1100, essential: true, curve: 1.35 });
+        const targetZoom =
+          hasAccuracy && accuracy > 150 ? 16 : hasAccuracy && accuracy > 60 ? 17 : 18;
+        map.flyTo({
+          center: lngLat,
+          zoom: targetZoom,
+          duration: 1100,
+          essential: true,
+          curve: 1.35,
+        });
 
         userLocationMarkerRef.current?.remove();
         const el = document.createElement("div");
@@ -1038,19 +1055,22 @@ export function MapCanvas({
     ) {
       const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
       if (!src) return false;
+      const features = result.features.map((feature) => ({
+        ...feature,
+        properties: {
+          ...(feature.properties ?? {}),
+          propertyatlas_source: testOnly ? "TEST GEOMETRY ONLY" : result.sourceLabel,
+          propertyatlas_fallback: result.fallbackUsed,
+          propertyatlas_fetched_at: result.fetchedAt,
+          propertyatlas_test_geometry: testOnly,
+        },
+      }));
       src.setData({
         type: "FeatureCollection",
-        features: result.features.map((feature) => ({
-          ...feature,
-          properties: {
-            ...(feature.properties ?? {}),
-            propertyatlas_source: testOnly ? "TEST GEOMETRY ONLY" : result.sourceLabel,
-            propertyatlas_fallback: result.fallbackUsed,
-            propertyatlas_fetched_at: result.fetchedAt,
-            propertyatlas_test_geometry: testOnly,
-          },
-        })),
+        features,
       });
+      officialFeaturesRef.current[id] = features.map((feature) => ({ layer: id, feature }));
+      publishOfficialFeatures();
       setOfficialDataVersion((version) => version + 1);
       return true;
     }
@@ -1059,6 +1079,8 @@ export function MapCanvas({
       const src = activeMap.getSource(id) as mapboxgl.GeoJSONSource | undefined;
       if (src) {
         src.setData({ type: "FeatureCollection", features: [] });
+        officialFeaturesRef.current[id] = [];
+        publishOfficialFeatures();
         setOfficialDataVersion((version) => version + 1);
       }
     }
@@ -1258,6 +1280,7 @@ export function MapCanvas({
     styleVersion,
     showTestGeometry,
     onOfficialStatus,
+    publishOfficialFeatures,
     selectOfficialFeature,
   ]);
 
