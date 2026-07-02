@@ -164,14 +164,17 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefi
 function SelectedErfMiniMap({
   coordinates,
   title,
+  onBackToMap,
 }: {
   coordinates?: { lng: number; lat: number } | null;
   title: string;
+  onBackToMap: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const coordinateLng = coordinates?.lng;
   const coordinateLat = coordinates?.lat;
   const hasCoordinates =
@@ -186,6 +189,7 @@ function SelectedErfMiniMap({
 
   useEffect(() => {
     setMapFailed(false);
+    setMapLoaded(false);
     if (
       !containerRef.current ||
       !hasCoordinates ||
@@ -219,16 +223,19 @@ function SelectedErfMiniMap({
 
     const failTimer = window.setTimeout(() => {
       setMapFailed(true);
+      setMapLoaded(false);
       map.remove();
       mapRef.current = null;
     }, 7000);
     map.once("load", () => {
       window.clearTimeout(failTimer);
+      setMapLoaded(true);
       requestAnimationFrame(() => map.resize());
     });
     map.once("error", () => {
       window.clearTimeout(failTimer);
       setMapFailed(true);
+      setMapLoaded(false);
       map.remove();
       mapRef.current = null;
     });
@@ -242,52 +249,56 @@ function SelectedErfMiniMap({
     };
   }, [coordinateLat, coordinateLng, hasCoordinates]);
 
-  if (!hasCoordinates) {
-    return (
-      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
-        <div>
-          <div className="text-sm font-semibold text-[#0D1B2A]">Map context unavailable</div>
-          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-            No selected-erf coordinate is available for this public feature.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
-        <div>
-          <div className="text-sm font-semibold text-[#0D1B2A]">Mini map unavailable</div>
-          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-            The Mapbox token is missing, so the read-only Workbench map cannot render.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (mapFailed) {
+  if (!hasCoordinates || !MAPBOX_TOKEN || mapFailed) {
+    const reason = !hasCoordinates
+      ? "No selected-erf coordinate is available for this public feature."
+      : !MAPBOX_TOKEN
+        ? "The Mapbox token is missing, so the read-only Workbench map cannot render."
+        : "The read-only mini map failed to load.";
+    const titleText = !hasCoordinates
+      ? "Map context unavailable"
+      : !MAPBOX_TOKEN
+        ? "Mini map unavailable"
+        : "Map context could not render";
     return (
       <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5 text-center">
-        <div>
-          <div className="text-sm font-semibold text-[#0D1B2A]">Map context could not render</div>
-          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-            The read-only mini map failed to load. Use the coordinates and Back to full map action
-            for interactive parcel selection.
+        <div className="max-w-xs">
+          <div className="text-sm font-semibold text-[#0D1B2A]">{titleText}</div>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{reason}</p>
+          {hasCoordinates && coordinateLat !== undefined && coordinateLng !== undefined && (
+            <p className="mt-3 font-mono text-xs text-[#0D1B2A]/70">
+              {coordinateLat.toFixed(6)}, {coordinateLng.toFixed(6)}
+            </p>
+          )}
+          <p className="mt-3 text-[11px] leading-5 text-[#0D1B2A]/58">
+            Approximate map context from selected parcel click. No parcel boundary or GIS precision
+            is fabricated here.
           </p>
-          <p className="mt-3 font-mono text-xs text-[#0D1B2A]/70">
-            {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
-          </p>
+          <button
+            type="button"
+            onClick={onBackToMap}
+            className="mt-4 inline-flex rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0D1B2A]/90"
+          >
+            Back to full map
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#d8d1c3] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
+    <div className="relative h-64 min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#d8d1c3] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
       <div ref={containerRef} className="absolute inset-0" aria-label={`Mini map for ${title}`} />
+      {!mapLoaded && (
+        <div className="absolute inset-0 grid place-items-center bg-[#fbf8f1] text-center">
+          <div>
+            <div className="text-sm font-semibold text-[#0D1B2A]">Loading selected-erf map</div>
+            <p className="mt-2 text-xs text-[#0D1B2A]/60">
+              Preparing read-only map context for this erf.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-white/86 px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] shadow-[0_10px_24px_-18px_rgba(13,27,42,0.5)] backdrop-blur">
         Read-only selected-erf map
       </div>
@@ -933,6 +944,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <SelectedErfMiniMap
               coordinates={normalizedParcel.coordinates}
               title={resolved.displayTitle}
+              onBackToMap={onClose}
             />
           </div>
 

@@ -116,15 +116,23 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("SelectedErfMiniMap");
     expect(panel).toContain("new mapboxgl.Map");
     expect(panel).toContain("interactive: false");
+    expect(panel).toContain("h-64 min-h-[13rem]");
     expect(panel).toContain("Read-only selected-erf map");
+    expect(panel).toContain("Loading selected-erf map");
+    expect(panel).toContain("setMapLoaded");
     expect(panel).toContain("mapFailed");
     expect(panel).toContain("Map context could not render");
+    expect(panel).toContain("Mini map unavailable");
+    expect(panel).toContain("Map context unavailable");
     expect(panel).toContain("Approximate selected-erf context");
+    expect(panel).toContain("Approximate map context from selected parcel click");
+    expect(panel).toContain("No parcel boundary or GIS precision");
     expect(panel).toContain("Coordinates are approximate");
     expect(panel).toContain("Coordinates");
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
     expect(panel).toContain("Back to full map");
+    expect(panel).toContain("onBackToMap={onClose}");
     expect(panel).not.toContain("onSelectOfficial");
   });
 
