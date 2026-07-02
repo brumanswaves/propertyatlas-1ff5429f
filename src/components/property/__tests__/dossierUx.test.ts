@@ -79,17 +79,21 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('view="notes"');
   });
 
-  it("shows selected erf map context without faking a second map", () => {
+  it("shows a read-only selected erf mini map without faking parcel precision", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("Selected erf map context");
-    expect(panel).toContain("Map context coming next");
-    expect(panel).toContain("does not create fake parcel precision");
+    expect(panel).toContain("Selected erf map");
+    expect(panel).toContain("SelectedErfMiniMap");
+    expect(panel).toContain("new mapboxgl.Map");
+    expect(panel).toContain("interactive: false");
+    expect(panel).toContain("Read-only selected-erf map");
+    expect(panel).toContain("Approximate selected-erf context");
+    expect(panel).toContain("Coordinates are approximate");
     expect(panel).toContain("Coordinates");
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
     expect(panel).toContain("Back to full map");
-    expect(panel).not.toContain("new mapboxgl.Map");
+    expect(panel).not.toContain("onSelectOfficial");
   });
 
   it("clarifies the active workbench section and keeps overview as the only first-read section", () => {

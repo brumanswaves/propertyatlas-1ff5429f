@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
 import {
   X,
   ShieldCheck,
@@ -9,7 +10,7 @@ import {
   Share2,
   ChevronRight,
 } from "lucide-react";
-import type { OfficialFeatureSelection } from "@/components/map/MapCanvas";
+import { STYLE_URLS, type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
 import {
   buildOfficialParcelId,
@@ -159,6 +160,98 @@ function formatAreaM2(value: unknown): string {
 }
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
+
+function SelectedErfMiniMap({
+  coordinates,
+  title,
+}: {
+  coordinates?: { lng: number; lat: number } | null;
+  title: string;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const hasCoordinates =
+    coordinates &&
+    Number.isFinite(coordinates.lng) &&
+    Number.isFinite(coordinates.lat) &&
+    coordinates.lng >= -180 &&
+    coordinates.lng <= 180 &&
+    coordinates.lat >= -90 &&
+    coordinates.lat <= 90;
+
+  useEffect(() => {
+    if (!containerRef.current || !coordinates || !hasCoordinates || !MAPBOX_TOKEN) return;
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: STYLE_URLS.satellite,
+      center: [coordinates.lng, coordinates.lat],
+      zoom: 17.4,
+      pitch: 0,
+      bearing: 0,
+      interactive: false,
+      attributionControl: false,
+      logoPosition: "bottom-left",
+    });
+    mapRef.current = map;
+
+    const markerEl = document.createElement("div");
+    markerEl.className =
+      "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.20),0_12px_26px_rgba(13,27,42,0.35)]";
+    markerRef.current = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
+      .setLngLat([coordinates.lng, coordinates.lat])
+      .addTo(map);
+
+    map.once("load", () => map.resize());
+
+    return () => {
+      markerRef.current?.remove();
+      markerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [coordinates?.lat, coordinates?.lng, hasCoordinates]);
+
+  if (!hasCoordinates) {
+    return (
+      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
+        <div>
+          <div className="text-sm font-semibold text-[#0D1B2A]">Map context unavailable</div>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            No selected-erf coordinate is available for this public feature.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
+        <div>
+          <div className="text-sm font-semibold text-[#0D1B2A]">Mini map unavailable</div>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            The Mapbox token is missing, so the read-only Workbench map cannot render.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#d8d1c3] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
+      <div ref={containerRef} className="absolute inset-0" aria-label={`Mini map for ${title}`} />
+      <div className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-white/86 px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] shadow-[0_10px_24px_-18px_rgba(13,27,42,0.5)] backdrop-blur">
+        Read-only selected-erf map
+      </div>
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-xl bg-[#0D1B2A]/86 px-3 py-2 text-[10px] font-medium leading-4 text-white/86 backdrop-blur">
+        Approximate selected-erf context. Click Back to full map for interactive parcel selection.
+      </div>
+    </div>
+  );
+}
 
 type Geo = {
   streetNumber?: string;
@@ -738,17 +831,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         </section>
 
         <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
-          <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 md:grid-cols-[minmax(0,1fr)_15rem]">
-            <div>
+          <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">
+            <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                Selected erf map context
+                Selected erf map
               </div>
               <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#0D1B2A]">
                 {resolved.displayTitle}
               </h3>
               <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-                Map context coming next. This card uses the selected official feature context and
-                does not create fake parcel precision.
+                Read-only map context centered on the selected erf area. Coordinates are approximate
+                parcel context unless confirmed by an official source.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
                 {normalizedParcel.erfNumber && (
@@ -765,29 +858,34 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   {formatAreaM2(csg?.geometryArea ?? kouga?.shapeArea)}
                 </span>
               </div>
-            </div>
-            <div className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                Coordinates
+              <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Coordinates
+                </div>
+                <dl className="mt-2 space-y-1 text-xs text-[#0D1B2A]/70">
+                  <div className="flex justify-between gap-3">
+                    <dt>Lat</dt>
+                    <dd className="font-mono">
+                      {formatMapCoordinate(normalizedParcel.coordinates?.lat)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt>Lng</dt>
+                    <dd className="font-mono">
+                      {formatMapCoordinate(normalizedParcel.coordinates?.lng)}
+                    </dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                >
+                  Back to full map
+                </button>
               </div>
-              <dl className="mt-2 space-y-1 text-xs text-[#0D1B2A]/70">
-                <div className="flex justify-between gap-3">
-                  <dt>Lat</dt>
-                  <dd className="font-mono">{formatMapCoordinate(normalizedParcel.coordinates?.lat)}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt>Lng</dt>
-                  <dd className="font-mono">{formatMapCoordinate(normalizedParcel.coordinates?.lng)}</dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-              >
-                Back to full map
-              </button>
             </div>
+            <SelectedErfMiniMap coordinates={normalizedParcel.coordinates} title={resolved.displayTitle} />
           </div>
 
           {isOverview && (
