@@ -149,7 +149,7 @@ function panelFirstRead(parcel: NormalizedOfficialParcel): string {
 }
 
 function formatMapCoordinate(value: number | undefined): string {
-  return Number.isFinite(value) ? value.toFixed(6) : "Not available";
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "Not available";
 }
 
 function formatAreaM2(value: unknown): string {
