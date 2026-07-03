@@ -51,6 +51,10 @@ type Candidate = {
   confidence: PropertySearchConfidence;
 };
 
+export interface OfficialParcelSearchOptions {
+  visibleAreaTerms?: string[];
+}
+
 const KNOWN_ADDRESS_HINTS: Array<{
   aliases: string[];
   erfNumber: string;
@@ -162,7 +166,11 @@ function parcelText(parcel: IndexedOfficialParcel): string {
   );
 }
 
-function scoreParcel(parcel: IndexedOfficialParcel, parsed: ParsedPropertyQuery): Candidate | null {
+function scoreParcel(
+  parcel: IndexedOfficialParcel,
+  parsed: ParsedPropertyQuery,
+  options: OfficialParcelSearchOptions = {},
+): Candidate | null {
   let score = 0;
   let reason = "Possible official parcel match";
   let confidence: PropertySearchConfidence = "likely_nearby_parcel";
@@ -201,6 +209,10 @@ function scoreParcel(parcel: IndexedOfficialParcel, parsed: ParsedPropertyQuery)
       const hits = areaTerms.filter((term) => text.includes(term)).length;
       score += hits * 45;
       if (hits > 0) reason = "Official erf match with area context";
+    } else if (options.visibleAreaTerms?.length) {
+      const hits = options.visibleAreaTerms.filter((term) => text.includes(term)).length;
+      score += hits * 35;
+      if (hits > 0) reason = "Official erf match inside visible map area";
     }
     return { parcel, score, matchReason: reason, confidence };
   }
@@ -308,6 +320,7 @@ export function searchByCoordinate(
 export function searchOfficialParcels(
   query: string,
   parcelIndex: IndexedOfficialParcel[],
+  options: OfficialParcelSearchOptions = {},
 ): PropertySearchResult[] {
   const parsed = parsePropertyQuery(query);
   if (!parsed.normalized) return [];
@@ -320,7 +333,7 @@ export function searchOfficialParcels(
     return coordinateMatch ? [coordinateMatch] : [];
   }
   const candidates = parcelIndex
-    .map((parcel) => scoreParcel(parcel, parsed))
+    .map((parcel) => scoreParcel(parcel, parsed, options))
     .filter((candidate): candidate is Candidate => Boolean(candidate));
   return rankParcelCandidates(candidates, parsed).map((candidate) =>
     buildPropertySearchResult(candidate.parcel, candidate.matchReason, candidate.confidence),

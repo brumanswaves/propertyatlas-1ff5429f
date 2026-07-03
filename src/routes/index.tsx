@@ -275,7 +275,7 @@ function AtlasHome() {
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+9.85rem)] md:top-[4.55rem] md:px-4">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[5.15rem] md:px-4">
         <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-1.5 overflow-x-auto sm:w-auto sm:max-w-none">
           <button
             type="button"

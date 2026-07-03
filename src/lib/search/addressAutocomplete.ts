@@ -1,77 +1,112 @@
 export interface AddressAutocompleteSuggestion {
   id: string;
+  placeId: string;
   label: string;
   subtitle: string;
-  lng: number;
-  lat: number;
-  source: "mapbox";
+  source: "google";
 }
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
+export interface AddressPlaceDetails {
+  formattedAddress: string;
+  lng: number;
+  lat: number;
+}
 
-function contextSubtitle(
-  context: Array<{ id?: string; text?: string }> | undefined,
-  placeName: string | undefined,
-): string {
-  const parts =
-    context
-      ?.filter((item) =>
-        ["neighborhood", "locality", "place", "region"].some((prefix) =>
-          item.id?.startsWith(prefix),
-        ),
-      )
-      .map((item) => item.text)
-      .filter((value): value is string => Boolean(value)) ?? [];
-  return parts.length ? parts.join(", ") : (placeName ?? "South Africa");
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+
+export function isAddressAutocompleteConfigured(): boolean {
+  return Boolean(GOOGLE_MAPS_API_KEY?.trim());
+}
+
+function autocompleteSetupError(): Error {
+  return new Error(
+    "Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY with Places enabled.",
+  );
 }
 
 export async function fetchAddressAutocompleteSuggestions(
   query: string,
 ): Promise<AddressAutocompleteSuggestion[]> {
   const trimmed = query.trim();
-  if (!MAPBOX_TOKEN || trimmed.length < 3) return [];
+  if (trimmed.length < 3) return [];
+  if (!isAddressAutocompleteConfigured()) throw autocompleteSetupError();
 
-  const params = new URLSearchParams({
-    access_token: MAPBOX_TOKEN,
-    autocomplete: "true",
-    country: "za",
-    language: "en",
-    limit: "5",
-    types: "address,poi,neighborhood,locality,place",
+  const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY!,
+      "X-Goog-FieldMask":
+        "suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat",
+    },
+    body: JSON.stringify({
+      input: trimmed,
+      includedRegionCodes: ["za"],
+      languageCode: "en",
+    }),
   });
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-    trimmed,
-  )}.json?${params.toString()}`;
 
-  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Address suggestions are temporarily unavailable.");
   }
+
   const data = (await response.json()) as {
-    features?: Array<{
-      id?: string;
-      place_name?: string;
-      text?: string;
-      address?: string;
-      center?: [number, number];
-      context?: Array<{ id?: string; text?: string }>;
+    suggestions?: Array<{
+      placePrediction?: {
+        placeId?: string;
+        text?: { text?: string };
+        structuredFormat?: {
+          mainText?: { text?: string };
+          secondaryText?: { text?: string };
+        };
+      };
     }>;
   };
 
-  return (data.features ?? [])
-    .map((feature, index) => {
-      const center = feature.center;
-      if (!center || !Number.isFinite(center[0]) || !Number.isFinite(center[1])) return null;
-      const label = [feature.address, feature.text].filter(Boolean).join(" ") || feature.place_name;
-      if (!label) return null;
+  return (data.suggestions ?? [])
+    .map((suggestion) => {
+      const prediction = suggestion.placePrediction;
+      if (!prediction?.placeId) return null;
+      const mainText = prediction.structuredFormat?.mainText?.text ?? prediction.text?.text;
+      if (!mainText) return null;
       return {
-        id: feature.id ?? `${center[0]},${center[1]},${index}`,
-        label,
-        subtitle: contextSubtitle(feature.context, feature.place_name),
-        lng: center[0],
-        lat: center[1],
-        source: "mapbox" as const,
+        id: prediction.placeId,
+        placeId: prediction.placeId,
+        label: mainText,
+        subtitle: prediction.structuredFormat?.secondaryText?.text ?? "South Africa",
+        source: "google" as const,
       };
     })
     .filter((item): item is AddressAutocompleteSuggestion => Boolean(item));
+}
+
+export async function fetchAddressPlaceDetails(placeId: string): Promise<AddressPlaceDetails> {
+  if (!isAddressAutocompleteConfigured()) throw autocompleteSetupError();
+
+  const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+    headers: {
+      "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY!,
+      "X-Goog-FieldMask": "formattedAddress,location",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Address coordinates are temporarily unavailable.");
+  }
+
+  const data = (await response.json()) as {
+    formattedAddress?: string;
+    location?: { latitude?: number; longitude?: number };
+  };
+  const lat = data.location?.latitude;
+  const lng = data.location?.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    throw new Error("Address coordinates are temporarily unavailable.");
+  }
+
+  return {
+    formattedAddress: data.formattedAddress ?? "Selected address",
+    lat: lat!,
+    lng: lng!,
+  };
 }

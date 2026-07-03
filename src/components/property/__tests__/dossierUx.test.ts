@@ -7,6 +7,7 @@ describe("official dossier UX guardrails", () => {
   it("keeps the map homepage hero readable and removes public demo search results", () => {
     const home = read("src/routes/index.tsx");
     const search = read("src/components/map/SearchBar.tsx");
+    const autocomplete = read("src/lib/search/addressAutocomplete.ts");
     const nav = read("src/components/layout/TopNav.tsx");
 
     expect(home).toContain("BRAND.site");
@@ -30,11 +31,25 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Official parcel search");
     expect(search).toContain("No official parcel match found yet");
     expect(search).toContain("Address suggestions");
+    expect(search).toContain("Google address suggestion");
     expect(search).toContain("fetchAddressAutocompleteSuggestions");
+    expect(search).toContain("fetchAddressPlaceDetails");
+    expect(search).toContain("isAddressAutocompleteConfigured");
     expect(search).toContain("searchByCoordinate");
-    expect(search).toContain("Address found, but ErfStoep does not yet have an official parcel boundary match for this point.");
+    expect(search).toContain("ErfStoep does not yet have an official parcel boundary match for this point.");
     expect(search).toContain("Selecting this checks the point against loaded official parcels.");
     expect(search).toContain("Address suggestions are temporarily unavailable.");
+    expect(search).toContain("Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY");
+    expect(search).toContain("Address");
+    expect(search).toContain("Erf / LPI");
+    expect(search).toContain("Province");
+    expect(search).toContain("Municipality / town / township");
+    expect(search).toContain("Erf number");
+    expect(search).toContain("Portion, default 0");
+    expect(search).toContain("LPI or parcel key optional");
+    expect(search).toContain("Searching inside visible map area");
+    expect(search).toContain("visibleAreaTerms");
+    expect(search).toContain("Erf number searches need province");
     expect(search).toContain("confidenceLabel");
     expect(search).toContain("officialResults.length === 0");
     expect(search).toContain("z-[90]");
@@ -48,6 +63,11 @@ describe("official dossier UX guardrails", () => {
     expect(search).not.toContain("Optional pilot examples");
     expect(search).not.toContain("Demo records are secondary");
     expect(search).not.toContain("Pilot demo example");
+    expect(autocomplete).toContain("VITE_GOOGLE_MAPS_API_KEY");
+    expect(autocomplete).toContain("places.googleapis.com/v1/places:autocomplete");
+    expect(autocomplete).toContain('includedRegionCodes: ["za"]');
+    expect(autocomplete).toContain("trimmed.length < 3");
+    expect(autocomplete).not.toContain("AIza");
   });
 
   it("renders locate me without storing precise user location", () => {
@@ -55,8 +75,9 @@ describe("official dossier UX guardrails", () => {
     const map = read("src/components/map/MapCanvas.tsx");
 
     expect(home).toContain("Locate me");
-    expect(home).toContain("top-[calc(env(safe-area-inset-top)+8rem)]");
-    expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+9.85rem)]");
+    expect(home).toContain("top-[calc(env(safe-area-inset-top)+8.75rem)]");
+    expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+10.5rem)]");
+    expect(home).toContain("md:top-[5.15rem]");
     expect(home).toContain("w-full max-w-[23rem]");
     expect(home).toContain("sm:w-auto sm:max-w-none");
     expect(home).toContain("overflow-x-auto");

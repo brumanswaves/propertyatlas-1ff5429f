@@ -106,6 +106,17 @@ describe("official parcel search", () => {
     );
   });
 
+  it("prefers visible map area context for erf-only searches", () => {
+    expect(
+      searchOfficialParcels("Erf 962", parcelIndex, {
+        visibleAreaTerms: ["sea", "vista", "kouga", "eastern", "cape"],
+      })[0],
+    ).toMatchObject({
+      matchReason: "Official erf match inside visible map area",
+      fields: { lpi: "c03400140000096200000" },
+    });
+  });
+
   it("returns the official parcel for a coordinate inside the polygon", () => {
     expect(searchByCoordinate(-34.1717374, 24.8314966, parcelIndex)).toMatchObject({
       confidence: "address_inside_official_parcel",

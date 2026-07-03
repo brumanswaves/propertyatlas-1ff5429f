@@ -1,19 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import {
+  parsePropertyQuery,
   searchByCoordinate,
   searchOfficialParcels,
   type PropertySearchResult,
 } from "@/lib/search/propertySearch";
 import type { IndexedOfficialParcel } from "@/lib/search/officialParcelIndex";
 import {
+  fetchAddressPlaceDetails,
   fetchAddressAutocompleteSuggestions,
+  isAddressAutocompleteConfigured,
   type AddressAutocompleteSuggestion,
 } from "@/lib/search/addressAutocomplete";
 
 interface Props {
   officialParcels?: IndexedOfficialParcel[];
   onPickOfficial?: (result: PropertySearchResult) => void;
+}
+
+type SearchMode = "address" | "erf";
+
+interface StructuredErfFields {
+  province: string;
+  municipality: string;
+  erf: string;
+  portion: string;
+  code: string;
 }
 
 function confidenceLabel(confidence: PropertySearchResult["confidence"]): string {
@@ -34,20 +47,83 @@ function confidenceLabel(confidence: PropertySearchResult["confidence"]): string
 export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [manualMode, setManualMode] = useState<SearchMode | null>(null);
+  const [structured, setStructured] = useState<StructuredErfFields>({
+    province: "",
+    municipality: "",
+    erf: "",
+    portion: "0",
+    code: "",
+  });
   const [addressSuggestions, setAddressSuggestions] = useState<AddressAutocompleteSuggestion[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [addressOnlyMessage, setAddressOnlyMessage] = useState<string | null>(null);
+  const parsedQuery = useMemo(() => parsePropertyQuery(q), [q]);
+  const detectedMode: SearchMode =
+    parsedQuery.lpi ||
+    parsedQuery.parcelKey ||
+    parsedQuery.erfNumber ||
+    /\b(erf|portion|ptn|lpi|parcel\s*key)\b/i.test(q)
+      ? "erf"
+      : "address";
+  const activeMode = manualMode ?? detectedMode;
+  const visibleAreaTerms = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          officialParcels
+            .flatMap((parcel) => [parcel.town, parcel.municipality, parcel.province])
+            .filter((value): value is string => Boolean(value?.trim()))
+            .flatMap((value) => value.toLowerCase().split(/\s+/))
+            .filter((term) => term.length > 2),
+        ),
+      ),
+    [officialParcels],
+  );
+  const visibleAreaLabel = useMemo(() => {
+    const sample = officialParcels.find(
+      (parcel) => parcel.town || parcel.municipality || parcel.province,
+    );
+    return [sample?.town, sample?.municipality, sample?.province].filter(Boolean).join(", ");
+  }, [officialParcels]);
+  const structuredQuery = useMemo(() => {
+    const code = structured.code.trim();
+    if (code) return code;
+    const erf = structured.erf.trim();
+    if (!erf) return q;
+    return [
+      "Erf",
+      erf,
+      structured.portion.trim() ? `portion ${structured.portion.trim()}` : null,
+      structured.municipality.trim(),
+      structured.province.trim(),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }, [q, structured]);
+  const officialQuery = activeMode === "erf" ? structuredQuery : q;
 
   const officialResults = useMemo(() => {
-    if (!q.trim()) return [];
-    return searchOfficialParcels(q, officialParcels).slice(0, 8);
-  }, [officialParcels, q]);
+    if (!officialQuery.trim()) return [];
+    return searchOfficialParcels(officialQuery, officialParcels, { visibleAreaTerms }).slice(0, 8);
+  }, [officialParcels, officialQuery, visibleAreaTerms]);
+  const needsAreaContext =
+    activeMode === "erf" &&
+    Boolean(parsedQuery.erfNumber) &&
+    !parsedQuery.areaText &&
+    !visibleAreaLabel &&
+    officialResults.length === 0;
+  const ambiguousErfSearch =
+    activeMode === "erf" &&
+    Boolean(parsedQuery.erfNumber) &&
+    !parsedQuery.areaText &&
+    officialResults.length > 1;
 
   useEffect(() => {
     const query = q.trim();
     setAddressOnlyMessage(null);
-    if (query.length < 3) {
+    if (activeMode !== "address" || query.length < 3) {
       setAddressSuggestions([]);
       setAddressLoading(false);
       setAddressError(null);
@@ -81,7 +157,7 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [q]);
+  }, [activeMode, q]);
 
   function resetSearch() {
     setOpen(false);
@@ -91,16 +167,32 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
     setAddressOnlyMessage(null);
   }
 
-  function pickAddressSuggestion(suggestion: AddressAutocompleteSuggestion) {
-    const officialMatch = searchByCoordinate(suggestion.lat, suggestion.lng, officialParcels);
-    if (officialMatch) {
-      onPickOfficial?.(officialMatch);
-      resetSearch();
-      return;
+  async function pickAddressSuggestion(suggestion: AddressAutocompleteSuggestion) {
+    setAddressLoading(true);
+    setAddressOnlyMessage(null);
+    setAddressError(null);
+    try {
+      const details = await fetchAddressPlaceDetails(suggestion.placeId);
+      const officialMatch = searchByCoordinate(details.lat, details.lng, officialParcels);
+      if (officialMatch) {
+        onPickOfficial?.(officialMatch);
+        resetSearch();
+        return;
+      }
+      setAddressOnlyMessage(
+        `Address found: ${details.formattedAddress} (${details.lat.toFixed(
+          6,
+        )}, ${details.lng.toFixed(
+          6,
+        )}). ErfStoep does not yet have an official parcel boundary match for this point.`,
+      );
+    } catch (error) {
+      setAddressError(
+        error instanceof Error ? error.message : "Address coordinates are temporarily unavailable.",
+      );
+    } finally {
+      setAddressLoading(false);
     }
-    setAddressOnlyMessage(
-      "Address found, but ErfStoep does not yet have an official parcel boundary match for this point.",
-    );
   }
 
   return (
@@ -134,20 +226,91 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
 
       {open && q.trim() && (
         <div className="absolute left-0 right-0 top-full z-[90] mt-2 max-h-[min(72vh,32rem)] overflow-y-auto rounded-2xl border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-30px_rgba(13,27,42,0.36)]">
+          <div className="flex gap-1 border-b border-[#0D1B2A]/8 bg-white px-3 py-2">
+            {(["address", "erf"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setManualMode(mode)}
+                className={
+                  activeMode === mode
+                    ? "flex-1 rounded-full bg-[#0D1B2A] px-3 py-2 text-xs font-bold text-white"
+                    : "flex-1 rounded-full bg-[#fbf8f1] px-3 py-2 text-xs font-bold text-[#0D1B2A]/64 hover:bg-[#fff3df]"
+                }
+              >
+                {mode === "address" ? "Address" : "Erf / LPI"}
+              </button>
+            ))}
+          </div>
+
           <div className="border-b border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3">
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
               Official parcel search
             </div>
+            {visibleAreaLabel && (
+              <p className="mt-1 text-xs leading-5 text-[#174634]">
+                Searching inside visible map area: {visibleAreaLabel}
+              </p>
+            )}
             {officialResults.length === 0 && (
               <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
                 No official parcel match found yet. Zoom in and click a CSG or Kouga parcel outline,
                 or search by address, suburb, erf number, LPI, or parcel key.
               </p>
             )}
+            {needsAreaContext && (
+              <p className="mt-1 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#8A3A12]">
+                Erf number searches need province, municipality, township/area, portion, or a
+                zoomed-in loaded map area to avoid ambiguous matches.
+              </p>
+            )}
+            {ambiguousErfSearch && (
+              <p className="mt-1 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#8A3A12]">
+                Multiple loaded parcels match this erf number. Add township/area or portion to
+                narrow the official match.
+              </p>
+            )}
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
               For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.
             </p>
           </div>
+
+          {activeMode === "erf" && (
+            <div className="grid gap-2 border-b border-[#0D1B2A]/8 bg-[#fbf8f1] px-4 py-3 sm:grid-cols-2">
+              <input
+                value={structured.province}
+                onChange={(e) => setStructured((value) => ({ ...value, province: e.target.value }))}
+                placeholder={visibleAreaLabel ? "Province from visible area" : "Province"}
+                className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
+              />
+              <input
+                value={structured.municipality}
+                onChange={(e) =>
+                  setStructured((value) => ({ ...value, municipality: e.target.value }))
+                }
+                placeholder="Municipality / town / township"
+                className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
+              />
+              <input
+                value={structured.erf}
+                onChange={(e) => setStructured((value) => ({ ...value, erf: e.target.value }))}
+                placeholder="Erf number"
+                className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
+              />
+              <input
+                value={structured.portion}
+                onChange={(e) => setStructured((value) => ({ ...value, portion: e.target.value }))}
+                placeholder="Portion, default 0"
+                className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
+              />
+              <input
+                value={structured.code}
+                onChange={(e) => setStructured((value) => ({ ...value, code: e.target.value }))}
+                placeholder="LPI or parcel key optional"
+                className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50 sm:col-span-2"
+              />
+            </div>
+          )}
 
           {officialResults.map((result) => (
             <button
@@ -186,7 +349,8 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
             </button>
           ))}
 
-          <div className="border-t border-[#0D1B2A]/8 bg-white px-4 py-3">
+          {activeMode === "address" && (
+            <div className="border-t border-[#0D1B2A]/8 bg-white px-4 py-3">
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
               Address suggestions
             </div>
@@ -194,27 +358,35 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
               Address suggestions give a coordinate only. Selecting one checks that point against
               loaded official parcel boundaries.
             </p>
+            {!isAddressAutocompleteConfigured() && (
+              <p className="mt-2 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#8A3A12]">
+                Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY with
+                Places enabled.
+              </p>
+            )}
           </div>
+          )}
 
-          {addressLoading && (
+          {activeMode === "address" && addressLoading && (
             <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm text-[#0D1B2A]/68">
               Finding address suggestions...
             </div>
           )}
 
-          {addressError && (
+          {activeMode === "address" && addressError && (
             <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm text-[#8A3A12]">
               {addressError}
             </div>
           )}
 
-          {addressOnlyMessage && (
+          {activeMode === "address" && addressOnlyMessage && (
             <div className="border-t border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3 text-sm leading-6 text-[#0D1B2A]/72">
               {addressOnlyMessage}
             </div>
           )}
 
-          {!addressLoading &&
+          {activeMode === "address" &&
+            !addressLoading &&
             !addressError &&
             addressSuggestions.map((suggestion) => (
               <button
@@ -229,7 +401,7 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
                     <div className="text-xs text-[#0D1B2A]/58">{suggestion.subtitle}</div>
                   </div>
                   <span className="shrink-0 rounded-full bg-[#FF6A00]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#9A4A09]">
-                    Address suggestion
+                    Google address suggestion
                   </span>
                 </div>
                 <div className="text-[11px] leading-4 text-[#0D1B2A]/58">
@@ -238,7 +410,8 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
               </button>
             ))}
 
-          {!addressLoading &&
+          {activeMode === "address" &&
+            !addressLoading &&
             !addressError &&
             addressSuggestions.length === 0 &&
             officialResults.length === 0 && (
