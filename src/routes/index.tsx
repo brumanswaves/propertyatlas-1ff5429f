@@ -9,6 +9,7 @@ import {
   type OfficialFeatureSelection,
   type OfficialLayerStatus,
   type OfficialReopenResolutionStatus,
+  type SearchHighlightOfficialParcel,
 } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -34,6 +35,7 @@ import {
   type IndexedOfficialParcel,
 } from "@/lib/search/officialParcelIndex";
 import type { PropertySearchResult } from "@/lib/search/propertySearch";
+import type { AddressMapTarget } from "@/components/map/SearchBar";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -86,6 +88,11 @@ function AtlasHome() {
   const [locateRequestId, setLocateRequestId] = useState(0);
   const [locateMessage, setLocateMessage] = useState<string | null>(null);
   const [officialFeatures, setOfficialFeatures] = useState<OfficialParcelFeature[]>([]);
+  const [addressSearchTarget, setAddressSearchTarget] = useState<AddressMapTarget | null>(null);
+  const [searchHighlight, setSearchHighlight] = useState<SearchHighlightOfficialParcel | null>(
+    null,
+  );
+  const [searchHighlightActive, setSearchHighlightActive] = useState(false);
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "loading", count: 0 },
     kouga: { state: "loading", count: 0 },
@@ -149,6 +156,8 @@ function AtlasHome() {
       setSelectedId(id);
       if (id) {
         setSelectedOfficial(null);
+        setSearchHighlight(null);
+        setSearchHighlightActive(false);
         clearSavedReopenState();
       }
     },
@@ -160,6 +169,8 @@ function AtlasHome() {
       setSelectedOfficial(sel);
       if (sel) {
         setSelectedId(null);
+        setSearchHighlight(null);
+        setSearchHighlightActive(false);
         setRequestedOfficialParcel(null);
         setOfficialReopenStatus("resolved");
         clearSavedReopenUrl();
@@ -223,6 +234,25 @@ function AtlasHome() {
     [clearSavedReopenUrl],
   );
 
+  const handleOfficialSearchHighlight = useCallback((result: PropertySearchResult) => {
+    const parcel = result.parcel;
+    if (!parcel) return;
+    const lngLat = selectionPointForParcel(parcel);
+    if (!lngLat) return;
+    setSelectedId(null);
+    setSelectedOfficial(null);
+    setRequestedOfficialParcel(null);
+    setOfficialReopenStatus("idle");
+    setSearchHighlightActive(false);
+    setSearchHighlight({
+      id: parcel.id,
+      title: result.title,
+      layer: parcel.layer,
+      properties: parcel.properties,
+      lngLat,
+    });
+  }, []);
+
   const headerSubtitle = (
     <span>
       <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span> Research any
@@ -249,6 +279,9 @@ function AtlasHome() {
         locateRequestId={locateRequestId}
         onLocateResult={setLocateMessage}
         onOfficialFeaturesChange={setOfficialFeatures}
+        addressSearchTarget={addressSearchTarget}
+        searchHighlightOfficialParcel={searchHighlight}
+        onSearchHighlightStatus={setSearchHighlightActive}
       />
       <MapLegend layers={layers} />
       <TopNav
@@ -256,12 +289,16 @@ function AtlasHome() {
           <SearchBar
             officialParcels={officialParcelIndex}
             onPickOfficial={handleOfficialSearchPick}
+            onHighlightOfficial={handleOfficialSearchHighlight}
+            onLocateAddress={setAddressSearchTarget}
           />
         }
         mobileCenter={
           <SearchBar
             officialParcels={officialParcelIndex}
             onPickOfficial={handleOfficialSearchPick}
+            onHighlightOfficial={handleOfficialSearchHighlight}
+            onLocateAddress={setAddressSearchTarget}
           />
         }
         subtitle={headerSubtitle}
@@ -273,6 +310,31 @@ function AtlasHome() {
           mapStatus={mapDebugStatus}
           reopenStatus={officialReopenStatus}
         />
+      )}
+
+      {searchHighlight && !selectedOfficial && (
+        <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-[#FF6A00]/25 bg-white/95 p-4 text-center shadow-panel backdrop-blur md:top-[6rem]">
+          <p className="text-sm font-bold text-[#0D1B2A]">
+            {searchHighlightActive
+              ? `${searchHighlight.title} highlighted.`
+              : `Finding ${searchHighlight.title} on the map.`}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
+            {searchHighlightActive
+              ? "Click the highlighted erf to open the Workbench."
+              : "ErfStoep is matching the result to the rendered official parcel outline."}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchHighlight(null);
+              setSearchHighlightActive(false);
+            }}
+            className="mt-3 rounded-full border border-[#0D1B2A]/10 px-3 py-1.5 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[5.15rem] md:px-4">
