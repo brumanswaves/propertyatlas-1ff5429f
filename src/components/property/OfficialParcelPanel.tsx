@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import {
   X,
   ShieldCheck,
@@ -159,6 +161,7 @@ function formatAreaM2(value: unknown): string {
 }
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
+const MINI_MAP_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 
 function SelectedErfMiniMap({
   coordinates,
@@ -169,7 +172,11 @@ function SelectedErfMiniMap({
   title: string;
   onBackToMap: () => void;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapFailed, setMapFailed] = useState<string | null>(null);
   const coordinateLng = coordinates?.lng;
   const coordinateLat = coordinates?.lat;
   const hasCoordinates =
@@ -183,25 +190,85 @@ function SelectedErfMiniMap({
     coordinateLat <= 90;
 
   useEffect(() => {
-    setImageFailed(false);
-  }, [coordinateLat, coordinateLng]);
+    setMapLoaded(false);
+    setMapFailed(null);
 
-  const staticMapUrl =
-    hasCoordinates && MAPBOX_TOKEN && coordinateLng !== undefined && coordinateLat !== undefined
-      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-s+ff6a00(${coordinateLng},${coordinateLat})/${coordinateLng},${coordinateLat},17.2,0/640x360@2x?access_token=${MAPBOX_TOKEN}`
-      : null;
+    if (
+      !hasCoordinates ||
+      !MAPBOX_TOKEN ||
+      coordinateLng === undefined ||
+      coordinateLat === undefined ||
+      !mapContainerRef.current
+    ) {
+      return;
+    }
 
-  if (!hasCoordinates || !MAPBOX_TOKEN || imageFailed || !staticMapUrl) {
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const markerEl = document.createElement("div");
+    markerEl.className =
+      "h-5 w-5 rounded-full border-2 border-white bg-[#FF6A00] shadow-[0_0_0_8px_rgba(255,106,0,0.22),0_14px_30px_-12px_rgba(13,27,42,0.75)]";
+    markerEl.setAttribute("aria-label", `Approximate selected erf marker for ${title}`);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      setMapFailed("The interactive map took too long to load.");
+    }, 9000);
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: MINI_MAP_STYLE,
+      center: [coordinateLng, coordinateLat],
+      zoom: 17.25,
+      pitch: 0,
+      bearing: 0,
+      attributionControl: false,
+      cooperativeGestures: true,
+    });
+
+    mapRef.current = map;
+    markerRef.current = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
+      .setLngLat([coordinateLng, coordinateLat])
+      .addTo(map);
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
+
+    const handleLoad = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      setMapLoaded(true);
+      setMapFailed(null);
+      map.resize();
+      map.easeTo({
+        center: [coordinateLng, coordinateLat],
+        zoom: 17.25,
+        duration: 0,
+      });
+    };
+
+    const handleError = () => {
+      setMapFailed("The interactive map style could not load.");
+    };
+
+    map.once("load", handleLoad);
+    map.on("error", handleError);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      markerRef.current?.remove();
+      markerRef.current = null;
+      map.off("error", handleError);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [coordinateLat, coordinateLng, hasCoordinates, title]);
+
+  if (!hasCoordinates || !MAPBOX_TOKEN) {
     const reason = !hasCoordinates
       ? "No selected-erf coordinate is available for this public feature."
-      : !MAPBOX_TOKEN
-        ? "The Mapbox token is missing, so the Workbench map preview cannot render."
-        : "The static map preview failed to load.";
-    const titleText = !hasCoordinates
-      ? "Map context unavailable"
-      : !MAPBOX_TOKEN
-        ? "Map preview unavailable"
-        : "Map preview could not render";
+      : "The Mapbox token is missing, so the interactive Workbench map cannot render.";
+    const titleText = !hasCoordinates ? "Map context unavailable" : "Interactive map unavailable";
     return (
       <div className="grid min-h-[13rem] place-items-center rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-5 text-center">
         <div className="max-w-xs">
@@ -230,19 +297,51 @@ function SelectedErfMiniMap({
 
   return (
     <div className="relative h-64 min-h-[13rem] overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
-      <img
-        src={staticMapUrl}
-        alt={`Static map preview for ${title}`}
-        className="h-full w-full object-cover"
-        loading="lazy"
-        onError={() => setImageFailed(true)}
+      <div
+        ref={mapContainerRef}
+        className="h-full w-full"
+        aria-label={`Interactive selected-erf map for ${title}`}
       />
       <div className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-white/86 px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] shadow-[0_10px_24px_-18px_rgba(13,27,42,0.5)] backdrop-blur">
-        Static selected-erf map preview
+        Interactive selected-erf map
       </div>
       <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-xl bg-[#0D1B2A]/86 px-3 py-2 text-[10px] font-medium leading-4 text-white/86 backdrop-blur">
-        Approximate selected-erf context. Click Back to full map for interactive parcel selection.
+        Pan and zoom to view the erf in area context. Approximate selected-erf context from selected
+        parcel point.
       </div>
+      {!mapLoaded && !mapFailed && (
+        <div className="absolute inset-0 grid place-items-center bg-[#fbf8f1]/82 text-center backdrop-blur-sm">
+          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-xs font-semibold text-[#0D1B2A]">
+            Loading interactive selected-erf map...
+          </div>
+        </div>
+      )}
+      {mapFailed && (
+        <div className="absolute inset-0 grid place-items-center bg-white/94 p-5 text-center backdrop-blur">
+          <div className="max-w-xs">
+            <div className="text-sm font-semibold text-[#0D1B2A]">
+              Interactive map could not render
+            </div>
+            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{mapFailed}</p>
+            {coordinateLat !== undefined && coordinateLng !== undefined && (
+              <p className="mt-3 font-mono text-xs text-[#0D1B2A]/70">
+                {coordinateLat.toFixed(6)}, {coordinateLng.toFixed(6)}
+              </p>
+            )}
+            <p className="mt-3 text-[11px] leading-5 text-[#0D1B2A]/58">
+              Approximate map context from selected parcel click. No parcel boundary or GIS
+              precision is fabricated here.
+            </p>
+            <button
+              type="button"
+              onClick={onBackToMap}
+              className="mt-4 inline-flex rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0D1B2A]/90"
+            >
+              Back to full map
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

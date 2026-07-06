@@ -184,23 +184,27 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('view="notes"');
   });
 
-  it("shows a read-only selected erf mini map without faking parcel precision", () => {
+  it("shows an interactive selected erf mini map without faking parcel precision", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("Selected erf map");
     expect(panel).toContain("SelectedErfMiniMap");
-    expect(panel).toContain("staticMapUrl");
-    expect(panel).toContain("satellite-streets-v12/static");
-    expect(panel).toContain("Static selected-erf map preview");
-    expect(panel).toContain("onError={() => setImageFailed(true)}");
-    expect(panel).not.toContain("new mapboxgl.Map");
+    expect(panel).toContain("new mapboxgl.Map");
+    expect(panel).toContain("MINI_MAP_STYLE");
+    expect(panel).toContain("map.addControl(new mapboxgl.NavigationControl");
+    expect(panel).toContain("cooperativeGestures: true");
+    expect(panel).toContain("Interactive selected-erf map");
+    expect(panel).toContain("Pan and zoom to view the erf in area context");
+    expect(panel).toContain("new mapboxgl.Marker");
+    expect(panel).not.toContain("satellite-streets-v12/static");
+    expect(panel).not.toContain("Static selected-erf map preview");
     expect(panel).not.toContain("interactive: false");
     expect(panel).toContain("h-64 min-h-[13rem]");
-    expect(panel).not.toContain("Loading selected-erf map");
-    expect(panel).not.toContain("setMapLoaded");
-    expect(panel).not.toContain("mapFailed");
-    expect(panel).toContain("Map preview could not render");
-    expect(panel).toContain("Map preview unavailable");
+    expect(panel).toContain("Loading interactive selected-erf map");
+    expect(panel).toContain("setMapLoaded");
+    expect(panel).toContain("mapFailed");
+    expect(panel).toContain("Interactive map could not render");
+    expect(panel).toContain("Interactive map unavailable");
     expect(panel).toContain("Map context unavailable");
     expect(panel).toContain("Approximate selected-erf context");
     expect(panel).toContain("Approximate map context from selected parcel click");
@@ -211,6 +215,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("formatAreaM2");
     expect(panel).toContain("Back to full map");
     expect(panel).toContain("onBackToMap={onClose}");
+    expect(panel).toContain("map.remove()");
     expect(panel).not.toContain("onSelectOfficial");
   });
 
