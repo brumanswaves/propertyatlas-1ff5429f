@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import type { Geometry } from "geojson";
 import { LocateFixed, MousePointerClick, Plus, X } from "lucide-react";
 import {
   MapCanvas,
@@ -10,6 +11,7 @@ import {
   type OfficialLayerStatus,
   type OfficialReopenResolutionStatus,
   type SearchHighlightOfficialParcel,
+  type SearchHighlightStatus,
 } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
 import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
@@ -71,6 +73,38 @@ function selectionPointForParcel(parcel: IndexedOfficialParcel): [number, number
   return null;
 }
 
+function geometryBounds(geometry: Geometry | null): [number, number, number, number] | undefined {
+  if (!geometry) return undefined;
+  const positions: Array<[number, number]> = [];
+  const collect = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    if (
+      value.length >= 2 &&
+      typeof value[0] === "number" &&
+      typeof value[1] === "number" &&
+      Number.isFinite(value[0]) &&
+      Number.isFinite(value[1])
+    ) {
+      positions.push([value[0], value[1]]);
+      return;
+    }
+    for (const item of value) collect(item);
+  };
+  collect((geometry as { coordinates?: unknown }).coordinates);
+  if (!positions.length) return undefined;
+  let west = positions[0][0];
+  let south = positions[0][1];
+  let east = positions[0][0];
+  let north = positions[0][1];
+  for (const [lng, lat] of positions) {
+    west = Math.min(west, lng);
+    east = Math.max(east, lng);
+    south = Math.min(south, lat);
+    north = Math.max(north, lat);
+  }
+  return [west, south, east, north];
+}
+
 function AtlasHome() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
@@ -92,7 +126,7 @@ function AtlasHome() {
   const [searchHighlight, setSearchHighlight] = useState<SearchHighlightOfficialParcel | null>(
     null,
   );
-  const [searchHighlightActive, setSearchHighlightActive] = useState(false);
+  const [searchHighlightStatus, setSearchHighlightStatus] = useState<SearchHighlightStatus>("idle");
   const [officialStatus, setOfficialStatus] = useState<OfficialLayerStatus>({
     csg: { state: "loading", count: 0 },
     kouga: { state: "loading", count: 0 },
@@ -157,7 +191,7 @@ function AtlasHome() {
       if (id) {
         setSelectedOfficial(null);
         setSearchHighlight(null);
-        setSearchHighlightActive(false);
+        setSearchHighlightStatus("idle");
         clearSavedReopenState();
       }
     },
@@ -170,7 +204,7 @@ function AtlasHome() {
       if (sel) {
         setSelectedId(null);
         setSearchHighlight(null);
-        setSearchHighlightActive(false);
+        setSearchHighlightStatus("idle");
         setRequestedOfficialParcel(null);
         setOfficialReopenStatus("resolved");
         clearSavedReopenUrl();
@@ -243,13 +277,21 @@ function AtlasHome() {
     setSelectedOfficial(null);
     setRequestedOfficialParcel(null);
     setOfficialReopenStatus("idle");
-    setSearchHighlightActive(false);
+    setSearchHighlightStatus("searching");
     setSearchHighlight({
       id: parcel.id,
       title: result.title,
       layer: parcel.layer,
       properties: parcel.properties,
       lngLat,
+      lpi: parcel.lpi,
+      parcelKey: parcel.parcelKey,
+      erf: parcel.erf,
+      portion: parcel.portion,
+      town: parcel.town,
+      municipality: parcel.municipality,
+      province: parcel.province,
+      bounds: geometryBounds(parcel.geometry),
     });
   }, []);
 
@@ -281,23 +323,23 @@ function AtlasHome() {
         onOfficialFeaturesChange={setOfficialFeatures}
         addressSearchTarget={addressSearchTarget}
         searchHighlightOfficialParcel={searchHighlight}
-        onSearchHighlightStatus={setSearchHighlightActive}
+        onSearchHighlightStatus={setSearchHighlightStatus}
       />
       <MapLegend layers={layers} />
       <TopNav
         center={
           <SearchBar
             officialParcels={officialParcelIndex}
-            onPickOfficial={handleOfficialSearchPick}
-            onHighlightOfficial={handleOfficialSearchHighlight}
+            onOpenOfficialWorkbench={handleOfficialSearchPick}
+            onHighlightOfficialFromSearch={handleOfficialSearchHighlight}
             onLocateAddress={setAddressSearchTarget}
           />
         }
         mobileCenter={
           <SearchBar
             officialParcels={officialParcelIndex}
-            onPickOfficial={handleOfficialSearchPick}
-            onHighlightOfficial={handleOfficialSearchHighlight}
+            onOpenOfficialWorkbench={handleOfficialSearchPick}
+            onHighlightOfficialFromSearch={handleOfficialSearchHighlight}
             onLocateAddress={setAddressSearchTarget}
           />
         }
@@ -315,20 +357,24 @@ function AtlasHome() {
       {searchHighlight && !selectedOfficial && (
         <div className="pointer-events-auto absolute left-1/2 top-[13.5rem] z-20 w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-[#FF6A00]/25 bg-white/95 p-4 text-center shadow-panel backdrop-blur md:top-[6rem]">
           <p className="text-sm font-bold text-[#0D1B2A]">
-            {searchHighlightActive
+            {searchHighlightStatus === "highlighted"
               ? `${searchHighlight.title} highlighted.`
-              : `Finding ${searchHighlight.title} on the map.`}
+              : searchHighlightStatus === "fallback"
+                ? "Official parcel found."
+                : `Finding ${searchHighlight.title} on the map.`}
           </p>
           <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
-            {searchHighlightActive
+            {searchHighlightStatus === "highlighted"
               ? "Click the highlighted erf to open the Workbench."
-              : "ErfStoep is matching the result to the rendered official parcel outline."}
+              : searchHighlightStatus === "fallback"
+                ? "Boundary highlight unavailable until the layer loads. Click the nearby official parcel outline to open the Workbench."
+                : "ErfStoep is matching the result to the rendered official parcel outline. If the boundary is still loading, the map will keep a marker at the official parcel context."}
           </p>
           <button
             type="button"
             onClick={() => {
               setSearchHighlight(null);
-              setSearchHighlightActive(false);
+              setSearchHighlightStatus("idle");
             }}
             className="mt-3 rounded-full border border-[#0D1B2A]/10 px-3 py-1.5 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
           >

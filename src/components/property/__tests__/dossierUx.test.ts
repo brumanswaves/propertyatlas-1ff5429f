@@ -16,10 +16,11 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("Research any");
     expect(home).toContain("South African erf.");
     expect(home).toContain("officialParcels={officialParcelIndex}");
-    expect(home).toContain("onPickOfficial={handleOfficialSearchPick}");
-    expect(home).toContain("onHighlightOfficial={handleOfficialSearchHighlight}");
+    expect(home).toContain("onOpenOfficialWorkbench={handleOfficialSearchPick}");
+    expect(home).toContain("onHighlightOfficialFromSearch={handleOfficialSearchHighlight}");
     expect(home).toContain("addressSearchTarget={addressSearchTarget}");
     expect(home).toContain("searchHighlightOfficialParcel={searchHighlight}");
+    expect(home).toContain('searchHighlightStatus === "fallback"');
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
@@ -66,6 +67,8 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Search official parcel identity");
     expect(search).toContain("Suggested from loaded map area");
     expect(search).toContain("loadedAreaTerms");
+    expect(search).toContain("Registry label:");
+    expect(search).toContain("selectedOfficeHasLoadedCoverage");
     expect(search).toContain("Erf numbers repeat across South Africa");
     expect(search).toContain("confidenceLabel");
     expect(search).toContain("erfResults.length === 0");
@@ -92,14 +95,19 @@ describe("official dossier UX guardrails", () => {
     const map = read("src/components/map/MapCanvas.tsx");
     const search = read("src/components/map/SearchBar.tsx");
 
-    expect(search).toContain("onHighlightOfficial");
+    expect(search).toContain("onHighlightOfficialFromSearch");
     expect(search).toContain("onLocateAddress");
-    expect(search).toContain("onHighlightOfficial?.(officialMatch)");
-    expect(search).not.toContain("onPickOfficial?.(officialMatch)");
+    expect(search).toContain("onHighlightOfficialFromSearch?.(officialMatch)");
+    expect(search).not.toContain("onOpenOfficialWorkbench?.(officialMatch)");
+    expect(search).toContain("event.stopPropagation()");
+    expect(search).toContain("onOpenOfficialWorkbench?.(result)");
     expect(home).toContain("handleOfficialSearchHighlight");
     expect(home).toContain("Click the highlighted erf to open the Workbench.");
+    expect(home).toContain("Boundary highlight unavailable until the layer loads.");
     expect(map).toContain("searchHighlightOfficialParcel");
     expect(map).toContain("findMatchingSearchHighlightFeature");
+    expect(map).toContain("searchHighlightMarkerRef");
+    expect(map).toContain("map.fitBounds(searchHighlightOfficialParcel.bounds");
     expect(map).toContain(
       "map.setFeatureState({ source: match.layer, id: match.feature.id }, { selected: true })",
     );

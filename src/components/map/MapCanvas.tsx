@@ -11,6 +11,7 @@ import {
 } from "@/data/properties";
 import { AlertTriangle } from "lucide-react";
 import {
+  extractOfficialFeatureIdentity,
   isOfficialPointParcelId,
   officialFeatureMatchesSavedParcelId,
   type OfficialFeatureLayer,
@@ -90,7 +91,17 @@ export interface SearchHighlightOfficialParcel {
   layer: OfficialFeatureLayer;
   properties: Record<string, unknown>;
   lngLat: [number, number];
+  bounds?: [number, number, number, number];
+  lpi?: string;
+  parcelKey?: string;
+  erf?: string;
+  portion?: string;
+  town?: string;
+  municipality?: string;
+  province?: string;
 }
+
+export type SearchHighlightStatus = "idle" | "searching" | "highlighted" | "fallback";
 
 export interface MapDebugStatus {
   mapLoaded: boolean;
@@ -118,7 +129,7 @@ interface Props {
   onOfficialFeaturesChange?: (features: OfficialParcelFeature[]) => void;
   addressSearchTarget?: AddressSearchTarget | null;
   searchHighlightOfficialParcel?: SearchHighlightOfficialParcel | null;
-  onSearchHighlightStatus?: (highlighted: boolean) => void;
+  onSearchHighlightStatus?: (status: SearchHighlightStatus) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -314,7 +325,43 @@ function findMatchingSearchHighlightFeature(
     lat: request.lngLat[1],
     zoom: 18,
   };
-  return findMatchingOfficialReopenFeature(map, reopenLikeRequest);
+  const idMatch = findMatchingOfficialReopenFeature(map, reopenLikeRequest);
+  if (idMatch) return idMatch;
+
+  const candidates = queryOfficialReopenFeatures(map, reopenLikeRequest);
+  return (
+    candidates.find(({ feature, layer }) => {
+      const identity = extractOfficialFeatureIdentity(
+        layer,
+        (feature.properties ?? {}) as Record<string, unknown>,
+      );
+      if (request.lpi && identity.lpi === request.lpi) return true;
+      if (request.parcelKey && identity.parcelKey === request.parcelKey) return true;
+      if (!request.erf || identity.erfNumber !== request.erf) return false;
+      if ((identity.portion ?? "0") !== (request.portion ?? "0")) return false;
+
+      const context = [
+        identity.municipality,
+        identity.province,
+        feature.properties?.MIN_REGION,
+        feature.properties?.MINOR_REGION,
+        feature.properties?.MAJ_REGION,
+        feature.properties?.MAJOR_REGION,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const requestedContext = [request.town, request.municipality, request.province]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return Boolean(
+        requestedContext &&
+        context &&
+        requestedContext.split(/\s+/).some((term) => context.includes(term)),
+      );
+    }) ?? null
+  );
 }
 
 function webglSupported(): boolean {
@@ -352,6 +399,7 @@ export function MapCanvas({
   const pulseMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const addressSearchMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const searchHighlightMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const selectedOfficialFeatureRef = useRef<{
     source: OfficialFeatureLayer;
     id: string | number;
@@ -499,6 +547,8 @@ export function MapCanvas({
       userLocationMarkerRef.current = null;
       addressSearchMarkerRef.current?.remove();
       addressSearchMarkerRef.current = null;
+      searchHighlightMarkerRef.current?.remove();
+      searchHighlightMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -1407,7 +1457,14 @@ export function MapCanvas({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !searchHighlightOfficialParcel) {
-      if (!searchHighlightOfficialParcel) onSearchHighlightStatus?.(false);
+      if (!searchHighlightOfficialParcel) {
+        if (map) {
+          clearOfficialSelectedFeature(map);
+          searchHighlightMarkerRef.current?.remove();
+          searchHighlightMarkerRef.current = null;
+        }
+        onSearchHighlightStatus?.("idle");
+      }
       return;
     }
 
@@ -1418,14 +1475,31 @@ export function MapCanvas({
     const maxAttempts = 14;
 
     clearOfficialSelectedFeature(map);
-    onSearchHighlightStatus?.(false);
-    map.flyTo({
-      center: searchHighlightOfficialParcel.lngLat,
-      zoom: Math.max(map.getZoom(), 18),
-      duration: 1000,
-      essential: true,
-      curve: 1.35,
-    });
+    onSearchHighlightStatus?.("searching");
+    if (searchHighlightOfficialParcel.bounds) {
+      map.fitBounds(searchHighlightOfficialParcel.bounds, {
+        padding: 96,
+        maxZoom: 18.5,
+        duration: 1000,
+        essential: true,
+      });
+    } else {
+      map.flyTo({
+        center: searchHighlightOfficialParcel.lngLat,
+        zoom: Math.max(map.getZoom(), 18),
+        duration: 1000,
+        essential: true,
+        curve: 1.35,
+      });
+    }
+
+    searchHighlightMarkerRef.current?.remove();
+    const el = document.createElement("div");
+    el.className = "pa-pulse-marker";
+    el.title = `${searchHighlightOfficialParcel.title} search result`;
+    searchHighlightMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+      .setLngLat(searchHighlightOfficialParcel.lngLat)
+      .addTo(map);
 
     const schedule = (delay: number) => {
       if (timer !== null) window.clearTimeout(timer);
@@ -1470,12 +1544,19 @@ export function MapCanvas({
         clearOfficialSelectedFeature(map);
         map.setFeatureState({ source: match.layer, id: match.feature.id }, { selected: true });
         selectedOfficialFeatureRef.current = { source: match.layer, id: match.feature.id };
+        searchHighlightMarkerRef.current?.remove();
+        searchHighlightMarkerRef.current = null;
         onSelect(null);
-        onSearchHighlightStatus?.(true);
+        onSearchHighlightStatus?.("highlighted");
         return;
       }
 
-      if (attempts < maxAttempts) schedule(attempts < 4 ? 300 : 550);
+      if (attempts < maxAttempts) {
+        schedule(attempts < 4 ? 300 : 550);
+        return;
+      }
+
+      onSearchHighlightStatus?.("fallback");
     };
 
     schedule(300);
