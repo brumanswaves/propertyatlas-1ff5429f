@@ -1,6 +1,10 @@
-Yes — the last publish in this session deployed the latest `origin/main` commit (`3003d2e`) to https://propertyatlas.lovable.app. No new GitHub pushes have landed since then, so there is nothing newer to deploy.
+No code changes proposed. This turn is a read-only status check.
 
-If you've pushed something to GitHub just now, approve this plan and I'll:
-1. Verify local HEAD matches the latest `origin/main` SHA.
-2. Run the security scan (publish is blocked on unresolved critical findings).
-3. Call `preview_ui--publish` to ship it to https://propertyatlas.lovable.app.
+Findings:
+- GitHub `main` HEAD: `0df22ab` (PR #1 "search-address-erf-flow" merged, plus `5c97c5c` merge of Dean cleanup).
+- Preview HEAD: `0df22ab` — in sync with `origin/main`.
+- `32249ff` "Rebuild search into address and erf flows" is included (ancestor of HEAD).
+- Published site is still on `babb042`; 4 newer commits are unpublished. Requires **Publish → Update** to deploy.
+- `src/components/map/SearchBar.tsx` implements the two-lane chooser (`SearchLane = "address" | "erf"`, `lane` starts `null`) with Google address autocomplete and structured erf fields.
+
+Next step (only if you want it): click **Publish → Update** to roll the preview commit `0df22ab` to the live site. I will not publish without an explicit instruction.
