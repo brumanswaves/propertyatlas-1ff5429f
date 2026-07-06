@@ -29,6 +29,17 @@ interface StructuredErfFields {
   code: string;
 }
 
+type AddressResolution =
+  | { status: "checking"; address: string; lat: number; lng: number }
+  | {
+      status: "exact" | "likely";
+      address: string;
+      lat: number;
+      lng: number;
+      match: PropertySearchResult;
+    }
+  | { status: "address-only"; address: string; lat: number; lng: number };
+
 function confidenceLabel(confidence: PropertySearchResult["confidence"]): string {
   switch (confidence) {
     case "exact_official_match":
@@ -58,7 +69,8 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressAutocompleteSuggestion[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
-  const [addressOnlyMessage, setAddressOnlyMessage] = useState<string | null>(null);
+  const [addressResolution, setAddressResolution] = useState<AddressResolution | null>(null);
+  const [submittedErfQuery, setSubmittedErfQuery] = useState("");
   const parsedQuery = useMemo(() => parsePropertyQuery(q), [q]);
   const detectedMode: SearchMode =
     parsedQuery.lpi ||
@@ -82,10 +94,25 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
     [officialParcels],
   );
   const visibleAreaLabel = useMemo(() => {
-    const sample = officialParcels.find(
-      (parcel) => parcel.town || parcel.municipality || parcel.province,
-    );
-    return [sample?.town, sample?.municipality, sample?.province].filter(Boolean).join(", ");
+    const clean = (value: string | undefined) => {
+      if (!value) return undefined;
+      const normalized = value.trim();
+      if (!normalized || normalized === "EASTERN") return undefined;
+      if (normalized === normalized.toUpperCase()) {
+        return normalized
+          .toLowerCase()
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+          .replace(/\bCape\b/, "Cape");
+      }
+      return normalized;
+    };
+    const sample =
+      officialParcels.find((parcel) => parcel.town && parcel.municipality && parcel.province) ??
+      officialParcels.find((parcel) => parcel.town || parcel.municipality || parcel.province);
+    const label = [clean(sample?.town), clean(sample?.municipality), clean(sample?.province)]
+      .filter(Boolean)
+      .join(", ");
+    return label || (officialParcels.length > 0 ? "Current map area" : "");
   }, [officialParcels]);
   const structuredQuery = useMemo(() => {
     const code = structured.code.trim();
@@ -102,7 +129,7 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
       .filter(Boolean)
       .join(" ");
   }, [q, structured]);
-  const officialQuery = activeMode === "erf" ? structuredQuery : q;
+  const officialQuery = activeMode === "erf" ? submittedErfQuery || (manualMode ? "" : q) : q;
 
   const officialResults = useMemo(() => {
     if (!officialQuery.trim()) return [];
@@ -122,7 +149,7 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
 
   useEffect(() => {
     const query = q.trim();
-    setAddressOnlyMessage(null);
+    setAddressResolution(null);
     if (activeMode !== "address" || query.length < 3) {
       setAddressSuggestions([]);
       setAddressLoading(false);
@@ -164,28 +191,38 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
     setQ("");
     setAddressSuggestions([]);
     setAddressError(null);
-    setAddressOnlyMessage(null);
+    setAddressResolution(null);
   }
 
   async function pickAddressSuggestion(suggestion: AddressAutocompleteSuggestion) {
     setAddressLoading(true);
-    setAddressOnlyMessage(null);
     setAddressError(null);
+    setAddressResolution({
+      status: "checking",
+      address: suggestion.label,
+      lat: 0,
+      lng: 0,
+    });
     try {
       const details = await fetchAddressPlaceDetails(suggestion.placeId);
       const officialMatch = searchByCoordinate(details.lat, details.lng, officialParcels);
       if (officialMatch) {
-        onPickOfficial?.(officialMatch);
-        resetSearch();
+        setAddressResolution({
+          status:
+            officialMatch.confidence === "address_inside_official_parcel" ? "exact" : "likely",
+          address: details.formattedAddress,
+          lat: details.lat,
+          lng: details.lng,
+          match: officialMatch,
+        });
         return;
       }
-      setAddressOnlyMessage(
-        `Address found: ${details.formattedAddress} (${details.lat.toFixed(
-          6,
-        )}, ${details.lng.toFixed(
-          6,
-        )}). ErfStoep does not yet have an official parcel boundary match for this point.`,
-      );
+      setAddressResolution({
+        status: "address-only",
+        address: details.formattedAddress,
+        lat: details.lat,
+        lng: details.lng,
+      });
     } catch (error) {
       setAddressError(
         error instanceof Error ? error.message : "Address coordinates are temporarily unavailable.",
@@ -193,6 +230,11 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
     } finally {
       setAddressLoading(false);
     }
+  }
+
+  function updateStructured(next: Partial<StructuredErfFields>) {
+    setStructured((value) => ({ ...value, ...next }));
+    setSubmittedErfQuery("");
   }
 
   return (
@@ -279,36 +321,41 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
             <div className="grid gap-2 border-b border-[#0D1B2A]/8 bg-[#fbf8f1] px-4 py-3 sm:grid-cols-2">
               <input
                 value={structured.province}
-                onChange={(e) => setStructured((value) => ({ ...value, province: e.target.value }))}
+                onChange={(e) => updateStructured({ province: e.target.value })}
                 placeholder={visibleAreaLabel ? "Province from visible area" : "Province"}
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
               />
               <input
                 value={structured.municipality}
-                onChange={(e) =>
-                  setStructured((value) => ({ ...value, municipality: e.target.value }))
-                }
+                onChange={(e) => updateStructured({ municipality: e.target.value })}
                 placeholder="Municipality / town / township"
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
               />
               <input
                 value={structured.erf}
-                onChange={(e) => setStructured((value) => ({ ...value, erf: e.target.value }))}
+                onChange={(e) => updateStructured({ erf: e.target.value })}
                 placeholder="Erf number"
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
               />
               <input
                 value={structured.portion}
-                onChange={(e) => setStructured((value) => ({ ...value, portion: e.target.value }))}
+                onChange={(e) => updateStructured({ portion: e.target.value })}
                 placeholder="Portion, default 0"
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50"
               />
               <input
                 value={structured.code}
-                onChange={(e) => setStructured((value) => ({ ...value, code: e.target.value }))}
+                onChange={(e) => updateStructured({ code: e.target.value })}
                 placeholder="LPI or parcel key optional"
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]/50 sm:col-span-2"
               />
+              <button
+                type="button"
+                onClick={() => setSubmittedErfQuery(structuredQuery)}
+                className="rounded-xl bg-[#0D1B2A] px-3 py-2 text-xs font-bold text-white hover:bg-[#142941] sm:col-span-2"
+              >
+                Search official parcel identity
+              </button>
             </div>
           )}
 
@@ -379,9 +426,56 @@ export function SearchBar({ officialParcels = [], onPickOfficial }: Props) {
             </div>
           )}
 
-          {activeMode === "address" && addressOnlyMessage && (
+          {activeMode === "address" && addressResolution && (
             <div className="border-t border-[#0D1B2A]/8 bg-[#fff8ec] px-4 py-3 text-sm leading-6 text-[#0D1B2A]/72">
-              {addressOnlyMessage}
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9A4A09]">
+                {addressResolution.status === "checking"
+                  ? "Checking official parcel match..."
+                  : addressResolution.status === "exact"
+                    ? "Address matched to official parcel"
+                    : addressResolution.status === "likely"
+                      ? "Likely nearby parcel match"
+                      : "Address found only"}
+              </div>
+              <div className="mt-2 font-semibold text-[#0D1B2A]">{addressResolution.address}</div>
+              {addressResolution.status !== "checking" && (
+                <div className="mt-1 font-mono text-[11px] text-[#0D1B2A]/62">
+                  {addressResolution.lat.toFixed(6)}, {addressResolution.lng.toFixed(6)}
+                </div>
+              )}
+              {(addressResolution.status === "exact" || addressResolution.status === "likely") && (
+                <div className="mt-3 rounded-xl bg-white/80 p-3">
+                  <div className="font-semibold text-[#0D1B2A]">
+                    {addressResolution.match.title}
+                  </div>
+                  <div className="text-xs text-[#0D1B2A]/62">
+                    {addressResolution.match.subtitle}
+                  </div>
+                  {addressResolution.match.distanceMeters !== undefined && (
+                    <div className="mt-1 text-xs text-[#0D1B2A]/62">
+                      About {Math.round(addressResolution.match.distanceMeters)}m from the address
+                      point.
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPickOfficial?.(addressResolution.match);
+                      resetSearch();
+                    }}
+                    className="mt-3 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-bold text-white hover:bg-[#142941]"
+                  >
+                    {addressResolution.status === "exact"
+                      ? "Open official erf Workbench"
+                      : "Review likely erf match"}
+                  </button>
+                </div>
+              )}
+              {addressResolution.status === "address-only" && (
+                <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+                  Address found, but no official parcel boundary match was found for this point.
+                </p>
+              )}
             </div>
           )}
 

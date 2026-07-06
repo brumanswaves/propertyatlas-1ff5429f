@@ -36,7 +36,12 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("fetchAddressPlaceDetails");
     expect(search).toContain("isAddressAutocompleteConfigured");
     expect(search).toContain("searchByCoordinate");
-    expect(search).toContain("ErfStoep does not yet have an official parcel boundary match for this point.");
+    expect(search).toContain("Checking official parcel match...");
+    expect(search).toContain("Address matched to official parcel");
+    expect(search).toContain("Likely nearby parcel match");
+    expect(search).toContain("Open official erf Workbench");
+    expect(search).toContain("Review likely erf match");
+    expect(search).toContain("Address found, but no official parcel boundary match was found for this point.");
     expect(search).toContain("Selecting this checks the point against loaded official parcels.");
     expect(search).toContain("Address suggestions are temporarily unavailable.");
     expect(search).toContain("Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY");
@@ -47,6 +52,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Erf number");
     expect(search).toContain("Portion, default 0");
     expect(search).toContain("LPI or parcel key optional");
+    expect(search).toContain("Search official parcel identity");
     expect(search).toContain("Searching inside visible map area");
     expect(search).toContain("visibleAreaTerms");
     expect(search).toContain("Erf number searches need province");

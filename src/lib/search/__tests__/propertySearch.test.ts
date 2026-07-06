@@ -124,6 +124,25 @@ describe("official parcel search", () => {
     });
   });
 
+  it("uses lng/lat order internally and resolves the 8 Harbour Road point", () => {
+    expect(searchByCoordinate(-34.171737, 24.831497, parcelIndex)).toMatchObject({
+      confidence: "address_inside_official_parcel",
+      fields: { erf: "962", lpi: "c03400140000096200000" },
+    });
+  });
+
+  it("returns likely nearby parcel only within the 50m fallback threshold", () => {
+    const near = searchByCoordinate(-34.171737, 24.83235, parcelIndex);
+    expect(near).toMatchObject({
+      confidence: "likely_nearby_parcel",
+      fields: { lpi: "c03400140000096200000" },
+    });
+    expect(near?.distanceMeters).toBeGreaterThan(0);
+    expect(near?.distanceMeters).toBeLessThanOrEqual(50);
+
+    expect(searchByCoordinate(-34.171737, 24.8332, parcelIndex)).toBeNull();
+  });
+
   it("does not invent details for coordinates outside loaded polygons", () => {
     expect(searchByCoordinate(-35, 25, parcelIndex)).toBeNull();
     expect(searchOfficialParcels("No Such Erf", parcelIndex)).toEqual([]);

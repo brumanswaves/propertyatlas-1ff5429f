@@ -42,6 +42,7 @@ export interface PropertySearchResult {
     municipality?: string;
     province?: string;
   };
+  distanceMeters?: number;
 }
 
 type Candidate = {
@@ -298,6 +299,52 @@ function pointInGeometry(lng: number, lat: number, geometry: Geometry | null): b
   return false;
 }
 
+function pointToSegmentDistanceMeters(
+  lng: number,
+  lat: number,
+  start: Position,
+  end: Position,
+): number {
+  const metersPerDegreeLat = 111_320;
+  const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+  const px = lng * metersPerDegreeLng;
+  const py = lat * metersPerDegreeLat;
+  const ax = start[0] * metersPerDegreeLng;
+  const ay = start[1] * metersPerDegreeLat;
+  const bx = end[0] * metersPerDegreeLng;
+  const by = end[1] * metersPerDegreeLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  if (dx === 0 && dy === 0) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function ringDistanceMeters(lng: number, lat: number, ring: Position[]): number {
+  if (ring.length < 2) return Number.POSITIVE_INFINITY;
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < ring.length - 1; i += 1) {
+    best = Math.min(best, pointToSegmentDistanceMeters(lng, lat, ring[i], ring[i + 1]));
+  }
+  return best;
+}
+
+function distanceToGeometryMeters(lng: number, lat: number, geometry: Geometry | null): number {
+  if (!geometry) return Number.POSITIVE_INFINITY;
+  if (pointInGeometry(lng, lat, geometry)) return 0;
+  if (geometry.type === "Polygon") {
+    return Math.min(...geometry.coordinates.map((ring) => ringDistanceMeters(lng, lat, ring)));
+  }
+  if (geometry.type === "MultiPolygon") {
+    return Math.min(
+      ...geometry.coordinates.flatMap((polygon) =>
+        polygon.map((ring) => ringDistanceMeters(lng, lat, ring)),
+      ),
+    );
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
 export function searchByCoordinate(
   lat: number,
   lng: number,
@@ -307,14 +354,33 @@ export function searchByCoordinate(
     parcelFeatures.length > 0 && "parcel" in parcelFeatures[0]
       ? (parcelFeatures as IndexedOfficialParcel[])
       : buildOfficialParcelIndex(parcelFeatures as OfficialParcelFeature[]);
-  const match = parcels.find((parcel) => pointInGeometry(lng, lat, parcel.geometry));
-  return match
-    ? buildPropertySearchResult(
-        match,
+  // API callers pass lat/lng for readability; GeoJSON/Turf-style checks use [lng, lat].
+  const exactMatch = parcels.find((parcel) => pointInGeometry(lng, lat, parcel.geometry));
+  if (exactMatch) {
+    return buildPropertySearchResult(
+        exactMatch,
         "Coordinate falls inside this rendered official parcel",
         "address_inside_official_parcel",
-      )
-    : null;
+      );
+  }
+
+  const nearest = parcels
+    .map((parcel) => ({
+      parcel,
+      distanceMeters: distanceToGeometryMeters(lng, lat, parcel.geometry),
+    }))
+    .filter((candidate) => Number.isFinite(candidate.distanceMeters))
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)[0];
+
+  if (!nearest || nearest.distanceMeters > 50) return null;
+  return {
+    ...buildPropertySearchResult(
+      nearest.parcel,
+      `Nearest official parcel outline is ${Math.round(nearest.distanceMeters)}m from this address point`,
+      "likely_nearby_parcel",
+    ),
+    distanceMeters: nearest.distanceMeters,
+  };
 }
 
 export function searchOfficialParcels(
