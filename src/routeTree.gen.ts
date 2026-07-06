@@ -18,6 +18,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PartnershipsRouteImport } from './routes/partnerships'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
@@ -34,6 +35,9 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
 const WhyRoute = WhyRouteImport.update({
   id: '/why',
@@ -78,6 +82,11 @@ const PricingRoute = PricingRouteImport.update({
 const PartnershipsRoute = PartnershipsRouteImport.update({
   id: '/partnerships',
   path: '/partnerships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -160,6 +169,24 @@ const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   path: '/public-data-debug',
   getParentRoute: () => AdminRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -176,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/mcp': typeof McpRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -185,8 +213,11 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -203,6 +234,7 @@ export interface FileRoutesByTo {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/mcp': typeof McpRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -212,8 +244,11 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -231,6 +266,7 @@ export interface FileRoutesById {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/mcp': typeof McpRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -240,8 +276,11 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -260,6 +299,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/mcp'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -269,8 +309,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -287,6 +330,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/mcp'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -296,8 +340,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
     | '/'
@@ -314,6 +361,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/mcp'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -323,8 +371,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/.mcp/invoke-tool/$tool'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -342,6 +393,7 @@ export interface RootRouteChildren {
   ForHomeownersRoute: typeof ForHomeownersRoute
   ForInvestorsRoute: typeof ForInvestorsRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  McpRoute: typeof McpRoute
   PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -351,6 +403,9 @@ export interface RootRouteChildren {
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -416,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/partnerships'
       fullPath: '/partnerships'
       preLoaderRoute: typeof PartnershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -530,6 +592,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -560,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForHomeownersRoute: ForHomeownersRoute,
   ForInvestorsRoute: ForInvestorsRoute,
   HowItWorksRoute: HowItWorksRoute,
+  McpRoute: McpRoute,
   PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
@@ -569,6 +653,10 @@ const rootRouteChildren: RootRouteChildren = {
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
