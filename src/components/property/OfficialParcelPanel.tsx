@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { CSG_VIEWER_URL, KOUGA_PUBLIC_MAP_URL } from "@/lib/external-urls";
+import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
 import { toast } from "sonner";
 
 interface Props {
@@ -136,6 +137,52 @@ function panelNextBestStep(parcel: NormalizedOfficialParcel): string {
   return "Save the erf and gather evidence";
 }
 
+type IdentityCheckStatus = "needs_verification" | "checked" | "looks_correct" | "uncertain";
+
+const IDENTITY_STATUS_LABELS: Record<IdentityCheckStatus, string> = {
+  needs_verification: "Needs verification",
+  checked: "Checked by user",
+  looks_correct: "Looks correct, user checked",
+  uncertain: "Uncertain",
+};
+
+function identityStatusKey(parcelId: string) {
+  return `erfstoep.identityCheck.${parcelId}`;
+}
+
+function readIdentityStatus(parcelId: string): IdentityCheckStatus {
+  if (typeof window === "undefined") return "needs_verification";
+  const value = window.localStorage.getItem(identityStatusKey(parcelId));
+  return value === "checked" || value === "looks_correct" || value === "uncertain"
+    ? value
+    : "needs_verification";
+}
+
+function identityNextStep(status: IdentityCheckStatus) {
+  if (status === "uncertain") {
+    return {
+      title: "Resolve official parcel identity before using market or strategy tools.",
+      body: "Keep checking official source fields until you are comfortable this Workbench is tied to the correct erf.",
+      action: "Review official identity",
+      tab: "research" as Tab,
+    };
+  }
+  if (status === "checked" || status === "looks_correct") {
+    return {
+      title: "Build market evidence next.",
+      body: "Now compare listings and comps, while keeping ownership, valuation, zoning and sales marked needs evidence.",
+      action: "Build market evidence",
+      tab: "listings" as Tab,
+    };
+  }
+  return {
+    title: "Verify the official parcel identity first.",
+    body: "Start with the official source so every market, strategy and report note is tied to the correct erf.",
+    action: "Check official source",
+    tab: "research" as Tab,
+  };
+}
+
 function panelFirstRead(parcel: NormalizedOfficialParcel): string {
   const identity = [
     parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "this official erf",
@@ -158,6 +205,164 @@ function formatAreaM2(value: unknown): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return "Area not available";
   return `${Math.round(n).toLocaleString()} m2`;
+}
+
+function OfficialIdentityChecklist({
+  parcel,
+  sourceUrl,
+  sgDoc,
+  isCsg,
+  status,
+  onStatusChange,
+}: {
+  parcel: NormalizedOfficialParcel;
+  sourceUrl: string;
+  sgDoc: SgDocumentResult;
+  isCsg: boolean;
+  status: IdentityCheckStatus;
+  onStatusChange: (status: IdentityCheckStatus) => void;
+}) {
+  const coordinates = parcel.coordinates
+    ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
+    : "Not available";
+  const sourceQuality = isCsg
+    ? parcel.lpi || parcel.parcelKey
+      ? "Official CSG parcel feature"
+      : "Official CSG portal context"
+    : "Municipal GIS layer context";
+  const identifierText = [
+    `Normalized parcel id: ${parcel.id}`,
+    `Erf number: ${parcel.erfNumber ?? "Not available"}`,
+    `Portion: ${parcel.portion ?? "Not available"}`,
+    `Township / area: ${parcel.suburbOrArea ?? parcel.town ?? "Not available"}`,
+    `Municipality: ${parcel.municipality ?? "Not available"}`,
+    `Province: ${parcel.province ?? "Not available"}`,
+    `LPI: ${parcel.lpi ?? "Not available"}`,
+    `Parcel key: ${parcel.parcelKey ?? "Not available"}`,
+    `Coordinates: ${coordinates}`,
+  ].join("\n");
+
+  async function copyIdentifiers() {
+    try {
+      await navigator.clipboard.writeText(identifierText);
+      toast.success("Parcel identifiers copied");
+    } catch {
+      toast.message("Copy failed. Select the identifiers manually.");
+    }
+  }
+
+  const fields = [
+    ["Erf number", parcel.erfNumber ?? "Not available"],
+    ["Portion", parcel.portion ?? "Not available"],
+    ["Township / area", parcel.suburbOrArea ?? parcel.town ?? "Not available"],
+    ["Municipality", parcel.municipality ?? "Not available"],
+    ["Province", parcel.province ?? "Not available"],
+    ["LPI", parcel.lpi ?? "Not available"],
+    ["Parcel key", parcel.parcelKey ?? "Not available"],
+    ["Coordinates", coordinates],
+    ["Source quality label", sourceQuality],
+  ];
+
+  return (
+    <section
+      id="official-identity-check"
+      className="mb-5 rounded-[1.75rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5 text-[#0D1B2A] shadow-[0_20px_55px_-42px_rgba(13,27,42,0.48)]"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+            StoepSteps / Step 1
+          </div>
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight">
+            Official parcel identity check
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+            Compare these public parcel fields against the official source. Marking this step only
+            records your research progress; it is not legal, surveying or ownership verification.
+          </p>
+        </div>
+        <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0D1B2A] ring-1 ring-[#0D1B2A]/10">
+          {IDENTITY_STATUS_LABELS[status]}
+        </div>
+      </div>
+
+      <dl className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {fields.map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-[#0D1B2A]/8 bg-white/88 p-3">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+              {label}
+            </dt>
+            <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142941]"
+        >
+          {isCsg ? "Open CSG official source" : "Open Kouga source"}
+        </a>
+        {sgDoc.shown ? (
+          <a
+            href={sgDoc.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+          >
+            Open SG document list
+          </a>
+        ) : (
+          <span className="inline-flex min-h-11 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#0D1B2A]/58">
+            SG document list not buildable from current fields
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={copyIdentifiers}
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+        >
+          Copy parcel identifiers
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-2 md:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => onStatusChange("checked")}
+          className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+        >
+          I checked this source
+          <span className="mt-1 block text-xs font-medium leading-5 text-[#0D1B2A]/62">
+            Identity evidence started.
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onStatusChange("looks_correct")}
+          className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-left text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100"
+        >
+          Identity looks correct
+          <span className="mt-1 block text-xs font-medium leading-5 text-emerald-900/70">
+            User checked, not legally verified.
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onStatusChange("uncertain")}
+          className="rounded-2xl border border-[#C75A31]/20 bg-[#fff1e9] p-4 text-left text-sm font-semibold text-[#7A2D12] transition hover:bg-[#ffe7d8]"
+        >
+          Identity uncertain
+          <span className="mt-1 block text-xs font-medium leading-5 text-[#7A2D12]/72">
+            Keep verification as the next step.
+          </span>
+        </button>
+      </div>
+    </section>
+  );
 }
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
@@ -531,6 +736,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     lat: csg?.latitude ?? lat,
   });
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
+  const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
   useEffect(() => {
@@ -539,6 +745,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }, [parcelId]);
   useEffect(() => {
     setFetchedAt(new Date().toLocaleString());
+  }, [parcelId]);
+  useEffect(() => {
+    setIdentityStatus(readIdentityStatus(parcelId));
   }, [parcelId]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
@@ -587,6 +796,27 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   );
 
   const sourceUrl = isCsg ? CSG_VIEWER_URL : KOUGA_PUBLIC_MAP_URL;
+  const sgDoc = useMemo(
+    () =>
+      buildSgDocumentUrl({
+        lpi: csg?.lpi,
+        parcelKey: csg?.parcelKey,
+        erfNumber: csg?.erfNumber,
+        portion: csg?.portion,
+        province: csg?.province,
+        majorRegion: csg?.majorRegion,
+        minorRegion: csg?.minorRegion,
+      }),
+    [
+      csg?.erfNumber,
+      csg?.lpi,
+      csg?.majorRegion,
+      csg?.minorRegion,
+      csg?.parcelKey,
+      csg?.portion,
+      csg?.province,
+    ],
+  );
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
@@ -726,8 +956,24 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
+  function updateIdentityStatus(nextStatus: IdentityCheckStatus) {
+    setIdentityStatus(nextStatus);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(identityStatusKey(parcelId), nextStatus);
+    }
+    const message =
+      nextStatus === "checked"
+        ? "Official identity evidence started"
+        : nextStatus === "looks_correct"
+          ? "Identity marked user checked"
+          : "Identity marked uncertain";
+    toast.success(message);
+  }
+
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isOverview = tab === "overview";
+  const nextStep = identityNextStep(identityStatus);
+  const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
 
   return (
     <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f7f1e7]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
@@ -881,20 +1127,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                         Recommended next step
                       </div>
                       <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
-                        Verify the official parcel identity first.
+                        {nextStep.title}
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">
-                        Start with the official source so every market, strategy and report note is
-                        tied to the correct erf.
-                      </p>
+                      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">{nextStep.body}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => selectWorkbenchTab("research")}
+                        onClick={() => selectWorkbenchTab(nextStep.tab)}
                         className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
                       >
-                        Check official source
+                        {nextStep.action}
                       </button>
                       <button
                         type="button"
@@ -1014,7 +1257,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         {isOverview && (
           <section className="mx-4 mt-4 grid gap-3 md:mx-7 md:grid-cols-4">
             {[
-              ["Identity", "Found"],
+              ["Identity", identityReadiness],
               ["Ownership", "Needs evidence"],
               ["Market value", "Needs evidence"],
               ["Strategy", "Not chosen"],
@@ -1068,7 +1311,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && null}
 
-          {tab === "research" && <ErfResearchDossier parcel={normalizedParcel} view="research" />}
+          {tab === "research" && (
+            <>
+              <OfficialIdentityChecklist
+                parcel={normalizedParcel}
+                sourceUrl={sourceUrl}
+                sgDoc={sgDoc}
+                isCsg={isCsg}
+                status={identityStatus}
+                onStatusChange={updateIdentityStatus}
+              />
+              <ErfResearchDossier parcel={normalizedParcel} view="research" />
+            </>
+          )}
           {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
           {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}
           {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}

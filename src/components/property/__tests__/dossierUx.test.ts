@@ -219,6 +219,47 @@ describe("official dossier UX guardrails", () => {
     expect(panel).not.toContain("onSelectOfficial");
   });
 
+  it("adds a real official identity verification workflow before source links", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+
+    expect(panel).toContain("Official parcel identity check");
+    expect(panel).toContain("StoepSteps / Step 1");
+    expect(panel).toContain("I checked this source");
+    expect(panel).toContain("Identity looks correct");
+    expect(panel).toContain("Identity uncertain");
+    expect(panel).toContain("Copy parcel identifiers");
+    expect(panel).toContain("Open CSG official source");
+    expect(panel).toContain("Open Kouga source");
+    expect(panel).toContain("Open SG document list");
+    expect(panel).toContain("SG document list not buildable from current fields");
+    expect(panel).toContain("Source quality label");
+    expect(panel).toContain("Township / area");
+    expect(panel).toContain("User checked, not legally verified");
+    expect(panel).toContain("it is not legal, surveying or ownership verification");
+    expect(panel).toContain("erfstoep.identityCheck.");
+    expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
+    expect(panel).toContain("Build market evidence next.");
+    expect(panel).toContain(
+      "Resolve official parcel identity before using market or strategy tools.",
+    );
+    expect(panel).toContain("Needs verification");
+    expect(panel).toContain("Checked by user");
+    expect(panel).toContain("Looks correct, user checked");
+    expect(panel).toContain("Uncertain");
+  });
+
+  it("keeps paid providers out of the official identity checklist", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const checklistStart = panel.indexOf("Official parcel identity check");
+    const checklistEnd = panel.indexOf("function OfficialParcelPanel");
+    const checklist = panel.slice(checklistStart, checklistEnd);
+
+    expect(checklist).not.toContain("Lightstone");
+    expect(checklist).not.toContain("WinDeed");
+    expect(panel).toContain('title: "Report Vault"');
+    expect(panel).toContain("Add or upload Lightstone, WinDeed, SG, zoning, title deed");
+  });
+
   it("clarifies the active workbench section and keeps overview as the only first-read section", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
@@ -279,7 +320,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Run Strategy Lab");
     expect(panel).toContain("Add/upload evidence");
     expect(panel).toContain("Coming soon");
-    expect(panel).toContain('["Identity", "Found"]');
+    expect(panel).toContain('["Identity", identityReadiness]');
     expect(panel).toContain('["Ownership", "Needs evidence"]');
     expect(panel).toContain('["Market value", "Needs evidence"]');
     expect(panel).toContain('["Strategy", "Not chosen"]');
