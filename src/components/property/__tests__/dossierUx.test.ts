@@ -193,7 +193,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("MINI_MAP_STYLE");
     expect(panel).toContain("map.addControl(new mapboxgl.NavigationControl");
     expect(panel).toContain("cooperativeGestures: true");
-    expect(panel).toContain("Interactive selected-erf map");
+    expect(panel).toContain("Interactive selected-erf map for");
+    expect(panel).not.toContain("absolute inset-x-3 top-3 rounded-xl bg-white/86");
     expect(panel).toContain("Pan and zoom to view the erf in area context");
     expect(panel).toContain("new mapboxgl.Marker");
     expect(panel).not.toContain("satellite-streets-v12/static");
@@ -305,7 +306,14 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("Every erf. All the facts.");
-    expect(panel).toContain("verified ownership, valuation, zoning, sales, slope, buildability");
+    expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
+    expect(panel).toContain("How this works");
+    expect(panel).toContain("Confirm the official parcel");
+    expect(panel).toContain("Add sources or reports");
+    expect(panel).toContain("Keep it all in one place");
+    expect(panel).toContain(
+      "Paid reports are optional. Upload the PDF to keep it stored with this erf.",
+    );
     expect(panel).toContain("Ask Stoep");
     expect(panel).toContain("What do you want to understand first?");
     expect(panel).toContain("What is risky?");
@@ -324,10 +332,14 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('["Ownership", "Needs evidence"]');
     expect(panel).toContain('["Market value", "Needs evidence"]');
     expect(panel).toContain('["Strategy", "Not chosen"]');
-    expect(panel).toContain("You can continue without buying a report");
+    expect(panel).toContain("Buy a report");
+    expect(panel).toContain("Upload report PDF");
+    expect(panel).toContain("free");
+    expect(panel).toContain("workflow still works");
     expect(panel).toContain("Stoep AI First Read");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
+    expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");
     expect(panel).toContain('{tab === "overview" && null}');
     expect(panel).toContain("bg-[#FF6A00]");

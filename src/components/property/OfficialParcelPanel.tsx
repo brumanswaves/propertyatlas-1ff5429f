@@ -507,9 +507,6 @@ function SelectedErfMiniMap({
         className="h-full w-full"
         aria-label={`Interactive selected-erf map for ${title}`}
       />
-      <div className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-white/86 px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] shadow-[0_10px_24px_-18px_rgba(13,27,42,0.5)] backdrop-blur">
-        Interactive selected-erf map
-      </div>
       <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-xl bg-[#0D1B2A]/86 px-3 py-2 text-[10px] font-medium leading-4 text-white/86 backdrop-blur">
         Pan and zoom to view the erf in area context. Approximate selected-erf context from selected
         parcel point.
@@ -976,7 +973,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
 
   return (
-    <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f7f1e7]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
+    <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
       <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col">
         <div className="mb-8">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
@@ -1019,8 +1016,25 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             Paid reports
           </div>
           <p className="mt-2 text-sm leading-6 text-white/72">
-            Optional confidence upgrades. You can continue without buying a report.
+            Optional confidence upgrades. Buy a report or upload a PDF you already purchased; the
+            free workflow still works.
           </p>
+          <div className="mt-4 grid gap-2">
+            <button
+              type="button"
+              onClick={() => selectWorkbenchTab("reports")}
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F]"
+            >
+              Buy a report
+            </button>
+            <button
+              type="button"
+              onClick={() => selectWorkbenchTab("reports")}
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/16"
+            >
+              Upload report PDF
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -1079,8 +1093,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
-        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/82 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.48)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
-          <div className="inline-flex items-center rounded-full bg-[#fff3df] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9A4A09] ring-1 ring-[#FF8A33]/20">
+        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
+          <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
             Workbench / {activeSection.title}
           </div>
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
@@ -1091,8 +1105,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </p>
         </section>
 
-        <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white/94 shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
-          <div className="relative overflow-hidden rounded-none border-0 bg-white/94 p-6 text-[#0D1B2A] sm:p-7">
+        <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
+          <div className="relative overflow-hidden rounded-none border-0 bg-white p-6 text-[#0D1B2A] sm:p-7">
             {isOverview ? (
               <>
                 <div className="relative">
@@ -1113,11 +1127,41 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
                     {panelFirstRead(normalizedParcel)}
                   </p>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
-                    Early consultant-style read only: useful for deciding what to inspect next, not
-                    a verified ownership, valuation, zoning, sales, slope, buildability, or GIS
-                    precision claim.
-                  </p>
+                  <div className="mt-6">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                      How this works
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      {[
+                        [
+                          "1",
+                          "Confirm the official parcel",
+                          "Check CSG or Kouga fields before using market or strategy notes.",
+                        ],
+                        [
+                          "2",
+                          "Add sources or reports",
+                          "Paid reports are optional. Upload the PDF to keep it stored with this erf.",
+                        ],
+                        [
+                          "3",
+                          "Keep it all in one place",
+                          "Save notes, links and assumptions so this erf stays reviewable.",
+                        ],
+                      ].map(([step, title, body]) => (
+                        <div
+                          key={title}
+                          className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#f8fafc] p-4"
+                        >
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0D1B2A] text-sm font-bold text-[#FFB86B]">
+                            {step}
+                          </div>
+                          <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{title}</div>
+                          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
