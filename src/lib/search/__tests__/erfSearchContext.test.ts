@@ -32,6 +32,17 @@ const seaVistaFeature: Feature<Polygon> = {
   },
 };
 
+const registryOnlyFeature: Feature<Polygon> = {
+  type: "Feature",
+  properties: {
+    PARCEL_NO: "963",
+    PORTION: "0",
+    MIN_REGION: "HUMANSDORP",
+    PROVINCE: "EASTERN",
+  },
+  geometry: seaVistaFeature.geometry,
+};
+
 describe("deeds office registry", () => {
   it("contains the standard South African deeds registries as selectable labels", () => {
     expect(SA_DEEDS_OFFICES).toHaveLength(11);
@@ -64,5 +75,17 @@ describe("erf search context", () => {
     expect(context.townshipOptions).toContain("Sea Vista");
     expect(context.municipalityOptions).toContain("Kouga");
     expect(context.loadedAreaTerms).toEqual(expect.arrayContaining(["sea", "vista", "kouga"]));
+  });
+
+  it("keeps registry-only and partial labels out of the primary area suggestion", () => {
+    const parcels = buildOfficialParcelIndex([
+      { layer: "csg-parcels", feature: registryOnlyFeature },
+    ]);
+    const context = deriveErfSearchContext(parcels);
+
+    expect(context.currentAreaLabel).toBe("Current map area");
+    expect(context.townshipOptions).not.toContain("Humansdorp");
+    expect(context.provinceOptions).not.toContain("Eastern");
+    expect(context.registryLabelOptions).toContain("Humansdorp");
   });
 });

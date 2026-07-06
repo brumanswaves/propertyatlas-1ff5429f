@@ -17,8 +17,8 @@ import {
 
 interface Props {
   officialParcels?: IndexedOfficialParcel[];
-  onPickOfficial?: (result: PropertySearchResult) => void;
-  onHighlightOfficial?: (result: PropertySearchResult) => void;
+  onOpenOfficialWorkbench?: (result: PropertySearchResult) => void;
+  onHighlightOfficialFromSearch?: (result: PropertySearchResult) => void;
   onLocateAddress?: (target: AddressMapTarget) => void;
 }
 
@@ -72,8 +72,8 @@ function resultArea(result: PropertySearchResult): string {
 
 export function SearchBar({
   officialParcels = [],
-  onPickOfficial,
-  onHighlightOfficial,
+  onOpenOfficialWorkbench,
+  onHighlightOfficialFromSearch,
   onLocateAddress,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -181,10 +181,14 @@ export function SearchBar({
     !context.currentAreaLabel &&
     !structured.township.trim() &&
     !structured.deedsOffice.trim();
-  const allTownshipOptions = useMemo(
-    () => Array.from(new Set([...context.townshipOptions, ...context.municipalityOptions])),
-    [context.municipalityOptions, context.townshipOptions],
-  );
+  const selectedOfficeHasLoadedCoverage =
+    !structured.deedsOffice ||
+    !context.suggestedDeedsOffice ||
+    structured.deedsOffice === context.suggestedDeedsOffice;
+  const allTownshipOptions = useMemo(() => {
+    if (!selectedOfficeHasLoadedCoverage) return [];
+    return Array.from(new Set([...context.townshipOptions, ...context.municipalityOptions]));
+  }, [context.municipalityOptions, context.townshipOptions, selectedOfficeHasLoadedCoverage]);
 
   function clearAll() {
     setOpen(false);
@@ -220,7 +224,7 @@ export function SearchBar({
       });
       const officialMatch = searchByCoordinate(details.lat, details.lng, officialParcels);
       if (officialMatch) {
-        onHighlightOfficial?.(officialMatch);
+        onHighlightOfficialFromSearch?.(officialMatch);
         setAddressResolution({
           status:
             officialMatch.confidence === "address_inside_official_parcel" ? "exact" : "likely",
@@ -252,7 +256,7 @@ export function SearchBar({
   }
 
   function highlightResult(result: PropertySearchResult) {
-    onHighlightOfficial?.(result);
+    onHighlightOfficialFromSearch?.(result);
     setOpen(false);
   }
 
@@ -406,7 +410,7 @@ export function SearchBar({
                         <button
                           type="button"
                           onClick={() => {
-                            onPickOfficial?.(addressResolution.match);
+                            onOpenOfficialWorkbench?.(addressResolution.match);
                             clearAll();
                           }}
                           className="rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
@@ -500,7 +504,11 @@ export function SearchBar({
                       setStructured((value) => ({ ...value, township: e.target.value }))
                     }
                     list="erf-search-townships"
-                    placeholder="Loaded map area only"
+                    placeholder={
+                      selectedOfficeHasLoadedCoverage
+                        ? "Loaded map area only"
+                        : "No loaded township coverage"
+                    }
                     className="rounded-xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs normal-case tracking-normal text-[#0D1B2A] outline-none focus:border-[#FF6A00]/50"
                   />
                   <datalist id="erf-search-townships">
@@ -547,7 +555,13 @@ export function SearchBar({
               {allTownshipOptions.length === 0 && (
                 <div className="mx-4 mb-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#8A3A12]">
                   Township options are available for loaded map areas only. Zoom into the area or
-                  search by LPI/parcel key.
+                  search exact LPI/parcel key.
+                </div>
+              )}
+              {context.registryLabelOptions.length > 0 && selectedOfficeHasLoadedCoverage && (
+                <div className="mx-4 mb-3 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/58 ring-1 ring-[#0D1B2A]/8">
+                  Registry label: {context.registryLabelOptions.slice(0, 3).join(", ")}. Use the
+                  clean area selector above where available.
                 </div>
               )}
               {shouldWarnErfAmbiguous && (
@@ -563,9 +577,11 @@ export function SearchBar({
                 </div>
               )}
               {erfResults.map((result) => (
-                <div
+                <button
                   key={result.id}
-                  className="border-t border-[#0D1B2A]/8 px-4 py-3 text-left hover:bg-[#f8f3ea]"
+                  type="button"
+                  onClick={() => highlightResult(result)}
+                  className="block w-full border-t border-[#0D1B2A]/8 px-4 py-3 text-left hover:bg-[#f8f3ea]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -596,15 +612,19 @@ export function SearchBar({
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => highlightResult(result)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        highlightResult(result);
+                      }}
                       className="rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-bold text-white hover:bg-[#142941]"
                     >
                       Highlight erf on map
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        onPickOfficial?.(result);
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenOfficialWorkbench?.(result);
                         clearAll();
                       }}
                       className="rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
@@ -612,7 +632,7 @@ export function SearchBar({
                       Open Workbench
                     </button>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
