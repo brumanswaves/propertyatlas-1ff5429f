@@ -106,13 +106,13 @@ describe("official parcel search", () => {
     );
   });
 
-  it("prefers visible map area context for erf-only searches", () => {
+  it("prefers loaded map area context for erf-only searches", () => {
     expect(
       searchOfficialParcels("Erf 962", parcelIndex, {
-        visibleAreaTerms: ["sea", "vista", "kouga", "eastern", "cape"],
+        loadedAreaTerms: ["sea", "vista", "kouga", "eastern", "cape"],
       })[0],
     ).toMatchObject({
-      matchReason: "Official erf match inside visible map area",
+      matchReason: "Official erf match inside loaded map area",
       fields: { lpi: "c03400140000096200000" },
     });
   });

@@ -17,6 +17,9 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("South African erf.");
     expect(home).toContain("officialParcels={officialParcelIndex}");
     expect(home).toContain("onPickOfficial={handleOfficialSearchPick}");
+    expect(home).toContain("onHighlightOfficial={handleOfficialSearchHighlight}");
+    expect(home).toContain("addressSearchTarget={addressSearchTarget}");
+    expect(home).toContain("searchHighlightOfficialParcel={searchHighlight}");
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
@@ -28,9 +31,13 @@ describe("official dossier UX guardrails", () => {
     expect(nav).toContain("h-4 w-auto md:h-5");
     expect(nav).toContain("max-w-[1500px]");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
-    expect(search).toContain("Official parcel search");
+    expect(search).toContain("Address Search");
+    expect(search).toContain("Erf Search");
+    expect(search).toContain("Search by street address or place name.");
+    expect(search).toContain(
+      "Search by Deeds Office, township, erf number, portion, LPI, or parcel key.",
+    );
     expect(search).toContain("No official parcel match found yet");
-    expect(search).toContain("Address suggestions");
     expect(search).toContain("Google address suggestion");
     expect(search).toContain("fetchAddressAutocompleteSuggestions");
     expect(search).toContain("fetchAddressPlaceDetails");
@@ -39,41 +46,64 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Checking official parcel match...");
     expect(search).toContain("Address matched to official parcel");
     expect(search).toContain("Likely nearby parcel match");
-    expect(search).toContain("Open official erf Workbench");
-    expect(search).toContain("Review likely erf match");
-    expect(search).toContain("Address found, but no official parcel boundary match was found for this point.");
-    expect(search).toContain("Selecting this checks the point against loaded official parcels.");
-    expect(search).toContain("Address suggestions are temporarily unavailable.");
-    expect(search).toContain("Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY");
-    expect(search).toContain("Address");
-    expect(search).toContain("Erf / LPI");
-    expect(search).toContain("Province");
-    expect(search).toContain("Municipality / town / township");
-    expect(search).toContain("Erf number");
-    expect(search).toContain("Portion, default 0");
-    expect(search).toContain("LPI or parcel key optional");
-    expect(search).toContain("Search official parcel identity");
-    expect(search).toContain("Searching inside visible map area");
-    expect(search).toContain("visibleAreaTerms");
-    expect(search).toContain("Erf number searches need province");
-    expect(search).toContain("confidenceLabel");
-    expect(search).toContain("officialResults.length === 0");
-    expect(search).toContain("z-[90]");
-    expect(search).toContain("max-h-[min(72vh,32rem)]");
+    expect(search).toContain("Highlight erf on map");
+    expect(search).toContain("Open Workbench");
     expect(search).toContain(
-      "For official parcel data, zoom in and click a CSG or Kouga parcel outline on the map.",
+      "Address found, but no official parcel boundary match was found for this",
     );
+    expect(search).toContain("Selecting this zooms to the coordinate");
+    expect(search).toContain("Address suggestions are temporarily unavailable.");
+    expect(search).toContain(
+      "Address autocomplete is not configured yet. Add VITE_GOOGLE_MAPS_API_KEY",
+    );
+    expect(search).toContain("Address Search");
+    expect(search).toContain("Erf Search");
+    expect(search).toContain("Deeds Office");
+    expect(search).toContain("Township / area");
+    expect(search).toContain("Erf number");
+    expect(search).toContain("Portion number, default 0");
+    expect(search).toContain("LPI or parcel key");
+    expect(search).toContain("Search official parcel identity");
+    expect(search).toContain("Suggested from loaded map area");
+    expect(search).toContain("loadedAreaTerms");
+    expect(search).toContain("Erf numbers repeat across South Africa");
+    expect(search).toContain("confidenceLabel");
+    expect(search).toContain("erfResults.length === 0");
+    expect(search).toContain("z-[90]");
+    expect(search).toContain("max-h-[min(74vh,34rem)]");
+    expect(search).toContain("Zoom in and click a CSG or Kouga parcel");
     expect(search).not.toContain("PROPERTIES");
     expect(search).not.toContain("Show pilot demo examples");
     expect(search).not.toContain("Hide pilot demo examples");
     expect(search).not.toContain("Optional pilot examples");
     expect(search).not.toContain("Demo records are secondary");
     expect(search).not.toContain("Pilot demo example");
+    expect(search).not.toContain("Official parcel search");
+    expect(search).not.toContain("Searching inside visible map area");
     expect(autocomplete).toContain("VITE_GOOGLE_MAPS_API_KEY");
     expect(autocomplete).toContain("places.googleapis.com/v1/places:autocomplete");
     expect(autocomplete).toContain('includedRegionCodes: ["za"]');
     expect(autocomplete).toContain("trimmed.length < 3");
     expect(autocomplete).not.toContain("AIza");
+  });
+
+  it("keeps search highlight separate from immediate Workbench opening", () => {
+    const home = read("src/routes/index.tsx");
+    const map = read("src/components/map/MapCanvas.tsx");
+    const search = read("src/components/map/SearchBar.tsx");
+
+    expect(search).toContain("onHighlightOfficial");
+    expect(search).toContain("onLocateAddress");
+    expect(search).toContain("onHighlightOfficial?.(officialMatch)");
+    expect(search).not.toContain("onPickOfficial?.(officialMatch)");
+    expect(home).toContain("handleOfficialSearchHighlight");
+    expect(home).toContain("Click the highlighted erf to open the Workbench.");
+    expect(map).toContain("searchHighlightOfficialParcel");
+    expect(map).toContain("findMatchingSearchHighlightFeature");
+    expect(map).toContain(
+      "map.setFeatureState({ source: match.layer, id: match.feature.id }, { selected: true })",
+    );
+    expect(map).not.toContain("onSelectOfficial?.(searchHighlightOfficialParcel");
   });
 
   it("renders locate me without storing precise user location", () => {

@@ -78,6 +78,20 @@ export interface OfficialReopenTarget {
 
 export type OfficialReopenResolutionStatus = "idle" | "searching" | "resolved" | "not-found";
 
+export interface AddressSearchTarget {
+  address: string;
+  lng: number;
+  lat: number;
+}
+
+export interface SearchHighlightOfficialParcel {
+  id: string;
+  title: string;
+  layer: OfficialFeatureLayer;
+  properties: Record<string, unknown>;
+  lngLat: [number, number];
+}
+
 export interface MapDebugStatus {
   mapLoaded: boolean;
   csgSourceExists: boolean;
@@ -102,6 +116,9 @@ interface Props {
   locateRequestId?: number;
   onLocateResult?: (message: string | null) => void;
   onOfficialFeaturesChange?: (features: OfficialParcelFeature[]) => void;
+  addressSearchTarget?: AddressSearchTarget | null;
+  searchHighlightOfficialParcel?: SearchHighlightOfficialParcel | null;
+  onSearchHighlightStatus?: (highlighted: boolean) => void;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -286,6 +303,20 @@ function findMatchingOfficialReopenFeature(
   );
 }
 
+function findMatchingSearchHighlightFeature(
+  map: mapboxgl.Map,
+  request: SearchHighlightOfficialParcel,
+): { feature: mapboxgl.MapboxGeoJSONFeature; layer: OfficialFeatureLayer } | null {
+  const reopenLikeRequest: OfficialParcelReopenRequest = {
+    id: request.id,
+    fromSaved: false,
+    lng: request.lngLat[0],
+    lat: request.lngLat[1],
+    zoom: 18,
+  };
+  return findMatchingOfficialReopenFeature(map, reopenLikeRequest);
+}
+
 function webglSupported(): boolean {
   try {
     const canvas = document.createElement("canvas");
@@ -311,12 +342,16 @@ export function MapCanvas({
   locateRequestId = 0,
   onLocateResult,
   onOfficialFeaturesChange,
+  addressSearchTarget,
+  searchHighlightOfficialParcel,
+  onSearchHighlightStatus,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const pulseMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const addressSearchMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const selectedOfficialFeatureRef = useRef<{
     source: OfficialFeatureLayer;
     id: string | number;
@@ -462,6 +497,8 @@ export function MapCanvas({
       pulseMarkerRef.current = null;
       userLocationMarkerRef.current?.remove();
       userLocationMarkerRef.current = null;
+      addressSearchMarkerRef.current?.remove();
+      addressSearchMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
       setReady(false);
@@ -531,6 +568,29 @@ export function MapCanvas({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   }, [locateRequestId, onLocateResult, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !addressSearchTarget) return;
+
+    const lngLat: [number, number] = [addressSearchTarget.lng, addressSearchTarget.lat];
+    map.flyTo({
+      center: lngLat,
+      zoom: Math.max(map.getZoom(), 17.5),
+      duration: 1000,
+      essential: true,
+      curve: 1.35,
+    });
+
+    addressSearchMarkerRef.current?.remove();
+    const el = document.createElement("div");
+    el.className =
+      "h-6 w-6 rounded-full border-2 border-white bg-[#0D1B2A] shadow-[0_0_0_8px_rgba(255,106,0,0.18),0_10px_24px_rgba(13,27,42,0.28)]";
+    el.title = addressSearchTarget.address;
+    addressSearchMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+      .setLngLat(lngLat)
+      .addTo(map);
+  }, [addressSearchTarget, ready]);
 
   // Add sources + layers (re-run on every style load)
   useEffect(() => {
@@ -1343,6 +1403,99 @@ export function MapCanvas({
       curve: 1.35,
     });
   }, [officialReopenTarget, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !searchHighlightOfficialParcel) {
+      if (!searchHighlightOfficialParcel) onSearchHighlightStatus?.(false);
+      return;
+    }
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let idleHandler: (() => void) | null = null;
+    let attempts = 0;
+    const maxAttempts = 14;
+
+    clearOfficialSelectedFeature(map);
+    onSearchHighlightStatus?.(false);
+    map.flyTo({
+      center: searchHighlightOfficialParcel.lngLat,
+      zoom: Math.max(map.getZoom(), 18),
+      duration: 1000,
+      essential: true,
+      curve: 1.35,
+    });
+
+    const schedule = (delay: number) => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(resolve, delay);
+    };
+
+    const waitForIdle = () => {
+      if (idleHandler) map.off("idle", idleHandler);
+      idleHandler = () => {
+        idleHandler = null;
+        resolve();
+      };
+      map.once("idle", idleHandler);
+    };
+
+    const resolve = () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      if (
+        !map.isStyleLoaded() ||
+        !officialReopenLayersReady(map, {
+          id: searchHighlightOfficialParcel.id,
+          fromSaved: false,
+        })
+      ) {
+        if (attempts < maxAttempts) schedule(300);
+        return;
+      }
+
+      if (map.isMoving()) {
+        if (attempts < maxAttempts) waitForIdle();
+        return;
+      }
+
+      const match = findMatchingSearchHighlightFeature(map, searchHighlightOfficialParcel);
+      if (
+        match?.feature.id !== undefined &&
+        match.feature.id !== null &&
+        map.getSource(match.layer)
+      ) {
+        clearOfficialSelectedFeature(map);
+        map.setFeatureState({ source: match.layer, id: match.feature.id }, { selected: true });
+        selectedOfficialFeatureRef.current = { source: match.layer, id: match.feature.id };
+        onSelect(null);
+        onSearchHighlightStatus?.(true);
+        return;
+      }
+
+      if (attempts < maxAttempts) schedule(attempts < 4 ? 300 : 550);
+    };
+
+    schedule(300);
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleHandler) map.off("idle", idleHandler);
+    };
+  }, [
+    clearOfficialSelectedFeature,
+    onSearchHighlightStatus,
+    onSelect,
+    ready,
+    searchHighlightOfficialParcel,
+    styleVersion,
+    officialDataVersion,
+    layers.csgParcels,
+    layers.kougaZoning,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

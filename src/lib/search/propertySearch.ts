@@ -54,6 +54,7 @@ type Candidate = {
 
 export interface OfficialParcelSearchOptions {
   visibleAreaTerms?: string[];
+  loadedAreaTerms?: string[];
 }
 
 const KNOWN_ADDRESS_HINTS: Array<{
@@ -210,10 +211,11 @@ function scoreParcel(
       const hits = areaTerms.filter((term) => text.includes(term)).length;
       score += hits * 45;
       if (hits > 0) reason = "Official erf match with area context";
-    } else if (options.visibleAreaTerms?.length) {
-      const hits = options.visibleAreaTerms.filter((term) => text.includes(term)).length;
+    } else if (options.loadedAreaTerms?.length || options.visibleAreaTerms?.length) {
+      const terms = options.loadedAreaTerms ?? options.visibleAreaTerms ?? [];
+      const hits = terms.filter((term) => text.includes(term)).length;
       score += hits * 35;
-      if (hits > 0) reason = "Official erf match inside visible map area";
+      if (hits > 0) reason = "Official erf match inside loaded map area";
     }
     return { parcel, score, matchReason: reason, confidence };
   }
@@ -358,10 +360,10 @@ export function searchByCoordinate(
   const exactMatch = parcels.find((parcel) => pointInGeometry(lng, lat, parcel.geometry));
   if (exactMatch) {
     return buildPropertySearchResult(
-        exactMatch,
-        "Coordinate falls inside this rendered official parcel",
-        "address_inside_official_parcel",
-      );
+      exactMatch,
+      "Coordinate falls inside this rendered official parcel",
+      "address_inside_official_parcel",
+    );
   }
 
   const nearest = parcels
