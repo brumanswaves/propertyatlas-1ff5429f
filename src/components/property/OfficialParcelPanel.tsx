@@ -10,6 +10,10 @@ import {
   BookmarkCheck,
   Share2,
   ChevronRight,
+  ClipboardCheck,
+  FolderOpen,
+  Calculator,
+  FileText,
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
@@ -22,6 +26,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { CSG_VIEWER_URL, KOUGA_PUBLIC_MAP_URL } from "@/lib/external-urls";
 import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
+import {
+  buildErfWorkspaceNextStep,
+  readErfWorkspaceState,
+  updateErfWorkspaceState,
+  type ErfWorkspaceIdentityStatus,
+  type ErfWorkspaceState,
+} from "@/lib/workbench/erfWorkspaceState";
 import { toast } from "sonner";
 
 interface Props {
@@ -158,29 +169,12 @@ function readIdentityStatus(parcelId: string): IdentityCheckStatus {
     : "needs_verification";
 }
 
-function identityNextStep(status: IdentityCheckStatus) {
-  if (status === "uncertain") {
-    return {
-      title: "Resolve official parcel identity before using market or strategy tools.",
-      body: "Keep checking official source fields until you are comfortable this Workbench is tied to the correct erf.",
-      action: "Review official identity",
-      tab: "research" as Tab,
-    };
-  }
-  if (status === "checked" || status === "looks_correct") {
-    return {
-      title: "Build market evidence next.",
-      body: "Now compare listings and comps, while keeping ownership, valuation, zoning and sales marked needs evidence.",
-      action: "Build market evidence",
-      tab: "listings" as Tab,
-    };
-  }
-  return {
-    title: "Verify the official parcel identity first.",
-    body: "Start with the official source so every market, strategy and report note is tied to the correct erf.",
-    action: "Check official source",
-    tab: "research" as Tab,
-  };
+function identityStatusToWorkspace(status: IdentityCheckStatus): ErfWorkspaceIdentityStatus {
+  return status === "needs_verification" ? "none" : status;
+}
+
+function workspaceStatusToIdentity(status: ErfWorkspaceIdentityStatus): IdentityCheckStatus {
+  return status === "none" ? "needs_verification" : status;
 }
 
 function panelFirstRead(parcel: NormalizedOfficialParcel): string {
@@ -734,6 +728,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   });
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
+  const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
+    readErfWorkspaceState(parcelId),
+  );
+  const [shareCopied, setShareCopied] = useState(false);
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
   useEffect(() => {
@@ -744,7 +742,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     setFetchedAt(new Date().toLocaleString());
   }, [parcelId]);
   useEffect(() => {
-    setIdentityStatus(readIdentityStatus(parcelId));
+    const workspace = readErfWorkspaceState(parcelId);
+    const legacyIdentityStatus = readIdentityStatus(parcelId);
+    const mergedIdentityStatus =
+      workspace.identityStatus === "none" && legacyIdentityStatus !== "needs_verification"
+        ? identityStatusToWorkspace(legacyIdentityStatus)
+        : workspace.identityStatus;
+    const nextWorkspace =
+      mergedIdentityStatus === workspace.identityStatus
+        ? workspace
+        : updateErfWorkspaceState(parcelId, { identityStatus: mergedIdentityStatus });
+    setWorkspaceState(nextWorkspace);
+    setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
+    setShareCopied(false);
   }, [parcelId]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
@@ -948,7 +958,18 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     }
   }
 
-  function selectWorkbenchTab(nextTab: Tab) {
+  function setWorkspacePatch(patch: Partial<ErfWorkspaceState>) {
+    const next = updateErfWorkspaceState(parcelId, patch);
+    setWorkspaceState(next);
+    return next;
+  }
+
+  function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
+    if (options?.markStarted) {
+      if (nextTab === "listings") setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
+      if (nextTab === "calculators") setWorkspacePatch({ calculatorStarted: true, dirty: true });
+      if (nextTab === "reports") setWorkspacePatch({ reportStarted: true, dirty: true });
+    }
     setTab(nextTab);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
@@ -958,6 +979,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(identityStatusKey(parcelId), nextStatus);
     }
+    setWorkspacePatch({
+      identityStatus: identityStatusToWorkspace(nextStatus),
+      dirty: true,
+    });
     const message =
       nextStatus === "checked"
         ? "Official identity evidence started"
@@ -967,23 +992,112 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     toast.success(message);
   }
 
+  function saveErfFile() {
+    setWorkspacePatch({ saved: true, dirty: false });
+    toast.success("Erf file saved locally");
+  }
+
+  async function shareErfFile() {
+    const shareText = [
+      resolved.displayTitle,
+      `Parcel ID: ${parcelId}`,
+      normalizedParcel.erfNumber ? `Erf: ${normalizedParcel.erfNumber}` : null,
+      normalizedParcel.portion != null ? `Portion: ${normalizedParcel.portion}` : null,
+      normalizedParcel.coordinates
+        ? `Coordinates: ${normalizedParcel.coordinates.lat.toFixed(6)}, ${normalizedParcel.coordinates.lng.toFixed(6)}`
+        : null,
+      typeof window !== "undefined" ? window.location.href : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setShareCopied(true);
+      toast.success("Erf file link copied");
+    } catch {
+      setShareCopied(true);
+      toast.message("Copy failed. Parcel ID is visible in this Workbench.");
+    }
+  }
+
+  function handleBackToMap() {
+    if (
+      workspaceState.dirty &&
+      typeof window !== "undefined" &&
+      !window.confirm("You made changes to this erf file. Leave without saving?")
+    ) {
+      return;
+    }
+    onClose();
+  }
+
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isOverview = tab === "overview";
-  const nextStep = identityNextStep(identityStatus);
+  const nextStep = buildErfWorkspaceNextStep(workspaceState);
   const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
+  const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
+  const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
+    .filter(Boolean)
+    .join(" / ");
 
   return (
     <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
       <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col">
-        <div className="mb-8">
+        <div className="mb-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
             ErfStoep
           </div>
           <div className="mt-2 text-xl font-semibold tracking-tight">Workbench rail</div>
         </div>
+        <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_20px_44px_-28px_rgba(0,0,0,0.7)]">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+            Erf File
+          </div>
+          <h3 className="mt-2 truncate text-lg font-semibold tracking-tight">
+            {normalizedParcel.erfNumber ? `Erf ${normalizedParcel.erfNumber}` : resolved.displayTitle}
+          </h3>
+          <p className="mt-1 truncate text-xs font-medium text-white/62">{fileArea}</p>
+          <p className="mt-0.5 truncate text-[11px] text-white/48">
+            {fileRegion || "Municipality / province not confirmed"}
+          </p>
+          <div
+            className={cn(
+              "mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+              workspaceState.saved
+                ? "bg-emerald-400/16 text-emerald-100 ring-1 ring-emerald-300/20"
+                : "bg-[#FFB86B]/16 text-[#FFE0BA] ring-1 ring-[#FFB86B]/20",
+            )}
+          >
+            {workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"}
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={saveErfFile}
+              className="rounded-full bg-[#FF6A00] px-2.5 py-2 text-[11px] font-semibold text-white transition hover:bg-[#FF7D1F]"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={shareErfFile}
+              className="rounded-full border border-white/14 bg-white/10 px-2.5 py-2 text-[11px] font-semibold text-white transition hover:bg-white/16"
+            >
+              {shareCopied ? "Copied" : "Share"}
+            </button>
+            <button
+              type="button"
+              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
+              className="rounded-full border border-white/14 bg-white/10 px-2.5 py-2 text-[11px] font-semibold text-white transition hover:bg-white/16"
+            >
+              Reports
+            </button>
+          </div>
+        </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleBackToMap}
           className="mb-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/16"
         >
           <X className="h-4 w-4" />
@@ -1022,14 +1136,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           <div className="mt-4 grid gap-2">
             <button
               type="button"
-              onClick={() => selectWorkbenchTab("reports")}
+              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
               className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F]"
             >
               Buy a report
             </button>
             <button
               type="button"
-              onClick={() => selectWorkbenchTab("reports")}
+              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
               className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/16"
             >
               Upload report PDF
@@ -1078,7 +1192,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <Share2 className="h-4 w-4" />
           </button>
           <button
-            onClick={onClose}
+            onClick={handleBackToMap}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#142941] md:px-4"
             aria-label="Back to map"
           >
@@ -1131,30 +1245,42 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
                       How this works
                     </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="mt-3 grid gap-3 md:grid-cols-4">
                       {[
-                        [
-                          "1",
-                          "Confirm the official parcel",
-                          "Check CSG or Kouga fields before using market or strategy notes.",
-                        ],
-                        [
-                          "2",
-                          "Add sources or reports",
-                          "Paid reports are optional. Upload the PDF to keep it stored with this erf.",
-                        ],
-                        [
-                          "3",
-                          "Keep it all in one place",
-                          "Save notes, links and assumptions so this erf stays reviewable.",
-                        ],
-                      ].map(([step, title, body]) => (
+                        {
+                          step: "1",
+                          title: "Confirm the erf",
+                          body: "Make sure the official parcel identity is right.",
+                          Icon: ClipboardCheck,
+                        },
+                        {
+                          step: "2",
+                          title: "Add evidence",
+                          body: "Save source checks, reports, notes, listings and comps.",
+                          Icon: FolderOpen,
+                        },
+                        {
+                          step: "3",
+                          title: "Run calculators",
+                          body: "Test build, flip, hold and max offer assumptions.",
+                          Icon: Calculator,
+                        },
+                        {
+                          step: "4",
+                          title: "Create Stoep Report",
+                          body: "Stoep AI uses saved evidence and assumptions to create one report.",
+                          Icon: FileText,
+                        },
+                      ].map(({ step, title, body, Icon }) => (
                         <div
                           key={title}
                           className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#f8fafc] p-4"
                         >
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0D1B2A] text-sm font-bold text-[#FFB86B]">
-                            {step}
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0D1B2A] text-sm font-bold text-[#FFB86B]">
+                              {step}
+                            </div>
+                            <Icon className="h-4 w-4 text-[#FF6A00]" />
                           </div>
                           <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{title}</div>
                           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{body}</p>
@@ -1178,14 +1304,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => selectWorkbenchTab(nextStep.tab)}
+                        onClick={() => selectWorkbenchTab(nextStep.tab, { markStarted: true })}
                         className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
                       >
                         {nextStep.action}
                       </button>
                       <button
                         type="button"
-                        onClick={() => selectWorkbenchTab("calculators")}
+                        onClick={() => selectWorkbenchTab("calculators", { markStarted: true })}
                         className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
                       >
                         Skip to Strategy Lab
@@ -1258,7 +1384,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 </dl>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleBackToMap}
                   className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
                 >
                   Back to full map
@@ -1268,7 +1394,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <SelectedErfMiniMap
               coordinates={normalizedParcel.coordinates}
               title={resolved.displayTitle}
-              onBackToMap={onClose}
+              onBackToMap={handleBackToMap}
             />
           </div>
 
@@ -1335,7 +1461,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 key={label}
                 type="button"
                 onClick={() => {
-                  if (nextTab !== "coming-soon") selectWorkbenchTab(nextTab as Tab);
+                  if (nextTab !== "coming-soon")
+                    selectWorkbenchTab(nextTab as Tab, { markStarted: true });
                 }}
                 disabled={nextTab === "coming-soon"}
                 className="group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 text-left shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:border-[#FF6A00]/35 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:border-[#0D1B2A]/10 disabled:hover:shadow-[0_14px_34px_-30px_rgba(13,27,42,0.42)]"

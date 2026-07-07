@@ -215,7 +215,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
     expect(panel).toContain("Back to full map");
-    expect(panel).toContain("onBackToMap={onClose}");
+    expect(panel).toContain("onBackToMap={handleBackToMap}");
     expect(panel).toContain("map.remove()");
     expect(panel).not.toContain("onSelectOfficial");
   });
@@ -239,10 +239,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("it is not legal, surveying or ownership verification");
     expect(panel).toContain("erfstoep.identityCheck.");
     expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
-    expect(panel).toContain("Build market evidence next.");
-    expect(panel).toContain(
-      "Resolve official parcel identity before using market or strategy tools.",
-    );
+    expect(panel).toContain("identityStatusToWorkspace");
+    expect(panel).toContain("buildErfWorkspaceNextStep");
     expect(panel).toContain("Needs verification");
     expect(panel).toContain("Checked by user");
     expect(panel).toContain("Looks correct, user checked");
@@ -304,15 +302,23 @@ describe("official dossier UX guardrails", () => {
 
   it("surfaces ErfStoep intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
     expect(panel).toContain("Every erf. All the facts.");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).toContain("How this works");
-    expect(panel).toContain("Confirm the official parcel");
-    expect(panel).toContain("Add sources or reports");
-    expect(panel).toContain("Keep it all in one place");
+    expect(panel).toContain("Confirm the erf");
+    expect(panel).toContain("Make sure the official parcel identity is right.");
+    expect(panel).toContain("Add evidence");
+    expect(panel).toContain("Save source checks, reports, notes, listings and comps.");
+    expect(panel).toContain("Run calculators");
+    expect(panel).toContain("Test build, flip, hold and max offer assumptions.");
+    expect(panel).toContain("Create Stoep Report");
     expect(panel).toContain(
-      "Paid reports are optional. Upload the PDF to keep it stored with this erf.",
+      "Stoep AI uses saved evidence and assumptions to create one report.",
+    );
+    expect(panel).toContain(
+      "Optional confidence upgrades. Buy a report or upload a PDF you already purchased; the",
     );
     expect(panel).toContain("Ask Stoep");
     expect(panel).toContain("What do you want to understand first?");
@@ -320,8 +326,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("What should I verify?");
     expect(panel).toContain("Run the numbers");
     expect(panel).toContain("Recommended next step");
-    expect(panel).toContain("Verify the official parcel identity first.");
-    expect(panel).toContain("Check official source");
+    expect(panel).toContain("buildErfWorkspaceNextStep");
+    expect(panel).toContain("{nextStep.title}");
+    expect(panel).toContain("{nextStep.action}");
     expect(panel).toContain("Skip to Strategy Lab");
     expect(panel).toContain("Verify official records");
     expect(panel).toContain("Build market evidence");
@@ -336,11 +343,25 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Upload report PDF");
     expect(panel).toContain("free");
     expect(panel).toContain("workflow still works");
+    expect(panel).toContain("Erf File");
+    expect(panel).toContain("Saved / unsaved changes");
+    expect(panel).toContain("saveErfFile");
+    expect(panel).toContain("shareErfFile");
+    expect(panel).toContain("You made changes to this erf file. Leave without saving?");
+    expect(workspace).toContain("erfstoep.workspace.");
+    expect(panel).toContain("readErfWorkspaceState");
+    expect(panel).toContain("updateErfWorkspaceState");
+    expect(panel).toContain("buildErfWorkspaceNextStep");
+    expect(panel).toContain("marketEvidenceStarted: true");
+    expect(panel).toContain("calculatorStarted: true");
+    expect(panel).toContain("reportStarted: true");
     expect(panel).toContain("Stoep AI First Read");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");
+    expect(panel).not.toMatch(/ownership verified|valuation verified|zoning verified/i);
+    expect(panel).not.toMatch(/PDF extraction|listing scraping|auto-fill/i);
     expect(panel).toContain('{tab === "overview" && null}');
     expect(panel).toContain("bg-[#FF6A00]");
     expect(panel).not.toContain("bg-[radial-gradient");
