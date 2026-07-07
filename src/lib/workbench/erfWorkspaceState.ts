@@ -4,6 +4,7 @@ export interface ErfWorkspaceState {
   saved: boolean;
   dirty: boolean;
   identityStatus: ErfWorkspaceIdentityStatus;
+  openedSourceIds: string[];
   reviewedSourceIds: string[];
   marketEvidenceStarted: boolean;
   calculatorStarted: boolean;
@@ -29,6 +30,7 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     saved: false,
     dirty: false,
     identityStatus: "none",
+    openedSourceIds: [],
     reviewedSourceIds: [],
     marketEvidenceStarted: false,
     calculatorStarted: false,
@@ -52,6 +54,9 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
     saved: Boolean(raw.saved),
     dirty: Boolean(raw.dirty),
     identityStatus,
+    openedSourceIds: Array.isArray(raw.openedSourceIds)
+      ? raw.openedSourceIds.filter((id): id is string => typeof id === "string")
+      : [],
     reviewedSourceIds: Array.isArray(raw.reviewedSourceIds)
       ? raw.reviewedSourceIds.filter((id): id is string => typeof id === "string")
       : [],

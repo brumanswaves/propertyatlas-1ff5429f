@@ -229,15 +229,32 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Identity looks correct");
     expect(panel).toContain("Identity uncertain");
     expect(panel).toContain("Copy parcel identifiers");
-    expect(panel).toContain("Open CSG official source");
-    expect(panel).toContain("Open Kouga source");
-    expect(panel).toContain("Open SG document list");
-    expect(panel).toContain("SG document list not buildable from current fields");
+    expect(panel).toContain("CSG Property Viewer");
+    expect(panel).toContain("Kouga Public Map");
+    expect(panel).toContain("SG document list");
+    expect(panel).toContain("Deeds registry guidance");
+    expect(panel).toContain("Not opened");
+    expect(panel).toContain("Opened");
+    expect(panel).toContain("Reviewed");
+    expect(panel).toContain("Unavailable");
+    expect(panel).toContain("Mark reviewed");
+    expect(panel).toContain("Source unavailable");
+    expect(panel).toContain("SG document list unavailable until buildable fields exist");
+    expect(panel).toContain("not a guaranteed per-erf deep link");
+    expect(panel).toContain("Use the copied LPI, parcel key or coordinates");
+    expect(panel).toContain("Official government guidance for deeds registry information");
+    expect(panel).toContain("GOVZA_DEEDS_GUIDANCE_URL");
+    expect(panel).not.toContain("Open DeedsWeb");
+    expect(panel).not.toContain("href=\"\"");
     expect(panel).toContain("Source quality label");
     expect(panel).toContain("Township / area");
     expect(panel).toContain("User checked, not legally verified");
     expect(panel).toContain("it is not legal, surveying or ownership verification");
     expect(panel).toContain("erfstoep.identityCheck.");
+    expect(panel).toContain("openedSourceIds");
+    expect(panel).toContain("reviewedSourceIds");
+    expect(panel).toContain("markSourceOpened");
+    expect(panel).toContain("markSourceReviewed");
     expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
     expect(panel).toContain("identityStatusToWorkspace");
     expect(panel).toContain("buildErfWorkspaceNextStep");
@@ -245,6 +262,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Checked by user");
     expect(panel).toContain("Looks correct, user checked");
     expect(panel).toContain("Uncertain");
+    expect(panel).toContain("Selected: I checked this source");
+    expect(panel).toContain("Selected: Identity looks correct");
+    expect(panel).toContain("Selected: Identity uncertain");
   });
 
   it("keeps paid providers out of the official identity checklist", () => {

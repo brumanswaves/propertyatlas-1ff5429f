@@ -14,6 +14,8 @@ import {
   FolderOpen,
   Calculator,
   FileText,
+  CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
@@ -24,7 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
-import { CSG_VIEWER_URL, KOUGA_PUBLIC_MAP_URL } from "@/lib/external-urls";
+import {
+  CSG_VIEWER_URL,
+  GOVZA_DEEDS_GUIDANCE_URL,
+  KOUGA_PUBLIC_MAP_URL,
+} from "@/lib/external-urls";
 import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
 import {
   buildErfWorkspaceNextStep,
@@ -207,14 +213,20 @@ function OfficialIdentityChecklist({
   sgDoc,
   isCsg,
   status,
+  workspaceState,
   onStatusChange,
+  onOpenSource,
+  onReviewSource,
 }: {
   parcel: NormalizedOfficialParcel;
   sourceUrl: string;
   sgDoc: SgDocumentResult;
   isCsg: boolean;
   status: IdentityCheckStatus;
+  workspaceState: ErfWorkspaceState;
   onStatusChange: (status: IdentityCheckStatus) => void;
+  onOpenSource: (sourceId: string) => void;
+  onReviewSource: (sourceId: string) => void;
 }) {
   const coordinates = parcel.coordinates
     ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
@@ -244,6 +256,54 @@ function OfficialIdentityChecklist({
       toast.message("Copy failed. Select the identifiers manually.");
     }
   }
+
+  type VerificationSource = {
+    id: string;
+    name: string;
+    why: string;
+    href?: string;
+    actionLabel?: string;
+    helper?: string;
+    unavailableReason?: string;
+  };
+
+  const verificationSources: VerificationSource[] = [
+    {
+      id: isCsg ? "csg-property-viewer" : "kouga-public-map",
+      name: isCsg ? "CSG Property Viewer" : "Kouga Public Map",
+      why: isCsg
+        ? "Official CSG portal for checking parcel identity. It opens the viewer, not a guaranteed per-erf deep link."
+        : "Municipal public map context for checking Kouga GIS layers tied to this selected feature.",
+      href: sourceUrl,
+      actionLabel: "Open source",
+      helper: isCsg
+        ? "Use the copied LPI, parcel key or coordinates after opening if the viewer does not jump directly to this erf."
+        : "Use the selected erf context and map layers after opening the municipal viewer.",
+    },
+    {
+      id: "sg-document-list",
+      name: "SG document list",
+      why: "Surveyor-General document list when the registration division, erf and portion can be built safely.",
+      href: sgDoc.shown ? sgDoc.url : undefined,
+      actionLabel: "Open SG documents",
+      unavailableReason: sgDoc.shown ? undefined : sgDoc.reason,
+    },
+    {
+      id: "deeds-registry-guidance",
+      name: "Deeds registry guidance",
+      why: "Official government guidance for deeds registry information. This is guidance, not free ownership verification.",
+      href: GOVZA_DEEDS_GUIDANCE_URL,
+      actionLabel: "Open guidance",
+      helper: "Use this to understand the official deeds process. ErfStoep does not claim legally verified ownership.",
+    },
+  ];
+
+  const sourceStatus = (source: VerificationSource) => {
+    if (!source.href) return "Unavailable";
+    if (workspaceState.reviewedSourceIds.includes(source.id)) return "Reviewed";
+    if (workspaceState.openedSourceIds.includes(source.id)) return "Opened";
+    return "Not opened";
+  };
 
   const fields = [
     ["Erf number", parcel.erfNumber ?? "Not available"],
@@ -291,29 +351,95 @@ function OfficialIdentityChecklist({
         ))}
       </dl>
 
+      <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        {verificationSources.map((source) => {
+          const statusLabel = sourceStatus(source);
+          const reviewed = statusLabel === "Reviewed";
+          const opened = statusLabel === "Opened";
+          const unavailable = statusLabel === "Unavailable";
+
+          return (
+            <article
+              key={source.id}
+              className={cn(
+                "rounded-[1.35rem] border p-4 transition",
+                reviewed
+                  ? "border-emerald-500/28 bg-emerald-50"
+                  : opened
+                    ? "border-[#FF6A00]/24 bg-[#fff8ec]"
+                    : unavailable
+                      ? "border-[#0D1B2A]/8 bg-white/58"
+                      : "border-[#0D1B2A]/10 bg-white",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-[#0D1B2A]">{source.name}</h4>
+                  <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">{source.why}</p>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                    reviewed
+                      ? "bg-emerald-600 text-white"
+                      : opened
+                        ? "bg-[#FF6A00] text-white"
+                        : unavailable
+                          ? "bg-[#0D1B2A]/8 text-[#0D1B2A]/52"
+                          : "bg-[#0D1B2A]/8 text-[#0D1B2A]/66",
+                  )}
+                >
+                  {reviewed && <CheckCircle2 className="h-3 w-3" />}
+                  {statusLabel}
+                </span>
+              </div>
+              {source.helper && (
+                <p className="mt-3 rounded-xl bg-white/72 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/62">
+                  {source.helper}
+                </p>
+              )}
+              {source.unavailableReason && (
+                <p className="mt-3 rounded-xl bg-[#0D1B2A]/5 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+                  {source.unavailableReason}
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {source.href ? (
+                  <a
+                    href={source.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => onOpenSource(source.id)}
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                  >
+                    {source.actionLabel ?? "Open source"}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <span className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/52">
+                    Source unavailable
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={!source.href}
+                  onClick={() => onReviewSource(source.id)}
+                  className={cn(
+                    "inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+                    reviewed
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
+                  )}
+                >
+                  {reviewed ? "Reviewed" : "Mark reviewed"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
       <div className="mt-5 flex flex-wrap gap-2">
-        <a
-          href={sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142941]"
-        >
-          {isCsg ? "Open CSG official source" : "Open Kouga source"}
-        </a>
-        {sgDoc.shown ? (
-          <a
-            href={sgDoc.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-          >
-            Open SG document list
-          </a>
-        ) : (
-          <span className="inline-flex min-h-11 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#0D1B2A]/58">
-            SG document list not buildable from current fields
-          </span>
-        )}
         <button
           type="button"
           onClick={copyIdentifiers}
@@ -321,15 +447,25 @@ function OfficialIdentityChecklist({
         >
           Copy parcel identifiers
         </button>
+        {!sgDoc.shown && (
+          <span className="inline-flex min-h-11 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#0D1B2A]/58">
+            SG document list unavailable until buildable fields exist
+          </span>
+        )}
       </div>
 
       <div className="mt-5 grid gap-2 md:grid-cols-3">
         <button
           type="button"
           onClick={() => onStatusChange("checked")}
-          className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+          className={cn(
+            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+            status === "checked"
+              ? "border-[#FF6A00]/35 bg-[#fff8ec] text-[#0D1B2A]"
+              : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
+          )}
         >
-          I checked this source
+          {status === "checked" ? "Selected: I checked this source" : "I checked this source"}
           <span className="mt-1 block text-xs font-medium leading-5 text-[#0D1B2A]/62">
             Identity evidence started.
           </span>
@@ -337,20 +473,40 @@ function OfficialIdentityChecklist({
         <button
           type="button"
           onClick={() => onStatusChange("looks_correct")}
-          className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-left text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100"
+          className={cn(
+            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+            status === "looks_correct"
+              ? "border-emerald-600 bg-emerald-600 text-white"
+              : "border-emerald-500/20 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+          )}
         >
-          Identity looks correct
-          <span className="mt-1 block text-xs font-medium leading-5 text-emerald-900/70">
+          {status === "looks_correct" ? "Selected: Identity looks correct" : "Identity looks correct"}
+          <span
+            className={cn(
+              "mt-1 block text-xs font-medium leading-5",
+              status === "looks_correct" ? "text-white/78" : "text-emerald-900/70",
+            )}
+          >
             User checked, not legally verified.
           </span>
         </button>
         <button
           type="button"
           onClick={() => onStatusChange("uncertain")}
-          className="rounded-2xl border border-[#C75A31]/20 bg-[#fff1e9] p-4 text-left text-sm font-semibold text-[#7A2D12] transition hover:bg-[#ffe7d8]"
+          className={cn(
+            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+            status === "uncertain"
+              ? "border-[#C75A31] bg-[#C75A31] text-white"
+              : "border-[#C75A31]/20 bg-[#fff1e9] text-[#7A2D12] hover:bg-[#ffe7d8]",
+          )}
         >
-          Identity uncertain
-          <span className="mt-1 block text-xs font-medium leading-5 text-[#7A2D12]/72">
+          {status === "uncertain" ? "Selected: Identity uncertain" : "Identity uncertain"}
+          <span
+            className={cn(
+              "mt-1 block text-xs font-medium leading-5",
+              status === "uncertain" ? "text-white/78" : "text-[#7A2D12]/72",
+            )}
+          >
             Keep verification as the next step.
           </span>
         </button>
@@ -964,6 +1120,29 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return next;
   }
 
+  function addWorkspaceSourceId(
+    key: "openedSourceIds" | "reviewedSourceIds",
+    sourceId: string,
+  ) {
+    const current = workspaceState[key];
+    const nextIds = Array.from(new Set([...current, sourceId]));
+    return setWorkspacePatch({
+      [key]: nextIds,
+      dirty: true,
+    } as Partial<ErfWorkspaceState>);
+  }
+
+  function markSourceOpened(sourceId: string) {
+    addWorkspaceSourceId("openedSourceIds", sourceId);
+  }
+
+  function markSourceReviewed(sourceId: string) {
+    const openedSourceIds = Array.from(new Set([...workspaceState.openedSourceIds, sourceId]));
+    const reviewedSourceIds = Array.from(new Set([...workspaceState.reviewedSourceIds, sourceId]));
+    setWorkspacePatch({ openedSourceIds, reviewedSourceIds, dirty: true });
+    toast.success("Source marked reviewed");
+  }
+
   function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
     if (options?.markStarted) {
       if (nextTab === "listings") setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
@@ -1490,7 +1669,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 sgDoc={sgDoc}
                 isCsg={isCsg}
                 status={identityStatus}
+                workspaceState={workspaceState}
                 onStatusChange={updateIdentityStatus}
+                onOpenSource={markSourceOpened}
+                onReviewSource={markSourceReviewed}
               />
               <ErfResearchDossier parcel={normalizedParcel} view="research" />
             </>

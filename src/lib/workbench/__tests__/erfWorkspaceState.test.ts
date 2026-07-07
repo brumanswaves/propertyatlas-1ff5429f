@@ -32,7 +32,12 @@ describe("erfWorkspaceState", () => {
 
     const updated = updateErfWorkspaceState(
       parcelId,
-      { saved: true, identityStatus: "checked", reviewedSourceIds: ["csg-property-viewer"] },
+      {
+        saved: true,
+        identityStatus: "checked",
+        openedSourceIds: ["csg-property-viewer"],
+        reviewedSourceIds: ["csg-property-viewer"],
+      },
       storage,
     );
 
@@ -40,6 +45,7 @@ describe("erfWorkspaceState", () => {
     expect(readErfWorkspaceState(parcelId, storage)).toMatchObject({
       saved: true,
       identityStatus: "checked",
+      openedSourceIds: ["csg-property-viewer"],
       reviewedSourceIds: ["csg-property-viewer"],
     });
     expect(updated.updatedAt).toEqual(expect.any(String));
