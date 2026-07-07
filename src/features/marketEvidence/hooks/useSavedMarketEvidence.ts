@@ -223,6 +223,7 @@ export function useSavedMarketEvidence(parcelId: string) {
       : [nextItem, ...evidence];
     const ok = await persist(next);
     if (ok) toast.success(existing ? "Market evidence updated" : "Market evidence saved");
+    return ok;
   }
 
   async function deleteEvidence(id: string) {

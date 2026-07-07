@@ -14,6 +14,13 @@ import {
 } from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { copyToClipboard, openExternalUrl } from "@/lib/external";
+import {
+  fetchAddressAutocompleteSuggestions,
+  fetchAddressPlaceDetails,
+  isAddressAutocompleteConfigured,
+  type AddressAutocompleteSuggestion,
+} from "@/lib/search/addressAutocomplete";
+import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { toast } from "sonner";
 import { evidenceFromCandidate, runActiveListingRadar } from "../activeListingRadar";
 import {
@@ -53,13 +60,13 @@ import {
 import { useSavedMarketEvidence } from "../hooks/useSavedMarketEvidence";
 
 const COMP_RELATIONSHIPS: Array<{ value: MarketEvidenceRelationship; label: string }> = [
-  { value: "target_asset", label: "Exact listing" },
-  { value: "possible_target_asset", label: "Possible exact listing" },
+  { value: "target_asset", label: "Active listing" },
+  { value: "possible_target_asset", label: "Sold comp" },
+  { value: "same_suburb_comp", label: "Nearby comp" },
   { value: "same_street_comp", label: "Same street comp" },
-  { value: "same_suburb_comp", label: "Same area comp" },
   { value: "vacant_land_comp", label: "Vacant land comp" },
-  { value: "broader_market_comp", label: "Broader market comp" },
-  { value: "not_related", label: "Not relevant" },
+  { value: "broader_market_comp", label: "Build cost evidence" },
+  { value: "not_related", label: "Other" },
 ];
 
 const SOURCES: AreaRadarSource[] = [
@@ -114,6 +121,7 @@ type CompDraft = {
   sourceUrl: string;
   sourcePortal: string;
   title: string;
+  address: string;
   askingPrice: string;
   propertyType: string;
   beds: string;
@@ -153,6 +161,8 @@ type AddressDraft = {
   suburb: string;
   town: string;
   province: string;
+  lat: string;
+  lng: string;
   notes: string;
 };
 
@@ -161,6 +171,7 @@ function emptyCompDraft(): CompDraft {
     sourceUrl: "",
     sourcePortal: "",
     title: "",
+    address: "",
     askingPrice: "",
     propertyType: "",
     beds: "",
@@ -205,6 +216,7 @@ function draftFromComp(item: SavedMarketEvidence): CompDraft {
     sourceUrl: item.sourceUrl,
     sourcePortal: item.sourcePortal,
     title: item.title,
+    address: item.title,
     askingPrice: item.askingPrice ? String(item.askingPrice) : "",
     propertyType: item.propertyType ?? "",
     beds: item.beds ? String(item.beds) : "",
@@ -248,6 +260,14 @@ function portalFromUrl(url: string) {
   return "Other";
 }
 
+function sourceDomainFromUrl(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || portalFromUrl(url);
+  } catch {
+    return portalFromUrl(url);
+  }
+}
+
 function confidenceLabel(identity: PropertyIdentity) {
   if (identity.confidence === "high") return "High confidence";
   if (identity.confidence === "medium") return "Medium confidence";
@@ -263,11 +283,13 @@ function addressDraftFromIdentity(identity: PropertyIdentity): AddressDraft {
     suburb: identity.marketSuburb ?? identity.officialSuburb ?? "",
     town: identity.town ?? "",
     province: identity.province ?? "",
+    lat: "",
+    lng: "",
     notes: "",
   };
 }
 
-function areaPhrase(identity: PropertyIdentity, options: AreaRadarOptions) {
+function areaPhrase(identity: PropertyIdentity, options?: Partial<AreaRadarOptions>) {
   const area =
     identity.marketSuburb ??
     identity.officialSuburb ??
@@ -276,11 +298,11 @@ function areaPhrase(identity: PropertyIdentity, options: AreaRadarOptions) {
     identity.province ??
     "this area";
   const type =
-    options.propertyType === "vacant_land"
+    options?.propertyType === "vacant_land"
       ? "vacant land"
-      : options.propertyType === "house"
+      : options?.propertyType === "house"
         ? "property"
-        : options.propertyType === "farm_smallholding"
+        : options?.propertyType === "farm_smallholding"
           ? "smallholding farm"
           : "property";
   return `${area} ${type} for sale`;
@@ -432,8 +454,8 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       town: addressDraft.town,
       municipality: identity.municipality,
       province: addressDraft.province,
-      lat: parcel.coordinates?.lat ?? null,
-      lng: parcel.coordinates?.lng ?? null,
+      lat: coord(addressDraft.lat) ?? parcel.coordinates?.lat ?? null,
+      lng: coord(addressDraft.lng) ?? parcel.coordinates?.lng ?? null,
       source,
       confidence: "medium",
       reason:
@@ -529,11 +551,11 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           : compDraft.relationship === "broader_market_comp"
             ? "low"
             : "medium";
-    await upsertEvidence({
+    const ok = await upsertEvidence({
       id: compDraft.id,
       sourceUrl: compDraft.sourceUrl.trim(),
-      sourcePortal: compDraft.sourcePortal.trim() || portalFromUrl(compDraft.sourceUrl),
-      title: compDraft.title.trim() || "Saved comp",
+      sourcePortal: compDraft.sourcePortal.trim() || sourceDomainFromUrl(compDraft.sourceUrl),
+      title: compDraft.address.trim() || compDraft.title.trim() || "Saved market evidence",
       askingPrice: n(compDraft.askingPrice),
       propertyType: compDraft.propertyType.trim() || null,
       beds: n(compDraft.beds),
@@ -545,6 +567,8 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       includeInSummary: compDraft.relationship !== "not_related" && confidence !== "excluded",
       notes: compDraft.notes.trim() || null,
     });
+    if (!ok) return;
+    updateErfWorkspaceState(parcel.id, { marketEvidenceStarted: true, dirty: true });
     setCompDraft(emptyCompDraft());
     setShowCompForm(false);
   }
@@ -591,26 +615,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         }}
       />
 
-      <RadarConsole
-        mode={radarMode}
-        setMode={setRadarMode}
-        options={areaOptions}
-        setOptions={setAreaOptions}
-        candidates={activeCandidates}
-        results={radarResults}
-        radarRan={radarRan}
-        setRadarRan={setRadarRan}
-        onRunRadar={runRadar}
-        showCandidateForm={showCandidateForm}
-        setShowCandidateForm={setShowCandidateForm}
-        candidateDraft={candidateDraft}
-        setCandidateDraft={setCandidateDraft}
-        onSaveCandidate={saveCandidate}
-        onVerifyCandidate={verifyCandidate}
-        onDismissCandidate={dismissCandidate}
-        identity={identity}
-        mapsUrl={mapsUrl}
-        copy={copy}
+      <EvidenceEntryPanel
+        savedPropertyExists={savedPropertyExists}
+        onAddEvidence={() => {
+          setCompDraft(emptyCompDraft());
+          setShowCompForm(true);
+        }}
+        onOpenFallback={() => copy(areaPhrase(identity))}
       />
 
       <SavedCompsSection
@@ -627,9 +638,9 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
       {evidence.length > 0 && (
         <section className="rounded-3xl border border-success/30 bg-success/10 p-5">
-          <SectionTitle>Market Thesis from saved evidence</SectionTitle>
+          <SectionTitle>Comp summary</SectionTitle>
           <p className="mt-1 text-sm text-success">
-            Simple math from saved comps only. Unverified radar candidates do not affect this.
+            Simple math from saved comps only. Unsaved URLs and unverified notes do not affect this.
           </p>
           {!summary.hasUsablePriceData && (
             <p className="mt-3 rounded-2xl border border-success/30 bg-white/70 px-3 py-2 text-sm text-success">
@@ -668,7 +679,6 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       <FallbackSearchTools
         searches={searches}
         identity={identity}
-        areaOptions={areaOptions}
         copy={copy}
       />
     </div>
@@ -741,6 +751,11 @@ function PropertyIdentityCard({
       {selectedAddress && selectedAddress.formattedAddress !== identity.bestAddress && (
         <p className="mt-3 rounded-2xl bg-white/70 px-3 py-2 text-xs text-stone-700">
           Market address is used for portal matching. It does not replace official parcel data.
+        </p>
+      )}
+      {!selectedAddress && !identity.bestAddress && (
+        <p className="mt-3 rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold text-stone-700">
+          Street address not confirmed yet. Use area search or add a market address.
         </p>
       )}
       {identity.warnings.length > 0 && (
@@ -1004,6 +1019,57 @@ function AddressForm({
   fallbackArea: string;
   suggestions: string[];
 }) {
+  const autocompleteConfigured = isAddressAutocompleteConfigured();
+  const [suggestionsState, setSuggestionsState] = useState<AddressAutocompleteSuggestion[]>([]);
+  const [autocompleteStatus, setAutocompleteStatus] = useState<string>(
+    autocompleteConfigured
+      ? "Start typing to search Google Places in South Africa."
+      : "Google Places autocomplete is not configured here. Manual entry still works.",
+  );
+
+  useEffect(() => {
+    let alive = true;
+    const query = draft.formattedAddress.trim();
+    if (!autocompleteConfigured || query.length < 3) {
+      setSuggestionsState([]);
+      return;
+    }
+    setAutocompleteStatus("Searching address suggestions...");
+    fetchAddressAutocompleteSuggestions(query)
+      .then((items) => {
+        if (!alive) return;
+        setSuggestionsState(items.slice(0, 5));
+        setAutocompleteStatus(
+          items.length > 0
+            ? "Choose a Google Places suggestion or keep typing manually."
+            : "No address suggestions found yet. Manual entry still works.",
+        );
+      })
+      .catch((error: Error) => {
+        if (!alive) return;
+        setSuggestionsState([]);
+        setAutocompleteStatus(error.message);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [autocompleteConfigured, draft.formattedAddress]);
+
+  async function chooseSuggestion(suggestion: AddressAutocompleteSuggestion) {
+    try {
+      const details = await fetchAddressPlaceDetails(suggestion.placeId);
+      setDraft({
+        ...draft,
+        formattedAddress: details.formattedAddress,
+        lat: String(details.lat),
+        lng: String(details.lng),
+      });
+      setAutocompleteStatus("Address selected from Google Places. This is market context, not official parcel identity.");
+    } catch (error) {
+      setAutocompleteStatus(error instanceof Error ? error.message : "Address details unavailable.");
+    }
+  }
+
   return (
     <div className="mt-4 grid gap-2 rounded-2xl border border-stone-200 bg-white/80 p-3">
       <input
@@ -1018,6 +1084,21 @@ function AddressForm({
           <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
+      {suggestionsState.length > 0 && (
+        <div className="grid gap-1 rounded-2xl border border-stone-200 bg-stone-50 p-2">
+          {suggestionsState.map((suggestion) => (
+            <button
+              key={suggestion.id}
+              type="button"
+              onClick={() => chooseSuggestion(suggestion)}
+              className="rounded-xl bg-white px-3 py-2 text-left text-sm hover:bg-accent/10"
+            >
+              <span className="font-semibold">{suggestion.label}</span>
+              <span className="ml-2 text-xs text-stone-600">{suggestion.subtitle}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid gap-2 sm:grid-cols-2">
         <input
           className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
@@ -1049,6 +1130,20 @@ function AddressForm({
           value={draft.province}
           onChange={(event) => setDraft({ ...draft, province: event.target.value })}
         />
+        <input
+          className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
+          placeholder="Latitude from selected address, optional"
+          inputMode="decimal"
+          value={draft.lat}
+          onChange={(event) => setDraft({ ...draft, lat: event.target.value })}
+        />
+        <input
+          className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
+          placeholder="Longitude from selected address, optional"
+          inputMode="decimal"
+          value={draft.lng}
+          onChange={(event) => setDraft({ ...draft, lng: event.target.value })}
+        />
       </div>
       <textarea
         className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
@@ -1058,8 +1153,7 @@ function AddressForm({
         onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
       />
       <p className="text-xs text-stone-600">
-        Address autocomplete is skipped unless a Google Places service is available. Manual entry
-        works without an API key.
+        {autocompleteStatus}
       </p>
       <button
         type="button"
@@ -1070,6 +1164,56 @@ function AddressForm({
         <BookmarkCheck className="h-4 w-4" /> Save market address
       </button>
     </div>
+  );
+}
+
+function EvidenceEntryPanel({
+  savedPropertyExists,
+  onAddEvidence,
+  onOpenFallback,
+}: {
+  savedPropertyExists: boolean;
+  onAddEvidence: () => void;
+  onOpenFallback: () => void;
+}) {
+  return (
+    <section className="rounded-3xl border border-accent/20 bg-[#fff8ec] p-5 shadow-[0_16px_40px_rgba(120,72,24,0.10)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+            <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
+          </div>
+          <h3 className="mt-3 text-xl font-semibold tracking-tight">
+            Save a listing, comp, build-cost note, or market source
+          </h3>
+          <p className="mt-1 text-sm text-stone-700">
+            Paste the source URL and add your own price, address, size and notes. ErfStoep stores
+            your evidence with this erf; it does not extract portal content.
+          </p>
+        </div>
+        <Badge>{savedPropertyExists ? "Ready to save" : "Save erf first"}</Badge>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!savedPropertyExists}
+          onClick={onAddEvidence}
+          className={`${PILL_PRIMARY} disabled:opacity-50`}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
+        </button>
+        <button type="button" onClick={onOpenFallback} className={PILL_SECONDARY}>
+          <Copy className="h-3.5 w-3.5" /> Copy area search phrase
+        </button>
+      </div>
+
+      {!savedPropertyExists && (
+        <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-white/75 px-3 py-2 text-sm text-stone-700">
+          Save this erf first to store listing URLs, comps and market notes in this workspace.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1123,17 +1267,17 @@ function RadarConsole({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
-            <Target className="h-3.5 w-3.5" /> Active Listing Radar
+            <Target className="h-3.5 w-3.5" /> Manual candidate tools
           </div>
           <h3 className="mt-3 text-xl font-semibold tracking-tight">
-            Scan cached and imported listing candidates
+            Review source-backed listing candidates
           </h3>
           <p className="mt-1 text-sm text-stone-700">
-            ErfStoep does not scan portals live. Radar only scores source-backed cached or
-            manually imported candidates.
+            Candidate matching is an advanced helper only. The main MVP flow is saving listing and
+            comp URLs as evidence.
           </p>
         </div>
-        <Badge>{candidates.length} cached candidates</Badge>
+        <Badge>{candidates.length} candidate records</Badge>
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -1200,14 +1344,14 @@ function RadarConsole({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={onRunRadar} className={PILL_PRIMARY}>
-          {mode === "area_listings" ? "Run Area Radar" : "Run Exact Radar"}
+          {mode === "area_listings" ? "Review area candidates" : "Review possible exact matches"}
         </button>
         <button
           type="button"
           onClick={() => setShowCandidateForm(!showCandidateForm)}
           className={PILL_SECONDARY}
         >
-          <Plus className="h-3.5 w-3.5" /> Import candidate manually
+          <Plus className="h-3.5 w-3.5" /> Add candidate URL
         </button>
       </div>
 
@@ -1222,11 +1366,11 @@ function RadarConsole({
       {radarRan && candidates.length === 0 && (
         <div className="mt-4 rounded-2xl border border-dashed border-accent/30 bg-white/75 p-4">
           <p className="text-sm font-semibold">
-            No listing candidates have been added for this area yet.
+            No candidate records have been added for this area yet.
           </p>
           <p className="mt-1 text-sm text-stone-700">
-            Active Listing Radar needs source-backed candidates to scan. Import a candidate manually
-            now, or use the fallback search tools until the Kouga cached listing pool is added.
+            Add a source-backed candidate URL, or use the fallback search tools until a real cached
+            listing pool is added.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -1234,7 +1378,7 @@ function RadarConsole({
               onClick={() => setShowCandidateForm(true)}
               className={PILL_PRIMARY}
             >
-              Import candidate manually
+              Add candidate URL
             </button>
             <button type="button" onClick={() => copy(fallbackPhrase)} className={PILL_SECONDARY}>
               Open fallback search tools
@@ -1249,14 +1393,14 @@ function RadarConsole({
               </button>
             )}
             <button type="button" onClick={() => copy(fallbackPhrase)} className={PILL_SECONDARY}>
-              Choose broader area scan
+              Copy broader area phrase
             </button>
             <button
               type="button"
               onClick={() => setShowCandidateForm(true)}
               className={PILL_SECONDARY}
             >
-              Add candidate from URL
+              Add candidate URL
             </button>
           </div>
         </div>
@@ -1267,7 +1411,7 @@ function RadarConsole({
           <p className="text-sm font-semibold">
             {mode === "area_listings"
               ? "No candidates matched this area/source/type filter."
-              : "No candidates cleared the radar threshold."}
+              : "No candidates matched this review filter."}
           </p>
           <p className="mt-1 text-sm text-stone-700">
             Open a portal and use the selected area search below, or import a candidate manually.
@@ -1299,7 +1443,7 @@ function RadarConsole({
               onClick={() => setShowCandidateForm(true)}
               className={PILL_SECONDARY}
             >
-              Import candidate manually
+              Add candidate URL
             </button>
           </div>
           <div className="mt-3 rounded-2xl bg-stone-50 px-3 py-2 text-sm font-semibold">
@@ -1327,12 +1471,10 @@ function RadarConsole({
 function FallbackSearchTools({
   searches,
   identity,
-  areaOptions,
   copy,
 }: {
   searches: SimpleListingSearch[];
   identity: PropertyIdentity;
-  areaOptions: AreaRadarOptions;
   copy: (phrase: string) => void;
 }) {
   return (
@@ -1341,9 +1483,8 @@ function FallbackSearchTools({
         Fallback Search Tools
       </summary>
       <p className="mt-2 text-sm text-stone-600">
-        Use these manual tools only when the radar has no candidates or when you want to search
-        portals yourself. Google search is fallback only; Google Maps is allowed for address
-        intelligence.
+        Use these manual tools when you need to search portals yourself. Google search is fallback
+        only; Google Maps is allowed for address intelligence.
       </p>
       <div className="mt-4 grid gap-3">
         {[
@@ -1351,8 +1492,8 @@ function FallbackSearchTools({
           {
             id: "area-fallback",
             label: "Selected area fallback",
-            phrase: areaPhrase(identity, areaOptions),
-            helper: "Use this phrase with the selected portal/source filters.",
+            phrase: areaPhrase(identity),
+            helper: "Use this phrase on a portal if the exact address is not confirmed.",
             primaryPortalUrls: [],
           },
         ].map((search) => (
@@ -1390,7 +1531,8 @@ function SavedCompsSection({
         <div>
           <SectionTitle>Saved Market Evidence</SectionTitle>
           <p className="mt-1 text-sm text-stone-600">
-            Verify candidates into saved evidence. Market thesis uses saved evidence only.
+            Save listing URLs, comps and market notes against this erf. Comp summary uses saved
+            evidence only.
           </p>
         </div>
         <button
@@ -1402,7 +1544,7 @@ function SavedCompsSection({
           }}
           className={`${PILL_PRIMARY} disabled:opacity-50`}
         >
-          <Plus className="h-3.5 w-3.5" /> Add comp
+          <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
         </button>
       </div>
       {!savedPropertyExists && (
@@ -1417,7 +1559,7 @@ function SavedCompsSection({
         <p className="mt-3 text-sm text-stone-600">Loading saved market evidence...</p>
       ) : evidence.length === 0 ? (
         <p className="mt-3 text-sm text-stone-600">
-          No saved comps yet. Verify a radar candidate or save a useful listing URL.
+          No saved comps yet. Paste a listing or comp URL, then add price, size and notes manually.
         </p>
       ) : (
         <div className="mt-4 grid gap-3">
@@ -1577,7 +1719,7 @@ function CandidateForm({
         onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
       />
       <button type="button" onClick={onSave} className={`${PILL_PRIMARY} w-fit`}>
-        <BookmarkCheck className="h-4 w-4" /> Import listing candidate
+        <BookmarkCheck className="h-4 w-4" /> Save candidate URL
       </button>
     </div>
   );
@@ -1764,22 +1906,35 @@ function CompForm({
     <div className="mt-4 grid gap-2 rounded-2xl border border-stone-200 bg-white/80 p-3">
       <input
         className={FIELD}
-        placeholder="Comp URL required"
+        placeholder="Listing or comp URL required"
         value={draft.sourceUrl}
-        onChange={(event) => setDraft({ ...draft, sourceUrl: event.target.value })}
+        onChange={(event) => {
+          const sourceUrl = event.target.value;
+          setDraft({
+            ...draft,
+            sourceUrl,
+            sourcePortal: sourceUrl.trim() ? sourceDomainFromUrl(sourceUrl) : "",
+          });
+        }}
       />
+      {draft.sourceUrl && (
+        <p className="rounded-2xl bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-700">
+          Detected source: {draft.sourcePortal || sourceDomainFromUrl(draft.sourceUrl)}. ErfStoep
+          stores your URL and manual notes only; it does not scrape listing pages.
+        </p>
+      )}
       <div className="grid gap-2 sm:grid-cols-2">
         <input
           className={FIELD}
-          placeholder="Portal"
+          placeholder="Source domain or portal"
           value={draft.sourcePortal}
           onChange={(event) => setDraft({ ...draft, sourcePortal: event.target.value })}
         />
         <input
           className={FIELD}
-          placeholder="Title"
-          value={draft.title}
-          onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+          placeholder="Address, optional"
+          value={draft.address}
+          onChange={(event) => setDraft({ ...draft, address: event.target.value })}
         />
         <input
           className={FIELD}
@@ -1828,6 +1983,7 @@ function CompForm({
           onChange={(event) =>
             setDraft({ ...draft, relationship: event.target.value as MarketEvidenceRelationship })
           }
+          aria-label="Evidence type"
         >
           {COMP_RELATIONSHIPS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1844,7 +2000,7 @@ function CompForm({
         onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
       />
       <button type="button" onClick={onSave} className={`${PILL_PRIMARY} w-fit`}>
-        <BookmarkCheck className="h-4 w-4" /> Save comp
+        <BookmarkCheck className="h-4 w-4" /> Save evidence
       </button>
     </div>
   );
@@ -1873,6 +2029,10 @@ function CompRow({
           </div>
           <p className="mt-2 text-sm text-stone-600">
             {money(item.askingPrice)} {item.landSizeM2 ? ` / ${item.landSizeM2} m2 land` : ""}
+          </p>
+          <p className="mt-1 break-all text-xs text-stone-500">{item.sourceUrl}</p>
+          <p className="mt-1 text-xs text-stone-500">
+            Saved {new Date(item.savedAt).toLocaleString("en-ZA")}
           </p>
           {item.notes && <p className="mt-1 text-xs text-stone-600">{item.notes}</p>}
         </div>

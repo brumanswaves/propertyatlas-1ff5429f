@@ -414,11 +414,11 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Listings & Comps");
     expect(marketEvidence).toContain("Find listings and comps for this erf");
     expect(marketEvidence).toContain("Address Intelligence");
-    expect(marketEvidence).toContain("Active Listing Radar");
+    expect(marketEvidence).toContain("Add listing or comp evidence");
     expect(marketEvidence).toContain("No confirmed street address yet");
     expect(marketEvidence).toContain("Fallback Search Tools");
     expect(marketEvidence).toContain("Saved Market Evidence");
-    expect(marketEvidence).toContain("Market Thesis from saved evidence");
+    expect(marketEvidence).toContain("Comp summary");
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
@@ -462,41 +462,45 @@ describe("official dossier UX guardrails", () => {
     expect(hook).toContain("propertyIdentity");
     expect(hook).toContain("marketAddressIntelligence");
     expect(tab).toContain("Saved Market Evidence");
-    expect(tab).toContain("Save comp");
+    expect(tab).toContain("Save evidence");
+    expect(tab).toContain("sourceDomainFromUrl");
   });
 
-  it("keeps Active Listing Radar primary and search tools as fallback", () => {
+  it("makes manual listing evidence the primary market workflow", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
-    expect(tab).toContain("Active Listing Radar");
-    expect(tab).toContain("Find possible exact match");
-    expect(tab).toContain("Search area listings");
-    expect(tab).toContain("Run Area Radar");
-    expect(tab).toContain("Run Exact Radar");
+    expect(tab).toContain("Add listing or comp evidence");
+    expect(tab).toContain("Listing or comp URL required");
+    expect(tab).toContain("Evidence type");
+    expect(tab).toContain("Active listing");
+    expect(tab).toContain("Sold comp");
+    expect(tab).toContain("Nearby comp");
+    expect(tab).toContain("Same street comp");
+    expect(tab).toContain("Vacant land comp");
+    expect(tab).toContain("Build cost evidence");
+    expect(tab).toContain("Other");
+    expect(tab).toContain("Detected source:");
     expect(tab).toContain("Fallback Search Tools");
-    expect(tab).toContain("ErfStoep does not scan portals live");
-    expect(tab).toContain("Use these manual tools only when the radar has no candidates");
+    expect(tab).not.toContain("Scan cached and imported listing candidates");
+    expect(tab).not.toContain("Run Area Radar");
+    expect(tab).not.toContain("Run Exact Radar");
+    expect(tab).not.toContain("Active Listing Radar");
     expect(tab).not.toContain("Show hidden / weak candidates");
   });
 
-  it("keeps manual address, candidate import and triage actions explicit", () => {
+  it("keeps market address autocomplete honest and marks market evidence progress on save", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("Save market address");
-    expect(tab).toContain(
-      "Address autocomplete is skipped unless a Google Places service is available",
-    );
+    expect(tab).toContain("fetchAddressAutocompleteSuggestions");
+    expect(tab).toContain("fetchAddressPlaceDetails");
+    expect(tab).toContain("Google Places autocomplete is not configured here");
     expect(tab).toContain("marketAddressIntelligence");
-    expect(tab).toContain("No listing candidates have been added for this area yet.");
-    expect(tab).toContain("No candidates matched this area/source/type filter.");
-    expect(tab).toContain("Import listing candidate");
-    expect(tab).toContain("Target property");
-    expect(tab).toContain("Same street comp");
-    expect(tab).toContain("Same node comp");
-    expect(tab).toContain("Vacant land comp");
-    expect(tab).toContain("Nearby comp");
-    expect(tab).toContain("Broader comp");
-    expect(tab).toContain("Dismiss");
+    expect(tab).toContain("Street address not confirmed yet. Use area search or add a market address.");
+    expect(tab).toContain("marketEvidenceStarted: true");
+    expect(tab).toContain("updateErfWorkspaceState(parcel.id");
+    expect(tab).not.toContain("auto-fill portal content");
+    expect(tab).not.toContain("listing scraping");
   });
 
   it("uses warmer simple listings and comps surfaces", () => {
