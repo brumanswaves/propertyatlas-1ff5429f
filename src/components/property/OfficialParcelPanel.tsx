@@ -10,7 +10,6 @@ import {
   BookmarkCheck,
   Share2,
   ChevronRight,
-  ClipboardCheck,
   FolderOpen,
   Calculator,
   FileText,
@@ -1420,51 +1419,108 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
                     {panelFirstRead(normalizedParcel)}
                   </p>
-                  <div className="mt-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
-                      How this works
-                    </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-4">
-                      {[
-                        {
-                          step: "1",
-                          title: "Confirm the erf",
-                          body: "Make sure the official parcel identity is right.",
-                          Icon: ClipboardCheck,
-                        },
-                        {
-                          step: "2",
-                          title: "Add evidence",
-                          body: "Save source checks, reports, notes, listings and comps.",
-                          Icon: FolderOpen,
-                        },
-                        {
-                          step: "3",
-                          title: "Run calculators",
-                          body: "Test build, flip, hold and max offer assumptions.",
-                          Icon: Calculator,
-                        },
-                        {
-                          step: "4",
-                          title: "Create Stoep Report",
-                          body: "Stoep AI uses saved evidence and assumptions to create one report.",
-                          Icon: FileText,
-                        },
-                      ].map(({ step, title, body, Icon }) => (
-                        <div
-                          key={title}
-                          className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#f8fafc] p-4"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0D1B2A] text-sm font-bold text-[#FFB86B]">
-                              {step}
-                            </div>
-                            <Icon className="h-4 w-4 text-[#FF6A00]" />
-                          </div>
-                          <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{title}</div>
-                          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">{body}</p>
+                  <div className="mt-8">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                          How ErfStoep builds your report
                         </div>
-                      ))}
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/64">
+                          Start with the erf, add proof, test the numbers, then keep one clear
+                          report.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
+                      <div className="overflow-hidden rounded-[1.75rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5 shadow-[0_22px_55px_-42px_rgba(13,27,42,0.55)]">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+                          <div className="min-w-0 flex-1">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0D1B2A] ring-1 ring-[#D9E6F2]">
+                              <ShieldCheck className="h-4 w-4 text-[#FF6A00]" />
+                              Start here
+                            </div>
+                            <h4 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+                              Know this erf
+                            </h4>
+                            <p className="mt-2 max-w-xl text-sm leading-6 text-[#0D1B2A]/68">
+                              Confirm the parcel, save evidence, run numbers, and create one Stoep
+                              Report.
+                            </p>
+                          </div>
+                          <div className="w-full rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_18px_40px_-32px_rgba(13,27,42,0.45)] lg:w-72">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                                Mini report
+                              </div>
+                              <Sparkles className="h-4 w-4 text-[#FF6A00]" />
+                            </div>
+                            <dl className="mt-4 space-y-2">
+                              {[
+                                ["Identity", "Checked", "text-emerald-700"],
+                                ["Evidence", "2 sources", "text-[#0D1B2A]"],
+                                ["Market", "Needs comps", "text-[#9A4A09]"],
+                                ["Strategy", "Not started", "text-[#64748B]"],
+                              ].map(([label, value, color]) => (
+                                <div
+                                  key={label}
+                                  className="flex items-center justify-between rounded-xl bg-[#F7FBFF] px-3 py-2"
+                                >
+                                  <dt className="text-xs font-medium text-[#0D1B2A]/62">{label}</dt>
+                                  <dd className={cn("text-xs font-bold", color)}>{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3">
+                        {[
+                          {
+                            title: "Evidence Vault",
+                            body: "Save source checks, uploaded reports, notes, listings and comps.",
+                            Icon: FolderOpen,
+                            chips: ["Sources", "Notes", "PDFs"],
+                          },
+                          {
+                            title: "Strategy Lab",
+                            body: "Run build, flip, hold and max-offer calculators.",
+                            Icon: Calculator,
+                            chips: ["Build", "Flip", "Offer"],
+                          },
+                          {
+                            title: "Stoep Report",
+                            body: "Stoep AI uses saved evidence and assumptions to create one clear report.",
+                            Icon: FileText,
+                            chips: ["Summary", "Risks", "Next steps"],
+                          },
+                        ].map(({ title, body, Icon, chips }) => (
+                          <div
+                            key={title}
+                            className="rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_16px_38px_-34px_rgba(13,27,42,0.42)]"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F0F6FC] text-[#0D1B2A]">
+                                <Icon className="h-6 w-6" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-base font-semibold text-[#0D1B2A]">{title}</div>
+                                <p className="mt-1 text-sm leading-5 text-[#0D1B2A]/62">{body}</p>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  {chips.map((chip) => (
+                                    <span
+                                      key={chip}
+                                      className="rounded-full bg-[#F7FBFF] px-2.5 py-1 text-[10px] font-semibold text-[#0D1B2A]/64 ring-1 ring-[#D9E6F2]"
+                                    >
+                                      {chip}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -326,17 +326,26 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Every erf. All the facts.");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
-    expect(panel).toContain("How this works");
-    expect(panel).toContain("Confirm the erf");
-    expect(panel).toContain("Make sure the official parcel identity is right.");
-    expect(panel).toContain("Add evidence");
-    expect(panel).toContain("Save source checks, reports, notes, listings and comps.");
-    expect(panel).toContain("Run calculators");
-    expect(panel).toContain("Test build, flip, hold and max offer assumptions.");
-    expect(panel).toContain("Create Stoep Report");
+    expect(panel).toContain("How ErfStoep builds your report");
+    expect(panel).toContain("Know this erf");
     expect(panel).toContain(
-      "Stoep AI uses saved evidence and assumptions to create one report.",
+      "Confirm the parcel, save evidence, run numbers, and create one Stoep",
     );
+    expect(panel).toContain("Mini report");
+    expect(panel).toContain('["Identity", "Checked", "text-emerald-700"]');
+    expect(panel).toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
+    expect(panel).toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
+    expect(panel).toContain('["Strategy", "Not started", "text-[#64748B]"]');
+    expect(panel).toContain("Evidence Vault");
+    expect(panel).toContain("Save source checks, uploaded reports, notes, listings and comps.");
+    expect(panel).toContain("Strategy Lab");
+    expect(panel).toContain("Run build, flip, hold and max-offer calculators.");
+    expect(panel).toContain("Stoep Report");
+    expect(panel).toContain(
+      "Stoep AI uses saved evidence and assumptions to create one clear report.",
+    );
+    expect(panel).toContain("bg-[#F7FBFF]");
+    expect(panel).toContain("border-[#D9E6F2]");
     expect(panel).toContain(
       "Optional confidence upgrades. Buy a report or upload a PDF you already purchased; the",
     );
