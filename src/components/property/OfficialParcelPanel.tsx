@@ -1330,7 +1330,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         </div>
       </nav>
 
-      <header className="sticky top-0 z-30 flex shrink-0 items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-5 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:ml-64 md:px-7">
+      <header className="sticky top-0 z-30 flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-4 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:ml-64 md:px-7">
         <div className="min-w-0">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
             Erf Workbench
@@ -1351,6 +1351,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               <MapPin className="h-3 w-3" /> {resolved.displaySubtitle}
             </div>
           )}
+          <div className="mt-2 inline-flex rounded-full bg-[#0D1B2A]/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#0D1B2A] md:hidden">
+            {workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -1376,9 +1379,33 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           >
             <X className="h-4 w-4" />
             <span className="hidden sm:inline">Back to full map</span>
-            <span className="sm:hidden">Map</span>
+            <span className="sm:hidden">Back to map</span>
           </button>
         </div>
+        <nav
+          className="mobile-workbench-nav -mx-1 flex w-full gap-2 overflow-x-auto pb-1 md:hidden"
+          aria-label="Mobile Workbench navigation"
+        >
+          {WORKBENCH_NAV.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => selectWorkbenchTab(item.id)}
+                className={cn(
+                  "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                  active
+                    ? "border-[#FF6A00] bg-[#FF6A00] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
+                    : "border-[#0D1B2A]/12 bg-white/82 text-[#0D1B2A] hover:bg-white",
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
       </header>
 
       <div

@@ -170,7 +170,6 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('label: "Notes"');
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
-    expect(panel).not.toContain("overflow-x-auto");
     expect(panel).not.toContain("Listings & Comps</button>");
     expect(panel).toContain('tab === "research"');
     expect(panel).toContain('view="research"');
@@ -316,6 +315,13 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Save erf");
     expect(panel).toContain("Back to map");
     expect(panel).toContain("Back to full map");
+    expect(panel).toContain("Mobile Workbench navigation");
+    expect(panel).toContain("mobile-workbench-nav");
+    expect(panel).toContain("overflow-x-auto");
+    expect(panel).toContain('onClick={() => selectWorkbenchTab(item.id)}');
+    expect(panel).toContain('aria-current={active ? "page" : undefined}');
+    expect(panel).toContain('workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"');
+    expect(panel).toContain("handleBackToMap");
     expect(panel).toContain("min-h-11");
     expect(panel).toContain("sticky top-0 z-30");
   });
