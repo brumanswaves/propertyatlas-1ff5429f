@@ -39,6 +39,7 @@ import { MarketEvidenceTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
 import { NextBestStep } from "./dossier/NextBestStep";
+import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
   buildDueDiligenceProgress,
   buildNextBestStep,
