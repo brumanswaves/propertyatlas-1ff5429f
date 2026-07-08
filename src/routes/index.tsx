@@ -296,9 +296,9 @@ function AtlasHome() {
   }, []);
 
   const headerSubtitle = (
-    <span>
-      <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span> Research any
-      South African erf.
+    <span className="inline-flex items-center gap-2 tracking-tight">
+      <span className="font-semibold text-white">Every erf. All the facts.</span>
+      <span className="text-white/55">Research any South African erf.</span>
     </span>
   );
 
