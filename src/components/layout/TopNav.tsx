@@ -40,22 +40,27 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
   const greetingName = getUserGreetingName(user);
   const mapHeader = Boolean(center || mobileCenter || subtitle);
 
+  const navLinkBase =
+    "relative rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white/70 transition hover:text-white";
+  const navLinkActive =
+    "text-white after:absolute after:inset-x-2 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-[#FF6A00] after:shadow-[0_0_12px_rgba(255,106,0,0.7)]";
+
   return (
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/8 bg-[#fbf8f1]/96 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.375rem)] shadow-[0_14px_34px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl md:px-4 md:pt-1.5"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-white/5 bg-[#06152A]/85 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-[0_18px_42px_-28px_rgba(0,0,0,0.9)] backdrop-blur-xl md:px-6 md:pt-2"
           : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
       }
     >
       <div
         className={
-          mapHeader ? "mx-auto flex max-w-[1500px] items-center justify-between gap-3" : "contents"
+          mapHeader ? "mx-auto flex max-w-[1600px] items-center justify-between gap-4" : "contents"
         }
       >
         <Link
           to="/"
-          className="group inline-flex shrink-0 items-center gap-2 rounded-lg bg-white/78 px-2 py-1 ring-1 ring-[#0D1B2A]/8 shadow-[0_8px_18px_-16px_rgba(13,27,42,0.24)] backdrop-blur-md transition hover:bg-white hover:ring-[#0D1B2A]/15"
+          className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1.5 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:ring-white/20"
           aria-label="ErfStoep — home"
         >
           <AtlasPin variant="horizontal" className="h-4 w-auto md:h-5" title={BRAND.site} />
@@ -63,39 +68,41 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
 
         {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
 
-        <nav className="hidden shrink-0 items-center gap-0.5 rounded-xl border border-[#0D1B2A]/8 bg-white/72 p-1 shadow-[0_10px_24px_-20px_rgba(13,27,42,0.35)] backdrop-blur md:flex">
+        <nav className="hidden shrink-0 items-center gap-0.5 md:flex">
           {PRIMARY_LINKS.map((l) => (
             <Link
               key={l.to}
               to={l.to}
               activeOptions={{ exact: l.to === "/" }}
-              className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
-              activeProps={{ className: "text-foreground" }}
+              className={navLinkBase}
+              activeProps={{ className: navLinkActive }}
             >
               {l.label}
             </Link>
           ))}
           {user ? (
             <>
-              <span className="px-3 py-1.5 text-xs font-medium text-foreground">
+              <span className="px-3 py-1.5 text-[12px] font-semibold text-white/85">
                 Hello {greetingName}
               </span>
               <Link
                 to="/dashboard"
-                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+                className={navLinkBase}
+                activeProps={{ className: navLinkActive }}
               >
                 Dashboard
               </Link>
               <Link
                 to="/profile"
-                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
+                className={navLinkBase}
+                activeProps={{ className: navLinkActive }}
               >
                 Profile
               </Link>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 rounded-full text-xs"
+                className="ml-1 h-8 rounded-full border border-white/15 bg-white/[0.04] text-[12px] font-semibold text-white hover:bg-white/[0.1] hover:text-white"
                 onClick={() => supabase.auth.signOut()}
               >
                 Sign out
@@ -103,14 +110,14 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
             </>
           ) : (
             <>
-              <Link
-                to="/auth"
-                className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#0D1B2A]/62 hover:bg-[#fbf8f1] hover:text-[#0D1B2A]"
-              >
+              <Link to="/auth" className={navLinkBase}>
                 Sign in
               </Link>
               <Link to="/auth">
-                <Button size="sm" className="h-8 rounded-full bg-gradient-brand text-xs">
+                <Button
+                  size="sm"
+                  className="h-8 rounded-full bg-[#FF6A00] text-[12px] font-semibold text-white shadow-[0_10px_28px_-10px_rgba(255,106,0,0.75)] hover:bg-[#ff7a1a]"
+                >
                   <Sparkles className="mr-1 h-3.5 w-3.5" />
                   Start free
                 </Button>
@@ -122,7 +129,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
         {/* Mobile trigger */}
         <button
           onClick={() => setOpen((o) => !o)}
-          className="grid h-10 w-10 place-items-center rounded-full bg-card/95 shadow-soft ring-1 ring-border/60 backdrop-blur md:hidden"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.06] text-white ring-1 ring-white/15 backdrop-blur md:hidden"
           aria-label="Menu"
         >
           {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -133,7 +140,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
         <div className="mt-2 grid gap-1.5 md:hidden">
           {mobileCenter}
           {subtitle && (
-            <div className="hidden rounded-xl bg-white/78 px-3 py-1.5 text-center text-[11px] font-medium text-[#0D1B2A]/70 ring-1 ring-[#0D1B2A]/8 sm:block">
+            <div className="hidden rounded-xl bg-white/[0.05] px-3 py-1.5 text-center text-[11px] font-medium text-white/75 ring-1 ring-white/10 sm:block">
               {subtitle}
             </div>
           )}
@@ -141,7 +148,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
       )}
 
       {mapHeader && subtitle && (
-        <div className="mx-auto mt-1 hidden max-w-3xl text-center text-[11px] font-medium text-[#0D1B2A]/62 md:block">
+        <div className="mx-auto mt-1.5 hidden max-w-3xl text-center text-[12px] font-medium text-white/70 md:block">
           {subtitle}
         </div>
       )}
