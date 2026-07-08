@@ -60,10 +60,10 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
       >
         <Link
           to="/"
-          className="group inline-flex shrink-0 items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1.5 ring-1 ring-white/10 transition hover:bg-white/[0.08] hover:ring-white/20"
+          className="group inline-flex shrink-0 items-center gap-2 rounded-xl px-1 py-1 transition hover:opacity-90"
           aria-label="ErfStoep — home"
         >
-          <AtlasPin variant="horizontal" className="h-4 w-auto md:h-5" title={BRAND.site} />
+          <AtlasPin variant="white" className="h-5 w-auto md:h-6" title={BRAND.site} />
         </Link>
 
         {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
