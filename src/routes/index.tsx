@@ -391,9 +391,9 @@ function AtlasHome() {
               setLocateMessage(null);
               setLocateRequestId((value) => value + 1);
             }}
-            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/90 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
+            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/12 bg-[#0D1B2A]/82 px-3 py-2 text-xs font-semibold text-white shadow-[0_12px_26px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/94"
           >
-            <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
+            <LocateFixed className="h-3.5 w-3.5 text-[#FFB86B]" />
             Locate me
           </button>
           <FilterPanel value={filters} onChange={setFilters} />
@@ -527,17 +527,17 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
+      <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl border border-white/10 bg-[#06152A]/82 px-3 py-1.5 text-[10px] font-medium text-white/70 shadow-[0_16px_36px_-28px_rgba(0,0,0,0.75)] backdrop-blur-xl md:block">
         {demoMode ? (
           <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
+            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-[#FF6A00]/18 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#FFB86B]">
               Demo Data
             </span>
             Pilot region · St Francis Bay. Mock property information shown for demonstration.
           </>
         ) : (
           <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-[#FF6A00]/18 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#FFB86B]">
               Official Public Data
             </span>
             Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
@@ -629,34 +629,34 @@ function OfficialPill({
   if (status.state === "off") return null;
   const map: Record<string, { tone: string; text: string }> = {
     loading: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/10 text-white/78 ring-1 ring-white/10",
       text: `${label} loading…`,
     },
     loaded: {
-      tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
+      tone: "bg-[#FF6A00]/18 text-[#FFB86B] ring-1 ring-[#FF6A00]/24",
       text:
         label === "CSG"
           ? `CSG parcels loaded: ${status.count}`
           : `Kouga zoning loaded: ${status.count}`,
     },
     imported: {
-      tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300",
+      tone: "bg-cyan-400/16 text-cyan-100 ring-1 ring-cyan-300/20",
       text:
         label === "CSG"
           ? `CSG parcels loaded (imported): ${status.count}`
           : `Kouga zoning loaded (imported): ${status.count}`,
     },
     test: {
-      tone: "bg-accent/20 text-accent dark:text-accent",
+      tone: "bg-[#FF6A00]/20 text-[#FFB86B] ring-1 ring-[#FF6A00]/25",
       text: "TEST GEOMETRY ONLY — not official data",
     },
     empty: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/10 text-white/72 ring-1 ring-white/10",
       text:
         label === "CSG" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view",
     },
     failed: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/10 text-white/72 ring-1 ring-white/10",
       text: label === "CSG" ? "CSG unavailable" : "Kouga zoning unavailable",
     },
   };
@@ -664,7 +664,7 @@ function OfficialPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-soft backdrop-blur",
+        "inline-flex items-center gap-1 rounded-full bg-[#06152A]/78 px-2 py-0.5 text-[10px] font-semibold shadow-[0_12px_26px_-22px_rgba(0,0,0,0.72)] backdrop-blur-xl",
         v.tone,
       )}
       title={status.message ?? undefined}

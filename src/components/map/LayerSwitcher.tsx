@@ -81,11 +81,11 @@ export function LayerSwitcher({
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-9 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/90 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
+        className="flex min-h-9 items-center justify-center gap-2 rounded-xl border border-white/12 bg-[#0D1B2A]/82 px-3 py-2 text-xs font-semibold text-white shadow-[0_12px_26px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/94"
       >
         <Layers className="h-3.5 w-3.5" />
         Layers
-        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-[10px] font-semibold text-background">
+        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#FF6A00] px-1.5 text-[10px] font-semibold text-white">
           {activeLayers}
         </span>
       </button>

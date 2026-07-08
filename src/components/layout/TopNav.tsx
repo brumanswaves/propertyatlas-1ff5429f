@@ -44,7 +44,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-[#0D1B2A]/8 bg-[#fbf8f1]/96 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.375rem)] shadow-[0_14px_34px_-30px_rgba(13,27,42,0.45)] backdrop-blur-xl md:px-4 md:pt-1.5"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-white/10 bg-[#06152A]/88 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.375rem)] text-white shadow-[0_18px_44px_-30px_rgba(0,0,0,0.7)] backdrop-blur-2xl md:px-4 md:pt-1.5"
           : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
       }
     >

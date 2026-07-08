@@ -25,7 +25,12 @@ export interface ErfWorkspaceNextStep {
   tab: ErfWorkspaceTab;
 }
 
-export type StoepStepStatus = "Current" | "Done" | "Needs evidence" | "Not started" | "Blocked / uncertain";
+export type StoepStepStatus =
+  | "Current"
+  | "Done"
+  | "Needs evidence"
+  | "Not started"
+  | "Blocked / uncertain";
 
 export interface StoepStepProgress {
   id: "identity" | "sources" | "market" | "strategy" | "report";
@@ -108,18 +113,24 @@ export function updateErfWorkspaceState(
   patch: Partial<ErfWorkspaceState>,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ) {
-  return writeErfWorkspaceState(parcelId, { ...readErfWorkspaceState(parcelId, storage), ...patch }, storage);
+  return writeErfWorkspaceState(
+    parcelId,
+    { ...readErfWorkspaceState(parcelId, storage), ...patch },
+    storage,
+  );
 }
 
-export function buildErfWorkspaceNextStep(state: Pick<
-  ErfWorkspaceState,
-  | "identityStatus"
-  | "openedSourceIds"
-  | "reviewedSourceIds"
-  | "marketEvidenceStarted"
-  | "calculatorStarted"
-  | "reportStarted"
->): ErfWorkspaceNextStep {
+export function buildErfWorkspaceNextStep(
+  state: Pick<
+    ErfWorkspaceState,
+    | "identityStatus"
+    | "openedSourceIds"
+    | "reviewedSourceIds"
+    | "marketEvidenceStarted"
+    | "calculatorStarted"
+    | "reportStarted"
+  >,
+): ErfWorkspaceNextStep {
   const hasOpenedSource = state.openedSourceIds.length > 0;
   const hasReviewedSource = state.reviewedSourceIds.length > 0;
 
@@ -140,8 +151,10 @@ export function buildErfWorkspaceNextStep(state: Pick<
       title: "Verify the official parcel identity",
       body: "Start by checking that this Workbench is attached to the right public erf before using market or strategy tools.",
       why: "Every comp, calculator and report depends on researching the correct erf.",
-      doNow: "Open an official source, compare the parcel details, then mark identity as correct or uncertain.",
-      doneWhen: "Identity looks correct is selected, or source review is completed and identity is checked.",
+      doNow:
+        "Open an official source, compare the parcel details, then mark identity as correct or uncertain.",
+      doneWhen:
+        "Identity looks correct is selected, or source review is completed and identity is checked.",
       next: "Build Market Evidence.",
       action: "Check official identity",
       tab: "research",
@@ -153,10 +166,26 @@ export function buildErfWorkspaceNextStep(state: Pick<
       title: "Resolve official parcel identity",
       body: "Keep the next step focused on CSG, SG or municipal source checks until the erf identity is comfortable.",
       why: "Market and strategy work should stay secondary while the selected erf is uncertain.",
-      doNow: "Use official source details, coordinates, LPI, parcel key or SG document links to confirm the correct erf.",
+      doNow:
+        "Use official source details, coordinates, LPI, parcel key or SG document links to confirm the correct erf.",
       doneWhen: "Identity looks correct is selected after your source check.",
       next: "Build Market Evidence once the identity is comfortable.",
       action: "Review official identity",
+      tab: "research",
+    };
+  }
+
+  if (!hasReviewedSource) {
+    return {
+      title: hasOpenedSource ? "Review the opened source" : "Add or review sources",
+      body: hasOpenedSource
+        ? "You have opened a source. Mark it reviewed after comparing the official details."
+        : "Add at least one reviewed official or municipal source before building the market and strategy view.",
+      why: "The report should be grounded in source checks, not just a selected map feature.",
+      doNow: "Open Sources, compare the public fields, then mark a source reviewed.",
+      doneWhen: "At least one official or municipal source is reviewed by user.",
+      next: "Add Market Evidence.",
+      action: hasOpenedSource ? "Review official source" : "Add or review sources",
       tab: "research",
     };
   }
@@ -213,7 +242,8 @@ export function buildErfWorkspaceNextStep(state: Pick<
 }
 
 export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgress[] {
-  const identityDone = state.identityStatus === "checked" || state.identityStatus === "looks_correct";
+  const identityDone =
+    state.identityStatus === "checked" || state.identityStatus === "looks_correct";
   const identityUncertain = state.identityStatus === "uncertain";
   const sourcesDone = state.reviewedSourceIds.length > 0;
   const sourcesStarted = state.openedSourceIds.length > 0;

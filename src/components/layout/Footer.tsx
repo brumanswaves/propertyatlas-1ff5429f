@@ -67,7 +67,8 @@ export function Footer() {
             © {new Date().getFullYear()} ErfStoep. All Rights Reserved.
           </p>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
-            Pilot data shown is mock data for demonstration purposes. Estimates are not certified valuations.
+            Pilot data shown is mock data for demonstration purposes. Estimates are not certified
+            valuations.
           </p>
         </div>
       </div>
@@ -86,11 +87,15 @@ function FooterCol({
 }) {
   return (
     <div className={className}>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </div>
       <ul className="mt-3 space-y-2 text-xs">
         {links.map((l) => (
           <li key={l.to}>
-            <Link to={l.to} className="text-foreground/80 hover:text-foreground">{l.label}</Link>
+            <Link to={l.to} className="text-foreground/80 hover:text-foreground">
+              {l.label}
+            </Link>
           </li>
         ))}
       </ul>
@@ -101,12 +106,14 @@ function FooterCol({
 /** Compact footer for the full-screen map view. */
 export function FooterMini() {
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 hidden border-t border-border/60 bg-card/85 px-4 py-1.5 backdrop-blur md:block">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 hidden border-t border-white/10 bg-[#06152A]/55 px-4 py-1.5 backdrop-blur-xl md:block">
+      <div className="pointer-events-auto mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-white/50">
         <span>© {new Date().getFullYear()} ErfStoep · All Rights Reserved</span>
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {FOOTER_MINI_LINKS.map((l) => (
-            <Link key={l.to} to={l.to} className="hover:text-foreground">{l.label}</Link>
+            <Link key={l.to} to={l.to} className="hover:text-[#FFB86B]">
+              {l.label}
+            </Link>
           ))}
         </nav>
       </div>

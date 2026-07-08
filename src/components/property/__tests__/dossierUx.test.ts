@@ -373,22 +373,21 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Every erf. All the facts.");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
-    expect(panel).toContain("How ErfStoep builds your report");
-    expect(panel).toContain("Know this erf");
-    expect(panel).toContain("Confirm the parcel, save evidence, run numbers, and create one Stoep");
-    expect(panel).toContain("Mini report");
-    expect(panel).toContain('["Identity", "Checked", "text-emerald-700"]');
-    expect(panel).toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
-    expect(panel).toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
-    expect(panel).toContain('["Strategy", "Not started", "text-[#64748B]"]');
-    expect(panel).toContain("Evidence Vault");
-    expect(panel).toContain("Save source checks, uploaded reports, notes, listings and comps.");
-    expect(panel).toContain("Strategy Lab");
-    expect(panel).toContain("Run build, flip, hold and max-offer calculators.");
-    expect(panel).toContain("Stoep Report");
-    expect(panel).toContain(
-      "Stoep AI uses saved evidence and assumptions to create one clear report.",
-    );
+    expect(panel).toContain("ErfStoep Report Builder");
+    expect(panel).toContain("This erf file becomes one final report.");
+    expect(panel).toContain("No fake progress");
+    expect(panel).toContain("buildReportBuilderProgress");
+    expect(panel).toContain("buildReportActionCards");
+    expect(panel).toContain("savedMarketEvidence.length");
+    expect(panel).toContain("reportActions.map");
+    expect(panel).toContain("{action.title}");
+    expect(panel).toContain("{action.body}");
+    expect(panel).toContain("{action.stat}");
+    expect(panel).toContain("{action.action}");
+    expect(panel).not.toContain("Mini report");
+    expect(panel).not.toContain('["Identity", "Checked", "text-emerald-700"]');
+    expect(panel).not.toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
+    expect(panel).not.toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
     expect(panel).toContain("bg-[#F7FBFF]");
     expect(panel).toContain("border-[#D9E6F2]");
     expect(panel).toContain(
