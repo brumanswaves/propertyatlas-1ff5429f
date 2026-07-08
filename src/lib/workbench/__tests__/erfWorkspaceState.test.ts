@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildErfWorkspaceNextStep,
+  buildStoepStepProgress,
   createEmptyErfWorkspaceState,
   erfWorkspaceStateKey,
   readErfWorkspaceState,
@@ -53,7 +54,23 @@ describe("erfWorkspaceState", () => {
 
   it("starts recommended next step with official identity", () => {
     expect(buildErfWorkspaceNextStep(createEmptyErfWorkspaceState())).toMatchObject({
-      title: "Verify the official parcel identity first.",
+      title: "Verify the official parcel identity",
+      tab: "research",
+      why: "Every comp, calculator and report depends on researching the correct erf.",
+      doneWhen:
+        "Identity looks correct is selected, or source review is completed and identity is checked.",
+    });
+  });
+
+  it("moves an opened source into review before identity completion", () => {
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        openedSourceIds: ["csg-property-viewer"],
+      }),
+    ).toMatchObject({
+      title: "Review the official source",
+      doNow: "Compare erf number, portion, area, size, LPI, parcel key and coordinates.",
       tab: "research",
     });
   });
@@ -65,7 +82,8 @@ describe("erfWorkspaceState", () => {
         identityStatus: "uncertain",
       }),
     ).toMatchObject({
-      title: "Resolve official parcel identity before using market or strategy tools.",
+      title: "Resolve official parcel identity",
+      next: "Build Market Evidence once the identity is comfortable.",
       tab: "research",
     });
   });
@@ -76,7 +94,7 @@ describe("erfWorkspaceState", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "looks_correct",
       }),
-    ).toMatchObject({ title: "Build market evidence next.", tab: "listings" });
+    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
 
     expect(
       buildErfWorkspaceNextStep({
@@ -84,7 +102,7 @@ describe("erfWorkspaceState", () => {
         identityStatus: "checked",
         marketEvidenceStarted: true,
       }),
-    ).toMatchObject({ title: "Run Strategy Lab calculators next.", tab: "calculators" });
+    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
 
     expect(
       buildErfWorkspaceNextStep({
@@ -93,7 +111,46 @@ describe("erfWorkspaceState", () => {
         marketEvidenceStarted: true,
         calculatorStarted: true,
       }),
-    ).toMatchObject({ title: "Create Stoep Report next.", tab: "reports" });
+    ).toMatchObject({ title: "Create Stoep Report", tab: "reports" });
+  });
+
+  it("builds honest StoepSteps progress from workspace state", () => {
+    expect(buildStoepStepProgress(createEmptyErfWorkspaceState())).toMatchObject([
+      { label: "Identity", status: "Current" },
+      { label: "Sources", status: "Needs evidence" },
+      { label: "Market", status: "Not started" },
+      { label: "Strategy", status: "Not started" },
+      { label: "Report", status: "Not started" },
+    ]);
+
+    expect(
+      buildStoepStepProgress({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "uncertain",
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "Identity", status: "Blocked / uncertain" }),
+        expect.objectContaining({ label: "Market", status: "Blocked / uncertain" }),
+      ]),
+    );
+
+    expect(
+      buildStoepStepProgress({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "looks_correct",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        calculatorStarted: true,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "Identity", status: "Done" }),
+        expect.objectContaining({ label: "Sources", status: "Done" }),
+        expect.objectContaining({ label: "Market", status: "Done" }),
+        expect.objectContaining({ label: "Report", status: "Current" }),
+      ]),
+    );
   });
 
   it("does not claim fake verification or automation", () => {

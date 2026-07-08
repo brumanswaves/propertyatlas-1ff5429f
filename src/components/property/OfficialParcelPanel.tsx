@@ -33,6 +33,7 @@ import {
 import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
 import {
   buildErfWorkspaceNextStep,
+  buildStoepStepProgress,
   readErfWorkspaceState,
   updateErfWorkspaceState,
   type ErfWorkspaceIdentityStatus,
@@ -887,6 +888,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     readErfWorkspaceState(parcelId),
   );
   const [shareCopied, setShareCopied] = useState(false);
+  const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
   useEffect(() => {
@@ -910,6 +912,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
     setShareCopied(false);
+    setWorkflowFeedback(null);
   }, [parcelId]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
@@ -1133,20 +1136,33 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   function markSourceOpened(sourceId: string) {
     addWorkspaceSourceId("openedSourceIds", sourceId);
+    setWorkflowFeedback("Opened. Mark reviewed after checking the details.");
   }
 
   function markSourceReviewed(sourceId: string) {
     const openedSourceIds = Array.from(new Set([...workspaceState.openedSourceIds, sourceId]));
     const reviewedSourceIds = Array.from(new Set([...workspaceState.reviewedSourceIds, sourceId]));
     setWorkspacePatch({ openedSourceIds, reviewedSourceIds, dirty: true });
+    setWorkflowFeedback("Reviewed by user. This records progress, not legal verification.");
     toast.success("Source marked reviewed");
   }
 
   function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
     if (options?.markStarted) {
-      if (nextTab === "listings") setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
-      if (nextTab === "calculators") setWorkspacePatch({ calculatorStarted: true, dirty: true });
-      if (nextTab === "reports") setWorkspacePatch({ reportStarted: true, dirty: true });
+      if (nextTab === "listings") {
+        setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
+        setWorkflowFeedback(
+          "Market step started. Save a listing, comp, address or note to move toward Strategy.",
+        );
+      }
+      if (nextTab === "calculators") {
+        setWorkspacePatch({ calculatorStarted: true, dirty: true });
+        setWorkflowFeedback("Strategy Lab started. Calculator outputs are estimates from your assumptions.");
+      }
+      if (nextTab === "reports") {
+        setWorkspacePatch({ reportStarted: true, dirty: true });
+        setWorkflowFeedback("Stoep Report step started. Use saved evidence and assumptions, not fake data.");
+      }
     }
     setTab(nextTab);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
@@ -1163,10 +1179,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
     const message =
       nextStatus === "checked"
-        ? "Official identity evidence started"
+        ? "Official identity evidence started. Next: mark a source reviewed or confirm the identity."
         : nextStatus === "looks_correct"
-          ? "Identity marked user checked"
-          : "Identity marked uncertain";
+          ? "Identity marked as looking correct. Next: build market evidence."
+          : "Identity marked uncertain. Resolve identity before using market or strategy tools.";
+    setWorkflowFeedback(message);
     toast.success(message);
   }
 
@@ -1213,6 +1230,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isOverview = tab === "overview";
   const nextStep = buildErfWorkspaceNextStep(workspaceState);
+  const stoepSteps = buildStoepStepProgress(workspaceState);
   const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
   const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
@@ -1552,16 +1570,97 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   </div>
                 </div>
 
+                <div className="relative mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                        StoepSteps progress
+                      </div>
+                      <h4 className="mt-1 text-xl font-semibold tracking-tight text-[#0D1B2A]">
+                        Identity → Sources / Evidence → Market → Strategy → Stoep Report
+                      </h4>
+                    </div>
+                    <p className="max-w-xl text-sm leading-6 text-[#0D1B2A]/64">
+                      Opening a source starts the step. Reviewed by user, identity choices, saved
+                      evidence and calculator/report starts move the workflow forward.
+                    </p>
+                  </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-5">
+                    {stoepSteps.map((step) => (
+                      <div
+                        key={step.id}
+                        className={cn(
+                          "rounded-2xl border bg-white p-3 shadow-[0_14px_32px_-30px_rgba(13,27,42,0.45)]",
+                          step.status === "Current"
+                            ? "border-[#FF6A00]/36 ring-1 ring-[#FF6A00]/18"
+                            : step.status === "Done"
+                              ? "border-emerald-500/28"
+                              : step.status === "Blocked / uncertain"
+                                ? "border-[#C75A31]/28 bg-[#fff7f2]"
+                                : "border-[#0D1B2A]/10",
+                        )}
+                      >
+                        <div className="text-sm font-semibold text-[#0D1B2A]">{step.label}</div>
+                        <div
+                          className={cn(
+                            "mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                            step.status === "Current"
+                              ? "bg-[#FF6A00] text-white"
+                              : step.status === "Done"
+                                ? "bg-emerald-600 text-white"
+                                : step.status === "Blocked / uncertain"
+                                  ? "bg-[#C75A31] text-white"
+                                  : "bg-[#0D1B2A]/8 text-[#0D1B2A]/62",
+                          )}
+                        >
+                          {step.status}
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+                          Done when: {step.doneWhen}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
                       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                        Recommended next step
+                        Current StoepStep
                       </div>
                       <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
                         {nextStep.title}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">{nextStep.body}</p>
+                      <div className="mt-4 grid gap-2 md:grid-cols-2">
+                        {[
+                          ["Why this matters", nextStep.why],
+                          ["Do this now", nextStep.doNow],
+                          ["Done when", nextStep.doneWhen],
+                          ["Next", nextStep.next],
+                        ].map(([label, value]) => (
+                          <div
+                            key={label}
+                            className="rounded-2xl border border-[#0D1B2A]/8 bg-white/78 px-3 py-2"
+                          >
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                              {label}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/70">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {workflowFeedback && (
+                        <p className="mt-4 rounded-2xl border border-[#FF6A00]/24 bg-white px-3 py-2 text-sm font-semibold text-[#0D1B2A]">
+                          What changed: {workflowFeedback}
+                        </p>
+                      )}
+                      {!workspaceState.saved && workspaceState.dirty && (
+                        <p className="mt-3 rounded-2xl border border-[#0D1B2A]/10 bg-white/72 px-3 py-2 text-sm text-[#0D1B2A]/68">
+                          Changes are stored in this browser. Save this erf to keep it in My Erfs.
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
