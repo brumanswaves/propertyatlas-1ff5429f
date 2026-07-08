@@ -527,30 +527,36 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
-        {demoMode ? (
-          <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
-              Demo Data
-            </span>
-            Pilot region · St Francis Bay. Mock property information shown for demonstration.
-          </>
-        ) : (
-          <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-              Official Public Data
-            </span>
-            Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
-          </>
-        )}
+      <div className="pointer-events-none absolute bottom-16 left-4 z-20 hidden max-w-md md:block">
+        <div className="rounded-2xl border border-white/10 bg-[#06152A]/85 px-4 py-3 text-[11px] font-medium text-white/75 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,106,0,0.05),0_0_40px_-10px_rgba(255,106,0,0.25)] backdrop-blur-xl">
+          {demoMode ? (
+            <>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                Demo Data
+              </div>
+              <div className="text-white/80">
+                Pilot region · St Francis Bay. Mock property information shown for demonstration.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                Official Public Data
+              </div>
+              <div className="text-white/80">
+                Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <button
         onClick={() => setAddOpen(true)}
-        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-[11px] font-semibold text-background shadow-panel hover:opacity-90 md:bottom-6 md:right-6"
+        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#06152A]/90 px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_16px_40px_-16px_rgba(0,0,0,0.8),0_0_20px_-6px_rgba(255,106,0,0.35)] backdrop-blur-xl transition hover:bg-[#0D1B2A] md:bottom-14 md:right-6"
         title="Add a property to your research"
       >
-        <Plus className="h-3.5 w-3.5" /> Add property
+        <Plus className="h-3.5 w-3.5 text-[#FF6A00]" /> Add property
       </button>
 
       <FooterMini />
