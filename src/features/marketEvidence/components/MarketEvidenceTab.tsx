@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BookmarkCheck,
-  CheckCircle2,
   Copy,
   ExternalLink,
   MapPin,
@@ -37,7 +36,6 @@ import {
   buildSimpleListingSearches,
   resolvePropertyIdentity,
   type PropertyIdentity,
-  type PropertyIdentityOverride,
   type SimpleListingSearch,
 } from "../propertyIdentity";
 import {
@@ -268,6 +266,27 @@ function sourceDomainFromUrl(url: string) {
   }
 }
 
+function inferAddressParts(formattedAddress: string) {
+  const parts = formattedAddress
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const streetLine = parts[0] ?? "";
+  const streetMatch = streetLine.match(/^(\d+[A-Za-z]?)\s+(.+)$/);
+  const province = parts.find((part) =>
+    /eastern cape|western cape|gauteng|kwazulu|free state|limpopo|mpumalanga|north west|northern cape/i.test(
+      part,
+    ),
+  );
+  return {
+    streetNumber: streetMatch?.[1] ?? "",
+    streetName: streetMatch?.[2] ?? streetLine,
+    suburb: parts[1] ?? "",
+    town: parts[2] ?? "",
+    province: province ?? "",
+  };
+}
+
 function confidenceLabel(identity: PropertyIdentity) {
   if (identity.confidence === "high") return "High confidence";
   if (identity.confidence === "medium") return "Medium confidence";
@@ -329,7 +348,6 @@ function suggestedAreaChips(identity: PropertyIdentity) {
 export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const {
     loading,
-    savedPropertyExists,
     evidence,
     propertyIdentity,
     marketAddressIntelligence,
@@ -339,7 +357,6 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     deleteEvidence,
     upsertCandidate,
     dismissCandidate,
-    savePropertyIdentity,
     saveMarketAddressIntelligence,
   } = useSavedMarketEvidence(parcel.id);
   const selectedAddress = selectedMarketAddress(marketAddressIntelligence);
@@ -354,16 +371,9 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
   );
   const searches = useMemo(() => buildSimpleListingSearches(identity), [identity]);
   const summary = useMemo(() => calculateMarketEvidenceSummary(evidence), [evidence]);
-  const [identityDraft, setIdentityDraft] = useState<PropertyIdentityOverride>(() => ({
-    address: identity.bestAddress ?? "",
-    streetName: identity.streetName ?? "",
-    marketSuburb: identity.marketSuburb ?? "",
-    note: identity.userNote ?? "",
-  }));
   const [addressDraft, setAddressDraft] = useState<AddressDraft>(() =>
     addressDraftFromIdentity(identity),
   );
-  const [editingIdentity, setEditingIdentity] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
   const [compDraft, setCompDraft] = useState<CompDraft>(() => emptyCompDraft());
   const [candidateDraft, setCandidateDraft] = useState<CandidateDraft>(() =>
@@ -409,36 +419,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
   }, [areaResults, exactResults, radarMode, radarRan]);
 
   useEffect(() => {
-    setIdentityDraft({
-      address: identity.bestAddress ?? "",
-      streetName: identity.streetName ?? "",
-      marketSuburb: identity.marketSuburb ?? "",
-      note: identity.userNote ?? "",
-      confirmedAt: propertyIdentity?.confirmedAt ?? null,
-    });
     setAddressDraft(addressDraftFromIdentity(identity));
-  }, [identity, propertyIdentity?.confirmedAt]);
+  }, [identity]);
 
   async function copy(phrase: string) {
     const ok = await copyToClipboard(phrase);
     if (ok) toast.success("Search phrase copied");
     else toast.error("Could not copy phrase");
-  }
-
-  async function confirmAddress() {
-    await savePropertyIdentity({
-      ...identityDraft,
-      address: identity.bestAddress ?? identityDraft.address ?? null,
-      streetName: identity.streetName ?? identityDraft.streetName ?? null,
-      marketSuburb: identity.marketSuburb ?? identityDraft.marketSuburb ?? null,
-      confirmedAt: new Date().toISOString(),
-    });
-    setEditingIdentity(false);
-  }
-
-  async function saveEditedIdentity() {
-    await savePropertyIdentity(identityDraft);
-    setEditingIdentity(false);
   }
 
   async function saveAddressCandidate(source: AddressCandidate["source"] = "user_entered") {
@@ -462,14 +449,14 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         "Market address is used for portal matching. It does not replace official parcel data.",
     });
     const existing = marketAddressIntelligence?.candidates ?? [];
-    await saveMarketAddressIntelligence({
+    const ok = await saveMarketAddressIntelligence({
       selectedAddressId: candidate.id,
       candidates: [candidate, ...existing],
       userConfirmedAddress: candidate,
       lastResolvedAt: new Date().toISOString(),
       notes: addressDraft.notes || null,
     });
-    setEditingAddress(false);
+    if (ok) setEditingAddress(false);
   }
 
   async function useSuggestedAddress(candidate: AddressCandidate) {
@@ -586,19 +573,11 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       <PropertyIdentityCard
         identity={identity}
         selectedAddress={selectedAddress}
-        savedPropertyExists={savedPropertyExists}
-        editing={editingIdentity}
-        draft={identityDraft}
-        setDraft={setIdentityDraft}
-        onEdit={() => setEditingIdentity(true)}
-        onConfirm={confirmAddress}
-        onSave={saveEditedIdentity}
       />
 
       <AddressIntelligenceSection
         identity={identity}
         parcel={parcel}
-        savedPropertyExists={savedPropertyExists}
         selectedAddress={selectedAddress}
         intelligence={marketAddressIntelligence}
         mapsUrl={mapsUrl}
@@ -616,7 +595,6 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       />
 
       <EvidenceEntryPanel
-        savedPropertyExists={savedPropertyExists}
         onAddEvidence={() => {
           setCompDraft(emptyCompDraft());
           setShowCompForm(true);
@@ -627,7 +605,6 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       <SavedCompsSection
         loading={loading}
         evidence={evidence}
-        savedPropertyExists={savedPropertyExists}
         compDraft={compDraft}
         setCompDraft={setCompDraft}
         showCompForm={showCompForm}
@@ -688,23 +665,9 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 function PropertyIdentityCard({
   identity,
   selectedAddress,
-  savedPropertyExists,
-  editing,
-  draft,
-  setDraft,
-  onEdit,
-  onConfirm,
-  onSave,
 }: {
   identity: PropertyIdentity;
   selectedAddress: AddressCandidate | null;
-  savedPropertyExists: boolean;
-  editing: boolean;
-  draft: PropertyIdentityOverride;
-  setDraft: (draft: PropertyIdentityOverride) => void;
-  onEdit: () => void;
-  onConfirm: () => void;
-  onSave: () => void;
 }) {
   return (
     <section className="rounded-3xl border border-accent/20 bg-gradient-to-br from-[#fff8ec] to-[#f8efe2] p-5 shadow-[0_18px_50px_rgba(120,72,24,0.10)]">
@@ -771,68 +734,6 @@ function PropertyIdentityCard({
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={!savedPropertyExists || !identity.bestAddress}
-          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-        >
-          <CheckCircle2 className="h-4 w-4" /> Confirm address
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-accent/10"
-        >
-          <Pencil className="h-4 w-4" /> Edit address
-        </button>
-        {!savedPropertyExists && (
-          <span className="inline-flex items-center rounded-full bg-white/70 px-3 py-2 text-xs font-semibold text-stone-700">
-            Save this erf first to store an edited address.
-          </span>
-        )}
-      </div>
-
-      {editing && (
-        <div className="mt-4 grid gap-2 rounded-2xl border border-stone-200 bg-white/80 p-3">
-          <input
-            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-            placeholder="Address"
-            value={draft.address ?? ""}
-            onChange={(event) => setDraft({ ...draft, address: event.target.value })}
-          />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input
-              className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-              placeholder="Street name"
-              value={draft.streetName ?? ""}
-              onChange={(event) => setDraft({ ...draft, streetName: event.target.value })}
-            />
-            <input
-              className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-              placeholder="Market suburb"
-              value={draft.marketSuburb ?? ""}
-              onChange={(event) => setDraft({ ...draft, marketSuburb: event.target.value })}
-            />
-          </div>
-          <textarea
-            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm"
-            rows={2}
-            placeholder="Identity note"
-            value={draft.note ?? ""}
-            onChange={(event) => setDraft({ ...draft, note: event.target.value })}
-          />
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={!savedPropertyExists}
-            className="inline-flex w-fit items-center gap-1.5 rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
-          >
-            <BookmarkCheck className="h-4 w-4" /> Save identity
-          </button>
-        </div>
-      )}
     </section>
   );
 }
@@ -840,7 +741,6 @@ function PropertyIdentityCard({
 function AddressIntelligenceSection({
   identity,
   parcel,
-  savedPropertyExists,
   selectedAddress,
   intelligence,
   mapsUrl,
@@ -855,7 +755,6 @@ function AddressIntelligenceSection({
 }: {
   identity: PropertyIdentity;
   parcel: NormalizedOfficialParcel;
-  savedPropertyExists: boolean;
   selectedAddress: AddressCandidate | null;
   intelligence: MarketAddressIntelligence | null;
   mapsUrl: string | null;
@@ -876,7 +775,7 @@ function AddressIntelligenceSection({
     <section className="rounded-3xl border border-stone-200 bg-[#fffdf8] p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <SectionTitle>Address Intelligence</SectionTitle>
+          <SectionTitle>Market Address</SectionTitle>
           <p className="mt-1 text-sm text-stone-700">
             Market address is used for portal matching. It does not replace official parcel data.
           </p>
@@ -991,7 +890,6 @@ function AddressIntelligenceSection({
           draft={draft}
           setDraft={setDraft}
           onSave={onSave}
-          disabled={!savedPropertyExists}
           fallbackArea={identity.marketSuburb ?? identity.town ?? ""}
           suggestions={[
             identity.bestAddress,
@@ -1008,14 +906,12 @@ function AddressForm({
   draft,
   setDraft,
   onSave,
-  disabled,
   fallbackArea,
   suggestions,
 }: {
   draft: AddressDraft;
   setDraft: (draft: AddressDraft) => void;
   onSave: () => void;
-  disabled: boolean;
   fallbackArea: string;
   suggestions: string[];
 }) {
@@ -1058,13 +954,22 @@ function AddressForm({
   async function chooseSuggestion(suggestion: AddressAutocompleteSuggestion) {
     try {
       const details = await fetchAddressPlaceDetails(suggestion.placeId);
+      const parts = inferAddressParts(details.formattedAddress);
       setDraft({
         ...draft,
         formattedAddress: details.formattedAddress,
+        streetNumber: parts.streetNumber || draft.streetNumber,
+        streetName: parts.streetName || draft.streetName,
+        suburb: parts.suburb || draft.suburb,
+        town: parts.town || draft.town,
+        province: parts.province || draft.province,
         lat: String(details.lat),
         lng: String(details.lng),
+        notes: draft.notes || "Selected from Google Places autocomplete",
       });
-      setAutocompleteStatus("Address selected from Google Places. This is market context, not official parcel identity.");
+      setAutocompleteStatus(
+        "Address selected from Google Places. This is market context, not official parcel identity.",
+      );
     } catch (error) {
       setAutocompleteStatus(error instanceof Error ? error.message : "Address details unavailable.");
     }
@@ -1158,8 +1063,7 @@ function AddressForm({
       <button
         type="button"
         onClick={onSave}
-        disabled={disabled}
-        className={`${PILL_PRIMARY} w-fit disabled:opacity-50`}
+        className={`${PILL_PRIMARY} w-fit`}
       >
         <BookmarkCheck className="h-4 w-4" /> Save market address
       </button>
@@ -1168,11 +1072,9 @@ function AddressForm({
 }
 
 function EvidenceEntryPanel({
-  savedPropertyExists,
   onAddEvidence,
   onOpenFallback,
 }: {
-  savedPropertyExists: boolean;
   onAddEvidence: () => void;
   onOpenFallback: () => void;
 }) {
@@ -1191,28 +1093,32 @@ function EvidenceEntryPanel({
             your evidence with this erf; it does not extract portal content.
           </p>
         </div>
-        <Badge>{savedPropertyExists ? "Ready to save" : "Save erf first"}</Badge>
+        <Badge>Local workspace ready</Badge>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={!savedPropertyExists}
           onClick={onAddEvidence}
-          className={`${PILL_PRIMARY} disabled:opacity-50`}
+          className={PILL_PRIMARY}
         >
           <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
+        </button>
+        <button
+          type="button"
+          onClick={onAddEvidence}
+          className={PILL_SECONDARY}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add comp
         </button>
         <button type="button" onClick={onOpenFallback} className={PILL_SECONDARY}>
           <Copy className="h-3.5 w-3.5" /> Copy area search phrase
         </button>
       </div>
 
-      {!savedPropertyExists && (
-        <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-white/75 px-3 py-2 text-sm text-stone-700">
-          Save this erf first to store listing URLs, comps and market notes in this workspace.
-        </p>
-      )}
+      <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-white/75 px-3 py-2 text-sm text-stone-700">
+        Saved locally for this erf. Save to My Erfs to keep it in your dashboard.
+      </p>
     </section>
   );
 }
@@ -1507,7 +1413,6 @@ function FallbackSearchTools({
 function SavedCompsSection({
   loading,
   evidence,
-  savedPropertyExists,
   compDraft,
   setCompDraft,
   showCompForm,
@@ -1517,7 +1422,6 @@ function SavedCompsSection({
 }: {
   loading: boolean;
   evidence: SavedMarketEvidence[];
-  savedPropertyExists: boolean;
   compDraft: CompDraft;
   setCompDraft: (draft: CompDraft) => void;
   showCompForm: boolean;
@@ -1537,22 +1441,19 @@ function SavedCompsSection({
         </div>
         <button
           type="button"
-          disabled={!savedPropertyExists}
           onClick={() => {
             setCompDraft(emptyCompDraft());
             setShowCompForm(!showCompForm);
           }}
-          className={`${PILL_PRIMARY} disabled:opacity-50`}
+          className={PILL_PRIMARY}
         >
           <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
         </button>
       </div>
-      {!savedPropertyExists && (
-        <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-accent/10 px-3 py-2 text-sm text-stone-700">
-          Save this erf first to store comps and edited addresses.
-        </p>
-      )}
-      {showCompForm && savedPropertyExists && (
+      <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-accent/10 px-3 py-2 text-sm text-stone-700">
+        Saved locally for this erf. Save to My Erfs to keep it in your dashboard.
+      </p>
+      {showCompForm && (
         <CompForm draft={compDraft} setDraft={setCompDraft} onSave={saveComp} />
       )}
       {loading ? (

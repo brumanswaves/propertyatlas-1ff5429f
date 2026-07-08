@@ -101,6 +101,48 @@ function parsePropertyIdentity(value: unknown): PropertyIdentityOverride | null 
   };
 }
 
+function localMarketEvidenceKey(parcelId: string) {
+  return `erfstoep.marketEvidence.${parcelId}`;
+}
+
+function readLocalUserData(parcelId: string): Record<string, unknown> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(localMarketEvidenceKey(parcelId));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return isRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalUserData(parcelId: string, nextUserData: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(localMarketEvidenceKey(parcelId), JSON.stringify(nextUserData));
+}
+
+function applyUserData(
+  parcelId: string,
+  nextUserData: Record<string, unknown>,
+  setters: {
+    setUserData: (value: Record<string, unknown>) => void;
+    setEvidence: (value: SavedMarketEvidence[]) => void;
+    setCandidates: (value: ListingCandidate[]) => void;
+    setDismissedCandidateIds: (value: string[]) => void;
+    setPropertyIdentity: (value: PropertyIdentityOverride | null) => void;
+    setMarketAddressIntelligence: (value: MarketAddressIntelligence | null) => void;
+  },
+) {
+  setters.setUserData(nextUserData);
+  setters.setEvidence(parseEvidence(nextUserData.savedMarketEvidence, parcelId));
+  setters.setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
+  setters.setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
+  setters.setPropertyIdentity(parsePropertyIdentity(nextUserData.propertyIdentity));
+  setters.setMarketAddressIntelligence(
+    parseMarketAddressIntelligence(nextUserData.marketAddressIntelligence),
+  );
+}
+
 export function useSavedMarketEvidence(parcelId: string) {
   const { user } = useAuth();
   const [savedPropertyExists, setSavedPropertyExists] = useState(false);
@@ -123,6 +165,15 @@ export function useSavedMarketEvidence(parcelId: string) {
     setPropertyIdentity(null);
     setMarketAddressIntelligence(null);
     setUserData({});
+    const localUserData = readLocalUserData(parcelId);
+    applyUserData(parcelId, localUserData, {
+      setUserData,
+      setEvidence,
+      setCandidates,
+      setDismissedCandidateIds,
+      setPropertyIdentity,
+      setMarketAddressIntelligence,
+    });
     if (!user) {
       setLoading(false);
       return;
@@ -136,14 +187,16 @@ export function useSavedMarketEvidence(parcelId: string) {
       .maybeSingle()
       .then(({ data }) => {
         if (!alive) return;
-        const raw = isRecord(data?.user_data) ? data.user_data : {};
+        const raw = isRecord(data?.user_data) ? data.user_data : localUserData;
         setSavedPropertyExists(Boolean(data));
-        setUserData(raw);
-        setEvidence(parseEvidence(raw.savedMarketEvidence, parcelId));
-        setCandidates(parseCandidates(raw.marketEvidenceCandidates));
-        setDismissedCandidateIds(parseDismissed(raw.dismissedMarketEvidenceCandidateIds));
-        setPropertyIdentity(parsePropertyIdentity(raw.propertyIdentity));
-        setMarketAddressIntelligence(parseMarketAddressIntelligence(raw.marketAddressIntelligence));
+        applyUserData(parcelId, raw, {
+          setUserData,
+          setEvidence,
+          setCandidates,
+          setDismissedCandidateIds,
+          setPropertyIdentity,
+          setMarketAddressIntelligence,
+        });
         setLoading(false);
       });
 
@@ -152,12 +205,21 @@ export function useSavedMarketEvidence(parcelId: string) {
     };
   }, [parcelId, user]);
 
-  const canSave = Boolean(user && savedPropertyExists);
+  const canSave = true;
 
   async function persistUserData(nextUserData: Record<string, unknown>) {
     if (!user || !savedPropertyExists) {
-      toast.message("Save this property first to store market evidence.");
-      return false;
+      writeLocalUserData(parcelId, nextUserData);
+      applyUserData(parcelId, nextUserData, {
+        setUserData,
+        setEvidence,
+        setCandidates,
+        setDismissedCandidateIds,
+        setPropertyIdentity,
+        setMarketAddressIntelligence,
+      });
+      toast.message("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
+      return true;
     }
     const { error } = await supabase
       .from("saved_properties")
@@ -168,14 +230,15 @@ export function useSavedMarketEvidence(parcelId: string) {
       toast.error(error.message);
       return false;
     }
-    setUserData(nextUserData);
-    setEvidence(parseEvidence(nextUserData.savedMarketEvidence, parcelId));
-    setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
-    setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
-    setPropertyIdentity(parsePropertyIdentity(nextUserData.propertyIdentity));
-    setMarketAddressIntelligence(
-      parseMarketAddressIntelligence(nextUserData.marketAddressIntelligence),
-    );
+    writeLocalUserData(parcelId, nextUserData);
+    applyUserData(parcelId, nextUserData, {
+      setUserData,
+      setEvidence,
+      setCandidates,
+      setDismissedCandidateIds,
+      setPropertyIdentity,
+      setMarketAddressIntelligence,
+    });
     return true;
   }
 
@@ -269,6 +332,7 @@ export function useSavedMarketEvidence(parcelId: string) {
   async function saveMarketAddressIntelligence(next: MarketAddressIntelligence) {
     const ok = await persistUserData({ ...userData, marketAddressIntelligence: next });
     if (ok) toast.success("Market address updated");
+    return ok;
   }
 
   return {

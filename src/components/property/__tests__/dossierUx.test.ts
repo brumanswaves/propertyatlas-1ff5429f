@@ -441,7 +441,7 @@ describe("official dossier UX guardrails", () => {
 
     expect(dossier).toContain("Listings & Comps");
     expect(marketEvidence).toContain("Find listings and comps for this erf");
-    expect(marketEvidence).toContain("Address Intelligence");
+    expect(marketEvidence).toContain("Market Address");
     expect(marketEvidence).toContain("Add listing or comp evidence");
     expect(marketEvidence).toContain("No confirmed street address yet");
     expect(marketEvidence).toContain("Fallback Search Tools");
@@ -487,6 +487,9 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(hook).toContain("savedMarketEvidence");
+    expect(hook).toContain("localMarketEvidenceKey");
+    expect(hook).toContain("writeLocalUserData");
+    expect(hook).toContain("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
     expect(hook).toContain("propertyIdentity");
     expect(hook).toContain("marketAddressIntelligence");
     expect(tab).toContain("Saved Market Evidence");
@@ -498,6 +501,7 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("Add listing or comp evidence");
+    expect(tab).toContain("Add comp");
     expect(tab).toContain("Listing or comp URL required");
     expect(tab).toContain("Evidence type");
     expect(tab).toContain("Active listing");
@@ -520,13 +524,19 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("Save market address");
+    expect(tab).toContain("Market address is used for portal matching. It does not replace official parcel data.");
     expect(tab).toContain("fetchAddressAutocompleteSuggestions");
     expect(tab).toContain("fetchAddressPlaceDetails");
+    expect(tab).toContain("inferAddressParts(details.formattedAddress)");
+    expect(tab).toContain("Selected from Google Places autocomplete");
     expect(tab).toContain("Google Places autocomplete is not configured here");
     expect(tab).toContain("marketAddressIntelligence");
     expect(tab).toContain("Street address not confirmed yet. Use area search or add a market address.");
+    expect(tab).toContain("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
     expect(tab).toContain("marketEvidenceStarted: true");
     expect(tab).toContain("updateErfWorkspaceState(parcel.id");
+    expect(tab).not.toContain("Save this erf first");
+    expect(tab).not.toContain("showCompForm && savedPropertyExists");
     expect(tab).not.toContain("auto-fill portal content");
     expect(tab).not.toContain("listing scraping");
   });
