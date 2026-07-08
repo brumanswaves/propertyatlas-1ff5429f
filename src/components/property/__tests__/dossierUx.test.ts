@@ -213,6 +213,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Coordinates");
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
+    expect(panel).toContain("Open in Google Maps");
+    expect(panel).toContain("googleMapsCoordinateUrl");
+    expect(panel).toContain("https://www.google.com/maps/@");
     expect(panel).toContain("Back to full map");
     expect(panel).toContain("onBackToMap={handleBackToMap}");
     expect(panel).toContain("map.remove()");
@@ -224,13 +227,26 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Official parcel identity check");
     expect(panel).toContain("StoepSteps / Step 1");
+    expect(panel).toContain("Parcel identity");
+    expect(panel).toContain("Official identifiers");
+    expect(panel).toContain("Map context");
+    expect(panel).toContain("Parcel size / area");
+    expect(panel).toContain("hasParcelArea ?");
+    expect(panel).toContain("Boundary status");
+    expect(panel).toContain("Boundary shown on map from selected public parcel layer");
     expect(panel).toContain("I checked this source");
     expect(panel).toContain("Identity looks correct");
     expect(panel).toContain("Identity uncertain");
     expect(panel).toContain("Copy parcel identifiers");
+    expect(panel).toContain("Copy LPI");
+    expect(panel).toContain("Copy parcel key");
+    expect(panel).toContain("Copy coordinates");
+    expect(panel).toContain("Copy CSG search details");
     expect(panel).toContain("CSG Property Viewer");
     expect(panel).toContain("Kouga Public Map");
     expect(panel).toContain("SG document list");
+    expect(panel).toContain("Open SG document list");
+    expect(panel).toContain("Download the SG diagram");
     expect(panel).toContain("Deeds registry guidance");
     expect(panel).toContain("Not opened");
     expect(panel).toContain("Opened");
@@ -240,12 +256,14 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Source unavailable");
     expect(panel).toContain("SG document list unavailable until buildable fields exist");
     expect(panel).toContain("not a guaranteed per-erf deep link");
-    expect(panel).toContain("Use the copied LPI, parcel key or coordinates");
+    expect(panel).toContain("CSG may open at the national viewer");
+    expect(panel).toContain("Use the copied identifiers or coordinates");
     expect(panel).toContain("Official government guidance for deeds registry information");
     expect(panel).toContain("GOVZA_DEEDS_GUIDANCE_URL");
     expect(panel).not.toContain("Open DeedsWeb");
-    expect(panel).not.toContain("href=\"\"");
-    expect(panel).toContain("Source quality label");
+    expect(panel).not.toContain('href=""');
+    expect(panel).toContain("Source layer");
+    expect(panel).toContain("Source quality");
     expect(panel).toContain("Township / area");
     expect(panel).toContain("User checked, not legally verified");
     expect(panel).toContain("it is not legal, surveying or ownership verification");
@@ -318,9 +336,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Mobile Workbench navigation");
     expect(panel).toContain("mobile-workbench-nav");
     expect(panel).toContain("overflow-x-auto");
-    expect(panel).toContain('onClick={() => selectWorkbenchTab(item.id)}');
+    expect(panel).toContain("onClick={() => selectWorkbenchTab(item.id)}");
     expect(panel).toContain('aria-current={active ? "page" : undefined}');
-    expect(panel).toContain('workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"');
+    expect(panel).toContain("workspaceState.saved");
+    expect(panel).toContain("Saved / unsaved changes");
+    expect(panel).toContain('"Unsaved"');
     expect(panel).toContain("handleBackToMap");
     expect(panel).toContain("min-h-11");
     expect(panel).toContain("sticky top-0 z-30");
@@ -334,9 +354,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).toContain("How ErfStoep builds your report");
     expect(panel).toContain("Know this erf");
-    expect(panel).toContain(
-      "Confirm the parcel, save evidence, run numbers, and create one Stoep",
-    );
+    expect(panel).toContain("Confirm the parcel, save evidence, run numbers, and create one Stoep");
     expect(panel).toContain("Mini report");
     expect(panel).toContain('["Identity", "Checked", "text-emerald-700"]');
     expect(panel).toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
@@ -379,9 +397,15 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Opened. Mark reviewed after checking the details.");
     expect(panel).toContain("Reviewed by user. This records progress, not legal verification.");
     expect(panel).toContain("Identity marked as looking correct. Next: build market evidence.");
-    expect(panel).toContain("Identity marked uncertain. Resolve identity before using market or strategy tools.");
-    expect(panel).toContain("Market step started. Save a listing, comp, address or note to move toward Strategy.");
-    expect(panel).toContain("Changes are stored in this browser. Save this erf to keep it in My Erfs.");
+    expect(panel).toContain(
+      "Identity marked uncertain. Resolve identity before using market or strategy tools.",
+    );
+    expect(panel).toContain(
+      "Market step started. Save a listing, comp, address or note to move toward Strategy.",
+    );
+    expect(panel).toContain(
+      "Changes are stored in this browser. Save this erf to keep it in My Erfs.",
+    );
     expect(panel).toContain("Verify official records");
     expect(panel).toContain("Build market evidence");
     expect(panel).toContain("Run Strategy Lab");
@@ -405,7 +429,9 @@ describe("official dossier UX guardrails", () => {
     expect(workspace).toContain("Review the official source");
     expect(workspace).toContain("At least one official source is reviewed by user.");
     expect(workspace).toContain("Blocked / uncertain");
-    expect(workspace).toContain("Every comp, calculator and report depends on researching the correct erf.");
+    expect(workspace).toContain(
+      "Every comp, calculator and report depends on researching the correct erf.",
+    );
     expect(panel).toContain("readErfWorkspaceState");
     expect(panel).toContain("updateErfWorkspaceState");
     expect(panel).toContain("buildErfWorkspaceNextStep");
@@ -489,7 +515,9 @@ describe("official dossier UX guardrails", () => {
     expect(hook).toContain("savedMarketEvidence");
     expect(hook).toContain("localMarketEvidenceKey");
     expect(hook).toContain("writeLocalUserData");
-    expect(hook).toContain("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
+    expect(hook).toContain(
+      "Saved locally for this erf. Save to My Erfs to keep it in your dashboard.",
+    );
     expect(hook).toContain("propertyIdentity");
     expect(hook).toContain("marketAddressIntelligence");
     expect(tab).toContain("Saved Market Evidence");
@@ -524,15 +552,21 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(tab).toContain("Save market address");
-    expect(tab).toContain("Market address is used for portal matching. It does not replace official parcel data.");
+    expect(tab).toContain(
+      "Market address is used for portal matching. It does not replace official parcel data.",
+    );
     expect(tab).toContain("fetchAddressAutocompleteSuggestions");
     expect(tab).toContain("fetchAddressPlaceDetails");
     expect(tab).toContain("inferAddressParts(details.formattedAddress)");
     expect(tab).toContain("Selected from Google Places autocomplete");
     expect(tab).toContain("Google Places autocomplete is not configured here");
     expect(tab).toContain("marketAddressIntelligence");
-    expect(tab).toContain("Street address not confirmed yet. Use area search or add a market address.");
-    expect(tab).toContain("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
+    expect(tab).toContain(
+      "Street address not confirmed yet. Use area search or add a market address.",
+    );
+    expect(tab).toContain(
+      "Saved locally for this erf. Save to My Erfs to keep it in your dashboard.",
+    );
     expect(tab).toContain("marketEvidenceStarted: true");
     expect(tab).toContain("updateErfWorkspaceState(parcel.id");
     expect(tab).not.toContain("Save this erf first");

@@ -15,6 +15,7 @@ import {
   FileText,
   CheckCircle2,
   ExternalLink,
+  Copy,
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
@@ -204,7 +205,18 @@ function formatMapCoordinate(value: number | undefined): string {
 function formatAreaM2(value: unknown): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return "Area not available";
-  return `${Math.round(n).toLocaleString()} m2`;
+  return `${Math.round(n).toLocaleString()} m²`;
+}
+
+function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | null): string | null {
+  if (!coordinates) return null;
+  if (!Number.isFinite(coordinates.lat) || !Number.isFinite(coordinates.lng)) return null;
+  return `https://www.google.com/maps/@${coordinates.lat},${coordinates.lng},19z`;
+}
+
+function publicFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "Not available yet";
+  return String(value);
 }
 
 function OfficialIdentityChecklist({
@@ -230,7 +242,16 @@ function OfficialIdentityChecklist({
 }) {
   const coordinates = parcel.coordinates
     ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
-    : "Not available";
+    : "Not available yet";
+  const parcelArea = parcel.knownFields.find((field) =>
+    /^(geometry area|shape area|parcel area|erf size|area)$/i.test(field.label),
+  )?.value;
+  const hasParcelArea = parcelArea !== undefined && parcelArea !== null && parcelArea !== "";
+  const boundaryStatus = parcel.layer
+    ? "Boundary shown on map from selected public parcel layer"
+    : parcel.coordinates
+      ? "Selected point only"
+      : "Not available yet";
   const sourceQuality = isCsg
     ? parcel.lpi || parcel.parcelKey
       ? "Official CSG parcel feature"
@@ -238,23 +259,29 @@ function OfficialIdentityChecklist({
     : "Municipal GIS layer context";
   const identifierText = [
     `Normalized parcel id: ${parcel.id}`,
-    `Erf number: ${parcel.erfNumber ?? "Not available"}`,
-    `Portion: ${parcel.portion ?? "Not available"}`,
-    `Township / area: ${parcel.suburbOrArea ?? parcel.town ?? "Not available"}`,
-    `Municipality: ${parcel.municipality ?? "Not available"}`,
-    `Province: ${parcel.province ?? "Not available"}`,
-    `LPI: ${parcel.lpi ?? "Not available"}`,
-    `Parcel key: ${parcel.parcelKey ?? "Not available"}`,
+    `Erf number: ${parcel.erfNumber ?? "Not available yet"}`,
+    `Portion: ${parcel.portion ?? "Not available yet"}`,
+    `Township / area: ${parcel.suburbOrArea ?? parcel.town ?? "Not available yet"}`,
+    `Municipality: ${parcel.municipality ?? "Not available yet"}`,
+    `Province: ${parcel.province ?? "Not available yet"}`,
+    `LPI: ${parcel.lpi ?? "Not available yet"}`,
+    `Parcel key: ${parcel.parcelKey ?? "Not available yet"}`,
     `Coordinates: ${coordinates}`,
+    hasParcelArea ? `Parcel size / area: ${formatAreaM2(parcelArea)}` : null,
+    `Boundary status: ${boundaryStatus}`,
   ].join("\n");
 
-  async function copyIdentifiers() {
+  async function copyText(text: string, success: string) {
     try {
-      await navigator.clipboard.writeText(identifierText);
-      toast.success("Parcel identifiers copied");
+      await navigator.clipboard.writeText(text);
+      toast.success(success);
     } catch {
-      toast.message("Copy failed. Select the identifiers manually.");
+      toast.message("Copy failed. Select the text manually.");
     }
+  }
+
+  async function copyIdentifiers() {
+    await copyText(identifierText, "Parcel identifiers copied");
   }
 
   type VerificationSource = {
@@ -265,6 +292,7 @@ function OfficialIdentityChecklist({
     actionLabel?: string;
     helper?: string;
     unavailableReason?: string;
+    copyHelpers?: Array<{ label: string; value: string | null | undefined; success: string }>;
   };
 
   const verificationSources: VerificationSource[] = [
@@ -277,15 +305,36 @@ function OfficialIdentityChecklist({
       href: sourceUrl,
       actionLabel: "Open source",
       helper: isCsg
-        ? "Use the copied LPI, parcel key or coordinates after opening if the viewer does not jump directly to this erf."
+        ? "CSG may open at the national viewer. Use the copied identifiers or coordinates to find this erf."
         : "Use the selected erf context and map layers after opening the municipal viewer.",
+      copyHelpers: isCsg
+        ? [
+            { label: "Copy LPI", value: parcel.lpi, success: "LPI copied" },
+            { label: "Copy parcel key", value: parcel.parcelKey, success: "Parcel key copied" },
+            {
+              label: "Copy coordinates",
+              value: parcel.coordinates
+                ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
+                : null,
+              success: "Coordinates copied",
+            },
+            {
+              label: "Copy CSG search details",
+              value: identifierText,
+              success: "CSG search details copied",
+            },
+          ]
+        : undefined,
     },
     {
       id: "sg-document-list",
       name: "SG document list",
       why: "Surveyor-General document list when the registration division, erf and portion can be built safely.",
       href: sgDoc.shown ? sgDoc.url : undefined,
-      actionLabel: "Open SG documents",
+      actionLabel: "Open SG document list",
+      helper: sgDoc.shown
+        ? "This opens the official SG document list for this erf/portion where available. Download the SG diagram, then upload it to this erf workspace when report upload is available."
+        : undefined,
       unavailableReason: sgDoc.shown ? undefined : sgDoc.reason,
     },
     {
@@ -294,7 +343,8 @@ function OfficialIdentityChecklist({
       why: "Official government guidance for deeds registry information. This is guidance, not free ownership verification.",
       href: GOVZA_DEEDS_GUIDANCE_URL,
       actionLabel: "Open guidance",
-      helper: "Use this to understand the official deeds process. ErfStoep does not claim legally verified ownership.",
+      helper:
+        "Use this to understand the official deeds process. ErfStoep does not claim legally verified ownership.",
     },
   ];
 
@@ -305,16 +355,39 @@ function OfficialIdentityChecklist({
     return "Not opened";
   };
 
-  const fields = [
-    ["Erf number", parcel.erfNumber ?? "Not available"],
-    ["Portion", parcel.portion ?? "Not available"],
-    ["Township / area", parcel.suburbOrArea ?? parcel.town ?? "Not available"],
-    ["Municipality", parcel.municipality ?? "Not available"],
-    ["Province", parcel.province ?? "Not available"],
-    ["LPI", parcel.lpi ?? "Not available"],
-    ["Parcel key", parcel.parcelKey ?? "Not available"],
-    ["Coordinates", coordinates],
-    ["Source quality label", sourceQuality],
+  const fieldGroups = [
+    {
+      title: "Parcel identity",
+      fields: [
+        ["Erf number", publicFieldValue(parcel.erfNumber)],
+        ["Portion", publicFieldValue(parcel.portion)],
+        ["Township / area", publicFieldValue(parcel.suburbOrArea ?? parcel.town)],
+        ["Municipality", publicFieldValue(parcel.municipality)],
+        ["Province", publicFieldValue(parcel.province)],
+      ],
+    },
+    {
+      title: "Official identifiers",
+      fields: [
+        ["LPI", publicFieldValue(parcel.lpi)],
+        ["Parcel key", publicFieldValue(parcel.parcelKey)],
+        [
+          "Registration division",
+          publicFieldValue(sgDoc.fieldsUsed.regDivision ?? sgDoc.fieldsUsed.minorRegion),
+        ],
+        ["SG/CSG office", sgDoc.shown ? "SGCTN / CSG document list" : "Not available yet"],
+      ],
+    },
+    {
+      title: "Map context",
+      fields: [
+        ["Coordinates", coordinates],
+        ...(hasParcelArea ? [["Parcel size / area", formatAreaM2(parcelArea)]] : []),
+        ["Source layer", publicFieldValue(parcel.layer)],
+        ["Source quality", sourceQuality],
+        ["Boundary status", boundaryStatus],
+      ],
+    },
   ];
 
   return (
@@ -340,16 +413,31 @@ function OfficialIdentityChecklist({
         </div>
       </div>
 
-      <dl className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {fields.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-[#0D1B2A]/8 bg-white/88 p-3">
-            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-              {label}
-            </dt>
-            <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">{value}</dd>
-          </div>
+      <div className="mt-5 grid gap-3 xl:grid-cols-3">
+        {fieldGroups.map((group) => (
+          <section
+            key={group.title}
+            className="rounded-[1.35rem] border border-[#0D1B2A]/8 bg-white/88 p-4"
+          >
+            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
+              {group.title}
+            </h4>
+            <dl className="mt-3 grid gap-2">
+              {group.fields.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/70 p-3"
+                >
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                    {label}
+                  </dt>
+                  <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         ))}
-      </dl>
+      </div>
 
       <div className="mt-5 grid gap-3 lg:grid-cols-3">
         {verificationSources.map((source) => {
@@ -397,6 +485,22 @@ function OfficialIdentityChecklist({
                 <p className="mt-3 rounded-xl bg-white/72 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/62">
                   {source.helper}
                 </p>
+              )}
+              {source.copyHelpers && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {source.copyHelpers.map((helper) => (
+                    <button
+                      key={helper.label}
+                      type="button"
+                      disabled={!helper.value}
+                      onClick={() => helper.value && copyText(helper.value, helper.success)}
+                      className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Copy className="h-3 w-3" />
+                      {helper.label}
+                    </button>
+                  ))}
+                </div>
               )}
               {source.unavailableReason && (
                 <p className="mt-3 rounded-xl bg-[#0D1B2A]/5 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/58">
@@ -480,7 +584,9 @@ function OfficialIdentityChecklist({
               : "border-emerald-500/20 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
           )}
         >
-          {status === "looks_correct" ? "Selected: Identity looks correct" : "Identity looks correct"}
+          {status === "looks_correct"
+            ? "Selected: Identity looks correct"
+            : "Identity looks correct"}
           <span
             className={cn(
               "mt-1 block text-xs font-medium leading-5",
@@ -1049,6 +1155,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     isCsg,
     userAddr,
   ]);
+  const selectedErfGoogleMapsUrl = googleMapsCoordinateUrl(normalizedParcel.coordinates);
 
   async function toggleSave() {
     if (!user) {
@@ -1122,10 +1229,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return next;
   }
 
-  function addWorkspaceSourceId(
-    key: "openedSourceIds" | "reviewedSourceIds",
-    sourceId: string,
-  ) {
+  function addWorkspaceSourceId(key: "openedSourceIds" | "reviewedSourceIds", sourceId: string) {
     const current = workspaceState[key];
     const nextIds = Array.from(new Set([...current, sourceId]));
     return setWorkspacePatch({
@@ -1157,11 +1261,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       }
       if (nextTab === "calculators") {
         setWorkspacePatch({ calculatorStarted: true, dirty: true });
-        setWorkflowFeedback("Strategy Lab started. Calculator outputs are estimates from your assumptions.");
+        setWorkflowFeedback(
+          "Strategy Lab started. Calculator outputs are estimates from your assumptions.",
+        );
       }
       if (nextTab === "reports") {
         setWorkspacePatch({ reportStarted: true, dirty: true });
-        setWorkflowFeedback("Stoep Report step started. Use saved evidence and assumptions, not fake data.");
+        setWorkflowFeedback(
+          "Stoep Report step started. Use saved evidence and assumptions, not fake data.",
+        );
       }
     }
     setTab(nextTab);
@@ -1251,7 +1359,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             Erf File
           </div>
           <h3 className="mt-2 truncate text-lg font-semibold tracking-tight">
-            {normalizedParcel.erfNumber ? `Erf ${normalizedParcel.erfNumber}` : resolved.displayTitle}
+            {normalizedParcel.erfNumber
+              ? `Erf ${normalizedParcel.erfNumber}`
+              : resolved.displayTitle}
           </h3>
           <p className="mt-1 truncate text-xs font-medium text-white/62">{fileArea}</p>
           <p className="mt-0.5 truncate text-[11px] text-white/48">
@@ -1265,7 +1375,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 : "bg-[#FFB86B]/16 text-[#FFE0BA] ring-1 ring-[#FFB86B]/20",
             )}
           >
-            {workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"}
+            {workspaceState.saved
+              ? workspaceState.dirty
+                ? "Saved / unsaved changes"
+                : "Saved"
+              : "Unsaved"}
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <button
@@ -1370,7 +1484,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </div>
           )}
           <div className="mt-2 inline-flex rounded-full bg-[#0D1B2A]/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#0D1B2A] md:hidden">
-            {workspaceState.saved ? (workspaceState.dirty ? "Saved / unsaved changes" : "Saved") : "Unsaved"}
+            {workspaceState.saved
+              ? workspaceState.dirty
+                ? "Saved / unsaved changes"
+                : "Saved"
+              : "Unsaved"}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -1549,7 +1667,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                                 <Icon className="h-6 w-6" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-base font-semibold text-[#0D1B2A]">{title}</div>
+                                <div className="text-base font-semibold text-[#0D1B2A]">
+                                  {title}
+                                </div>
                                 <p className="mt-1 text-sm leading-5 text-[#0D1B2A]/62">{body}</p>
                                 <div className="mt-3 flex flex-wrap gap-1.5">
                                   {chips.map((chip) => (
@@ -1750,6 +1870,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 >
                   Back to full map
                 </button>
+                {selectedErfGoogleMapsUrl && (
+                  <a
+                    href={selectedErfGoogleMapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                  >
+                    Open in Google Maps
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
             </div>
             <SelectedErfMiniMap
