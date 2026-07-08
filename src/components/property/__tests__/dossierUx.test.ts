@@ -246,8 +246,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Kouga Public Map");
     expect(panel).toContain("SG document list");
     expect(panel).toContain("Open SG document list");
-    expect(panel).toContain("Download the SG diagram");
-    expect(panel).toContain("SG Diagram Evidence");
+    expect(panel.match(/Open SG document list/g) ?? []).toHaveLength(1);
+    expect(panel).toContain("download the diagram");
+    expect(panel).toContain("SG Diagram / Official Parcel Diagram");
+    expect(panel).not.toContain("SG Diagram Evidence");
+    expect(panel).not.toContain('name: "SG document list"');
     expect(panel).toContain("The SG diagram is the official parcel diagram / plot map");
     expect(panel).toContain("Upload SG diagram");
     expect(panel).toContain(".pdf,.png,.jpg,.jpeg,.tif,.tiff");
@@ -271,7 +274,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Unavailable");
     expect(panel).toContain("Mark reviewed");
     expect(panel).toContain("Source unavailable");
-    expect(panel).toContain("SG document list unavailable until buildable fields exist");
+    expect(panel).toContain("SG document list not available for this erf yet");
     expect(panel).toContain("not a guaranteed per-erf deep link");
     expect(panel).toContain("CSG may open at the national viewer");
     expect(panel).toContain("Use the copied identifiers or coordinates");
