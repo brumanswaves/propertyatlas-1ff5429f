@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   ExternalLink,
   Copy,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
@@ -40,6 +42,16 @@ import {
   type ErfWorkspaceIdentityStatus,
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
+import {
+  isPdfAttachment,
+  isPreviewableImageAttachment,
+  isTiffAttachment,
+  readSgDiagramAttachment,
+  removeSgDiagramAttachment,
+  saveSgDiagramAttachment,
+  SG_DIAGRAM_MAX_BYTES,
+  type ErfWorkspaceAttachmentRecord,
+} from "@/lib/workbench/erfWorkspaceFiles";
 import { toast } from "sonner";
 
 interface Props {
@@ -217,6 +229,252 @@ function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | nu
 function publicFieldValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not available yet";
   return String(value);
+}
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatAttachmentDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function SgDiagramEvidenceSection({
+  parcelId,
+  sgDoc,
+  onOpenSource,
+}: {
+  parcelId: string;
+  sgDoc: SgDocumentResult;
+  onOpenSource: (sourceId: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [attachment, setAttachment] = useState<ErfWorkspaceAttachmentRecord | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const isPdf = attachment ? isPdfAttachment(attachment.fileName, attachment.fileType) : false;
+  const isImage = attachment
+    ? isPreviewableImageAttachment(attachment.fileName, attachment.fileType)
+    : false;
+  const isTiff = attachment ? isTiffAttachment(attachment.fileName, attachment.fileType) : false;
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setStorageError(null);
+    readSgDiagramAttachment(parcelId)
+      .then((record) => {
+        if (!alive) return;
+        setAttachment(record);
+      })
+      .catch((error: Error) => {
+        if (!alive) return;
+        setStorageError(error.message);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [parcelId]);
+
+  useEffect(() => {
+    if (!attachment) {
+      setPreviewUrl(null);
+      return;
+    }
+    const nextUrl = URL.createObjectURL(attachment.file);
+    setPreviewUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [attachment]);
+
+  async function uploadFile(file: File | undefined) {
+    if (!file) return;
+    const result = await saveSgDiagramAttachment(parcelId, file).catch((error: Error) => {
+      setStorageError(error.message);
+      return null;
+    });
+    if (!result) return;
+    if (!result.ok) {
+      if (result.reason === "too_large") {
+        toast.error(
+          "File is too large for local browser storage. Please upload a smaller PDF/image.",
+        );
+      } else {
+        toast.error("Unsupported file type. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+      }
+      return;
+    }
+    setAttachment(result.record);
+    setStorageError(null);
+    onOpenSource("sg-diagram-evidence");
+    toast.success("SG diagram attached to this erf file.");
+  }
+
+  async function removeAttachment() {
+    await removeSgDiagramAttachment(parcelId);
+    setAttachment(null);
+    toast.success("SG diagram attachment removed");
+  }
+
+  return (
+    <section className="mt-5 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+            SG Diagram Evidence
+          </div>
+          <h4 className="mt-2 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+            Attach the official parcel diagram
+          </h4>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
+            The SG diagram is the official parcel diagram / plot map. Open the official SG document
+            list, download the diagram, then upload it here so it stays with this erf file.
+          </p>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/58">
+            Automatic SG import is not enabled yet. For now, download the official diagram and
+            upload it here.
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold",
+            attachment ? "bg-emerald-600 text-white" : "bg-[#0D1B2A]/8 text-[#0D1B2A]/64",
+          )}
+        >
+          {attachment ? "Attached locally" : "Not attached"}
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {sgDoc.shown ? (
+          <a
+            href={sgDoc.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => onOpenSource("sg-document-list")}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+          >
+            Open SG document list
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        ) : (
+          <span className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/10 bg-[#0D1B2A]/5 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/58">
+            SG document list not available for this erf yet
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff7d1f]"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          Upload SG diagram
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff"
+          className="hidden"
+          onChange={(event) => {
+            void uploadFile(event.target.files?.[0]);
+            event.currentTarget.value = "";
+          }}
+        />
+      </div>
+
+      {!sgDoc.shown && (
+        <p className="mt-3 rounded-xl bg-[#0D1B2A]/5 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+          Missing buildable SG document fields: {sgDoc.reason}
+        </p>
+      )}
+
+      <p className="mt-3 rounded-xl border border-dashed border-[#FF6A00]/28 bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
+        Stored locally in this browser for this erf. Save/export support will come later. Maximum
+        local attachment size is {formatFileSize(SG_DIAGRAM_MAX_BYTES)}.
+      </p>
+
+      {storageError && (
+        <p className="mt-3 rounded-xl border border-[#C75A31]/25 bg-[#fff1e9] px-3 py-2 text-xs text-[#7A2D12]">
+          {storageError}
+        </p>
+      )}
+
+      {loading ? (
+        <p className="mt-4 text-sm text-[#0D1B2A]/58">Checking local SG diagram attachment...</p>
+      ) : attachment ? (
+        <div className="mt-4 rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-[#0D1B2A]">{attachment.fileName}</div>
+              <dl className="mt-2 grid gap-1 text-xs text-[#0D1B2A]/68 sm:grid-cols-2">
+                <div>Type: {attachment.fileType}</div>
+                <div>Size: {formatFileSize(attachment.fileSize)}</div>
+                <div>Uploaded: {formatAttachmentDate(attachment.uploadedAt)}</div>
+                <div>Source: {attachment.sourceLabel}</div>
+              </dl>
+              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+                SG diagram attached to this erf file. This records evidence, not legal verification.
+              </p>
+              {isTiff && (
+                <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/62">
+                  TIFF preview may not display in all browsers. The file is still attached to this
+                  erf.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                >
+                  View attachment
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => void removeAttachment()}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#C75A31]/25 bg-white px-4 py-2 text-xs font-semibold text-[#7A2D12] transition hover:bg-[#fff1e9]"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove attachment
+              </button>
+            </div>
+          </div>
+
+          {previewUrl && isImage && (
+            <img
+              src={previewUrl}
+              alt="User uploaded SG diagram preview"
+              className="mt-4 max-h-72 w-full rounded-2xl border border-emerald-500/20 object-contain bg-white"
+            />
+          )}
+          {previewUrl && isPdf && (
+            <iframe
+              title="User uploaded SG diagram PDF preview"
+              src={previewUrl}
+              className="mt-4 h-72 w-full rounded-2xl border border-emerald-500/20 bg-white"
+            />
+          )}
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-[#0D1B2A]/58">
+          No SG diagram attached yet. You can upload one even if the SG document list is not
+          buildable for this erf.
+        </p>
+      )}
+    </section>
+  );
 }
 
 function OfficialIdentityChecklist({
@@ -542,6 +800,8 @@ function OfficialIdentityChecklist({
           );
         })}
       </div>
+
+      <SgDiagramEvidenceSection parcelId={parcel.id} sgDoc={sgDoc} onOpenSource={onOpenSource} />
 
       <div className="mt-5 flex flex-wrap gap-2">
         <button

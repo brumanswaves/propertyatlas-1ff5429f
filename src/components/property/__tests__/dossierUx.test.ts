@@ -247,6 +247,23 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("SG document list");
     expect(panel).toContain("Open SG document list");
     expect(panel).toContain("Download the SG diagram");
+    expect(panel).toContain("SG Diagram Evidence");
+    expect(panel).toContain("The SG diagram is the official parcel diagram / plot map");
+    expect(panel).toContain("Upload SG diagram");
+    expect(panel).toContain(".pdf,.png,.jpg,.jpeg,.tif,.tiff");
+    expect(panel).toContain("Attached locally");
+    expect(panel).toContain("Not attached");
+    expect(panel).toContain(
+      "Stored locally in this browser for this erf. Save/export support will come later.",
+    );
+    expect(panel).toContain("TIFF preview may not display in all browsers");
+    expect(panel).toContain("User uploaded SG diagram");
+    expect(panel).toContain("View attachment");
+    expect(panel).toContain("Remove attachment");
+    expect(panel).toContain("File is too large for local browser storage");
+    expect(panel).toContain("Automatic SG import is not enabled yet");
+    expect(panel).toContain("No SG diagram attached yet");
+    expect(panel).toContain("SG diagram attached to this erf file");
     expect(panel).toContain("Deeds registry guidance");
     expect(panel).toContain("Not opened");
     expect(panel).toContain("Opened");
@@ -262,6 +279,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("GOVZA_DEEDS_GUIDANCE_URL");
     expect(panel).not.toContain("Open DeedsWeb");
     expect(panel).not.toContain('href=""');
+    expect(panel).not.toMatch(/automatic SG document import is enabled|automatically fetch/i);
     expect(panel).toContain("Source layer");
     expect(panel).toContain("Source quality");
     expect(panel).toContain("Township / area");
