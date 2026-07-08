@@ -635,34 +635,34 @@ function OfficialPill({
   if (status.state === "off") return null;
   const map: Record<string, { tone: string; text: string }> = {
     loading: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text: `${label} loading…`,
     },
     loaded: {
-      tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
+      tone: "bg-emerald-500/15 text-emerald-300",
       text:
         label === "CSG"
           ? `CSG parcels loaded: ${status.count}`
           : `Kouga zoning loaded: ${status.count}`,
     },
     imported: {
-      tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300",
+      tone: "bg-sky-500/15 text-sky-300",
       text:
         label === "CSG"
           ? `CSG parcels loaded (imported): ${status.count}`
           : `Kouga zoning loaded (imported): ${status.count}`,
     },
     test: {
-      tone: "bg-accent/20 text-accent dark:text-accent",
+      tone: "bg-[#FF6A00]/20 text-[#FF8A33]",
       text: "TEST GEOMETRY ONLY — not official data",
     },
     empty: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text:
         label === "CSG" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view",
     },
     failed: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text: label === "CSG" ? "CSG unavailable" : "Kouga zoning unavailable",
     },
   };
@@ -670,7 +670,7 @@ function OfficialPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-soft backdrop-blur",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold",
         v.tone,
       )}
       title={status.message ?? undefined}
