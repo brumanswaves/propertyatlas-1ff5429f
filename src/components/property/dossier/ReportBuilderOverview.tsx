@@ -128,9 +128,15 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
                     chipTone(row.done, row.warn),
                   )}
                 >
-                  {row.label === "Identity" && !row.done ? "Needs source check" : row.label === "Sources" ? row.label : null}
-                  {row.label !== "Sources" && (row.label === "Identity" ? (row.done ? "Verified" : "Needs source check") : row.label === "Market" ? `${compsCount} comps saved` : row.label === "Strategy" ? "Not started" : row.label === "Report" ? (row.done ? "Ready" : "Not ready") : "")}
-                  {row.label === "Sources" && `0 reviewed`}
+                  {row.label === "Identity"
+                    ? row.done ? "Verified" : "Needs source check"
+                    : row.label === "Sources"
+                      ? "0 reviewed"
+                      : row.label === "Market"
+                        ? `${compsCount} comps saved`
+                        : row.label === "Strategy"
+                          ? "Not started"
+                          : row.done ? "Ready to build" : "Not ready"}
                 </span>
               </li>
             ))}
