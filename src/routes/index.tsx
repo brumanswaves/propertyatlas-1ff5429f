@@ -383,15 +383,15 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[5.15rem] md:px-4">
-        <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-1.5 overflow-x-auto sm:w-auto sm:max-w-none">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[6.25rem] md:px-4">
+        <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-2 overflow-x-auto sm:w-auto sm:max-w-none">
           <button
             type="button"
             onClick={() => {
               setLocateMessage(null);
               setLocateRequestId((value) => value + 1);
             }}
-            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/90 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#0D1B2A]/75 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_10px_30px_-14px_rgba(0,0,0,0.7)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/90"
           >
             <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
             Locate me
@@ -407,13 +407,13 @@ function AtlasHome() {
         </div>
 
         {!demoMode && (
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[#0D1B2A]/70 px-3 py-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.65)] backdrop-blur-xl">
             <OfficialPill label="CSG" status={officialStatus.csg} />
             <OfficialPill label="Kouga" status={officialStatus.kouga} />
           </div>
         )}
         {locateMessage && (
-          <div className="pointer-events-auto max-w-xl rounded-2xl border border-[#0D1B2A]/10 bg-white/95 px-3 py-2 text-center text-xs font-medium text-[#0D1B2A]/72 shadow-[0_14px_34px_-24px_rgba(13,27,42,0.45)] backdrop-blur">
+          <div className="pointer-events-auto max-w-xl rounded-2xl border border-white/10 bg-[#0D1B2A]/85 px-3 py-2 text-center text-xs font-medium text-white/80 shadow-[0_14px_34px_-24px_rgba(0,0,0,0.7)] backdrop-blur-xl">
             {locateMessage}
           </div>
         )}
