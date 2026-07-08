@@ -296,9 +296,9 @@ function AtlasHome() {
   }, []);
 
   const headerSubtitle = (
-    <span>
-      <span className="font-semibold text-[#0D1B2A]">Every erf. All the facts.</span> Research any
-      South African erf.
+    <span className="inline-flex items-center gap-2 tracking-tight">
+      <span className="font-semibold text-white">Every erf. All the facts.</span>
+      <span className="text-white/55">Research any South African erf.</span>
     </span>
   );
 
@@ -383,15 +383,15 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[5.15rem] md:px-4">
-        <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-1.5 overflow-x-auto sm:w-auto sm:max-w-none">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[6.25rem] md:px-4">
+        <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-2 overflow-x-auto sm:w-auto sm:max-w-none">
           <button
             type="button"
             onClick={() => {
               setLocateMessage(null);
               setLocateRequestId((value) => value + 1);
             }}
-            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0D1B2A]/8 bg-white/90 px-3 py-2 text-xs font-semibold text-[#0D1B2A] shadow-[0_8px_20px_-18px_rgba(13,27,42,0.35)] backdrop-blur transition hover:bg-white"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#0D1B2A]/75 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_10px_30px_-14px_rgba(0,0,0,0.7)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/90"
           >
             <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
             Locate me
@@ -407,13 +407,13 @@ function AtlasHome() {
         </div>
 
         {!demoMode && (
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[#0D1B2A]/70 px-3 py-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.65)] backdrop-blur-xl">
             <OfficialPill label="CSG" status={officialStatus.csg} />
             <OfficialPill label="Kouga" status={officialStatus.kouga} />
           </div>
         )}
         {locateMessage && (
-          <div className="pointer-events-auto max-w-xl rounded-2xl border border-[#0D1B2A]/10 bg-white/95 px-3 py-2 text-center text-xs font-medium text-[#0D1B2A]/72 shadow-[0_14px_34px_-24px_rgba(13,27,42,0.45)] backdrop-blur">
+          <div className="pointer-events-auto max-w-xl rounded-2xl border border-white/10 bg-[#0D1B2A]/85 px-3 py-2 text-center text-xs font-medium text-white/80 shadow-[0_14px_34px_-24px_rgba(0,0,0,0.7)] backdrop-blur-xl">
             {locateMessage}
           </div>
         )}
@@ -527,30 +527,36 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-10 left-4 z-20 hidden max-w-md rounded-2xl bg-card/95 px-3 py-1.5 text-[10px] font-medium text-muted-foreground shadow-soft backdrop-blur md:block">
-        {demoMode ? (
-          <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent dark:text-accent">
-              Demo Data
-            </span>
-            Pilot region · St Francis Bay. Mock property information shown for demonstration.
-          </>
-        ) : (
-          <>
-            <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-              Official Public Data
-            </span>
-            Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
-          </>
-        )}
+      <div className="pointer-events-none absolute bottom-16 left-4 z-20 hidden max-w-md md:block">
+        <div className="rounded-2xl border border-white/10 bg-[#06152A]/85 px-4 py-3 text-[11px] font-medium text-white/75 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,106,0,0.05),0_0_40px_-10px_rgba(255,106,0,0.25)] backdrop-blur-xl">
+          {demoMode ? (
+            <>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                Demo Data
+              </div>
+              <div className="text-white/80">
+                Pilot region · St Francis Bay. Mock property information shown for demonstration.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
+                Official Public Data
+              </div>
+              <div className="text-white/80">
+                Chief Surveyor-General cadastral · Kouga Municipality zoning. Pilot — St Francis Bay.
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <button
         onClick={() => setAddOpen(true)}
-        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-[11px] font-semibold text-background shadow-panel hover:opacity-90 md:bottom-6 md:right-6"
+        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#06152A]/90 px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_16px_40px_-16px_rgba(0,0,0,0.8),0_0_20px_-6px_rgba(255,106,0,0.35)] backdrop-blur-xl transition hover:bg-[#0D1B2A] md:bottom-14 md:right-6"
         title="Add a property to your research"
       >
-        <Plus className="h-3.5 w-3.5" /> Add property
+        <Plus className="h-3.5 w-3.5 text-[#FF6A00]" /> Add property
       </button>
 
       <FooterMini />
@@ -629,34 +635,34 @@ function OfficialPill({
   if (status.state === "off") return null;
   const map: Record<string, { tone: string; text: string }> = {
     loading: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text: `${label} loading…`,
     },
     loaded: {
-      tone: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300",
+      tone: "bg-emerald-500/15 text-emerald-300",
       text:
         label === "CSG"
           ? `CSG parcels loaded: ${status.count}`
           : `Kouga zoning loaded: ${status.count}`,
     },
     imported: {
-      tone: "bg-sky-500/20 text-sky-800 dark:text-sky-300",
+      tone: "bg-sky-500/15 text-sky-300",
       text:
         label === "CSG"
           ? `CSG parcels loaded (imported): ${status.count}`
           : `Kouga zoning loaded (imported): ${status.count}`,
     },
     test: {
-      tone: "bg-accent/20 text-accent dark:text-accent",
+      tone: "bg-[#FF6A00]/20 text-[#FF8A33]",
       text: "TEST GEOMETRY ONLY — not official data",
     },
     empty: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text:
         label === "CSG" ? "No CSG parcels in this view" : "Kouga zoning unavailable for this view",
     },
     failed: {
-      tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+      tone: "bg-white/5 text-white/70",
       text: label === "CSG" ? "CSG unavailable" : "Kouga zoning unavailable",
     },
   };
@@ -664,7 +670,7 @@ function OfficialPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-soft backdrop-blur",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold",
         v.tone,
       )}
       title={status.message ?? undefined}

@@ -262,12 +262,12 @@ export function SearchBar({
 
   return (
     <div className="relative w-full max-w-2xl">
-      <div className="group flex items-center gap-2.5 rounded-2xl bg-white/96 px-3 py-2.5 ring-1 ring-[#0D1B2A]/8 shadow-[0_18px_50px_-20px_rgba(13,27,42,0.38),0_2px_6px_-2px_rgba(13,27,42,0.08)] backdrop-blur-md transition focus-within:bg-white focus-within:ring-2 focus-within:ring-[#FF6A00]/50 md:px-4 md:py-3">
-        <Search className="h-4 w-4 shrink-0 text-[#64748B]" />
+      <div className="group flex items-center gap-2.5 rounded-2xl bg-white/[0.06] px-3 py-2.5 ring-1 ring-white/10 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur-md transition focus-within:bg-white/[0.09] focus-within:ring-[#FF6A00]/45 md:px-4 md:py-3">
+        <Search className="h-4 w-4 shrink-0 text-white/50" />
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-full bg-transparent text-left text-[14px] font-medium text-[#0D1B2A] outline-none"
+          className="w-full bg-transparent text-left text-[14px] font-medium text-white/90 placeholder:text-white/45 outline-none"
         >
           {lane === "address" && addressQuery
             ? addressQuery
@@ -279,7 +279,7 @@ export function SearchBar({
           <button
             type="button"
             onClick={clearAll}
-            className="text-[#64748B] hover:text-[#0D1B2A]"
+            className="text-white/50 hover:text-white"
             aria-label="Clear search"
           >
             <X className="h-4 w-4" />

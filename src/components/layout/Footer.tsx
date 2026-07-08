@@ -101,12 +101,15 @@ function FooterCol({
 /** Compact footer for the full-screen map view. */
 export function FooterMini() {
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 hidden border-t border-border/60 bg-card/85 px-4 py-1.5 backdrop-blur md:block">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-        <span>© {new Date().getFullYear()} ErfStoep · All Rights Reserved</span>
-        <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 hidden border-t border-white/5 bg-[#06152A]/85 px-6 py-2 backdrop-blur-xl md:block">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10.5px] font-medium text-white/55">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+          © {new Date().getFullYear()} ErfStoep · All Rights Reserved
+        </span>
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {FOOTER_MINI_LINKS.map((l) => (
-            <Link key={l.to} to={l.to} className="hover:text-foreground">{l.label}</Link>
+            <Link key={l.to} to={l.to} className="hover:text-white">{l.label}</Link>
           ))}
         </nav>
       </div>
