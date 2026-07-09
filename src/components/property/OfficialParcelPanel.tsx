@@ -10,9 +10,6 @@ import {
   BookmarkCheck,
   Share2,
   ChevronRight,
-  FolderOpen,
-  Calculator,
-  FileText,
   CheckCircle2,
   ExternalLink,
   Copy,
@@ -43,6 +40,11 @@ import {
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
+  buildReportActionCards,
+  buildReportBuilderProgress,
+  type ReportProgressStatus,
+} from "@/lib/workbench/reportProgress";
+import {
   isPdfAttachment,
   isPreviewableImageAttachment,
   isTiffAttachment,
@@ -52,6 +54,7 @@ import {
   SG_DIAGRAM_MAX_BYTES,
   type ErfWorkspaceAttachmentRecord,
 } from "@/lib/workbench/erfWorkspaceFiles";
+import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import { toast } from "sonner";
 
 interface Props {
@@ -218,6 +221,14 @@ function formatAreaM2(value: unknown): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return "Area not available";
   return `${Math.round(n).toLocaleString()} m²`;
+}
+
+function reportStatusClass(status: ReportProgressStatus) {
+  if (status === "Done") return "border-emerald-500/28 bg-emerald-50 text-emerald-800";
+  if (status === "In progress") return "border-[#FF6A00]/28 bg-[#fff8ec] text-[#9A4A09]";
+  if (status === "Blocked") return "border-[#C75A31]/30 bg-[#fff7f2] text-[#9A3A1A]";
+  if (status === "Needs evidence") return "border-[#FF6A00]/20 bg-white text-[#0D1B2A]";
+  return "border-[#0D1B2A]/10 bg-white text-[#64748B]";
 }
 
 function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | null): string | null {
@@ -1238,6 +1249,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   });
+  const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
   const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
@@ -1589,6 +1601,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const isOverview = tab === "overview";
   const nextStep = buildErfWorkspaceNextStep(workspaceState);
   const stoepSteps = buildStoepStepProgress(workspaceState);
+  const reportProgress = buildReportBuilderProgress({
+    parcel: normalizedParcel,
+    workspaceState,
+    savedMarketEvidenceCount: savedMarketEvidence.length,
+  });
+  const reportActions = buildReportActionCards({
+    parcel: normalizedParcel,
+    workspaceState,
+    savedMarketEvidenceCount: savedMarketEvidence.length,
+  });
   const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
   const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
@@ -1836,11 +1858,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                          How ErfStoep builds your report
+                          ErfStoep Report Builder
                         </div>
                         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/64">
-                          Start with the erf, add proof, test the numbers, then keep one clear
-                          report.
+                          This erf file becomes one final report. Progress below comes from your
+                          identity checks, reviewed sources, saved comps, calculator starts and
+                          report activity.
                         </p>
                       </div>
                     </div>
@@ -1850,36 +1873,52 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                           <div className="min-w-0 flex-1">
                             <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0D1B2A] ring-1 ring-[#D9E6F2]">
                               <ShieldCheck className="h-4 w-4 text-[#FF6A00]" />
-                              Start here
+                              No fake progress
                             </div>
                             <h4 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-                              Know this erf
+                              Build the report from real work
                             </h4>
                             <p className="mt-2 max-w-xl text-sm leading-6 text-[#0D1B2A]/68">
-                              Confirm the parcel, save evidence, run numbers, and create one Stoep
-                              Report.
+                              Each row reflects saved workspace state for this erf. Missing items
+                              stay visible until you review a source, save evidence, run numbers or
+                              open the report flow.
                             </p>
                           </div>
-                          <div className="w-full rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_18px_40px_-32px_rgba(13,27,42,0.45)] lg:w-72">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                                Mini report
+                          <div className="w-full rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_18px_40px_-32px_rgba(13,27,42,0.45)] lg:w-[22rem]">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                                  Report readiness
+                                </div>
+                                <p className="mt-1 text-xs text-[#0D1B2A]/58">
+                                  State-derived, not decorative.
+                                </p>
                               </div>
                               <Sparkles className="h-4 w-4 text-[#FF6A00]" />
                             </div>
                             <dl className="mt-4 space-y-2">
-                              {[
-                                ["Identity", "Checked", "text-emerald-700"],
-                                ["Evidence", "2 sources", "text-[#0D1B2A]"],
-                                ["Market", "Needs comps", "text-[#9A4A09]"],
-                                ["Strategy", "Not started", "text-[#64748B]"],
-                              ].map(([label, value, color]) => (
+                              {reportProgress.map((row) => (
                                 <div
-                                  key={label}
-                                  className="flex items-center justify-between rounded-xl bg-[#F7FBFF] px-3 py-2"
+                                  key={row.id}
+                                  className="rounded-xl bg-[#F7FBFF] px-3 py-2"
+                                  title={row.detail}
                                 >
-                                  <dt className="text-xs font-medium text-[#0D1B2A]/62">{label}</dt>
-                                  <dd className={cn("text-xs font-bold", color)}>{value}</dd>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <dt className="text-xs font-medium text-[#0D1B2A]/62">
+                                      {row.label}
+                                    </dt>
+                                    <dd
+                                      className={cn(
+                                        "rounded-full border px-2 py-0.5 text-[10px] font-bold",
+                                        reportStatusClass(row.status),
+                                      )}
+                                    >
+                                      {row.status}
+                                    </dd>
+                                  </div>
+                                  <p className="mt-1 truncate text-[11px] text-[#0D1B2A]/55">
+                                    {row.evidence}
+                                  </p>
                                 </div>
                               ))}
                             </dl>
@@ -1888,52 +1927,49 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                       </div>
 
                       <div className="grid gap-3">
-                        {[
-                          {
-                            title: "Evidence Vault",
-                            body: "Save source checks, uploaded reports, notes, listings and comps.",
-                            Icon: FolderOpen,
-                            chips: ["Sources", "Notes", "PDFs"],
-                          },
-                          {
-                            title: "Strategy Lab",
-                            body: "Run build, flip, hold and max-offer calculators.",
-                            Icon: Calculator,
-                            chips: ["Build", "Flip", "Offer"],
-                          },
-                          {
-                            title: "Stoep Report",
-                            body: "Stoep AI uses saved evidence and assumptions to create one clear report.",
-                            Icon: FileText,
-                            chips: ["Summary", "Risks", "Next steps"],
-                          },
-                        ].map(({ title, body, Icon, chips }) => (
-                          <div
-                            key={title}
-                            className="rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_16px_38px_-34px_rgba(13,27,42,0.42)]"
+                        {reportActions.map((action) => (
+                          <button
+                            key={action.id}
+                            type="button"
+                            onClick={() =>
+                              selectWorkbenchTab(action.tab, {
+                                markStarted:
+                                  action.tab === "listings" ||
+                                  action.tab === "calculators" ||
+                                  action.tab === "reports",
+                              })
+                            }
+                            className={cn(
+                              "rounded-[1.5rem] border p-4 text-left shadow-[0_16px_38px_-34px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)]",
+                              action.primary
+                                ? "border-[#FF6A00]/36 bg-[#fff8ec] ring-1 ring-[#FF6A00]/14"
+                                : "border-[#D9E6F2] bg-white",
+                            )}
                           >
-                            <div className="flex items-start gap-4">
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F0F6FC] text-[#0D1B2A]">
-                                <Icon className="h-6 w-6" />
-                              </div>
-                              <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
                                 <div className="text-base font-semibold text-[#0D1B2A]">
-                                  {title}
+                                  {action.title}
                                 </div>
-                                <p className="mt-1 text-sm leading-5 text-[#0D1B2A]/62">{body}</p>
-                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                  {chips.map((chip) => (
-                                    <span
-                                      key={chip}
-                                      className="rounded-full bg-[#F7FBFF] px-2.5 py-1 text-[10px] font-semibold text-[#0D1B2A]/64 ring-1 ring-[#D9E6F2]"
-                                    >
-                                      {chip}
-                                    </span>
-                                  ))}
-                                </div>
+                                <p className="mt-1 text-sm leading-5 text-[#0D1B2A]/62">
+                                  {action.body}
+                                </p>
                               </div>
+                              <span className="shrink-0 rounded-full bg-[#F7FBFF] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#0D1B2A]/64 ring-1 ring-[#D9E6F2]">
+                                {action.stat}
+                              </span>
                             </div>
-                          </div>
+                            <span
+                              className={cn(
+                                "mt-4 inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-xs font-semibold",
+                                action.primary
+                                  ? "bg-[#FF6A00] text-white"
+                                  : "border border-[#0D1B2A]/10 bg-white text-[#0D1B2A]",
+                              )}
+                            >
+                              {action.action}
+                            </span>
+                          </button>
                         ))}
                       </div>
                     </div>

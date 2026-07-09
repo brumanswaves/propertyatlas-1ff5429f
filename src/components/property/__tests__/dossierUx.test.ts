@@ -24,13 +24,15 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
-    expect(nav).toContain("pt-[calc(env(safe-area-inset-top)+0.375rem)]");
+    expect(nav).toContain("bg-[#06152A]/85");
+    expect(nav).toContain("pt-[calc(env(safe-area-inset-top)+0.5rem)]");
     expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
     expect(nav).toContain("mobileCenter?: ReactNode");
     expect(nav).toContain("rounded-xl");
-    expect(nav).toContain("h-4 w-auto md:h-5");
-    expect(nav).toContain("max-w-[1500px]");
+    expect(nav).toContain('variant="white"');
+    expect(nav).toContain("h-5 w-auto md:h-6");
+    expect(nav).toContain("max-w-[1600px]");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
     expect(search).toContain("Address Search");
     expect(search).toContain("Erf Search");
@@ -121,7 +123,7 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("Locate me");
     expect(home).toContain("top-[calc(env(safe-area-inset-top)+8.75rem)]");
     expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+10.5rem)]");
-    expect(home).toContain("md:top-[5.15rem]");
+    expect(home).toContain("md:top-[6.25rem]");
     expect(home).toContain("w-full max-w-[23rem]");
     expect(home).toContain("sm:w-auto sm:max-w-none");
     expect(home).toContain("overflow-x-auto");
@@ -373,22 +375,23 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Every erf. All the facts.");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
-    expect(panel).toContain("How ErfStoep builds your report");
-    expect(panel).toContain("Know this erf");
-    expect(panel).toContain("Confirm the parcel, save evidence, run numbers, and create one Stoep");
-    expect(panel).toContain("Mini report");
-    expect(panel).toContain('["Identity", "Checked", "text-emerald-700"]');
-    expect(panel).toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
-    expect(panel).toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
-    expect(panel).toContain('["Strategy", "Not started", "text-[#64748B]"]');
-    expect(panel).toContain("Evidence Vault");
-    expect(panel).toContain("Save source checks, uploaded reports, notes, listings and comps.");
-    expect(panel).toContain("Strategy Lab");
-    expect(panel).toContain("Run build, flip, hold and max-offer calculators.");
-    expect(panel).toContain("Stoep Report");
-    expect(panel).toContain(
-      "Stoep AI uses saved evidence and assumptions to create one clear report.",
-    );
+    expect(panel).toContain("ErfStoep Report Builder");
+    expect(panel).toContain("This erf file becomes one final report.");
+    expect(panel).toContain("No fake progress");
+    expect(panel).toContain("Build the report from real work");
+    expect(panel).toContain("buildReportBuilderProgress");
+    expect(panel).toContain("buildReportActionCards");
+    expect(panel).toContain("savedMarketEvidence.length");
+    expect(panel).toContain("reportProgress.map");
+    expect(panel).toContain("{action.title}");
+    expect(panel).toContain("{action.body}");
+    expect(panel).toContain("{action.stat}");
+    expect(panel).toContain("{action.action}");
+    expect(panel).not.toContain("Mini report");
+    expect(panel).not.toContain('["Identity", "Checked", "text-emerald-700"]');
+    expect(panel).not.toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
+    expect(panel).not.toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
+    expect(panel).not.toContain('["Strategy", "Not started", "text-[#64748B]"]');
     expect(panel).toContain("bg-[#F7FBFF]");
     expect(panel).toContain("border-[#D9E6F2]");
     expect(panel).toContain(
@@ -499,24 +502,26 @@ describe("official dossier UX guardrails", () => {
 
   it("renders the ErfStoep intelligence dashboard shell without fake paid data", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(dossier).toContain("Stoep AI First Read");
-    expect(dossier).toContain("What is this property?");
-    expect(dossier).toContain("Stoep Score placeholder");
-    expect(dossier).toContain("Early signal:");
-    expect(dossier).toContain("StoepSteps preview");
-    expect(dossier).toContain("Property First Read");
-    expect(dossier).toContain("Generate Stoep Report");
-    expect(dossier).toContain("Strategy Lab preview");
-    expect(dossier).toContain("Land Flip");
-    expect(dossier).toContain("Build and Sell");
-    expect(dossier).toContain("Hold vs Cash");
-    expect(dossier).toContain("Max Offer");
-    expect(dossier).toContain("Stoep Reports preview");
-    expect(dossier).toContain("Report Vault / Upload PDF placeholder");
+    expect(dossier).toContain("ReportBuilderOverview");
+    expect(reportBuilder).toContain("ErfStoep Report Builder");
+    expect(reportBuilder).toContain("This erf file becomes one final report.");
+    expect(reportBuilder).toContain("buildReportBuilderProgress");
+    expect(reportBuilder).toContain("buildReportActionCards");
+    expect(reportBuilder).toContain("readErfWorkspaceState");
+    expect(reportBuilder).toContain("Recommended next step");
+    expect(reportBuilder).toContain("Check official identity");
+    expect(reportBuilder).toContain("Add market evidence");
+    expect(reportBuilder).toContain("Open calculator");
+    expect(reportBuilder).toContain("Build report");
+    expect(reportBuilder).not.toContain("0 reviewed");
+    expect(reportBuilder).not.toContain("sourcesReviewed = 0");
+    expect(reportBuilder).not.toContain("strategyDone = false");
     expect(dossier).toContain("Purchase Lightstone");
     expect(dossier).toContain("Purchase WinDeed");
-    expect(dossier).toContain("Paid reports are optional confidence upgrades");
+    expect(panel).toContain("Paid reports are optional confidence upgrades");
   });
 
   it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {
