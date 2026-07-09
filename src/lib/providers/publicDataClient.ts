@@ -133,7 +133,7 @@ function numericIdentityValue(value: string | number | null | undefined) {
   return digits || null;
 }
 
-function buildIdentityWhere(input: PublicParcelIdentitySearchInput) {
+export function buildPublicParcelIdentityWhere(input: PublicParcelIdentitySearchInput) {
   const clauses: string[] = [];
   const erf = numericIdentityValue(input.erfNumber);
   const portion = numericIdentityValue(input.portion);
@@ -156,7 +156,7 @@ function buildArcGisIdentitySearchUrl(
   input: PublicParcelIdentitySearchInput,
   format: "geojson" | "json",
 ) {
-  const where = buildIdentityWhere(input);
+  const where = buildPublicParcelIdentityWhere(input);
   if (!where) return null;
   const params = new URLSearchParams({
     where,
@@ -528,11 +528,6 @@ export async function searchOfficialPublicParcelsByIdentity(
 ): Promise<PublicDataResult> {
   const layer: PublicLayerId = "csg-parcels";
   const attempts: PublicDataAttempt[] = [];
-  const areaTerms = String(input.areaText ?? "")
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((term) => term.length > 2);
-
   for (const endpoint of PUBLIC_LAYER_CONFIG[layer].endpoints) {
     for (const format of ["geojson", "json"] as const) {
       const requestUrl = buildArcGisIdentitySearchUrl(endpoint, input, format);
@@ -569,16 +564,7 @@ export async function searchOfficialPublicParcelsByIdentity(
           continue;
         }
         const { fc, preview } = await parseGeoJsonResponse(res, format);
-        let features = fc.features;
-        if (areaTerms.length) {
-          features = features.filter((feature) => {
-            const text = Object.values(feature.properties ?? {})
-              .join(" ")
-              .toLowerCase();
-            const hits = areaTerms.filter((term) => text.includes(term)).length;
-            return hits > 0 || features.length <= 3;
-          });
-        }
+        const features = fc.features;
         attempts.push({
           method: "direct",
           layer,
@@ -617,6 +603,6 @@ export async function searchOfficialPublicParcelsByIdentity(
   return emptyResult(
     layer,
     attempts,
-    "No official public parcel match found by identifier search. Try adding township context, LPI, parcel key, or click the parcel outline on the map.",
+    "No official match found from the available public layer yet. Try adding township/area, LPI, parcel key, or click the parcel outline.",
   );
 }

@@ -28,7 +28,7 @@ const STEP_ORDER: StepMeta[] = [
   { id: "sources", index: 2, label: "Sources", view: "research", cta: "Add or review sources" },
   { id: "market", index: 3, label: "Market", view: "listings", cta: "Add market evidence" },
   { id: "strategy", index: 4, label: "Strategy", view: "calculators", cta: "Open calculator" },
-  { id: "report", index: 5, label: "Report", view: "reports", cta: "Build report" },
+  { id: "report", index: 5, label: "Report", view: "stoep-report", cta: "Open Stoep AI Report" },
 ];
 
 function chipTone(complete: boolean, warn: boolean) {

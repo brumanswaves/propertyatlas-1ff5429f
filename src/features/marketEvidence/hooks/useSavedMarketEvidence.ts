@@ -54,7 +54,9 @@ function parseCandidates(value: unknown): ListingCandidate[] {
     .filter(isRecord)
     .map((item) => ({
       id: String(item.id ?? crypto.randomUUID()),
-      sourceType: (item.sourceType === "source_backed_seed" ? "source_backed_seed" : "manual_import") as ListingCandidate["sourceType"],
+      sourceType: (item.sourceType === "source_backed_seed"
+        ? "source_backed_seed"
+        : "manual_import") as ListingCandidate["sourceType"],
       sourcePortal: String(item.sourcePortal ?? "Other"),
       sourceUrl: String(item.sourceUrl ?? ""),
       title: String(item.title ?? "Imported listing candidate"),
@@ -121,6 +123,15 @@ function writeLocalUserData(parcelId: string, nextUserData: Record<string, unkno
   window.localStorage.setItem(localMarketEvidenceKey(parcelId), JSON.stringify(nextUserData));
 }
 
+function dispatchMarketEvidenceUpdated(parcelId: string, userData: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("erfstoep:market-evidence-updated", {
+      detail: { parcelId, userData },
+    }),
+  );
+}
+
 function applyUserData(
   parcelId: string,
   nextUserData: Record<string, unknown>,
@@ -136,7 +147,9 @@ function applyUserData(
   setters.setUserData(nextUserData);
   setters.setEvidence(parseEvidence(nextUserData.savedMarketEvidence, parcelId));
   setters.setCandidates(parseCandidates(nextUserData.marketEvidenceCandidates));
-  setters.setDismissedCandidateIds(parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds));
+  setters.setDismissedCandidateIds(
+    parseDismissed(nextUserData.dismissedMarketEvidenceCandidateIds),
+  );
   setters.setPropertyIdentity(parsePropertyIdentity(nextUserData.propertyIdentity));
   setters.setMarketAddressIntelligence(
     parseMarketAddressIntelligence(nextUserData.marketAddressIntelligence),
@@ -205,6 +218,23 @@ export function useSavedMarketEvidence(parcelId: string) {
     };
   }, [parcelId, user]);
 
+  useEffect(() => {
+    function refresh(event: Event) {
+      const detail = (event as CustomEvent<{ parcelId?: string; userData?: unknown }>).detail;
+      if (detail?.parcelId !== parcelId || !isRecord(detail.userData)) return;
+      applyUserData(parcelId, detail.userData, {
+        setUserData,
+        setEvidence,
+        setCandidates,
+        setDismissedCandidateIds,
+        setPropertyIdentity,
+        setMarketAddressIntelligence,
+      });
+    }
+    window.addEventListener("erfstoep:market-evidence-updated", refresh);
+    return () => window.removeEventListener("erfstoep:market-evidence-updated", refresh);
+  }, [parcelId]);
+
   const canSave = true;
 
   async function persistUserData(nextUserData: Record<string, unknown>) {
@@ -218,6 +248,7 @@ export function useSavedMarketEvidence(parcelId: string) {
         setPropertyIdentity,
         setMarketAddressIntelligence,
       });
+      dispatchMarketEvidenceUpdated(parcelId, nextUserData);
       toast.message("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
       return true;
     }
@@ -239,6 +270,7 @@ export function useSavedMarketEvidence(parcelId: string) {
       setPropertyIdentity,
       setMarketAddressIntelligence,
     });
+    dispatchMarketEvidenceUpdated(parcelId, nextUserData);
     return true;
   }
 

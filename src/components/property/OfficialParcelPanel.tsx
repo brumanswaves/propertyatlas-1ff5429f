@@ -1201,7 +1201,7 @@ function resolveOfficialParcelLocation(opts: {
     const street = [user.streetNumber, user.streetName].filter(Boolean).join(" ");
     return {
       displayTitle: street ? `${erfLabel} - ${street}` : erfLabel,
-      displaySubtitle: [erfLabel, user.suburb ?? minorRegion, "User Entered"]
+      displaySubtitle: [user.suburb ?? minorRegion, user.town ?? majorRegion, "Working address"]
         .filter(Boolean)
         .join(" · "),
       approximateAddress: street,
@@ -1464,6 +1464,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       pushKnown("Zoning type", kouga.zoningType, "Kouga Municipality GIS");
       pushKnown("Zoning description", kouga.zoningDescription, "Kouga Municipality GIS");
       pushKnown("Shape area", kouga.shapeArea, "Kouga Municipality GIS");
+    }
+
+    if (canonicalUserAddress?.streetName) {
+      pushKnown("Working address", canonicalUserAddress.streetName, "User supplied market address");
+    }
+    if (canonicalUserAddress?.notes) {
+      pushKnown("Working address note", canonicalUserAddress.notes, "User supplied market address");
     }
 
     pushKnown("Longitude", coords.lng.toFixed(6), "Map click");
@@ -2390,7 +2397,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}
           {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}
           {tab === "calculators" && (
-            <ErfResearchDossier parcel={normalizedParcel} view="calculators" />
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="calculators"
+              onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
+            />
           )}
           {tab === "stoep-report" && (
             <ErfResearchDossier parcel={normalizedParcel} view="stoep-report" />
