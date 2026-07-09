@@ -88,11 +88,27 @@ describe("erfWorkspaceState", () => {
     });
   });
 
-  it("moves checked identity to market evidence, calculators, then reports", () => {
+  it("moves checked identity through reviewed sources, market evidence, calculators, then reports", () => {
     expect(
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
         identityStatus: "looks_correct",
+      }),
+    ).toMatchObject({ title: "Add or review sources", tab: "research" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "looks_correct",
+        openedSourceIds: ["csg-property-viewer"],
+      }),
+    ).toMatchObject({ title: "Review the opened source", tab: "research" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "looks_correct",
+        reviewedSourceIds: ["csg-property-viewer"],
       }),
     ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
 
@@ -100,6 +116,7 @@ describe("erfWorkspaceState", () => {
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
         marketEvidenceStarted: true,
       }),
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
@@ -108,6 +125,7 @@ describe("erfWorkspaceState", () => {
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
         marketEvidenceStarted: true,
         calculatorStarted: true,
       }),

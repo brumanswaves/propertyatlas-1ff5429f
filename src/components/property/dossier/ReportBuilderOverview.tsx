@@ -4,10 +4,13 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import { cn } from "@/lib/utils";
 import type { InvestorWorkflowView } from "./investorWorkflow";
+import { buildReportActionCards, buildReportBuilderProgress } from "@/lib/workbench/reportProgress";
+import { readErfWorkspaceState, type ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: InvestorWorkflowView) => void;
+  workspaceState?: ErfWorkspaceState;
 }
 
 type StepId = "identity" | "sources" | "market" | "strategy" | "report";
@@ -22,10 +25,10 @@ interface StepMeta {
 
 const STEP_ORDER: StepMeta[] = [
   { id: "identity", index: 1, label: "Identity", view: "research", cta: "Check official identity" },
-  { id: "sources",  index: 2, label: "Sources",  view: "research", cta: "Add or review sources" },
-  { id: "market",   index: 3, label: "Market",   view: "listings", cta: "Add market evidence" },
+  { id: "sources", index: 2, label: "Sources", view: "research", cta: "Add or review sources" },
+  { id: "market", index: 3, label: "Market", view: "listings", cta: "Add market evidence" },
   { id: "strategy", index: 4, label: "Strategy", view: "calculators", cta: "Open calculator" },
-  { id: "report",   index: 5, label: "Report",   view: "reports", cta: "Build report" },
+  { id: "report", index: 5, label: "Report", view: "reports", cta: "Build report" },
 ];
 
 function chipTone(complete: boolean, warn: boolean) {
@@ -34,9 +37,13 @@ function chipTone(complete: boolean, warn: boolean) {
   return "bg-slate-500/10 text-slate-600 ring-1 ring-slate-500/20";
 }
 
-export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
+export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: Props) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
   const compsCount = evidence?.length ?? 0;
+  const effectiveWorkspaceState = useMemo(
+    () => workspaceState ?? readErfWorkspaceState(parcel.id),
+    [parcel.id, workspaceState],
+  );
 
   const identity = useMemo(() => {
     const erf = parcel.erfNumber != null ? String(parcel.erfNumber) : null;
@@ -48,29 +55,28 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
     return { erf, lpi, parcelKey, size, knownCount, verified: knownCount >= 3 };
   }, [parcel]);
 
-  const status = useMemo(() => {
-    const identityDone = identity.verified;
-    const sourcesReviewed = 0; // no persisted "reviewed sources" store yet
-    const sourcesDone = false;
-    const marketDone = compsCount > 0;
-    const strategyDone = false; // calculators are ephemeral state
-    const reportDone = identityDone && marketDone;
-    return {
-      identity: { done: identityDone, label: identityDone ? "Verified" : "Needs source check", warn: !identityDone },
-      sources:  { done: sourcesDone,  label: `${sourcesReviewed} reviewed`, warn: false },
-      market:   { done: marketDone,   label: `${compsCount} comps saved`,  warn: false },
-      strategy: { done: strategyDone, label: "Not started", warn: false },
-      report:   { done: reportDone,   label: reportDone ? "Ready to build" : "Not ready", warn: false },
-    };
-  }, [identity.verified, compsCount]);
-
-  const doneMap: Record<StepId, boolean> = {
-    identity: status.identity.done,
-    sources: status.sources.done,
-    market: status.market.done,
-    strategy: status.strategy.done,
-    report: status.report.done,
-  };
+  const rows = useMemo(
+    () =>
+      buildReportBuilderProgress({
+        parcel,
+        workspaceState: effectiveWorkspaceState,
+        savedMarketEvidenceCount: compsCount,
+      }),
+    [parcel, effectiveWorkspaceState, compsCount],
+  );
+  const actionCards = useMemo(
+    () =>
+      buildReportActionCards({
+        parcel,
+        workspaceState: effectiveWorkspaceState,
+        savedMarketEvidenceCount: compsCount,
+      }),
+    [parcel, effectiveWorkspaceState, compsCount],
+  );
+  const doneMap = Object.fromEntries(rows.map((row) => [row.id, row.status === "Done"])) as Record<
+    StepId,
+    boolean
+  >;
   const nextStep = STEP_ORDER.find((s) => !doneMap[s.id]) ?? STEP_ORDER[STEP_ORDER.length - 1];
   const progressPct = Math.round(
     (Object.values(doneMap).filter(Boolean).length / STEP_ORDER.length) * 100,
@@ -81,14 +87,6 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
   const province = parcel.province ?? null;
   const erfLabel = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
   const confidenceSummary = `${erfLabel}${suburb ? ` in ${suburb}` : ""}${municipality ? `, ${municipality}` : ""}${province ? `, ${province}` : ""} has ${identity.knownCount >= 3 ? "enough public context for an early read" : "partial public context"}. Ownership, valuation, zoning, sales history and GIS precision still need verified evidence.`;
-
-  const rows = [
-    { key: "identity", ...status.identity, label: "Identity" },
-    { key: "sources", ...status.sources, label: "Sources" },
-    { key: "market", ...status.market, label: "Market" },
-    { key: "strategy", ...status.strategy, label: "Strategy" },
-    { key: "report", ...status.report, label: "Report" },
-  ] as const;
 
   return (
     <div className="space-y-6">
@@ -117,7 +115,7 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
 
           <ol className="mt-6 divide-y divide-[#EADFC9]/70 rounded-2xl border border-[#EADFC9] bg-white/60">
             {rows.map((row, i) => (
-              <li key={row.key} className="flex items-center gap-4 px-5 py-3.5">
+              <li key={row.id} className="flex items-center gap-4 px-5 py-3.5" title={row.detail}>
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0D1B2A]/90 text-[11px] font-bold text-white">
                   {i + 1}
                 </span>
@@ -125,18 +123,13 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
                 <span
                   className={cn(
                     "rounded-full px-3 py-1 text-[11.5px] font-semibold",
-                    chipTone(row.done, row.warn),
+                    chipTone(
+                      row.status === "Done",
+                      row.status === "Needs evidence" || row.status === "Blocked",
+                    ),
                   )}
                 >
-                  {row.label === "Identity"
-                    ? row.done ? "Verified" : "Needs source check"
-                    : row.label === "Sources"
-                      ? "0 reviewed"
-                      : row.label === "Market"
-                        ? `${compsCount} comps saved`
-                        : row.label === "Strategy"
-                          ? "Not started"
-                          : row.done ? "Ready to build" : "Not ready"}
+                  {row.status}
                 </span>
               </li>
             ))}
@@ -166,63 +159,70 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MiniCard
           index={1}
-          title="Verify the erf"
+          title={actionCards[0].title}
           chip="Identity"
           chipTone="bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/25"
-          description="Confirm official parcel identity."
+          description={actionCards[0].body}
           rows={[
             { label: identity.erf ? `Erf ${identity.erf}` : "Erf number", ok: !!identity.erf },
             { label: identity.lpi ? "LPI found" : "LPI missing", ok: !!identity.lpi },
-            { label: identity.parcelKey ? "Parcel key found" : "Parcel key missing", ok: !!identity.parcelKey },
-            { label: identity.size ? "Size found" : "Size not published", ok: !!identity.size, neutral: !identity.size },
+            {
+              label: identity.parcelKey ? "Parcel key found" : "Parcel key missing",
+              ok: !!identity.parcelKey,
+            },
+            {
+              label: identity.size ? "Size found" : "Size not published",
+              ok: !!identity.size,
+              neutral: !identity.size,
+            },
           ]}
-          actionLabel="Check official identity"
-          onAction={() => onSelectView?.("research")}
+          actionLabel={actionCards[0].action}
+          onAction={() => onSelectView?.(actionCards[0].tab)}
         />
         <MiniCard
           index={2}
-          title="Add evidence"
+          title={actionCards[1].title}
           chip="Market"
           chipTone="bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/25"
-          description="Collect and review market evidence."
+          description={actionCards[1].body}
           rows={[
             { label: `${compsCount} comps saved`, ok: compsCount > 0, count: compsCount },
             { label: "Add listing URL", add: true },
             { label: "Add market address", add: true },
             { label: "\u00A0", spacer: true },
           ]}
-          actionLabel="Add evidence"
-          onAction={() => onSelectView?.("listings")}
+          actionLabel={actionCards[1].action}
+          onAction={() => onSelectView?.(actionCards[1].tab)}
         />
         <MiniCard
           index={3}
-          title="Run numbers"
+          title={actionCards[2].title}
           chip="Strategy"
           chipTone="bg-purple-500/10 text-purple-700 ring-1 ring-purple-500/25"
-          description="Run quick numbers and scenarios."
+          description={actionCards[2].body}
           rows={[
             { label: "Land price", neutral: true },
             { label: "Build cost", neutral: true },
             { label: "Exit value", neutral: true },
             { label: "Profit margin", neutral: true },
           ]}
-          actionLabel="Open calculator"
-          onAction={() => onSelectView?.("calculators")}
+          actionLabel={actionCards[2].action}
+          onAction={() => onSelectView?.(actionCards[2].tab)}
         />
         <MiniCard
           index={4}
-          title="Create report"
+          title={actionCards[3].title}
           chip="Report"
           chipTone="bg-[#FF6A00]/10 text-[#B24A00] ring-1 ring-[#FF6A00]/25"
-          description="Assemble a clear, decision-ready report."
+          description={actionCards[3].body}
           rows={[
-            { label: "Sources", count: 0 },
+            { label: rows.find((row) => row.id === "sources")?.evidence ?? "No sources reviewed" },
             { label: "Evidence", count: compsCount },
             { label: "Risks", neutral: true },
             { label: "Next steps", neutral: true },
           ]}
-          actionLabel="Build report"
-          onAction={() => onSelectView?.("reports")}
+          actionLabel={actionCards[3].action}
+          onAction={() => onSelectView?.(actionCards[3].tab)}
         />
       </section>
 
@@ -240,9 +240,7 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
             <div className="mt-1 text-[20px] font-semibold tracking-tight">
               {nextStepTitle(nextStep.id)}
             </div>
-            <p className="mt-1.5 text-[12.5px] text-white/60">
-              {nextStepBlurb(nextStep.id)}
-            </p>
+            <p className="mt-1.5 text-[12.5px] text-white/60">{nextStepBlurb(nextStep.id)}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -272,20 +270,30 @@ export function ReportBuilderOverview({ parcel, onSelectView }: Props) {
 
 function nextStepTitle(id: StepId) {
   switch (id) {
-    case "identity": return "Verify the official parcel identity first.";
-    case "sources":  return "Add or review the source evidence.";
-    case "market":   return "Add market evidence and comps.";
-    case "strategy": return "Run the numbers on your strategy.";
-    case "report":   return "Assemble the decision-ready report.";
+    case "identity":
+      return "Verify the official parcel identity first.";
+    case "sources":
+      return "Add or review the source evidence.";
+    case "market":
+      return "Add market evidence and comps.";
+    case "strategy":
+      return "Run the numbers on your strategy.";
+    case "report":
+      return "Assemble the decision-ready report.";
   }
 }
 function nextStepBlurb(id: StepId) {
   switch (id) {
-    case "identity": return "Start by confirming this Workbench is attached to the right public erf before using market or strategy tools.";
-    case "sources":  return "Open the source panel and mark the primary official sources you've reviewed.";
-    case "market":   return "Paste listing URLs, add addresses, and save comps to build market evidence.";
-    case "strategy": return "Use the calculators to test acquisition, build, exit, and profit assumptions.";
-    case "report":   return "Combine sources, evidence, risks and next steps into a shareable Stoep Report.";
+    case "identity":
+      return "Start by confirming this Workbench is attached to the right public erf before using market or strategy tools.";
+    case "sources":
+      return "Open the source panel and mark the primary official sources you've reviewed.";
+    case "market":
+      return "Paste listing URLs, add addresses, and save comps to build market evidence.";
+    case "strategy":
+      return "Use the calculators to test acquisition, build, exit, and profit assumptions.";
+    case "report":
+      return "Combine sources, evidence, risks and next steps into a shareable Stoep Report.";
   }
 }
 
@@ -351,7 +359,9 @@ function MiniCard({
           </span>
           <h4 className="text-[15.5px] font-semibold text-[#0D1B2A]">{title}</h4>
         </div>
-        <span className={cn("rounded-full px-2.5 py-1 text-[10.5px] font-semibold", chipTone)}>{chip}</span>
+        <span className={cn("rounded-full px-2.5 py-1 text-[10.5px] font-semibold", chipTone)}>
+          {chip}
+        </span>
       </div>
       <p className="mt-2 text-[12.5px] text-[#4A5A6A]">{description}</p>
 
