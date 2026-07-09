@@ -456,11 +456,18 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       lastResolvedAt: new Date().toISOString(),
       notes: addressDraft.notes || null,
     });
-    if (ok) setEditingAddress(false);
+    if (ok) {
+      updateErfWorkspaceState(parcel.id, {
+        marketAddressSaved: true,
+        marketEvidenceStarted: true,
+        dirty: true,
+      });
+      setEditingAddress(false);
+    }
   }
 
   async function useSuggestedAddress(candidate: AddressCandidate) {
-    await saveMarketAddressIntelligence({
+    const ok = await saveMarketAddressIntelligence({
       selectedAddressId: candidate.id,
       candidates: [candidate, ...(marketAddressIntelligence?.candidates ?? [])].filter(
         (item, index, array) => array.findIndex((entry) => entry.id === item.id) === index,
@@ -473,6 +480,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       lastResolvedAt: new Date().toISOString(),
       notes: marketAddressIntelligence?.notes ?? null,
     });
+    if (ok) {
+      updateErfWorkspaceState(parcel.id, {
+        marketAddressSaved: true,
+        marketEvidenceStarted: true,
+        dirty: true,
+      });
+    }
   }
 
   async function clearAddress() {
@@ -570,10 +584,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
   return (
     <div className="space-y-5 text-stone-950">
-      <PropertyIdentityCard
-        identity={identity}
-        selectedAddress={selectedAddress}
-      />
+      <PropertyIdentityCard identity={identity} selectedAddress={selectedAddress} />
 
       <AddressIntelligenceSection
         identity={identity}
@@ -653,11 +664,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         </section>
       )}
 
-      <FallbackSearchTools
-        searches={searches}
-        identity={identity}
-        copy={copy}
-      />
+      <FallbackSearchTools searches={searches} identity={identity} copy={copy} />
     </div>
   );
 }
@@ -733,7 +740,6 @@ function PropertyIdentityCard({
           ))}
         </div>
       )}
-
     </section>
   );
 }
@@ -971,7 +977,9 @@ function AddressForm({
         "Address selected from Google Places. This is market context, not official parcel identity.",
       );
     } catch (error) {
-      setAutocompleteStatus(error instanceof Error ? error.message : "Address details unavailable.");
+      setAutocompleteStatus(
+        error instanceof Error ? error.message : "Address details unavailable.",
+      );
     }
   }
 
@@ -1057,14 +1065,8 @@ function AddressForm({
         value={draft.notes}
         onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
       />
-      <p className="text-xs text-stone-600">
-        {autocompleteStatus}
-      </p>
-      <button
-        type="button"
-        onClick={onSave}
-        className={`${PILL_PRIMARY} w-fit`}
-      >
+      <p className="text-xs text-stone-600">{autocompleteStatus}</p>
+      <button type="button" onClick={onSave} className={`${PILL_PRIMARY} w-fit`}>
         <BookmarkCheck className="h-4 w-4" /> Save market address
       </button>
     </div>
@@ -1097,18 +1099,10 @@ function EvidenceEntryPanel({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onAddEvidence}
-          className={PILL_PRIMARY}
-        >
+        <button type="button" onClick={onAddEvidence} className={PILL_PRIMARY}>
           <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
         </button>
-        <button
-          type="button"
-          onClick={onAddEvidence}
-          className={PILL_SECONDARY}
-        >
+        <button type="button" onClick={onAddEvidence} className={PILL_SECONDARY}>
           <Plus className="h-3.5 w-3.5" /> Add comp
         </button>
         <button type="button" onClick={onOpenFallback} className={PILL_SECONDARY}>
@@ -1453,9 +1447,7 @@ function SavedCompsSection({
       <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-accent/10 px-3 py-2 text-sm text-stone-700">
         Saved locally for this erf. Save to My Erfs to keep it in your dashboard.
       </p>
-      {showCompForm && (
-        <CompForm draft={compDraft} setDraft={setCompDraft} onSave={saveComp} />
-      )}
+      {showCompForm && <CompForm draft={compDraft} setDraft={setCompDraft} onSave={saveComp} />}
       {loading ? (
         <p className="mt-3 text-sm text-stone-600">Loading saved market evidence...</p>
       ) : evidence.length === 0 ? (

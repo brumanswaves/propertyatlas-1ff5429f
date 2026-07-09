@@ -36,11 +36,46 @@ describe("reportProgress", () => {
         expect.objectContaining({
           label: "Sources",
           status: "Done",
-          evidence: "2 opened / 1 reviewed",
+          evidence: "2 opened / 1 reviewed / 0 SG files",
         }),
         expect.objectContaining({ label: "Market", status: "Done", evidence: "2 saved comps" }),
         expect.objectContaining({ label: "Strategy", status: "In progress" }),
         expect.objectContaining({ label: "Report", status: "Not started" }),
+      ]),
+    );
+  });
+
+  it("counts SG diagram attachments, market address and saved strategy scenarios as workflow progress", () => {
+    const rows = buildReportBuilderProgress({
+      parcel,
+      workspaceState: {
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        sgDiagramAttachmentCount: 2,
+        marketAddressSaved: true,
+        strategyScenarioCount: 1,
+      },
+      savedMarketEvidenceCount: 0,
+    });
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Sources",
+          status: "Done",
+          evidence: "0 opened / 0 reviewed / 2 SG files",
+        }),
+        expect.objectContaining({
+          label: "Market",
+          status: "Done",
+          evidence: "Market address saved",
+        }),
+        expect.objectContaining({
+          label: "Strategy",
+          status: "Done",
+          evidence: "1 saved scenario",
+        }),
+        expect.objectContaining({ label: "Report", status: "Needs evidence" }),
       ]),
     );
   });
@@ -66,6 +101,11 @@ describe("reportProgress", () => {
       action: "Add market evidence",
       tab: "listings",
       primary: true,
+    });
+    expect(actions.find((action) => action.id === "report")).toMatchObject({
+      action: "Open Stoep AI Report",
+      tab: "stoep-report",
+      primary: false,
     });
     expect(JSON.stringify(actions)).not.toMatch(/fake|screenshot|auto-fill/i);
   });

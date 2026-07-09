@@ -88,7 +88,7 @@ describe("erfWorkspaceState", () => {
     });
   });
 
-  it("moves checked identity through reviewed sources, market evidence, calculators, then reports", () => {
+  it("moves checked identity through reviewed sources, market evidence, saved scenarios, then reports", () => {
     expect(
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
@@ -129,7 +129,37 @@ describe("erfWorkspaceState", () => {
         marketEvidenceStarted: true,
         calculatorStarted: true,
       }),
-    ).toMatchObject({ title: "Create Stoep Report", tab: "reports" });
+    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        calculatorStarted: true,
+        strategyScenarioCount: 1,
+      }),
+    ).toMatchObject({ title: "Create Stoep Report", tab: "stoep-report" });
+  });
+
+  it("treats SG attachments and saved market addresses as real progress", () => {
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        sgDiagramAttachmentCount: 1,
+      }),
+    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        sgDiagramAttachmentCount: 1,
+        marketAddressSaved: true,
+      }),
+    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
   });
 
   it("builds honest StoepSteps progress from workspace state", () => {
@@ -160,12 +190,14 @@ describe("erfWorkspaceState", () => {
         reviewedSourceIds: ["csg-property-viewer"],
         marketEvidenceStarted: true,
         calculatorStarted: true,
+        strategyScenarioCount: 1,
       }),
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ label: "Identity", status: "Done" }),
         expect.objectContaining({ label: "Sources", status: "Done" }),
         expect.objectContaining({ label: "Market", status: "Done" }),
+        expect.objectContaining({ label: "Strategy", status: "Done" }),
         expect.objectContaining({ label: "Report", status: "Current" }),
       ]),
     );

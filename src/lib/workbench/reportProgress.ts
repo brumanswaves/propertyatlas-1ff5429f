@@ -36,8 +36,11 @@ export interface ReportProgressInput {
     | "identityStatus"
     | "openedSourceIds"
     | "reviewedSourceIds"
+    | "sgDiagramAttachmentCount"
     | "marketEvidenceStarted"
+    | "marketAddressSaved"
     | "calculatorStarted"
+    | "strategyScenarioCount"
     | "reportStarted"
   >;
   savedMarketEvidenceCount: number;
@@ -52,12 +55,16 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
   const { parcel, workspaceState, savedMarketEvidenceCount, attachedEvidenceCount = 0 } = input;
   const reviewedCount = workspaceState.reviewedSourceIds.length;
   const openedCount = workspaceState.openedSourceIds.length;
+  const sgAttachmentCount = workspaceState.sgDiagramAttachmentCount ?? 0;
   const identityHasOfficialFields = Boolean(parcel.lpi || parcel.parcelKey || parcel.erfNumber);
   const identityDone =
     workspaceState.identityStatus === "checked" ||
     workspaceState.identityStatus === "looks_correct";
   const identityUncertain = workspaceState.identityStatus === "uncertain";
-  const evidenceCount = savedMarketEvidenceCount + attachedEvidenceCount;
+  const evidenceCount = savedMarketEvidenceCount + attachedEvidenceCount + sgAttachmentCount;
+  const sourcesDone = reviewedCount > 0 || sgAttachmentCount > 0;
+  const marketDone = savedMarketEvidenceCount > 0 || workspaceState.marketAddressSaved;
+  const strategyScenarioCount = workspaceState.strategyScenarioCount ?? 0;
 
   return [
     {
@@ -84,49 +91,68 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
     {
       id: "sources",
       label: "Sources",
-      status: reviewedCount > 0 ? "Done" : openedCount > 0 ? "In progress" : "Needs evidence",
-      detail:
-        reviewedCount > 0
-          ? "At least one source has been reviewed by the user."
-          : openedCount > 0
-            ? "A source has been opened; mark reviewed after checking it."
-            : "Open and review official sources before building the report.",
-      evidence: `${openedCount} opened / ${reviewedCount} reviewed`,
+      status: sourcesDone ? "Done" : openedCount > 0 ? "In progress" : "Needs evidence",
+      detail: sourcesDone
+        ? "At least one source has been reviewed or SG diagram evidence has been attached."
+        : openedCount > 0
+          ? "A source has been opened; mark reviewed after checking it."
+          : "Open and review official sources before building the report.",
+      evidence: `${openedCount} opened / ${reviewedCount} reviewed / ${sgAttachmentCount} SG file${sgAttachmentCount === 1 ? "" : "s"}`,
     },
     {
       id: "market",
       label: "Market",
-      status:
-        savedMarketEvidenceCount > 0
-          ? "Done"
-          : workspaceState.marketEvidenceStarted
-            ? "In progress"
-            : "Not started",
+      status: marketDone
+        ? "Done"
+        : workspaceState.marketEvidenceStarted
+          ? "In progress"
+          : "Not started",
       detail:
         savedMarketEvidenceCount > 0
           ? "Saved comps or listing evidence are attached to this erf."
-          : "Add listing URLs, comps or market notes before relying on price assumptions.",
+          : workspaceState.marketAddressSaved
+            ? "A market address has been saved for this erf."
+            : "Add listing URLs, comps or market notes before relying on price assumptions.",
       evidence:
         savedMarketEvidenceCount > 0
           ? plural(savedMarketEvidenceCount, "saved comp")
-          : "No saved market evidence",
+          : workspaceState.marketAddressSaved
+            ? "Market address saved"
+            : "No saved market evidence",
     },
     {
       id: "strategy",
       label: "Strategy",
-      status: workspaceState.calculatorStarted ? "In progress" : "Not started",
-      detail: workspaceState.calculatorStarted
-        ? "Strategy Lab has been opened for this erf."
-        : "Run numbers from your own assumptions; do not treat estimates as verified values.",
-      evidence: workspaceState.calculatorStarted ? "Calculator started" : "No scenario started",
+      status:
+        strategyScenarioCount > 0
+          ? "Done"
+          : workspaceState.calculatorStarted
+            ? "In progress"
+            : "Not started",
+      detail:
+        strategyScenarioCount > 0
+          ? "At least one Strategy Lab scenario has been saved."
+          : workspaceState.calculatorStarted
+            ? "Strategy Lab has been opened; save a scenario to move this step forward."
+            : "Run numbers from your own assumptions; do not treat estimates as verified values.",
+      evidence:
+        strategyScenarioCount > 0
+          ? plural(strategyScenarioCount, "saved scenario")
+          : "No scenario saved",
     },
     {
       id: "report",
       label: "Report",
-      status: workspaceState.reportStarted ? "In progress" : "Not started",
+      status: workspaceState.reportStarted
+        ? "In progress"
+        : strategyScenarioCount > 0
+          ? "Needs evidence"
+          : "Not started",
       detail: workspaceState.reportStarted
         ? "Report workflow has been opened for this erf."
-        : "Create a report after identity, sources, market evidence and numbers are underway.",
+        : strategyScenarioCount > 0
+          ? "Stoep AI Report can now assemble the saved workflow state, with missing evidence clearly labelled."
+          : "Create a report after identity, sources, market evidence and numbers are underway.",
       evidence:
         evidenceCount > 0
           ? `${plural(evidenceCount, "evidence item")} attached`
@@ -143,6 +169,7 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
   >;
   const sourceMissing = byId.sources.status !== "Done";
   const marketMissing = byId.market.status !== "Done";
+  const strategyMissing = byId.strategy.status !== "Done";
 
   return [
     {
@@ -172,16 +199,16 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
       stat: byId.strategy.status,
       action: "Open calculator",
       tab: "calculators",
-      primary: byId.strategy.status === "Not started" && !sourceMissing && !marketMissing,
+      primary: strategyMissing && !sourceMissing && !marketMissing,
     },
     {
       id: "report",
       title: "Create report",
       body: "Combine saved evidence, reviewed sources, notes and assumptions into one Stoep Report.",
       stat: byId.report.status,
-      action: "Build report",
-      tab: "reports",
-      primary: byId.report.status === "Not started" && byId.strategy.status !== "Not started",
+      action: "Open Stoep AI Report",
+      tab: "stoep-report",
+      primary: byId.report.status !== "In progress" && !strategyMissing,
     },
   ];
 }

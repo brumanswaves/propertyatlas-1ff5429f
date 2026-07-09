@@ -37,9 +37,15 @@ import { SavedLinksManager } from "./SavedLinksManager";
 import { NotesTab } from "./tabs/NotesTab";
 import { MarketEvidenceTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
+import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
 import { NextBestStep } from "./dossier/NextBestStep";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
+import {
+  readErfWorkspaceState,
+  readStrategyScenarios,
+  saveStrategyScenario,
+} from "@/lib/workbench/erfWorkspaceState";
 import {
   buildDueDiligenceProgress,
   buildNextBestStep,
@@ -58,7 +64,8 @@ export type DossierView =
   | "listings"
   | "reports"
   | "notes"
-  | "calculators";
+  | "calculators"
+  | "stoep-report";
 
 const DOSSIER_STATUSES = [
   { id: "not_started", label: "Not started" },
@@ -226,7 +233,10 @@ function identityConfidence(parcel: NormalizedOfficialParcel): string {
   return "Needs verification";
 }
 
-function stoepScoreBand(parcel: NormalizedOfficialParcel, completenessScore: number): {
+function stoepScoreBand(
+  parcel: NormalizedOfficialParcel,
+  completenessScore: number,
+): {
   label: string;
   detail: string;
 } {
@@ -328,7 +338,9 @@ function extractDefaultPrice(parcel: NormalizedOfficialParcel): number {
 export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: Props) {
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
-  const sources = buildPublicResearchSources(parcel);
+  const sources = buildPublicResearchSources(parcel).filter(
+    (source) => source.id !== "sg-document-list",
+  );
   const researchCtx = useMemo(() => toResearchContext(parcel), [parcel]);
   const sgDoc = useMemo(
     () =>
@@ -518,9 +530,13 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
         <SectionTitle>Calculators</SectionTitle>
-        <OfficialCalculatorPanel defaultPrice={extractDefaultPrice(parcel)} />
+        <OfficialCalculatorPanel parcelId={parcel.id} defaultPrice={extractDefaultPrice(parcel)} />
       </section>
     );
+  }
+
+  if (view === "stoep-report") {
+    return <StoepAiReportView parcel={parcel} />;
   }
 
   return (
@@ -1161,6 +1177,85 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
+  const { evidence } = useSavedMarketEvidence(parcel.id);
+  const workspaceState = readErfWorkspaceState(parcel.id);
+  const scenarios = readStrategyScenarios(parcel.id);
+  const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
+  const reviewedSources = workspaceState.reviewedSourceIds.length;
+  const sgFiles = workspaceState.sgDiagramAttachmentCount;
+  const missing = [
+    reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
+    evidence.length ? null : "saved market evidence",
+    scenarios.length ? null : "saved strategy scenario",
+  ].filter(Boolean);
+
+  return (
+    <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
+      <div className="inline-flex rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+        Stoep AI Report
+      </div>
+      <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+        Report shell for {identityLabel}
+      </h3>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+        This page assembles the report from saved identity checks, reviewed sources, market evidence
+        and saved strategy assumptions. Missing data stays labelled; ErfStoep does not fabricate
+        ownership, valuation, zoning, sales history or paid-provider data.
+      </p>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          [
+            "Identity",
+            workspaceState.identityStatus === "none"
+              ? "Needs check"
+              : workspaceState.identityStatus,
+          ],
+          ["Sources", `${reviewedSources} reviewed / ${sgFiles} SG files`],
+          ["Market", `${evidence.length} saved evidence item${evidence.length === 1 ? "" : "s"}`],
+          ["Strategy", `${scenarios.length} saved scenario${scenarios.length === 1 ? "" : "s"}`],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+              {label}
+            </div>
+            <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <article className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4">
+          <h4 className="text-base font-semibold text-[#0D1B2A]">Draft report outline</h4>
+          <ol className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/70">
+            <li>1. Official parcel identity and known public fields</li>
+            <li>2. Reviewed sources and SG diagram evidence</li>
+            <li>3. Market evidence, comps and address notes</li>
+            <li>4. Strategy assumptions and scenario summary</li>
+            <li>5. Risks, missing evidence and recommended next actions</li>
+          </ol>
+        </article>
+        <article className="rounded-[1.5rem] border border-[#FF6A00]/20 bg-[#fff8ec] p-4">
+          <h4 className="text-base font-semibold text-[#0D1B2A]">Missing before final report</h4>
+          {missing.length ? (
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/70">
+              {missing.map((item) => (
+                <li key={item}>Needs {item}.</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/70">
+              Enough saved workflow state exists for a first report draft. Review every source
+              before sharing.
+            </p>
+          )}
+        </article>
+      </div>
+    </section>
+  );
+}
+
 type CalculatorTab =
   | "acquisition"
   | "rental"
@@ -1255,9 +1350,20 @@ function calculatorDefaults(defaultPrice: number): Record<string, string> {
   };
 }
 
-function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
+function OfficialCalculatorPanel({
+  parcelId,
+  defaultPrice,
+}: {
+  parcelId: string;
+  defaultPrice: number;
+}) {
   const [active, setActive] = useState<CalculatorTab>("acquisition");
   const [values, setValues] = useState(() => calculatorDefaults(defaultPrice));
+  const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
+  useEffect(() => {
+    setSavedScenarios(readStrategyScenarios(parcelId));
+    setValues(calculatorDefaults(defaultPrice));
+  }, [defaultPrice, parcelId]);
   const n = (key: string) => toNumber(values[key] ?? "");
   const setValue = (key: string, value: string) =>
     setValues((current) => ({ ...current, [key]: value }));
@@ -1415,12 +1521,23 @@ function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
     ],
   ] as [string, string][];
 
+  function saveScenario() {
+    const { scenarios } = saveStrategyScenario(parcelId, {
+      label: `${activeLabel(active)} scenario`,
+      strategy: active,
+      inputs: values,
+      summary: dealSummary.map(([label, value]) => ({ label, value })),
+    });
+    setSavedScenarios(scenarios);
+    toast.success("Strategy scenario saved for this erf.");
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-          Estimates only. Enter your own assumptions; ErfStoep is not attaching official
-          valuation, rates, transfer, deeds or paid provider data here.
+          Estimates only. Enter your own assumptions; ErfStoep is not attaching official valuation,
+          rates, transfer, deeds or paid provider data here.
         </p>
         <button
           type="button"
@@ -1428,6 +1545,14 @@ function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
           className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
         >
           Reset to defaults
+        </button>
+        <button
+          type="button"
+          onClick={saveScenario}
+          className="rounded-full bg-[#FF6A00] px-4 py-2 text-[11px] font-semibold text-white hover:bg-[#ff7d1f]"
+        >
+          <Save className="mr-1 inline h-3.5 w-3.5" />
+          Save scenario
         </button>
       </div>
       <section className="rounded-2xl border border-amber-200 bg-[#fff8ed] p-4">
@@ -1693,11 +1818,16 @@ function OfficialCalculatorPanel({ defaultPrice }: { defaultPrice: number }) {
         </div>
       )}
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
-        Calculator scenarios are not saved yet. Use the Notes tab to save assumptions you want to
-        keep.
+        {savedScenarios.length > 0
+          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Stoep AI Report shell.`
+          : "Save a scenario to move Strategy progress. Estimates remain based on your assumptions."}
       </div>
     </div>
   );
+}
+
+function activeLabel(active: CalculatorTab) {
+  return CALCULATOR_TABS.find((tab) => tab.id === active)?.label ?? "Strategy";
 }
 
 function CalculatorSection({

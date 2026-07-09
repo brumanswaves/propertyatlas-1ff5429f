@@ -6,8 +6,12 @@ import {
   searchOfficialParcels,
   type PropertySearchResult,
 } from "@/lib/search/propertySearch";
-import type { IndexedOfficialParcel } from "@/lib/search/officialParcelIndex";
+import {
+  buildOfficialParcelIndex,
+  type IndexedOfficialParcel,
+} from "@/lib/search/officialParcelIndex";
 import { deriveErfSearchContext } from "@/lib/search/erfSearchContext";
+import { searchOfficialPublicParcelsByIdentity } from "@/lib/providers/publicDataClient";
 import {
   fetchAddressPlaceDetails,
   fetchAddressAutocompleteSuggestions,
@@ -93,6 +97,9 @@ export function SearchBar({
   const [addressResolution, setAddressResolution] = useState<AddressResolution | null>(null);
   const [submittedErfQuery, setSubmittedErfQuery] = useState("");
   const [erfSearched, setErfSearched] = useState(false);
+  const [providerErfResults, setProviderErfResults] = useState<PropertySearchResult[]>([]);
+  const [providerErfLoading, setProviderErfLoading] = useState(false);
+  const [providerErfMessage, setProviderErfMessage] = useState<string | null>(null);
 
   const context = useMemo(() => deriveErfSearchContext(officialParcels), [officialParcels]);
 
@@ -167,10 +174,13 @@ export function SearchBar({
 
   const erfResults = useMemo(() => {
     if (!submittedErfQuery.trim()) return [];
-    return searchOfficialParcels(submittedErfQuery, officialParcels, {
+    const loaded = searchOfficialParcels(submittedErfQuery, officialParcels, {
       loadedAreaTerms: context.loadedAreaTerms,
-    }).slice(0, 8);
-  }, [context.loadedAreaTerms, officialParcels, submittedErfQuery]);
+    });
+    const seen = new Set(loaded.map((result) => result.id));
+    const provider = providerErfResults.filter((result) => !seen.has(result.id));
+    return [...loaded, ...provider].slice(0, 8);
+  }, [context.loadedAreaTerms, officialParcels, providerErfResults, submittedErfQuery]);
 
   const parsedErfQuery = useMemo(() => parsePropertyQuery(erfSearchQuery), [erfSearchQuery]);
   const shouldWarnErfAmbiguous =
@@ -254,6 +264,68 @@ export function SearchBar({
     setErfSearched(true);
     setSubmittedErfQuery(erfSearchQuery);
   }
+
+  useEffect(() => {
+    const query = submittedErfQuery.trim();
+    if (!query) {
+      setProviderErfResults([]);
+      setProviderErfLoading(false);
+      setProviderErfMessage(null);
+      return;
+    }
+    const parsed = parsePropertyQuery(query);
+    if (!parsed.erfNumber && !parsed.lpi && !parsed.parcelKey) {
+      setProviderErfResults([]);
+      setProviderErfLoading(false);
+      setProviderErfMessage(null);
+      return;
+    }
+
+    let cancelled = false;
+    setProviderErfLoading(true);
+    setProviderErfMessage(
+      "Searching the official public parcel layer beyond the current map view...",
+    );
+    searchOfficialPublicParcelsByIdentity({
+      erfNumber: parsed.erfNumber,
+      portion: parsed.portion,
+      lpi: parsed.lpi?.toUpperCase(),
+      parcelKey: parsed.parcelKey?.toUpperCase(),
+      areaText: parsed.areaText || structured.township || context.currentAreaLabel,
+      limit: 25,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        const index = buildOfficialParcelIndex(
+          result.features.map((feature) => ({ layer: "csg-parcels" as const, feature })),
+        );
+        const matches = searchOfficialParcels(query, index, {
+          loadedAreaTerms: context.loadedAreaTerms,
+        });
+        setProviderErfResults(matches);
+        setProviderErfMessage(
+          matches.length
+            ? `Found ${matches.length} likely official public match${matches.length === 1 ? "" : "es"} outside the loaded map view.`
+            : (result.message ?? "No broader official public match found yet."),
+        );
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setProviderErfResults([]);
+        setProviderErfMessage(
+          error instanceof Error
+            ? error.message
+            : "Official public parcel lookup is temporarily unavailable.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setProviderErfLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [context.currentAreaLabel, context.loadedAreaTerms, structured.township, submittedErfQuery]);
 
   function highlightResult(result: PropertySearchResult) {
     onHighlightOfficialFromSearch?.(result);
@@ -570,10 +642,19 @@ export function SearchBar({
                   zoom into the area first.
                 </div>
               )}
+              {erfSearched && submittedErfQuery && (
+                <div className="mx-4 mb-3 rounded-xl border border-[#0D1B2A]/8 bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/64">
+                  <span className="font-semibold text-[#0D1B2A]">
+                    {providerErfLoading ? "Checking broader official data..." : "Broader lookup"}
+                  </span>{" "}
+                  {providerErfMessage ??
+                    "ErfStoep searches loaded map parcels first, then attempts an official public-layer lookup where supported."}
+                </div>
+              )}
               {erfSearched && submittedErfQuery && erfResults.length === 0 && (
                 <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm leading-6 text-[#0D1B2A]/68">
                   No official parcel match found yet. Zoom in and click a CSG or Kouga parcel
-                  outline, or search by address, erf number, LPI, or parcel key.
+                  outline, add township context, or search by address, LPI, or parcel key.
                 </div>
               )}
               {erfResults.map((result) => (

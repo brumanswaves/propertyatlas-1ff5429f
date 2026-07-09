@@ -35,6 +35,7 @@ import {
   buildErfWorkspaceNextStep,
   buildStoepStepProgress,
   readErfWorkspaceState,
+  readStrategyScenarios,
   updateErfWorkspaceState,
   type ErfWorkspaceIdentityStatus,
   type ErfWorkspaceState,
@@ -48,13 +49,17 @@ import {
   isPdfAttachment,
   isPreviewableImageAttachment,
   isTiffAttachment,
-  readSgDiagramAttachment,
+  readSgDiagramAttachments,
   removeSgDiagramAttachment,
   saveSgDiagramAttachment,
   SG_DIAGRAM_MAX_BYTES,
   type ErfWorkspaceAttachmentRecord,
 } from "@/lib/workbench/erfWorkspaceFiles";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
+import {
+  marketAddressToPropertyIdentityOverride,
+  selectedMarketAddress,
+} from "@/features/marketEvidence/addressIntelligence";
 import { toast } from "sonner";
 
 interface Props {
@@ -89,14 +94,22 @@ function normalizeKouga(p: Record<string, unknown>) {
   };
 }
 
-type Tab = "overview" | "research" | "listings" | "reports" | "notes" | "calculators";
+type Tab =
+  | "overview"
+  | "research"
+  | "listings"
+  | "reports"
+  | "notes"
+  | "calculators"
+  | "stoep-report";
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
   { id: "listings", label: "Market" },
-  { id: "reports", label: "Reports" },
+  { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
   { id: "notes", label: "Notes" },
+  { id: "stoep-report", label: "Stoep AI Report" },
 ];
 
 const WORKBENCH_SECTIONS: Record<
@@ -124,9 +137,9 @@ const WORKBENCH_SECTIONS: Record<
       "Use listings as evidence to save and compare. Portal results may be nearby or unrelated, so verify each comp before it informs your view.",
   },
   reports: {
-    title: "Report Vault",
+    title: "Paid Reports",
     subtitle: "Add or upload Lightstone, WinDeed, SG, zoning, title deed, or other evidence.",
-    guidanceTitle: "Evidence vault guidance",
+    guidanceTitle: "Paid report guidance",
     guidance:
       "Paid reports are optional confidence upgrades. Upload or attach evidence when you have it; the basic workflow still works without a purchase.",
   },
@@ -143,6 +156,14 @@ const WORKBENCH_SECTIONS: Record<
     guidanceTitle: "Research notes guidance",
     guidance:
       "Keep open questions, evidence links and decision notes together so the erf stays reviewable later.",
+  },
+  "stoep-report": {
+    title: "Stoep AI Report",
+    subtitle:
+      "Assemble the final report from saved identity, sources, market evidence and strategy assumptions.",
+    guidanceTitle: "Report assembly guidance",
+    guidance:
+      "This report shell uses what you have saved so far and labels missing data honestly. It does not fabricate ownership, valuation, zoning or sales history.",
   },
 };
 
@@ -258,30 +279,27 @@ function SgDiagramEvidenceSection({
   parcelId,
   sgDoc,
   onOpenSource,
+  onAttachmentCountChange,
 }: {
   parcelId: string;
   sgDoc: SgDocumentResult;
   onOpenSource: (sourceId: string) => void;
+  onAttachmentCountChange?: (count: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [attachment, setAttachment] = useState<ErfWorkspaceAttachmentRecord | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<ErfWorkspaceAttachmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
-  const isPdf = attachment ? isPdfAttachment(attachment.fileName, attachment.fileType) : false;
-  const isImage = attachment
-    ? isPreviewableImageAttachment(attachment.fileName, attachment.fileType)
-    : false;
-  const isTiff = attachment ? isTiffAttachment(attachment.fileName, attachment.fileType) : false;
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setStorageError(null);
-    readSgDiagramAttachment(parcelId)
-      .then((record) => {
+    readSgDiagramAttachments(parcelId)
+      .then((records) => {
         if (!alive) return;
-        setAttachment(record);
+        setAttachments(records);
+        onAttachmentCountChange?.(records.length);
       })
       .catch((error: Error) => {
         if (!alive) return;
@@ -293,44 +311,47 @@ function SgDiagramEvidenceSection({
     return () => {
       alive = false;
     };
-  }, [parcelId]);
+  }, [onAttachmentCountChange, parcelId]);
 
-  useEffect(() => {
-    if (!attachment) {
-      setPreviewUrl(null);
-      return;
-    }
-    const nextUrl = URL.createObjectURL(attachment.file);
-    setPreviewUrl(nextUrl);
-    return () => URL.revokeObjectURL(nextUrl);
-  }, [attachment]);
-
-  async function uploadFile(file: File | undefined) {
-    if (!file) return;
-    const result = await saveSgDiagramAttachment(parcelId, file).catch((error: Error) => {
-      setStorageError(error.message);
-      return null;
-    });
-    if (!result) return;
-    if (!result.ok) {
-      if (result.reason === "too_large") {
-        toast.error(
-          "File is too large for local browser storage. Please upload a smaller PDF/image.",
-        );
-      } else {
-        toast.error("Unsupported file type. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+  async function uploadFiles(files: FileList | null | undefined) {
+    const list = Array.from(files ?? []);
+    if (!list.length) return;
+    const nextAttachments = [...attachments];
+    let savedCount = 0;
+    for (const file of list) {
+      const result = await saveSgDiagramAttachment(parcelId, file).catch((error: Error) => {
+        setStorageError(error.message);
+        return null;
+      });
+      if (!result) continue;
+      if (!result.ok) {
+        if (result.reason === "too_large") {
+          toast.error(`${file.name} is too large for local browser storage.`);
+        } else {
+          toast.error(`${file.name} is not supported. Upload PDF, PNG, JPG, JPEG, TIF, or TIFF.`);
+        }
+        continue;
       }
-      return;
+      nextAttachments.unshift(result.record);
+      savedCount += 1;
     }
-    setAttachment(result.record);
+    if (!savedCount) return;
+    setAttachments(nextAttachments);
+    onAttachmentCountChange?.(nextAttachments.length);
     setStorageError(null);
     onOpenSource("sg-diagram-evidence");
-    toast.success("SG diagram attached to this erf file.");
+    toast.success(
+      savedCount === 1
+        ? "SG diagram file attached to this erf file."
+        : `${savedCount} SG diagram files attached to this erf file.`,
+    );
   }
 
-  async function removeAttachment() {
-    await removeSgDiagramAttachment(parcelId);
-    setAttachment(null);
+  async function removeAttachment(attachmentId: string) {
+    await removeSgDiagramAttachment(parcelId, attachmentId);
+    const next = attachments.filter((item) => item.id !== attachmentId);
+    setAttachments(next);
+    onAttachmentCountChange?.(next.length);
     toast.success("SG diagram attachment removed");
   }
 
@@ -356,10 +377,12 @@ function SgDiagramEvidenceSection({
         <span
           className={cn(
             "inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold",
-            attachment ? "bg-emerald-600 text-white" : "bg-[#0D1B2A]/8 text-[#0D1B2A]/64",
+            attachments.length ? "bg-emerald-600 text-white" : "bg-[#0D1B2A]/8 text-[#0D1B2A]/64",
           )}
         >
-          {attachment ? "Attached locally" : "Not attached"}
+          {attachments.length
+            ? `${attachments.length} file${attachments.length === 1 ? "" : "s"} attached locally`
+            : "Not attached"}
         </span>
       </div>
 
@@ -386,15 +409,16 @@ function SgDiagramEvidenceSection({
           className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff7d1f]"
         >
           <Upload className="h-3.5 w-3.5" />
-          Upload SG diagram
+          Upload SG files
         </button>
         <input
           ref={inputRef}
           type="file"
+          multiple
           accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff"
           className="hidden"
           onChange={(event) => {
-            void uploadFile(event.target.files?.[0]);
+            void uploadFiles(event.target.files);
             event.currentTarget.value = "";
           }}
         />
@@ -419,64 +443,15 @@ function SgDiagramEvidenceSection({
 
       {loading ? (
         <p className="mt-4 text-sm text-[#0D1B2A]/58">Checking local SG diagram attachment...</p>
-      ) : attachment ? (
-        <div className="mt-4 rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-[#0D1B2A]">{attachment.fileName}</div>
-              <dl className="mt-2 grid gap-1 text-xs text-[#0D1B2A]/68 sm:grid-cols-2">
-                <div>Type: {attachment.fileType}</div>
-                <div>Size: {formatFileSize(attachment.fileSize)}</div>
-                <div>Uploaded: {formatAttachmentDate(attachment.uploadedAt)}</div>
-                <div>Source: {attachment.sourceLabel}</div>
-              </dl>
-              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-                SG diagram attached to this erf file. This records evidence, not legal verification.
-              </p>
-              {isTiff && (
-                <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/62">
-                  TIFF preview may not display in all browsers. The file is still attached to this
-                  erf.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {previewUrl && (
-                <a
-                  href={previewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                >
-                  View attachment
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => void removeAttachment()}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#C75A31]/25 bg-white px-4 py-2 text-xs font-semibold text-[#7A2D12] transition hover:bg-[#fff1e9]"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Remove attachment
-              </button>
-            </div>
-          </div>
-
-          {previewUrl && isImage && (
-            <img
-              src={previewUrl}
-              alt="User uploaded SG diagram preview"
-              className="mt-4 max-h-72 w-full rounded-2xl border border-emerald-500/20 object-contain bg-white"
+      ) : attachments.length ? (
+        <div className="mt-4 grid gap-3">
+          {attachments.map((attachment) => (
+            <SgAttachmentCard
+              key={attachment.id}
+              attachment={attachment}
+              onRemove={() => void removeAttachment(attachment.id)}
             />
-          )}
-          {previewUrl && isPdf && (
-            <iframe
-              title="User uploaded SG diagram PDF preview"
-              src={previewUrl}
-              className="mt-4 h-72 w-full rounded-2xl border border-emerald-500/20 bg-white"
-            />
-          )}
+          ))}
         </div>
       ) : (
         <p className="mt-4 text-sm text-[#0D1B2A]/58">
@@ -485,6 +460,85 @@ function SgDiagramEvidenceSection({
         </p>
       )}
     </article>
+  );
+}
+
+function SgAttachmentCard({
+  attachment,
+  onRemove,
+}: {
+  attachment: ErfWorkspaceAttachmentRecord;
+  onRemove: () => void;
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const isPdf = isPdfAttachment(attachment.fileName, attachment.fileType);
+  const isImage = isPreviewableImageAttachment(attachment.fileName, attachment.fileType);
+  const isTiff = isTiffAttachment(attachment.fileName, attachment.fileType);
+
+  useEffect(() => {
+    const nextUrl = URL.createObjectURL(attachment.file);
+    setPreviewUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [attachment.file]);
+
+  return (
+    <div className="rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-[#0D1B2A]">{attachment.fileName}</div>
+          <dl className="mt-2 grid gap-1 text-xs text-[#0D1B2A]/68 sm:grid-cols-2">
+            <div>Type: {attachment.fileType}</div>
+            <div>Size: {formatFileSize(attachment.fileSize)}</div>
+            <div>Uploaded: {formatAttachmentDate(attachment.uploadedAt)}</div>
+            <div>Source: {attachment.sourceLabel}</div>
+          </dl>
+          <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
+            SG evidence attached to this erf file. This records evidence, not legal verification.
+          </p>
+          {isTiff && (
+            <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/62">
+              TIFF preview may not display in all browsers. The file is still attached to this erf.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {previewUrl && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+            >
+              View attachment
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={onRemove}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#C75A31]/25 bg-white px-4 py-2 text-xs font-semibold text-[#7A2D12] transition hover:bg-[#fff1e9]"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Remove attachment
+          </button>
+        </div>
+      </div>
+
+      {previewUrl && isImage && (
+        <img
+          src={previewUrl}
+          alt="User uploaded SG diagram preview"
+          className="mt-4 max-h-72 w-full rounded-2xl border border-emerald-500/20 object-contain bg-white"
+        />
+      )}
+      {previewUrl && isPdf && (
+        <iframe
+          title="User uploaded SG diagram PDF preview"
+          src={previewUrl}
+          className="mt-4 h-72 w-full rounded-2xl border border-emerald-500/20 bg-white"
+        />
+      )}
+    </div>
   );
 }
 
@@ -498,6 +552,7 @@ function OfficialIdentityChecklist({
   onStatusChange,
   onOpenSource,
   onReviewSource,
+  onSgAttachmentCountChange,
 }: {
   parcel: NormalizedOfficialParcel;
   sourceUrl: string;
@@ -508,6 +563,7 @@ function OfficialIdentityChecklist({
   onStatusChange: (status: IdentityCheckStatus) => void;
   onOpenSource: (sourceId: string) => void;
   onReviewSource: (sourceId: string) => void;
+  onSgAttachmentCountChange: (count: number) => void;
 }) {
   const coordinates = parcel.coordinates
     ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
@@ -711,6 +767,7 @@ function OfficialIdentityChecklist({
                   parcelId={parcel.id}
                   sgDoc={sgDoc}
                   onOpenSource={onOpenSource}
+                  onAttachmentCountChange={onSgAttachmentCountChange}
                 />
               )}
               <article
@@ -1143,7 +1200,7 @@ function resolveOfficialParcelLocation(opts: {
   if (user && (user.streetNumber || user.streetName)) {
     const street = [user.streetNumber, user.streetName].filter(Boolean).join(" ");
     return {
-      displayTitle: street || erfLabel,
+      displayTitle: street ? `${erfLabel} - ${street}` : erfLabel,
       displaySubtitle: [erfLabel, user.suburb ?? minorRegion, "User Entered"]
         .filter(Boolean)
         .join(" · "),
@@ -1249,7 +1306,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   });
-  const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
+  const {
+    evidence: savedMarketEvidence,
+    propertyIdentity,
+    marketAddressIntelligence,
+  } = useSavedMarketEvidence(parcelId);
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
   const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
@@ -1259,6 +1320,21 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
+  const savedMarketAddress = selectedMarketAddress(marketAddressIntelligence);
+  const savedAddressOverride = savedMarketAddress
+    ? marketAddressToPropertyIdentityOverride(savedMarketAddress)
+    : propertyIdentity;
+  const canonicalUserAddress: UserAddress | null = useMemo(
+    () =>
+      savedAddressOverride?.address
+        ? {
+            streetName: savedAddressOverride.address,
+            suburb: savedAddressOverride.marketSuburb ?? undefined,
+            notes: savedAddressOverride.note ?? undefined,
+          }
+        : userAddr,
+    [savedAddressOverride, userAddr],
+  );
   useEffect(() => {
     setTab(readInitialTab());
     scrollRef.current?.scrollTo({ top: 0 });
@@ -1269,18 +1345,32 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   useEffect(() => {
     const workspace = readErfWorkspaceState(parcelId);
     const legacyIdentityStatus = readIdentityStatus(parcelId);
+    const savedScenarioCount = readStrategyScenarios(parcelId).length;
     const mergedIdentityStatus =
       workspace.identityStatus === "none" && legacyIdentityStatus !== "needs_verification"
         ? identityStatusToWorkspace(legacyIdentityStatus)
         : workspace.identityStatus;
     const nextWorkspace =
-      mergedIdentityStatus === workspace.identityStatus
+      mergedIdentityStatus === workspace.identityStatus &&
+      savedScenarioCount === workspace.strategyScenarioCount
         ? workspace
-        : updateErfWorkspaceState(parcelId, { identityStatus: mergedIdentityStatus });
+        : updateErfWorkspaceState(parcelId, {
+            identityStatus: mergedIdentityStatus,
+            strategyScenarioCount: savedScenarioCount,
+          });
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
     setShareCopied(false);
     setWorkflowFeedback(null);
+  }, [parcelId]);
+  useEffect(() => {
+    function refresh(event: Event) {
+      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      if (detail?.parcelId && detail.parcelId !== parcelId) return;
+      setWorkspaceState(readErfWorkspaceState(parcelId));
+    }
+    window.addEventListener("erfstoep:workspace-updated", refresh);
+    return () => window.removeEventListener("erfstoep:workspace-updated", refresh);
   }, [parcelId]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
@@ -1323,9 +1413,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         latitude: csg?.latitude ?? lat,
         longitude: csg?.longitude ?? lng,
         geo,
-        user: userAddr,
+        user: canonicalUserAddress,
       }),
-    [csg, geo, userAddr, lat, lng],
+    [csg, canonicalUserAddress, geo, lat, lng],
   );
 
   const sourceUrl = isCsg ? CSG_VIEWER_URL : KOUGA_PUBLIC_MAP_URL;
@@ -1390,9 +1480,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       parcelKey: csg?.parcelKey ?? null,
       objectId: objectId as string | number | null | undefined,
       municipality: "Kouga Local Municipality",
-      province: csg?.province ?? userAddr?.province ?? "Eastern Cape",
-      suburbOrArea: userAddr?.suburb ?? csg?.minorRegion ?? resolved.displaySubtitle ?? null,
-      town: userAddr?.town ?? csg?.majorRegion ?? null,
+      province: csg?.province ?? canonicalUserAddress?.province ?? "Eastern Cape",
+      suburbOrArea:
+        canonicalUserAddress?.suburb ?? csg?.minorRegion ?? resolved.displaySubtitle ?? null,
+      town: canonicalUserAddress?.town ?? csg?.majorRegion ?? null,
       coordinates: coords,
       knownFields,
       missingFields: [
@@ -1415,7 +1506,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     selection.layer,
     selection.properties,
     isCsg,
-    userAddr,
+    canonicalUserAddress,
   ]);
   const selectedErfGoogleMapsUrl = googleMapsCoordinateUrl(normalizedParcel.coordinates);
 
@@ -1513,6 +1604,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     toast.success("Source marked reviewed");
   }
 
+  function updateSgAttachmentCount(count: number) {
+    if (workspaceState.sgDiagramAttachmentCount === count) return;
+    setWorkspacePatch({
+      sgDiagramAttachmentCount: count,
+      openedSourceIds: Array.from(
+        new Set([...workspaceState.openedSourceIds, "sg-diagram-evidence"]),
+      ),
+      dirty: true,
+    });
+  }
+
   function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
     if (options?.markStarted) {
       if (nextTab === "listings") {
@@ -1530,7 +1632,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       if (nextTab === "reports") {
         setWorkspacePatch({ reportStarted: true, dirty: true });
         setWorkflowFeedback(
-          "Stoep Report step started. Use saved evidence and assumptions, not fake data.",
+          "Paid Reports opened. These are optional confidence upgrades, not required to continue.",
+        );
+      }
+      if (nextTab === "stoep-report") {
+        setWorkspacePatch({ reportStarted: true, dirty: true });
+        setWorkflowFeedback(
+          "Stoep AI Report opened. It assembles saved evidence and assumptions without fake data.",
         );
       }
     }
@@ -1673,7 +1781,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
               className="rounded-full border border-white/14 bg-white/10 px-2.5 py-2 text-[11px] font-semibold text-white transition hover:bg-white/16"
             >
-              Reports
+              Paid
             </button>
           </div>
         </div>
@@ -1936,7 +2044,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                                 markStarted:
                                   action.tab === "listings" ||
                                   action.tab === "calculators" ||
-                                  action.tab === "reports",
+                                  action.tab === "reports" ||
+                                  action.tab === "stoep-report",
                               })
                             }
                             className={cn(
@@ -2272,6 +2381,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 onStatusChange={updateIdentityStatus}
                 onOpenSource={markSourceOpened}
                 onReviewSource={markSourceReviewed}
+                onSgAttachmentCountChange={updateSgAttachmentCount}
               />
               <ErfResearchDossier parcel={normalizedParcel} view="research" />
             </>
@@ -2281,6 +2391,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}
           {tab === "calculators" && (
             <ErfResearchDossier parcel={normalizedParcel} view="calculators" />
+          )}
+          {tab === "stoep-report" && (
+            <ErfResearchDossier parcel={normalizedParcel} view="stoep-report" />
           )}
         </div>
       </div>
