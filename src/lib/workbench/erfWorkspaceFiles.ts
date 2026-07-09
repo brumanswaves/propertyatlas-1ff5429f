@@ -5,6 +5,7 @@ const DB_VERSION = 1;
 const STORE_NAME = "attachments";
 
 export interface ErfWorkspaceAttachmentMetadata {
+  id: string;
   parcelId: string;
   kind: "sg-diagram";
   fileName: string;
@@ -33,6 +34,10 @@ const ACCEPTED_MIME_TYPES = [
 
 export function sgDiagramAttachmentKey(parcelId: string) {
   return `${parcelId}:sg-diagram`;
+}
+
+export function sgDiagramAttachmentRecordKey(parcelId: string, attachmentId: string) {
+  return `${sgDiagramAttachmentKey(parcelId)}:${attachmentId}`;
 }
 
 export function isTiffAttachment(fileName: string, fileType?: string) {
@@ -117,7 +122,9 @@ async function withStore<T>(
 export async function saveSgDiagramAttachment(parcelId: string, file: File) {
   const validation = validateSgDiagramFile(file);
   if (!validation.ok) return validation;
+  const id = crypto.randomUUID();
   const record: ErfWorkspaceAttachmentRecord = {
+    id,
     parcelId,
     kind: "sg-diagram",
     fileName: file.name,
@@ -127,18 +134,49 @@ export async function saveSgDiagramAttachment(parcelId: string, file: File) {
     sourceLabel: "User uploaded SG diagram",
     file,
   };
-  await withStore("readwrite", (store) => store.put(record, sgDiagramAttachmentKey(parcelId)));
+  await withStore("readwrite", (store) =>
+    store.put(record, sgDiagramAttachmentRecordKey(parcelId, id)),
+  );
   return { ok: true as const, record };
 }
 
 export async function readSgDiagramAttachment(parcelId: string) {
-  return (
-    (await withStore<ErfWorkspaceAttachmentRecord>("readonly", (store) =>
-      store.get(sgDiagramAttachmentKey(parcelId)),
-    )) ?? null
-  );
+  const attachments = await readSgDiagramAttachments(parcelId);
+  return attachments[0] ?? null;
 }
 
-export async function removeSgDiagramAttachment(parcelId: string) {
-  await withStore("readwrite", (store) => store.delete(sgDiagramAttachmentKey(parcelId)));
+export async function readSgDiagramAttachments(parcelId: string) {
+  const prefix = `${sgDiagramAttachmentKey(parcelId)}:`;
+  const records =
+    (await withStore<ErfWorkspaceAttachmentRecord[]>(
+      "readonly",
+      (store) => store.getAll() as IDBRequest<ErfWorkspaceAttachmentRecord[]>,
+    )) ?? [];
+
+  const normalized = records
+    .filter((record) => record?.parcelId === parcelId && record.kind === "sg-diagram")
+    .map((record) => ({ ...record, id: record.id || crypto.randomUUID() }));
+
+  const legacy = await withStore<ErfWorkspaceAttachmentRecord>("readonly", (store) =>
+    store.get(sgDiagramAttachmentKey(parcelId)),
+  );
+  if (legacy && !normalized.some((record) => record.fileName === legacy.fileName)) {
+    normalized.push({ ...legacy, id: legacy.id || "legacy-sg-diagram" });
+  }
+
+  return normalized.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+}
+
+export async function removeSgDiagramAttachment(parcelId: string, attachmentId?: string) {
+  if (!attachmentId) {
+    await withStore("readwrite", (store) => store.delete(sgDiagramAttachmentKey(parcelId)));
+    return;
+  }
+  if (attachmentId === "legacy-sg-diagram") {
+    await withStore("readwrite", (store) => store.delete(sgDiagramAttachmentKey(parcelId)));
+    return;
+  }
+  await withStore("readwrite", (store) =>
+    store.delete(sgDiagramAttachmentRecordKey(parcelId, attachmentId)),
+  );
 }

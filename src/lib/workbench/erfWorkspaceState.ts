@@ -6,13 +6,16 @@ export interface ErfWorkspaceState {
   identityStatus: ErfWorkspaceIdentityStatus;
   openedSourceIds: string[];
   reviewedSourceIds: string[];
+  sgDiagramAttachmentCount: number;
   marketEvidenceStarted: boolean;
+  marketAddressSaved: boolean;
   calculatorStarted: boolean;
+  strategyScenarioCount: number;
   reportStarted: boolean;
   updatedAt: string;
 }
 
-export type ErfWorkspaceTab = "research" | "listings" | "reports" | "calculators";
+export type ErfWorkspaceTab = "research" | "listings" | "reports" | "calculators" | "stoep-report";
 
 export interface ErfWorkspaceNextStep {
   title: string;
@@ -39,8 +42,22 @@ export interface StoepStepProgress {
   doneWhen: string;
 }
 
+export interface ErfStrategyScenario {
+  id: string;
+  parcelId: string;
+  label: string;
+  strategy: string;
+  inputs: Record<string, string>;
+  summary: Array<{ label: string; value: string }>;
+  savedAt: string;
+}
+
 export function erfWorkspaceStateKey(parcelId: string) {
   return `erfstoep.workspace.${parcelId}`;
+}
+
+export function erfStrategyScenariosKey(parcelId: string) {
+  return `erfstoep.strategyScenarios.${parcelId}`;
 }
 
 export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
@@ -50,8 +67,11 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     identityStatus: "none",
     openedSourceIds: [],
     reviewedSourceIds: [],
+    sgDiagramAttachmentCount: 0,
     marketEvidenceStarted: false,
+    marketAddressSaved: false,
     calculatorStarted: false,
+    strategyScenarioCount: 0,
     reportStarted: false,
     updatedAt: new Date().toISOString(),
   };
@@ -78,8 +98,15 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
     reviewedSourceIds: Array.isArray(raw.reviewedSourceIds)
       ? raw.reviewedSourceIds.filter((id): id is string => typeof id === "string")
       : [],
+    sgDiagramAttachmentCount: Number.isFinite(Number(raw.sgDiagramAttachmentCount))
+      ? Math.max(0, Number(raw.sgDiagramAttachmentCount))
+      : 0,
     marketEvidenceStarted: Boolean(raw.marketEvidenceStarted),
+    marketAddressSaved: Boolean(raw.marketAddressSaved),
     calculatorStarted: Boolean(raw.calculatorStarted),
+    strategyScenarioCount: Number.isFinite(Number(raw.strategyScenarioCount))
+      ? Math.max(0, Number(raw.strategyScenarioCount))
+      : 0,
     reportStarted: Boolean(raw.reportStarted),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : base.updatedAt,
   };
@@ -105,6 +132,9 @@ export function writeErfWorkspaceState(
 ) {
   const next = { ...state, updatedAt: new Date().toISOString() };
   if (storage) storage.setItem(erfWorkspaceStateKey(parcelId), JSON.stringify(next));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("erfstoep:workspace-updated", { detail: { parcelId } }));
+  }
   return next;
 }
 
@@ -120,19 +150,98 @@ export function updateErfWorkspaceState(
   );
 }
 
+function coerceStrategyScenario(value: unknown, parcelId: string): ErfStrategyScenario | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Partial<ErfStrategyScenario>;
+  const inputs =
+    raw.inputs && typeof raw.inputs === "object" && !Array.isArray(raw.inputs)
+      ? Object.fromEntries(
+          Object.entries(raw.inputs).map(([key, input]) => [key, String(input ?? "")]),
+        )
+      : {};
+  const summary = Array.isArray(raw.summary)
+    ? raw.summary
+        .filter((item): item is { label: string; value: string } =>
+          Boolean(item && typeof item === "object" && "label" in item && "value" in item),
+        )
+        .map((item) => ({ label: String(item.label), value: String(item.value) }))
+    : [];
+  return {
+    id: typeof raw.id === "string" ? raw.id : crypto.randomUUID(),
+    parcelId,
+    label: typeof raw.label === "string" && raw.label.trim() ? raw.label : "Saved scenario",
+    strategy: typeof raw.strategy === "string" ? raw.strategy : "strategy",
+    inputs,
+    summary,
+    savedAt: typeof raw.savedAt === "string" ? raw.savedAt : new Date().toISOString(),
+  };
+}
+
+export function readStrategyScenarios(
+  parcelId: string,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+): ErfStrategyScenario[] {
+  if (!storage) return [];
+  try {
+    const raw = storage.getItem(erfStrategyScenariosKey(parcelId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => coerceStrategyScenario(item, parcelId))
+      .filter((item): item is ErfStrategyScenario => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
+export function saveStrategyScenario(
+  parcelId: string,
+  scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt"> & { id?: string },
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+) {
+  const current = readStrategyScenarios(parcelId, storage);
+  const saved: ErfStrategyScenario = {
+    id: scenario.id ?? crypto.randomUUID(),
+    parcelId,
+    label: scenario.label,
+    strategy: scenario.strategy,
+    inputs: scenario.inputs,
+    summary: scenario.summary,
+    savedAt: new Date().toISOString(),
+  };
+  const next = [saved, ...current.filter((item) => item.id !== saved.id)];
+  if (storage) storage.setItem(erfStrategyScenariosKey(parcelId), JSON.stringify(next));
+  updateErfWorkspaceState(
+    parcelId,
+    {
+      calculatorStarted: true,
+      strategyScenarioCount: next.length,
+      dirty: true,
+    },
+    storage,
+  );
+  return { scenario: saved, scenarios: next };
+}
+
 export function buildErfWorkspaceNextStep(
   state: Pick<
     ErfWorkspaceState,
     | "identityStatus"
     | "openedSourceIds"
     | "reviewedSourceIds"
+    | "sgDiagramAttachmentCount"
     | "marketEvidenceStarted"
+    | "marketAddressSaved"
     | "calculatorStarted"
+    | "strategyScenarioCount"
     | "reportStarted"
   >,
 ): ErfWorkspaceNextStep {
   const hasOpenedSource = state.openedSourceIds.length > 0;
-  const hasReviewedSource = state.reviewedSourceIds.length > 0;
+  const hasReviewedSource =
+    state.reviewedSourceIds.length > 0 || state.sgDiagramAttachmentCount > 0;
+  const marketDone = state.marketEvidenceStarted || state.marketAddressSaved;
+  const strategyDone = state.strategyScenarioCount > 0;
 
   if (state.identityStatus === "none") {
     if (hasOpenedSource && !hasReviewedSource) {
@@ -192,7 +301,7 @@ export function buildErfWorkspaceNextStep(
     };
   }
 
-  if (!state.marketEvidenceStarted) {
+  if (!marketDone) {
     return {
       title: "Build Market Evidence",
       body: "Save listings, comps and notes before you rely on any price or strategy assumption.",
@@ -205,13 +314,13 @@ export function buildErfWorkspaceNextStep(
     };
   }
 
-  if (!state.calculatorStarted) {
+  if (!strategyDone) {
     return {
       title: "Run Strategy Lab calculators",
       body: "Test build, flip, hold and max-offer assumptions using your own numbers.",
       why: "The report becomes useful when the numbers are tied to your assumptions.",
       doNow: "Test build, flip, hold and max-offer assumptions.",
-      doneWhen: "At least one calculator or strategy scenario has been opened and started.",
+      doneWhen: "At least one strategy scenario is saved.",
       next: "Create Stoep Report.",
       action: "Run calculators",
       tab: "calculators",
@@ -223,11 +332,12 @@ export function buildErfWorkspaceNextStep(
       title: "Create Stoep Report",
       body: "Turn saved evidence and assumptions into one consultation-style report.",
       why: "A report keeps your evidence, notes, assumptions and next steps together.",
-      doNow: "Use saved evidence, notes, reports and assumptions to generate one report.",
-      doneWhen: "Report Vault or Stoep Report has been opened and started.",
+      doNow:
+        "Open Stoep AI Report and assemble the current identity, sources, market evidence and saved strategy assumptions.",
+      doneWhen: "Stoep AI Report has been opened and reviewed with the saved workflow state.",
       next: "Review and export your Stoep Report.",
-      action: "Open reports",
-      tab: "reports",
+      action: "Open Stoep AI Report",
+      tab: "stoep-report",
     };
   }
 
@@ -239,7 +349,7 @@ export function buildErfWorkspaceNextStep(
     doneWhen: "You are comfortable sharing or exporting the report.",
     next: "Keep improving confidence as new evidence arrives.",
     action: "Review report",
-    tab: "reports",
+    tab: "stoep-report",
   };
 }
 
@@ -247,8 +357,10 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
   const identityDone =
     state.identityStatus === "checked" || state.identityStatus === "looks_correct";
   const identityUncertain = state.identityStatus === "uncertain";
-  const sourcesDone = state.reviewedSourceIds.length > 0;
+  const sourcesDone = state.reviewedSourceIds.length > 0 || state.sgDiagramAttachmentCount > 0;
   const sourcesStarted = state.openedSourceIds.length > 0;
+  const marketDone = state.marketEvidenceStarted || state.marketAddressSaved;
+  const strategyDone = state.strategyScenarioCount > 0;
 
   return [
     {
@@ -274,7 +386,7 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
       label: "Market",
       status: identityUncertain
         ? "Blocked / uncertain"
-        : state.marketEvidenceStarted
+        : marketDone
           ? "Done"
           : identityDone
             ? "Current"
@@ -284,21 +396,21 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
     {
       id: "strategy",
       label: "Strategy",
-      status: state.calculatorStarted
+      status: strategyDone
         ? "Done"
-        : state.marketEvidenceStarted && !identityUncertain
+        : marketDone && !identityUncertain
           ? "Current"
           : identityUncertain
             ? "Blocked / uncertain"
             : "Not started",
-      doneWhen: "A Strategy Lab calculator or scenario is started.",
+      doneWhen: "At least one Strategy Lab scenario is saved.",
     },
     {
       id: "report",
       label: "Report",
       status: state.reportStarted
         ? "Done"
-        : state.calculatorStarted && !identityUncertain
+        : strategyDone && !identityUncertain
           ? "Current"
           : identityUncertain
             ? "Blocked / uncertain"

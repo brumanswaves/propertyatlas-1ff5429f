@@ -168,8 +168,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('label: "Market"');
     expect(panel).toContain('label: "Strategy"');
     expect(panel).toContain('label: "Sources"');
-    expect(panel).toContain('label: "Reports"');
+    expect(panel).toContain('label: "Paid Reports"');
     expect(panel).toContain('label: "Notes"');
+    expect(panel).toContain('label: "Stoep AI Report"');
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");
@@ -183,6 +184,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('view="calculators"');
     expect(panel).toContain('tab === "notes"');
     expect(panel).toContain('view="notes"');
+    expect(panel).toContain('tab === "stoep-report"');
+    expect(panel).toContain('view="stoep-report"');
   });
 
   it("shows an interactive selected erf mini map without faking parcel precision", () => {
@@ -254,9 +257,10 @@ describe("official dossier UX guardrails", () => {
     expect(panel).not.toContain("SG Diagram Evidence");
     expect(panel).not.toContain('name: "SG document list"');
     expect(panel).toContain("The SG diagram is the official parcel diagram / plot map");
-    expect(panel).toContain("Upload SG diagram");
+    expect(panel).toContain("Upload SG files");
+    expect(panel).toContain("multiple");
     expect(panel).toContain(".pdf,.png,.jpg,.jpeg,.tif,.tiff");
-    expect(panel).toContain("Attached locally");
+    expect(panel).toContain("attached locally");
     expect(panel).toContain("Not attached");
     expect(panel).toContain(
       "Stored locally in this browser for this erf. Save/export support will come later.",
@@ -265,10 +269,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("User uploaded SG diagram");
     expect(panel).toContain("View attachment");
     expect(panel).toContain("Remove attachment");
-    expect(panel).toContain("File is too large for local browser storage");
+    expect(panel).toContain("is too large for local browser storage");
     expect(panel).toContain("Automatic SG import is not enabled yet");
     expect(panel).toContain("No SG diagram attached yet");
-    expect(panel).toContain("SG diagram attached to this erf file");
+    expect(panel).toContain("SG diagram file attached to this erf file");
+    expect(panel).toContain("SG diagram files attached to this erf file");
     expect(panel).toContain("Deeds registry guidance");
     expect(panel).toContain("Not opened");
     expect(panel).toContain("Opened");
@@ -293,6 +298,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("erfstoep.identityCheck.");
     expect(panel).toContain("openedSourceIds");
     expect(panel).toContain("reviewedSourceIds");
+    expect(panel).toContain("sgDiagramAttachmentCount");
     expect(panel).toContain("markSourceOpened");
     expect(panel).toContain("markSourceReviewed");
     expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
@@ -315,7 +321,7 @@ describe("official dossier UX guardrails", () => {
 
     expect(checklist).not.toContain("Lightstone");
     expect(checklist).not.toContain("WinDeed");
-    expect(panel).toContain('title: "Report Vault"');
+    expect(panel).toContain('title: "Paid Reports"');
     expect(panel).toContain("Add or upload Lightstone, WinDeed, SG, zoning, title deed");
   });
 
@@ -332,7 +338,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Check public records and source links tied to this erf.");
     expect(panel).toContain('title: "Market Evidence"');
     expect(panel).toContain("Build comps, listing evidence, and manual market notes.");
-    expect(panel).toContain('title: "Report Vault"');
+    expect(panel).toContain('title: "Paid Reports"');
     expect(panel).toContain(
       "Add or upload Lightstone, WinDeed, SG, zoning, title deed, or other evidence.",
     );
@@ -342,6 +348,8 @@ describe("official dossier UX guardrails", () => {
     );
     expect(panel).toContain('title: "Notes"');
     expect(panel).toContain("Capture your research, questions, and decision notes.");
+    expect(panel).toContain('title: "Stoep AI Report"');
+    expect(panel).toContain("Assemble the final report from saved identity");
     expect(panel).toContain("isOverview ? (");
     expect(panel).toContain("{isOverview && (");
     expect(panel).toContain("{activeSection.guidanceTitle}");

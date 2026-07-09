@@ -1,7 +1,13 @@
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ResearchSource } from "@/lib/research/sourceTypes";
 
-export type InvestorWorkflowView = "research" | "listings" | "reports" | "notes" | "calculators";
+export type InvestorWorkflowView =
+  | "research"
+  | "listings"
+  | "reports"
+  | "notes"
+  | "calculators"
+  | "stoep-report";
 
 export type DueDiligenceStatus =
   | "Available"
