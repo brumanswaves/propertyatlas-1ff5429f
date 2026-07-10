@@ -2056,6 +2056,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onBackToMap={handleBackToMap}
             />
           </div>
+        </section>
+
+
 
 
         <div ref={dossierContentRef} className="px-5 pt-4">
