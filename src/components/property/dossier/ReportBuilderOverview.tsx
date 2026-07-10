@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import type { InvestorWorkflowView } from "./investorWorkflow";
 import { buildReportActionCards, buildReportBuilderProgress } from "@/lib/workbench/reportProgress";
 import { readErfWorkspaceState, type ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import nextStepBannerAsset from "@/assets/recommended-next-step-banner-bg.png.asset.json";
+import aboutErfPinAsset from "@/assets/about-erf-map-pin-illustration.png.asset.json";
+import orangeGlowAsset from "@/assets/orange-glow-orb.png.asset.json";
+
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -136,23 +140,35 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
           </ol>
         </div>
 
-        <aside className="relative overflow-hidden rounded-[1.75rem] border border-white/5 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#FF6A00]/20 blur-2xl" />
-          <div className="flex items-start justify-between">
+        <aside className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
+          <img
+            src={orangeGlowAsset.url}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-70"
+          />
+          <img
+            src={aboutErfPinAsset.url}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 opacity-40"
+          />
+          <div className="relative flex items-start justify-between">
             <h3 className="text-[20px] font-semibold tracking-tight">About this erf</h3>
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
               <MapPin className="h-4 w-4 text-[#FF8A33]" />
             </span>
           </div>
-          <p className="mt-4 text-[13.5px] leading-6 text-white/75">{confidenceSummary}</p>
+          <p className="relative mt-4 text-[13.5px] leading-6 text-white/75">{confidenceSummary}</p>
           <button
             type="button"
             onClick={() => onSelectView?.("research")}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#FF8A33] hover:text-[#FFA95C]"
+            className="relative mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#FF8A33] hover:text-[#FFA95C]"
           >
             View erf details <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </aside>
+
       </section>
 
       {/* 4 mini product panels */}
@@ -227,8 +243,15 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
       </section>
 
       {/* Recommended next step banner */}
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/5 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#FF6A00]/20 to-transparent" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
+        <img
+          src={nextStepBannerAsset.url}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#06152A] via-[#06152A]/70 to-transparent" />
+
         <div className="relative flex flex-col items-start gap-5 md:flex-row md:items-center">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#FF6A00]/15 ring-1 ring-[#FF6A00]/30 shadow-[0_0_30px_rgba(255,106,0,0.35)]">
             <CheckCircle2 className="h-6 w-6 text-[#FF8A33]" />

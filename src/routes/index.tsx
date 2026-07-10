@@ -256,8 +256,9 @@ function AtlasHome() {
       if (!lngLat) return;
       setSelectedId(null);
       setSelectedOfficial({
-        source: parcel.sourceLabel,
-        layer: parcel.layer,
+        source: parcel.sourceLabel as OfficialFeatureSelection["source"],
+        layer: parcel.layer as OfficialFeatureSelection["layer"],
+
         properties: parcel.properties,
         lngLat,
       });

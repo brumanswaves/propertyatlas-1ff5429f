@@ -1734,7 +1734,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   return (
     <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
-      <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col">
+      <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col [scrollbar-width:thin]">
         <div className="mb-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
             ErfStoep

@@ -78,8 +78,9 @@ function registryRecordToFeature(record: PilotParcelRegistryRecord): Feature {
   return {
     type: "Feature",
     properties,
-    geometry: null,
+    geometry: { type: "Point", coordinates: [record.lng, record.lat] },
   };
+
 }
 
 export function normalizePilotParcelRegistry(
