@@ -187,9 +187,9 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
       body: sourceMissing
         ? "Review an official source first, then add market evidence."
         : "Paste listing URLs, comps, notes or other evidence you have checked.",
-      stat: sourceMissing ? byId.sources.evidence : byId.market.evidence,
-      action: sourceMissing ? "Review sources" : "Add market evidence",
-      tab: sourceMissing ? "research" : "listings",
+      stat: byId.market.evidence,
+      action: "Add market evidence",
+      tab: "listings",
       primary: !sourceMissing && marketMissing,
     },
     {
