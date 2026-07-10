@@ -119,6 +119,11 @@ export function parsePropertyQuery(query: string): ParsedPropertyQuery {
     portion = erfPortion[2];
   } else if (!erfNumber && /^\d{2,7}$/.test(normalized)) {
     erfNumber = normalized;
+  } else if (!erfNumber) {
+    const leadingErfArea = normalized.match(/^(\d{2,7})\s+(.+)$/);
+    if (leadingErfArea && /[a-z]/.test(leadingErfArea[2])) {
+      erfNumber = leadingErfArea[1];
+    }
   }
 
   let areaText = terms

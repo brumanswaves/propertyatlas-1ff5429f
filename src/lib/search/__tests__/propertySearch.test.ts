@@ -72,6 +72,10 @@ describe("property search parsing", () => {
     expect(parsePropertyQuery("Erf 962 Sea Vista")).toMatchObject({
       erfNumber: "962",
     });
+    expect(parsePropertyQuery("1021 Sea Vista")).toMatchObject({
+      erfNumber: "1021",
+      areaText: "sea vista",
+    });
     expect(parsePropertyQuery("Portion 0 Erf 962")).toMatchObject({
       erfNumber: "962",
       portion: "0",
