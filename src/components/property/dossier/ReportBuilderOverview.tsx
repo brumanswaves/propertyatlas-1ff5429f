@@ -243,8 +243,15 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
       </section>
 
       {/* Recommended next step banner */}
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/5 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#FF6A00]/20 to-transparent" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
+        <img
+          src={nextStepBannerAsset.url}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#06152A] via-[#06152A]/70 to-transparent" />
+
         <div className="relative flex flex-col items-start gap-5 md:flex-row md:items-center">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#FF6A00]/15 ring-1 ring-[#FF6A00]/30 shadow-[0_0_30px_rgba(255,106,0,0.35)]">
             <CheckCircle2 className="h-6 w-6 text-[#FF8A33]" />
