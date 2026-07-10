@@ -300,13 +300,14 @@ export function SearchBar({
           result.features.map((feature) => ({ layer: "csg-parcels" as const, feature })),
         );
         const matches = searchOfficialParcels(query, index, {
-          loadedAreaTerms: context.loadedAreaTerms,
+          loadedAreaTerms: [],
         });
         setProviderErfResults(matches);
         setProviderErfMessage(
           matches.length
             ? `Found ${matches.length} likely official public match${matches.length === 1 ? "" : "es"} outside the loaded map view.`
-            : (result.message ?? "No broader official public match found yet."),
+            : (result.message ??
+                "No official match found from the available public layer yet. Try adding township/area, LPI, parcel key, or click the parcel outline."),
         );
       })
       .catch((error: unknown) => {
@@ -626,8 +627,8 @@ export function SearchBar({
 
               {allTownshipOptions.length === 0 && (
                 <div className="mx-4 mb-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#8A3A12]">
-                  Township options are available for loaded map areas only. Zoom into the area or
-                  search exact LPI/parcel key.
+                  Township suggestions come from loaded map areas. You can still search by erf
+                  number, LPI, parcel key, or typed township/area.
                 </div>
               )}
               {context.registryLabelOptions.length > 0 && selectedOfficeHasLoadedCoverage && (
@@ -653,8 +654,8 @@ export function SearchBar({
               )}
               {erfSearched && submittedErfQuery && erfResults.length === 0 && (
                 <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm leading-6 text-[#0D1B2A]/68">
-                  No official parcel match found yet. Zoom in and click a CSG or Kouga parcel
-                  outline, add township context, or search by address, LPI, or parcel key.
+                  No official match found from the available public layer yet. Try adding
+                  township/area, LPI, parcel key, or click the parcel outline.
                 </div>
               )}
               {erfResults.map((result) => (

@@ -40,7 +40,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain(
       "Search by Deeds Office, township, erf number, portion, LPI, or parcel key.",
     );
-    expect(search).toContain("No official parcel match found yet");
+    expect(search).toContain("No official match found from the available public layer yet");
     expect(search).toContain("Google address suggestion");
     expect(search).toContain("fetchAddressAutocompleteSuggestions");
     expect(search).toContain("fetchAddressPlaceDetails");
@@ -67,6 +67,10 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Portion number, default 0");
     expect(search).toContain("LPI or parcel key");
     expect(search).toContain("Search official parcel identity");
+    expect(search).toContain("searchOfficialPublicParcelsByIdentity");
+    expect(search).toContain("Checking broader official data");
+    expect(search).toContain("No official match found from the available public layer yet");
+    expect(search).toContain("typed township/area");
     expect(search).toContain("Suggested from loaded map area");
     expect(search).toContain("loadedAreaTerms");
     expect(search).toContain("Registry label:");
@@ -76,7 +80,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("erfResults.length === 0");
     expect(search).toContain("z-[90]");
     expect(search).toContain("max-h-[min(74vh,34rem)]");
-    expect(search).toContain("Zoom in and click a CSG or Kouga parcel");
+    expect(search).toContain("click the parcel outline");
     expect(search).not.toContain("PROPERTIES");
     expect(search).not.toContain("Show pilot demo examples");
     expect(search).not.toContain("Hide pilot demo examples");
@@ -389,6 +393,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Build the report from real work");
     expect(panel).toContain("buildReportBuilderProgress");
     expect(panel).toContain("buildReportActionCards");
+    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    expect(reportBuilder).toContain('view: "stoep-report"');
+    expect(reportBuilder).toContain("Open Stoep AI Report");
     expect(panel).toContain("savedMarketEvidence.length");
     expect(panel).toContain("reportProgress.map");
     expect(panel).toContain("{action.title}");
@@ -470,6 +477,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("marketEvidenceStarted: true");
     expect(panel).toContain("calculatorStarted: true");
     expect(panel).toContain("reportStarted: true");
+    expect(panel).toContain("Working address");
+    expect(panel).toContain("User supplied market address");
     expect(panel).toContain("Stoep AI First Read");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
@@ -496,8 +505,18 @@ describe("official dossier UX guardrails", () => {
   it("renders the listings and comps tab and BRRRR explanation", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const marketEvidence = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+    const marketEvidenceHook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
 
     expect(dossier).toContain("Listings & Comps");
+    expect(dossier).toContain("Choose what this erf could become");
+    expect(dossier).toContain("Strategy Lab helps you test what this erf could be");
+    expect(dossier).toContain("acquisition, buy-and-hold, bond");
+    expect(dossier).toContain("flip, BRRRR, development, or custom scenarios");
+    expect(dossier.indexOf("Choose what this erf could become")).toBeLessThan(
+      dossier.indexOf("Deal Summary"),
+    );
+    expect(dossier).toContain("Continue to Stoep AI Report");
+    expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
     expect(marketEvidence).toContain("Find listings and comps for this erf");
     expect(marketEvidence).toContain("Market Address");
     expect(marketEvidence).toContain("Add listing or comp evidence");
@@ -505,6 +524,7 @@ describe("official dossier UX guardrails", () => {
     expect(marketEvidence).toContain("Fallback Search Tools");
     expect(marketEvidence).toContain("Saved Market Evidence");
     expect(marketEvidence).toContain("Comp summary");
+    expect(marketEvidenceHook).toContain("erfstoep:market-evidence-updated");
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
@@ -523,7 +543,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Check official identity");
     expect(reportBuilder).toContain("Add market evidence");
     expect(reportBuilder).toContain("Open calculator");
-    expect(reportBuilder).toContain("Build report");
+    expect(reportBuilder).toContain("Open Stoep AI Report");
     expect(reportBuilder).not.toContain("0 reviewed");
     expect(reportBuilder).not.toContain("sourcesReviewed = 0");
     expect(reportBuilder).not.toContain("strategyDone = false");

@@ -530,7 +530,11 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
         <SectionTitle>Calculators</SectionTitle>
-        <OfficialCalculatorPanel parcelId={parcel.id} defaultPrice={extractDefaultPrice(parcel)} />
+        <OfficialCalculatorPanel
+          parcelId={parcel.id}
+          defaultPrice={extractDefaultPrice(parcel)}
+          onOpenReport={() => onSelectView?.("stoep-report")}
+        />
       </section>
     );
   }
@@ -1353,9 +1357,11 @@ function calculatorDefaults(defaultPrice: number): Record<string, string> {
 function OfficialCalculatorPanel({
   parcelId,
   defaultPrice,
+  onOpenReport,
 }: {
   parcelId: string;
   defaultPrice: number;
+  onOpenReport?: () => void;
 }) {
   const [active, setActive] = useState<CalculatorTab>("acquisition");
   const [values, setValues] = useState(() => calculatorDefaults(defaultPrice));
@@ -1534,27 +1540,61 @@ function OfficialCalculatorPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-          Estimates only. Enter your own assumptions; ErfStoep is not attaching official valuation,
-          rates, transfer, deeds or paid provider data here.
+      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+              Strategy Lab
+            </div>
+            <h3 className="mt-1 text-xl font-semibold tracking-tight text-[#0D1B2A]">
+              Choose what this erf could become
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+              Strategy Lab helps you test what this erf could be: acquisition, buy-and-hold, bond,
+              flip, BRRRR, development, or custom scenarios. Enter your assumptions, save a
+              scenario, then send the saved strategy into the Stoep AI Report.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={reset}
+              className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fbf8f1]"
+            >
+              Reset to defaults
+            </button>
+            <button
+              type="button"
+              onClick={saveScenario}
+              className="rounded-full bg-[#FF6A00] px-4 py-2 text-[11px] font-semibold text-white hover:bg-[#ff7d1f]"
+            >
+              <Save className="mr-1 inline h-3.5 w-3.5" />
+              Save scenario
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          {CALCULATOR_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActive(tab.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-2 text-[12px] font-semibold",
+                active === tab.id
+                  ? "border-[#0D1B2A] bg-[#0D1B2A] text-white"
+                  : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A]",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/58">
+          Estimates only. ErfStoep is not attaching official valuation, rates, transfer, deeds or
+          paid provider data here.
         </p>
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
-        >
-          Reset to defaults
-        </button>
-        <button
-          type="button"
-          onClick={saveScenario}
-          className="rounded-full bg-[#FF6A00] px-4 py-2 text-[11px] font-semibold text-white hover:bg-[#ff7d1f]"
-        >
-          <Save className="mr-1 inline h-3.5 w-3.5" />
-          Save scenario
-        </button>
-      </div>
+      </section>
       <section className="rounded-2xl border border-amber-200 bg-[#fff8ed] p-4">
         <div className="text-sm font-semibold text-foreground">Deal Summary</div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1563,23 +1603,6 @@ function OfficialCalculatorPanel({
           ))}
         </div>
       </section>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {CALCULATOR_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActive(tab.id)}
-            className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold",
-              active === tab.id
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
       {active === "acquisition" && (
         <CalculatorSection
           fields={[
@@ -1821,6 +1844,15 @@ function OfficialCalculatorPanel({
         {savedScenarios.length > 0
           ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Stoep AI Report shell.`
           : "Save a scenario to move Strategy progress. Estimates remain based on your assumptions."}
+        {savedScenarios.length > 0 && (
+          <button
+            type="button"
+            onClick={onOpenReport}
+            className="mt-3 inline-flex rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+          >
+            Continue to Stoep AI Report
+          </button>
+        )}
       </div>
     </div>
   );
