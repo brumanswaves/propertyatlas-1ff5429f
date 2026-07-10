@@ -1950,263 +1950,25 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </section>
         )}
 
-        <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
-          <div className="relative overflow-hidden rounded-none border-0 bg-white p-6 text-[#0D1B2A] sm:p-7">
-            {isOverview ? (
-              <>
-                <div className="relative">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
-                      <Sparkles className="h-3 w-3 text-[#FFB86B]" /> Stoep AI First Read
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff3df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9A4A09] ring-1 ring-[#FF8A33]/25">
-                      Early read / needs evidence
-                    </span>
-                  </div>
-                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
-                    Every erf. All the facts.
-                  </p>
-                  <h3 className="mt-5 text-[30px] font-semibold leading-[1.12] tracking-tight text-[#0D1B2A] sm:text-[38px]">
-                    {resolved.displayTitle}
-                  </h3>
-                  <p className="mt-3 max-w-3xl text-base leading-8 text-[#0D1B2A]/78">
-                    {panelFirstRead(normalizedParcel)}
-                  </p>
-                  <div className="mt-8">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                          ErfStoep Report Builder
-                        </div>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/64">
-                          This erf file becomes one final report. Progress below comes from your
-                          identity checks, reviewed sources, saved comps, calculator starts and
-                          report activity.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
-                      <div className="overflow-hidden rounded-[1.75rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5 shadow-[0_22px_55px_-42px_rgba(13,27,42,0.55)]">
-                        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-                          <div className="min-w-0 flex-1">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0D1B2A] ring-1 ring-[#D9E6F2]">
-                              <ShieldCheck className="h-4 w-4 text-[#FF6A00]" />
-                              No fake progress
-                            </div>
-                            <h4 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-                              Build the report from real work
-                            </h4>
-                            <p className="mt-2 max-w-xl text-sm leading-6 text-[#0D1B2A]/68">
-                              Each row reflects saved workspace state for this erf. Missing items
-                              stay visible until you review a source, save evidence, run numbers or
-                              open the report flow.
-                            </p>
-                          </div>
-                          <div className="w-full rounded-[1.5rem] border border-[#D9E6F2] bg-white p-4 shadow-[0_18px_40px_-32px_rgba(13,27,42,0.45)] lg:w-[22rem]">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                                  Report readiness
-                                </div>
-                                <p className="mt-1 text-xs text-[#0D1B2A]/58">
-                                  State-derived, not decorative.
-                                </p>
-                              </div>
-                              <Sparkles className="h-4 w-4 text-[#FF6A00]" />
-                            </div>
-                            <dl className="mt-4 space-y-2">
-                              {reportProgress.map((row) => (
-                                <div
-                                  key={row.id}
-                                  className="rounded-xl bg-[#F7FBFF] px-3 py-2"
-                                  title={row.detail}
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <dt className="text-xs font-medium text-[#0D1B2A]/62">
-                                      {row.label}
-                                    </dt>
-                                    <dd
-                                      className={cn(
-                                        "rounded-full border px-2 py-0.5 text-[10px] font-bold",
-                                        reportStatusClass(row.status),
-                                      )}
-                                    >
-                                      {row.status}
-                                    </dd>
-                                  </div>
-                                  <p className="mt-1 truncate text-[11px] text-[#0D1B2A]/55">
-                                    {row.evidence}
-                                  </p>
-                                </div>
-                              ))}
-                            </dl>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-3">
-                        {reportActions.map((action) => (
-                          <button
-                            key={action.id}
-                            type="button"
-                            onClick={() =>
-                              selectWorkbenchTab(action.tab, {
-                                markStarted:
-                                  action.tab === "listings" ||
-                                  action.tab === "calculators" ||
-                                  action.tab === "reports" ||
-                                  action.tab === "stoep-report",
-                              })
-                            }
-                            className={cn(
-                              "rounded-[1.5rem] border p-4 text-left shadow-[0_16px_38px_-34px_rgba(13,27,42,0.42)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(13,27,42,0.55)]",
-                              action.primary
-                                ? "border-[#FF6A00]/36 bg-[#fff8ec] ring-1 ring-[#FF6A00]/14"
-                                : "border-[#D9E6F2] bg-white",
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-base font-semibold text-[#0D1B2A]">
-                                  {action.title}
-                                </div>
-                                <p className="mt-1 text-sm leading-5 text-[#0D1B2A]/62">
-                                  {action.body}
-                                </p>
-                              </div>
-                              <span className="shrink-0 rounded-full bg-[#F7FBFF] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#0D1B2A]/64 ring-1 ring-[#D9E6F2]">
-                                {action.stat}
-                              </span>
-                            </div>
-                            <span
-                              className={cn(
-                                "mt-4 inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-xs font-semibold",
-                                action.primary
-                                  ? "bg-[#FF6A00] text-white"
-                                  : "border border-[#0D1B2A]/10 bg-white text-[#0D1B2A]",
-                              )}
-                            >
-                              {action.action}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                        StoepSteps progress
-                      </div>
-                      <h4 className="mt-1 text-xl font-semibold tracking-tight text-[#0D1B2A]">
-                        Identity → Sources / Evidence → Market → Strategy → Stoep Report
-                      </h4>
-                    </div>
-                    <p className="max-w-xl text-sm leading-6 text-[#0D1B2A]/64">
-                      Opening a source starts the step. Reviewed by user, identity choices, saved
-                      evidence and calculator/report starts move the workflow forward.
-                    </p>
-                  </div>
-                  <div className="mt-4 grid gap-3 lg:grid-cols-5">
-                    {stoepSteps.map((step) => (
-                      <div
-                        key={step.id}
-                        className={cn(
-                          "rounded-2xl border bg-white p-3 shadow-[0_14px_32px_-30px_rgba(13,27,42,0.45)]",
-                          step.status === "Current"
-                            ? "border-[#FF6A00]/36 ring-1 ring-[#FF6A00]/18"
-                            : step.status === "Done"
-                              ? "border-emerald-500/28"
-                              : step.status === "Blocked / uncertain"
-                                ? "border-[#C75A31]/28 bg-[#fff7f2]"
-                                : "border-[#0D1B2A]/10",
-                        )}
-                      >
-                        <div className="text-sm font-semibold text-[#0D1B2A]">{step.label}</div>
-                        <div
-                          className={cn(
-                            "mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
-                            step.status === "Current"
-                              ? "bg-[#FF6A00] text-white"
-                              : step.status === "Done"
-                                ? "bg-emerald-600 text-white"
-                                : step.status === "Blocked / uncertain"
-                                  ? "bg-[#C75A31] text-white"
-                                  : "bg-[#0D1B2A]/8 text-[#0D1B2A]/62",
-                          )}
-                        >
-                          {step.status}
-                        </div>
-                        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-                          Done when: {step.doneWhen}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="relative mt-6 rounded-[1.5rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                        Current StoepStep
-                      </div>
-                      <p className="mt-1 text-xl font-semibold leading-snug text-[#0D1B2A]">
-                        {nextStep.title}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/66">{nextStep.body}</p>
-                      <div className="mt-4 grid gap-2 md:grid-cols-2">
-                        {[
-                          ["Why this matters", nextStep.why],
-                          ["Do this now", nextStep.doNow],
-                          ["Done when", nextStep.doneWhen],
-                          ["Next", nextStep.next],
-                        ].map(([label, value]) => (
-                          <div
-                            key={label}
-                            className="rounded-2xl border border-[#0D1B2A]/8 bg-white/78 px-3 py-2"
-                          >
-                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-                              {label}
-                            </div>
-                            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/70">{value}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {workflowFeedback && (
-                        <p className="mt-4 rounded-2xl border border-[#FF6A00]/24 bg-white px-3 py-2 text-sm font-semibold text-[#0D1B2A]">
-                          What changed: {workflowFeedback}
-                        </p>
-                      )}
-                      {!workspaceState.saved && workspaceState.dirty && (
-                        <p className="mt-3 rounded-2xl border border-[#0D1B2A]/10 bg-white/72 px-3 py-2 text-sm text-[#0D1B2A]/68">
-                          Changes are stored in this browser. Save this erf to keep it in My Erfs.
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => selectWorkbenchTab(nextStep.tab, { markStarted: true })}
-                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_-8px_rgba(255,106,0,0.55)] transition hover:bg-[#FF7D1F]"
-                      >
-                        {nextStep.action}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => selectWorkbenchTab("calculators", { markStarted: true })}
-                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                      >
-                        Skip to Strategy Lab
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
+        {isOverview ? (
+          <section className="mx-4 mt-4 md:mx-7 md:mt-7">
+            <ReportBuilderOverview
+              parcel={normalizedParcel}
+              workspaceState={workspaceState}
+              onSelectView={(view) =>
+                selectWorkbenchTab(view as Tab, {
+                  markStarted:
+                    view === "listings" ||
+                    view === "calculators" ||
+                    view === "reports" ||
+                    view === "stoep-report",
+                })
+              }
+            />
+          </section>
+        ) : (
+          <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
+            <div className="relative overflow-hidden rounded-none border-0 bg-white p-6 text-[#0D1B2A] sm:p-7">
               <div className="relative rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5">
                 <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
                   {activeSection.guidanceTitle}
@@ -2218,9 +1980,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   {activeSection.guidance}
                 </p>
               </div>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
           <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">
