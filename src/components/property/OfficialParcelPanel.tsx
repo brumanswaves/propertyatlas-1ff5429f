@@ -1936,17 +1936,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
-        <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
-          <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
-            Workbench / {activeSection.title}
-          </div>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-            {activeSection.title}
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66 md:text-base md:leading-7">
-            {activeSection.subtitle}
-          </p>
-        </section>
+        {!isOverview && (
+          <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
+            <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
+              Workbench / {activeSection.title}
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
+              {activeSection.title}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66 md:text-base md:leading-7">
+              {activeSection.subtitle}
+            </p>
+          </section>
+        )}
 
         <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
           <div className="relative overflow-hidden rounded-none border-0 bg-white p-6 text-[#0D1B2A] sm:p-7">
