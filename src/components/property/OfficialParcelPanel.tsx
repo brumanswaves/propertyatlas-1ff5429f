@@ -45,6 +45,7 @@ import {
   buildReportBuilderProgress,
   type ReportProgressStatus,
 } from "@/lib/workbench/reportProgress";
+import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
   isPdfAttachment,
   isPreviewableImageAttachment,
