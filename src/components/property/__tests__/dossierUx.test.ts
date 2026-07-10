@@ -40,7 +40,14 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain(
       "Search by Deeds Office, township, erf number, portion, LPI, or parcel key.",
     );
-    expect(search).toContain("No official match found from the available public layer yet");
+    expect(search).toContain("loadPilotParcelRegistry");
+    expect(search).toContain("searchPilotParcelRegistry");
+    expect(search.indexOf("searchPilotParcelRegistry")).toBeLessThan(
+      search.indexOf("searchOfficialParcels(submittedErfQuery"),
+    );
+    expect(search).toContain("Kouga / St Francis pilot registry");
+    expect(search).toContain("No indexed pilot parcel match found");
+    expect(search).toContain("Pilot registry loaded:");
     expect(search).toContain("Google address suggestion");
     expect(search).toContain("fetchAddressAutocompleteSuggestions");
     expect(search).toContain("fetchAddressPlaceDetails");
@@ -69,7 +76,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("Search official parcel identity");
     expect(search).toContain("searchOfficialPublicParcelsByIdentity");
     expect(search).toContain("Checking broader official data");
-    expect(search).toContain("No official match found from the available public layer yet");
+    expect(search).toContain("No indexed pilot parcel match found");
     expect(search).toContain("typed township/area");
     expect(search).toContain("Suggested from loaded map area");
     expect(search).toContain("loadedAreaTerms");
@@ -81,6 +88,8 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("z-[90]");
     expect(search).toContain("max-h-[min(74vh,34rem)]");
     expect(search).toContain("click the parcel outline");
+    expect(search).not.toMatch(/national erf search/i);
+    expect(search).not.toMatch(/global erf search/i);
     expect(search).not.toContain("PROPERTIES");
     expect(search).not.toContain("Show pilot demo examples");
     expect(search).not.toContain("Hide pilot demo examples");

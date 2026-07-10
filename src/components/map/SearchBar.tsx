@@ -13,6 +13,11 @@ import {
 import { deriveErfSearchContext } from "@/lib/search/erfSearchContext";
 import { searchOfficialPublicParcelsByIdentity } from "@/lib/providers/publicDataClient";
 import {
+  loadPilotParcelRegistry,
+  searchPilotParcelRegistry,
+  type PilotParcelRegistry,
+} from "@/lib/search/pilotParcelRegistry";
+import {
   fetchAddressPlaceDetails,
   fetchAddressAutocompleteSuggestions,
   isAddressAutocompleteConfigured,
@@ -74,6 +79,23 @@ function resultArea(result: PropertySearchResult): string {
     .join(", ");
 }
 
+function resultTitle(result: PropertySearchResult): string {
+  const subject = result.fields.erf ? `Erf ${result.fields.erf}` : result.title;
+  return [subject, result.fields.town, result.fields.municipality, result.fields.province]
+    .filter(Boolean)
+    .join(" • ");
+}
+
+function resultMeta(result: PropertySearchResult): string {
+  return [
+    result.fields.portion ? `Portion ${result.fields.portion}` : null,
+    result.fields.lpi ? `LPI ${result.fields.lpi}` : null,
+    result.fields.parcelKey ? `Parcel key ${result.fields.parcelKey}` : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+}
+
 export function SearchBar({
   officialParcels = [],
   onOpenOfficialWorkbench,
@@ -100,8 +122,36 @@ export function SearchBar({
   const [providerErfResults, setProviderErfResults] = useState<PropertySearchResult[]>([]);
   const [providerErfLoading, setProviderErfLoading] = useState(false);
   const [providerErfMessage, setProviderErfMessage] = useState<string | null>(null);
+  const [pilotRegistry, setPilotRegistry] = useState<PilotParcelRegistry | null>(null);
+  const [pilotRegistryMessage, setPilotRegistryMessage] = useState<string | null>(null);
 
-  const context = useMemo(() => deriveErfSearchContext(officialParcels), [officialParcels]);
+  useEffect(() => {
+    let cancelled = false;
+    loadPilotParcelRegistry()
+      .then((registry) => {
+        if (cancelled) return;
+        setPilotRegistry(registry);
+        setPilotRegistryMessage(null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setPilotRegistry(null);
+        setPilotRegistryMessage(
+          error instanceof Error
+            ? error.message
+            : "Kouga / St Francis pilot registry is unavailable.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const searchablePilotParcels = useMemo(() => pilotRegistry?.parcels ?? [], [pilotRegistry]);
+  const context = useMemo(
+    () => deriveErfSearchContext([...searchablePilotParcels, ...officialParcels]),
+    [officialParcels, searchablePilotParcels],
+  );
 
   useEffect(() => {
     if (!lane || structured.deedsOffice || structured.township) return;
@@ -174,13 +224,41 @@ export function SearchBar({
 
   const erfResults = useMemo(() => {
     if (!submittedErfQuery.trim()) return [];
+    const parsed = parsePropertyQuery(submittedErfQuery);
+    const pilot = searchPilotParcelRegistry(submittedErfQuery, searchablePilotParcels);
     const loaded = searchOfficialParcels(submittedErfQuery, officialParcels, {
       loadedAreaTerms: context.loadedAreaTerms,
     });
-    const seen = new Set(loaded.map((result) => result.id));
-    const provider = providerErfResults.filter((result) => !seen.has(result.id));
-    return [...loaded, ...provider].slice(0, 8);
-  }, [context.loadedAreaTerms, officialParcels, providerErfResults, submittedErfQuery]);
+    const exactIds = new Set<string>();
+    const exact = [...pilot, ...loaded].filter((result) => {
+      if (result.confidence !== "exact_official_match") return false;
+      if (exactIds.has(result.id)) return false;
+      exactIds.add(result.id);
+      return true;
+    });
+    const seen = new Set(exact.map((result) => result.id));
+    const withoutSeen = (result: PropertySearchResult) => {
+      if (seen.has(result.id)) return false;
+      seen.add(result.id);
+      return true;
+    };
+    const ordered = [
+      ...exact,
+      ...pilot.filter((result) => result.confidence !== "exact_official_match").filter(withoutSeen),
+      ...loaded
+        .filter((result) => result.confidence !== "exact_official_match")
+        .filter(withoutSeen),
+      ...providerErfResults.filter(withoutSeen),
+    ];
+    if (parsed.lpi || parsed.parcelKey) return ordered.slice(0, 8);
+    return ordered.slice(0, 12);
+  }, [
+    context.loadedAreaTerms,
+    officialParcels,
+    providerErfResults,
+    searchablePilotParcels,
+    submittedErfQuery,
+  ]);
 
   const parsedErfQuery = useMemo(() => parsePropertyQuery(erfSearchQuery), [erfSearchQuery]);
   const shouldWarnErfAmbiguous =
@@ -461,10 +539,12 @@ export function SearchBar({
                     addressResolution.status === "likely") && (
                     <div className="mt-3 rounded-xl bg-white/80 p-3">
                       <div className="font-semibold text-[#0D1B2A]">
-                        {addressResolution.match.title}
+                        {resultTitle(addressResolution.match)}
                       </div>
                       <div className="text-xs text-[#0D1B2A]/62">
-                        {resultArea(addressResolution.match) || addressResolution.match.subtitle}
+                        {resultMeta(addressResolution.match) ||
+                          resultArea(addressResolution.match) ||
+                          addressResolution.match.subtitle}
                       </div>
                       {addressResolution.match.distanceMeters !== undefined && (
                         <div className="mt-1 text-xs text-[#0D1B2A]/62">
@@ -541,9 +621,20 @@ export function SearchBar({
                 </button>
                 <div className="text-sm font-bold text-[#0D1B2A]">Erf Search</div>
                 <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
-                  LPI and parcel key are exact. Erf numbers repeat across South Africa, so use a
-                  Deeds Office, township, or loaded map area context.
+                  LPI and parcel key are exact. Erf numbers repeat across South Africa, so this
+                  searches the Kouga / St Francis pilot registry plus loaded map parcels.
                 </p>
+                {pilotRegistry && (
+                  <p className="mt-2 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#174634]">
+                    Pilot registry loaded: {pilotRegistry.metadata.recordCount} source-backed Kouga
+                    / St Francis parcels.
+                  </p>
+                )}
+                {pilotRegistryMessage && (
+                  <p className="mt-2 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#8A3A12]">
+                    {pilotRegistryMessage}
+                  </p>
+                )}
                 {context.currentAreaLabel && (
                   <p className="mt-2 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#174634]">
                     Suggested from loaded map area: {context.currentAreaLabel}
@@ -627,8 +718,8 @@ export function SearchBar({
 
               {allTownshipOptions.length === 0 && (
                 <div className="mx-4 mb-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#8A3A12]">
-                  Township suggestions come from loaded map areas. You can still search by erf
-                  number, LPI, parcel key, or typed township/area.
+                  Township suggestions come from the pilot registry and loaded map areas. You can
+                  still search by erf number, LPI, parcel key, or typed township/area.
                 </div>
               )}
               {context.registryLabelOptions.length > 0 && selectedOfficeHasLoadedCoverage && (
@@ -649,13 +740,13 @@ export function SearchBar({
                     {providerErfLoading ? "Checking broader official data..." : "Broader lookup"}
                   </span>{" "}
                   {providerErfMessage ??
-                    "ErfStoep searches loaded map parcels first, then attempts an official public-layer lookup where supported."}
+                    "ErfStoep searches exact codes, the Kouga / St Francis pilot registry, loaded map parcels, then a live public-layer lookup where supported."}
                 </div>
               )}
               {erfSearched && submittedErfQuery && erfResults.length === 0 && (
                 <div className="border-t border-[#0D1B2A]/8 px-4 py-3 text-sm leading-6 text-[#0D1B2A]/68">
-                  No official match found from the available public layer yet. Try adding
-                  township/area, LPI, parcel key, or click the parcel outline.
+                  No indexed pilot parcel match found. Try adding township/area, LPI, parcel key, or
+                  zoom in and click the official parcel outline.
                 </div>
               )}
               {erfResults.map((result) => (
@@ -667,9 +758,9 @@ export function SearchBar({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-[#0D1B2A]">{result.title}</div>
+                      <div className="font-semibold text-[#0D1B2A]">{resultTitle(result)}</div>
                       <div className="text-xs text-[#0D1B2A]/62">
-                        {resultArea(result) || result.subtitle}
+                        {resultMeta(result) || resultArea(result) || result.subtitle}
                       </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-[#174634]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#174634]">
@@ -681,7 +772,7 @@ export function SearchBar({
                     <span aria-hidden="true">-</span>
                     <span>{result.matchReason}</span>
                     <span aria-hidden="true">-</span>
-                    <span>{result.sourceLabel}</span>
+                    <span>Source: {result.sourceLabel}</span>
                   </div>
                   <div className="mt-2 grid gap-1 text-[11px] text-[#0D1B2A]/58 sm:grid-cols-2">
                     {result.fields.lpi && <span>LPI: {result.fields.lpi}</span>}

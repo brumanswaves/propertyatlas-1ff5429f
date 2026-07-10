@@ -13,7 +13,7 @@ export type OfficialParcelFeature = {
 export interface IndexedOfficialParcel {
   id: string;
   layer: OfficialFeatureLayer;
-  sourceLabel: "Chief Surveyor-General" | "Kouga Municipality GIS";
+  sourceLabel: string;
   properties: Record<string, unknown>;
   geometry: Geometry | null;
   feature: Feature;
