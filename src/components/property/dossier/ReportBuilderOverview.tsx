@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import type { InvestorWorkflowView } from "./investorWorkflow";
 import { buildReportActionCards, buildReportBuilderProgress } from "@/lib/workbench/reportProgress";
 import { readErfWorkspaceState, type ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import nextStepBannerAsset from "@/assets/recommended-next-step-banner-bg.png.asset.json";
+import aboutErfPinAsset from "@/assets/about-erf-map-pin-illustration.png.asset.json";
+import orangeGlowAsset from "@/assets/orange-glow-orb.png.asset.json";
+
 
 interface Props {
   parcel: NormalizedOfficialParcel;
