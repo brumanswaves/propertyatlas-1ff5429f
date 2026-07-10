@@ -140,23 +140,35 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
           </ol>
         </div>
 
-        <aside className="relative overflow-hidden rounded-[1.75rem] border border-white/5 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#FF6A00]/20 blur-2xl" />
-          <div className="flex items-start justify-between">
+        <aside className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
+          <img
+            src={orangeGlowAsset.url}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-70"
+          />
+          <img
+            src={aboutErfPinAsset.url}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 opacity-40"
+          />
+          <div className="relative flex items-start justify-between">
             <h3 className="text-[20px] font-semibold tracking-tight">About this erf</h3>
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
               <MapPin className="h-4 w-4 text-[#FF8A33]" />
             </span>
           </div>
-          <p className="mt-4 text-[13.5px] leading-6 text-white/75">{confidenceSummary}</p>
+          <p className="relative mt-4 text-[13.5px] leading-6 text-white/75">{confidenceSummary}</p>
           <button
             type="button"
             onClick={() => onSelectView?.("research")}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#FF8A33] hover:text-[#FFA95C]"
+            className="relative mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#FF8A33] hover:text-[#FFA95C]"
           >
             View erf details <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </aside>
+
       </section>
 
       {/* 4 mini product panels */}
