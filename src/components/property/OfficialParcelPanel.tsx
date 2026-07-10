@@ -2058,9 +2058,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </section>
 
-
-
-
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "overview" && null}
 
