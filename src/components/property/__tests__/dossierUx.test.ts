@@ -363,8 +363,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Capture your research, questions, and decision notes.");
     expect(panel).toContain('title: "Stoep AI Report"');
     expect(panel).toContain("Assemble the final report from saved identity");
-    expect(panel).toContain("isOverview ? (");
-    expect(panel).toContain("{isOverview && (");
+    expect(panel).toContain("!isOverview && (");
+    expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("parcel={normalizedParcel}");
+    expect(panel).toContain("workspaceState={workspaceState}");
+    expect(panel).toContain("onSelectView={(view)");
     expect(panel).toContain("{activeSection.guidanceTitle}");
     expect(panel).toContain("{activeSection.guidance}");
   });
@@ -392,56 +395,54 @@ describe("official dossier UX guardrails", () => {
 
   it("surfaces ErfStoep intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    const reportProgress = read("src/lib/workbench/reportProgress.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
-    expect(panel).toContain("Every erf. All the facts.");
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
-    expect(panel).toContain("ErfStoep Report Builder");
-    expect(panel).toContain("This erf file becomes one final report.");
-    expect(panel).toContain("No fake progress");
-    expect(panel).toContain("Build the report from real work");
-    expect(panel).toContain("buildReportBuilderProgress");
-    expect(panel).toContain("buildReportActionCards");
-    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    expect(panel).toContain("<ReportBuilderOverview");
+    expect(reportBuilder).toContain("ErfStoep Report Builder");
+    expect(reportBuilder).toContain("Report progress");
+    expect(reportBuilder).toContain("This erf file becomes one final report.");
+    expect(reportBuilder).toContain("buildReportBuilderProgress");
+    expect(reportBuilder).toContain("buildReportActionCards");
+    expect(reportBuilder).toContain("About this erf");
+    expect(reportBuilder).toContain("Recommended next step");
+    expect(reportBuilder).toContain("ProgressRing");
+    expect(reportBuilder).toContain("rows.map");
+    expect(reportBuilder).toContain("{row.label}");
+    expect(reportBuilder).toContain("{row.status}");
+    expect(reportBuilder).toContain("{actionCards[0].title}");
+    expect(reportBuilder).toContain("{actionCards[1].title}");
+    expect(reportBuilder).toContain("{actionCards[2].title}");
+    expect(reportBuilder).toContain("{actionCards[3].title}");
     expect(reportBuilder).toContain('view: "stoep-report"');
     expect(reportBuilder).toContain("Open Stoep AI Report");
+    expect(reportProgress).toContain('title: "Verify the erf"');
+    expect(reportProgress).toContain('action: "Check official identity"');
+    expect(reportProgress).toContain('tab: "research"');
+    expect(reportProgress).toContain('title: "Add evidence"');
+    expect(reportProgress).toContain('action: "Add market evidence"');
+    expect(reportProgress).toContain('tab: "listings"');
+    expect(reportProgress).toContain('title: "Run numbers"');
+    expect(reportProgress).toContain('action: "Open calculator"');
+    expect(reportProgress).toContain('tab: "calculators"');
+    expect(reportProgress).toContain('title: "Create report"');
+    expect(reportProgress).toContain('tab: "stoep-report"');
     expect(panel).toContain("savedMarketEvidence.length");
-    expect(panel).toContain("reportProgress.map");
-    expect(panel).toContain("{action.title}");
-    expect(panel).toContain("{action.body}");
-    expect(panel).toContain("{action.stat}");
-    expect(panel).toContain("{action.action}");
     expect(panel).not.toContain("Mini report");
     expect(panel).not.toContain('["Identity", "Checked", "text-emerald-700"]');
     expect(panel).not.toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
     expect(panel).not.toContain('["Market", "Needs comps", "text-[#9A4A09]"]');
     expect(panel).not.toContain('["Strategy", "Not started", "text-[#64748B]"]');
-    expect(panel).toContain("bg-[#F7FBFF]");
-    expect(panel).toContain("border-[#D9E6F2]");
     expect(panel).toContain(
       "Optional confidence upgrades. Buy a report or upload a PDF you already purchased; the",
     );
-    expect(panel).toContain("Ask Stoep");
-    expect(panel).toContain("What do you want to understand first?");
-    expect(panel).toContain("What is risky?");
-    expect(panel).toContain("What should I verify?");
-    expect(panel).toContain("Run the numbers");
-    expect(panel).toContain("Current StoepStep");
-    expect(panel).toContain("StoepSteps progress");
-    expect(panel).toContain("Identity → Sources / Evidence → Market → Strategy → Stoep Report");
-    expect(panel).toContain("Why this matters");
-    expect(panel).toContain("Do this now");
-    expect(panel).toContain("Done when");
-    expect(panel).toContain("What changed:");
+    expect(panel).not.toContain("What do you want to understand first?");
+    expect(panel).not.toContain("Current StoepStep");
+    expect(panel).not.toContain("StoepSteps progress");
     expect(panel).toContain("buildErfWorkspaceNextStep");
     expect(panel).toContain("buildStoepStepProgress");
-    expect(panel).toContain("{nextStep.title}");
-    expect(panel).toContain("nextStep.why");
-    expect(panel).toContain("nextStep.doNow");
-    expect(panel).toContain("nextStep.doneWhen");
-    expect(panel).toContain("nextStep.next");
-    expect(panel).toContain("{nextStep.action}");
-    expect(panel).toContain("Skip to Strategy Lab");
     expect(panel).toContain("Opened. Mark reviewed after checking the details.");
     expect(panel).toContain("Reviewed by user. This records progress, not legal verification.");
     expect(panel).toContain("Identity marked as looking correct. Next: build market evidence.");
@@ -451,18 +452,6 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain(
       "Market step started. Save a listing, comp, address or note to move toward Strategy.",
     );
-    expect(panel).toContain(
-      "Changes are stored in this browser. Save this erf to keep it in My Erfs.",
-    );
-    expect(panel).toContain("Verify official records");
-    expect(panel).toContain("Build market evidence");
-    expect(panel).toContain("Run Strategy Lab");
-    expect(panel).toContain("Add/upload evidence");
-    expect(panel).toContain("Coming soon");
-    expect(panel).toContain('["Identity", identityReadiness]');
-    expect(panel).toContain('["Ownership", "Needs evidence"]');
-    expect(panel).toContain('["Market value", "Needs evidence"]');
-    expect(panel).toContain('["Strategy", "Not chosen"]');
     expect(panel).toContain("Buy a report");
     expect(panel).toContain("Upload report PDF");
     expect(panel).toContain("free");
