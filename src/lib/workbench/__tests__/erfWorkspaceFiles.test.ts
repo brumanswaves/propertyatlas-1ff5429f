@@ -3,8 +3,12 @@ import {
   isPdfAttachment,
   isPreviewableImageAttachment,
   isTiffAttachment,
+  paidReportAttachmentKey,
+  paidReportAttachmentKind,
+  PAID_REPORT_MAX_BYTES,
   SG_DIAGRAM_MAX_BYTES,
   sgDiagramAttachmentKey,
+  validatePaidReportFile,
   validateSgDiagramFile,
 } from "../erfWorkspaceFiles";
 
@@ -33,6 +37,30 @@ describe("erfWorkspaceFiles", () => {
   it("rejects files above the local browser storage limit", () => {
     expect(
       validateSgDiagramFile(file("diagram.pdf", "application/pdf", SG_DIAGRAM_MAX_BYTES + 1)),
+    ).toEqual({
+      ok: false,
+      reason: "too_large",
+    });
+  });
+
+  it("keys paid report uploads by parcel id and provider", () => {
+    expect(paidReportAttachmentKind("lightstone")).toBe("paid-report-lightstone");
+    expect(paidReportAttachmentKind("windeed")).toBe("paid-report-windeed");
+    expect(paidReportAttachmentKey("csg:lpi:abc", "lightstone")).toBe(
+      "csg:lpi:abc:paid-report-lightstone",
+    );
+  });
+
+  it("accepts only PDF paid report uploads without claiming extraction", () => {
+    expect(validatePaidReportFile(file("lightstone.pdf", "application/pdf"))).toEqual({
+      ok: true,
+    });
+    expect(validatePaidReportFile(file("windeed.png", "image/png"))).toEqual({
+      ok: false,
+      reason: "unsupported_type",
+    });
+    expect(
+      validatePaidReportFile(file("windeed.pdf", "application/pdf", PAID_REPORT_MAX_BYTES + 1)),
     ).toEqual({
       ok: false,
       reason: "too_large",

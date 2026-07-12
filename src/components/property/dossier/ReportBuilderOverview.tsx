@@ -7,8 +7,6 @@ import type { InvestorWorkflowView } from "./investorWorkflow";
 import { buildReportActionCards, buildReportBuilderProgress } from "@/lib/workbench/reportProgress";
 import { readErfWorkspaceState, type ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import nextStepBannerAsset from "@/assets/recommended-next-step-banner-bg.png.asset.json";
-import aboutErfPinAsset from "@/assets/about-erf-map-pin-illustration.png.asset.json";
-import orangeGlowAsset from "@/assets/orange-glow-orb.png.asset.json";
 
 
 interface Props {
@@ -141,17 +139,13 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
         </div>
 
         <aside className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
-          <img
-            src={orangeGlowAsset.url}
-            alt=""
+          <div
             aria-hidden
-            className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-70"
+            className="pointer-events-none absolute -right-14 -top-16 h-56 w-56 rounded-full bg-[#FF6A00]/30 blur-3xl"
           />
-          <img
-            src={aboutErfPinAsset.url}
-            alt=""
+          <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 opacity-40"
+            className="pointer-events-none absolute -bottom-20 -right-16 h-64 w-64 rounded-full bg-[#FFB86B]/10 blur-2xl"
           />
           <div className="relative flex items-start justify-between">
             <h3 className="text-[20px] font-semibold tracking-tight">About this erf</h3>

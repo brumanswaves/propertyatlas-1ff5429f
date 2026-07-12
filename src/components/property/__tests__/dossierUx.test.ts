@@ -401,6 +401,10 @@ describe("official dossier UX guardrails", () => {
 
     expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
     expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("Public sources give a strong first read.");
+    expect(panel).toContain("Go to Paid Reports");
+    expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
+    expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
     expect(reportBuilder).toContain("ErfStoep Report Builder");
     expect(reportBuilder).toContain("Report progress");
     expect(reportBuilder).toContain("This erf file becomes one final report.");
@@ -530,6 +534,8 @@ describe("official dossier UX guardrails", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const reportsTab = read("src/components/property/tabs/ReportsTab.tsx");
+    const workspaceFiles = read("src/lib/workbench/erfWorkspaceFiles.ts");
 
     expect(dossier).toContain("ReportBuilderOverview");
     expect(reportBuilder).toContain("ErfStoep Report Builder");
@@ -548,6 +554,20 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Purchase Lightstone");
     expect(dossier).toContain("Purchase WinDeed");
     expect(panel).toContain("Paid reports are optional confidence upgrades");
+    expect(reportsTab).toContain("{label} report upload");
+    expect(reportsTab).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
+    expect(reportsTab).toContain(
+      "Uploaded for reference. Extraction and AI summary are not enabled yet.",
+    );
+    expect(reportsTab).toContain("Replace PDF");
+    expect(reportsTab).toContain("Remove");
+    expect(workspaceFiles).toContain("provider?: PaidReportProvider");
+    expect(workspaceFiles).toContain("status?: ErfWorkspaceAttachmentStatus");
+    expect(workspaceFiles).toContain('"uploaded_reference_only"');
+    expect(dossier).toContain("Uploaded report files");
+    expect(dossier).toContain("{paidReportProviderLabel(provider)} PDF");
+    expect(dossier).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
+    expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
   });
 
   it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {

@@ -1812,7 +1812,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 className={cn(
                   "flex min-h-11 w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
                   active
-                    ? "bg-[#FF6A00] text-white shadow-[0_16px_36px_-18px_rgba(255,106,0,0.8)]"
+                    ? "bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)] text-white shadow-[0_16px_36px_-18px_rgba(255,106,0,0.85)] ring-1 ring-[#FFB86B]/35"
                     : "text-white/72 hover:bg-white/10 hover:text-white",
                 )}
                 aria-current={active ? "page" : undefined}
@@ -1918,9 +1918,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 type="button"
                 onClick={() => selectWorkbenchTab(item.id)}
                 className={cn(
-                  "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                  active
-                    ? "border-[#FF6A00] bg-[#FF6A00] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
+                   "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                   active
+                    ? "border-[#FF8A33]/70 bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_55%,#0D1B2A_100%)] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
                     : "border-[#0D1B2A]/12 bg-white/82 text-[#0D1B2A] hover:bg-white",
                 )}
                 aria-current={active ? "page" : undefined}
@@ -1936,6 +1936,23 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
+        <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#FF6A00]/18 bg-[#fff8ec] px-4 py-3 shadow-[0_18px_42px_-34px_rgba(13,27,42,0.35)] md:mx-7 md:mt-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
+              Public sources give a strong first read. Paid reports can add ownership, valuation,
+              transfer, and deeds-level detail. Upload them to make this erf file and the Stoep AI
+              Report more complete.
+            </p>
+            <button
+              type="button"
+              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+            >
+              Go to Paid Reports
+            </button>
+          </div>
+        </section>
+
         {!isOverview && (
           <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
             <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">

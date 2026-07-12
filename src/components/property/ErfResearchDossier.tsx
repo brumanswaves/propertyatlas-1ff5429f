@@ -47,6 +47,11 @@ import {
   saveStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
+  readPaidReportAttachments,
+  type ErfWorkspaceAttachmentRecord,
+  type PaidReportProvider,
+} from "@/lib/workbench/erfWorkspaceFiles";
+import {
   buildDueDiligenceProgress,
   buildNextBestStep,
   type InvestorWorkflowView,
@@ -1181,18 +1186,55 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function paidReportProviderLabel(provider: PaidReportProvider) {
+  return provider === "lightstone" ? "Lightstone" : "WinDeed";
+}
+
+function formatAttachmentSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatAttachmentDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
 function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
+  const [uploadedReportFiles, setUploadedReportFiles] = useState<ErfWorkspaceAttachmentRecord[]>(
+    [],
+  );
   const workspaceState = readErfWorkspaceState(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
   const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
   const reviewedSources = workspaceState.reviewedSourceIds.length;
   const sgFiles = workspaceState.sgDiagramAttachmentCount;
+  const uploadedByProvider = {
+    lightstone: uploadedReportFiles.find((file) => file.provider === "lightstone") ?? null,
+    windeed: uploadedReportFiles.find((file) => file.provider === "windeed") ?? null,
+  };
   const missing = [
     reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
     evidence.length ? null : "saved market evidence",
     scenarios.length ? null : "saved strategy scenario",
   ].filter(Boolean);
+
+  useEffect(() => {
+    let alive = true;
+    readPaidReportAttachments(parcel.id)
+      .then((records) => {
+        if (alive) setUploadedReportFiles(records);
+      })
+      .catch(() => {
+        if (alive) setUploadedReportFiles([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [parcel.id]);
 
   return (
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
@@ -1228,6 +1270,39 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
           </div>
         ))}
       </div>
+
+      <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+        <h4 className="text-base font-semibold text-[#0D1B2A]">Uploaded report files</h4>
+        <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+          Uploaded for reference. Extraction and AI summary are not enabled yet.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {(["lightstone", "windeed"] as const).map((provider) => {
+            const file = uploadedByProvider[provider];
+            return (
+              <article key={provider} className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  {paidReportProviderLabel(provider)} PDF
+                </div>
+                {file ? (
+                  <div className="mt-2">
+                    <p className="text-sm font-semibold text-[#0D1B2A]">{file.fileName}</p>
+                    <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                      {formatAttachmentSize(file.fileSize)} - uploaded{" "}
+                      {formatAttachmentDate(file.uploadedAt)}
+                    </p>
+                    <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                      Status: uploaded for reference only.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-[#0D1B2A]/60">Not uploaded yet.</p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <article className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4">
