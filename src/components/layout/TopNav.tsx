@@ -60,10 +60,14 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
       >
         <Link
           to="/"
-          className="group inline-flex shrink-0 items-center gap-2 rounded-xl px-1 py-1 transition hover:opacity-90"
-          aria-label="Easy Erf — home"
+          className="group inline-flex h-10 w-[148px] shrink-0 items-center justify-center rounded-full border border-white/75 bg-[#F8FAF6] px-4 shadow-[0_14px_34px_-22px_rgba(0,0,0,0.85)] ring-1 ring-black/5 transition hover:bg-white hover:shadow-[0_18px_38px_-22px_rgba(0,0,0,0.95)] md:w-[156px]"
+          aria-label="Easy Erf - home"
         >
-          <AtlasPin variant="white" className="h-5 w-auto md:h-6" title={BRAND.site} />
+          <AtlasPin
+            variant="horizontal"
+            className="block h-[24px] w-auto max-w-[124px] object-contain md:h-[26px] md:max-w-[132px]"
+            title={BRAND.site}
+          />
         </Link>
 
         {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}

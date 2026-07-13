@@ -29,9 +29,10 @@ describe("official dossier UX guardrails", () => {
     expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
     expect(nav).toContain("mobileCenter?: ReactNode");
-    expect(nav).toContain("rounded-xl");
-    expect(nav).toContain('variant="white"');
-    expect(nav).toContain("h-5 w-auto md:h-6");
+    expect(nav).toContain("w-[148px]");
+    expect(nav).toContain('variant="horizontal"');
+    expect(nav).toContain("h-[24px] w-auto");
+    expect(nav).toContain("md:h-[26px]");
     expect(nav).toContain("max-w-[1600px]");
     expect(search).toContain("Search address, erf number, suburb, LPI, or parcel key");
     expect(search).toContain("Address Search");
