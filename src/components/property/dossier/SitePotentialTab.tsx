@@ -70,7 +70,7 @@ const RENOVATION_LEVELS: { id: "cosmetic" | "moderate" | "major"; label: string;
     { id: "major", label: "Major transformation", body: "Extensions, rebuilds, new footprint." },
   ];
 
-const MODE_OPTIONS: { id: SitePotentialMode; label: string; body: string; icon: JSX.Element }[] = [
+const MODE_OPTIONS: { id: SitePotentialMode; label: string; body: string; icon: ReactNode }[] = [
   {
     id: "vacant_land",
     label: "Vacant land",
