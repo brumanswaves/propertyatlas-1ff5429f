@@ -584,6 +584,12 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
   return (
     <div className="space-y-5 text-stone-950">
+      <ListingUrlImporter
+        parcel={parcel}
+        onSaveCandidate={(candidate) => upsertCandidate(candidate)}
+        onSaveEvidence={(evidence) => upsertEvidence(evidence)}
+      />
+
       <PropertyIdentityCard identity={identity} selectedAddress={selectedAddress} />
 
       <AddressIntelligenceSection
