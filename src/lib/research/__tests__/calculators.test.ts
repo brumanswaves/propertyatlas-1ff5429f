@@ -6,8 +6,11 @@ import {
   calculateBrrrr,
   calculateBuyHold,
   calculateDevelopment,
+  calculateDevelopmentToRent,
+  calculateDevelopmentToSell,
   calculateFlip,
   calculateScenarioComparison,
+  calculateShortTermRental,
 } from "../calculators";
 
 describe("residential investment calculators", () => {
@@ -103,6 +106,7 @@ describe("residential investment calculators", () => {
     expect(result.seventyPercentRuleOffer).toBe(1_380_000);
     expect(result.delaySensitivity).toBe(24_000);
     expect(result.resaleDownsideProfit).toBe(108_000);
+    expect(result.annualizedRoi).toBeCloseTo(0.2255, 3);
   });
 
   it("calculates BRRRR refinance outputs", () => {
@@ -143,6 +147,113 @@ describe("residential investment calculators", () => {
     expect(result.softCost).toBe(420_000);
     expect(result.totalDevelopmentCost).toBe(5_570_000);
     expect(result.profit).toBe(30_000);
+  });
+
+  it("calculates development-to-sell with duration and monthly holding cost", () => {
+    const result = calculateDevelopmentToSell({
+      landCost: 1_000_000,
+      buildCost: 3_500_000,
+      professionalFees: 420_000,
+      municipalPlanningFees: 120_000,
+      contingencyPercent: 10,
+      developmentDurationMonths: 10,
+      monthlyHoldingCost: 18_000,
+      exitSellingCosts: 150_000,
+      expectedSaleValue: 5_900_000,
+    });
+
+    expect(result.contingencyAmount).toBe(350_000);
+    expect(result.totalHoldingCost).toBe(180_000);
+    expect(result.totalProjectCost).toBe(5_720_000);
+    expect(result.netProfit).toBe(180_000);
+    expect(result.margin).toBeCloseTo(0.0305, 3);
+    expect(result.returnOnCost).toBeCloseTo(0.0315, 3);
+    expect(result.breakEvenSalePrice).toBe(5_720_000);
+  });
+
+  it("calculates development-to-rent yield and cash flow", () => {
+    const result = calculateDevelopmentToRent({
+      landCost: 1_000_000,
+      buildCost: 3_000_000,
+      professionalFees: 360_000,
+      municipalPlanningFees: 90_000,
+      contingencyPercent: 8,
+      developmentDurationMonths: 9,
+      monthlyHoldingCost: 15_000,
+      expectedMonthlyRent: 42_000,
+      vacancyPercent: 5,
+      operatingExpenses: 9_000,
+      bondPayment: 22_000,
+    });
+
+    expect(result.totalProjectCost).toBe(4_825_000);
+    expect(result.totalHoldingCost).toBe(135_000);
+    expect(result.monthlyNetOperatingIncome).toBe(30_900);
+    expect(result.monthlyCashFlow).toBe(8_900);
+    expect(result.grossYield).toBeCloseTo(0.1045, 3);
+    expect(result.netYield).toBeCloseTo(0.0768, 3);
+    expect(result.breakEvenRent).toBe(31_000);
+  });
+
+  it("calculates STR / Airbnb revenue, net income and break-even occupancy", () => {
+    const result = calculateShortTermRental({
+      averageDailyRate: 2_400,
+      occupancyPercent: 55,
+      nightsPerMonth: 30,
+      platformFeePercent: 15,
+      cleaningRevenue: 3_000,
+      cleaningCost: 4_000,
+      utilities: 3_500,
+      internet: 900,
+      linenLaundry: 1_500,
+      managementPercent: 12,
+      maintenanceReserve: 2_500,
+      furnishingSetupCost: 180_000,
+      bondPayment: 18_000,
+      cashInvested: 280_000,
+    });
+
+    expect(result.bookedNights).toBe(16.5);
+    expect(result.grossAccommodationRevenue).toBe(39_600);
+    expect(result.platformFees).toBe(6_390);
+    expect(result.monthlyOperatingCost).toBe(23_902);
+    expect(result.monthlyNetIncome).toBe(18_698);
+    expect(result.monthlyCashFlow).toBe(698);
+    expect(result.breakEvenOccupancy).toBeGreaterThan(0.5);
+    expect(result.cashOnCashReturn).toBeCloseTo(0.03, 2);
+  });
+
+  it("handles missing STR and development assumptions without divide-by-zero results", () => {
+    const str = calculateShortTermRental({
+      averageDailyRate: 0,
+      occupancyPercent: 0,
+      platformFeePercent: 15,
+      cleaningCost: 0,
+      utilities: 0,
+      internet: 0,
+      linenLaundry: 0,
+      managementPercent: 10,
+      maintenanceReserve: 0,
+    });
+    const development = calculateDevelopmentToRent({
+      landCost: 0,
+      buildCost: 0,
+      professionalFees: 0,
+      municipalPlanningFees: 0,
+      contingencyPercent: 10,
+      developmentDurationMonths: 0,
+      monthlyHoldingCost: 0,
+      expectedMonthlyRent: 0,
+      vacancyPercent: 5,
+      operatingExpenses: 0,
+    });
+
+    expect(str.breakEvenOccupancy).toBe(0);
+    expect(str.cashOnCashReturn).toBe(0);
+    expect(str.missingAssumptions).toEqual(["average daily rate", "occupancy percentage"]);
+    expect(development.grossYield).toBe(0);
+    expect(development.netYield).toBe(0);
+    expect(development.missingAssumptions).toContain("land cost");
   });
 
   it("calculates red/yellow/green scenario comparison", () => {

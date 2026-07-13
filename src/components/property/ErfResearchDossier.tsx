@@ -31,6 +31,7 @@ import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSaved
 import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
+  getChosenStrategyScenario,
   readErfWorkspaceState,
   readStrategyScenarios,
   saveStrategyScenario,
@@ -41,6 +42,7 @@ import {
   type PaidReportProvider,
 } from "@/lib/workbench/erfWorkspaceFiles";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
+import { StrategyLab } from "./strategy/StrategyLab";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -458,8 +460,8 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   if (view === "calculators") {
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Calculators</SectionTitle>
-        <OfficialCalculatorPanel
+        <SectionTitle>Strategy</SectionTitle>
+        <StrategyLab
           parcelId={parcel.id}
           defaultPrice={extractDefaultPrice(parcel)}
           onOpenReport={() => onSelectView?.("stoep-report")}
@@ -1065,13 +1067,14 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const [uploadedFiles, setUploadedFiles] = useState<ErfWorkspaceAttachmentRecord[]>([]);
   const workspaceState = readErfWorkspaceState(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
+  const chosenScenario = getChosenStrategyScenario(parcel.id);
   const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
   const reviewedSources = workspaceState.reviewedSourceIds.length;
   const sgFiles = workspaceState.sgDiagramAttachmentCount;
   const missing = [
     reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
     evidence.length ? null : "saved market evidence",
-    scenarios.length ? null : "saved strategy scenario",
+    chosenScenario ? null : "saved strategy scenario",
   ].filter(Boolean);
 
   useEffect(() => {
@@ -1125,7 +1128,12 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
           ],
           ["Sources", `${reviewedSources} reviewed / ${sgFiles} SG files`],
           ["Market", `${evidence.length} saved evidence item${evidence.length === 1 ? "" : "s"}`],
-          ["Strategy", `${scenarios.length} saved scenario${scenarios.length === 1 ? "" : "s"}`],
+          [
+            "Strategy",
+            chosenScenario
+              ? `Chosen: ${chosenScenario.label}`
+              : `${scenarios.length} saved scenario${scenarios.length === 1 ? "" : "s"}`,
+          ],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
@@ -1135,6 +1143,29 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
           </div>
         ))}
       </div>
+
+      {chosenScenario && (
+        <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+            Chosen strategy scenario
+          </div>
+          <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">{chosenScenario.label}</h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+            Easy Erf Report uses the chosen scenario first. If no chosen scenario exists, it falls
+            back to the newest saved scenario.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {chosenScenario.summary.slice(0, 4).map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[#D9E6F2] bg-white p-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  {item.label}
+                </div>
+                <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section
         id="uploaded-files-and-source-documents"
@@ -1191,7 +1222,10 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
             <li>1. Official parcel identity and known public fields</li>
             <li>2. Reviewed sources and SG diagram evidence</li>
             <li>3. Market evidence, comps and address notes</li>
-            <li>4. Strategy assumptions and scenario summary</li>
+            <li>
+              4. Strategy assumptions and scenario summary
+              {chosenScenario ? ` - chosen scenario: ${chosenScenario.label}` : ""}
+            </li>
             <li>5. Risks, missing evidence and recommended next actions</li>
           </ol>
         </article>

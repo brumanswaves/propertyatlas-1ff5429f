@@ -11,6 +11,7 @@ export interface ErfWorkspaceState {
   marketAddressSaved: boolean;
   calculatorStarted: boolean;
   strategyScenarioCount: number;
+  chosenScenarioId: string | null;
   reportStarted: boolean;
   updatedAt: string;
 }
@@ -49,6 +50,7 @@ export interface ErfStrategyScenario {
   strategy: string;
   inputs: Record<string, string>;
   summary: Array<{ label: string; value: string }>;
+  selected?: boolean;
   savedAt: string;
 }
 
@@ -72,6 +74,7 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     marketAddressSaved: false,
     calculatorStarted: false,
     strategyScenarioCount: 0,
+    chosenScenarioId: null,
     reportStarted: false,
     updatedAt: new Date().toISOString(),
   };
@@ -107,6 +110,7 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
     strategyScenarioCount: Number.isFinite(Number(raw.strategyScenarioCount))
       ? Math.max(0, Number(raw.strategyScenarioCount))
       : 0,
+    chosenScenarioId: typeof raw.chosenScenarioId === "string" ? raw.chosenScenarioId : null,
     reportStarted: Boolean(raw.reportStarted),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : base.updatedAt,
   };
@@ -173,6 +177,7 @@ function coerceStrategyScenario(value: unknown, parcelId: string): ErfStrategySc
     strategy: typeof raw.strategy === "string" ? raw.strategy : "strategy",
     inputs,
     summary,
+    selected: Boolean(raw.selected),
     savedAt: typeof raw.savedAt === "string" ? raw.savedAt : new Date().toISOString(),
   };
 }
@@ -207,20 +212,44 @@ export function saveStrategyScenario(
     strategy: scenario.strategy,
     inputs: scenario.inputs,
     summary: scenario.summary,
+    selected: true,
     savedAt: new Date().toISOString(),
   };
-  const next = [saved, ...current.filter((item) => item.id !== saved.id)];
+  const next = [
+    saved,
+    ...current
+      .filter((item) => item.id !== saved.id)
+      .map((item) => ({
+        ...item,
+        selected: false,
+      })),
+  ];
   if (storage) storage.setItem(erfStrategyScenariosKey(parcelId), JSON.stringify(next));
   updateErfWorkspaceState(
     parcelId,
     {
       calculatorStarted: true,
       strategyScenarioCount: next.length,
+      chosenScenarioId: saved.id,
       dirty: true,
     },
     storage,
   );
   return { scenario: saved, scenarios: next };
+}
+
+export function getChosenStrategyScenario(
+  parcelId: string,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+) {
+  const scenarios = readStrategyScenarios(parcelId, storage);
+  if (!scenarios.length) return null;
+  const workspace = readErfWorkspaceState(parcelId, storage);
+  return (
+    scenarios.find((scenario) => scenario.id === workspace.chosenScenarioId) ??
+    scenarios.find((scenario) => scenario.selected) ??
+    scenarios[0]
+  );
 }
 
 export function buildErfWorkspaceNextStep(
