@@ -5,7 +5,6 @@ import {
   X,
   ShieldCheck,
   MapPin,
-  Sparkles,
   Bookmark,
   BookmarkCheck,
   Share2,
@@ -15,6 +14,7 @@ import {
   Copy,
   Upload,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
@@ -32,24 +32,18 @@ import {
 } from "@/lib/external-urls";
 import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
 import {
-  buildErfWorkspaceNextStep,
-  buildStoepStepProgress,
   readErfWorkspaceState,
   readStrategyScenarios,
   updateErfWorkspaceState,
   type ErfWorkspaceIdentityStatus,
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
-import {
-  buildReportActionCards,
-  buildReportBuilderProgress,
-  type ReportProgressStatus,
-} from "@/lib/workbench/reportProgress";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
   isPdfAttachment,
   isPreviewableImageAttachment,
   isTiffAttachment,
+  readPaidReportAttachments,
   readSgDiagramAttachments,
   removeSgDiagramAttachment,
   saveSgDiagramAttachment,
@@ -168,6 +162,93 @@ const WORKBENCH_SECTIONS: Record<
   },
 };
 
+interface WorkbenchNextStepModel {
+  title: string;
+  body: string;
+  cta: string;
+  tab: Tab;
+  anchorId?: string;
+  markStarted?: boolean;
+}
+
+function buildWorkbenchPageNextStep(
+  tab: Tab,
+  opts: { paidReportCount: number; workspaceState: ErfWorkspaceState },
+): WorkbenchNextStepModel {
+  switch (tab) {
+    case "overview":
+      return {
+        title: "Verify official sources",
+        body: "Before you rely on this erf file, confirm the official parcel identity and source links.",
+        cta: "Go to Sources",
+        tab: "research",
+      };
+    case "research":
+      return {
+        title: "Add market evidence",
+        body: "Once the official identity is clear, add comparable listings, notes, and local market context.",
+        cta: "Go to Market",
+        tab: "listings",
+        markStarted: true,
+      };
+    case "listings":
+      return opts.paidReportCount > 0
+        ? {
+            title: "Run the strategy",
+            body: "Use your saved market context to test acquisition, build, flip, or hold scenarios.",
+            cta: "Go to Strategy",
+            tab: "calculators",
+            markStarted: true,
+          }
+        : {
+            title: "Add report documents",
+            body: "Report documents can add valuation, ownership, transfer, and deeds-level context to the erf file.",
+            cta: "Go to Paid Reports",
+            tab: "reports",
+            markStarted: true,
+          };
+    case "reports":
+      return {
+        title: "Run the strategy",
+        body: "Use the official parcel context and saved documents to test acquisition, build, flip, or hold scenarios.",
+        cta: "Go to Strategy",
+        tab: "calculators",
+        markStarted: true,
+      };
+    case "calculators":
+      return {
+        title: "Build the Stoep AI Report",
+        body: "Saved strategy inputs help shape the final report, risks, and next steps.",
+        cta: "Go to Stoep AI Report",
+        tab: "stoep-report",
+        markStarted: true,
+      };
+    case "notes":
+      return {
+        title: "Build the Stoep AI Report",
+        body: "Bring your notes, evidence, and assumptions together in the report shell.",
+        cta: "Go to Stoep AI Report",
+        tab: "stoep-report",
+        markStarted: true,
+      };
+    case "stoep-report":
+      return opts.workspaceState.identityStatus === "none"
+        ? {
+            title: "Review missing identity evidence",
+            body: "The report is stronger when the official parcel identity has been checked first.",
+            cta: "Go to Sources",
+            tab: "research",
+          }
+        : {
+            title: "Review source documents",
+            body: "Check uploaded files and missing evidence before using the final report.",
+            cta: "Review uploaded files",
+            tab: "stoep-report",
+            anchorId: "uploaded-files-and-source-documents",
+          };
+  }
+}
+
 const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
   { label: "What is risky?", tab: "research" },
   { label: "What should I verify?", tab: "research" },
@@ -221,20 +302,6 @@ function workspaceStatusToIdentity(status: ErfWorkspaceIdentityStatus): Identity
   return status === "none" ? "needs_verification" : status;
 }
 
-function panelFirstRead(parcel: NormalizedOfficialParcel): string {
-  const identity = [
-    parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "this official erf",
-    parcel.portion != null && String(parcel.portion) !== "0" ? `Portion ${parcel.portion}` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const location = [parcel.suburbOrArea, parcel.municipality, parcel.province]
-    .filter(Boolean)
-    .join(", ");
-
-  return `${identity}${location ? ` in ${location}` : ""} has enough public context for an early read. Ownership, valuation, zoning, sales history and GIS precision still need verified evidence.`;
-}
-
 function formatMapCoordinate(value: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "Not available";
 }
@@ -243,14 +310,6 @@ function formatAreaM2(value: unknown): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return "Area not available";
   return `${Math.round(n).toLocaleString()} m²`;
-}
-
-function reportStatusClass(status: ReportProgressStatus) {
-  if (status === "Done") return "border-emerald-500/28 bg-emerald-50 text-emerald-800";
-  if (status === "In progress") return "border-[#FF6A00]/28 bg-[#fff8ec] text-[#9A4A09]";
-  if (status === "Blocked") return "border-[#C75A31]/30 bg-[#fff7f2] text-[#9A3A1A]";
-  if (status === "Needs evidence") return "border-[#FF6A00]/20 bg-white text-[#0D1B2A]";
-  return "border-[#0D1B2A]/10 bg-white text-[#64748B]";
 }
 
 function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | null): string | null {
@@ -262,6 +321,22 @@ function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | nu
 function publicFieldValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not available yet";
   return String(value);
+}
+
+function buildWorkbenchIdentityLine(
+  parcel: NormalizedOfficialParcel,
+  workingAddress?: UserAddress | null,
+) {
+  const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "Selected erf";
+  const workingLocation = [workingAddress?.streetName, workingAddress?.suburb, workingAddress?.town]
+    .filter(Boolean)
+    .join(", ");
+  if (workingLocation) return `${erf} • ${workingLocation}`;
+
+  const fallback = [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province].filter(
+    Boolean,
+  );
+  return [erf, ...fallback].join(" • ");
 }
 
 function formatFileSize(bytes: number) {
@@ -1123,6 +1198,36 @@ function SelectedErfMiniMap({
   );
 }
 
+function WorkbenchNextStep({
+  step,
+  onAction,
+}: {
+  step: WorkbenchNextStepModel;
+  onAction: () => void;
+}) {
+  return (
+    <section className="mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#06152A] p-5 text-white shadow-[0_24px_60px_-34px_rgba(0,0,0,0.85)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-3xl">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+            Next best step
+          </div>
+          <h3 className="mt-2 text-xl font-semibold tracking-tight">{step.title}</h3>
+          <p className="mt-1.5 text-sm leading-6 text-white/68">{step.body}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onAction}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_-18px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F]"
+        >
+          {step.cta}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+    </section>
+  );
+}
+
 type Geo = {
   streetNumber?: string;
   streetName?: string;
@@ -1307,16 +1412,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   });
-  const {
-    evidence: savedMarketEvidence,
-    propertyIdentity,
-    marketAddressIntelligence,
-  } = useSavedMarketEvidence(parcelId);
+  const { propertyIdentity, marketAddressIntelligence } = useSavedMarketEvidence(parcelId);
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
   const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
     readErfWorkspaceState(parcelId),
   );
+  const [paidReportCount, setPaidReportCount] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
 
@@ -1372,6 +1474,29 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     }
     window.addEventListener("erfstoep:workspace-updated", refresh);
     return () => window.removeEventListener("erfstoep:workspace-updated", refresh);
+  }, [parcelId]);
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => {
+      readPaidReportAttachments(parcelId)
+        .then((records) => {
+          if (alive) setPaidReportCount(records.length);
+        })
+        .catch(() => {
+          if (alive) setPaidReportCount(0);
+        });
+    };
+    const onFilesUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      if (detail?.parcelId && detail.parcelId !== parcelId) return;
+      refresh();
+    };
+    refresh();
+    window.addEventListener("erfstoep:workspace-files-updated", onFilesUpdated);
+    return () => {
+      alive = false;
+      window.removeEventListener("erfstoep:workspace-files-updated", onFilesUpdated);
+    };
   }, [parcelId]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
@@ -1715,19 +1840,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isOverview = tab === "overview";
-  const nextStep = buildErfWorkspaceNextStep(workspaceState);
-  const stoepSteps = buildStoepStepProgress(workspaceState);
-  const reportProgress = buildReportBuilderProgress({
-    parcel: normalizedParcel,
-    workspaceState,
-    savedMarketEvidenceCount: savedMarketEvidence.length,
-  });
-  const reportActions = buildReportActionCards({
-    parcel: normalizedParcel,
-    workspaceState,
-    savedMarketEvidenceCount: savedMarketEvidence.length,
-  });
-  const identityReadiness = IDENTITY_STATUS_LABELS[identityStatus];
+  const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
+  const pageNextStep = buildWorkbenchPageNextStep(tab, { paidReportCount, workspaceState });
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
   const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
     .filter(Boolean)
@@ -1936,19 +2050,36 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
-        <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#FF6A00]/18 bg-[#fff8ec] px-4 py-3 shadow-[0_18px_42px_-34px_rgba(13,27,42,0.35)] md:mx-7 md:mt-5">
+        <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+            Current erf file
+          </div>
+          <p className="mt-1 text-sm font-semibold tracking-tight text-[#0D1B2A] md:text-base">
+            {workbenchIdentityLine}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
+            Working address is stored separately from the official parcel identity.
+          </p>
+        </section>
+
+        <section className="mx-4 mt-3 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 shadow-[0_18px_42px_-36px_rgba(13,27,42,0.35)] md:mx-7">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
-              Public sources give a strong first read. Paid reports can add ownership, valuation,
-              transfer, and deeds-level detail. Upload them to make this erf file and the Stoep AI
-              Report more complete.
-            </p>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                Enhance this erf file
+              </div>
+              <p className="mt-1 max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
+                Add Lightstone or WinDeed report documents when you have them to keep valuation,
+                ownership, transfer, and deeds-level context in one place. Public sources still
+                power the first read.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
               className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
             >
-              Go to Paid Reports
+              Add report documents
             </button>
           </div>
         </section>
@@ -2108,6 +2239,20 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "stoep-report" && (
             <ErfResearchDossier parcel={normalizedParcel} view="stoep-report" />
           )}
+
+          <WorkbenchNextStep
+            step={pageNextStep}
+            onAction={() => {
+              if (pageNextStep.anchorId && pageNextStep.tab === tab) {
+                document.getElementById(pageNextStep.anchorId)?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+                return;
+              }
+              selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
+            }}
+          />
         </div>
       </div>
     </aside>

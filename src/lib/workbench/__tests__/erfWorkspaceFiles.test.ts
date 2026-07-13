@@ -6,6 +6,7 @@ import {
   paidReportAttachmentKey,
   paidReportAttachmentKind,
   PAID_REPORT_MAX_BYTES,
+  readAllWorkspaceAttachments,
   SG_DIAGRAM_MAX_BYTES,
   sgDiagramAttachmentKey,
   validatePaidReportFile,
@@ -49,6 +50,10 @@ describe("erfWorkspaceFiles", () => {
     expect(paidReportAttachmentKey("csg:lpi:abc", "lightstone")).toBe(
       "csg:lpi:abc:paid-report-lightstone",
     );
+  });
+
+  it("exposes one reader for all uploaded Workbench files", () => {
+    expect(typeof readAllWorkspaceAttachments).toBe("function");
   });
 
   it("accepts only PDF paid report uploads without claiming extraction", () => {

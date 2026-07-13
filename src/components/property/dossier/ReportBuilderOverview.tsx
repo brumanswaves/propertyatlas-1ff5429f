@@ -116,25 +116,37 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
           </div>
 
           <ol className="mt-6 divide-y divide-[#EADFC9]/70 rounded-2xl border border-[#EADFC9] bg-white/60">
-            {rows.map((row, i) => (
-              <li key={row.id} className="flex items-center gap-4 px-5 py-3.5" title={row.detail}>
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0D1B2A]/90 text-[11px] font-bold text-white">
-                  {i + 1}
-                </span>
-                <span className="flex-1 text-[15px] font-semibold text-[#0D1B2A]">{row.label}</span>
-                <span
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[11.5px] font-semibold",
-                    chipTone(
-                      row.status === "Done",
-                      row.status === "Needs evidence" || row.status === "Blocked",
-                    ),
-                  )}
-                >
-                  {row.status}
-                </span>
-              </li>
-            ))}
+            {rows.map((row, i) => {
+              const step = STEP_ORDER.find((item) => item.id === row.id);
+              return (
+                <li key={row.id} title={row.detail}>
+                  <button
+                    type="button"
+                    onClick={() => step && onSelectView?.(step.view)}
+                    className="group flex w-full items-center gap-4 px-5 py-3.5 text-left transition hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6A00]/50"
+                  >
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0D1B2A]/90 text-[11px] font-bold text-white">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 text-[15px] font-semibold text-[#0D1B2A]">
+                      {row.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-full px-3 py-1 text-[11.5px] font-semibold",
+                        chipTone(
+                          row.status === "Done",
+                          row.status === "Needs evidence" || row.status === "Blocked",
+                        ),
+                      )}
+                    >
+                      {row.status}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-[#0D1B2A]/28 transition group-hover:translate-x-0.5 group-hover:text-[#FF6A00]" />
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </div>
 
