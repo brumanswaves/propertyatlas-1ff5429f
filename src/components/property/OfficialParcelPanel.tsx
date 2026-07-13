@@ -93,6 +93,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 type Tab =
   | "overview"
   | "research"
+  | "site-potential"
   | "listings"
   | "reports"
   | "notes"
@@ -101,6 +102,7 @@ type Tab =
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
+  { id: "site-potential", label: "Site Potential" },
   { id: "listings", label: "Market" },
   { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
