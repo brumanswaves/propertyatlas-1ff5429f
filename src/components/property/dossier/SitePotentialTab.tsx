@@ -561,7 +561,7 @@ function UploadRow({
   title: string;
   hint: string;
   count: number;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   accept: string;
   onSelected: (count: number) => void;
   emptyLabel: string;
