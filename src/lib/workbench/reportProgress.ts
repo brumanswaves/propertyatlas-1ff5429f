@@ -62,7 +62,7 @@ function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
   const hasMode = site.mode !== null;
   const hasFiles = files > 0;
   const hasConcepts = site.conceptCount > 0;
-  const selectedConcept = Boolean(site.preferredConceptId);
+  const selectedConcept = Boolean(site.selectedDesignAssetId || site.preferredConceptId);
 
   if (site.skipped) {
     return {
@@ -108,8 +108,7 @@ function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
     id: "site",
     label: "Site",
     status: "Not started",
-    detail:
-      "Explore renovation or new-build possibilities for this erf, or skip if not relevant.",
+    detail: "Explore renovation or new-build possibilities for this erf, or skip if not relevant.",
     evidence: "Property state not set",
   };
 }
@@ -232,6 +231,10 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
     ReportProgressRow
   >;
   const sourceMissing = byId.sources.status !== "Done";
+  const siteOpen =
+    byId.site.status !== "Skipped" &&
+    byId.site.status !== "Done" &&
+    byId.site.status !== "In progress";
   const marketMissing = byId.market.status !== "Done";
   const strategyMissing = byId.strategy.status !== "Done";
 
@@ -250,11 +253,13 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
       title: "Add evidence",
       body: sourceMissing
         ? "Review an official source first, then add market evidence."
+        : siteOpen
+          ? "Explore Site Potential or skip it before moving deeper into market evidence."
         : "Paste listing URLs, comps, notes or other evidence you have checked.",
-      stat: byId.market.evidence,
-      action: "Add market evidence",
-      tab: "listings",
-      primary: !sourceMissing && marketMissing,
+      stat: siteOpen ? byId.site.status : byId.market.evidence,
+      action: siteOpen ? "Open Site Potential" : "Add market evidence",
+      tab: siteOpen ? "site-potential" : "listings",
+      primary: !sourceMissing && (siteOpen || marketMissing),
     },
     {
       id: "numbers",

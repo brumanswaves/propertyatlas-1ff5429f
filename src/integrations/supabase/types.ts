@@ -14,6 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
+      erf_asset_events: {
+        Row: {
+          asset_id: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      erf_assets: {
+        Row: {
+          asset_category: string
+          asset_type: string
+          checksum_sha256: string | null
+          created_at: string
+          id: string
+          local_migration_fingerprint: string | null
+          metadata: Json
+          mime_type: string
+          original_file_name: string
+          parcel_id: string
+          size_bytes: number
+          source_label: string | null
+          status: string
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_category: string
+          asset_type: string
+          checksum_sha256?: string | null
+          created_at?: string
+          id?: string
+          local_migration_fingerprint?: string | null
+          metadata?: Json
+          mime_type: string
+          original_file_name: string
+          parcel_id: string
+          size_bytes: number
+          source_label?: string | null
+          status?: string
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_category?: string
+          asset_type?: string
+          checksum_sha256?: string | null
+          created_at?: string
+          id?: string
+          local_migration_fingerprint?: string | null
+          metadata?: Json
+          mime_type?: string
+          original_file_name?: string
+          parcel_id?: string
+          size_bytes?: number
+          source_label?: string | null
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      erf_design_packs: {
+        Row: {
+          completed_count: number
+          created_at: string
+          entitlement_status: string
+          failure_code: string | null
+          failure_message: string | null
+          id: string
+          idempotency_key: string | null
+          parcel_id: string
+          payment_provider: string | null
+          payment_reference: string | null
+          prompt_snapshot: Json
+          requested_count: number
+          site_project_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_count?: number
+          created_at?: string
+          entitlement_status?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          parcel_id: string
+          payment_provider?: string | null
+          payment_reference?: string | null
+          prompt_snapshot?: Json
+          requested_count?: number
+          site_project_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_count?: number
+          created_at?: string
+          entitlement_status?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          idempotency_key?: string | null
+          parcel_id?: string
+          payment_provider?: string | null
+          payment_reference?: string | null
+          prompt_snapshot?: Json
+          requested_count?: number
+          site_project_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      erf_site_project_assets: {
+        Row: {
+          asset_id: string
+          created_at: string
+          display_order: number | null
+          id: string
+          role: string
+          site_project_id: string
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          role: string
+          site_project_id: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          role?: string
+          site_project_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      erf_site_projects: {
+        Row: {
+          created_at: string
+          custom_instructions: string | null
+          design_brief: string | null
+          generation_status: string
+          id: string
+          metadata: Json
+          mode: string
+          parcel_id: string
+          renovation_level: string | null
+          requested_features: string[]
+          requested_rooms: string[]
+          rights_confirmed_at: string | null
+          selected_design_asset_id: string | null
+          selected_style: string | null
+          skipped_at: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_instructions?: string | null
+          design_brief?: string | null
+          generation_status?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          parcel_id: string
+          renovation_level?: string | null
+          requested_features?: string[]
+          requested_rooms?: string[]
+          rights_confirmed_at?: string | null
+          selected_design_asset_id?: string | null
+          selected_style?: string | null
+          skipped_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_instructions?: string | null
+          design_brief?: string | null
+          generation_status?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          parcel_id?: string
+          renovation_level?: string | null
+          requested_features?: string[]
+          requested_rooms?: string[]
+          rights_confirmed_at?: string | null
+          selected_design_asset_id?: string | null
+          selected_style?: string | null
+          skipped_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_type: string

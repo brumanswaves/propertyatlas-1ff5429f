@@ -17,17 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { openExternalUrl } from "@/lib/external";
 import type { SgDocumentResult } from "@/lib/research/sgDocument";
 import { CSG_OFFICIAL_URL } from "@/lib/external-urls";
-import {
-  PAID_REPORT_MAX_BYTES,
-  readPaidReportAttachment,
-  removePaidReportAttachment,
-  savePaidReportAttachment,
-  type ErfWorkspaceAttachmentRecord,
-  type PaidReportProvider,
-} from "@/lib/workbench/erfWorkspaceFiles";
+import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { toast } from "sonner";
 
 type InterestKind = "notify" | "save";
+type PaidReportProvider = "lightstone" | "windeed";
 
 export function ReportsTab({
   parcelId,
@@ -39,10 +34,8 @@ export function ReportsTab({
   sgDoc?: SgDocumentResult;
 }) {
   const { user } = useAuth();
+  const reportVault = useErfFileVault(parcelId, ["paid_report"]);
   const [interests, setInterests] = useState<Record<string, InterestKind>>({});
-  const [uploadedReports, setUploadedReports] = useState<
-    Partial<Record<PaidReportProvider, ErfWorkspaceAttachmentRecord | null>>
-  >({});
   const [uploadErrors, setUploadErrors] = useState<Partial<Record<PaidReportProvider, string>>>({});
   const reportCatalog = REPORT_CATALOG.filter((report) => report.id !== "sg_diagram");
 
@@ -53,28 +46,6 @@ export function ReportsTab({
     } catch {
       // Ignore malformed local-only report interest cache.
     }
-  }, [parcelId]);
-
-  useEffect(() => {
-    let alive = true;
-    Promise.all([
-      readPaidReportAttachment(parcelId, "lightstone"),
-      readPaidReportAttachment(parcelId, "windeed"),
-    ])
-      .then(([lightstone, windeed]) => {
-        if (!alive) return;
-        setUploadedReports({ lightstone, windeed });
-      })
-      .catch((error: Error) => {
-        if (!alive) return;
-        setUploadErrors({
-          lightstone: error.message,
-          windeed: error.message,
-        });
-      });
-    return () => {
-      alive = false;
-    };
   }, [parcelId]);
 
   function persist(next: Record<string, InterestKind>) {
@@ -111,32 +82,53 @@ export function ReportsTab({
 
   async function uploadPaidReport(provider: PaidReportProvider, file: File | null | undefined) {
     if (!file) return;
-    const result = await savePaidReportAttachment(parcelId, provider, file).catch(
-      (error: Error) => {
-        setUploadErrors((current) => ({ ...current, [provider]: error.message }));
-        return null;
+    if (!isPdfFile(file)) {
+      const message = "Upload a PDF report file.";
+      setUploadErrors((current) => ({ ...current, [provider]: message }));
+      toast.error(message);
+      return;
+    }
+    const existing = paidReportForProvider(reportVault.assets, provider);
+    if (existing) await reportVault.remove(existing);
+    const result = await reportVault.upload({
+      file,
+      fileName: file.name,
+      category: "paid_report",
+      assetType: `${provider}_report`,
+      sourceLabel:
+        provider === "lightstone"
+          ? "User uploaded Lightstone report"
+          : "User uploaded WinDeed report",
+      status: "uploaded_reference_only",
+      metadata: {
+        provider,
+        reportType: provider,
+        uploadedFor: "paid_reports_tab",
       },
-    );
+    }).catch((error: Error) => {
+      setUploadErrors((current) => ({ ...current, [provider]: error.message }));
+      return null;
+    });
     if (!result) return;
     if (!result.ok) {
       const message =
         result.reason === "too_large"
-          ? `PDF is too large for local browser storage. Maximum size is ${formatFileSize(PAID_REPORT_MAX_BYTES)}.`
+          ? "PDF is too large for the Erf File Vault."
+          : result.reason === "empty_file"
+            ? "That PDF is empty."
           : "Upload a PDF report file.";
       setUploadErrors((current) => ({ ...current, [provider]: message }));
       toast.error(message);
       return;
     }
     setUploadErrors((current) => ({ ...current, [provider]: undefined }));
-    setUploadedReports((current) => ({ ...current, [provider]: result.record }));
     toast.success(`${providerLabel(provider)} PDF uploaded for reference.`);
   }
 
   async function removePaidReport(provider: PaidReportProvider) {
-    const current = uploadedReports[provider];
+    const current = paidReportForProvider(reportVault.assets, provider);
     if (!current) return;
-    await removePaidReportAttachment(parcelId, provider, current.id);
-    setUploadedReports((reports) => ({ ...reports, [provider]: null }));
+    await reportVault.remove(current);
     toast.success(`${providerLabel(provider)} PDF removed.`);
   }
 
@@ -202,8 +194,15 @@ export function ReportsTab({
               {reportProviderForCatalogId(r.id) && (
                 <PaidReportUploadArea
                   provider={reportProviderForCatalogId(r.id)!}
-                  attachment={uploadedReports[reportProviderForCatalogId(r.id)!] ?? null}
-                  error={uploadErrors[reportProviderForCatalogId(r.id)!]}
+                  attachment={
+                    paidReportForProvider(reportVault.assets, reportProviderForCatalogId(r.id)!) ??
+                    null
+                  }
+                  error={
+                    uploadErrors[reportProviderForCatalogId(r.id)!] ??
+                    (reportVault.signedIn ? undefined : "Sign in to save PDFs to the cloud vault.")
+                  }
+                  uploading={reportVault.uploadState.active}
                   onUpload={uploadPaidReport}
                   onRemove={removePaidReport}
                 />
@@ -243,6 +242,18 @@ function providerLabel(provider: PaidReportProvider) {
   return provider === "lightstone" ? "Lightstone" : "WinDeed";
 }
 
+function paidReportForProvider(assets: ErfAsset[], provider: PaidReportProvider) {
+  return assets.find(
+    (asset) =>
+      asset.asset_category === "paid_report" &&
+      (asset.metadata?.provider === provider || asset.asset_type === `${provider}_report`),
+  );
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
 function formatFileSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
@@ -259,12 +270,14 @@ function PaidReportUploadArea({
   provider,
   attachment,
   error,
+  uploading,
   onUpload,
   onRemove,
 }: {
   provider: PaidReportProvider;
-  attachment: ErfWorkspaceAttachmentRecord | null;
+  attachment: ErfAsset | null;
   error?: string;
+  uploading?: boolean;
   onUpload: (provider: PaidReportProvider, file: File | null | undefined) => void;
   onRemove: (provider: PaidReportProvider) => void;
 }) {
@@ -285,11 +298,12 @@ function PaidReportUploadArea({
         </div>
         <button
           type="button"
+          disabled={uploading}
           onClick={() => inputRef.current?.click()}
           className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
         >
           <Upload className="h-3.5 w-3.5" />
-          {attachment ? "Replace PDF" : "Upload PDF"}
+          {uploading ? "Uploading" : attachment ? "Replace PDF" : "Upload PDF"}
         </button>
       </div>
       <input
@@ -305,13 +319,14 @@ function PaidReportUploadArea({
       {attachment ? (
         <div className="mt-3 flex flex-col gap-2 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="font-semibold">{attachment.fileName}</div>
+            <div className="font-semibold">{attachment.original_file_name}</div>
             <div className="mt-0.5 text-emerald-900/70">
-              {formatFileSize(attachment.fileSize)} - uploaded{" "}
-              {formatUploadedAt(attachment.uploadedAt)}
+              {formatFileSize(attachment.size_bytes)} - uploaded{" "}
+              {formatUploadedAt(attachment.created_at)}
             </div>
             <div className="mt-0.5 text-emerald-900/70">
-              Uploaded for reference. Extraction and AI summary are not enabled yet.
+              Stored in the cloud Erf File Vault for reference. Extraction and AI summary are not
+              enabled yet.
             </div>
           </div>
           <button
@@ -325,7 +340,7 @@ function PaidReportUploadArea({
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-[#0D1B2A]/58">
-          No {label} PDF uploaded yet. Stored locally in this browser for this erf.
+          No {label} PDF uploaded yet. Uploads are stored in the cloud Erf File Vault for this erf.
         </p>
       )}
       {error && <p className="mt-2 text-[11px] font-medium text-[#9A3A1A]">{error}</p>}

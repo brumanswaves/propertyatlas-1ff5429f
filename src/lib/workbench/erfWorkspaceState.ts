@@ -1,6 +1,21 @@
 export type ErfWorkspaceIdentityStatus = "none" | "checked" | "looks_correct" | "uncertain";
 
-export type SitePotentialMode = "vacant_land" | "existing_house" | "other" | "unsure";
+export type SitePotentialMode =
+  | "vacant_land"
+  | "renovation"
+  | "other_building"
+  | "unknown"
+  | "skipped";
+
+export type SitePotentialProgressState =
+  | "not_started"
+  | "inputs_added"
+  | "ready_to_generate"
+  | "generating"
+  | "concepts_ready"
+  | "design_selected"
+  | "skipped"
+  | "failed";
 
 export interface SitePotentialSnapshot {
   mode: SitePotentialMode | null;
@@ -9,7 +24,11 @@ export interface SitePotentialSnapshot {
   planCount: number;
   conceptCount: number;
   preferredConceptId: string | null;
+  selectedDesignAssetId: string | null;
   imageRightsConfirmed: boolean;
+  rightsConfirmedAt: string | null;
+  progressState: SitePotentialProgressState;
+  projectId: string | null;
 }
 
 export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
@@ -20,7 +39,11 @@ export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
     planCount: 0,
     conceptCount: 0,
     preferredConceptId: null,
+    selectedDesignAssetId: null,
     imageRightsConfirmed: false,
+    rightsConfirmedAt: null,
+    progressState: "not_started",
+    projectId: null,
   };
 }
 
@@ -68,7 +91,7 @@ export type StoepStepStatus =
   | "Blocked / uncertain";
 
 export interface StoepStepProgress {
-  id: "identity" | "sources" | "market" | "strategy" | "report";
+  id: "identity" | "sources" | "site" | "market" | "strategy" | "report";
   label: string;
   status: StoepStepStatus;
   doneWhen: string;
@@ -116,13 +139,39 @@ function coerceSitePotential(value: unknown): SitePotentialSnapshot {
   const base = createEmptySitePotentialSnapshot();
   if (!value || typeof value !== "object") return base;
   const raw = value as Partial<SitePotentialSnapshot>;
+  const legacyMode = raw.mode as string | null | undefined;
   const mode: SitePotentialMode | null =
     raw.mode === "vacant_land" ||
-    raw.mode === "existing_house" ||
-    raw.mode === "other" ||
-    raw.mode === "unsure"
+    raw.mode === "renovation" ||
+    raw.mode === "other_building" ||
+    raw.mode === "unknown" ||
+    raw.mode === "skipped"
       ? raw.mode
-      : null;
+      : legacyMode === "existing_house"
+        ? "renovation"
+        : legacyMode === "other"
+          ? "other_building"
+          : legacyMode === "unsure"
+            ? "unknown"
+            : null;
+  const progressState =
+    raw.progressState === "inputs_added" ||
+    raw.progressState === "ready_to_generate" ||
+    raw.progressState === "generating" ||
+    raw.progressState === "concepts_ready" ||
+    raw.progressState === "design_selected" ||
+    raw.progressState === "skipped" ||
+    raw.progressState === "failed"
+      ? raw.progressState
+      : raw.skipped
+        ? "skipped"
+        : raw.selectedDesignAssetId || raw.preferredConceptId
+          ? "design_selected"
+          : Number(raw.conceptCount) > 0
+            ? "concepts_ready"
+            : Number(raw.photoCount) > 0 || Number(raw.planCount) > 0 || mode
+              ? "inputs_added"
+              : "not_started";
   return {
     mode,
     skipped: Boolean(raw.skipped),
@@ -133,11 +182,23 @@ function coerceSitePotential(value: unknown): SitePotentialSnapshot {
       : 0,
     preferredConceptId:
       typeof raw.preferredConceptId === "string" ? raw.preferredConceptId : null,
+    selectedDesignAssetId:
+      typeof raw.selectedDesignAssetId === "string"
+        ? raw.selectedDesignAssetId
+        : typeof raw.preferredConceptId === "string"
+          ? raw.preferredConceptId
+          : null,
     imageRightsConfirmed: Boolean(raw.imageRightsConfirmed),
+    rightsConfirmedAt:
+      typeof raw.rightsConfirmedAt === "string"
+        ? raw.rightsConfirmedAt
+        : Boolean(raw.imageRightsConfirmed)
+          ? new Date().toISOString()
+          : null,
+    progressState,
+    projectId: typeof raw.projectId === "string" ? raw.projectId : null,
   };
 }
-
-
 
 function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
   const base = createEmptyErfWorkspaceState();
@@ -324,11 +385,22 @@ export function buildErfWorkspaceNextStep(
     | "calculatorStarted"
     | "strategyScenarioCount"
     | "reportStarted"
+    | "sitePotential"
   >,
 ): ErfWorkspaceNextStep {
   const hasOpenedSource = state.openedSourceIds.length > 0;
   const hasReviewedSource =
     state.reviewedSourceIds.length > 0 || state.sgDiagramAttachmentCount > 0;
+  const siteDone =
+    state.sitePotential.skipped ||
+    state.sitePotential.progressState === "skipped" ||
+    state.sitePotential.progressState === "design_selected" ||
+    Boolean(state.sitePotential.selectedDesignAssetId || state.sitePotential.preferredConceptId);
+  const siteStarted =
+    state.sitePotential.progressState !== "not_started" ||
+    Boolean(state.sitePotential.mode) ||
+    state.sitePotential.photoCount > 0 ||
+    state.sitePotential.planCount > 0;
   const marketDone = state.marketEvidenceStarted || state.marketAddressSaved;
   const strategyDone = state.strategyScenarioCount > 0;
 
@@ -390,6 +462,21 @@ export function buildErfWorkspaceNextStep(
     };
   }
 
+  if (!siteDone) {
+    return {
+      title: siteStarted ? "Finish or skip Site Potential" : "Explore Site Potential",
+      body: siteStarted
+        ? "Site Potential is optional. Select a concept when ready, or skip it so the workflow can continue."
+        : "Decide whether this erf needs renovation or new-build concept visuals before you build the market case.",
+      why: "Concept visuals can enrich the final report, but they should never block core due diligence.",
+      doNow: "Upload permitted photos or supporting files, generate/select a concept if entitled, or mark Site Potential skipped.",
+      doneWhen: "One generated design is selected, or Site Potential is skipped for this erf.",
+      next: "Build Market Evidence.",
+      action: siteStarted ? "Review Site Potential" : "Open Site Potential",
+      tab: "site-potential",
+    };
+  }
+
   if (!marketDone) {
     return {
       title: "Build Market Evidence",
@@ -448,6 +535,16 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
   const identityUncertain = state.identityStatus === "uncertain";
   const sourcesDone = state.reviewedSourceIds.length > 0 || state.sgDiagramAttachmentCount > 0;
   const sourcesStarted = state.openedSourceIds.length > 0;
+  const siteDone =
+    state.sitePotential.skipped ||
+    state.sitePotential.progressState === "skipped" ||
+    state.sitePotential.progressState === "design_selected" ||
+    Boolean(state.sitePotential.selectedDesignAssetId || state.sitePotential.preferredConceptId);
+  const siteStarted =
+    state.sitePotential.progressState !== "not_started" ||
+    Boolean(state.sitePotential.mode) ||
+    state.sitePotential.photoCount > 0 ||
+    state.sitePotential.planCount > 0;
   const marketDone = state.marketEvidenceStarted || state.marketAddressSaved;
   const strategyDone = state.strategyScenarioCount > 0;
 
@@ -471,13 +568,25 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
       doneWhen: "At least one official source is reviewed by user.",
     },
     {
+      id: "site",
+      label: "Site",
+      status: siteDone
+        ? "Done"
+        : siteStarted
+          ? "Current"
+          : sourcesDone
+            ? "Current"
+            : "Not started",
+      doneWhen: "Site Potential is skipped or one generated design is selected.",
+    },
+    {
       id: "market",
       label: "Market",
       status: identityUncertain
         ? "Blocked / uncertain"
         : marketDone
           ? "Done"
-          : identityDone
+          : identityDone && siteDone
             ? "Current"
             : "Not started",
       doneWhen: "A listing, comp, note, report, or market evidence item is saved.",

@@ -40,17 +40,8 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
-import {
-  isPdfAttachment,
-  isPreviewableImageAttachment,
-  isTiffAttachment,
-  readPaidReportAttachments,
-  readSgDiagramAttachments,
-  removeSgDiagramAttachment,
-  saveSgDiagramAttachment,
-  SG_DIAGRAM_MAX_BYTES,
-  type ErfWorkspaceAttachmentRecord,
-} from "@/lib/workbench/erfWorkspaceFiles";
+import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
   marketAddressToPropertyIdentityOverride,
@@ -375,71 +366,57 @@ function SgDiagramEvidenceSection({
   onAttachmentCountChange?: (count: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [attachments, setAttachments] = useState<ErfWorkspaceAttachmentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storageError, setStorageError] = useState<string | null>(null);
+  const vault = useErfFileVault(parcelId, ["sg_diagram"]);
+  const attachments = vault.assets;
 
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setStorageError(null);
-    readSgDiagramAttachments(parcelId)
-      .then((records) => {
-        if (!alive) return;
-        setAttachments(records);
-        onAttachmentCountChange?.(records.length);
-      })
-      .catch((error: Error) => {
-        if (!alive) return;
-        setStorageError(error.message);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [onAttachmentCountChange, parcelId]);
+    onAttachmentCountChange?.(attachments.length);
+  }, [attachments.length, onAttachmentCountChange]);
 
   async function uploadFiles(files: FileList | null | undefined) {
     const list = Array.from(files ?? []);
     if (!list.length) return;
-    const nextAttachments = [...attachments];
+    if (!vault.signedIn) {
+      toast.error("Sign in to save SG files permanently to the Erf File Vault.");
+      return;
+    }
     let savedCount = 0;
     for (const file of list) {
-      const result = await saveSgDiagramAttachment(parcelId, file).catch((error: Error) => {
-        setStorageError(error.message);
+      const result = await vault.upload({
+        file,
+        fileName: file.name,
+        category: "sg_diagram",
+        assetType: "sg_diagram",
+        sourceLabel: "User uploaded SG diagram",
+        metadata: { source: "sources-tab" },
+      }).catch((error: Error) => {
+        toast.error(error.message);
         return null;
       });
       if (!result) continue;
       if (!result.ok) {
         if (result.reason === "too_large") {
-          toast.error(`${file.name} is too large for local browser storage.`);
+          toast.error(`${file.name} is too large for the Erf File Vault.`);
         } else {
           toast.error(`${file.name} is not supported. Upload PDF, PNG, JPG, JPEG, TIF, or TIFF.`);
         }
         continue;
       }
-      nextAttachments.unshift(result.record);
       savedCount += 1;
     }
     if (!savedCount) return;
-    setAttachments(nextAttachments);
-    onAttachmentCountChange?.(nextAttachments.length);
-    setStorageError(null);
+    onAttachmentCountChange?.(attachments.length + savedCount);
     onOpenSource("sg-diagram-evidence");
     toast.success(
       savedCount === 1
-        ? "SG diagram file attached to this erf file."
-        : `${savedCount} SG diagram files attached to this erf file.`,
+        ? "SG diagram file saved to the Erf File Vault."
+        : `${savedCount} SG diagram files saved to the Erf File Vault.`,
     );
   }
 
-  async function removeAttachment(attachmentId: string) {
-    await removeSgDiagramAttachment(parcelId, attachmentId);
-    const next = attachments.filter((item) => item.id !== attachmentId);
-    setAttachments(next);
-    onAttachmentCountChange?.(next.length);
+  async function removeAttachment(attachment: ErfAsset) {
+    await vault.remove(attachment);
+    onAttachmentCountChange?.(Math.max(0, attachments.length - 1));
     toast.success("SG diagram attachment removed");
   }
 
@@ -469,7 +446,7 @@ function SgDiagramEvidenceSection({
           )}
         >
           {attachments.length
-            ? `${attachments.length} file${attachments.length === 1 ? "" : "s"} attached locally`
+            ? `${attachments.length} file${attachments.length === 1 ? "" : "s"} in cloud vault`
             : "Not attached"}
         </span>
       </div>
@@ -519,25 +496,32 @@ function SgDiagramEvidenceSection({
       )}
 
       <p className="mt-3 rounded-xl border border-dashed border-[#FF6A00]/28 bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
-        Stored locally in this browser for this erf. Save/export support will come later. Maximum
-        local attachment size is {formatFileSize(SG_DIAGRAM_MAX_BYTES)}.
+        Stored in the private cloud Erf File Vault for this signed-in user and parcel. Signed URLs
+        expire safely; reopen the file if a preview link expires.
       </p>
 
-      {storageError && (
+      {vault.error && (
         <p className="mt-3 rounded-xl border border-[#C75A31]/25 bg-[#fff1e9] px-3 py-2 text-xs text-[#7A2D12]">
-          {storageError}
+          {vault.error}
         </p>
       )}
 
-      {loading ? (
-        <p className="mt-4 text-sm text-[#0D1B2A]/58">Checking local SG diagram attachment...</p>
+      {vault.uploadState && (
+        <p className="mt-3 rounded-xl border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs text-[#0D1B2A]/66">
+          Upload progress: {vault.uploadState.progress}% - {vault.uploadState.label}
+        </p>
+      )}
+
+      {vault.loading ? (
+        <p className="mt-4 text-sm text-[#0D1B2A]/58">Checking cloud SG diagram attachment...</p>
       ) : attachments.length ? (
         <div className="mt-4 grid gap-3">
           {attachments.map((attachment) => (
             <SgAttachmentCard
               key={attachment.id}
               attachment={attachment}
-              onRemove={() => void removeAttachment(attachment.id)}
+              onOpen={() => void vault.open(attachment)}
+              onRemove={() => void removeAttachment(attachment)}
             />
           ))}
         </div>
@@ -553,54 +537,40 @@ function SgDiagramEvidenceSection({
 
 function SgAttachmentCard({
   attachment,
+  onOpen,
   onRemove,
 }: {
-  attachment: ErfWorkspaceAttachmentRecord;
+  attachment: ErfAsset;
+  onOpen: () => void;
   onRemove: () => void;
 }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const isPdf = isPdfAttachment(attachment.fileName, attachment.fileType);
-  const isImage = isPreviewableImageAttachment(attachment.fileName, attachment.fileType);
-  const isTiff = isTiffAttachment(attachment.fileName, attachment.fileType);
-
-  useEffect(() => {
-    const nextUrl = URL.createObjectURL(attachment.file);
-    setPreviewUrl(nextUrl);
-    return () => URL.revokeObjectURL(nextUrl);
-  }, [attachment.file]);
-
   return (
     <div className="rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="text-sm font-semibold text-[#0D1B2A]">{attachment.fileName}</div>
+          <div className="text-sm font-semibold text-[#0D1B2A]">
+            {attachment.original_file_name}
+          </div>
           <dl className="mt-2 grid gap-1 text-xs text-[#0D1B2A]/68 sm:grid-cols-2">
-            <div>Type: {attachment.fileType}</div>
-            <div>Size: {formatFileSize(attachment.fileSize)}</div>
-            <div>Uploaded: {formatAttachmentDate(attachment.uploadedAt)}</div>
-            <div>Source: {attachment.sourceLabel}</div>
+            <div>Type: {attachment.mime_type}</div>
+            <div>Size: {formatFileSize(attachment.size_bytes)}</div>
+            <div>Uploaded: {formatAttachmentDate(attachment.created_at)}</div>
+            <div>Source: {attachment.source_label}</div>
           </dl>
           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-            SG evidence attached to this erf file. This records evidence, not legal verification.
+            SG evidence saved in the cloud Erf File Vault. This records evidence, not legal
+            verification.
           </p>
-          {isTiff && (
-            <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-[#0D1B2A]/62">
-              TIFF preview may not display in all browsers. The file is still attached to this erf.
-            </p>
-          )}
         </div>
         <div className="flex flex-wrap gap-2">
-          {previewUrl && (
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-            >
-              View attachment
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+          >
+            Open signed file
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
           <button
             type="button"
             onClick={onRemove}
@@ -611,21 +581,6 @@ function SgAttachmentCard({
           </button>
         </div>
       </div>
-
-      {previewUrl && isImage && (
-        <img
-          src={previewUrl}
-          alt="User uploaded SG diagram preview"
-          className="mt-4 max-h-72 w-full rounded-2xl border border-emerald-500/20 object-contain bg-white"
-        />
-      )}
-      {previewUrl && isPdf && (
-        <iframe
-          title="User uploaded SG diagram PDF preview"
-          src={previewUrl}
-          className="mt-4 h-72 w-full rounded-2xl border border-emerald-500/20 bg-white"
-        />
-      )}
     </div>
   );
 }
@@ -1431,6 +1386,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     readErfWorkspaceState(parcelId),
   );
   const [paidReportCount, setPaidReportCount] = useState(0);
+  const paidReportVault = useErfFileVault(parcelId, ["paid_report"]);
   const [shareCopied, setShareCopied] = useState(false);
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
 
@@ -1488,28 +1444,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return () => window.removeEventListener("erfstoep:workspace-updated", refresh);
   }, [parcelId]);
   useEffect(() => {
-    let alive = true;
-    const refresh = () => {
-      readPaidReportAttachments(parcelId)
-        .then((records) => {
-          if (alive) setPaidReportCount(records.length);
-        })
-        .catch(() => {
-          if (alive) setPaidReportCount(0);
-        });
-    };
-    const onFilesUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
-      if (detail?.parcelId && detail.parcelId !== parcelId) return;
-      refresh();
-    };
-    refresh();
-    window.addEventListener("erfstoep:workspace-files-updated", onFilesUpdated);
-    return () => {
-      alive = false;
-      window.removeEventListener("erfstoep:workspace-files-updated", onFilesUpdated);
-    };
-  }, [parcelId]);
+    setPaidReportCount(paidReportVault.assets.length);
+  }, [paidReportVault.assets.length]);
   useEffect(() => {
     const a = readUserAddress(parcelId);
     setUserAddr(a);
@@ -2239,6 +2175,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               }
               onExploreReport={() =>
                 selectWorkbenchTab("stoep-report", { markStarted: true })
+              }
+              onOpenStrategy={() =>
+                selectWorkbenchTab("calculators", { markStarted: true })
               }
             />
           )}

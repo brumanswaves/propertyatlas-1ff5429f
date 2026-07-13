@@ -1,276 +1,446 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Download,
+  FileText,
   Home,
   Image as ImageIcon,
-  Info,
+  Loader2,
   Sparkles,
+  Trash2,
   TreePine,
   Upload,
-  XCircle,
 } from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  SITE_POTENTIAL_CURRENCY,
+  SITE_POTENTIAL_DISCLAIMER,
+  SITE_POTENTIAL_PACK_SIZE,
+  SITE_POTENTIAL_PRICE_CENTS,
+} from "@/lib/sitePotential/config";
+import {
+  useSitePotentialProject,
+  type SitePotentialProjectPatch,
+} from "@/lib/sitePotential/sitePotentialService";
+import type { SitePotentialMode } from "@/lib/sitePotential/types";
+import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type {
-  ErfWorkspaceState,
-  SitePotentialMode,
-  SitePotentialSnapshot,
-} from "@/lib/workbench/erfWorkspaceState";
-
-/**
- * Callbacks are exposed so Codex can wire the real backend later.
- * The UI in this file must not simulate successful payment or
- * completed generation for normal users.
- */
-export interface SitePotentialGenerationCallbacks {
-  onRequestGeneration?: (input: SitePotentialGenerationInput) => void;
-  onSelectPreferredConcept?: (conceptId: string) => void;
-  onClearPreferredConcept?: () => void;
-  onSkipSection?: (skipped: boolean) => void;
-}
-
-export interface SitePotentialGenerationInput {
-  mode: SitePotentialMode;
-  renovationLevel?: "cosmetic" | "moderate" | "major";
-  style?: string;
-  customInstructions?: string;
-  imageRightsConfirmed: boolean;
-}
+  ErfAsset,
+  ErfAssetCategory,
+  ErfAssetValidation,
+} from "@/lib/workbench/erfFileVault";
+import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
+import { toast } from "sonner";
 
 export interface SitePotentialTabProps {
   parcel: NormalizedOfficialParcel;
   workspaceState: ErfWorkspaceState;
   onUpdateSite: (patch: Partial<SitePotentialSnapshot>) => void;
-  callbacks?: SitePotentialGenerationCallbacks;
-  /**
-   * When true, the paid generation and file upload backend is not connected
-   * in the current environment. The UI shows honest "backend not connected"
-   * states and never fakes success.
-   */
-  backendConnected?: boolean;
   onExploreReport?: () => void;
+  onOpenStrategy?: () => void;
 }
 
-const STYLES: { id: string; label: string }[] = [
-  { id: "coastal", label: "Coastal contemporary" },
-  { id: "modern", label: "Modern" },
-  { id: "mediterranean", label: "Mediterranean" },
-  { id: "traditional", label: "Traditional" },
-  { id: "farmhouse", label: "Farmhouse" },
-  { id: "minimal", label: "Minimal" },
-  { id: "custom", label: "Custom" },
+const STYLES = [
+  "Coastal contemporary",
+  "Modern",
+  "Mediterranean",
+  "Traditional",
+  "Farmhouse",
+  "Minimal",
+  "Custom",
 ];
 
-const RENOVATION_LEVELS: { id: "cosmetic" | "moderate" | "major"; label: string; body: string }[] =
-  [
-    { id: "cosmetic", label: "Cosmetic refresh", body: "Paint, finishes, small updates." },
-    { id: "moderate", label: "Moderate renovation", body: "Kitchen, bathrooms, layout tweaks." },
-    { id: "major", label: "Major transformation", body: "Extensions, rebuilds, new footprint." },
-  ];
+const ROOM_OPTIONS = ["2 bedrooms", "3 bedrooms", "4 bedrooms", "Study", "Guest suite"];
+const FEATURE_OPTIONS = ["Pool", "Deck", "Garage", "Sea-facing patio", "Garden", "Flatlet"];
 
-const MODE_OPTIONS: { id: SitePotentialMode; label: string; body: string; icon: ReactNode }[] = [
+const MODE_OPTIONS: Array<{
+  id: SitePotentialMode;
+  label: string;
+  body: string;
+  icon: typeof TreePine;
+}> = [
   {
     id: "vacant_land",
     label: "Vacant land",
-    body: "No existing structure or the erf is being cleared.",
-    icon: <TreePine className="h-4 w-4" />,
+    body: "Explore new-build concept directions from your brief and support files.",
+    icon: TreePine,
   },
   {
-    id: "existing_house",
+    id: "renovation",
     label: "Existing house",
-    body: "A house is standing and could be renovated.",
-    icon: <Home className="h-4 w-4" />,
+    body: "Upload permitted photos and explore renovation concepts.",
+    icon: Home,
   },
   {
-    id: "other",
+    id: "other_building",
     label: "Other building",
-    body: "Outbuilding, commercial, or non-residential structure.",
-    icon: <ImageIcon className="h-4 w-4" />,
+    body: "Store files and notes for a non-standard property state.",
+    icon: ImageIcon,
   },
   {
-    id: "unsure",
+    id: "unknown",
     label: "Not sure",
-    body: "Come back once the erf state is clearer.",
-    icon: <Info className="h-4 w-4" />,
+    body: "Keep this section open until the site condition is clearer.",
+    icon: FileText,
   },
 ];
+
+const VAULT_CATEGORIES: ErfAssetCategory[] = [
+  "site_photo",
+  "existing_house_photo",
+  "topography",
+  "architectural_plan",
+  "inspiration_image",
+  "generated_design",
+];
+
+function formatPrice() {
+  return new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: SITE_POTENTIAL_CURRENCY,
+    maximumFractionDigits: 0,
+  }).format(SITE_POTENTIAL_PRICE_CENTS / 100);
+}
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function assetTitle(asset: ErfAsset) {
+  const title = asset.metadata?.title;
+  return typeof title === "string" && title.trim() ? title : asset.original_file_name;
+}
+
+function validationMessage(result: Extract<ErfAssetValidation, { ok: false }>) {
+  if (result.reason === "too_large") return "File is too large for the Erf File Vault.";
+  if (result.reason === "empty_file") return "That file is empty.";
+  return "File type is not supported for this upload.";
+}
+
+function projectPatchToSnapshot(patch: SitePotentialProjectPatch): Partial<SitePotentialSnapshot> {
+  const selectedDesignAssetId =
+    typeof patch.selected_design_asset_id === "string" ? patch.selected_design_asset_id : null;
+  return {
+    mode: patch.mode ?? undefined,
+    skipped: patch.mode === "skipped" || patch.generation_status === "skipped",
+    selectedDesignAssetId,
+    preferredConceptId: selectedDesignAssetId,
+    imageRightsConfirmed: Boolean(patch.rights_confirmed_at),
+    rightsConfirmedAt: patch.rights_confirmed_at ?? undefined,
+    progressState: patch.generation_status ?? undefined,
+  };
+}
 
 export function SitePotentialTab({
   parcel,
   workspaceState,
   onUpdateSite,
-  callbacks,
-  backendConnected = false,
   onExploreReport,
+  onOpenStrategy,
 }: SitePotentialTabProps) {
   const site = workspaceState.sitePotential;
   const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const planInputRef = useRef<HTMLInputElement | null>(null);
+  const supportInputRef = useRef<HTMLInputElement | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [migrationAttempted, setMigrationAttempted] = useState(false);
+  const [strategyDraftReady, setStrategyDraftReady] = useState(false);
 
-  const [renovationLevel, setRenovationLevel] = useState<
-    "cosmetic" | "moderate" | "major" | null
-  >(null);
-  const [style, setStyle] = useState<string | null>(null);
-  const [customInstructions, setCustomInstructions] = useState("");
+  const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
+  const generatedDesigns = vault.assets.filter((asset) => asset.asset_category === "generated_design");
+  const projectState = useSitePotentialProject(parcel.id, generatedDesigns);
+  const project = projectState.project;
+
+  const sitePhotos = vault.assets.filter(
+    (asset) =>
+      asset.asset_category === "site_photo" || asset.asset_category === "existing_house_photo",
+  );
+  const supportingFiles = vault.assets.filter(
+    (asset) =>
+      asset.asset_category === "topography" ||
+      asset.asset_category === "architectural_plan" ||
+      asset.asset_category === "inspiration_image",
+  );
+  const selectedDesign = projectState.selectedDesign;
+  const mode = project?.mode ?? site.mode ?? "unknown";
+  const rightsConfirmed = Boolean(project?.rights_confirmed_at ?? site.rightsConfirmedAt);
+  const needsRenovationPhoto = mode === "renovation" && sitePhotos.length === 0;
+  const needsRights = mode === "renovation" && sitePhotos.length > 0 && !rightsConfirmed;
+  const readyToGenerate =
+    Boolean(project?.id) &&
+    (mode === "vacant_land" || mode === "renovation") &&
+    !needsRenovationPhoto &&
+    !needsRights;
 
   const identityLine = useMemo(() => {
     const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
-    const suburb = parcel.suburbOrArea ?? parcel.town ?? parcel.municipality ?? null;
-    return suburb ? `${erf} • ${suburb}` : erf;
+    const area = parcel.suburbOrArea ?? parcel.town ?? parcel.municipality ?? null;
+    return area ? `${erf} - ${area}` : erf;
   }, [parcel]);
 
-  const totalFiles = site.photoCount + site.planCount;
-  const needsPhotos = site.mode === "existing_house" && site.photoCount === 0;
-  const needsRights =
-    site.mode === "existing_house" && site.photoCount > 0 && !site.imageRightsConfirmed;
+  useEffect(() => {
+    if (!vault.signedIn || migrationAttempted) return;
+    setMigrationAttempted(true);
+    void vault.migrateLocalAttachments().then((result) => {
+      if (!result) return;
+      if (result.uploaded > 0) toast.success(`${result.uploaded} local file(s) moved to the Erf File Vault.`);
+      if (result.failed > 0) toast.error("Some local files could not be moved to the vault.");
+    });
+  }, [migrationAttempted, vault]);
 
-  function selectMode(mode: SitePotentialMode) {
-    onUpdateSite({ mode, skipped: false });
+  useEffect(() => {
+    onUpdateSite({
+      projectId: project?.id ?? null,
+      photoCount: sitePhotos.length,
+      planCount: supportingFiles.length,
+      conceptCount: generatedDesigns.length,
+      selectedDesignAssetId: project?.selected_design_asset_id ?? null,
+      preferredConceptId: project?.selected_design_asset_id ?? null,
+      mode: project?.mode ?? site.mode,
+      skipped: project?.generation_status === "skipped" || project?.mode === "skipped",
+      imageRightsConfirmed: rightsConfirmed,
+      rightsConfirmedAt: project?.rights_confirmed_at ?? null,
+      progressState:
+        project?.generation_status ??
+        (generatedDesigns.length ? "concepts_ready" : site.progressState),
+    });
+  }, [
+    generatedDesigns.length,
+    onUpdateSite,
+    project,
+    rightsConfirmed,
+    site.mode,
+    site.progressState,
+    sitePhotos.length,
+    supportingFiles.length,
+  ]);
+
+  async function saveProject(patch: SitePotentialProjectPatch) {
+    setSaving(true);
+    try {
+      const next = await projectState.save(patch);
+      onUpdateSite(projectPatchToSnapshot(patch));
+      return next;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save Site Potential.");
+      return null;
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function toggleSkipped() {
-    const next = !site.skipped;
-    onUpdateSite({ skipped: next });
-    callbacks?.onSkipSection?.(next);
-  }
-
-  function addPhotos(count: number) {
-    if (count <= 0) return;
-    onUpdateSite({ photoCount: site.photoCount + count });
-  }
-
-  function addPlans(count: number) {
-    if (count <= 0) return;
-    onUpdateSite({ planCount: site.planCount + count });
-  }
-
-  function confirmRights(next: boolean) {
-    onUpdateSite({ imageRightsConfirmed: next });
-  }
-
-  function requestGeneration() {
-    if (!site.mode || site.mode === "unsure" || site.mode === "other") return;
-    if (!backendConnected) return;
-    callbacks?.onRequestGeneration?.({
-      mode: site.mode,
-      renovationLevel: renovationLevel ?? undefined,
-      style: style ?? undefined,
-      customInstructions: customInstructions || undefined,
-      imageRightsConfirmed: site.imageRightsConfirmed,
+  async function selectMode(nextMode: SitePotentialMode) {
+    const generation_status = nextMode === "skipped" ? "skipped" : "inputs_added";
+    await saveProject({
+      mode: nextMode,
+      generation_status,
+      skipped_at: nextMode === "skipped" ? new Date().toISOString() : null,
     });
   }
 
-  const generationDisabled =
-    !backendConnected ||
-    !site.mode ||
-    site.mode === "unsure" ||
-    site.mode === "other" ||
-    (site.mode === "existing_house" && (needsPhotos || needsRights));
+  async function uploadFiles(files: FileList | null | undefined, category: ErfAssetCategory) {
+    const list = Array.from(files ?? []);
+    if (!list.length) return;
+    if (!vault.signedIn) {
+      toast.error("Sign in to save files permanently to this erf.");
+      return;
+    }
+    const sourceLabel =
+      category === "existing_house_photo"
+        ? "User uploaded permitted property photograph"
+        : category === "site_photo"
+          ? "User uploaded site photograph"
+          : category === "topography"
+            ? "User uploaded topographical or survey file"
+            : category === "architectural_plan"
+              ? "User uploaded plan"
+              : "User uploaded inspiration image";
+    for (const file of list) {
+      const result = await vault.upload({
+        file,
+        fileName: file.name,
+        category,
+        assetType: category,
+        sourceLabel,
+        metadata: {
+          siteProjectId: project?.id ?? null,
+          mode,
+          rightsConfirmedAt: rightsConfirmed ? project?.rights_confirmed_at : null,
+        },
+      });
+      if (!result.ok) toast.error(`${file.name}: ${validationMessage(result)}`);
+    }
+    await saveProject({
+      generation_status: "inputs_added",
+      mode: mode === "unknown" ? (category === "existing_house_photo" ? "renovation" : "vacant_land") : mode,
+    });
+  }
 
-  const generationCta =
-    site.mode === "vacant_land" ? "Create new-build concepts" : "Create renovation concepts";
+  async function grantDevEntitlement() {
+    const current = project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
+    if (!current) return null;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      toast.error("Sign in to create a test entitlement.");
+      return null;
+    }
+    const response = await fetch("/api/site-potential/dev-entitlement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ parcelId: parcel.id, siteProjectId: current.id }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) {
+      toast.error(payload?.error || "Development entitlement is not available.");
+      return null;
+    }
+    toast.success("Development entitlement ready for this concept pack.");
+    return payload.designPack as { id: string };
+  }
 
-  const generationStatus = deriveGenerationStatus(site, {
-    backendConnected,
-    needsPhotos,
-    needsRights,
-  });
+  async function generateConcepts() {
+    setGenerationError(null);
+    if (!readyToGenerate) {
+      toast.error("Complete the required Site Potential inputs first.");
+      return;
+    }
+    const currentPack = await grantDevEntitlement();
+    if (!currentPack?.id || !project?.id) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    setGenerating(true);
+    await saveProject({ generation_status: "generating" });
+    try {
+      const response = await fetch("/api/site-potential/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          parcelId: parcel.id,
+          siteProjectId: project.id,
+          designPackId: currentPack.id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Generation failed.");
+      }
+      toast.success(`${payload.assets?.length ?? SITE_POTENTIAL_PACK_SIZE} concepts saved to the Erf File Vault.`);
+      await vault.refresh();
+      await projectState.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Generation failed.";
+      setGenerationError(message);
+      await saveProject({ generation_status: "failed" });
+      toast.error(message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function selectDesign(asset: ErfAsset | null) {
+    await saveProject({
+      selected_design_asset_id: asset?.id ?? null,
+      generation_status: asset ? "design_selected" : generatedDesigns.length ? "concepts_ready" : "not_started",
+    });
+  }
+
+  function useInStrategy() {
+    const floorArea = String(project?.metadata?.approxFloorArea ?? "");
+    const draft = {
+      source: "site-potential",
+      projectId: project?.id,
+      selectedDesignAssetId: project?.selected_design_asset_id,
+      conceptTitle: selectedDesign ? assetTitle(selectedDesign) : null,
+      buildableSqm: floorArea,
+      notes: [
+        project?.design_brief ? `Brief: ${project.design_brief}` : null,
+        project?.requested_rooms?.length ? `Rooms: ${project.requested_rooms.join(", ")}` : null,
+        project?.requested_features?.length
+          ? `Features: ${project.requested_features.join(", ")}`
+          : null,
+      ].filter(Boolean),
+    };
+    window.localStorage.setItem(`easyErf.sitePotential.strategyDraft.${parcel.id}`, JSON.stringify(draft));
+    setStrategyDraftReady(true);
+    toast.success("Site Potential assumptions prepared. Review before applying in Strategy.");
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <header className="rounded-[1.5rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6 shadow-[0_16px_44px_-28px_rgba(13,27,42,0.3)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-[#0D1B2A] px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-white">
-                Site Potential
-              </span>
-              <span className="text-[11px] font-semibold text-[#64748B]">{identityLine}</span>
-            </div>
-            <h2 className="mt-2 text-[22px] font-semibold tracking-tight text-[#0D1B2A]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <span className="rounded-full bg-[#0D1B2A] px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-white">
+              Site Potential
+            </span>
+            <h2 className="mt-3 text-[22px] font-semibold tracking-tight text-[#0D1B2A]">
               What is currently on this erf, and what could it become?
             </h2>
             <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-[#4A5A6A]">
-              Explore renovation and new-build possibilities for this erf. Concepts are visual
-              starting points, not architectural plans or municipal approvals.
+              {identityLine}. Upload permitted photos, plans, topography and inspiration into the
+              permanent Erf File Vault. Concepts are visual starting points, not architectural plans
+              or municipal approvals.
             </p>
-            <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#4A5A6A]">
-              <span>
-                <strong className="text-[#0D1B2A]">Files:</strong> {totalFiles}
-              </span>
-              <span>
-                <strong className="text-[#0D1B2A]">Concepts:</strong> {site.conceptCount}
-              </span>
-              <span>
-                <strong className="text-[#0D1B2A]">Preferred design:</strong>{" "}
-                {site.preferredConceptId ? "Selected" : "None"}
-              </span>
-              <span>
-                <strong className="text-[#0D1B2A]">Status:</strong>{" "}
-                {site.skipped ? "Skipped for this report" : "Optional workflow"}
-              </span>
-            </dl>
           </div>
-          <div className="flex shrink-0 flex-col gap-2 md:items-end">
-            <button
-              type="button"
-              onClick={toggleSkipped}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12.5px] font-semibold",
-                site.skipped
-                  ? "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]"
-                  : "border border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:bg-[#0D1B2A]/5",
-              )}
-            >
-              {site.skipped ? "Unskip Site Potential" : "Skip for this report"}
-            </button>
-            {onExploreReport && (
-              <button
-                type="button"
-                onClick={onExploreReport}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0D1B2A]/70 hover:text-[#0D1B2A]"
-              >
-                View in Easy Erf Report <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            )}
+          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-[12px] text-[#0D1B2A]/72">
+            <div className="font-semibold text-[#0D1B2A]">Six AI Property Concepts</div>
+            <div>
+              {formatPrice()} / {SITE_POTENTIAL_PACK_SIZE} concepts
+            </div>
+            <div className="mt-1 text-[11px]">
+              Payment provider is not connected; use development entitlement only in enabled
+              environments.
+            </div>
           </div>
         </div>
       </header>
 
-      {!backendConnected && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-[12.5px] text-amber-900">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <strong>Backend not connected in this environment.</strong> Paid generation and image
-            storage are not simulated here. You can select a property state, capture your
-            preferences and mark this section skipped or complete once the pipeline is live.
-          </div>
-        </div>
+      {!vault.signedIn && (
+        <Notice tone="amber">
+          Sign in to save Site Potential files permanently to the cloud Erf File Vault.
+        </Notice>
       )}
+      {vault.migration && (vault.migration.uploaded > 0 || vault.migration.failed > 0) && (
+        <Notice tone={vault.migration.failed ? "amber" : "green"}>
+          Local file migration: {vault.migration.uploaded} uploaded, {vault.migration.skipped} already
+          in cloud, {vault.migration.failed} failed.
+        </Notice>
+      )}
+      {projectState.error && <Notice tone="amber">{projectState.error}</Notice>}
+      {vault.error && <Notice tone="amber">{vault.error}</Notice>}
 
-      {/* Step 1: property state */}
       <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
         <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-          Step 1 — What is currently on this erf?
+          Step 1 - Choose the site state
         </h3>
-        <p className="mt-1 text-[12.5px] text-[#64748B]">
-          Your choice controls which fields appear below.
-        </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {MODE_OPTIONS.map((option) => {
-            const active = site.mode === option.id;
+            const Icon = option.icon;
+            const active = mode === option.id;
             return (
               <button
                 key={option.id}
                 type="button"
-                onClick={() => selectMode(option.id)}
+                onClick={() => void selectMode(option.id)}
                 className={cn(
-                  "flex flex-col items-start rounded-2xl border p-4 text-left transition min-h-[112px]",
+                  "flex min-h-[116px] flex-col items-start rounded-2xl border p-4 text-left transition",
                   active
-                    ? "border-[#FF6A00] bg-[#FF6A00]/[0.06] shadow-[0_10px_30px_-16px_rgba(255,106,0,0.5)]"
+                    ? "border-[#FF6A00] bg-[#FF6A00]/[0.06]"
                     : "border-[#0D1B2A]/10 bg-white hover:border-[#0D1B2A]/25",
                 )}
               >
@@ -280,7 +450,7 @@ export function SitePotentialTab({
                     active ? "bg-[#FF6A00] text-white" : "bg-[#0D1B2A]/5 text-[#0D1B2A]",
                   )}
                 >
-                  {option.icon}
+                  <Icon className="h-4 w-4" />
                 </span>
                 <span className="mt-3 text-[14px] font-semibold text-[#0D1B2A]">
                   {option.label}
@@ -290,298 +460,311 @@ export function SitePotentialTab({
             );
           })}
         </div>
+        <button
+          type="button"
+          onClick={() => void selectMode("skipped")}
+          className="mt-4 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
+        >
+          Skip Site Potential for this erf
+        </button>
       </section>
 
-      {/* Step 2: mode-specific workflow */}
-      {site.mode === "existing_house" && (
-        <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-          <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-            Step 2 — Renovation setup
-          </h3>
-          <UploadRow
-            title="Current property photos"
-            hint="Front, sides, back, garden and any interior areas you want reimagined."
-            count={site.photoCount}
-            inputRef={photoInputRef}
-            accept="image/*"
-            onSelected={(count) => addPhotos(count)}
-            emptyLabel="No photos added"
-          />
-          <RightsCheckbox
-            checked={site.imageRightsConfirmed}
-            onChange={confirmRights}
-            required={site.photoCount > 0}
-          />
-          <div className="mt-6 space-y-4">
-            <FieldGroup label="Renovation level">
-              <div className="grid gap-2 sm:grid-cols-3">
-                {RENOVATION_LEVELS.map((level) => (
-                  <Chip
-                    key={level.id}
-                    active={renovationLevel === level.id}
-                    onClick={() => setRenovationLevel(level.id)}
-                    label={level.label}
-                    body={level.body}
-                  />
-                ))}
-              </div>
-            </FieldGroup>
-            <FieldGroup label="Style">
-              <div className="flex flex-wrap gap-2">
-                {STYLES.map((option) => (
-                  <PillChip
-                    key={option.id}
-                    active={style === option.id}
-                    onClick={() => setStyle(option.id)}
-                    label={option.label}
-                  />
-                ))}
-              </div>
-            </FieldGroup>
-            <FieldGroup label="Optional: custom instructions">
-              <textarea
-                value={customInstructions}
-                onChange={(event) => setCustomInstructions(event.target.value)}
-                rows={3}
-                placeholder="Roof treatment, colour palette, landscaping, pool, deck, garage, entertainment area…"
-                className="w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-[13px] text-[#0D1B2A] outline-none focus:border-[#FF6A00]"
-              />
-            </FieldGroup>
-          </div>
-        </section>
-      )}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <UploadPanel
+          title={mode === "renovation" ? "Permitted property photographs" : "Site photographs"}
+          body={
+            mode === "renovation"
+              ? "Renovation concepts require at least one user-uploaded photo that you own or have permission to use."
+              : "Vacant-land concepts can use site photos for context. They are not treated as verified parcel positioning."
+          }
+          count={sitePhotos.length}
+          inputRef={photoInputRef}
+          accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+          buttonLabel="Upload photos"
+          onClick={() => photoInputRef.current?.click()}
+          onFiles={(files) =>
+            void uploadFiles(files, mode === "renovation" ? "existing_house_photo" : "site_photo")
+          }
+        />
+        <UploadPanel
+          title="Plans, topography and inspiration"
+          body="Upload topographical surveys, plans, or inspiration images as supporting documents. Easy Erf keeps them in the same Erf File Vault."
+          count={supportingFiles.length}
+          inputRef={supportInputRef}
+          accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,application/pdf,image/png,image/jpeg,image/tiff,image/webp"
+          buttonLabel="Upload support files"
+          onClick={() => supportInputRef.current?.click()}
+          onFiles={(files) => void uploadFiles(files, "topography")}
+        />
+      </section>
 
-      {site.mode === "vacant_land" && (
-        <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-          <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-            Step 2 — New-build setup
-          </h3>
-          <UploadRow
-            title="Site photographs"
-            hint="Photos of the erf from the street and boundary, if you have them."
-            count={site.photoCount}
-            inputRef={photoInputRef}
-            accept="image/*"
-            onSelected={(count) => addPhotos(count)}
-            emptyLabel="No site photos yet"
+      {mode === "renovation" && (
+        <label className="flex items-start gap-3 rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 text-[13px] text-[#0D1B2A]">
+          <input
+            type="checkbox"
+            checked={rightsConfirmed}
+            onChange={(event) =>
+              void saveProject({
+                rights_confirmed_at: event.target.checked ? new Date().toISOString() : null,
+                generation_status: event.target.checked ? "ready_to_generate" : "inputs_added",
+              })
+            }
+            className="mt-0.5 h-4 w-4 accent-[#FF6A00]"
           />
-          <UploadRow
-            title="Survey, topographical plan or concept plans"
-            hint="PDF, image or CAD-exported PDF. Kept in the Erf File."
-            count={site.planCount}
-            inputRef={planInputRef}
-            accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff"
-            onSelected={(count) => addPlans(count)}
-            emptyLabel="No plans yet"
-          />
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {[
-              "Desired property type",
-              "Bedrooms",
-              "Bathrooms",
-              "Storeys",
-              "Garage spaces",
-              "Approx. floor area",
-              "Architectural style",
-              "Budget range",
-              "View / orientation priorities",
-              "Custom instructions",
-            ].map((label) => (
-              <label key={label} className="flex flex-col text-[12px] text-[#64748B]">
-                <span className="mb-1 font-semibold text-[#0D1B2A]">{label}</span>
-                <input
-                  type="text"
-                  className="rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-[13px] text-[#0D1B2A] outline-none focus:border-[#FF6A00]"
-                  placeholder="Optional"
-                />
-              </label>
-            ))}
-          </div>
-          <p className="mt-4 text-[11.5px] text-[#64748B]">
-            Concepts are illustrative unless verified survey and planning information exists.
-          </p>
-        </section>
-      )}
-
-      {(site.mode === "other" || site.mode === "unsure") && (
-        <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6 text-[13px] text-[#4A5A6A]">
-          Concept generation is currently tuned for existing-house renovations and vacant-land
-          new-builds. You can still add photos and plans to the Erf File below, or skip this
-          section for this report.
-        </section>
-      )}
-
-      {/* Erf File uploads */}
-      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-              Save to this Erf File
-            </h3>
-            <p className="mt-1 text-[12.5px] text-[#64748B]">
-              Photos, plans and inspiration for this erf are saved here so every module can see
-              them. Files belong to this erf permanently.
-            </p>
-          </div>
-          <span className="rounded-full bg-[#0D1B2A]/5 px-2.5 py-1 text-[11px] font-semibold text-[#0D1B2A]/70">
-            {totalFiles} file{totalFiles === 1 ? "" : "s"}
+          <span>
+            I own these images or have permission to use them for AI concept visualisation.
+            {needsRights && <strong className="ml-2 text-[#B24A00]">Required</strong>}
           </span>
+        </label>
+      )}
+
+      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
+        <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
+          Step 2 - Brief and assumptions
+        </h3>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <TextField
+            label="Design brief"
+            value={project?.design_brief ?? ""}
+            onChange={(value) => void saveProject({ design_brief: value, generation_status: "inputs_added" })}
+            placeholder="Example: compact coastal family home with wind-protected courtyard"
+          />
+          <SelectField
+            label="Style"
+            value={project?.selected_style ?? ""}
+            options={STYLES}
+            onChange={(value) => void saveProject({ selected_style: value })}
+          />
+          <SelectField
+            label="Renovation level"
+            value={project?.renovation_level ?? ""}
+            options={["cosmetic", "moderate", "major"]}
+            onChange={(value) =>
+              void saveProject({
+                renovation_level: value as "cosmetic" | "moderate" | "major",
+              })
+            }
+          />
+          <TextField
+            label="Custom instructions"
+            value={project?.custom_instructions ?? ""}
+            onChange={(value) => void saveProject({ custom_instructions: value })}
+            placeholder="Materials, colours, rooms, landscaping, parking, views..."
+          />
         </div>
+        <ChipEditor
+          title="Requested rooms"
+          values={project?.requested_rooms ?? []}
+          options={ROOM_OPTIONS}
+          onChange={(values) => void saveProject({ requested_rooms: values })}
+        />
+        <ChipEditor
+          title="Requested features"
+          values={project?.requested_features ?? []}
+          options={FEATURE_OPTIONS}
+          onChange={(values) => void saveProject({ requested_features: values })}
+        />
       </section>
 
-      {/* Paid design pack */}
-      <section className="rounded-[1.75rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6 shadow-[0_16px_44px_-28px_rgba(13,27,42,0.3)]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0 flex-1">
+      <section className="rounded-[1.75rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#FF6A00]" />
               <h3 className="text-[16px] font-semibold tracking-tight text-[#0D1B2A]">
-                Six AI Property Concepts
+                Generate {SITE_POTENTIAL_PACK_SIZE} AI Property Concepts
               </h3>
             </div>
-            <p className="mt-2 text-[13px] leading-6 text-[#4A5A6A]">
-              One primary concept direction plus five coordinated alternatives, saved permanently
-              to this erf. Choose one design for the Easy Erf Report.
+            <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#4A5A6A]">
+              The server verifies entitlement, stores every successful output in the Erf File
+              Vault, then lets you choose exactly one concept for the Easy Erf Report.
             </p>
-            <ul className="mt-3 grid gap-1 text-[12px] text-[#4A5A6A] sm:grid-cols-2">
-              <li>• One primary concept direction</li>
-              <li>• Five coordinated alternatives</li>
-              <li>• Saved permanently to this erf</li>
-              <li>• Pick one design for the Easy Erf Report</li>
-            </ul>
+            <p className="mt-2 text-[11.5px] text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <div className="text-[26px] font-bold text-[#0D1B2A]">R100</div>
+          <div className="flex flex-col items-start gap-2 lg:items-end">
+            <div className="text-[26px] font-bold text-[#0D1B2A]">{formatPrice()}</div>
             <button
               type="button"
-              onClick={requestGeneration}
-              disabled={generationDisabled}
+              disabled={!readyToGenerate || generating || saving}
+              onClick={() => void generateConcepts()}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold shadow-[0_12px_30px_-10px_rgba(255,106,0,0.7)]",
-                generationDisabled
-                  ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40 shadow-none"
+                "inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold",
+                !readyToGenerate || generating
+                  ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                   : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
               )}
             >
-              {generationCta} <ArrowRight className="h-4 w-4" />
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generate concepts
             </button>
-            <span className="text-[11px] font-semibold text-[#64748B]">{generationStatus}</span>
+            <span className="text-[11px] text-[#64748B]">
+              {needsRenovationPhoto
+                ? "Needs a permitted property photo"
+                : needsRights
+                  ? "Needs image-rights confirmation"
+                  : !project?.id
+                    ? "Choose a site state first"
+                    : "Ready when entitlement and OpenAI server key are configured"}
+            </span>
           </div>
         </div>
+        {generationError && <Notice tone="amber">{generationError}</Notice>}
       </section>
 
-      {/* Concept gallery */}
-      <ConceptGallery
-        site={site}
-        onSelect={(id) => {
-          onUpdateSite({ preferredConceptId: id });
-          callbacks?.onSelectPreferredConcept?.(id);
-        }}
-        onClear={() => {
-          onUpdateSite({ preferredConceptId: null });
-          callbacks?.onClearPreferredConcept?.();
-        }}
-      />
-
-      {/* Easy Erf Report preview card */}
-      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B]">
-              What will be sent to the report
-            </div>
-            <div className="mt-1 text-[15px] font-semibold text-[#0D1B2A]">
-              {site.preferredConceptId
-                ? `Preferred concept ${site.preferredConceptId}`
-                : site.skipped
-                  ? "Site Potential skipped for this report"
-                  : "No preferred design selected yet"}
-            </div>
-            <p className="mt-1 text-[12px] text-[#64748B]">
-              Mode: {siteModeLabel(site.mode)} · Concepts saved: {site.conceptCount} · Files:{" "}
-              {totalFiles}
-            </p>
-            <p className="mt-1 text-[11px] text-[#64748B]">
-              Disclaimer: concepts are visual explorations, not architectural or municipally
-              approved plans.
-            </p>
+      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
+            Generated concepts
+          </h3>
+          <span className="text-xs text-[#64748B]">
+            {generatedDesigns.length} of {SITE_POTENTIAL_PACK_SIZE}
+          </span>
+        </div>
+        {generatedDesigns.length ? (
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {generatedDesigns.map((asset) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                selected={asset.id === project?.selected_design_asset_id}
+                onOpen={() => void vault.open(asset)}
+                onRemove={() => void vault.remove(asset)}
+                onSelect={() => void selectDesign(asset)}
+              />
+            ))}
           </div>
-          {onExploreReport && (
+        ) : (
+          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
+            No generated concepts saved yet. Generated images will appear here only after the
+            server stores them in the Erf File Vault.
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
+        <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
+          Use selected concept in Strategy
+        </h3>
+        <p className="mt-2 text-[13px] leading-6 text-[#64748B]">
+          Easy Erf will not overwrite calculator assumptions automatically. Use this action to
+          prepare a draft with the selected concept title, brief, rooms and features, then review it
+          in Strategy.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!selectedDesign}
+            onClick={useInStrategy}
+            className={cn(
+              "rounded-full px-4 py-2 text-xs font-semibold",
+              selectedDesign
+                ? "bg-[#0D1B2A] text-white hover:bg-[#142941]"
+                : "cursor-not-allowed bg-[#0D1B2A]/8 text-[#0D1B2A]/40",
+            )}
+          >
+            Use in Strategy
+          </button>
+          {strategyDraftReady && onOpenStrategy && (
             <button
               type="button"
-              onClick={onExploreReport}
-              className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2.5 text-[12.5px] font-semibold text-white hover:bg-[#142941]"
+              onClick={onOpenStrategy}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
             >
-              View in Easy Erf Report <ArrowRight className="h-4 w-4" />
+              Open Strategy <ArrowRight className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
       </section>
+
+      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
+        <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
+          Erf File Vault files for Site Potential
+        </h3>
+        <div className="mt-4 grid gap-3">
+          {[...sitePhotos, ...supportingFiles].map((asset) => (
+            <FileRow
+              key={asset.id}
+              asset={asset}
+              onOpen={() => void vault.open(asset)}
+              onRemove={() => void vault.remove(asset)}
+            />
+          ))}
+          {!sitePhotos.length && !supportingFiles.length && (
+            <p className="rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
+              No Site Potential files uploaded yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {onExploreReport && (
+        <button
+          type="button"
+          onClick={onExploreReport}
+          className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-3 text-sm font-semibold text-white hover:bg-[#142941]"
+        >
+          View in Easy Erf Report <ArrowRight className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
 
-function siteModeLabel(mode: SitePotentialMode | null) {
-  switch (mode) {
-    case "vacant_land":
-      return "Vacant land";
-    case "existing_house":
-      return "Existing house";
-    case "other":
-      return "Other building";
-    case "unsure":
-      return "Not sure";
-    default:
-      return "Not set";
-  }
+function Notice({ tone, children }: { tone: "amber" | "green"; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "mt-3 flex items-start gap-3 rounded-2xl border p-4 text-[12.5px]",
+        tone === "green"
+          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+          : "border-amber-300 bg-amber-50 text-amber-900",
+      )}
+    >
+      {tone === "green" ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+      ) : (
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      )}
+      <div>{children}</div>
+    </div>
+  );
 }
 
-function deriveGenerationStatus(
-  site: SitePotentialSnapshot,
-  ctx: { backendConnected: boolean; needsPhotos: boolean; needsRights: boolean },
-) {
-  if (!ctx.backendConnected) return "Backend not connected";
-  if (!site.mode || site.mode === "unsure" || site.mode === "other") return "Ready for input";
-  if (ctx.needsPhotos) return "Needs photographs";
-  if (ctx.needsRights) return "Needs image-rights confirmation";
-  if (site.conceptCount === 0) return "Awaiting payment or entitlement";
-  if (site.conceptCount > 0 && site.conceptCount < 6) return "Partially complete";
-  return "Complete";
-}
-
-function UploadRow({
+function UploadPanel({
   title,
-  hint,
+  body,
   count,
   inputRef,
   accept,
-  onSelected,
-  emptyLabel,
+  buttonLabel,
+  onClick,
+  onFiles,
 }: {
   title: string;
-  hint: string;
+  body: string;
   count: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
   accept: string;
-  onSelected: (count: number) => void;
-  emptyLabel: string;
+  buttonLabel: string;
+  onClick: () => void;
+  onFiles: (files: FileList | null) => void;
 }) {
   return (
-    <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-dashed border-[#0D1B2A]/15 bg-[#F7F5EE] p-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <div className="text-[13.5px] font-semibold text-[#0D1B2A]">{title}</div>
-        <div className="text-[11.5px] text-[#64748B]">{hint}</div>
-        <div className="mt-1 text-[11px] font-semibold text-[#0D1B2A]/70">
-          {count > 0 ? `${count} file${count === 1 ? "" : "s"} added` : emptyLabel}
-        </div>
+    <article className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+      <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
+      <p className="mt-1 text-[12.5px] leading-5 text-[#64748B]">{body}</p>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-[#0D1B2A]/70">
+          {count} file{count === 1 ? "" : "s"}
+        </span>
+        <button
+          type="button"
+          onClick={onClick}
+          className="inline-flex items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7a1a]"
+        >
+          <Upload className="h-3.5 w-3.5" /> {buttonLabel}
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="inline-flex items-center gap-2 self-start rounded-full bg-[#0D1B2A] px-4 py-2 text-[12px] font-semibold text-white hover:bg-[#142941]"
-      >
-        <Upload className="h-3.5 w-3.5" /> Upload files
-      </button>
       <input
         ref={inputRef}
         type="file"
@@ -589,190 +772,214 @@ function UploadRow({
         accept={accept}
         className="hidden"
         onChange={(event) => {
-          const n = event.target.files?.length ?? 0;
-          if (n > 0) onSelected(n);
-          event.target.value = "";
+          onFiles(event.target.files);
+          event.currentTarget.value = "";
         }}
       />
-    </div>
+    </article>
   );
 }
 
-function RightsCheckbox({
-  checked,
+function TextField({
+  label,
+  value,
   onChange,
-  required,
+  placeholder,
 }: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  required: boolean;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
 }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
   return (
-    <label className="mt-3 flex items-start gap-3 rounded-2xl border border-[#0D1B2A]/10 bg-white p-3 text-[12.5px] text-[#0D1B2A]">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 accent-[#FF6A00]"
+    <label className="block text-[12px] text-[#64748B]">
+      <span className="mb-1 block font-semibold text-[#0D1B2A]">{label}</span>
+      <textarea
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => onChange(draft.trim())}
+        rows={2}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-[13px] text-[#0D1B2A] outline-none focus:border-[#FF6A00]"
       />
-      <span>
-        I own these images or have permission to use them for AI concept visualisation.
-        {required && !checked && (
-          <span className="ml-2 text-[11px] font-semibold text-[#B24A00]">Required</span>
-        )}
-      </span>
     </label>
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
   return (
-    <div>
-      <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B]">
-        {label}
+    <label className="block text-[12px] text-[#64748B]">
+      <span className="mb-1 block font-semibold text-[#0D1B2A]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-[13px] text-[#0D1B2A] outline-none focus:border-[#FF6A00]"
+      >
+        <option value="">Not selected</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ChipEditor({
+  title,
+  values,
+  options,
+  onChange,
+}: {
+  title: string;
+  values: string[];
+  options: string[];
+  onChange: (values: string[]) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B]">{title}</div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((option) => {
+          const active = values.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() =>
+                onChange(active ? values.filter((item) => item !== option) : [...values, option])
+              }
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
+                active
+                  ? "border-[#FF6A00] bg-[#FF6A00] text-white"
+                  : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
+              )}
+            >
+              {option}
+            </button>
+          );
+        })}
       </div>
-      <div className="mt-2">{children}</div>
     </div>
   );
 }
 
-function Chip({
-  active,
-  onClick,
-  label,
-  body,
+function FileRow({
+  asset,
+  onOpen,
+  onRemove,
 }: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  body: string;
+  asset: ErfAsset;
+  onOpen: () => void;
+  onRemove: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start rounded-2xl border p-3 text-left transition",
-        active
-          ? "border-[#FF6A00] bg-[#FF6A00]/[0.06]"
-          : "border-[#0D1B2A]/10 bg-white hover:border-[#0D1B2A]/25",
-      )}
-    >
-      <span className="text-[13px] font-semibold text-[#0D1B2A]">{label}</span>
-      <span className="mt-1 text-[11.5px] text-[#64748B]">{body}</span>
-    </button>
+    <div className="flex flex-col gap-3 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div className="break-words text-sm font-semibold text-[#0D1B2A]">
+          {asset.original_file_name}
+        </div>
+        <div className="mt-1 text-xs text-[#64748B]">
+          {asset.asset_category} - {formatFileSize(asset.size_bytes)} - uploaded{" "}
+          {formatDate(asset.created_at)}
+        </div>
+        <div className="mt-1 text-xs text-[#64748B]">Status: {asset.status}</div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fffaf2]"
+        >
+          <Download className="h-3.5 w-3.5" /> Open
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#C75A31]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[#7A2D12] hover:bg-[#fff1e9]"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Remove
+        </button>
+      </div>
+    </div>
   );
 }
 
-function PillChip({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
-        active
-          ? "border-[#FF6A00] bg-[#FF6A00] text-white"
-          : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function ConceptGallery({
-  site,
+function AssetCard({
+  asset,
+  selected,
+  onOpen,
+  onRemove,
   onSelect,
-  onClear,
 }: {
-  site: SitePotentialSnapshot;
-  onSelect: (id: string) => void;
-  onClear: () => void;
+  asset: ErfAsset;
+  selected: boolean;
+  onOpen: () => void;
+  onRemove: () => void;
+  onSelect: () => void;
 }) {
-  const slots = Array.from({ length: 6 }, (_, i) => `concept-${i + 1}`);
   return (
-    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-          Concept gallery
-        </h3>
-        <span className="text-[11.5px] text-[#64748B]">
-          {site.conceptCount === 0
-            ? "No concepts generated yet"
-            : `${site.conceptCount} of 6 available`}
-        </span>
+    <article
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-[#FBF6EC]",
+        selected ? "border-[#FF6A00]" : "border-[#EADFC9]",
+      )}
+    >
+      <div className="grid aspect-[4/3] place-items-center bg-[#0D1B2A]/5 p-4 text-center text-xs font-semibold text-[#0D1B2A]/60">
+        Open concept to preview signed cloud file
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {slots.map((id, index) => {
-          const ready = index < site.conceptCount;
-          const isSelected = site.preferredConceptId === id;
-          return (
-            <article
-              key={id}
-              className={cn(
-                "flex flex-col overflow-hidden rounded-2xl border bg-[#FBF6EC]",
-                isSelected ? "border-[#FF6A00]" : "border-[#EADFC9]",
-              )}
-            >
-              <div className="relative aspect-[4/3] bg-[#0D1B2A]/5">
-                <div className="absolute inset-0 grid place-items-center text-[11.5px] font-semibold text-[#0D1B2A]/50">
-                  {ready ? `Concept ${index + 1}` : "Not generated yet"}
-                </div>
-                {isSelected && (
-                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#FF6A00] px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-white">
-                    <CheckCircle2 className="h-3 w-3" /> Selected for Easy Erf Report
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-2 p-3">
-                <div className="text-[13px] font-semibold text-[#0D1B2A]">
-                  Concept #{index + 1}
-                </div>
-                <div className="text-[11.5px] text-[#64748B]">
-                  {ready
-                    ? "Design summary appears here once concepts are generated."
-                    : "Awaiting generation."}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={!ready || isSelected}
-                    onClick={() => onSelect(id)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-[11.5px] font-semibold",
-                      !ready
-                        ? "cursor-not-allowed bg-[#0D1B2A]/5 text-[#0D1B2A]/40"
-                        : isSelected
-                          ? "cursor-not-allowed bg-[#0D1B2A]/5 text-[#0D1B2A]/40"
-                          : "bg-[#0D1B2A] text-white hover:bg-[#142941]",
-                    )}
-                  >
-                    Select as preferred
-                  </button>
-                  {isSelected && (
-                    <button
-                      type="button"
-                      onClick={onClear}
-                      className="inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
-                    >
-                      <XCircle className="h-3.5 w-3.5" /> Remove from report
-                    </button>
-                  )}
-                </div>
-              </div>
-            </article>
-          );
-        })}
+      <div className="p-4">
+        <div className="text-sm font-semibold text-[#0D1B2A]">{assetTitle(asset)}</div>
+        <p className="mt-1 text-xs leading-5 text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
+        {selected && (
+          <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#FF6A00] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-white">
+            <CheckCircle2 className="h-3 w-3" /> Selected for report
+          </span>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fffaf2]"
+          >
+            Open
+          </button>
+          <button
+            type="button"
+            disabled={selected}
+            onClick={onSelect}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-xs font-semibold",
+              selected
+                ? "cursor-not-allowed bg-[#0D1B2A]/8 text-[#0D1B2A]/40"
+                : "bg-[#0D1B2A] text-white hover:bg-[#142941]",
+            )}
+          >
+            Select for report
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full border border-[#C75A31]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[#7A2D12] hover:bg-[#fff1e9]"
+          >
+            Remove
+          </button>
+        </div>
       </div>
-    </section>
+    </article>
   );
 }

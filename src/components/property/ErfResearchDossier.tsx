@@ -37,10 +37,14 @@ import {
   saveStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
-  readAllWorkspaceAttachments,
-  type ErfWorkspaceAttachmentRecord,
-  type PaidReportProvider,
-} from "@/lib/workbench/erfWorkspaceFiles";
+  createErfAssetSignedUrl,
+  groupErfAssets,
+  type ErfAsset,
+  type ErfAssetGroup,
+} from "@/lib/workbench/erfFileVault";
+import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import { useSitePotentialProject } from "@/lib/sitePotential/sitePotentialService";
+import { SITE_POTENTIAL_DISCLAIMER } from "@/lib/sitePotential/config";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 import { StrategyLab } from "./strategy/StrategyLab";
 
@@ -1035,75 +1039,102 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function paidReportProviderLabel(provider: PaidReportProvider) {
-  return provider === "lightstone" ? "Lightstone" : "WinDeed";
+const REPORT_ASSET_GROUP_ORDER: ErfAssetGroup[] = [
+  "Generated concepts",
+  "Official and source documents",
+  "Paid reports",
+  "Site and topography",
+  "Property photographs",
+  "Plans and inspiration",
+  "Report exports",
+  "Other",
+];
+
+function workspaceAssetCategory(file: ErfAsset) {
+  if (file.asset_category === "sg_diagram") return "SG diagram";
+  if (file.asset_type === "lightstone_report") return "Lightstone PDF";
+  if (file.asset_type === "windeed_report") return "WinDeed PDF";
+  if (file.asset_category === "generated_design") return "AI concept visualisation";
+  return file.source_label || file.asset_type.replace(/_/g, " ");
 }
 
-function workspaceAttachmentCategory(file: ErfWorkspaceAttachmentRecord) {
-  if (file.kind === "sg-diagram") return "SG diagram";
-  if (file.provider) return `${paidReportProviderLabel(file.provider)} PDF`;
-  return file.sourceLabel || "Workspace file";
-}
-
-function formatAttachmentSize(bytes: number) {
+function formatAssetSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatAttachmentDate(value: string) {
+function formatAssetDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
 }
 
-function openWorkspaceAttachment(file: ErfWorkspaceAttachmentRecord) {
-  const url = URL.createObjectURL(file.file);
+function assetTitle(asset: ErfAsset) {
+  const title = asset.metadata?.title;
+  return typeof title === "string" && title.trim() ? title : asset.original_file_name;
+}
+
+function SignedAssetPreview({ asset }: { asset: ErfAsset }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    createErfAssetSignedUrl(asset)
+      .then((signedUrl) => {
+        if (alive) setUrl(signedUrl);
+      })
+      .catch(() => {
+        if (alive) setUrl(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [asset]);
+
+  if (!url) {
+    return (
+      <div className="grid aspect-[4/3] place-items-center rounded-[1.25rem] bg-[#0D1B2A]/10 text-xs font-semibold text-[#0D1B2A]/55">
+        Signed preview unavailable
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={assetTitle(asset)}
+      className="aspect-[4/3] w-full rounded-[1.25rem] object-cover"
+    />
+  );
+}
+
+async function openVaultAsset(file: ErfAsset) {
+  const url = await createErfAssetSignedUrl(file);
   window.open(url, "_blank", "noopener,noreferrer");
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
-  const [uploadedFiles, setUploadedFiles] = useState<ErfWorkspaceAttachmentRecord[]>([]);
+  const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
   const chosenScenario = getChosenStrategyScenario(parcel.id);
+  const generatedDesigns = fileVault.assets.filter(
+    (asset) => asset.asset_category === "generated_design",
+  );
+  const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
+  const selectedDesign = siteProject.selectedDesign;
+  const groupedAssets = groupErfAssets(fileVault.assets);
   const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
   const reviewedSources = workspaceState.reviewedSourceIds.length;
-  const sgFiles = workspaceState.sgDiagramAttachmentCount;
+  const sgFiles = fileVault.assets.filter((asset) => asset.asset_category === "sg_diagram").length;
+  const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const missing = [
     reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
+    selectedDesign ? null : "selected Site Potential concept, if relevant",
     evidence.length ? null : "saved market evidence",
     chosenScenario ? null : "saved strategy scenario",
   ].filter(Boolean);
-
-  useEffect(() => {
-    let alive = true;
-    readAllWorkspaceAttachments(parcel.id)
-      .then((records) => {
-        if (alive) setUploadedFiles(records);
-      })
-      .catch(() => {
-        if (alive) setUploadedFiles([]);
-      });
-    const refresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
-      if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      readAllWorkspaceAttachments(parcel.id)
-        .then((records) => {
-          if (alive) setUploadedFiles(records);
-        })
-        .catch(() => {
-          if (alive) setUploadedFiles([]);
-        });
-    };
-    window.addEventListener("erfstoep:workspace-files-updated", refresh);
-    return () => {
-      alive = false;
-      window.removeEventListener("erfstoep:workspace-files-updated", refresh);
-    };
-  }, [parcel.id]);
 
   return (
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
@@ -1128,6 +1159,14 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
               : workspaceState.identityStatus,
           ],
           ["Sources", `${reviewedSources} reviewed / ${sgFiles} SG files`],
+          [
+            "Site Potential",
+            selectedDesign
+              ? `Selected: ${assetTitle(selectedDesign)}`
+              : selectedSiteMode === "skipped"
+                ? "Skipped"
+                : `${generatedDesigns.length} concept${generatedDesigns.length === 1 ? "" : "s"}`,
+          ],
           ["Market", `${evidence.length} saved evidence item${evidence.length === 1 ? "" : "s"}`],
           [
             "Strategy",
@@ -1168,6 +1207,77 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
         </section>
       )}
 
+      <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+          Site Potential
+        </div>
+        <h4 className="mt-2 text-base font-semibold">
+          {selectedDesign ? "Selected property concept" : "No property concept selected"}
+        </h4>
+        <p className="mt-1 text-sm leading-6 text-white/68">
+          {selectedDesign
+            ? "This selected concept is referenced from the Erf File Vault by stable asset ID."
+            : "Generate and select a Site Potential concept if you want it included in the final Easy Erf Report."}
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+          {selectedDesign ? (
+            <SignedAssetPreview asset={selectedDesign} />
+          ) : (
+            <div className="grid aspect-[4/3] place-items-center rounded-[1.25rem] border border-white/10 bg-white/5 text-sm font-semibold text-white/55">
+              Concept image not selected
+            </div>
+          )}
+          <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+            <dl className="grid gap-3 text-sm">
+              <div>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  Project mode
+                </dt>
+                <dd className="mt-1 capitalize text-white/85">
+                  {String(selectedSiteMode ?? "unknown").replace(/_/g, " ")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  Brief
+                </dt>
+                <dd className="mt-1 text-white/85">
+                  {siteProject.project?.design_brief || "No design brief saved yet."}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  Source/reference files
+                </dt>
+                <dd className="mt-1 text-white/85">
+                  {
+                    fileVault.assets.filter((asset) =>
+                      ["site_photo", "existing_house_photo", "topography", "architectural_plan"].includes(
+                        asset.asset_category,
+                      ),
+                    ).length
+                  }{" "}
+                  vault file(s)
+                </dd>
+              </div>
+              {selectedDesign && (
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Stable asset ID
+                  </dt>
+                  <dd className="mt-1 break-all font-mono text-xs text-white/75">
+                    {selectedDesign.id}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </div>
+        <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
+          {SITE_POTENTIAL_DISCLAIMER}
+        </p>
+      </section>
+
       <section
         id="uploaded-files-and-source-documents"
         className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4 scroll-mt-24"
@@ -1176,42 +1286,58 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
           Uploaded files and source documents
         </h4>
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-          Stored for reference. Easy Erf AI extraction and PDF analysis are not enabled yet.
+          Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis
+          are not enabled yet.
         </p>
-        {uploadedFiles.length ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {uploadedFiles.map((file) => (
-              <article key={file.id} className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  {workspaceAttachmentCategory(file)}
-                </div>
-                <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
-                  {file.fileName}
-                </p>
-                <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                  {formatAttachmentSize(file.fileSize)} - uploaded{" "}
-                  {formatAttachmentDate(file.uploadedAt)}
-                </p>
-                <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                  Status:{" "}
-                  {file.status === "uploaded_reference_only"
-                    ? "uploaded for reference only"
-                    : "stored for reference"}
-                  .
-                </p>
-                <button
-                  type="button"
-                  onClick={() => openWorkspaceAttachment(file)}
-                  className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                >
-                  Open file
-                </button>
-              </article>
-            ))}
+        {fileVault.assets.length ? (
+          <div className="mt-4 space-y-4">
+            {REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length).map(
+              (group) => (
+                <section key={group}>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                    {group}
+                  </div>
+                  <div className="mt-2 grid gap-3 md:grid-cols-2">
+                    {groupedAssets[group].map((file) => (
+                      <article
+                        key={file.id}
+                        className="rounded-2xl border border-[#D9E6F2] bg-white p-4"
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                          {workspaceAssetCategory(file)}
+                        </div>
+                        <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
+                          {file.original_file_name}
+                        </p>
+                        <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                          {formatAssetSize(file.size_bytes)} - uploaded{" "}
+                          {formatAssetDate(file.created_at)}
+                        </p>
+                        <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                          Status:{" "}
+                          {file.status === "uploaded_reference_only"
+                            ? "uploaded for reference only"
+                            : file.status.replace(/_/g, " ")}
+                          .
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void openVaultAsset(file)}
+                          className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                        >
+                          Open file
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ),
+            )}
           </div>
         ) : (
           <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-3 text-sm text-[#0D1B2A]/60">
-            No uploaded SG diagrams, Lightstone PDFs, or WinDeed PDFs are stored for this erf yet.
+            No uploaded SG diagrams, paid reports, site photos, plans, concepts, or report exports
+            are stored for this erf yet.
           </p>
         )}
       </section>

@@ -38,6 +38,11 @@ describe("reportProgress", () => {
           status: "Done",
           evidence: "2 opened / 1 reviewed / 0 SG files",
         }),
+        expect.objectContaining({
+          label: "Site",
+          status: "Not started",
+          evidence: "Property state not set",
+        }),
         expect.objectContaining({ label: "Market", status: "Done", evidence: "2 saved comps" }),
         expect.objectContaining({ label: "Strategy", status: "In progress" }),
         expect.objectContaining({ label: "Report", status: "Not started" }),
@@ -52,6 +57,12 @@ describe("reportProgress", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         sgDiagramAttachmentCount: 2,
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          selectedDesignAssetId: "asset-123",
+          conceptCount: 6,
+          progressState: "design_selected",
+        },
         marketAddressSaved: true,
         strategyScenarioCount: 1,
       },
@@ -69,6 +80,11 @@ describe("reportProgress", () => {
           label: "Market",
           status: "Done",
           evidence: "Market address saved",
+        }),
+        expect.objectContaining({
+          label: "Site",
+          status: "Done",
+          evidence: "6 concepts generated, 1 selected",
         }),
         expect.objectContaining({
           label: "Strategy",
@@ -98,8 +114,8 @@ describe("reportProgress", () => {
       "Create report",
     ]);
     expect(actions.find((action) => action.id === "evidence")).toMatchObject({
-      action: "Add market evidence",
-      tab: "listings",
+      action: "Open Site Potential",
+      tab: "site-potential",
       primary: true,
     });
     expect(actions.find((action) => action.id === "report")).toMatchObject({

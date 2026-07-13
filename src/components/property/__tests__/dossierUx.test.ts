@@ -296,20 +296,19 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Upload SG files");
     expect(panel).toContain("multiple");
     expect(panel).toContain(".pdf,.png,.jpg,.jpeg,.tif,.tiff");
-    expect(panel).toContain("attached locally");
+    expect(panel).toContain("cloud vault");
     expect(panel).toContain("Not attached");
     expect(panel).toContain(
-      "Stored locally in this browser for this erf. Save/export support will come later.",
+      "Stored in the private cloud Erf File Vault for this signed-in user and parcel.",
     );
-    expect(panel).toContain("TIFF preview may not display in all browsers");
     expect(panel).toContain("User uploaded SG diagram");
-    expect(panel).toContain("View attachment");
+    expect(panel).toContain("Open signed file");
     expect(panel).toContain("Remove attachment");
-    expect(panel).toContain("is too large for local browser storage");
+    expect(panel).toContain("is too large for the Erf File Vault");
     expect(panel).toContain("Automatic SG import is not enabled yet");
     expect(panel).toContain("No SG diagram attached yet");
-    expect(panel).toContain("SG diagram file attached to this erf file");
-    expect(panel).toContain("SG diagram files attached to this erf file");
+    expect(panel).toContain("SG diagram file saved to the Erf File Vault");
+    expect(panel).toContain("SG diagram files saved to the Erf File Vault");
     expect(panel).toContain("Deeds registry guidance");
     expect(panel).toContain("Not opened");
     expect(panel).toContain("Opened");
@@ -462,8 +461,8 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('action: "Check official identity"');
     expect(reportProgress).toContain('tab: "research"');
     expect(reportProgress).toContain('title: "Add evidence"');
-    expect(reportProgress).toContain('action: "Add market evidence"');
-    expect(reportProgress).toContain('tab: "listings"');
+    expect(reportProgress).toContain('action: siteOpen ? "Open Site Potential" : "Add market evidence"');
+    expect(reportProgress).toContain('tab: siteOpen ? "site-potential" : "listings"');
     expect(reportProgress).toContain('title: "Run numbers"');
     expect(reportProgress).toContain('action: "Open calculator"');
     expect(reportProgress).toContain('tab: "calculators"');
@@ -581,6 +580,8 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportsTab = read("src/components/property/tabs/ReportsTab.tsx");
     const workspaceFiles = read("src/lib/workbench/erfWorkspaceFiles.ts");
+    const vaultFiles = read("src/lib/workbench/erfFileVault.ts");
+    const sitePotential = read("src/components/property/dossier/SitePotentialTab.tsx");
 
     expect(dossier).toContain("ReportBuilderOverview");
     expect(reportBuilder).toContain("Easy Erf Report Builder");
@@ -602,22 +603,33 @@ describe("official dossier UX guardrails", () => {
     expect(reportsTab).toContain("{label} report upload");
     expect(reportsTab).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
     expect(reportsTab).toContain(
-      "Uploaded for reference. Extraction and AI summary are not enabled yet.",
+      "Stored in the cloud Erf File Vault for reference. Extraction and AI summary are not",
     );
     expect(reportsTab).toContain("Replace PDF");
     expect(reportsTab).toContain("Remove");
+    expect(reportsTab).toContain("useErfFileVault");
+    expect(reportsTab).not.toContain("savePaidReportAttachment");
     expect(workspaceFiles).toContain("provider?: PaidReportProvider");
     expect(workspaceFiles).toContain("status?: ErfWorkspaceAttachmentStatus");
     expect(workspaceFiles).toContain('"uploaded_reference_only"');
+    expect(vaultFiles).toContain('export const ERF_FILE_BUCKET = "erf-files"');
+    expect(vaultFiles).toContain("migrateLocalWorkspaceAttachmentsToVault");
+    expect(vaultFiles).toContain("createSignedUrl");
+    expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
+    expect(sitePotential).toContain("useErfFileVault");
+    expect(sitePotential).toContain("/api/site-potential/generate");
+    expect(sitePotential).not.toContain("Street View");
     expect(dossier).toContain("Uploaded files and source documents");
-    expect(dossier).toContain("readAllWorkspaceAttachments");
-    expect(dossier).toContain("workspaceAttachmentCategory");
+    expect(dossier).toContain("groupErfAssets");
+    expect(dossier).toContain("workspaceAssetCategory");
     expect(dossier).toContain("getChosenStrategyScenario");
     expect(dossier).toContain("Chosen strategy scenario");
+    expect(dossier).toContain("Selected property concept");
+    expect(dossier).toContain("Stable asset ID");
     expect(dossier).toContain("newest saved scenario");
     expect(dossier).toContain("Open file");
     expect(dossier).toContain(
-      "Stored for reference. Easy Erf AI extraction and PDF analysis are not enabled yet.",
+      "Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis",
     );
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
   });

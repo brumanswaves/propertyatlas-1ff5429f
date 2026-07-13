@@ -112,13 +112,18 @@ describe("erfWorkspaceState", () => {
         identityStatus: "looks_correct",
         reviewedSourceIds: ["csg-property-viewer"],
       }),
-    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
+    ).toMatchObject({ title: "Explore Site Potential", tab: "site-potential" });
 
     expect(
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         reviewedSourceIds: ["csg-property-viewer"],
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          skipped: true,
+          progressState: "skipped",
+        },
         marketEvidenceStarted: true,
       }),
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
@@ -128,6 +133,11 @@ describe("erfWorkspaceState", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         reviewedSourceIds: ["csg-property-viewer"],
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          skipped: true,
+          progressState: "skipped",
+        },
         marketEvidenceStarted: true,
         calculatorStarted: true,
       }),
@@ -138,6 +148,11 @@ describe("erfWorkspaceState", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         reviewedSourceIds: ["csg-property-viewer"],
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          skipped: true,
+          progressState: "skipped",
+        },
         marketEvidenceStarted: true,
         calculatorStarted: true,
         strategyScenarioCount: 1,
@@ -152,13 +167,18 @@ describe("erfWorkspaceState", () => {
         identityStatus: "checked",
         sgDiagramAttachmentCount: 1,
       }),
-    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
+    ).toMatchObject({ title: "Explore Site Potential", tab: "site-potential" });
 
     expect(
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         sgDiagramAttachmentCount: 1,
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          skipped: true,
+          progressState: "skipped",
+        },
         marketAddressSaved: true,
       }),
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
@@ -210,6 +230,7 @@ describe("erfWorkspaceState", () => {
     expect(buildStoepStepProgress(createEmptyErfWorkspaceState())).toMatchObject([
       { label: "Identity", status: "Current" },
       { label: "Sources", status: "Needs evidence" },
+      { label: "Site", status: "Not started" },
       { label: "Market", status: "Not started" },
       { label: "Strategy", status: "Not started" },
       { label: "Report", status: "Not started" },
@@ -232,6 +253,12 @@ describe("erfWorkspaceState", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "looks_correct",
         reviewedSourceIds: ["csg-property-viewer"],
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          selectedDesignAssetId: "asset-123",
+          progressState: "design_selected",
+          conceptCount: 6,
+        },
         marketEvidenceStarted: true,
         calculatorStarted: true,
         strategyScenarioCount: 1,

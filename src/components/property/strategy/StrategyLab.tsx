@@ -39,6 +39,15 @@ interface StrategyOption {
   keyOutput: string;
 }
 
+interface SitePotentialStrategyDraft {
+  source?: string;
+  projectId?: string;
+  selectedDesignAssetId?: string | null;
+  conceptTitle?: string | null;
+  buildableSqm?: string;
+  notes?: string[];
+}
+
 const STRATEGY_OPTIONS: StrategyOption[] = [
   {
     id: "buy_hold",
@@ -203,6 +212,18 @@ function selectedStrategyId(scenario: ErfStrategyScenario | null): StrategyType 
     : "buy_hold";
 }
 
+function readSitePotentialStrategyDraft(parcelId: string): SitePotentialStrategyDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`easyErf.sitePotential.strategyDraft.${parcelId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SitePotentialStrategyDraft;
+    return parsed?.source === "site-potential" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function StrategyLab({
   parcelId,
   defaultPrice,
@@ -217,6 +238,9 @@ export function StrategyLab({
   const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
   const [chosenScenario, setChosenScenario] = useState(() => getChosenStrategyScenario(parcelId));
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
+  const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
+    readSitePotentialStrategyDraft(parcelId),
+  );
 
   useEffect(() => {
     const chosen = getChosenStrategyScenario(parcelId);
@@ -225,6 +249,7 @@ export function StrategyLab({
     setActive(selectedStrategyId(chosen));
     setValues({ ...strategyDefaults(defaultPrice), ...(chosen?.inputs ?? {}) });
     setShowChosenState(Boolean(chosen));
+    setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
   }, [defaultPrice, parcelId]);
 
   const n = (key: string) => toNumber(values[key]);
@@ -451,6 +476,26 @@ export function StrategyLab({
     setShowChosenState(false);
   }
 
+  function applySitePotentialDraft() {
+    if (!sitePotentialDraft) return;
+    const notes = [
+      sitePotentialDraft.conceptTitle
+        ? `Site Potential concept: ${sitePotentialDraft.conceptTitle}`
+        : null,
+      ...(sitePotentialDraft.notes ?? []),
+      sitePotentialDraft.selectedDesignAssetId
+        ? `Selected design asset: ${sitePotentialDraft.selectedDesignAssetId}`
+        : null,
+    ].filter((note): note is string => Boolean(note));
+    setActive("development_sell");
+    setValues((current) => ({
+      ...current,
+      customNotes: [current.customNotes, ...notes].filter(Boolean).join("\n"),
+    }));
+    setShowChosenState(false);
+    toast.success("Site Potential draft applied. Review the numbers before saving.");
+  }
+
   function saveScenario() {
     const option = optionFor(active);
     const { scenario, scenarios } = saveStrategyScenario(parcelId, {
@@ -502,6 +547,36 @@ export function StrategyLab({
           </div>
         </div>
       </section>
+
+      {sitePotentialDraft && (
+        <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Site Potential draft ready
+          </div>
+          <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
+            Review concept assumptions before saving a strategy
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+            Easy Erf can copy the selected concept title and brief notes into a development
+            scenario. It will not invent build costs, rental income or resale value.
+          </p>
+          <div className="mt-3 rounded-2xl border border-[#FF6A00]/15 bg-white p-3 text-xs leading-5 text-[#0D1B2A]/70">
+            <div className="font-semibold text-[#0D1B2A]">
+              {sitePotentialDraft.conceptTitle ?? "Selected Site Potential concept"}
+            </div>
+            {(sitePotentialDraft.notes ?? []).slice(0, 3).map((note) => (
+              <div key={note}>{note}</div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={applySitePotentialDraft}
+            className="mt-3 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+          >
+            Apply draft to Strategy
+          </button>
+        </section>
+      )}
 
       {showChosenState && chosenScenario && (
         <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">

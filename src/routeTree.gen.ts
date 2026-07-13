@@ -34,6 +34,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as ApiSitePotentialGenerateRouteImport } from './routes/api/site-potential.generate'
+import { Route as ApiSitePotentialDevEntitlementRouteImport } from './routes/api/site-potential.dev-entitlement'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
 
 const WhyRoute = WhyRouteImport.update({
@@ -161,6 +163,18 @@ const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   path: '/public-data-debug',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiSitePotentialGenerateRoute =
+  ApiSitePotentialGenerateRouteImport.update({
+    id: '/api/site-potential/generate',
+    path: '/api/site-potential/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSitePotentialDevEntitlementRoute =
+  ApiSitePotentialDevEntitlementRouteImport.update({
+    id: '/api/site-potential/dev-entitlement',
+    path: '/api/site-potential/dev-entitlement',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   id: '/api/listings/import',
   path: '/api/listings/import',
@@ -194,6 +208,8 @@ export interface FileRoutesByFullPath {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
+  '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,6 +238,8 @@ export interface FileRoutesByTo {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
+  '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -251,6 +269,8 @@ export interface FileRoutesById {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
+  '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -281,6 +301,8 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/dev-entitlement'
+    | '/api/site-potential/generate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -309,6 +331,8 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/dev-entitlement'
+    | '/api/site-potential/generate'
   id:
     | '__root__'
     | '/'
@@ -337,6 +361,8 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/dev-entitlement'
+    | '/api/site-potential/generate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -364,6 +390,8 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
+  ApiSitePotentialDevEntitlementRoute: typeof ApiSitePotentialDevEntitlementRoute
+  ApiSitePotentialGenerateRoute: typeof ApiSitePotentialGenerateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -543,6 +571,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/site-potential/generate': {
+      id: '/api/site-potential/generate'
+      path: '/api/site-potential/generate'
+      fullPath: '/api/site-potential/generate'
+      preLoaderRoute: typeof ApiSitePotentialGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-potential/dev-entitlement': {
+      id: '/api/site-potential/dev-entitlement'
+      path: '/api/site-potential/dev-entitlement'
+      fullPath: '/api/site-potential/dev-entitlement'
+      preLoaderRoute: typeof ApiSitePotentialDevEntitlementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/listings/import': {
       id: '/api/listings/import'
       path: '/api/listings/import'
@@ -590,7 +632,19 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
+  ApiSitePotentialDevEntitlementRoute: ApiSitePotentialDevEntitlementRoute,
+  ApiSitePotentialGenerateRoute: ApiSitePotentialGenerateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
