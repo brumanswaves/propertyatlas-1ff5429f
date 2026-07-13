@@ -27,6 +27,7 @@ export function calculateMarketEvidenceSummary(
   const included = evidence.filter(
     (item) =>
       item.includeInSummary &&
+      item.listingRole !== "subject_active_listing" &&
       item.relationship !== "not_related" &&
       item.confidence !== "excluded",
   );
