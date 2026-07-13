@@ -56,6 +56,7 @@ import {
   type SavedMarketEvidence,
 } from "../types";
 import { useSavedMarketEvidence } from "../hooks/useSavedMarketEvidence";
+import { ListingUrlImporter } from "../listingImporter/ListingUrlImporter";
 
 const COMP_RELATIONSHIPS: Array<{ value: MarketEvidenceRelationship; label: string }> = [
   { value: "target_asset", label: "Active listing" },
@@ -584,6 +585,12 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
   return (
     <div className="space-y-5 text-stone-950">
+      <ListingUrlImporter
+        parcel={parcel}
+        onSaveCandidate={(candidate) => upsertCandidate(candidate)}
+        onSaveEvidence={(evidence) => upsertEvidence(evidence)}
+      />
+
       <PropertyIdentityCard identity={identity} selectedAddress={selectedAddress} />
 
       <AddressIntelligenceSection

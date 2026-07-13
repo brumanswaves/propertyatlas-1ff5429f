@@ -34,6 +34,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
 
 const WhyRoute = WhyRouteImport.update({
   id: '/why',
@@ -160,6 +161,11 @@ const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   path: '/public-data-debug',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
+  id: '/api/listings/import',
+  path: '/api/listings/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/listings/import': typeof ApiListingsImportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/listings/import': typeof ApiListingsImportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -242,6 +250,7 @@ export interface FileRoutesById {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/listings/import': typeof ApiListingsImportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/listings/import'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/listings/import'
   id:
     | '__root__'
     | '/'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/listings/import'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -351,6 +363,7 @@ export interface RootRouteChildren {
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
+  ApiListingsImportRoute: typeof ApiListingsImportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -530,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/listings/import': {
+      id: '/api/listings/import'
+      path: '/api/listings/import'
+      fullPath: '/api/listings/import'
+      preLoaderRoute: typeof ApiListingsImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -569,17 +589,8 @@ const rootRouteChildren: RootRouteChildren = {
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
+  ApiListingsImportRoute: ApiListingsImportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
