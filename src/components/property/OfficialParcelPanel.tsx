@@ -39,6 +39,7 @@ import {
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
+import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import {
   isPdfAttachment,
   isPreviewableImageAttachment,
