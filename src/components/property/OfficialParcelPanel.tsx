@@ -2227,6 +2227,21 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               <ErfResearchDossier parcel={normalizedParcel} view="research" />
             </>
           )}
+          {tab === "site-potential" && (
+            <SitePotentialTab
+              parcel={normalizedParcel}
+              workspaceState={workspaceState}
+              onUpdateSite={(patch) =>
+                setWorkspacePatch({
+                  sitePotential: { ...workspaceState.sitePotential, ...patch },
+                  dirty: true,
+                })
+              }
+              onExploreReport={() =>
+                selectWorkbenchTab("stoep-report", { markStarted: true })
+              }
+            />
+          )}
           {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
           {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}
           {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}
