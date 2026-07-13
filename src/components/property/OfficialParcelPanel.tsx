@@ -109,46 +109,40 @@ const WORKBENCH_NAV: { id: Tab; label: string }[] = [
 
 const WORKBENCH_SECTIONS: Record<
   Tab,
-  { title: string; subtitle: string; guidanceTitle: string; guidance: string }
+  { title: string; subtitle: string; guidance: string }
 > = {
   overview: {
     title: "Overview",
     subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
-    guidanceTitle: "Easy Erf AI First Read",
     guidance: "Use this first read to decide what evidence to check next.",
   },
   research: {
     title: "Official Sources",
     subtitle: "Check public records and source links tied to this erf.",
-    guidanceTitle: "Source-check guidance",
     guidance:
       "Start with official and municipal records. Keep ownership, valuation and zoning marked needs evidence until a verified source supports them.",
   },
   listings: {
     title: "Market Evidence",
     subtitle: "Build comps, listing evidence, and manual market notes.",
-    guidanceTitle: "Comp-building guidance",
     guidance:
       "Use listings as evidence to save and compare. Portal results may be nearby or unrelated, so verify each comp before it informs your view.",
   },
   reports: {
     title: "Paid Reports",
     subtitle: "Add or upload Lightstone, WinDeed, SG, zoning, title deed, or other evidence.",
-    guidanceTitle: "Paid report guidance",
     guidance:
       "Paid reports are optional confidence upgrades. Upload or attach evidence when you have it; the basic workflow still works without a purchase.",
   },
   calculators: {
     title: "Strategy Lab",
     subtitle: "Run the numbers before deciding whether to buy, hold, flip, or build.",
-    guidanceTitle: "Number-check guidance",
     guidance:
       "Treat calculator outputs as estimates from your assumptions, not verified valuations or investment advice.",
   },
   notes: {
     title: "Notes",
     subtitle: "Capture your research, questions, and decision notes.",
-    guidanceTitle: "Research notes guidance",
     guidance:
       "Keep open questions, evidence links and decision notes together so the erf stays reviewable later.",
   },
@@ -156,7 +150,6 @@ const WORKBENCH_SECTIONS: Record<
     title: "Easy Erf Report",
     subtitle:
       "Assemble the final report from saved identity, sources, market evidence and strategy assumptions.",
-    guidanceTitle: "Report assembly guidance",
     guidance:
       "This report shell uses what you have saved so far and labels missing data honestly. It does not fabricate ownership, valuation, zoning or sales history.",
   },
@@ -2095,6 +2088,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66 md:text-base md:leading-7">
               {activeSection.subtitle}
             </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
+              {activeSection.guidance}
+            </p>
           </section>
         )}
 
@@ -2114,23 +2110,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               }
             />
           </section>
-        ) : (
-          <section className="mx-4 mt-4 overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-white shadow-[0_24px_70px_-38px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7">
-            <div className="relative overflow-hidden rounded-none border-0 bg-white p-6 text-[#0D1B2A] sm:p-7">
-              <div className="relative rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                  {activeSection.guidanceTitle}
-                </div>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-                  {activeSection.title}
-                </h3>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-                  {activeSection.guidance}
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
+        ) : null}
 
         <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
           <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">

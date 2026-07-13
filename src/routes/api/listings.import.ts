@@ -1,7 +1,7 @@
 // Stub endpoint for the listing URL importer.
 //
-// The real deterministic + OpenAI-backed extraction pipeline is built in the
-// backend (Codex) phase. Until that lands, this route returns a typed 501 so
+// The real listing extraction pipeline belongs in a later backend phase. Until
+// that lands, this route returns a typed 501 so
 // the frontend can surface a clear "not configured" state without ever
 // fabricating imported listing data.
 import { createFileRoute } from "@tanstack/react-router";
@@ -21,11 +21,11 @@ export const Route = createFileRoute("/api/listings/import")({
           JSON.stringify({
             success: false,
             error: {
-              code: "NOT_CONFIGURED",
+              code: "SERVICE_NOT_CONFIGURED",
               message:
-                "The listing import service is not yet configured on this deployment.",
+                "Listing import service is not connected yet. You can still save evidence manually below.",
               details:
-                "Backend implementation of the deterministic + AI extraction pipeline is pending.",
+                "Backend implementation of POST /api/listings/import is pending.",
             },
           }),
           {

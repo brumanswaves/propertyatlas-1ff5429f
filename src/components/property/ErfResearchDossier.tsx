@@ -427,12 +427,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   }
 
   if (view === "listings") {
-    return (
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Listings & Comps</SectionTitle>
-        <MarketEvidenceTab parcel={parcel} />
-      </section>
-    );
+    return <MarketEvidenceTab parcel={parcel} />;
   }
 
   if (view === "reports") {
