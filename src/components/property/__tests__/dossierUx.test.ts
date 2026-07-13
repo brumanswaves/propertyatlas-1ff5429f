@@ -111,6 +111,14 @@ describe("official dossier UX guardrails", () => {
     expect(autocomplete).toContain('includedRegionCodes: ["za"]');
     expect(autocomplete).toContain("trimmed.length < 3");
     expect(autocomplete).not.toContain("AIza");
+    expect(home).not.toContain("<FilterPanel");
+    expect(home).not.toContain("<MapLegend");
+    expect(home).not.toContain("<FooterMini");
+    expect(home).not.toContain("<AddPropertyDialog");
+    expect(home).not.toContain("Add property");
+    expect(home).not.toContain("onClick={() => setAddOpen(true)}");
+    expect(home).toContain("showHomeMapStatusCard = false");
+    expect(home).toContain("{showHomeMapStatusCard && (");
   });
 
   it("keeps search highlight separate from immediate Workbench opening", () => {
@@ -145,9 +153,9 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("top-[calc(env(safe-area-inset-top)+8.75rem)]");
     expect(home).toContain("sm:top-[calc(env(safe-area-inset-top)+10.5rem)]");
     expect(home).toContain("md:top-[6.25rem]");
-    expect(home).toContain("w-full max-w-[23rem]");
+    expect(home).toContain("w-full max-w-[18rem]");
     expect(home).toContain("sm:w-auto sm:max-w-none");
-    expect(home).toContain("overflow-x-auto");
+    expect(home).toContain("overflow-visible");
     expect(home).not.toContain("rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/90");
     expect(home).toContain("locateRequestId");
     expect(home).toContain("onLocateResult={setLocateMessage}");
@@ -166,15 +174,22 @@ describe("official dossier UX guardrails", () => {
     expect(map).not.toContain("supabase.from");
   });
 
-  it("keeps map controls cleanly spaced on mobile", () => {
-    const filters = read("src/components/map/FilterPanel.tsx");
+  it("keeps home map controls clean and layers overflow-safe", () => {
+    const home = read("src/routes/index.tsx");
     const layers = read("src/components/map/LayerSwitcher.tsx");
 
-    expect(filters).toContain("relative shrink-0");
-    expect(filters).toContain("items-center justify-center");
-    expect(filters).not.toContain("min-w-[6.5rem] flex-1 sm:flex-none");
-    expect(layers).toContain("relative shrink-0");
+    expect(home).toContain("Locate me");
+    expect(home).toContain("<LayerSwitcher");
+    expect(home).not.toContain("<FilterPanel");
+    expect(home).not.toContain("<MapLegend");
+    expect(home).not.toContain("<FooterMini");
+    expect(home).not.toContain("Add property");
+    expect(layers).toContain("relative z-50 shrink-0");
     expect(layers).toContain("items-center justify-center");
+    expect(layers).toContain("w-[min(calc(100vw-1rem),20rem)]");
+    expect(layers).toContain("overflow-x-hidden");
+    expect(layers).toContain("z-[90]");
+    expect(layers).toContain("activeLayers");
     expect(layers).not.toContain("min-w-[6.5rem] flex-1 sm:flex-none");
   });
 
