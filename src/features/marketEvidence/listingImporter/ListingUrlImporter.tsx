@@ -56,7 +56,7 @@ export function ListingUrlImporter({
 
   const selectedErfLabel = useMemo(() => {
     const erf = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : null;
-    const suburb = parcel.suburb ?? parcel.town ?? null;
+    const suburb = parcel.suburbOrArea ?? parcel.town ?? null;
     return [erf, suburb].filter(Boolean).join(" · ") || parcel.id;
   }, [parcel]);
 
@@ -128,7 +128,7 @@ export function ListingUrlImporter({
       await onSaveCandidate({
         sourcePortal: listing.source.portal ?? safeDomain(listing.source.url),
         sourceUrl: listing.source.url,
-        title: p.title ?? listing.source.portal ?? "Imported listing",
+        title: p.title ?? (listing.source.portal || "Imported listing"),
         askingPrice: p.askingPrice,
         propertyType: p.propertyType,
         locationText: [p.suburb, p.town, p.province].filter(Boolean).join(", ") || null,
