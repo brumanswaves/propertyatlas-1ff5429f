@@ -296,6 +296,18 @@ function AtlasHome() {
     });
   }, []);
 
+  const handleLogoHomeClick = useCallback(() => {
+    setSelectedId(null);
+    setSelectedOfficial(null);
+    setRequestedOfficialParcel(null);
+    setOfficialReopenStatus("idle");
+    setSearchHighlight(null);
+    setSearchHighlightStatus("idle");
+    setAddressSearchTarget(null);
+    setAddOpen(false);
+    clearSavedReopenUrl();
+  }, [clearSavedReopenUrl]);
+
   const headerSubtitle = (
     <span className="inline-flex items-center gap-2 tracking-tight">
       <span className="font-semibold text-white">Every erf. All the facts.</span>
@@ -328,6 +340,7 @@ function AtlasHome() {
       />
       <MapLegend layers={layers} />
       <TopNav
+        onLogoClick={handleLogoHomeClick}
         center={
           <SearchBar
             officialParcels={officialParcelIndex}

@@ -21,6 +21,10 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("addressSearchTarget={addressSearchTarget}");
     expect(home).toContain("searchHighlightOfficialParcel={searchHighlight}");
     expect(home).toContain('searchHighlightStatus === "fallback"');
+    expect(home).toContain("handleLogoHomeClick");
+    expect(home).toContain("onLogoClick={handleLogoHomeClick}");
+    expect(home).toContain("setSelectedOfficial(null)");
+    expect(home).toContain("setSelectedId(null)");
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
@@ -29,6 +33,9 @@ describe("official dossier UX guardrails", () => {
     expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
     expect(nav).toContain("mobileCenter?: ReactNode");
+    expect(nav).toContain("onLogoClick?: () => void");
+    expect(nav).toContain("onClick={onLogoClick}");
+    expect(nav).toContain('aria-label="Easy Erf home"');
     expect(nav).toContain("w-[148px]");
     expect(nav).toContain('variant="horizontal"');
     expect(nav).toContain("h-[24px] w-auto");

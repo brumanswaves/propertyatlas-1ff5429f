@@ -31,10 +31,11 @@ const MOBILE_LINKS = [
 interface TopNavProps {
   center?: ReactNode;
   mobileCenter?: ReactNode;
+  onLogoClick?: () => void;
   subtitle?: ReactNode;
 }
 
-export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
+export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavProps = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const greetingName = getUserGreetingName(user);
@@ -60,8 +61,9 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
       >
         <Link
           to="/"
+          onClick={onLogoClick}
           className="group inline-flex h-10 w-[148px] shrink-0 items-center justify-center rounded-full border border-white/75 bg-[#F8FAF6] px-4 shadow-[0_14px_34px_-22px_rgba(0,0,0,0.85)] ring-1 ring-black/5 transition hover:bg-white hover:shadow-[0_18px_38px_-22px_rgba(0,0,0,0.95)] md:w-[156px]"
-          aria-label="Easy Erf - home"
+          aria-label="Easy Erf home"
         >
           <AtlasPin
             variant="horizontal"
