@@ -1,19 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  BookmarkCheck,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  FileText,
-  Save,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { BookmarkCheck, CheckCircle2, Copy, ExternalLink, Save, ShieldCheck } from "lucide-react";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
-import { buildMarketEvidenceWorkflow, type ResearchContext } from "@/lib/research/links";
 import {
   calculateAcquisition,
   calculateBond,
@@ -32,14 +22,13 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { copyToClipboard, openExternalUrl } from "@/lib/external";
+import { openExternalUrl } from "@/lib/external";
 import { SavedLinksManager } from "./SavedLinksManager";
 import { NotesTab } from "./tabs/NotesTab";
 import { MarketEvidenceTab } from "./tabs/ListingsTab";
 import { ReportsTab } from "./tabs/ReportsTab";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProgress";
-import { NextBestStep } from "./dossier/NextBestStep";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
   readErfWorkspaceState,
@@ -47,15 +36,11 @@ import {
   saveStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
-  readPaidReportAttachments,
+  readAllWorkspaceAttachments,
   type ErfWorkspaceAttachmentRecord,
   type PaidReportProvider,
 } from "@/lib/workbench/erfWorkspaceFiles";
-import {
-  buildDueDiligenceProgress,
-  buildNextBestStep,
-  type InvestorWorkflowView,
-} from "./dossier/investorWorkflow";
+import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -318,19 +303,6 @@ function knownFieldRows(parcel: NormalizedOfficialParcel): NormalizedOfficialPar
   ];
 }
 
-function toResearchContext(parcel: NormalizedOfficialParcel): ResearchContext {
-  return {
-    area: parcel.suburbOrArea ?? undefined,
-    town: parcel.town ?? parcel.suburbOrArea ?? undefined,
-    suburb: parcel.suburbOrArea ?? undefined,
-    municipality: parcel.municipality ?? undefined,
-    province: parcel.province ?? undefined,
-    erf: parcel.erfNumber != null ? String(parcel.erfNumber) : undefined,
-    lng: parcel.coordinates?.lng,
-    lat: parcel.coordinates?.lat,
-  };
-}
-
 function extractDefaultPrice(parcel: NormalizedOfficialParcel): number {
   const priceField = parcel.knownFields.find((field) =>
     /asking|price|value|valuation/i.test(`${field.label} ${field.source}`),
@@ -346,7 +318,6 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   const sources = buildPublicResearchSources(parcel).filter(
     (source) => source.id !== "sg-document-list",
   );
-  const researchCtx = useMemo(() => toResearchContext(parcel), [parcel]);
   const sgDoc = useMemo(
     () =>
       buildSgDocumentUrl({
@@ -372,24 +343,9 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   const secondarySources = sources.filter((source) => source.userUsefulness === "secondary");
   const moreSources = sources.filter((source) => source.userUsefulness === "hidden_by_default");
   const visibleSources = [...primarySources, ...secondarySources];
-  const pendingPrimarySources = primarySources.filter(
-    (source) => !completedSourceIds.has(source.id),
-  );
-  const bestNextAction =
-    primarySources.find((source) => source.url && source.status !== "paid-report") ??
-    primarySources[0] ??
-    sources[0];
-  const sourceQualitySummary = [
-    `${primarySources.length} primary`,
-    `${secondarySources.length} secondary`,
-    `${moreSources.length} more`,
-  ].join(" / ");
   const knownRows = knownFieldRows(parcel);
-  const nextBestStep = buildNextBestStep(parcel, sources, completedSourceIds);
-  const dueDiligenceStages = buildDueDiligenceProgress(parcel, sources);
   const scoreBand = stoepScoreBand(parcel, completeness.score);
   const selectWorkflowView = (target: InvestorWorkflowView) => onSelectView?.(target);
-  const marketWorkflow = useMemo(() => buildMarketEvidenceWorkflow(researchCtx), [researchCtx]);
   useEffect(() => {
     setCompletedSourceIds(new Set());
   }, [parcel.id]);
@@ -399,7 +355,12 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   const curatedSections = RESEARCH_SECTIONS.map((section) => ({
     ...section,
     sources: visibleSources.filter(section.match),
-  })).filter((section) => section.sources.length > 0 || section.id === "listings-market");
+  })).filter(
+    (section) =>
+      section.sources.length > 0 &&
+      section.id !== "listings-market" &&
+      section.id !== "paid-reports",
+  );
   const nextSteps = [
     [
       "Open Research tab",
@@ -427,48 +388,20 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   if (view === "research") {
     return (
       <div className="space-y-4">
-        <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
-          <SectionTitle icon={<FileText className="h-3.5 w-3.5" />}>Best next actions</SectionTitle>
-          <div className="grid gap-2">
-            {(pendingPrimarySources.length > 0 ? pendingPrimarySources : primarySources)
-              .slice(0, 4)
-              .map((source) => (
+        {curatedSections.map((section) => (
+          <section key={section.id} className="rounded-2xl border border-border bg-card p-4">
+            <SectionTitle>{section.title}</SectionTitle>
+            <div className="grid gap-2">
+              {section.sources.map((source) => (
                 <SourceCard
                   key={source.id}
                   source={source}
-                  featured
+                  featured={source.userUsefulness === "primary"}
                   checked={completedSourceIds.has(source.id)}
                   onAction={markSourceComplete}
                 />
               ))}
-          </div>
-          {completedSourceIds.size > 0 && (
-            <p className="mt-3 rounded-xl bg-background/70 px-3 py-2 text-[12px] text-muted-foreground">
-              {pendingPrimarySources[0]
-                ? `Next best action: ${pendingPrimarySources[0].name}.`
-                : "Primary source actions are checked for this session."}
-            </p>
-          )}
-        </section>
-
-        {curatedSections.map((section) => (
-          <section key={section.id} className="rounded-2xl border border-border bg-card p-4">
-            <SectionTitle>{section.title}</SectionTitle>
-            {section.id === "listings-market" ? (
-              <MarketEvidenceWorkflowCard workflow={marketWorkflow} />
-            ) : (
-              <div className="grid gap-2">
-                {section.sources.map((source) => (
-                  <SourceCard
-                    key={source.id}
-                    source={source}
-                    featured={source.userUsefulness === "primary"}
-                    checked={completedSourceIds.has(source.id)}
-                    onAction={markSourceComplete}
-                  />
-                ))}
-              </div>
-            )}
+            </div>
           </section>
         ))}
 
@@ -505,11 +438,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   if (view === "reports") {
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Paid Reports</SectionTitle>
-        <p className="mb-3 text-[12px] text-muted-foreground">
-          Paid provider data not yet attached.
-        </p>
-        <div className="mt-3">
+        <div>
           <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
         </div>
       </section>
@@ -1095,84 +1024,6 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
   );
 }
 
-function MarketEvidenceWorkflowCard({
-  workflow,
-}: {
-  workflow: ReturnType<typeof buildMarketEvidenceWorkflow>;
-}) {
-  const copyPhrase = async (label: string, phrase: string) => {
-    const ok = await copyToClipboard(phrase);
-    if (ok) toast.success(`${label} copied`);
-    else toast.error(`Could not copy ${label.toLowerCase()}`);
-  };
-
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-      <div className="text-[13px] font-semibold text-foreground">
-        Market Evidence Search Builder
-      </div>
-      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-        {workflow.instruction} Listing evidence is third-party and unverified until you match it to
-        this erf.
-      </p>
-      <p className="mt-2 rounded-xl bg-background/75 px-3 py-2 text-[12px] leading-relaxed text-foreground">
-        Exact erf searches often return nothing. Start broad with suburb/town, then narrow by
-        street, erf, or visible map location.
-      </p>
-      <div className="mt-3 grid gap-2">
-        {[
-          ["Exact search", workflow.exactSearch, "Copy exact search"],
-          ["Area search", workflow.areaSearch, "Copy area search"],
-          ["Broad search", workflow.broadSearch, "Copy broad search"],
-          ["Street search", workflow.streetSearch, "Copy street search"],
-        ]
-          .filter(([, phrase]) => phrase)
-          .map(([label, phrase, action]) => (
-            <div key={label} className="rounded-xl border border-border bg-background p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {label}
-              </div>
-              <div className="mt-1 break-words text-[13px] font-semibold text-foreground">
-                {phrase}
-              </div>
-              <button
-                type="button"
-                onClick={() => copyPhrase(String(label), String(phrase))}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background hover:opacity-90"
-              >
-                <Copy className="h-3 w-3" /> {action}
-              </button>
-            </div>
-          ))}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {workflow.portals.map((portal) => (
-          <button
-            key={portal.id}
-            type="button"
-            onClick={(event) => openExternalUrl(portal.href, event)}
-            title={portal.description}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
-          >
-            <ExternalLink className="h-3 w-3" /> {portal.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() =>
-            toast.message(
-              "The map is already centered on the selected parcel. Move the dossier aside or close it, then zoom the neighbourhood manually.",
-            )
-          }
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold hover:bg-muted"
-        >
-          Zoom map to neighbourhood
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function toNumber(value: string): number {
   const parsed = Number(value.replace(/[^\d.]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -1190,6 +1041,12 @@ function paidReportProviderLabel(provider: PaidReportProvider) {
   return provider === "lightstone" ? "Lightstone" : "WinDeed";
 }
 
+function workspaceAttachmentCategory(file: ErfWorkspaceAttachmentRecord) {
+  if (file.kind === "sg-diagram") return "SG diagram";
+  if (file.provider) return `${paidReportProviderLabel(file.provider)} PDF`;
+  return file.sourceLabel || "Workspace file";
+}
+
 function formatAttachmentSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
@@ -1202,20 +1059,20 @@ function formatAttachmentDate(value: string) {
   return date.toLocaleString();
 }
 
+function openWorkspaceAttachment(file: ErfWorkspaceAttachmentRecord) {
+  const url = URL.createObjectURL(file.file);
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
-  const [uploadedReportFiles, setUploadedReportFiles] = useState<ErfWorkspaceAttachmentRecord[]>(
-    [],
-  );
+  const [uploadedFiles, setUploadedFiles] = useState<ErfWorkspaceAttachmentRecord[]>([]);
   const workspaceState = readErfWorkspaceState(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
   const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
   const reviewedSources = workspaceState.reviewedSourceIds.length;
   const sgFiles = workspaceState.sgDiagramAttachmentCount;
-  const uploadedByProvider = {
-    lightstone: uploadedReportFiles.find((file) => file.provider === "lightstone") ?? null,
-    windeed: uploadedReportFiles.find((file) => file.provider === "windeed") ?? null,
-  };
   const missing = [
     reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
     evidence.length ? null : "saved market evidence",
@@ -1224,15 +1081,28 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
 
   useEffect(() => {
     let alive = true;
-    readPaidReportAttachments(parcel.id)
+    readAllWorkspaceAttachments(parcel.id)
       .then((records) => {
-        if (alive) setUploadedReportFiles(records);
+        if (alive) setUploadedFiles(records);
       })
       .catch(() => {
-        if (alive) setUploadedReportFiles([]);
+        if (alive) setUploadedFiles([]);
       });
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      if (detail?.parcelId && detail.parcelId !== parcel.id) return;
+      readAllWorkspaceAttachments(parcel.id)
+        .then((records) => {
+          if (alive) setUploadedFiles(records);
+        })
+        .catch(() => {
+          if (alive) setUploadedFiles([]);
+        });
+    };
+    window.addEventListener("erfstoep:workspace-files-updated", refresh);
     return () => {
       alive = false;
+      window.removeEventListener("erfstoep:workspace-files-updated", refresh);
     };
   }, [parcel.id]);
 
@@ -1271,37 +1141,52 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
         ))}
       </div>
 
-      <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
-        <h4 className="text-base font-semibold text-[#0D1B2A]">Uploaded report files</h4>
+      <section
+        id="uploaded-files-and-source-documents"
+        className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4 scroll-mt-24"
+      >
+        <h4 className="text-base font-semibold text-[#0D1B2A]">
+          Uploaded files and source documents
+        </h4>
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-          Uploaded for reference. Extraction and AI summary are not enabled yet.
+          Stored for reference. Stoep AI extraction and PDF analysis are not enabled yet.
         </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {(["lightstone", "windeed"] as const).map((provider) => {
-            const file = uploadedByProvider[provider];
-            return (
-              <article key={provider} className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
+        {uploadedFiles.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {uploadedFiles.map((file) => (
+              <article key={file.id} className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
                 <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  {paidReportProviderLabel(provider)} PDF
+                  {workspaceAttachmentCategory(file)}
                 </div>
-                {file ? (
-                  <div className="mt-2">
-                    <p className="text-sm font-semibold text-[#0D1B2A]">{file.fileName}</p>
-                    <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                      {formatAttachmentSize(file.fileSize)} - uploaded{" "}
-                      {formatAttachmentDate(file.uploadedAt)}
-                    </p>
-                    <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                      Status: uploaded for reference only.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-[#0D1B2A]/60">Not uploaded yet.</p>
-                )}
+                <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
+                  {file.fileName}
+                </p>
+                <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                  {formatAttachmentSize(file.fileSize)} - uploaded{" "}
+                  {formatAttachmentDate(file.uploadedAt)}
+                </p>
+                <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                  Status:{" "}
+                  {file.status === "uploaded_reference_only"
+                    ? "uploaded for reference only"
+                    : "stored for reference"}
+                  .
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openWorkspaceAttachment(file)}
+                  className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+                >
+                  Open file
+                </button>
               </article>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-3 text-sm text-[#0D1B2A]/60">
+            No uploaded SG diagrams, Lightstone PDFs, or WinDeed PDFs are stored for this erf yet.
+          </p>
+        )}
       </section>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">

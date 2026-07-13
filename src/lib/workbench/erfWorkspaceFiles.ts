@@ -173,6 +173,7 @@ export async function saveSgDiagramAttachment(parcelId: string, file: File) {
   await withStore("readwrite", (store) =>
     store.put(record, sgDiagramAttachmentRecordKey(parcelId, id)),
   );
+  notifyWorkspaceFilesChanged(parcelId);
   return { ok: true as const, record };
 }
 
@@ -208,6 +209,7 @@ export async function savePaidReportAttachment(
   await withStore("readwrite", (store) =>
     store.put(record, paidReportAttachmentRecordKey(parcelId, provider, id)),
   );
+  notifyWorkspaceFilesChanged(parcelId);
   return { ok: true as const, record };
 }
 
@@ -264,18 +266,29 @@ export async function readPaidReportAttachment(parcelId: string, provider: PaidR
   return attachments[0] ?? null;
 }
 
+export async function readAllWorkspaceAttachments(parcelId: string) {
+  const [sgDiagrams, paidReports] = await Promise.all([
+    readSgDiagramAttachments(parcelId),
+    readPaidReportAttachments(parcelId),
+  ]);
+  return [...sgDiagrams, ...paidReports].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+}
+
 export async function removeSgDiagramAttachment(parcelId: string, attachmentId?: string) {
   if (!attachmentId) {
     await withStore("readwrite", (store) => store.delete(sgDiagramAttachmentKey(parcelId)));
+    notifyWorkspaceFilesChanged(parcelId);
     return;
   }
   if (attachmentId === "legacy-sg-diagram") {
     await withStore("readwrite", (store) => store.delete(sgDiagramAttachmentKey(parcelId)));
+    notifyWorkspaceFilesChanged(parcelId);
     return;
   }
   await withStore("readwrite", (store) =>
     store.delete(sgDiagramAttachmentRecordKey(parcelId, attachmentId)),
   );
+  notifyWorkspaceFilesChanged(parcelId);
 }
 
 export async function removePaidReportAttachment(
@@ -288,9 +301,18 @@ export async function removePaidReportAttachment(
     await Promise.all(
       existing.map((attachment) => removePaidReportAttachment(parcelId, provider, attachment.id)),
     );
+    notifyWorkspaceFilesChanged(parcelId);
     return;
   }
   await withStore("readwrite", (store) =>
     store.delete(paidReportAttachmentRecordKey(parcelId, provider, attachmentId)),
+  );
+  notifyWorkspaceFilesChanged(parcelId);
+}
+
+function notifyWorkspaceFilesChanged(parcelId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("erfstoep:workspace-files-updated", { detail: { parcelId } }),
   );
 }

@@ -316,7 +316,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("markSourceReviewed");
     expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
     expect(panel).toContain("identityStatusToWorkspace");
-    expect(panel).toContain("buildErfWorkspaceNextStep");
+    expect(panel).toContain("buildWorkbenchPageNextStep");
     expect(panel).toContain("Needs verification");
     expect(panel).toContain("Checked by user");
     expect(panel).toContain("Looks correct, user checked");
@@ -342,6 +342,11 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("WORKBENCH_SECTIONS");
+    expect(panel).toContain("Current erf file");
+    expect(panel).toContain("buildWorkbenchIdentityLine");
+    expect(panel).toContain(
+      "Working address is stored separately from the official parcel identity.",
+    );
     expect(panel).toContain("Workbench / {activeSection.title}");
     expect(panel).toContain('title: "Overview"');
     expect(panel).toContain(
@@ -399,10 +404,12 @@ describe("official dossier UX guardrails", () => {
     const reportProgress = read("src/lib/workbench/reportProgress.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
-    expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
+    expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).toContain("<ReportBuilderOverview");
-    expect(panel).toContain("Public sources give a strong first read.");
-    expect(panel).toContain("Go to Paid Reports");
+    expect(panel).toContain("Enhance this erf file");
+    expect(panel).toContain("Add Lightstone or WinDeed report documents");
+    expect(panel).toContain("Public sources still");
+    expect(panel).toContain("Add report documents");
     expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
     expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
     expect(reportBuilder).toContain("ErfStoep Report Builder");
@@ -414,6 +421,8 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Recommended next step");
     expect(reportBuilder).toContain("ProgressRing");
     expect(reportBuilder).toContain("rows.map");
+    expect(reportBuilder).toContain("onClick={() => step && onSelectView?.(step.view)}");
+    expect(reportBuilder).toContain("group-hover:translate-x-0.5");
     expect(reportBuilder).toContain("{row.label}");
     expect(reportBuilder).toContain("{row.status}");
     expect(reportBuilder).toContain("{actionCards[0].title}");
@@ -433,7 +442,10 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('tab: "calculators"');
     expect(reportProgress).toContain('title: "Create report"');
     expect(reportProgress).toContain('tab: "stoep-report"');
-    expect(panel).toContain("savedMarketEvidence.length");
+    expect(panel).toContain("WorkbenchNextStep");
+    expect(panel).toContain("Next best step");
+    expect(panel).toContain("Review uploaded files");
+    expect(panel).toContain("paidReportCount > 0");
     expect(panel).not.toContain("Mini report");
     expect(panel).not.toContain('["Identity", "Checked", "text-emerald-700"]');
     expect(panel).not.toContain('["Evidence", "2 sources", "text-[#0D1B2A]"]');
@@ -445,8 +457,6 @@ describe("official dossier UX guardrails", () => {
     expect(panel).not.toContain("What do you want to understand first?");
     expect(panel).not.toContain("Current StoepStep");
     expect(panel).not.toContain("StoepSteps progress");
-    expect(panel).toContain("buildErfWorkspaceNextStep");
-    expect(panel).toContain("buildStoepStepProgress");
     expect(panel).toContain("Opened. Mark reviewed after checking the details.");
     expect(panel).toContain("Reviewed by user. This records progress, not legal verification.");
     expect(panel).toContain("Identity marked as looking correct. Next: build market evidence.");
@@ -475,7 +485,7 @@ describe("official dossier UX guardrails", () => {
     );
     expect(panel).toContain("readErfWorkspaceState");
     expect(panel).toContain("updateErfWorkspaceState");
-    expect(panel).toContain("buildErfWorkspaceNextStep");
+    expect(panel).toContain("buildWorkbenchPageNextStep");
     expect(panel).toContain("marketEvidenceStarted: true");
     expect(panel).toContain("calculatorStarted: true");
     expect(panel).toContain("reportStarted: true");
@@ -483,7 +493,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("User supplied market address");
     expect(panel).toContain("Stoep AI First Read");
     expect(panel).toContain("needs evidence");
-    expect(panel).toContain("Ownership, valuation, zoning, sales history and GIS precision");
+    expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");
     expect(panel).not.toMatch(/ownership verified|valuation verified|zoning verified/i);
@@ -500,7 +510,9 @@ describe("official dossier UX guardrails", () => {
 
     expect(dossier).toContain("completedSourceIds");
     expect(dossier).toContain("setCompletedSourceIds");
-    expect(dossier).toContain("Next best action:");
+    expect(dossier).not.toContain("Best next actions");
+    expect(dossier).not.toContain("Market Evidence Search Builder");
+    expect(dossier).not.toContain('section.id === "listings-market"');
     expect(dossier).toContain("Checked");
   });
 
@@ -553,7 +565,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).not.toContain("strategyDone = false");
     expect(dossier).toContain("Purchase Lightstone");
     expect(dossier).toContain("Purchase WinDeed");
-    expect(panel).toContain("Paid reports are optional confidence upgrades");
+    expect(panel).toContain("Enhance this erf file");
     expect(reportsTab).toContain("{label} report upload");
     expect(reportsTab).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
     expect(reportsTab).toContain(
@@ -564,9 +576,13 @@ describe("official dossier UX guardrails", () => {
     expect(workspaceFiles).toContain("provider?: PaidReportProvider");
     expect(workspaceFiles).toContain("status?: ErfWorkspaceAttachmentStatus");
     expect(workspaceFiles).toContain('"uploaded_reference_only"');
-    expect(dossier).toContain("Uploaded report files");
-    expect(dossier).toContain("{paidReportProviderLabel(provider)} PDF");
-    expect(dossier).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
+    expect(dossier).toContain("Uploaded files and source documents");
+    expect(dossier).toContain("readAllWorkspaceAttachments");
+    expect(dossier).toContain("workspaceAttachmentCategory");
+    expect(dossier).toContain("Open file");
+    expect(dossier).toContain(
+      "Stored for reference. Stoep AI extraction and PDF analysis are not enabled yet.",
+    );
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
   });
 
