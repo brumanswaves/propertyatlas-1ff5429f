@@ -618,7 +618,22 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(sitePotential).toContain("useErfFileVault");
     expect(sitePotential).toContain("/api/site-potential/generate");
+    expect(sitePotential).toContain("GENERATION_UI_ENABLED");
+    expect(sitePotential).toContain("Concept generation is unavailable until secure entitlement is configured");
+    expect(sitePotential).toContain("Topographical survey");
+    expect(sitePotential).toContain("Architectural plans");
+    expect(sitePotential).toContain("Inspiration images");
+    expect(sitePotential).toContain("Supporting documents");
+    expect(sitePotential).toContain('uploadFiles(files, "architectural_plan")');
+    expect(sitePotential).toContain('uploadFiles(files, "inspiration_image")');
+    expect(sitePotential).toContain('uploadFiles(files, "other")');
     expect(sitePotential).not.toContain("Street View");
+    expect(read("src/routes/api/site-potential.generate.ts")).toContain(
+      "editImageBase64WithOpenAI(prompt, reference)",
+    );
+    expect(read("src/routes/api/site-potential.generate.ts")).toContain(
+      "downloadReferenceAsset",
+    );
     expect(dossier).toContain("Uploaded files and source documents");
     expect(dossier).toContain("groupErfAssets");
     expect(dossier).toContain("workspaceAssetCategory");

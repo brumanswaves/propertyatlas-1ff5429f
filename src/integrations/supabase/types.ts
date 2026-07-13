@@ -158,6 +158,48 @@ export type Database = {
         }
         Relationships: []
       }
+      erf_design_pack_items: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          design_pack_id: string
+          failure_code: string | null
+          failure_message: string | null
+          generated_asset_id: string | null
+          id: string
+          option_index: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          design_pack_id: string
+          failure_code?: string | null
+          failure_message?: string | null
+          generated_asset_id?: string | null
+          id?: string
+          option_index: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          design_pack_id?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          generated_asset_id?: string | null
+          id?: string
+          option_index?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       erf_site_project_assets: {
         Row: {
           asset_id: string

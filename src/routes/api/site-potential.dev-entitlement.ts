@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SITE_POTENTIAL_PACK_SIZE, SITE_POTENTIAL_PRICE_CENTS } from "@/lib/sitePotential/config";
-import { authenticateApiRequest } from "@/lib/sitePotential/serverAuth";
+import {
+  ApiRequestError,
+  authenticateApiRequest,
+  createServiceRoleSupabaseClient,
+  isDevelopmentEntitlementAllowed,
+} from "@/lib/sitePotential/serverAuth";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -18,19 +23,6 @@ export const Route = createFileRoute("/api/site-potential/dev-entitlement")({
 });
 
 export async function handleDevEntitlementRequest(request: Request) {
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.SITE_POTENTIAL_DEV_ENTITLEMENTS !== "true"
-  ) {
-    return json(
-      {
-        success: false,
-        error: "Development entitlement is disabled in this environment.",
-      },
-      403,
-    );
-  }
-
   let body: { parcelId?: string; siteProjectId?: string } = {};
   try {
     body = await request.json();
@@ -43,6 +35,10 @@ export async function handleDevEntitlementRequest(request: Request) {
 
   try {
     const { supabase, user } = await authenticateApiRequest(request);
+    const allowed = isDevelopmentEntitlementAllowed(process.env, user);
+    if (!allowed.allowed) {
+      return json({ success: false, error: allowed.reason }, 403);
+    }
     const { data: project, error: projectError } = await supabase
       .from("erf_site_projects")
       .select("id,user_id,parcel_id")
@@ -53,8 +49,9 @@ export async function handleDevEntitlementRequest(request: Request) {
     if (projectError || !project) {
       return json({ success: false, error: "Site Potential project not found." }, 404);
     }
+    const serviceSupabase = createServiceRoleSupabaseClient();
     const idempotencyKey = `dev:${user.id}:${body.siteProjectId}`;
-    const { data, error } = await supabase
+    const { data, error } = await serviceSupabase
       .from("erf_design_packs")
       .upsert(
         {
@@ -81,10 +78,10 @@ export async function handleDevEntitlementRequest(request: Request) {
     if (error) throw new Error(error.message);
     return json({ success: true, designPack: data }, 200);
   } catch (error) {
-    return json(
-      { success: false, error: error instanceof Error ? error.message : "Entitlement failed." },
-      500,
-    );
+    if (error instanceof ApiRequestError) {
+      return json({ success: false, error: error.message }, error.status);
+    }
+    return json({ success: false, error: "Entitlement failed." }, 500);
   }
 }
 

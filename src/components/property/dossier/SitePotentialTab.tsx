@@ -95,8 +95,12 @@ const VAULT_CATEGORIES: ErfAssetCategory[] = [
   "topography",
   "architectural_plan",
   "inspiration_image",
+  "other",
   "generated_design",
 ];
+
+const GENERATION_UI_ENABLED =
+  import.meta.env.DEV || import.meta.env.VITE_SITE_POTENTIAL_GENERATION_UI === "true";
 
 function formatPrice() {
   return new Intl.NumberFormat("en-ZA", {
@@ -152,7 +156,10 @@ export function SitePotentialTab({
 }: SitePotentialTabProps) {
   const site = workspaceState.sitePotential;
   const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const supportInputRef = useRef<HTMLInputElement | null>(null);
+  const topographyInputRef = useRef<HTMLInputElement | null>(null);
+  const planInputRef = useRef<HTMLInputElement | null>(null);
+  const inspirationInputRef = useRef<HTMLInputElement | null>(null);
+  const supportDocumentInputRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -172,7 +179,8 @@ export function SitePotentialTab({
     (asset) =>
       asset.asset_category === "topography" ||
       asset.asset_category === "architectural_plan" ||
-      asset.asset_category === "inspiration_image",
+      asset.asset_category === "inspiration_image" ||
+      asset.asset_category === "other",
   );
   const selectedDesign = projectState.selectedDesign;
   const mode = project?.mode ?? site.mode ?? "unknown";
@@ -264,10 +272,12 @@ export function SitePotentialTab({
         : category === "site_photo"
           ? "User uploaded site photograph"
           : category === "topography"
-            ? "User uploaded topographical or survey file"
+            ? "User uploaded topographical survey"
             : category === "architectural_plan"
               ? "User uploaded plan"
-              : "User uploaded inspiration image";
+              : category === "inspiration_image"
+                ? "User uploaded inspiration image"
+                : "User uploaded supporting document";
     for (const file of list) {
       const result = await vault.upload({
         file,
@@ -314,6 +324,10 @@ export function SitePotentialTab({
 
   async function generateConcepts() {
     setGenerationError(null);
+    if (!GENERATION_UI_ENABLED) {
+      toast.error("AI concept generation is not available until secure entitlement is configured.");
+      return;
+    }
     if (!readyToGenerate) {
       toast.error("Complete the required Site Potential inputs first.");
       return;
@@ -487,14 +501,44 @@ export function SitePotentialTab({
           }
         />
         <UploadPanel
-          title="Plans, topography and inspiration"
-          body="Upload topographical surveys, plans, or inspiration images as supporting documents. Easy Erf keeps them in the same Erf File Vault."
-          count={supportingFiles.length}
-          inputRef={supportInputRef}
+          title="Topographical survey"
+          body="Upload a topographical survey only when the file is actually a survey or contour/site-level document."
+          count={vault.assets.filter((asset) => asset.asset_category === "topography").length}
+          inputRef={topographyInputRef}
           accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,application/pdf,image/png,image/jpeg,image/tiff,image/webp"
-          buttonLabel="Upload support files"
-          onClick={() => supportInputRef.current?.click()}
+          buttonLabel="Upload topography"
+          onClick={() => topographyInputRef.current?.click()}
           onFiles={(files) => void uploadFiles(files, "topography")}
+        />
+        <UploadPanel
+          title="Architectural plans"
+          body="Upload architectural plans separately so Easy Erf does not mistake them for topographical surveys."
+          count={vault.assets.filter((asset) => asset.asset_category === "architectural_plan").length}
+          inputRef={planInputRef}
+          accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,application/pdf,image/png,image/jpeg,image/tiff,image/webp"
+          buttonLabel="Upload plans"
+          onClick={() => planInputRef.current?.click()}
+          onFiles={(files) => void uploadFiles(files, "architectural_plan")}
+        />
+        <UploadPanel
+          title="Inspiration images"
+          body="Upload visual references as inspiration only. They are not treated as official site evidence."
+          count={vault.assets.filter((asset) => asset.asset_category === "inspiration_image").length}
+          inputRef={inspirationInputRef}
+          accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+          buttonLabel="Upload inspiration"
+          onClick={() => inspirationInputRef.current?.click()}
+          onFiles={(files) => void uploadFiles(files, "inspiration_image")}
+        />
+        <UploadPanel
+          title="Supporting documents"
+          body="Upload other supporting files without classifying them as topography, plans, or design inspiration."
+          count={vault.assets.filter((asset) => asset.asset_category === "other").length}
+          inputRef={supportDocumentInputRef}
+          accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,application/pdf,image/png,image/jpeg,image/tiff,image/webp"
+          buttonLabel="Upload document"
+          onClick={() => supportDocumentInputRef.current?.click()}
+          onFiles={(files) => void uploadFiles(files, "other")}
         />
       </section>
 
@@ -576,8 +620,9 @@ export function SitePotentialTab({
               </h3>
             </div>
             <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#4A5A6A]">
-              The server verifies entitlement, stores every successful output in the Erf File
-              Vault, then lets you choose exactly one concept for the Easy Erf Report.
+              Concept generation is server-gated. When enabled, the server verifies entitlement,
+              uses permitted uploaded reference photos where required, saves each successful concept
+              to the Erf File Vault, and lets you choose exactly one concept for the Easy Erf Report.
             </p>
             <p className="mt-2 text-[11.5px] text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
           </div>
@@ -585,11 +630,11 @@ export function SitePotentialTab({
             <div className="text-[26px] font-bold text-[#0D1B2A]">{formatPrice()}</div>
             <button
               type="button"
-              disabled={!readyToGenerate || generating || saving}
+              disabled={!GENERATION_UI_ENABLED || !readyToGenerate || generating || saving}
               onClick={() => void generateConcepts()}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold",
-                !readyToGenerate || generating
+                !GENERATION_UI_ENABLED || !readyToGenerate || generating
                   ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                   : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
               )}
@@ -602,9 +647,11 @@ export function SitePotentialTab({
                 ? "Needs a permitted property photo"
                 : needsRights
                   ? "Needs image-rights confirmation"
-                  : !project?.id
-                    ? "Choose a site state first"
-                    : "Ready when entitlement and OpenAI server key are configured"}
+                  : !GENERATION_UI_ENABLED
+                    ? "Concept generation is unavailable until secure entitlement is configured"
+                    : !project?.id
+                      ? "Choose a site state first"
+                      : "Ready when entitlement and OpenAI server key are configured"}
             </span>
           </div>
         </div>
