@@ -49,6 +49,7 @@ import {
   type AreaRadarSource,
   type AreaSearchScope,
   type ListingCandidate,
+  type MarketEvidenceListingRole,
   type MarketAddressIntelligence,
   type MarketEvidenceConfidence,
   type MarketEvidenceRelationship,
@@ -127,6 +128,7 @@ type CompDraft = {
   baths: string;
   landSizeM2: string;
   buildingSizeM2: string;
+  listingRole: MarketEvidenceListingRole;
   relationship: MarketEvidenceRelationship;
   notes: string;
 };
@@ -177,6 +179,7 @@ function emptyCompDraft(): CompDraft {
     baths: "",
     landSizeM2: "",
     buildingSizeM2: "",
+    listingRole: "comparable_evidence",
     relationship: "same_suburb_comp",
     notes: "",
   };
@@ -222,6 +225,9 @@ function draftFromComp(item: SavedMarketEvidence): CompDraft {
     baths: item.baths ? String(item.baths) : "",
     landSizeM2: item.landSizeM2 ? String(item.landSizeM2) : "",
     buildingSizeM2: item.buildingSizeM2 ? String(item.buildingSizeM2) : "",
+    listingRole:
+      item.listingRole ??
+      (item.relationship === "target_asset" ? "subject_active_listing" : "comparable_evidence"),
     relationship: item.relationship,
     notes: item.notes ?? "",
   };
@@ -265,6 +271,14 @@ function sourceDomainFromUrl(url: string) {
   } catch {
     return portalFromUrl(url);
   }
+}
+
+function isSubjectActiveListing(item: SavedMarketEvidence) {
+  return item.listingRole === "subject_active_listing" || item.relationship === "target_asset";
+}
+
+function newestFirst(a: SavedMarketEvidence, b: SavedMarketEvidence) {
+  return Date.parse(b.updatedAt || b.savedAt) - Date.parse(a.updatedAt || a.savedAt);
 }
 
 function inferAddressParts(formattedAddress: string) {
@@ -371,7 +385,20 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
     [parcel, identityOverride],
   );
   const searches = useMemo(() => buildSimpleListingSearches(identity), [identity]);
-  const summary = useMemo(() => calculateMarketEvidenceSummary(evidence), [evidence]);
+  const activeListings = useMemo(
+    () => evidence.filter(isSubjectActiveListing).sort(newestFirst),
+    [evidence],
+  );
+  const activeListing = activeListings[0] ?? null;
+  const olderActiveListings = activeListings.slice(1);
+  const comparableEvidence = useMemo(
+    () => evidence.filter((item) => !isSubjectActiveListing(item)),
+    [evidence],
+  );
+  const summary = useMemo(
+    () => calculateMarketEvidenceSummary(comparableEvidence),
+    [comparableEvidence],
+  );
   const [addressDraft, setAddressDraft] = useState<AddressDraft>(() =>
     addressDraftFromIdentity(identity),
   );
@@ -545,12 +572,19 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       toast.error("Comp URL is required");
       return;
     }
+    const isActiveManual = compDraft.listingRole === "subject_active_listing";
+    const isMarketNote = compDraft.listingRole === "market_note";
+    const relationship = isActiveManual
+      ? "target_asset"
+      : isMarketNote
+        ? "not_related"
+        : compDraft.relationship;
     const confidence: MarketEvidenceConfidence =
-      compDraft.relationship === "target_asset"
+      relationship === "target_asset"
         ? "high"
-        : compDraft.relationship === "not_related"
+        : relationship === "not_related"
           ? "excluded"
-          : compDraft.relationship === "broader_market_comp"
+          : relationship === "broader_market_comp"
             ? "low"
             : "medium";
     const ok = await upsertEvidence({
@@ -564,9 +598,13 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       baths: n(compDraft.baths),
       landSizeM2: n(compDraft.landSizeM2),
       buildingSizeM2: n(compDraft.buildingSizeM2),
-      relationship: compDraft.relationship,
+      relationship,
       confidence,
-      includeInSummary: compDraft.relationship !== "not_related" && confidence !== "excluded",
+      includeInSummary:
+        compDraft.listingRole === "comparable_evidence" &&
+        relationship !== "not_related" &&
+        confidence !== "excluded",
+      listingRole: compDraft.listingRole,
       notes: compDraft.notes.trim() || null,
     });
     if (!ok) return;
@@ -585,15 +623,52 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
 
   return (
     <div className="space-y-5 text-stone-950">
+      <ActiveListingSection
+        activeListing={activeListing}
+        olderActiveListings={olderActiveListings}
+        onDelete={deleteEvidence}
+        onEdit={(item) => {
+          setCompDraft(draftFromComp(item));
+          setShowCompForm(true);
+        }}
+      />
+
       <ListingUrlImporter
         parcel={parcel}
-        onSaveCandidate={(candidate) => upsertCandidate(candidate)}
-        onSaveEvidence={(evidence) => upsertEvidence(evidence)}
+        importIntent="active_listing"
+        title="Import active listing for this erf"
+        description="Paste the listing URL for the selected erf. Easy Erf will import the listing facts for review before saving it as the active listing for this erf."
+        placeholder="Paste listing URL"
+        buttonLabel="Analyse listing"
+        onSaveEvidence={(item) => upsertEvidence(item)}
+      />
+
+      <section className="rounded-3xl border border-stone-200 bg-[#fffdf8] p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <SectionTitle>Comparable evidence</SectionTitle>
+            <p className="mt-1 text-sm text-stone-600">
+              Import or save comps separately from the active listing. Comparable evidence feeds
+              Saved Market Evidence and Comp Summary after you save it.
+            </p>
+          </div>
+          <Badge>{comparableEvidence.length} saved comps</Badge>
+        </div>
+      </section>
+
+      <ListingUrlImporter
+        parcel={parcel}
+        importIntent="comparable"
+        title="Import comparable listing or sale"
+        description="Paste a listing or comparable sale URL. Easy Erf will import the facts for review before saving it as comparable market evidence."
+        placeholder="Paste comp URL"
+        buttonLabel="Analyse comp"
+        onSaveEvidence={(item) => upsertEvidence(item)}
       />
 
       <SavedCompsSection
         loading={loading}
-        evidence={evidence}
+        evidence={comparableEvidence}
         deleteEvidence={deleteEvidence}
         onEditEvidence={(item) => {
           setCompDraft(draftFromComp(item));
@@ -601,7 +676,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         }}
       />
 
-      {evidence.length > 0 && (
+      {comparableEvidence.length > 0 && (
         <section className="rounded-3xl border border-success/30 bg-success/10 p-5">
           <SectionTitle>Comp summary</SectionTitle>
           <p className="mt-1 text-sm text-success">
@@ -1485,6 +1560,128 @@ function SavedCompsSection({
   );
 }
 
+function ActiveListingSection({
+  activeListing,
+  olderActiveListings,
+  onDelete,
+  onEdit,
+}: {
+  activeListing: SavedMarketEvidence | null;
+  olderActiveListings: SavedMarketEvidence[];
+  onDelete: (id: string) => void;
+  onEdit: (item: SavedMarketEvidence) => void;
+}) {
+  return (
+    <section className="rounded-3xl border border-stone-200 bg-[#fffdf8] p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <SectionTitle>Active listing for this erf</SectionTitle>
+          <p className="mt-1 text-sm text-stone-600">
+            Save the listing that belongs to the selected erf here. This is user-confirmed and kept
+            separate from comparable evidence.
+          </p>
+        </div>
+        <Badge>{activeListing ? "Active listing saved" : "No active listing"}</Badge>
+      </div>
+
+      {!activeListing ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-stone-300 bg-white/75 p-4 text-sm text-stone-600">
+          No active listing saved for this erf yet.
+        </div>
+      ) : (
+        <ActiveListingCard item={activeListing} onDelete={onDelete} onEdit={onEdit} />
+      )}
+
+      {olderActiveListings.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {olderActiveListings.length} older active listing{" "}
+          {olderActiveListings.length === 1 ? "record" : "records"} kept for reference. The most
+          recent active listing is shown above.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ActiveListingCard({
+  item,
+  onDelete,
+  onEdit,
+}: {
+  item: SavedMarketEvidence;
+  onDelete: (id: string) => void;
+  onEdit: (item: SavedMarketEvidence) => void;
+}) {
+  const listingDate = item.importedListing?.listingDate;
+  const importedAt = item.importedListing?.importedAt ?? item.savedAt;
+  const matchStatus = item.importedListing?.matchStatus ?? "user_confirmed";
+  return (
+    <article className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+            {item.sourcePortal} {listingDate ? `- Listed ${listingDate}` : ""}
+          </p>
+          <h4 className="mt-1 text-2xl font-semibold tracking-tight text-stone-950">
+            {money(item.askingPrice)}
+          </h4>
+          <p className="mt-1 text-sm text-stone-700">{item.title}</p>
+        </div>
+        <Badge>User-confirmed active listing</Badge>
+      </div>
+
+      <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric label="Property type" value={item.propertyType ?? "Not provided"} />
+        <Metric label="Beds" value={item.beds == null ? "Not provided" : String(item.beds)} />
+        <Metric label="Baths" value={item.baths == null ? "Not provided" : String(item.baths)} />
+        <Metric
+          label="Parking"
+          value={item.parkingSpaces == null ? "Not provided" : String(item.parkingSpaces)}
+        />
+        <Metric
+          label="Garages"
+          value={item.garages == null ? "Not provided" : String(item.garages)}
+        />
+        <Metric
+          label="Erf size"
+          value={item.landSizeM2 == null ? "Not provided" : `${item.landSizeM2} m2`}
+        />
+        <Metric
+          label="Floor size"
+          value={item.buildingSizeM2 == null ? "Not provided" : `${item.buildingSizeM2} m2`}
+        />
+        <Metric label="Match status" value={matchStatus.replace(/_/g, " ")} />
+      </dl>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <Badge>Imported {new Date(importedAt).toLocaleString("en-ZA")}</Badge>
+        {item.importedListing?.listingId && <Badge>Listing {item.importedListing.listingId}</Badge>}
+        {item.importedListing?.missingFields?.length ? (
+          <Badge>{item.importedListing.missingFields.length} fields need review</Badge>
+        ) : null}
+      </div>
+
+      {item.notes && <p className="mt-3 text-sm text-stone-600">{item.notes}</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={(event) => openExternalUrl(item.sourceUrl, event)}
+          className={PILL_PRIMARY}
+        >
+          <ExternalLink className="h-3.5 w-3.5" /> Open original listing
+        </button>
+        <button type="button" onClick={() => onEdit(item)} className={PILL_SECONDARY}>
+          <Pencil className="h-3.5 w-3.5" /> Edit
+        </button>
+        <button type="button" onClick={() => onDelete(item.id)} className={PILL_SECONDARY}>
+          <Trash2 className="h-3.5 w-3.5" /> Remove
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function CandidateForm({
   draft,
   setDraft,
@@ -1828,6 +2025,30 @@ function CompForm({
           stores your URL and manual notes only; it does not scrape listing pages.
         </p>
       )}
+      <select
+        className={FIELD}
+        value={draft.listingRole}
+        onChange={(event) => {
+          const listingRole = event.target.value as MarketEvidenceListingRole;
+          setDraft({
+            ...draft,
+            listingRole,
+            relationship:
+              listingRole === "subject_active_listing"
+                ? "target_asset"
+                : listingRole === "market_note"
+                  ? "not_related"
+                  : draft.relationship === "target_asset"
+                    ? "same_suburb_comp"
+                    : draft.relationship,
+          });
+        }}
+        aria-label="Evidence role"
+      >
+        <option value="subject_active_listing">Active listing for this erf</option>
+        <option value="comparable_evidence">Comparable evidence</option>
+        <option value="market_note">Other market note</option>
+      </select>
       <div className="grid gap-2 sm:grid-cols-2">
         <input
           className={FIELD}
@@ -1885,6 +2106,7 @@ function CompForm({
         <select
           className={FIELD}
           value={draft.relationship}
+          disabled={draft.listingRole !== "comparable_evidence"}
           onChange={(event) =>
             setDraft({ ...draft, relationship: event.target.value as MarketEvidenceRelationship })
           }

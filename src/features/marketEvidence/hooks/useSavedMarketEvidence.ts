@@ -4,7 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { parseMarketAddressIntelligence } from "../addressIntelligence";
 import type { PropertyIdentityOverride } from "../propertyIdentity";
-import type { ListingCandidate, MarketAddressIntelligence, SavedMarketEvidence } from "../types";
+import type {
+  ListingCandidate,
+  MarketAddressIntelligence,
+  MarketEvidenceListingRole,
+  SavedMarketEvidence,
+} from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -14,25 +19,56 @@ function parseEvidence(value: unknown, parcelId: string): SavedMarketEvidence[] 
   if (!Array.isArray(value)) return [];
   return value
     .filter(isRecord)
-    .map((item) => ({
-      id: String(item.id ?? crypto.randomUUID()),
-      parcelId: String(item.parcelId ?? parcelId),
-      sourceUrl: String(item.sourceUrl ?? ""),
-      sourcePortal: String(item.sourcePortal ?? "Other"),
-      title: String(item.title ?? ""),
-      askingPrice: item.askingPrice == null ? null : Number(item.askingPrice),
-      propertyType: item.propertyType == null ? null : String(item.propertyType),
-      beds: item.beds == null ? null : Number(item.beds),
-      baths: item.baths == null ? null : Number(item.baths),
-      landSizeM2: item.landSizeM2 == null ? null : Number(item.landSizeM2),
-      buildingSizeM2: item.buildingSizeM2 == null ? null : Number(item.buildingSizeM2),
-      relationship: String(item.relationship ?? "weak_comp") as SavedMarketEvidence["relationship"],
-      confidence: String(item.confidence ?? "low") as SavedMarketEvidence["confidence"],
-      includeInSummary: Boolean(item.includeInSummary),
-      notes: item.notes == null ? null : String(item.notes),
-      savedAt: String(item.savedAt ?? new Date().toISOString()),
-      updatedAt: String(item.updatedAt ?? item.savedAt ?? new Date().toISOString()),
-    }))
+    .map((item) => {
+      const importedListing = isRecord(item.importedListing) ? item.importedListing : null;
+      return {
+        id: String(item.id ?? crypto.randomUUID()),
+        parcelId: String(item.parcelId ?? parcelId),
+        sourceUrl: String(item.sourceUrl ?? ""),
+        sourcePortal: String(item.sourcePortal ?? "Other"),
+        title: String(item.title ?? ""),
+        askingPrice: item.askingPrice == null ? null : Number(item.askingPrice),
+        propertyType: item.propertyType == null ? null : String(item.propertyType),
+        beds: item.beds == null ? null : Number(item.beds),
+        baths: item.baths == null ? null : Number(item.baths),
+        garages: item.garages == null ? null : Number(item.garages),
+        parkingSpaces: item.parkingSpaces == null ? null : Number(item.parkingSpaces),
+        landSizeM2: item.landSizeM2 == null ? null : Number(item.landSizeM2),
+        buildingSizeM2: item.buildingSizeM2 == null ? null : Number(item.buildingSizeM2),
+        relationship: String(
+          item.relationship ?? "weak_comp",
+        ) as SavedMarketEvidence["relationship"],
+        confidence: String(item.confidence ?? "low") as SavedMarketEvidence["confidence"],
+        includeInSummary: Boolean(item.includeInSummary),
+        listingRole: item.listingRole
+          ? (String(item.listingRole) as MarketEvidenceListingRole)
+          : undefined,
+        importedListing: importedListing
+          ? {
+              listingId: nullableString(importedListing.listingId),
+              canonicalUrl: nullableString(importedListing.canonicalUrl),
+              importedAt: nullableString(importedListing.importedAt),
+              fetchedAt: nullableString(importedListing.fetchedAt),
+              contentHash: nullableString(importedListing.contentHash),
+              listingDate: nullableString(importedListing.listingDate),
+              warnings: Array.isArray(importedListing.warnings)
+                ? importedListing.warnings.map(String)
+                : [],
+              missingFields: Array.isArray(importedListing.missingFields)
+                ? importedListing.missingFields.map(String)
+                : [],
+              matchStatus: nullableString(importedListing.matchStatus),
+              matchReasons: Array.isArray(importedListing.matchReasons)
+                ? importedListing.matchReasons.map(String)
+                : [],
+              userConfirmedAttachment: Boolean(importedListing.userConfirmedAttachment),
+            }
+          : null,
+        notes: item.notes == null ? null : String(item.notes),
+        savedAt: String(item.savedAt ?? new Date().toISOString()),
+        updatedAt: String(item.updatedAt ?? item.savedAt ?? new Date().toISOString()),
+      };
+    })
     .filter((item) => item.sourceUrl);
 }
 

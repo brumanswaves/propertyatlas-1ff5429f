@@ -14,6 +14,11 @@ export type MarketEvidenceRelationship =
 
 export type MarketEvidenceConfidence = "high" | "medium" | "low" | "excluded";
 
+export type MarketEvidenceListingRole =
+  | "subject_active_listing"
+  | "comparable_evidence"
+  | "market_note";
+
 export type RadarClassification =
   | "possible_target_property"
   | "strong_comp"
@@ -235,11 +240,27 @@ export interface SavedMarketEvidence {
   propertyType?: string | null;
   beds?: number | null;
   baths?: number | null;
+  garages?: number | null;
+  parkingSpaces?: number | null;
   landSizeM2?: number | null;
   buildingSizeM2?: number | null;
   relationship: MarketEvidenceRelationship;
   confidence: MarketEvidenceConfidence;
   includeInSummary: boolean;
+  listingRole?: MarketEvidenceListingRole;
+  importedListing?: {
+    listingId?: string | null;
+    canonicalUrl?: string | null;
+    importedAt?: string | null;
+    fetchedAt?: string | null;
+    contentHash?: string | null;
+    listingDate?: string | null;
+    warnings?: string[];
+    missingFields?: string[];
+    matchStatus?: string | null;
+    matchReasons?: string[];
+    userConfirmedAttachment?: boolean;
+  } | null;
   notes?: string | null;
   savedAt: string;
   updatedAt: string;

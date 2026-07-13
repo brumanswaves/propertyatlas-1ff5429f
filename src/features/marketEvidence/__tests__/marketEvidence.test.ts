@@ -556,6 +556,40 @@ describe("market evidence summary", () => {
     expect(summary.averageBuildingPricePerM2).toBe(12_500);
   });
 
+  it("excludes subject active listings from comp summary calculations", () => {
+    const activeListing: SavedMarketEvidence = {
+      ...base,
+      id: "active",
+      sourceUrl: "https://www.property24.com/listing/active",
+      askingPrice: 10_000_000,
+      landSizeM2: 1000,
+      relationship: "target_asset",
+      listingRole: "subject_active_listing",
+      includeInSummary: true,
+      importedListing: {
+        listingId: "117377049",
+        canonicalUrl: "https://www.property24.com/listing/active",
+        importedAt: "2026-01-03T00:00:00.000Z",
+        fetchedAt: "2026-01-03T00:00:00.000Z",
+        contentHash: "hash",
+        listingDate: "03 July 2026",
+        warnings: ["Listing could not be matched automatically."],
+        missingFields: ["streetAddress"],
+        matchStatus: "unmatched",
+        matchReasons: ["suburb or town alone is not enough"],
+        userConfirmedAttachment: true,
+      },
+    };
+    const comp = { ...base, id: "comp", askingPrice: 2_000_000, landSizeM2: 500 };
+
+    const summary = calculateMarketEvidenceSummary([activeListing, comp]);
+
+    expect(summary.totalEvidence).toBe(2);
+    expect(summary.includedEvidence).toBe(1);
+    expect(summary.averageAskingPrice).toBe(2_000_000);
+    expect(summary.averageLandPricePerM2).toBe(4_000);
+  });
+
   it("reports no usable price data when priced evidence is missing", () => {
     const summary = calculateMarketEvidenceSummary([{ ...base, askingPrice: null }]);
 
