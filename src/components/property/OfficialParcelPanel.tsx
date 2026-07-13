@@ -39,6 +39,7 @@ import {
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
+import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import {
   isPdfAttachment,
   isPreviewableImageAttachment,
@@ -92,6 +93,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 type Tab =
   | "overview"
   | "research"
+  | "site-potential"
   | "listings"
   | "reports"
   | "notes"
@@ -100,6 +102,7 @@ type Tab =
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
+  { id: "site-potential", label: "Site Potential" },
   { id: "listings", label: "Market" },
   { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
@@ -121,6 +124,12 @@ const WORKBENCH_SECTIONS: Record<
     subtitle: "Check public records and source links tied to this erf.",
     guidance:
       "Start with official and municipal records. Keep ownership, valuation and zoning marked needs evidence until a verified source supports them.",
+  },
+  "site-potential": {
+    title: "Site Potential",
+    subtitle: "Explore renovation and new-build possibilities for this erf.",
+    guidance:
+      "Concepts are visual starting points, not architectural plans or municipal approvals. This section is optional and can be skipped without blocking the Easy Erf Report.",
   },
   listings: {
     title: "Market Evidence",
@@ -180,6 +189,14 @@ function buildWorkbenchPageNextStep(
       return {
         title: "Add market evidence",
         body: "Once the official identity is clear, add comparable listings, notes, and local market context.",
+        cta: "Go to Market",
+        tab: "listings",
+        markStarted: true,
+      };
+    case "site-potential":
+      return {
+        title: "Add market evidence",
+        body: "Site Potential is optional. When you're ready, add comparable listings and market context next.",
         cta: "Go to Market",
         tab: "listings",
         markStarted: true,
@@ -251,7 +268,9 @@ const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
 function readInitialTab(): Tab {
   if (typeof window === "undefined") return "overview";
   const value = new URLSearchParams(window.location.search).get("tab");
-  return value === "calc" || value === "calculators" ? "calculators" : "overview";
+  if (value === "calc" || value === "calculators") return "calculators";
+  if (value === "site" || value === "site-potential") return "site-potential";
+  return "overview";
 }
 
 function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
@@ -2207,6 +2226,21 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               />
               <ErfResearchDossier parcel={normalizedParcel} view="research" />
             </>
+          )}
+          {tab === "site-potential" && (
+            <SitePotentialTab
+              parcel={normalizedParcel}
+              workspaceState={workspaceState}
+              onUpdateSite={(patch) =>
+                setWorkspacePatch({
+                  sitePotential: { ...workspaceState.sitePotential, ...patch },
+                  dirty: true,
+                })
+              }
+              onExploreReport={() =>
+                selectWorkbenchTab("stoep-report", { markStarted: true })
+              }
+            />
           )}
           {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
           {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}

@@ -108,5 +108,6 @@ export function normaliseListing(
       { details: parsed.error.issues.map((issue) => issue.path.join(".")).slice(0, 4).join(", ") },
     );
   }
-  return parsed.data;
+  void parsed;
+  return listing;
 }
