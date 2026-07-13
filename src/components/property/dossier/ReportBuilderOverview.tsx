@@ -400,6 +400,50 @@ function nextStepBlurb(id: StepId) {
   }
 }
 
+function sitePotentialModeLabel(
+  mode: "vacant_land" | "existing_house" | "other" | "unsure" | null,
+) {
+  switch (mode) {
+    case "vacant_land":
+      return "Vacant land";
+    case "existing_house":
+      return "Existing house";
+    case "other":
+      return "Other building";
+    case "unsure":
+      return "Not sure";
+    default:
+      return "Not set";
+  }
+}
+
+function SitePotentialStat({
+  label,
+  value,
+  ok,
+}: {
+  label: string;
+  value: string;
+  ok?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-[#EADFC9] bg-white/75 px-3 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "mt-0.5 truncate text-[12.5px] font-semibold",
+          ok ? "text-[#0D1B2A]" : "text-[#0D1B2A]/50",
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+
 function ProgressRing({ value }: { value: number }) {
   const size = 56;
   const stroke = 6;
