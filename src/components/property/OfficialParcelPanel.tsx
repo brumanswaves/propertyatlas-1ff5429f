@@ -125,6 +125,12 @@ const WORKBENCH_SECTIONS: Record<
     guidance:
       "Start with official and municipal records. Keep ownership, valuation and zoning marked needs evidence until a verified source supports them.",
   },
+  "site-potential": {
+    title: "Site Potential",
+    subtitle: "Explore renovation and new-build possibilities for this erf.",
+    guidance:
+      "Concepts are visual starting points, not architectural plans or municipal approvals. This section is optional and can be skipped without blocking the Easy Erf Report.",
+  },
   listings: {
     title: "Market Evidence",
     subtitle: "Build listing, comp, and local market evidence for this erf.",
