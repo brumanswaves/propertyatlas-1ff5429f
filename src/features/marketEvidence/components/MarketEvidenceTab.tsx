@@ -692,13 +692,13 @@ function PropertyIdentityCard({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-900">
-            <Search className="h-3.5 w-3.5" /> Listings & Comps
+            <Search className="h-3.5 w-3.5" /> Market address context
           </div>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight">
-            Find listings and comps for this erf
+          <h3 className="mt-3 text-xl font-semibold tracking-tight">
+            Property identity context
           </h3>
           <p className="mt-1 text-sm text-stone-700">
-            First confirm the property identity. Then search for exact and area listing candidates.
+            Keep the working address and market area separate from the official parcel identity.
           </p>
         </div>
         <Badge>{confidenceLabel(identity)}</Badge>

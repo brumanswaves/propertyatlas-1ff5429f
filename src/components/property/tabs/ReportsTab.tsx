@@ -142,11 +142,11 @@ export function ReportsTab({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h3 className="text-sm font-semibold tracking-tight">Paid property reports</h3>
+      <div className="rounded-2xl border border-border bg-muted/25 px-3 py-2.5">
+        <h3 className="text-sm font-semibold tracking-tight">Report document uploads</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Paid provider reports for deeds, valuation and comparable-sales checks. SG diagram
-          evidence lives in the Sources verification center. No payment is taken yet.
+          Add Lightstone and WinDeed PDFs when you have them. SG diagram evidence lives in the
+          Sources verification center. No payment is taken here.
         </p>
       </div>
 
