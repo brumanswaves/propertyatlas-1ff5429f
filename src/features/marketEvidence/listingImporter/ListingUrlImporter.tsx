@@ -192,16 +192,15 @@ export function ListingUrlImporter({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent">
-            <Sparkles className="h-3 w-3" /> Import a property listing
+            <Sparkles className="h-3 w-3" /> Import listing or comp evidence
           </div>
           <h3 className="mt-2 text-xl font-semibold tracking-tight">
-            Import a property listing
+            Import listing or comp evidence
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-white/70">
-            Paste a Property24, Private Property, Pam Golding, Seeff, RE/MAX, or other property
-            listing URL. Easy Erf will extract the property facts, identify missing information,
-            preserve the source, and add it to your market evidence when the backend import service
-            is connected.
+            Paste a Property24, Private Property, Pam Golding, Seeff, RE/MAX, or other listing or
+            comparable sale URL. Easy Erf will preserve the source, identify missing information,
+            and prepare it for review before anything is saved.
           </p>
         </div>
         {mode !== "idle" && (
@@ -228,7 +227,7 @@ export function ListingUrlImporter({
           <input
             type="url"
             className={`${INPUT} pl-9 text-stone-900`}
-            placeholder="https://www.property24.com/for-sale/..."
+            placeholder="Paste listing or comp URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
@@ -246,7 +245,7 @@ export function ListingUrlImporter({
             </>
           ) : (
             <>
-              Analyse and import <ArrowRight className="h-4 w-4" />
+              Analyse listing or comp <ArrowRight className="h-4 w-4" />
             </>
           )}
         </button>
