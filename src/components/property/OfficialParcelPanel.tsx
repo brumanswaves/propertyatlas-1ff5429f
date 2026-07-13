@@ -268,7 +268,9 @@ const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
 function readInitialTab(): Tab {
   if (typeof window === "undefined") return "overview";
   const value = new URLSearchParams(window.location.search).get("tab");
-  return value === "calc" || value === "calculators" ? "calculators" : "overview";
+  if (value === "calc" || value === "calculators") return "calculators";
+  if (value === "site" || value === "site-potential") return "site-potential";
+  return "overview";
 }
 
 function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
