@@ -2,7 +2,7 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import {
   ErfResearchDossier as BaseErfResearchDossier,
   type DossierView,
-} from "@/components/property/ErfResearchDossier.tsx";
+} from "@/components/property/ErfResearchDossier";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
 
 interface Props {
