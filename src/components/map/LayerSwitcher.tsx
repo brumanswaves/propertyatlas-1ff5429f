@@ -78,10 +78,10 @@ export function LayerSwitcher({
     (officialStatus.csg.state === "empty" || officialStatus.csg.state === "failed");
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative z-50 shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#0D1B2A]/75 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_10px_30px_-14px_rgba(0,0,0,0.7)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/90"
+        className="flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#0D1B2A]/75 px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_10px_30px_-14px_rgba(0,0,0,0.7)] backdrop-blur-xl transition hover:bg-[#0D1B2A]/90"
       >
         <Layers className="h-3.5 w-3.5 text-[#FF6A00]" />
         Layers
@@ -93,9 +93,9 @@ export function LayerSwitcher({
         <>
           <div
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[80] bg-foreground/30 backdrop-blur-sm md:hidden"
           />
-          <div className="pa-fade-up fixed inset-x-2 bottom-2 z-40 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-80 md:max-h-[80vh]">
+          <div className="pa-fade-up fixed inset-x-3 bottom-3 z-[90] flex max-h-[80vh] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden overflow-x-hidden rounded-2xl border border-border bg-card shadow-panel md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-[min(calc(100vw-1rem),20rem)] md:max-w-[20rem]">
             <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur md:hidden">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Layers className="h-4 w-4" /> Map Layers
@@ -110,7 +110,7 @@ export function LayerSwitcher({
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Base map
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                   {STYLES.map((s) => {
                     const Icon = s.icon;
                     const active = style === s.id;
@@ -154,7 +154,7 @@ export function LayerSwitcher({
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-medium">{it.label}</div>
                             {it.hint && (
-                              <div className="truncate text-[11px] text-muted-foreground">
+                              <div className="text-[11px] leading-snug text-muted-foreground">
                                 {it.hint}
                               </div>
                             )}
@@ -185,14 +185,14 @@ export function LayerSwitcher({
                     {g.title === "Official public data" && (kougaUnavailable || csgUnavailable) && (
                       <div className="mt-2 space-y-1.5 rounded-lg border border-accent/30 bg-accent/10 p-2 text-[11px] text-accent dark:text-accent">
                         {csgUnavailable && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-start gap-1.5 leading-snug">
                             <AlertTriangle className="h-3 w-3" /> CSG parcels unavailable in current
                             view.
                           </div>
                         )}
                         {kougaUnavailable && (
                           <>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-start gap-1.5 leading-snug">
                               <AlertTriangle className="h-3 w-3" /> Zoning layer unavailable. Open
                               Kouga Mapping Portal.
                             </div>

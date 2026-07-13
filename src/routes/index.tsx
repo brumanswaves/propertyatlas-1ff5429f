@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Geometry } from "geojson";
-import { LocateFixed, MousePointerClick, Plus, X } from "lucide-react";
+import { LocateFixed, MousePointerClick, X } from "lucide-react";
 import {
   MapCanvas,
   type MapDebugStatus,
@@ -14,14 +14,11 @@ import {
   type SearchHighlightStatus,
 } from "@/components/map/MapCanvas";
 import { SearchBar } from "@/components/map/SearchBar";
-import { FilterPanel, DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
+import { DEFAULT_FILTERS, type Filters } from "@/components/map/FilterPanel";
 import { LayerSwitcher, DEFAULT_LAYERS, DEMO_LAYERS } from "@/components/map/LayerSwitcher";
-import { MapLegend } from "@/components/map/MapLegend";
 import { PropertyPanel } from "@/components/property/PropertyPanel";
 import { OfficialParcelPanel } from "@/components/property/OfficialParcelPanel";
-import { AddPropertyDialog } from "@/components/property/AddPropertyDialog";
 import { TopNav } from "@/components/layout/TopNav";
-import { FooterMini } from "@/components/layout/Footer";
 import { getProperty, type Property } from "@/data/properties";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -113,7 +110,6 @@ function AtlasHome() {
   const [officialReopenStatus, setOfficialReopenStatus] =
     useState<OfficialReopenResolutionStatus>("idle");
   const [hintDismissed, setHintDismissed] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [showTestGeometry, setShowTestGeometry] = useState(false);
   const [debugReopenEnabled, setDebugReopenEnabled] = useState(false);
@@ -164,7 +160,7 @@ function AtlasHome() {
       // Ignore storage failures; the hint can safely remain dismissible in memory.
     }
   }
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filters] = useState<Filters>(DEFAULT_FILTERS);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("satellite");
 
@@ -304,7 +300,6 @@ function AtlasHome() {
     setSearchHighlight(null);
     setSearchHighlightStatus("idle");
     setAddressSearchTarget(null);
-    setAddOpen(false);
     clearSavedReopenUrl();
   }, [clearSavedReopenUrl]);
 
@@ -314,6 +309,7 @@ function AtlasHome() {
       <span className="text-white/55">Research any South African erf.</span>
     </span>
   );
+  const showHomeMapStatusCard = false;
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-background">
@@ -338,7 +334,6 @@ function AtlasHome() {
         searchHighlightOfficialParcel={searchHighlight}
         onSearchHighlightStatus={setSearchHighlightStatus}
       />
-      <MapLegend layers={layers} />
       <TopNav
         onLogoClick={handleLogoHomeClick}
         center={
@@ -398,7 +393,7 @@ function AtlasHome() {
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-20 flex flex-col items-center gap-2 px-3 sm:top-[calc(env(safe-area-inset-top)+10.5rem)] md:top-[6.25rem] md:px-4">
-        <div className="pointer-events-auto flex w-full max-w-[23rem] items-center justify-center gap-2 overflow-x-auto sm:w-auto sm:max-w-none">
+        <div className="pointer-events-auto flex w-full max-w-[18rem] items-center justify-center gap-2 overflow-visible sm:w-auto sm:max-w-none">
           <button
             type="button"
             onClick={() => {
@@ -410,7 +405,6 @@ function AtlasHome() {
             <LocateFixed className="h-3.5 w-3.5 text-[#FF6A00]" />
             Locate me
           </button>
-          <FilterPanel value={filters} onChange={setFilters} />
           <LayerSwitcher
             layers={layers}
             onLayersChange={setLayers}
@@ -541,8 +535,9 @@ function AtlasHome() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-16 left-4 z-20 hidden max-w-md md:block">
-        <div className="rounded-2xl border border-white/10 bg-[#06152A]/85 px-4 py-3 text-[11px] font-medium text-white/75 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,106,0,0.05),0_0_40px_-10px_rgba(255,106,0,0.25)] backdrop-blur-xl">
+      {showHomeMapStatusCard && (
+        <div className="pointer-events-none absolute bottom-16 left-4 z-20 hidden max-w-md md:block">
+          <div className="rounded-2xl border border-white/10 bg-[#06152A]/85 px-4 py-3 text-[11px] font-medium text-white/75 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,106,0,0.05),0_0_40px_-10px_rgba(255,106,0,0.25)] backdrop-blur-xl">
           {demoMode ? (
             <>
               <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
@@ -563,17 +558,8 @@ function AtlasHome() {
             </>
           )}
         </div>
-      </div>
-
-      <button
-        onClick={() => setAddOpen(true)}
-        className="pointer-events-auto absolute bottom-24 right-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#06152A]/90 px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_16px_40px_-16px_rgba(0,0,0,0.8),0_0_20px_-6px_rgba(255,106,0,0.35)] backdrop-blur-xl transition hover:bg-[#0D1B2A] md:bottom-14 md:right-6"
-        title="Add a property to your research"
-      >
-        <Plus className="h-3.5 w-3.5 text-[#FF6A00]" /> Add property
-      </button>
-
-      <FooterMini />
+        </div>
+      )}
 
       {selectedOfficial ? (
         <OfficialParcelPanel
@@ -583,7 +569,6 @@ function AtlasHome() {
       ) : (
         <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />
       )}
-      {addOpen && <AddPropertyDialog onClose={() => setAddOpen(false)} />}
       <Toaster position="top-center" />
     </div>
   );
