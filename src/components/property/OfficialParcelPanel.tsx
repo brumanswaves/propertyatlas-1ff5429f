@@ -193,6 +193,14 @@ function buildWorkbenchPageNextStep(
         tab: "listings",
         markStarted: true,
       };
+    case "site-potential":
+      return {
+        title: "Add market evidence",
+        body: "Site Potential is optional. When you're ready, add comparable listings and market context next.",
+        cta: "Go to Market",
+        tab: "listings",
+        markStarted: true,
+      };
     case "listings":
       return opts.paidReportCount > 0
         ? {
