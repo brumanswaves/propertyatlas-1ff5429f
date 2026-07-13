@@ -4,7 +4,9 @@ import {
   buildStoepStepProgress,
   createEmptyErfWorkspaceState,
   erfWorkspaceStateKey,
+  getChosenStrategyScenario,
   readErfWorkspaceState,
+  saveStrategyScenario,
   updateErfWorkspaceState,
 } from "../erfWorkspaceState";
 
@@ -160,6 +162,48 @@ describe("erfWorkspaceState", () => {
         marketAddressSaved: true,
       }),
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
+  });
+
+  it("saves the newest Strategy Lab scenario as the chosen scenario", () => {
+    const storage = memoryStorage();
+    const parcelId = "csg:lpi:c03400140000102100000";
+
+    const first = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Buy and hold rental scenario",
+        strategy: "buy_hold",
+        inputs: { monthlyRent: "18000" },
+        summary: [{ label: "Monthly cash flow", value: "R2,000" }],
+      },
+      storage,
+    );
+    const second = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Development to rent scenario",
+        strategy: "development_rent",
+        inputs: { expectedMonthlyRent: "42000" },
+        summary: [{ label: "Net yield", value: "7.7%" }],
+      },
+      storage,
+    );
+
+    expect(first.scenario.selected).toBe(true);
+    expect(second.scenario.selected).toBe(true);
+    expect(readErfWorkspaceState(parcelId, storage)).toMatchObject({
+      calculatorStarted: true,
+      strategyScenarioCount: 2,
+      chosenScenarioId: second.scenario.id,
+    });
+    expect(getChosenStrategyScenario(parcelId, storage)).toMatchObject({
+      id: second.scenario.id,
+      label: "Development to rent scenario",
+      selected: true,
+    });
+    expect(second.scenarios.find((scenario) => scenario.id === first.scenario.id)?.selected).toBe(
+      false,
+    );
   });
 
   it("builds honest Easy Erf Steps progress from workspace state", () => {

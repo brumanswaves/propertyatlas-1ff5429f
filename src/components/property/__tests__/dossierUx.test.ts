@@ -545,20 +545,23 @@ describe("official dossier UX guardrails", () => {
 
   it("renders the listings and comps tab and BRRRR explanation", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const strategyLab = read("src/components/property/strategy/StrategyLab.tsx");
     const marketEvidence = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
     const importer = read("src/features/marketEvidence/listingImporter/ListingUrlImporter.tsx");
     const marketEvidenceHook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
 
     expect(dossier).toContain("Listings & Comps");
-    expect(dossier).toContain("Choose what this erf could become");
-    expect(dossier).toContain("Strategy Lab helps you test what this erf could be");
-    expect(dossier).toContain("acquisition, buy-and-hold, bond");
-    expect(dossier).toContain("flip, BRRRR, development, or custom scenarios");
-    expect(dossier.indexOf("Choose what this erf could become")).toBeLessThan(
-      dossier.indexOf("Deal Summary"),
-    );
-    expect(dossier).toContain("Continue to Easy Erf Report");
+    expect(dossier).toContain("<StrategyLab");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
+    expect(strategyLab).toContain("Choose a strategy, adjust the assumptions");
+    expect(strategyLab).toContain("Buy and hold rental");
+    expect(strategyLab).toContain("Development to rent");
+    expect(strategyLab).toContain("STR / Airbnb");
+    expect(strategyLab).toContain("Land bank / hold vacant land");
+    expect(strategyLab).toContain("Scenario chosen");
+    expect(strategyLab).toContain("Choose another scenario");
+    expect(strategyLab).toContain("Save as chosen scenario");
+    expect(strategyLab).toContain("Continue to Easy Erf Report");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
     expect(marketEvidence).toContain("Import comparable listing or sale");
@@ -569,7 +572,7 @@ describe("official dossier UX guardrails", () => {
     expect(marketEvidence).toContain("Saved Market Evidence");
     expect(marketEvidence).toContain("Comp summary");
     expect(marketEvidenceHook).toContain("erfstoep:market-evidence-updated");
-    expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
+    expect(strategyLab).toContain("Buy, renovate, rent, refinance");
   });
 
   it("renders the Easy Erf intelligence dashboard shell without fake paid data", () => {
@@ -609,6 +612,9 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Uploaded files and source documents");
     expect(dossier).toContain("readAllWorkspaceAttachments");
     expect(dossier).toContain("workspaceAttachmentCategory");
+    expect(dossier).toContain("getChosenStrategyScenario");
+    expect(dossier).toContain("Chosen strategy scenario");
+    expect(dossier).toContain("newest saved scenario");
     expect(dossier).toContain("Open file");
     expect(dossier).toContain(
       "Stored for reference. Easy Erf AI extraction and PDF analysis are not enabled yet.",

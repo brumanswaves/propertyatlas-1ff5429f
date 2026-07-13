@@ -238,6 +238,175 @@ export function calculateFlip(input: FlipInputs) {
   };
 }
 
+export interface DevelopmentToSellInputs {
+  landCost: number;
+  buildCost: number;
+  professionalFees: number;
+  municipalPlanningFees: number;
+  contingencyPercent: number;
+  developmentDurationMonths: number;
+  monthlyHoldingCost: number;
+  exitSellingCosts: number;
+  expectedSaleValue: number;
+}
+
+export function calculateDevelopmentToSell(input: DevelopmentToSellInputs) {
+  const baseCost =
+    input.landCost + input.buildCost + input.professionalFees + input.municipalPlanningFees;
+  const contingencyAmount = input.buildCost * percent(input.contingencyPercent);
+  const totalHoldingCost =
+    Math.max(0, input.developmentDurationMonths) * Math.max(0, input.monthlyHoldingCost);
+  const totalProjectCost = baseCost + contingencyAmount + totalHoldingCost + input.exitSellingCosts;
+  const netProfit = input.expectedSaleValue - totalProjectCost;
+  const missingAssumptions = [
+    input.landCost > 0 ? null : "land cost",
+    input.buildCost > 0 ? null : "build cost",
+    input.expectedSaleValue > 0 ? null : "expected sale value",
+    input.developmentDurationMonths > 0 ? null : "development duration",
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    contingencyAmount: roundMoney(contingencyAmount),
+    totalHoldingCost: roundMoney(totalHoldingCost),
+    totalProjectCost: roundMoney(totalProjectCost),
+    netProfit: roundMoney(netProfit),
+    margin: input.expectedSaleValue > 0 ? netProfit / input.expectedSaleValue : 0,
+    returnOnCost: totalProjectCost > 0 ? netProfit / totalProjectCost : 0,
+    breakEvenSalePrice: roundMoney(totalProjectCost),
+    missingAssumptions,
+    riskNotes: [
+      "Needs verification: zoning, bulk, services, professional fees and build cost assumptions.",
+      "This is a planning scenario, not a valuation guarantee.",
+    ],
+  };
+}
+
+export interface DevelopmentToRentInputs {
+  landCost: number;
+  buildCost: number;
+  professionalFees: number;
+  municipalPlanningFees: number;
+  contingencyPercent: number;
+  developmentDurationMonths: number;
+  monthlyHoldingCost: number;
+  expectedMonthlyRent: number;
+  vacancyPercent: number;
+  operatingExpenses: number;
+  bondPayment?: number;
+}
+
+export function calculateDevelopmentToRent(input: DevelopmentToRentInputs) {
+  const saleStyle = calculateDevelopmentToSell({
+    landCost: input.landCost,
+    buildCost: input.buildCost,
+    professionalFees: input.professionalFees,
+    municipalPlanningFees: input.municipalPlanningFees,
+    contingencyPercent: input.contingencyPercent,
+    developmentDurationMonths: input.developmentDurationMonths,
+    monthlyHoldingCost: input.monthlyHoldingCost,
+    exitSellingCosts: 0,
+    expectedSaleValue: 0,
+  });
+  const effectiveRent = input.expectedMonthlyRent * (1 - percent(input.vacancyPercent));
+  const monthlyNetOperatingIncome = effectiveRent - input.operatingExpenses;
+  const monthlyCashFlow = monthlyNetOperatingIncome - (input.bondPayment ?? 0);
+  const annualRent = input.expectedMonthlyRent * 12;
+  const annualNoi = monthlyNetOperatingIncome * 12;
+  const totalProjectCost = saleStyle.totalProjectCost;
+  const missingAssumptions = [
+    input.landCost > 0 ? null : "land cost",
+    input.buildCost > 0 ? null : "build cost",
+    input.expectedMonthlyRent > 0 ? null : "expected monthly rent",
+    input.developmentDurationMonths > 0 ? null : "development duration",
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    totalProjectCost,
+    totalHoldingCost: saleStyle.totalHoldingCost,
+    monthlyNetOperatingIncome: roundMoney(monthlyNetOperatingIncome),
+    monthlyCashFlow: roundMoney(monthlyCashFlow),
+    grossYield: totalProjectCost > 0 ? annualRent / totalProjectCost : 0,
+    netYield: totalProjectCost > 0 ? annualNoi / totalProjectCost : 0,
+    breakEvenRent: roundMoney(input.operatingExpenses + (input.bondPayment ?? 0)),
+    missingAssumptions,
+    riskNotes: [
+      "Needs verification: achievable rent, vacancy, zoning, services and actual operating costs.",
+      "This is a planning scenario, not a valuation guarantee.",
+    ],
+  };
+}
+
+export interface ShortTermRentalInputs {
+  averageDailyRate: number;
+  occupancyPercent: number;
+  nightsPerMonth?: number;
+  platformFeePercent: number;
+  cleaningRevenue?: number;
+  cleaningCost: number;
+  utilities: number;
+  internet: number;
+  linenLaundry: number;
+  managementPercent: number;
+  maintenanceReserve: number;
+  furnishingSetupCost?: number;
+  bondPayment?: number;
+  cashInvested?: number;
+}
+
+export function calculateShortTermRental(input: ShortTermRentalInputs) {
+  const nightsPerMonth =
+    input.nightsPerMonth && input.nightsPerMonth > 0 ? input.nightsPerMonth : 30.4;
+  const bookedNights = nightsPerMonth * percent(input.occupancyPercent);
+  const grossAccommodationRevenue = bookedNights * input.averageDailyRate;
+  const cleaningRevenue = input.cleaningRevenue ?? 0;
+  const grossRevenue = grossAccommodationRevenue + cleaningRevenue;
+  const platformFees = grossRevenue * percent(input.platformFeePercent);
+  const management = grossRevenue * percent(input.managementPercent);
+  const monthlyOperatingCost =
+    platformFees +
+    management +
+    input.cleaningCost +
+    input.utilities +
+    input.internet +
+    input.linenLaundry +
+    input.maintenanceReserve;
+  const monthlyNetIncome = grossRevenue - monthlyOperatingCost;
+  const monthlyCashFlow = monthlyNetIncome - (input.bondPayment ?? 0);
+  const fixedCosts =
+    input.cleaningCost +
+    input.utilities +
+    input.internet +
+    input.linenLaundry +
+    input.maintenanceReserve +
+    (input.bondPayment ?? 0);
+  const variableRate = percent(input.platformFeePercent) + percent(input.managementPercent);
+  const revenueNeeded = variableRate < 1 ? fixedCosts / (1 - variableRate) : 0;
+  const breakEvenOccupancy =
+    input.averageDailyRate > 0 && nightsPerMonth > 0
+      ? Math.min(1, revenueNeeded / (input.averageDailyRate * nightsPerMonth))
+      : 0;
+  const cashInvested = input.cashInvested ?? input.furnishingSetupCost ?? 0;
+
+  return {
+    bookedNights: Number(bookedNights.toFixed(1)),
+    grossAccommodationRevenue: roundMoney(grossAccommodationRevenue),
+    platformFees: roundMoney(platformFees),
+    monthlyOperatingCost: roundMoney(monthlyOperatingCost),
+    monthlyNetIncome: roundMoney(monthlyNetIncome),
+    monthlyCashFlow: roundMoney(monthlyCashFlow),
+    breakEvenOccupancy,
+    cashOnCashReturn: cashInvested > 0 ? (monthlyCashFlow * 12) / cashInvested : 0,
+    missingAssumptions: [
+      input.averageDailyRate > 0 ? null : "average daily rate",
+      input.occupancyPercent > 0 ? null : "occupancy percentage",
+    ].filter((item): item is string => Boolean(item)),
+    riskNotes: [
+      "Needs verification: local STR rules, seasonality, occupancy, cleaning and management costs.",
+      "This is a planning scenario, not guaranteed income.",
+    ],
+  };
+}
+
 export interface BrrrrInputs {
   purchasePrice: number;
   renovationBudget: number;
