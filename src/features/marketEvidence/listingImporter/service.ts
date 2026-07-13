@@ -1,5 +1,5 @@
 // Frontend service wrapper for the listing URL importer.
-// The real deterministic + OpenAI-backed extraction pipeline lives server-side
+// The real listing extraction pipeline belongs server-side
 // at POST /api/listings/import (built by the backend/Codex phase). This wrapper
 // only handles HTTP and typed error mapping. It NEVER performs scraping or
 // contains API keys — those responsibilities belong to the server.
@@ -48,13 +48,16 @@ export async function importListingFromUrl(
     if ((err as Error)?.name === "AbortError") {
       return toError("UNKNOWN", "Import was cancelled.");
     }
-    return toError("NETWORK_ERROR", "Could not reach the import service. Check your connection and try again.");
+    return toError(
+      "NETWORK_ERROR",
+      "Listing import service is not connected yet. You can still save evidence manually below.",
+    );
   }
 
-  if (response.status === 501 || response.status === 404) {
+  if (response.status === 501 || response.status === 404 || response.status === 405) {
     return toError(
-      "NOT_CONFIGURED",
-      "The listing import service is not yet configured on this deployment.",
+      "SERVICE_NOT_CONFIGURED",
+      "Listing import service is not connected yet. You can still save evidence manually below.",
       "The POST /api/listings/import endpoint responded with " + response.status + ".",
     );
   }
@@ -83,5 +86,9 @@ export async function importListingFromUrl(
     return payload as ListingImportResponse;
   }
 
-  return toError("UNKNOWN", "The import service returned an unexpected response.");
+  return toError(
+    "SERVICE_NOT_CONFIGURED",
+    "Listing import service is not connected yet. You can still save evidence manually below.",
+    "The POST /api/listings/import endpoint did not return a listing import response.",
+  );
 }

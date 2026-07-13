@@ -195,12 +195,13 @@ export function ListingUrlImporter({
             <Sparkles className="h-3 w-3" /> Import a property listing
           </div>
           <h3 className="mt-2 text-xl font-semibold tracking-tight">
-            Paste a listing URL to add real evidence
+            Import a property listing
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-white/70">
-            Property24, Private Property, Pam Golding, Seeff, RE/MAX, or any other listing page.
-            Easy Erf extracts the property facts server-side, flags what is missing, keeps the
-            original source, and hands you a review screen before anything is saved.
+            Paste a Property24, Private Property, Pam Golding, Seeff, RE/MAX, or other property
+            listing URL. Easy Erf will extract the property facts, identify missing information,
+            preserve the source, and add it to your market evidence when the backend import service
+            is connected.
           </p>
         </div>
         {mode !== "idle" && (
@@ -245,7 +246,7 @@ export function ListingUrlImporter({
             </>
           ) : (
             <>
-              Analyse & import <ArrowRight className="h-4 w-4" />
+              Analyse and import <ArrowRight className="h-4 w-4" />
             </>
           )}
         </button>
@@ -261,7 +262,7 @@ export function ListingUrlImporter({
         <div className="mt-4 rounded-2xl border border-red-300/50 bg-red-500/10 p-4 text-sm">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-red-200">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {error.code === "NOT_CONFIGURED"
+            {error.code === "SERVICE_NOT_CONFIGURED"
               ? "Import service not configured"
               : error.code === "UNSUPPORTED_URL"
                 ? "Unsupported source"

@@ -381,8 +381,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("parcel={normalizedParcel}");
     expect(panel).toContain("workspaceState={workspaceState}");
     expect(panel).toContain("onSelectView={(view)");
-    expect(panel).toContain("{activeSection.guidanceTitle}");
     expect(panel).toContain("{activeSection.guidance}");
+    expect(panel).not.toContain("guidanceTitle");
+    expect(panel).not.toContain("Comp-building guidance");
+    expect(panel).not.toContain("Paid report guidance");
+    expect(panel).not.toContain("Source-check guidance");
   });
 
   it("keeps mobile official parcel close and save controls visible", () => {
@@ -499,7 +502,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("reportStarted: true");
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
-    expect(panel).toContain("Easy Erf AI First Read");
+    expect(panel).toContain("ReportBuilderOverview");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
@@ -527,6 +530,7 @@ describe("official dossier UX guardrails", () => {
   it("renders the listings and comps tab and BRRRR explanation", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const marketEvidence = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+    const importer = read("src/features/marketEvidence/listingImporter/ListingUrlImporter.tsx");
     const marketEvidenceHook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
 
     expect(dossier).toContain("Listings & Comps");
@@ -539,9 +543,9 @@ describe("official dossier UX guardrails", () => {
     );
     expect(dossier).toContain("Continue to Easy Erf Report");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
-    expect(marketEvidence).toContain("Find listings and comps for this erf");
+    expect(importer).toContain("Import a property listing");
     expect(marketEvidence).toContain("Market Address");
-    expect(marketEvidence).toContain("Add listing or comp evidence");
+    expect(marketEvidence).toContain("Add manual evidence");
     expect(marketEvidence).toContain("No confirmed street address yet");
     expect(marketEvidence).toContain("Fallback Search Tools");
     expect(marketEvidence).toContain("Saved Market Evidence");
@@ -623,9 +627,27 @@ describe("official dossier UX guardrails", () => {
 
   it("makes manual listing evidence the primary market workflow", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
+    const importer = read("src/features/marketEvidence/listingImporter/ListingUrlImporter.tsx");
+    const service = read("src/features/marketEvidence/listingImporter/service.ts");
+    const types = read("src/features/marketEvidence/listingImporter/types.ts");
+    const route = read("src/routes/api/listings.import.ts");
 
-    expect(tab).toContain("Add listing or comp evidence");
-    expect(tab).toContain("Add comp");
+    expect(importer).toContain("Import a property listing");
+    expect(importer).toContain("Analyse and import");
+    expect(importer).toContain("Paste a Property24, Private Property, Pam Golding");
+    expect(importer).toContain("backend import service");
+    expect(importer).toContain("is connected");
+    expect(service).toContain("importListingFromUrl");
+    expect(service).toContain("POST /api/listings/import");
+    expect(service).toContain("Listing import service is not connected yet");
+    expect(service).toContain('"SERVICE_NOT_CONFIGURED"');
+    expect(route).toContain('"SERVICE_NOT_CONFIGURED"');
+    expect(route).toContain("Listing import service is not connected yet");
+    expect(types).toContain('| "SERVICE_NOT_CONFIGURED"');
+    expect(tab).toContain("Manual evidence entry");
+    expect(tab).toContain("Add manual evidence");
+    expect(tab).not.toContain("Add listing or comp evidence");
+    expect(tab).not.toContain("Add comp");
     expect(tab).toContain("Listing or comp URL required");
     expect(tab).toContain("Evidence type");
     expect(tab).toContain("Active listing");
@@ -637,6 +659,8 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("Other");
     expect(tab).toContain("Detected source:");
     expect(tab).toContain("Fallback Search Tools");
+    expect(importer).not.toContain("Property24 example result");
+    expect(importer).not.toContain("hardcoded");
     expect(tab).not.toContain("Scan cached and imported listing candidates");
     expect(tab).not.toContain("Run Area Radar");
     expect(tab).not.toContain("Run Exact Radar");

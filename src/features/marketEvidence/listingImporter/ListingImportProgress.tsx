@@ -2,10 +2,10 @@ import { Check, Loader2 } from "lucide-react";
 import type { ListingImportPhase } from "./types";
 
 const STEPS: Array<{ id: Exclude<ListingImportPhase, "idle">; label: string }> = [
-  { id: "opening", label: "Opening listing" },
-  { id: "extracting", label: "Extracting property facts" },
-  { id: "checking_missing", label: "Checking missing information" },
-  { id: "preparing_evidence", label: "Preparing market evidence" },
+  { id: "opening", label: "Connecting to import service" },
+  { id: "extracting", label: "Waiting for listing analysis" },
+  { id: "checking_missing", label: "Checking service response" },
+  { id: "preparing_evidence", label: "Preparing review if data is returned" },
 ];
 
 export function ListingImportProgress({ phase }: { phase: ListingImportPhase }) {

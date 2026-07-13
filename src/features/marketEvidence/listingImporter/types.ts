@@ -106,7 +106,7 @@ export type ListingImportErrorCode =
   | "BLOCKED"
   | "EXTRACTION_FAILED"
   | "RATE_LIMITED"
-  | "NOT_CONFIGURED"
+  | "SERVICE_NOT_CONFIGURED"
   | "NETWORK_ERROR"
   | "UNKNOWN";
 

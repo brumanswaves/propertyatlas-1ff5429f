@@ -591,44 +591,14 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
         onSaveEvidence={(evidence) => upsertEvidence(evidence)}
       />
 
-      <PropertyIdentityCard identity={identity} selectedAddress={selectedAddress} />
-
-      <AddressIntelligenceSection
-        identity={identity}
-        parcel={parcel}
-        selectedAddress={selectedAddress}
-        intelligence={marketAddressIntelligence}
-        mapsUrl={mapsUrl}
-        editing={editingAddress}
-        draft={addressDraft}
-        setDraft={setAddressDraft}
-        onEdit={() => setEditingAddress(true)}
-        onSave={() => saveAddressCandidate("user_entered")}
-        onUseSuggested={useSuggestedAddress}
-        onClear={clearAddress}
-        onAddFromMaps={() => {
-          setEditingAddress(true);
-          setAddressDraft({ ...addressDraft, notes: "Manual Google Maps What's here? lookup" });
-        }}
-      />
-
-      <EvidenceEntryPanel
-        onAddEvidence={() => {
-          setCompDraft(emptyCompDraft());
-          setShowCompForm(true);
-        }}
-        onOpenFallback={() => copy(areaPhrase(identity))}
-      />
-
       <SavedCompsSection
         loading={loading}
         evidence={evidence}
-        compDraft={compDraft}
-        setCompDraft={setCompDraft}
-        showCompForm={showCompForm}
-        setShowCompForm={setShowCompForm}
-        saveComp={saveComp}
         deleteEvidence={deleteEvidence}
+        onEditEvidence={(item) => {
+          setCompDraft(draftFromComp(item));
+          setShowCompForm(true);
+        }}
       />
 
       {evidence.length > 0 && (
@@ -652,6 +622,40 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
           </div>
         </section>
       )}
+
+      <EvidenceEntryPanel
+        compDraft={compDraft}
+        setCompDraft={setCompDraft}
+        showCompForm={showCompForm}
+        setShowCompForm={setShowCompForm}
+        onAddEvidence={() => {
+          setCompDraft(emptyCompDraft());
+          setShowCompForm(true);
+        }}
+        onSave={saveComp}
+        onOpenFallback={() => copy(areaPhrase(identity))}
+      />
+
+      <PropertyIdentityCard identity={identity} selectedAddress={selectedAddress} />
+
+      <AddressIntelligenceSection
+        identity={identity}
+        parcel={parcel}
+        selectedAddress={selectedAddress}
+        intelligence={marketAddressIntelligence}
+        mapsUrl={mapsUrl}
+        editing={editingAddress}
+        draft={addressDraft}
+        setDraft={setAddressDraft}
+        onEdit={() => setEditingAddress(true)}
+        onSave={() => saveAddressCandidate("user_entered")}
+        onUseSuggested={useSuggestedAddress}
+        onClear={clearAddress}
+        onAddFromMaps={() => {
+          setEditingAddress(true);
+          setAddressDraft({ ...addressDraft, notes: "Manual Google Maps What's here? lookup" });
+        }}
+      />
 
       {areaChips.length > 0 && (
         <section className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
@@ -1081,10 +1085,20 @@ function AddressForm({
 }
 
 function EvidenceEntryPanel({
+  compDraft,
+  setCompDraft,
+  showCompForm,
+  setShowCompForm,
   onAddEvidence,
+  onSave,
   onOpenFallback,
 }: {
+  compDraft: CompDraft;
+  setCompDraft: (draft: CompDraft) => void;
+  showCompForm: boolean;
+  setShowCompForm: (value: boolean) => void;
   onAddEvidence: () => void;
+  onSave: () => void;
   onOpenFallback: () => void;
 }) {
   return (
@@ -1092,10 +1106,10 @@ function EvidenceEntryPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
-            <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
+            <Plus className="h-3.5 w-3.5" /> Manual evidence entry
           </div>
           <h3 className="mt-3 text-xl font-semibold tracking-tight">
-            Save a listing, comp, build-cost note, or market source
+            Add a comp manually when the importer is unavailable
           </h3>
           <p className="mt-1 text-sm text-stone-700">
             Paste the source URL and add your own price, address, size and notes. Easy Erf stores
@@ -1107,15 +1121,28 @@ function EvidenceEntryPanel({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={onAddEvidence} className={PILL_PRIMARY}>
-          <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
+          <Plus className="h-3.5 w-3.5" /> Add manual evidence
         </button>
-        <button type="button" onClick={onAddEvidence} className={PILL_SECONDARY}>
-          <Plus className="h-3.5 w-3.5" /> Add comp
-        </button>
+        {showCompForm && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowCompForm(false);
+              setCompDraft(emptyCompDraft());
+            }}
+            className={PILL_SECONDARY}
+          >
+            Cancel manual entry
+          </button>
+        )}
         <button type="button" onClick={onOpenFallback} className={PILL_SECONDARY}>
           <Copy className="h-3.5 w-3.5" /> Copy area search phrase
         </button>
       </div>
+
+      {showCompForm && (
+        <CompForm draft={compDraft} setDraft={setCompDraft} onSave={onSave} />
+      )}
 
       <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-white/75 px-3 py-2 text-sm text-stone-700">
         Saved locally for this erf. Save to My Erfs to keep it in your dashboard.
@@ -1414,21 +1441,13 @@ function FallbackSearchTools({
 function SavedCompsSection({
   loading,
   evidence,
-  compDraft,
-  setCompDraft,
-  showCompForm,
-  setShowCompForm,
-  saveComp,
   deleteEvidence,
+  onEditEvidence,
 }: {
   loading: boolean;
   evidence: SavedMarketEvidence[];
-  compDraft: CompDraft;
-  setCompDraft: (draft: CompDraft) => void;
-  showCompForm: boolean;
-  setShowCompForm: (value: boolean) => void;
-  saveComp: () => void;
   deleteEvidence: (id: string) => void;
+  onEditEvidence: (item: SavedMarketEvidence) => void;
 }) {
   return (
     <section className="rounded-3xl border border-stone-200 bg-[#fffdf8] p-5 shadow-sm">
@@ -1440,21 +1459,10 @@ function SavedCompsSection({
             evidence only.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setCompDraft(emptyCompDraft());
-            setShowCompForm(!showCompForm);
-          }}
-          className={PILL_PRIMARY}
-        >
-          <Plus className="h-3.5 w-3.5" /> Add listing or comp evidence
-        </button>
       </div>
       <p className="mt-3 rounded-2xl border border-dashed border-accent/30 bg-accent/10 px-3 py-2 text-sm text-stone-700">
         Saved locally for this erf. Save to My Erfs to keep it in your dashboard.
       </p>
-      {showCompForm && <CompForm draft={compDraft} setDraft={setCompDraft} onSave={saveComp} />}
       {loading ? (
         <p className="mt-3 text-sm text-stone-600">Loading saved market evidence...</p>
       ) : evidence.length === 0 ? (
@@ -1467,10 +1475,7 @@ function SavedCompsSection({
             <CompRow
               key={item.id}
               item={item}
-              onEdit={() => {
-                setCompDraft(draftFromComp(item));
-                setShowCompForm(true);
-              }}
+              onEdit={() => onEditEvidence(item)}
               onDelete={() => deleteEvidence(item.id)}
             />
           ))}
