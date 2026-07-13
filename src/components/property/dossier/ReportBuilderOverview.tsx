@@ -15,7 +15,7 @@ interface Props {
   workspaceState?: ErfWorkspaceState;
 }
 
-type StepId = "identity" | "sources" | "market" | "strategy" | "report";
+type StepId = "identity" | "sources" | "site" | "market" | "strategy" | "report";
 
 interface StepMeta {
   id: StepId;
@@ -28,9 +28,10 @@ interface StepMeta {
 const STEP_ORDER: StepMeta[] = [
   { id: "identity", index: 1, label: "Identity", view: "research", cta: "Check official identity" },
   { id: "sources", index: 2, label: "Sources", view: "research", cta: "Add or review sources" },
-  { id: "market", index: 3, label: "Market", view: "listings", cta: "Add market evidence" },
-  { id: "strategy", index: 4, label: "Strategy", view: "calculators", cta: "Open calculator" },
-  { id: "report", index: 5, label: "Report", view: "stoep-report", cta: "Open Easy Erf Report" },
+  { id: "site", index: 3, label: "Site", view: "site-potential", cta: "Explore Site Potential" },
+  { id: "market", index: 4, label: "Market", view: "listings", cta: "Add market evidence" },
+  { id: "strategy", index: 5, label: "Strategy", view: "calculators", cta: "Open calculator" },
+  { id: "report", index: 6, label: "Report", view: "stoep-report", cta: "Open Easy Erf Report" },
 ];
 
 function chipTone(complete: boolean, warn: boolean) {
@@ -75,14 +76,15 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
       }),
     [parcel, effectiveWorkspaceState, compsCount],
   );
-  const doneMap = Object.fromEntries(rows.map((row) => [row.id, row.status === "Done"])) as Record<
-    StepId,
-    boolean
-  >;
+  const doneMap = Object.fromEntries(
+    rows.map((row) => [row.id, row.status === "Done" || row.status === "Skipped"]),
+  ) as Record<StepId, boolean>;
   const nextStep = STEP_ORDER.find((s) => !doneMap[s.id]) ?? STEP_ORDER[STEP_ORDER.length - 1];
   const progressPct = Math.round(
     (Object.values(doneMap).filter(Boolean).length / STEP_ORDER.length) * 100,
   );
+  const site = effectiveWorkspaceState.sitePotential;
+  const siteRow = rows.find((row) => row.id === "site");
 
   const suburb = parcel.suburbOrArea ?? null;
   const municipality = parcel.municipality ?? null;
@@ -248,8 +250,76 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
         />
       </section>
 
+      {/* Site Potential summary */}
+      <section className="rounded-[1.5rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-5 shadow-[0_14px_40px_-24px_rgba(13,27,42,0.28)]">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-[#0D1B2A] px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-white">
+                Site Potential
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                  chipTone(
+                    siteRow?.status === "Done" || siteRow?.status === "Skipped",
+                    siteRow?.status === "In progress",
+                  ),
+                )}
+              >
+                {siteRow?.status ?? "Not started"}
+              </span>
+            </div>
+            <h3 className="mt-2 text-[17px] font-semibold tracking-tight text-[#0D1B2A]">
+              What could this erf become?
+            </h3>
+            <p className="mt-1 text-[13px] leading-5 text-[#4A5A6A]">
+              Explore renovation or new-build possibilities. Optional — skip if
+              not relevant to this report.
+            </p>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-[12px] sm:grid-cols-4">
+              <SitePotentialStat
+                label="Property state"
+                value={sitePotentialModeLabel(site.mode)}
+                ok={Boolean(site.mode)}
+              />
+              <SitePotentialStat
+                label="Files added"
+                value={String(site.photoCount + site.planCount)}
+                ok={site.photoCount + site.planCount > 0}
+              />
+              <SitePotentialStat
+                label="Concepts"
+                value={String(site.conceptCount)}
+                ok={site.conceptCount > 0}
+              />
+              <SitePotentialStat
+                label="Preferred design"
+                value={site.preferredConceptId ? "Selected" : "None"}
+                ok={Boolean(site.preferredConceptId)}
+              />
+            </dl>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 md:items-end">
+            <button
+              type="button"
+              onClick={() => onSelectView?.("site-potential")}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2.5 text-[12.5px] font-semibold text-white hover:bg-[#142941]"
+            >
+              Explore Site Potential <ArrowRight className="h-4 w-4" />
+            </button>
+            {site.skipped && (
+              <span className="text-[11px] font-semibold text-[#64748B]">
+                Marked as skipped for this report
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Recommended next step banner */}
       <section className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
+
         <img
           src={nextStepBannerAsset.url}
           alt=""
@@ -303,6 +373,8 @@ function nextStepTitle(id: StepId) {
       return "Verify the official parcel identity first.";
     case "sources":
       return "Add or review the source evidence.";
+    case "site":
+      return "Explore Site Potential for this erf.";
     case "market":
       return "Add market evidence and comps.";
     case "strategy":
@@ -317,6 +389,8 @@ function nextStepBlurb(id: StepId) {
       return "Start by confirming this Workbench is attached to the right public erf before using market or strategy tools.";
     case "sources":
       return "Open the source panel and mark the primary official sources you've reviewed.";
+    case "site":
+      return "See what could be built or renovated on this erf. Optional — you can skip it.";
     case "market":
       return "Paste listing URLs, add addresses, and save comps to build market evidence.";
     case "strategy":

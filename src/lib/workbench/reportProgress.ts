@@ -1,15 +1,20 @@
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
-import type { ErfWorkspaceState, ErfWorkspaceTab } from "./erfWorkspaceState";
+import type {
+  ErfWorkspaceState,
+  ErfWorkspaceTab,
+  SitePotentialSnapshot,
+} from "./erfWorkspaceState";
 
 export type ReportProgressStatus =
   | "Done"
   | "In progress"
+  | "Skipped"
   | "Needs evidence"
   | "Not started"
   | "Blocked";
 
 export interface ReportProgressRow {
-  id: "identity" | "sources" | "market" | "strategy" | "report";
+  id: "identity" | "sources" | "site" | "market" | "strategy" | "report";
   label: string;
   status: ReportProgressStatus;
   detail: string;
@@ -42,6 +47,7 @@ export interface ReportProgressInput {
     | "calculatorStarted"
     | "strategyScenarioCount"
     | "reportStarted"
+    | "sitePotential"
   >;
   savedMarketEvidenceCount: number;
   attachedEvidenceCount?: number;
@@ -49,6 +55,63 @@ export interface ReportProgressInput {
 
 function plural(value: number, single: string, many = `${single}s`) {
   return `${value} ${value === 1 ? single : many}`;
+}
+
+function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
+  const files = site.photoCount + site.planCount;
+  const hasMode = site.mode !== null;
+  const hasFiles = files > 0;
+  const hasConcepts = site.conceptCount > 0;
+  const selectedConcept = Boolean(site.preferredConceptId);
+
+  if (site.skipped) {
+    return {
+      id: "site",
+      label: "Site",
+      status: "Skipped",
+      detail: "Site Potential is optional and has been skipped for this report.",
+      evidence: "Skipped by user",
+    };
+  }
+  if (selectedConcept) {
+    return {
+      id: "site",
+      label: "Site",
+      status: "Done",
+      detail: "A preferred site concept has been selected for the Easy Erf Report.",
+      evidence: `${site.conceptCount} concept${site.conceptCount === 1 ? "" : "s"} generated, 1 selected`,
+    };
+  }
+  if (hasConcepts) {
+    return {
+      id: "site",
+      label: "Site",
+      status: "In progress",
+      detail: "Concepts have been generated. Select one to feature in the report.",
+      evidence: `${site.conceptCount} concept${site.conceptCount === 1 ? "" : "s"} generated`,
+    };
+  }
+  if (hasFiles || hasMode) {
+    return {
+      id: "site",
+      label: "Site",
+      status: "In progress",
+      detail: hasFiles
+        ? "Photos or plans have been added. Generate concepts to move this step forward."
+        : "Property state selected. Add photographs or plans next.",
+      evidence: hasFiles
+        ? `${files} file${files === 1 ? "" : "s"} in Erf File`
+        : "No files added yet",
+    };
+  }
+  return {
+    id: "site",
+    label: "Site",
+    status: "Not started",
+    detail:
+      "Explore renovation or new-build possibilities for this erf, or skip if not relevant.",
+    evidence: "Property state not set",
+  };
 }
 
 export function buildReportBuilderProgress(input: ReportProgressInput): ReportProgressRow[] {
@@ -99,6 +162,7 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
           : "Open and review official sources before building the report.",
       evidence: `${openedCount} opened / ${reviewedCount} reviewed / ${sgAttachmentCount} SG file${sgAttachmentCount === 1 ? "" : "s"}`,
     },
+    buildSiteRow(workspaceState.sitePotential),
     {
       id: "market",
       label: "Market",

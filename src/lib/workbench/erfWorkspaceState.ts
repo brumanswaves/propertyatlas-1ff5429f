@@ -1,5 +1,29 @@
 export type ErfWorkspaceIdentityStatus = "none" | "checked" | "looks_correct" | "uncertain";
 
+export type SitePotentialMode = "vacant_land" | "existing_house" | "other" | "unsure";
+
+export interface SitePotentialSnapshot {
+  mode: SitePotentialMode | null;
+  skipped: boolean;
+  photoCount: number;
+  planCount: number;
+  conceptCount: number;
+  preferredConceptId: string | null;
+  imageRightsConfirmed: boolean;
+}
+
+export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
+  return {
+    mode: null,
+    skipped: false,
+    photoCount: 0,
+    planCount: 0,
+    conceptCount: 0,
+    preferredConceptId: null,
+    imageRightsConfirmed: false,
+  };
+}
+
 export interface ErfWorkspaceState {
   saved: boolean;
   dirty: boolean;
@@ -13,10 +37,17 @@ export interface ErfWorkspaceState {
   strategyScenarioCount: number;
   chosenScenarioId: string | null;
   reportStarted: boolean;
+  sitePotential: SitePotentialSnapshot;
   updatedAt: string;
 }
 
-export type ErfWorkspaceTab = "research" | "listings" | "reports" | "calculators" | "stoep-report";
+export type ErfWorkspaceTab =
+  | "research"
+  | "site-potential"
+  | "listings"
+  | "reports"
+  | "calculators"
+  | "stoep-report";
 
 export interface ErfWorkspaceNextStep {
   title: string;
@@ -76,9 +107,37 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     strategyScenarioCount: 0,
     chosenScenarioId: null,
     reportStarted: false,
+    sitePotential: createEmptySitePotentialSnapshot(),
     updatedAt: new Date().toISOString(),
   };
 }
+
+function coerceSitePotential(value: unknown): SitePotentialSnapshot {
+  const base = createEmptySitePotentialSnapshot();
+  if (!value || typeof value !== "object") return base;
+  const raw = value as Partial<SitePotentialSnapshot>;
+  const mode: SitePotentialMode | null =
+    raw.mode === "vacant_land" ||
+    raw.mode === "existing_house" ||
+    raw.mode === "other" ||
+    raw.mode === "unsure"
+      ? raw.mode
+      : null;
+  return {
+    mode,
+    skipped: Boolean(raw.skipped),
+    photoCount: Number.isFinite(Number(raw.photoCount)) ? Math.max(0, Number(raw.photoCount)) : 0,
+    planCount: Number.isFinite(Number(raw.planCount)) ? Math.max(0, Number(raw.planCount)) : 0,
+    conceptCount: Number.isFinite(Number(raw.conceptCount))
+      ? Math.max(0, Number(raw.conceptCount))
+      : 0,
+    preferredConceptId:
+      typeof raw.preferredConceptId === "string" ? raw.preferredConceptId : null,
+    imageRightsConfirmed: Boolean(raw.imageRightsConfirmed),
+  };
+}
+
+
 
 function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
   const base = createEmptyErfWorkspaceState();
@@ -112,6 +171,7 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
       : 0,
     chosenScenarioId: typeof raw.chosenScenarioId === "string" ? raw.chosenScenarioId : null,
     reportStarted: Boolean(raw.reportStarted),
+    sitePotential: coerceSitePotential(raw.sitePotential),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : base.updatedAt,
   };
 }

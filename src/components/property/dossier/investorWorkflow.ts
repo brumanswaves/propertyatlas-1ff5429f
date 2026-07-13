@@ -3,6 +3,7 @@ import type { ResearchSource } from "@/lib/research/sourceTypes";
 
 export type InvestorWorkflowView =
   | "research"
+  | "site-potential"
   | "listings"
   | "reports"
   | "notes"
