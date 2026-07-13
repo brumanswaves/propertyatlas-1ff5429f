@@ -56,6 +56,7 @@ import {
   type SavedMarketEvidence,
 } from "../types";
 import { useSavedMarketEvidence } from "../hooks/useSavedMarketEvidence";
+import { ListingUrlImporter } from "../listingImporter/ListingUrlImporter";
 
 const COMP_RELATIONSHIPS: Array<{ value: MarketEvidenceRelationship; label: string }> = [
   { value: "target_asset", label: "Active listing" },

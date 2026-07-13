@@ -157,7 +157,9 @@ export function ListingUrlImporter({
         await onSaveEvidence({
           sourceUrl: listing.source.url,
           sourcePortal: listing.source.portal ?? safeDomain(listing.source.url),
-          title: p.title ?? [p.suburb, p.town].filter(Boolean).join(", ") || "Imported listing",
+          title:
+            p.title ??
+            ([p.suburb, p.town].filter(Boolean).join(", ") || "Imported listing"),
           askingPrice: p.askingPrice,
           propertyType: p.propertyType,
           beds: p.bedrooms,
