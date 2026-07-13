@@ -103,7 +103,7 @@ describe("reportProgress", () => {
       primary: true,
     });
     expect(actions.find((action) => action.id === "report")).toMatchObject({
-      action: "Open Stoep AI Report",
+      action: "Open Easy Erf Report",
       tab: "stoep-report",
       primary: false,
     });

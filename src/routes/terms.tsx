@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList } from "@/components/layout/LegalPag
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms of Use — ErfStoep" },
-      { name: "description", content: "ErfStoep Terms of Use. The terms that govern your access to and use of the ErfStoep platform." },
+      { title: "Terms of Use — Easy Erf" },
+      { name: "description", content: "Easy Erf Terms of Use. The terms that govern your access to and use of the Easy Erf platform." },
     ],
   }),
   component: TermsPage,
@@ -15,21 +15,21 @@ function TermsPage() {
   return (
     <LegalPage
       title="Terms of Use"
-      intro="These Terms of Use govern your access to and use of ErfStoep. By using the platform you agree to be bound by these terms."
+      intro="These Terms of Use govern your access to and use of Easy Erf. By using the platform you agree to be bound by these terms."
     >
-      <LegalSection title="1. About ErfStoep">
+      <LegalSection title="1. About Easy Erf">
         <p>
-          ErfStoep is a property intelligence and research platform that aggregates,
+          Easy Erf is a property intelligence and research platform that aggregates,
           analyses, and presents property-related information. It is not a law firm, accounting
           firm, valuation company, surveying company, or investment advisor.
         </p>
       </LegalSection>
 
       <LegalSection title="2. Acceptable Use">
-        <p>By using ErfStoep you agree not to:</p>
+        <p>By using Easy Erf you agree not to:</p>
         <LegalList items={[
           "scrape, harvest, or systematically extract data without written permission",
-          "resell, redistribute, or sublicense ErfStoep data",
+          "resell, redistribute, or sublicense Easy Erf data",
           "reverse engineer or attempt to derive source code",
           "use the platform to harass, defame, or unlawfully target any person",
           "rely on the platform as a substitute for professional advice",
@@ -54,7 +54,7 @@ function TermsPage() {
       <LegalSection title="5. Intellectual Property">
         <p>
           The platform, including its design, analytics, scoring methodology, branding, and
-          software, is owned by ErfStoep and protected by intellectual property laws.
+          software, is owned by Easy Erf and protected by intellectual property laws.
         </p>
       </LegalSection>
 
@@ -66,7 +66,7 @@ function TermsPage() {
 
       <LegalSection title="7. Limitation of Liability">
         <p>
-          To the maximum extent permitted by law, ErfStoep shall not be liable for any
+          To the maximum extent permitted by law, Easy Erf shall not be liable for any
           indirect, incidental, special, consequential, or punitive damages, or any loss of
           profits or revenues arising from your use of the platform.
         </p>
@@ -74,7 +74,7 @@ function TermsPage() {
 
       <LegalSection title="8. Changes">
         <p>
-          ErfStoep may modify these Terms at any time. Continued use of the platform
+          Easy Erf may modify these Terms at any time. Continued use of the platform
           constitutes acceptance of the updated Terms.
         </p>
       </LegalSection>

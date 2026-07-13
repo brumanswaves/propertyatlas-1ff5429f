@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList, LegalCallout } from "@/components/l
 export const Route = createFileRoute("/disclaimer")({
   head: () => ({
     meta: [
-      { title: "Disclaimer — ErfStoep" },
-      { name: "description", content: "ErfStoep disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
+      { title: "Disclaimer — Easy Erf" },
+      { name: "description", content: "Easy Erf disclaimer. We provide property intelligence and research tools for informational purposes only — not legal, financial, valuation, or investment advice." },
     ],
   }),
   component: DisclaimerPage,
@@ -14,15 +14,15 @@ export const Route = createFileRoute("/disclaimer")({
 function DisclaimerPage() {
   return (
     <LegalPage
-      title="ErfStoep Disclaimer"
-      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by ErfStoep."
+      title="Easy Erf Disclaimer"
+      intro="Please read this disclaimer carefully before relying on any information, analytics, or estimates provided by Easy Erf."
     >
       <LegalCallout>
-        <strong>ErfStoep provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
+        <strong>Easy Erf provides property-related information, analytics, estimates, visualizations, scores, and research tools for informational purposes only.</strong>
       </LegalCallout>
 
-      <LegalSection title="What ErfStoep Does Not Provide">
-        <p>ErfStoep does not provide:</p>
+      <LegalSection title="What Easy Erf Does Not Provide">
+        <p>Easy Erf does not provide:</p>
         <LegalList items={[
           "legal advice",
           "financial advice",
@@ -40,11 +40,11 @@ function DisclaimerPage() {
       </LegalSection>
 
       <LegalSection title="No Guarantees">
-        <p>ErfStoep makes no guarantees regarding:</p>
+        <p>Easy Erf makes no guarantees regarding:</p>
         <LegalList items={["accuracy", "completeness", "timeliness", "suitability"]} />
         <p>Any use of information is entirely at the user's own risk.</p>
         <p>
-          ErfStoep shall not be liable for losses arising from reliance on information
+          Easy Erf shall not be liable for losses arising from reliance on information
           presented on the platform.
         </p>
       </LegalSection>
@@ -76,7 +76,7 @@ function DisclaimerPage() {
       <LegalSection title="Ownership Data">
         <p>
           Ownership information may be incomplete, delayed, estimated, or unavailable depending
-          on source availability and licensing. ErfStoep does not guarantee ownership
+          on source availability and licensing. Easy Erf does not guarantee ownership
           records. Users should verify ownership independently through official channels.
         </p>
       </LegalSection>
@@ -98,7 +98,7 @@ function DisclaimerPage() {
 
       <LegalSection title="Mock / Demo Data">
         <p>
-          ErfStoep is currently operating in pilot mode. Where mock or demo data is shown,
+          Easy Erf is currently operating in pilot mode. Where mock or demo data is shown,
           a visible "Demo Data" notice will appear. This notice is not hidden and should be
           considered an integral part of the displayed information.
         </p>

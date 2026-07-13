@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList } from "@/components/layout/LegalPag
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — ErfStoep" },
-      { name: "description", content: "ErfStoep Privacy Policy. How we collect, use, and protect personal information in line with POPIA." },
+      { title: "Privacy Policy — Easy Erf" },
+      { name: "description", content: "Easy Erf Privacy Policy. How we collect, use, and protect personal information in line with POPIA." },
     ],
   }),
   component: PrivacyPage,
@@ -15,7 +15,7 @@ function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      intro="This policy explains how ErfStoep collects, uses, and protects your personal information in line with the Protection of Personal Information Act (POPIA)."
+      intro="This policy explains how Easy Erf collects, uses, and protects your personal information in line with the Protection of Personal Information Act (POPIA)."
     >
       <LegalSection title="Information We Collect">
         <LegalList items={[
@@ -30,7 +30,7 @@ function PrivacyPage() {
 
       <LegalSection title="How We Use Information">
         <LegalList items={[
-          "to provide and operate the ErfStoep platform",
+          "to provide and operate the Easy Erf platform",
           "to deliver saved properties, watchlists, alerts, and reports",
           "to improve product features, scoring methodology, and user experience",
           "to communicate service updates and (where permitted) marketing messages",
@@ -40,7 +40,7 @@ function PrivacyPage() {
 
       <LegalSection title="Cookies and Analytics">
         <p>
-          ErfStoep uses cookies for authentication, session management, and aggregated
+          Easy Erf uses cookies for authentication, session management, and aggregated
           analytics. You can disable cookies in your browser, but parts of the platform may
           not function correctly without them.
         </p>
@@ -74,7 +74,7 @@ function PrivacyPage() {
 
       <LegalSection title="Information Sharing">
         <p>
-          ErfStoep does not sell personal information. We may share information with
+          Easy Erf does not sell personal information. We may share information with
           trusted service providers (hosting, analytics, payment processors) under appropriate
           confidentiality and data-protection agreements, or where required by law.
         </p>

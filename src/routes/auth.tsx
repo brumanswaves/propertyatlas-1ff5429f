@@ -84,7 +84,7 @@ function AuthPage() {
             Click an erf, organize public-source evidence, run your assumptions, and decide what to verify next.
           </p>
         </div>
-        <div className="text-xs text-white/60">© ErfStoep · Pilot region: St Francis Bay</div>
+        <div className="text-xs text-white/60">© Easy Erf · Pilot region: St Francis Bay</div>
       </div>
 
       <div className="flex items-center justify-center p-6">

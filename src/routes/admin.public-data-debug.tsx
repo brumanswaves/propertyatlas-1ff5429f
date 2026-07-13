@@ -13,7 +13,7 @@ import {
 } from "@/lib/providers/publicDataClient";
 
 export const Route = createFileRoute("/admin/public-data-debug")({
-  head: () => ({ meta: [{ title: "Public Data Debug — ErfStoep Admin" }] }),
+  head: () => ({ meta: [{ title: "Public Data Debug — Easy Erf Admin" }] }),
   component: PublicDataDebug,
 });
 

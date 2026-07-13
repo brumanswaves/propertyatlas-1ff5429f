@@ -484,7 +484,7 @@ export function SearchBar({
                 </button>
                 <div className="text-sm font-bold text-[#0D1B2A]">Address Search</div>
                 <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
-                  Address suggestions provide coordinates. ErfStoep then checks that point against
+                  Address suggestions provide coordinates. Easy Erf then checks that point against
                   loaded official parcel boundaries.
                 </p>
                 <input
@@ -740,7 +740,7 @@ export function SearchBar({
                     {providerErfLoading ? "Checking broader official data..." : "Broader lookup"}
                   </span>{" "}
                   {providerErfMessage ??
-                    "ErfStoep searches exact codes, the Kouga / St Francis pilot registry, loaded map parcels, then a live public-layer lookup where supported."}
+                    "Easy Erf searches exact codes, the Kouga / St Francis pilot registry, loaded map parcels, then a live public-layer lookup where supported."}
                 </div>
               )}
               {erfSearched && submittedErfQuery && erfResults.length === 0 && (

@@ -278,8 +278,8 @@ function PaidReportUploadArea({
             {label} report upload
           </div>
           <p className="mt-1 text-[11px] leading-5 text-[#0D1B2A]/70">
-            Buy or download the {label} report, then upload the PDF here. ErfStoep stores it in this
-            erf file for reference. In a later Stoep AI step, uploaded reports can help produce a
+            Buy or download the {label} report, then upload the PDF here. Easy Erf stores it in this
+            erf file for reference. In a later Easy Erf AI step, uploaded reports can help produce a
             more complete final report.
           </p>
         </div>

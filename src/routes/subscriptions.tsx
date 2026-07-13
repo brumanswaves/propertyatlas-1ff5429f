@@ -4,8 +4,8 @@ import { LegalPage, LegalSection, LegalList } from "@/components/layout/LegalPag
 export const Route = createFileRoute("/subscriptions")({
   head: () => ({
     meta: [
-      { title: "Premium Subscription Terms — ErfStoep" },
-      { name: "description", content: "Terms governing ErfStoep premium subscriptions: renewals, refunds, feature changes, and data availability." },
+      { title: "Premium Subscription Terms — Easy Erf" },
+      { name: "description", content: "Terms governing Easy Erf premium subscriptions: renewals, refunds, feature changes, and data availability." },
     ],
   }),
   component: SubscriptionsPage,
@@ -15,7 +15,7 @@ function SubscriptionsPage() {
   return (
     <LegalPage
       title="Premium Subscription Terms"
-      intro="These terms apply to all paid ErfStoep subscriptions and are in addition to the Terms of Use."
+      intro="These terms apply to all paid Easy Erf subscriptions and are in addition to the Terms of Use."
     >
       <LegalSection title="Renewals">
         <p>
@@ -33,7 +33,7 @@ function SubscriptionsPage() {
 
       <LegalSection title="Changes to Features and Pricing">
         <p>
-          ErfStoep may change features, pricing, or functionality at any time. We will
+          Easy Erf may change features, pricing, or functionality at any time. We will
           give reasonable notice of material changes that affect existing paid subscribers.
         </p>
       </LegalSection>

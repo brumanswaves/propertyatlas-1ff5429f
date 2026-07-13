@@ -6,10 +6,10 @@ import { Database, Building, Map, Users, Send } from "lucide-react";
 export const Route = createFileRoute("/partnerships")({
   head: () => ({
     meta: [
-      { title: "ErfStoep Partnerships" },
-      { name: "description", content: "ErfStoep welcomes discussions with data providers, municipalities, mapping providers, real estate organizations, and proptech companies." },
-      { property: "og:title", content: "ErfStoep Partnerships" },
-      { property: "og:description", content: "Bring your data, reach, or tooling into the ErfStoep ecosystem." },
+      { title: "Easy Erf Partnerships" },
+      { name: "description", content: "Easy Erf welcomes discussions with data providers, municipalities, mapping providers, real estate organizations, and proptech companies." },
+      { property: "og:title", content: "Easy Erf Partnerships" },
+      { property: "og:description", content: "Bring your data, reach, or tooling into the Easy Erf ecosystem." },
     ],
   }),
   component: Partnerships,
@@ -28,7 +28,7 @@ function Partnerships() {
   return (
     <MarketingPage
       eyebrow="Partnerships"
-      title="Partner with ErfStoep."
+      title="Partner with Easy Erf."
       subtitle="Help us bring better property intelligence to South Africa."
       intro="We're actively building an ecosystem of data providers, municipalities, mapping partners, and proptech collaborators. If your organisation can contribute or benefit, we'd love to talk."
     >

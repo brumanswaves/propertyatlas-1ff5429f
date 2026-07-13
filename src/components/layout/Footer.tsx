@@ -64,7 +64,7 @@ export function Footer() {
       <div className="border-t border-border/60 px-6 py-4">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 md:flex-row md:items-center">
           <p className="text-[10px] leading-relaxed text-muted-foreground">
-            © {new Date().getFullYear()} ErfStoep. All Rights Reserved.
+            © 2026 Easy Erf. All Rights Reserved
           </p>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
             Pilot data shown is mock data for demonstration purposes. Estimates are not certified valuations.
@@ -105,7 +105,7 @@ export function FooterMini() {
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10.5px] font-medium text-white/55">
         <span className="inline-flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
-          © {new Date().getFullYear()} ErfStoep · All Rights Reserved
+          © 2026 Easy Erf · All Rights Reserved
         </span>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {FOOTER_MINI_LINKS.map((l) => (

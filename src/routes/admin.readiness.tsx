@@ -18,7 +18,7 @@ import {
 export const Route = createFileRoute("/admin/readiness")({
   head: () => ({
     meta: [
-      { title: "Provider Readiness — ErfStoep" },
+      { title: "Provider Readiness — Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -140,7 +140,7 @@ describe("erfWorkspaceState", () => {
         calculatorStarted: true,
         strategyScenarioCount: 1,
       }),
-    ).toMatchObject({ title: "Create Stoep Report", tab: "stoep-report" });
+    ).toMatchObject({ title: "Create Easy Erf Report", tab: "stoep-report" });
   });
 
   it("treats SG attachments and saved market addresses as real progress", () => {
@@ -162,7 +162,7 @@ describe("erfWorkspaceState", () => {
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
   });
 
-  it("builds honest StoepSteps progress from workspace state", () => {
+  it("builds honest Easy Erf Steps progress from workspace state", () => {
     expect(buildStoepStepProgress(createEmptyErfWorkspaceState())).toMatchObject([
       { label: "Identity", status: "Current" },
       { label: "Sources", status: "Needs evidence" },

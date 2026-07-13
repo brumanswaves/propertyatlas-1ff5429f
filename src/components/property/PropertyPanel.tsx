@@ -805,7 +805,7 @@ function SalesTab({ property }: { property: Property }) {
     }).join("");
 
     win.document.write(`<!doctype html><html><head><meta charset="utf-8" />
-      <title>ErfStoep · ${property.street} · 10-Year History</title>
+      <title>Easy Erf · ${property.street} · 10-Year History</title>
       <style>
         *{box-sizing:border-box}
         body{font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;color:#0f172a;margin:32px;}
@@ -851,7 +851,7 @@ function SalesTab({ property }: { property: Property }) {
       </div>
 
       <div style="margin-top:16px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:10px;font-size:11px;color:#78350f;line-height:1.5">
-        <strong>Important:</strong> ErfStoep estimates are automated informational estimates and are not certified valuations or appraisals. This report is provided for informational purposes only and is not a professional valuation, legal opinion, or investment recommendation.
+        <strong>Important:</strong> Easy Erf estimates are automated informational estimates and are not certified valuations or appraisals. This report is provided for informational purposes only and is not a professional valuation, legal opinion, or investment recommendation.
       </div>
 
       <h2>10-Year Property History</h2>
@@ -861,7 +861,7 @@ function SalesTab({ property }: { property: Property }) {
       </table>
 
       <footer>
-        <span>ErfStoep · Investor Report</span>
+        <span>Easy Erf · Investor Report</span>
         <span>Generated ${new Date().toLocaleDateString("en-ZA",{dateStyle:"long"})}</span>
       </footer>
       <script>window.onload=()=>{setTimeout(()=>window.print(),300);}</script>

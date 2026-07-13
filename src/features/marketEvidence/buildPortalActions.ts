@@ -64,7 +64,7 @@ export function buildPortalActions(
       opensReliableAreaPage: false,
       requiresManualPaste: true,
       helperText:
-        "ErfStoep is not reading this portal. You choose and save only useful evidence.",
+        "Easy Erf is not reading this portal. You choose and save only useful evidence.",
     };
   });
 

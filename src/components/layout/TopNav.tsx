@@ -61,7 +61,7 @@ export function TopNav({ center, mobileCenter, subtitle }: TopNavProps = {}) {
         <Link
           to="/"
           className="group inline-flex shrink-0 items-center gap-2 rounded-xl px-1 py-1 transition hover:opacity-90"
-          aria-label="ErfStoep — home"
+          aria-label="Easy Erf — home"
         >
           <AtlasPin variant="white" className="h-5 w-auto md:h-6" title={BRAND.site} />
         </Link>

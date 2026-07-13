@@ -11,7 +11,7 @@ describe("official dossier UX guardrails", () => {
     const nav = read("src/components/layout/TopNav.tsx");
 
     expect(home).toContain("BRAND.site");
-    expect(nav).toContain("ErfStoep");
+    expect(nav).toContain("Easy Erf");
     expect(home).toContain("Every erf. All the facts.");
     expect(home).toContain("Research any");
     expect(home).toContain("South African erf.");
@@ -183,7 +183,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('label: "Sources"');
     expect(panel).toContain('label: "Paid Reports"');
     expect(panel).toContain('label: "Notes"');
-    expect(panel).toContain('label: "Stoep AI Report"');
+    expect(panel).toContain('label: "Easy Erf Report"');
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");
@@ -244,7 +244,7 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("Official parcel identity check");
-    expect(panel).toContain("StoepSteps / Step 1");
+    expect(panel).toContain("Easy Erf Steps / Step 1");
     expect(panel).toContain("Parcel identity");
     expect(panel).toContain("Official identifiers");
     expect(panel).toContain("Map context");
@@ -366,7 +366,7 @@ describe("official dossier UX guardrails", () => {
     );
     expect(panel).toContain('title: "Notes"');
     expect(panel).toContain("Capture your research, questions, and decision notes.");
-    expect(panel).toContain('title: "Stoep AI Report"');
+    expect(panel).toContain('title: "Easy Erf Report"');
     expect(panel).toContain("Assemble the final report from saved identity");
     expect(panel).toContain("!isOverview && (");
     expect(panel).toContain("<ReportBuilderOverview");
@@ -398,7 +398,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("sticky top-0 z-30");
   });
 
-  it("surfaces ErfStoep intelligence immediately on official map click", () => {
+  it("surfaces Easy Erf intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
     const reportProgress = read("src/lib/workbench/reportProgress.ts");
@@ -412,7 +412,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Add report documents");
     expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
     expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
-    expect(reportBuilder).toContain("ErfStoep Report Builder");
+    expect(reportBuilder).toContain("Easy Erf Report Builder");
     expect(reportBuilder).toContain("Report progress");
     expect(reportBuilder).toContain("This erf file becomes one final report.");
     expect(reportBuilder).toContain("buildReportBuilderProgress");
@@ -430,7 +430,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("{actionCards[2].title}");
     expect(reportBuilder).toContain("{actionCards[3].title}");
     expect(reportBuilder).toContain('view: "stoep-report"');
-    expect(reportBuilder).toContain("Open Stoep AI Report");
+    expect(reportBuilder).toContain("Open Easy Erf Report");
     expect(reportProgress).toContain('title: "Verify the erf"');
     expect(reportProgress).toContain('action: "Check official identity"');
     expect(reportProgress).toContain('tab: "research"');
@@ -456,7 +456,7 @@ describe("official dossier UX guardrails", () => {
     );
     expect(panel).not.toContain("What do you want to understand first?");
     expect(panel).not.toContain("Current StoepStep");
-    expect(panel).not.toContain("StoepSteps progress");
+    expect(panel).not.toContain("Easy Erf Steps progress");
     expect(panel).toContain("Opened. Mark reviewed after checking the details.");
     expect(panel).toContain("Reviewed by user. This records progress, not legal verification.");
     expect(panel).toContain("Identity marked as looking correct. Next: build market evidence.");
@@ -491,7 +491,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("reportStarted: true");
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
-    expect(panel).toContain("Stoep AI First Read");
+    expect(panel).toContain("Easy Erf AI First Read");
     expect(panel).toContain("needs evidence");
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
@@ -529,7 +529,7 @@ describe("official dossier UX guardrails", () => {
     expect(dossier.indexOf("Choose what this erf could become")).toBeLessThan(
       dossier.indexOf("Deal Summary"),
     );
-    expect(dossier).toContain("Continue to Stoep AI Report");
+    expect(dossier).toContain("Continue to Easy Erf Report");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
     expect(marketEvidence).toContain("Find listings and comps for this erf");
     expect(marketEvidence).toContain("Market Address");
@@ -542,7 +542,7 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("BRRRR means Buy, Rehab, Rent, Refinance, Repeat");
   });
 
-  it("renders the ErfStoep intelligence dashboard shell without fake paid data", () => {
+  it("renders the Easy Erf intelligence dashboard shell without fake paid data", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
@@ -550,7 +550,7 @@ describe("official dossier UX guardrails", () => {
     const workspaceFiles = read("src/lib/workbench/erfWorkspaceFiles.ts");
 
     expect(dossier).toContain("ReportBuilderOverview");
-    expect(reportBuilder).toContain("ErfStoep Report Builder");
+    expect(reportBuilder).toContain("Easy Erf Report Builder");
     expect(reportBuilder).toContain("This erf file becomes one final report.");
     expect(reportBuilder).toContain("buildReportBuilderProgress");
     expect(reportBuilder).toContain("buildReportActionCards");
@@ -559,7 +559,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Check official identity");
     expect(reportBuilder).toContain("Add market evidence");
     expect(reportBuilder).toContain("Open calculator");
-    expect(reportBuilder).toContain("Open Stoep AI Report");
+    expect(reportBuilder).toContain("Open Easy Erf Report");
     expect(reportBuilder).not.toContain("0 reviewed");
     expect(reportBuilder).not.toContain("sourcesReviewed = 0");
     expect(reportBuilder).not.toContain("strategyDone = false");
@@ -581,7 +581,7 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("workspaceAttachmentCategory");
     expect(dossier).toContain("Open file");
     expect(dossier).toContain(
-      "Stored for reference. Stoep AI extraction and PDF analysis are not enabled yet.",
+      "Stored for reference. Easy Erf AI extraction and PDF analysis are not enabled yet.",
     );
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
   });

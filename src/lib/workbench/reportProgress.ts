@@ -151,7 +151,7 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
       detail: workspaceState.reportStarted
         ? "Report workflow has been opened for this erf."
         : strategyScenarioCount > 0
-          ? "Stoep AI Report can now assemble the saved workflow state, with missing evidence clearly labelled."
+          ? "Easy Erf Report can now assemble the saved workflow state, with missing evidence clearly labelled."
           : "Create a report after identity, sources, market evidence and numbers are underway.",
       evidence:
         evidenceCount > 0
@@ -204,9 +204,9 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
     {
       id: "report",
       title: "Create report",
-      body: "Combine saved evidence, reviewed sources, notes and assumptions into one Stoep Report.",
+      body: "Combine saved evidence, reviewed sources, notes and assumptions into one Easy Erf Report.",
       stat: byId.report.status,
-      action: "Open Stoep AI Report",
+      action: "Open Easy Erf Report",
       tab: "stoep-report",
       primary: byId.report.status !== "In progress" && !strategyMissing,
     },

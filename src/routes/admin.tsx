@@ -11,7 +11,7 @@ import { AdminGuard } from "@/components/admin/AdminGuard";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin — ErfStoep" },
+      { title: "Admin — Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -369,7 +369,7 @@ function AtlasHome() {
               ? "Click the highlighted erf to open the Workbench."
               : searchHighlightStatus === "fallback"
                 ? "Boundary highlight unavailable until the layer loads. Click the nearby official parcel outline to open the Workbench."
-                : "ErfStoep is matching the result to the rendered official parcel outline. If the boundary is still loading, the map will keep a marker at the official parcel context."}
+                : "Easy Erf is matching the result to the rendered official parcel outline. If the boundary is still loading, the map will keep a marker at the official parcel context."}
           </p>
           <button
             type="button"
@@ -592,7 +592,7 @@ function DebugReopenPanel({
   return (
     <div className="pointer-events-auto absolute bottom-4 left-4 z-50 w-[min(94vw,28rem)] rounded-xl border-4 border-red-500 bg-black p-4 font-mono text-xs text-white shadow-2xl">
       <div className="text-base font-black uppercase tracking-wide text-red-300">
-        PROPERTYATLAS DEBUG BUILD
+        EASY ERF DEBUG BUILD
       </div>
       <div className="mt-1 text-sm font-bold text-accent">Build label: saved-reopen-debug-v1</div>
 

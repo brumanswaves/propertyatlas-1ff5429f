@@ -1098,7 +1098,7 @@ function EvidenceEntryPanel({
             Save a listing, comp, build-cost note, or market source
           </h3>
           <p className="mt-1 text-sm text-stone-700">
-            Paste the source URL and add your own price, address, size and notes. ErfStoep stores
+            Paste the source URL and add your own price, address, size and notes. Easy Erf stores
             your evidence with this erf; it does not extract portal content.
           </p>
         </div>
@@ -1819,7 +1819,7 @@ function CompForm({
       />
       {draft.sourceUrl && (
         <p className="rounded-2xl bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-700">
-          Detected source: {draft.sourcePortal || sourceDomainFromUrl(draft.sourceUrl)}. ErfStoep
+          Detected source: {draft.sourcePortal || sourceDomainFromUrl(draft.sourceUrl)}. Easy Erf
           stores your URL and manual notes only; it does not scrape listing pages.
         </p>
       )}

@@ -161,7 +161,7 @@ const STOEP_STEPS_PREVIEW = [
   "Check Market Evidence",
   "Choose Strategy",
   "Run the Numbers",
-  "Generate Stoep Report",
+  "Generate Easy Erf Report",
   "Improve Confidence",
 ];
 
@@ -264,7 +264,7 @@ function stoepFirstRead(parcel: NormalizedOfficialParcel): string {
       ? "It has a parcel key, so the official identity can be checked against public parcel sources."
       : "It still needs stronger official identifiers such as an LPI, parcel key, or verified SG record.";
 
-  return `This looks like ${identity}${location ? ` in ${location}` : ""}. ${identifier} ErfStoep can organize the first read, source links, notes, comps, assumptions, and report evidence, but ownership, valuation, zoning, deeds, rates and GIS precision are not confirmed unless verified evidence is added.`;
+  return `This looks like ${identity}${location ? ` in ${location}` : ""}. ${identifier} Easy Erf can organize the first read, source links, notes, comps, assumptions, and report evidence, but ownership, valuation, zoning, deeds, rates and GIS precision are not confirmed unless verified evidence is added.`;
 }
 
 function knownFieldRows(parcel: NormalizedOfficialParcel): NormalizedOfficialParcel["knownFields"] {
@@ -1109,14 +1109,14 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   return (
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
       <div className="inline-flex rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-        Stoep AI Report
+        Easy Erf Report
       </div>
       <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
         Report shell for {identityLabel}
       </h3>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
         This page assembles the report from saved identity checks, reviewed sources, market evidence
-        and saved strategy assumptions. Missing data stays labelled; ErfStoep does not fabricate
+        and saved strategy assumptions. Missing data stays labelled; Easy Erf does not fabricate
         ownership, valuation, zoning, sales history or paid-provider data.
       </p>
 
@@ -1149,7 +1149,7 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
           Uploaded files and source documents
         </h4>
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-          Stored for reference. Stoep AI extraction and PDF analysis are not enabled yet.
+          Stored for reference. Easy Erf AI extraction and PDF analysis are not enabled yet.
         </p>
         {uploadedFiles.length ? (
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1512,7 +1512,7 @@ function OfficialCalculatorPanel({
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
               Strategy Lab helps you test what this erf could be: acquisition, buy-and-hold, bond,
               flip, BRRRR, development, or custom scenarios. Enter your assumptions, save a
-              scenario, then send the saved strategy into the Stoep AI Report.
+              scenario, then send the saved strategy into the Easy Erf Report.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1551,7 +1551,7 @@ function OfficialCalculatorPanel({
           ))}
         </div>
         <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/58">
-          Estimates only. ErfStoep is not attaching official valuation, rates, transfer, deeds or
+          Estimates only. Easy Erf is not attaching official valuation, rates, transfer, deeds or
           paid provider data here.
         </p>
       </section>
@@ -1802,7 +1802,7 @@ function OfficialCalculatorPanel({
       )}
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
         {savedScenarios.length > 0
-          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Stoep AI Report shell.`
+          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Easy Erf Report shell.`
           : "Save a scenario to move Strategy progress. Estimates remain based on your assumptions."}
         {savedScenarios.length > 0 && (
           <button
@@ -1810,7 +1810,7 @@ function OfficialCalculatorPanel({
             onClick={onOpenReport}
             className="mt-3 inline-flex rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
           >
-            Continue to Stoep AI Report
+            Continue to Easy Erf Report
           </button>
         )}
       </div>

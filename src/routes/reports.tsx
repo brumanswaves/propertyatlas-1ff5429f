@@ -12,9 +12,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
-      { title: "Report Marketplace — ErfStoep" },
+      { title: "Report Marketplace — Easy Erf" },
       { name: "description", content: "Order professional property intelligence reports. Property, Ownership, Valuation, Comparable Sales, and Transfer History." },
-      { property: "og:title", content: "Report Marketplace — ErfStoep" },
+      { property: "og:title", content: "Report Marketplace — Easy Erf" },
       { property: "og:description", content: "Property intelligence reports for investors, developers and homeowners." },
     ],
     links: [{ rel: "canonical", href: "/reports" }],
@@ -65,7 +65,7 @@ function ReportsPage() {
           once their underlying provider is connected. No payment is processed at this stage — orders are logged as pending.
         </p>
         <p className="mt-2 max-w-2xl text-xs text-muted-foreground">
-          Reports are provided by third-party data providers. ErfStoep does not alter official report data.
+          Reports are provided by third-party data providers. Easy Erf does not alter official report data.
         </p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

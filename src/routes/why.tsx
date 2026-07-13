@@ -5,9 +5,9 @@ import { X, Check } from "lucide-react";
 export const Route = createFileRoute("/why")({
   head: () => ({
     meta: [
-      { title: "Why ErfStoep?" },
-      { name: "description", content: "Traditional property websites focus on listings. ErfStoep focuses on intelligence — research, analysis, and understanding." },
-      { property: "og:title", content: "Why ErfStoep?" },
+      { title: "Why Easy Erf?" },
+      { name: "description", content: "Traditional property websites focus on listings. Easy Erf focuses on intelligence — research, analysis, and understanding." },
+      { property: "og:title", content: "Why Easy Erf?" },
       { property: "og:description", content: "Listings vs intelligence. Browsing vs understanding." },
     ],
   }),
@@ -27,14 +27,14 @@ const COMPARISON: Array<{ axis: string; old: string; pa: string }> = [
 function Why() {
   return (
     <MarketingPage
-      eyebrow="Why ErfStoep?"
+      eyebrow="Why Easy Erf?"
       title="Listings show you what's for sale. We show you what's there."
       subtitle="Two very different products. Two very different outcomes."
-      intro="ErfStoep exists because property decisions deserve more than thumbnails and asking prices. Every parcel has a story — ownership tenure, sales history, location signals, and modelled potential. That's what we surface."
+      intro="Easy Erf exists because property decisions deserve more than thumbnails and asking prices. Every parcel has a story — ownership tenure, sales history, location signals, and modelled potential. That's what we surface."
       heroCta={{ label: "Open the Map", to: "/" }}
     >
       <section>
-        <SectionHeading title="Traditional property websites vs ErfStoep" />
+        <SectionHeading title="Traditional property websites vs Easy Erf" />
         <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border bg-muted/50 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <div className="px-4 py-3">Dimension</div>
@@ -42,7 +42,7 @@ function Why() {
               <X className="h-3.5 w-3.5" /> Traditional sites
             </div>
             <div className="flex items-center gap-1.5 px-4 py-3 text-primary">
-              <Check className="h-3.5 w-3.5" /> ErfStoep
+              <Check className="h-3.5 w-3.5" /> Easy Erf
             </div>
           </div>
           {COMPARISON.map((row, i) => (
@@ -60,7 +60,7 @@ function Why() {
 
       <CTASection
         title="See the difference for yourself"
-        description="Open the live map and click any parcel — listed or not — to see what ErfStoep can surface."
+        description="Open the live map and click any parcel — listed or not — to see what Easy Erf can surface."
         primary={{ label: "Open the Map", to: "/" }}
         secondary={{ label: "How it works", to: "/how-it-works" }}
       />

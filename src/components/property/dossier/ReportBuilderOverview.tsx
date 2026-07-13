@@ -30,7 +30,7 @@ const STEP_ORDER: StepMeta[] = [
   { id: "sources", index: 2, label: "Sources", view: "research", cta: "Add or review sources" },
   { id: "market", index: 3, label: "Market", view: "listings", cta: "Add market evidence" },
   { id: "strategy", index: 4, label: "Strategy", view: "calculators", cta: "Open calculator" },
-  { id: "report", index: 5, label: "Report", view: "stoep-report", cta: "Open Stoep AI Report" },
+  { id: "report", index: 5, label: "Report", view: "stoep-report", cta: "Open Easy Erf Report" },
 ];
 
 function chipTone(complete: boolean, warn: boolean) {
@@ -98,7 +98,7 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-[26px] font-semibold tracking-tight text-[#0D1B2A]">
-                ErfStoep Report Builder
+                Easy Erf Report Builder
               </h2>
               <p className="mt-1 text-[14px] text-[#4A5A6A]">
                 This erf file becomes one final report.
@@ -322,7 +322,7 @@ function nextStepBlurb(id: StepId) {
     case "strategy":
       return "Use the calculators to test acquisition, build, exit, and profit assumptions.";
     case "report":
-      return "Combine sources, evidence, risks and next steps into a shareable Stoep Report.";
+      return "Combine sources, evidence, risks and next steps into a shareable Easy Erf Report.";
   }
 }
 

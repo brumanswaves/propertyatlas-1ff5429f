@@ -133,7 +133,7 @@ export function writeErfWorkspaceState(
   const next = { ...state, updatedAt: new Date().toISOString() };
   if (storage) storage.setItem(erfWorkspaceStateKey(parcelId), JSON.stringify(next));
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("erfstoep:workspace-updated", { detail: { parcelId } }));
+  window.dispatchEvent(new CustomEvent("erfstoep:workspace-updated", { detail: { parcelId } }));
   }
   return next;
 }
@@ -321,7 +321,7 @@ export function buildErfWorkspaceNextStep(
       why: "The report becomes useful when the numbers are tied to your assumptions.",
       doNow: "Test build, flip, hold and max-offer assumptions.",
       doneWhen: "At least one strategy scenario is saved.",
-      next: "Create Stoep Report.",
+      next: "Create Easy Erf Report.",
       action: "Run calculators",
       tab: "calculators",
     };
@@ -329,20 +329,20 @@ export function buildErfWorkspaceNextStep(
 
   if (!state.reportStarted) {
     return {
-      title: "Create Stoep Report",
+      title: "Create Easy Erf Report",
       body: "Turn saved evidence and assumptions into one consultation-style report.",
       why: "A report keeps your evidence, notes, assumptions and next steps together.",
       doNow:
-        "Open Stoep AI Report and assemble the current identity, sources, market evidence and saved strategy assumptions.",
-      doneWhen: "Stoep AI Report has been opened and reviewed with the saved workflow state.",
-      next: "Review and export your Stoep Report.",
-      action: "Open Stoep AI Report",
+        "Open Easy Erf Report and assemble the current identity, sources, market evidence and saved strategy assumptions.",
+      doneWhen: "Easy Erf Report has been opened and reviewed with the saved workflow state.",
+      next: "Review and export your Easy Erf Report.",
+      action: "Open Easy Erf Report",
       tab: "stoep-report",
     };
   }
 
   return {
-    title: "Review and export your Stoep Report.",
+    title: "Review and export your Easy Erf Report.",
     body: "Check the saved evidence, assumptions and next steps before sharing or exporting.",
     why: "Final review keeps the decision grounded in saved evidence rather than memory.",
     doNow: "Review evidence, assumptions, risk notes and next steps.",
@@ -415,7 +415,7 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
           : identityUncertain
             ? "Blocked / uncertain"
             : "Not started",
-      doneWhen: "A Stoep Report or Report Vault workflow is started.",
+      doneWhen: "A Easy Erf Report or Report Vault workflow is started.",
     },
   ];
 }

@@ -7,10 +7,10 @@ import {
 export const Route = createFileRoute("/features")({
   head: () => ({
     meta: [
-      { title: "ErfStoep Features" },
+      { title: "Easy Erf Features" },
       { name: "description", content: "CSG parcel map, erf research, Kouga public GIS context, research links, listing workspace, notes, calculators, and a future report marketplace." },
-      { property: "og:title", content: "ErfStoep Features" },
-      { property: "og:description", content: "Public-data property research for South Africa — what ErfStoep does today." },
+      { property: "og:title", content: "Easy Erf Features" },
+      { property: "og:description", content: "Public-data property research for South Africa — what Easy Erf does today." },
     ],
   }),
   component: Features,

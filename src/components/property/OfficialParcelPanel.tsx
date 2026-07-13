@@ -104,7 +104,7 @@ const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
   { id: "notes", label: "Notes" },
-  { id: "stoep-report", label: "Stoep AI Report" },
+  { id: "stoep-report", label: "Easy Erf Report" },
 ];
 
 const WORKBENCH_SECTIONS: Record<
@@ -114,7 +114,7 @@ const WORKBENCH_SECTIONS: Record<
   overview: {
     title: "Overview",
     subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
-    guidanceTitle: "Stoep AI First Read",
+    guidanceTitle: "Easy Erf AI First Read",
     guidance: "Use this first read to decide what evidence to check next.",
   },
   research: {
@@ -153,7 +153,7 @@ const WORKBENCH_SECTIONS: Record<
       "Keep open questions, evidence links and decision notes together so the erf stays reviewable later.",
   },
   "stoep-report": {
-    title: "Stoep AI Report",
+    title: "Easy Erf Report",
     subtitle:
       "Assemble the final report from saved identity, sources, market evidence and strategy assumptions.",
     guidanceTitle: "Report assembly guidance",
@@ -217,17 +217,17 @@ function buildWorkbenchPageNextStep(
       };
     case "calculators":
       return {
-        title: "Build the Stoep AI Report",
+        title: "Build the Easy Erf Report",
         body: "Saved strategy inputs help shape the final report, risks, and next steps.",
-        cta: "Go to Stoep AI Report",
+        cta: "Go to Easy Erf Report",
         tab: "stoep-report",
         markStarted: true,
       };
     case "notes":
       return {
-        title: "Build the Stoep AI Report",
+        title: "Build the Easy Erf Report",
         body: "Bring your notes, evidence, and assumptions together in the report shell.",
-        cta: "Go to Stoep AI Report",
+        cta: "Go to Easy Erf Report",
         tab: "stoep-report",
         markStarted: true,
       };
@@ -734,7 +734,7 @@ function OfficialIdentityChecklist({
       href: GOVZA_DEEDS_GUIDANCE_URL,
       actionLabel: "Open guidance",
       helper:
-        "Use this to understand the official deeds process. ErfStoep does not claim legally verified ownership.",
+        "Use this to understand the official deeds process. Easy Erf does not claim legally verified ownership.",
     },
   ];
 
@@ -788,7 +788,7 @@ function OfficialIdentityChecklist({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-            StoepSteps / Step 1
+            Easy Erf Steps / Step 1
           </div>
           <h3 className="mt-2 text-2xl font-semibold tracking-tight">
             Official parcel identity check
@@ -1771,7 +1771,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       if (nextTab === "stoep-report") {
         setWorkspacePatch({ reportStarted: true, dirty: true });
         setWorkflowFeedback(
-          "Stoep AI Report opened. It assembles saved evidence and assumptions without fake data.",
+          "Easy Erf Report opened. It assembles saved evidence and assumptions without fake data.",
         );
       }
     }
@@ -1852,7 +1852,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col [scrollbar-width:thin]">
         <div className="mb-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
-            ErfStoep
+            Easy Erf
           </div>
           <div className="mt-2 text-xl font-semibold tracking-tight">Workbench rail</div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * ErfStoep brand & naming system.
+ * Easy Erf brand & naming system.
  *
  * Single source of truth for product names, taglines, and short approved copy.
  * Import from here rather than hard-coding strings in screens so future
@@ -10,11 +10,11 @@
  */
 
 // ── Official naming system ──────────────────────────────────────────────────
-export const SITE_NAME = "ErfStoep" as const;
-export const AI_NAME = "Stoep AI" as const;
-export const AI_ACTION = "Ask Stoep" as const;
-export const WORKFLOW_NAME = "StoepSteps" as const;
-export const REPORTS_NAME = "Stoep Reports" as const;
+export const SITE_NAME = "Easy Erf" as const;
+export const AI_NAME = "Easy Erf AI" as const;
+export const AI_ACTION = "Ask Easy Erf" as const;
+export const WORKFLOW_NAME = "Easy Erf Steps" as const;
+export const REPORTS_NAME = "Easy Erf Reports" as const;
 export const SAVED_AREA_NAME = "My Erfs" as const;
 
 // ── Tagline ─────────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export const COPY = {
   whatItDoes:
     "Click an erf, understand the risks, run the numbers, and generate investor-ready reports.",
   paidReportsNote:
-    "Paid reports improve confidence, but ErfStoep is useful before purchase.",
+    "Paid reports improve confidence, but Easy Erf is useful before purchase.",
 } as const;
 
 // ── Convenience grouped export ──────────────────────────────────────────────
