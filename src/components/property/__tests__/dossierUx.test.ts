@@ -647,8 +647,10 @@ describe("official dossier UX guardrails", () => {
     expect(service).toContain("POST /api/listings/import");
     expect(service).toContain("Listing import service is not connected yet");
     expect(service).toContain('"SERVICE_NOT_CONFIGURED"');
-    expect(route).toContain('"SERVICE_NOT_CONFIGURED"');
-    expect(route).toContain("Listing import service is not connected yet");
+    expect(route).toContain("importListing");
+    expect(route).toContain("handleListingImportRequest");
+    expect(route).toContain("statusForError");
+    expect(route).not.toContain('"SERVICE_NOT_CONFIGURED"');
     expect(types).toContain('| "SERVICE_NOT_CONFIGURED"');
     expect(tab).toContain("Manual evidence entry");
     expect(tab).toContain("Add manual evidence");
