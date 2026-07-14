@@ -37,6 +37,10 @@ import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-
 import { Route as ApiSitePotentialProcessRouteImport } from './routes/api/site-potential.process'
 import { Route as ApiSitePotentialGenerateRouteImport } from './routes/api/site-potential.generate'
 import { Route as ApiSitePotentialDevEntitlementRouteImport } from './routes/api/site-potential.dev-entitlement'
+import { Route as ApiSitePotentialBetaStatusRouteImport } from './routes/api/site-potential.beta-status'
+import { Route as ApiSitePotentialBetaRequestRouteImport } from './routes/api/site-potential.beta-request'
+import { Route as ApiSitePotentialBetaRedeemRouteImport } from './routes/api/site-potential.beta-redeem'
+import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site-potential.beta-grant'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
 
 const WhyRoute = WhyRouteImport.update({
@@ -181,6 +185,30 @@ const ApiSitePotentialDevEntitlementRoute =
     path: '/api/site-potential/dev-entitlement',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiSitePotentialBetaStatusRoute =
+  ApiSitePotentialBetaStatusRouteImport.update({
+    id: '/api/site-potential/beta-status',
+    path: '/api/site-potential/beta-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSitePotentialBetaRequestRoute =
+  ApiSitePotentialBetaRequestRouteImport.update({
+    id: '/api/site-potential/beta-request',
+    path: '/api/site-potential/beta-request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSitePotentialBetaRedeemRoute =
+  ApiSitePotentialBetaRedeemRouteImport.update({
+    id: '/api/site-potential/beta-redeem',
+    path: '/api/site-potential/beta-redeem',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSitePotentialBetaGrantRoute =
+  ApiSitePotentialBetaGrantRouteImport.update({
+    id: '/api/site-potential/beta-grant',
+    path: '/api/site-potential/beta-grant',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   id: '/api/listings/import',
   path: '/api/listings/import',
@@ -214,6 +242,10 @@ export interface FileRoutesByFullPath {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
+  '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
+  '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
+  '/api/site-potential/beta-status': typeof ApiSitePotentialBetaStatusRoute
   '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
@@ -245,6 +277,10 @@ export interface FileRoutesByTo {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
+  '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
+  '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
+  '/api/site-potential/beta-status': typeof ApiSitePotentialBetaStatusRoute
   '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
@@ -277,6 +313,10 @@ export interface FileRoutesById {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
+  '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
+  '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
+  '/api/site-potential/beta-status': typeof ApiSitePotentialBetaStatusRoute
   '/api/site-potential/dev-entitlement': typeof ApiSitePotentialDevEntitlementRoute
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
@@ -310,6 +350,10 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/beta-grant'
+    | '/api/site-potential/beta-redeem'
+    | '/api/site-potential/beta-request'
+    | '/api/site-potential/beta-status'
     | '/api/site-potential/dev-entitlement'
     | '/api/site-potential/generate'
     | '/api/site-potential/process'
@@ -341,6 +385,10 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/beta-grant'
+    | '/api/site-potential/beta-redeem'
+    | '/api/site-potential/beta-request'
+    | '/api/site-potential/beta-status'
     | '/api/site-potential/dev-entitlement'
     | '/api/site-potential/generate'
     | '/api/site-potential/process'
@@ -372,6 +420,10 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/site-potential/beta-grant'
+    | '/api/site-potential/beta-redeem'
+    | '/api/site-potential/beta-request'
+    | '/api/site-potential/beta-status'
     | '/api/site-potential/dev-entitlement'
     | '/api/site-potential/generate'
     | '/api/site-potential/process'
@@ -402,6 +454,10 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
+  ApiSitePotentialBetaGrantRoute: typeof ApiSitePotentialBetaGrantRoute
+  ApiSitePotentialBetaRedeemRoute: typeof ApiSitePotentialBetaRedeemRoute
+  ApiSitePotentialBetaRequestRoute: typeof ApiSitePotentialBetaRequestRoute
+  ApiSitePotentialBetaStatusRoute: typeof ApiSitePotentialBetaStatusRoute
   ApiSitePotentialDevEntitlementRoute: typeof ApiSitePotentialDevEntitlementRoute
   ApiSitePotentialGenerateRoute: typeof ApiSitePotentialGenerateRoute
   ApiSitePotentialProcessRoute: typeof ApiSitePotentialProcessRoute
@@ -605,6 +661,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSitePotentialDevEntitlementRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/site-potential/beta-status': {
+      id: '/api/site-potential/beta-status'
+      path: '/api/site-potential/beta-status'
+      fullPath: '/api/site-potential/beta-status'
+      preLoaderRoute: typeof ApiSitePotentialBetaStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-potential/beta-request': {
+      id: '/api/site-potential/beta-request'
+      path: '/api/site-potential/beta-request'
+      fullPath: '/api/site-potential/beta-request'
+      preLoaderRoute: typeof ApiSitePotentialBetaRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-potential/beta-redeem': {
+      id: '/api/site-potential/beta-redeem'
+      path: '/api/site-potential/beta-redeem'
+      fullPath: '/api/site-potential/beta-redeem'
+      preLoaderRoute: typeof ApiSitePotentialBetaRedeemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-potential/beta-grant': {
+      id: '/api/site-potential/beta-grant'
+      path: '/api/site-potential/beta-grant'
+      fullPath: '/api/site-potential/beta-grant'
+      preLoaderRoute: typeof ApiSitePotentialBetaGrantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/listings/import': {
       id: '/api/listings/import'
       path: '/api/listings/import'
@@ -652,6 +736,10 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
+  ApiSitePotentialBetaGrantRoute: ApiSitePotentialBetaGrantRoute,
+  ApiSitePotentialBetaRedeemRoute: ApiSitePotentialBetaRedeemRoute,
+  ApiSitePotentialBetaRequestRoute: ApiSitePotentialBetaRequestRoute,
+  ApiSitePotentialBetaStatusRoute: ApiSitePotentialBetaStatusRoute,
   ApiSitePotentialDevEntitlementRoute: ApiSitePotentialDevEntitlementRoute,
   ApiSitePotentialGenerateRoute: ApiSitePotentialGenerateRoute,
   ApiSitePotentialProcessRoute: ApiSitePotentialProcessRoute,

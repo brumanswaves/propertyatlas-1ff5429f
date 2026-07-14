@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -28,11 +28,7 @@ import {
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import type {
-  ErfAsset,
-  ErfAssetCategory,
-  ErfAssetValidation,
-} from "@/lib/workbench/erfFileVault";
+import type { ErfAsset, ErfAssetCategory, ErfAssetValidation } from "@/lib/workbench/erfFileVault";
 import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
 import { toast } from "sonner";
 
@@ -100,7 +96,16 @@ const VAULT_CATEGORIES: ErfAssetCategory[] = [
 ];
 
 const GENERATION_UI_ENABLED =
-  import.meta.env.DEV || import.meta.env.VITE_SITE_POTENTIAL_GENERATION_UI === "true";
+  import.meta.env.DEV ||
+  import.meta.env.VITE_SITE_POTENTIAL_GENERATION_UI === "true" ||
+  import.meta.env.VITE_SITE_POTENTIAL_BETA_UI === "true";
+const BETA_UI_ENABLED = import.meta.env.VITE_SITE_POTENTIAL_BETA_UI === "true";
+
+interface BetaCreditUiStatus {
+  enabled: boolean;
+  creditsRemaining: number;
+  openRequestStatus?: string | null;
+}
 
 function formatPrice() {
   return new Intl.NumberFormat("en-ZA", {
@@ -165,9 +170,13 @@ export function SitePotentialTab({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [migrationAttempted, setMigrationAttempted] = useState(false);
   const [strategyDraftReady, setStrategyDraftReady] = useState(false);
+  const [betaStatus, setBetaStatus] = useState<BetaCreditUiStatus | null>(null);
+  const [requestingBeta, setRequestingBeta] = useState(false);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
-  const generatedDesigns = vault.assets.filter((asset) => asset.asset_category === "generated_design");
+  const generatedDesigns = vault.assets.filter(
+    (asset) => asset.asset_category === "generated_design",
+  );
   const projectState = useSitePotentialProject(parcel.id, generatedDesigns);
   const project = projectState.project;
 
@@ -192,6 +201,12 @@ export function SitePotentialTab({
     (mode === "vacant_land" || mode === "renovation") &&
     !needsRenovationPhoto &&
     !needsRights;
+  const conceptsReady =
+    generatedDesigns.length >= SITE_POTENTIAL_PACK_SIZE ||
+    project?.generation_status === "concepts_ready" ||
+    project?.generation_status === "design_selected";
+  const betaCreditsRemaining = betaStatus?.creditsRemaining ?? 0;
+  const betaGenerationAllowed = BETA_UI_ENABLED && betaStatus?.enabled && betaCreditsRemaining > 0;
 
   const identityLine = useMemo(() => {
     const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
@@ -199,15 +214,42 @@ export function SitePotentialTab({
     return area ? `${erf} - ${area}` : erf;
   }, [parcel]);
 
+  const refreshBetaStatus = useCallback(async () => {
+    if (!BETA_UI_ENABLED) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      setBetaStatus({ enabled: true, creditsRemaining: 0, openRequestStatus: null });
+      return;
+    }
+    const response = await fetch("/api/site-potential/beta-status", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const payload = await response.json().catch(() => null);
+    if (response.ok && payload?.success) {
+      setBetaStatus({
+        enabled: Boolean(payload.enabled),
+        creditsRemaining: Number(payload.creditsRemaining ?? 0),
+        openRequestStatus: payload.openRequestStatus ?? null,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!vault.signedIn || migrationAttempted) return;
     setMigrationAttempted(true);
     void vault.migrateLocalAttachments().then((result) => {
       if (!result) return;
-      if (result.uploaded > 0) toast.success(`${result.uploaded} local file(s) moved to the Erf File Vault.`);
+      if (result.uploaded > 0) {
+        toast.success(`${result.uploaded} local file(s) moved to the Erf File Vault.`);
+      }
       if (result.failed > 0) toast.error("Some local files could not be moved to the vault.");
     });
   }, [migrationAttempted, vault]);
+
+  useEffect(() => {
+    void refreshBetaStatus();
+  }, [refreshBetaStatus]);
 
   useEffect(() => {
     onUpdateSite({
@@ -295,12 +337,18 @@ export function SitePotentialTab({
     }
     await saveProject({
       generation_status: "inputs_added",
-      mode: mode === "unknown" ? (category === "existing_house_photo" ? "renovation" : "vacant_land") : mode,
+      mode:
+        mode === "unknown"
+          ? category === "existing_house_photo"
+            ? "renovation"
+            : "vacant_land"
+          : mode,
     });
   }
 
   async function grantDevEntitlement() {
-    const current = project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
+    const current =
+      project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
     if (!current) return null;
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -322,6 +370,84 @@ export function SitePotentialTab({
     return payload.designPack as { id: string };
   }
 
+  async function requestBetaAccess() {
+    if (!BETA_UI_ENABLED) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      toast.error("Sign in to request private beta access.");
+      return;
+    }
+    setRequestingBeta(true);
+    try {
+      const response = await fetch("/api/site-potential/beta-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          parcelId: parcel.id,
+          requestedMode: mode,
+          reason: "Requested from the Site Potential private beta panel.",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Could not request beta access.");
+      }
+      toast.success(
+        payload.created ? "Beta access request sent." : "Beta access request already open.",
+      );
+      await refreshBetaStatus();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not request beta access.");
+    } finally {
+      setRequestingBeta(false);
+    }
+  }
+
+  async function generateWithBetaCredit() {
+    const current =
+      project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
+    if (!current) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      toast.error("Sign in to use a beta credit.");
+      return;
+    }
+    setGenerating(true);
+    await saveProject({ generation_status: "generating" });
+    try {
+      const response = await fetch("/api/site-potential/beta-redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ parcelId: parcel.id, siteProjectId: current.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Beta credit redemption failed.");
+      }
+      setBetaStatus((previous) => ({
+        enabled: previous?.enabled ?? true,
+        creditsRemaining: Number(payload.creditsRemaining ?? 0),
+        openRequestStatus: previous?.openRequestStatus ?? null,
+      }));
+      toast.success(
+        payload.durableJobQueued
+          ? "Beta concept generation queued."
+          : "Concept pack is already ready.",
+      );
+      await vault.refresh();
+      await projectState.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Beta credit redemption failed.";
+      setGenerationError(message);
+      await saveProject({ generation_status: "failed" });
+      toast.error(message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function generateConcepts() {
     setGenerationError(null);
     if (!GENERATION_UI_ENABLED) {
@@ -330,6 +456,14 @@ export function SitePotentialTab({
     }
     if (!readyToGenerate) {
       toast.error("Complete the required Site Potential inputs first.");
+      return;
+    }
+    if (BETA_UI_ENABLED) {
+      if (!betaGenerationAllowed) {
+        toast.error("No beta credits available.");
+        return;
+      }
+      await generateWithBetaCredit();
       return;
     }
     const currentPack = await grantDevEntitlement();
@@ -353,7 +487,11 @@ export function SitePotentialTab({
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Generation failed.");
       }
-      toast.success(`${payload.assets?.length ?? SITE_POTENTIAL_PACK_SIZE} concepts saved to the Erf File Vault.`);
+      toast.success(
+        payload.durableJobQueued
+          ? "Concept generation queued."
+          : `${payload.assets?.length ?? SITE_POTENTIAL_PACK_SIZE} concepts saved to the Erf File Vault.`,
+      );
       await vault.refresh();
       await projectState.refresh();
     } catch (error) {
@@ -369,7 +507,11 @@ export function SitePotentialTab({
   async function selectDesign(asset: ErfAsset | null) {
     await saveProject({
       selected_design_asset_id: asset?.id ?? null,
-      generation_status: asset ? "design_selected" : generatedDesigns.length ? "concepts_ready" : "not_started",
+      generation_status: asset
+        ? "design_selected"
+        : generatedDesigns.length
+          ? "concepts_ready"
+          : "not_started",
     });
   }
 
@@ -389,9 +531,22 @@ export function SitePotentialTab({
           : null,
       ].filter(Boolean),
     };
-    window.localStorage.setItem(`easyErf.sitePotential.strategyDraft.${parcel.id}`, JSON.stringify(draft));
+    window.localStorage.setItem(
+      `easyErf.sitePotential.strategyDraft.${parcel.id}`,
+      JSON.stringify(draft),
+    );
     setStrategyDraftReady(true);
     toast.success("Site Potential assumptions prepared. Review before applying in Strategy.");
+  }
+
+  function generationButtonLabel() {
+    if (conceptsReady) return "Concepts ready";
+    if (generating || project?.generation_status === "generating") return "Generating concepts";
+    if (BETA_UI_ENABLED) {
+      if (betaGenerationAllowed) return "Generate with beta credit";
+      return "No beta credits available";
+    }
+    return "Generate concepts";
   }
 
   return (
@@ -412,14 +567,28 @@ export function SitePotentialTab({
             </p>
           </div>
           <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-[12px] text-[#0D1B2A]/72">
-            <div className="font-semibold text-[#0D1B2A]">Six AI Property Concepts</div>
-            <div>
-              {formatPrice()} / {SITE_POTENTIAL_PACK_SIZE} concepts
+            <div className="font-semibold text-[#0D1B2A]">
+              {BETA_UI_ENABLED ? "AI Property Concepts - Private Beta" : "Six AI Property Concepts"}
             </div>
-            <div className="mt-1 text-[11px]">
-              Payment provider is not connected; use development entitlement only in enabled
-              environments.
-            </div>
+            {BETA_UI_ENABLED ? (
+              <>
+                <div>{SITE_POTENTIAL_PACK_SIZE} concepts included per beta credit</div>
+                <div className="mt-1 text-[11px]">
+                  {betaCreditsRemaining} beta credit{betaCreditsRemaining === 1 ? "" : "s"}{" "}
+                  remaining
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  {formatPrice()} / {SITE_POTENTIAL_PACK_SIZE} concepts
+                </div>
+                <div className="mt-1 text-[11px]">
+                  Payment provider is not connected; use development entitlement only in enabled
+                  environments.
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -431,8 +600,8 @@ export function SitePotentialTab({
       )}
       {vault.migration && (vault.migration.uploaded > 0 || vault.migration.failed > 0) && (
         <Notice tone={vault.migration.failed ? "amber" : "green"}>
-          Local file migration: {vault.migration.uploaded} uploaded, {vault.migration.skipped} already
-          in cloud, {vault.migration.failed} failed.
+          Local file migration: {vault.migration.uploaded} uploaded, {vault.migration.skipped}{" "}
+          already in cloud, {vault.migration.failed} failed.
         </Notice>
       )}
       {projectState.error && <Notice tone="amber">{projectState.error}</Notice>}
@@ -513,7 +682,9 @@ export function SitePotentialTab({
         <UploadPanel
           title="Architectural plans"
           body="Upload architectural plans separately so Easy Erf does not mistake them for topographical surveys."
-          count={vault.assets.filter((asset) => asset.asset_category === "architectural_plan").length}
+          count={
+            vault.assets.filter((asset) => asset.asset_category === "architectural_plan").length
+          }
           inputRef={planInputRef}
           accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,application/pdf,image/png,image/jpeg,image/tiff,image/webp"
           buttonLabel="Upload plans"
@@ -523,7 +694,9 @@ export function SitePotentialTab({
         <UploadPanel
           title="Inspiration images"
           body="Upload visual references as inspiration only. They are not treated as official site evidence."
-          count={vault.assets.filter((asset) => asset.asset_category === "inspiration_image").length}
+          count={
+            vault.assets.filter((asset) => asset.asset_category === "inspiration_image").length
+          }
           inputRef={inspirationInputRef}
           accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
           buttonLabel="Upload inspiration"
@@ -570,7 +743,9 @@ export function SitePotentialTab({
           <TextField
             label="Design brief"
             value={project?.design_brief ?? ""}
-            onChange={(value) => void saveProject({ design_brief: value, generation_status: "inputs_added" })}
+            onChange={(value) =>
+              void saveProject({ design_brief: value, generation_status: "inputs_added" })
+            }
             placeholder="Example: compact coastal family home with wind-protected courtyard"
           />
           <SelectField
@@ -616,42 +791,83 @@ export function SitePotentialTab({
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#FF6A00]" />
               <h3 className="text-[16px] font-semibold tracking-tight text-[#0D1B2A]">
-                Generate {SITE_POTENTIAL_PACK_SIZE} AI Property Concepts
+                {BETA_UI_ENABLED
+                  ? "AI Property Concepts - Private Beta"
+                  : `Generate ${SITE_POTENTIAL_PACK_SIZE} AI Property Concepts`}
               </h3>
             </div>
             <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#4A5A6A]">
-              Concept generation is server-gated. When enabled, the server verifies entitlement,
-              uses permitted uploaded reference photos where required, saves each successful concept
-              to the Erf File Vault, and lets you choose exactly one concept for the Easy Erf Report.
+              {BETA_UI_ENABLED
+                ? "Easy Erf is currently testing AI property visualisations with selected users. Beta outputs are concept studies, not architectural plans, quotations or municipal approvals."
+                : "Concept generation is server-gated. When enabled, the server verifies entitlement, uses permitted uploaded reference photos where required, saves each successful concept to the Erf File Vault, and lets you choose exactly one concept for the Easy Erf Report."}
             </p>
             <p className="mt-2 text-[11.5px] text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
           </div>
           <div className="flex flex-col items-start gap-2 lg:items-end">
-            <div className="text-[26px] font-bold text-[#0D1B2A]">{formatPrice()}</div>
+            <div className="text-[26px] font-bold text-[#0D1B2A]">
+              {BETA_UI_ENABLED
+                ? `${betaCreditsRemaining} credit${betaCreditsRemaining === 1 ? "" : "s"}`
+                : formatPrice()}
+            </div>
             <button
               type="button"
-              disabled={!GENERATION_UI_ENABLED || !readyToGenerate || generating || saving}
+              disabled={
+                !GENERATION_UI_ENABLED ||
+                !readyToGenerate ||
+                generating ||
+                saving ||
+                conceptsReady ||
+                (BETA_UI_ENABLED && !betaGenerationAllowed)
+              }
               onClick={() => void generateConcepts()}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold",
-                !GENERATION_UI_ENABLED || !readyToGenerate || generating
+                !GENERATION_UI_ENABLED ||
+                  !readyToGenerate ||
+                  generating ||
+                  conceptsReady ||
+                  (BETA_UI_ENABLED && !betaGenerationAllowed)
                   ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                   : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
               )}
             >
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Generate concepts
+              {generating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {generationButtonLabel()}
             </button>
+            {BETA_UI_ENABLED && !betaGenerationAllowed && !conceptsReady && (
+              <button
+                type="button"
+                disabled={requestingBeta || betaStatus?.openRequestStatus === "open"}
+                onClick={() => void requestBetaAccess()}
+                className="rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {betaStatus?.openRequestStatus === "open"
+                  ? "Beta access requested"
+                  : requestingBeta
+                    ? "Requesting beta access"
+                    : "Request beta access"}
+              </button>
+            )}
             <span className="text-[11px] text-[#64748B]">
               {needsRenovationPhoto
                 ? "Needs a permitted property photo"
                 : needsRights
                   ? "Needs image-rights confirmation"
-                  : !GENERATION_UI_ENABLED
-                    ? "Concept generation is unavailable until secure entitlement is configured"
-                    : !project?.id
-                      ? "Choose a site state first"
-                      : "Ready when entitlement and OpenAI server key are configured"}
+                  : BETA_UI_ENABLED && !betaStatus?.enabled
+                    ? "Private beta is disabled in this environment"
+                    : BETA_UI_ENABLED && !betaGenerationAllowed && !conceptsReady
+                      ? "No beta credits available"
+                      : !GENERATION_UI_ENABLED
+                        ? "Concept generation is unavailable until secure entitlement is configured"
+                        : !project?.id
+                          ? "Choose a site state first"
+                          : BETA_UI_ENABLED
+                            ? "Ready to use one beta credit"
+                            : "Ready when entitlement and OpenAI server key are configured"}
             </span>
           </div>
         </div>
@@ -682,8 +898,8 @@ export function SitePotentialTab({
           </div>
         ) : (
           <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
-            No generated concepts saved yet. Generated images will appear here only after the
-            server stores them in the Erf File Vault.
+            No generated concepts saved yet. Generated images will appear here only after the server
+            stores them in the Erf File Vault.
           </p>
         )}
       </section>
