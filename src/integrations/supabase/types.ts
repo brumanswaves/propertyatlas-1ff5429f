@@ -103,13 +103,17 @@ export type Database = {
       }
       erf_design_packs: {
         Row: {
+          claimed_at: string | null
           completed_count: number
           created_at: string
           entitlement_status: string
           failure_code: string | null
           failure_message: string | null
+          heartbeat_at: string | null
           id: string
           idempotency_key: string | null
+          lease_expires_at: string | null
+          next_attempt_at: string
           parcel_id: string
           payment_provider: string | null
           payment_reference: string | null
@@ -119,15 +123,20 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          worker_id: string | null
         }
         Insert: {
+          claimed_at?: string | null
           completed_count?: number
           created_at?: string
           entitlement_status?: string
           failure_code?: string | null
           failure_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           idempotency_key?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string
           parcel_id: string
           payment_provider?: string | null
           payment_reference?: string | null
@@ -137,15 +146,20 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          worker_id?: string | null
         }
         Update: {
+          claimed_at?: string | null
           completed_count?: number
           created_at?: string
           entitlement_status?: string
           failure_code?: string | null
           failure_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           idempotency_key?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string
           parcel_id?: string
           payment_provider?: string | null
           payment_reference?: string | null
@@ -155,48 +169,64 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          worker_id?: string | null
         }
         Relationships: []
       }
       erf_design_pack_items: {
         Row: {
           attempt_count: number
+          claimed_at: string | null
           created_at: string
           design_pack_id: string
           failure_code: string | null
           failure_message: string | null
           generated_asset_id: string | null
+          heartbeat_at: string | null
           id: string
+          lease_expires_at: string | null
+          next_attempt_at: string
           option_index: number
           status: string
           updated_at: string
           user_id: string
+          worker_id: string | null
         }
         Insert: {
           attempt_count?: number
+          claimed_at?: string | null
           created_at?: string
           design_pack_id: string
           failure_code?: string | null
           failure_message?: string | null
           generated_asset_id?: string | null
+          heartbeat_at?: string | null
           id?: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
           option_index: number
           status?: string
           updated_at?: string
           user_id: string
+          worker_id?: string | null
         }
         Update: {
           attempt_count?: number
+          claimed_at?: string | null
           created_at?: string
           design_pack_id?: string
           failure_code?: string | null
           failure_message?: string | null
           generated_asset_id?: string | null
+          heartbeat_at?: string | null
           id?: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
           option_index?: number
           status?: string
           updated_at?: string
           user_id?: string
+          worker_id?: string | null
         }
         Relationships: []
       }

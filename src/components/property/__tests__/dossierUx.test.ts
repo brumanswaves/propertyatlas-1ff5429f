@@ -629,10 +629,16 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotential).toContain('uploadFiles(files, "other")');
     expect(sitePotential).not.toContain("Street View");
     expect(read("src/routes/api/site-potential.generate.ts")).toContain(
-      "editImageBase64WithOpenAI(prompt, reference)",
+      "queueSitePotentialGeneration",
     );
-    expect(read("src/routes/api/site-potential.generate.ts")).toContain(
+    expect(read("src/routes/api/site-potential.generate.ts")).not.toContain(
+      "requestImageGenerationWithOpenAI",
+    );
+    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain(
       "downloadReferenceAsset",
+    );
+    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain(
+      "primaryConceptAssetId",
     );
     expect(dossier).toContain("Uploaded files and source documents");
     expect(dossier).toContain("groupErfAssets");

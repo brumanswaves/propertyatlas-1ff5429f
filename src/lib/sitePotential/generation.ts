@@ -56,36 +56,89 @@ export function openAiImageModelFromEnv() {
   return process.env.OPENAI_IMAGE_MODEL || SITE_POTENTIAL_DEFAULT_IMAGE_MODEL;
 }
 
-export async function generateImageBase64WithOpenAI(prompt: string) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
-  }
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: openAiImageModelFromEnv(),
-      prompt,
-      size: process.env.OPENAI_IMAGE_SIZE || "1024x1024",
-      response_format: "b64_json",
-    }),
-  });
+export interface OpenAiImageResult {
+  b64: string;
+  requestId: string | null;
+}
+
+function openAiOutputFormat() {
+  const configured = String(process.env.OPENAI_IMAGE_OUTPUT_FORMAT ?? "png").toLowerCase();
+  return configured === "jpeg" || configured === "webp" ? configured : "png";
+}
+
+function openAiImageSize() {
+  return process.env.OPENAI_IMAGE_SIZE || "1024x1024";
+}
+
+function isTransientOpenAiStatus(status: number) {
+  return status === 429 || status >= 500;
+}
+
+function retryAfterMs(response: Response, attempt: number) {
+  const retryAfter = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;
+  return Math.min(8000, 1000 * 2 ** attempt);
+}
+
+async function parseOpenAiImageResponse(response: Response, label: string) {
   const payload = (await response.json().catch(() => null)) as {
     data?: Array<{ b64_json?: string }>;
     error?: { message?: string };
   } | null;
   if (!response.ok) {
-    throw new Error(
-      payload?.error?.message || `OpenAI image generation failed (${response.status}).`,
-    );
+    throw new Error(payload?.error?.message || `${label} failed (${response.status}).`);
   }
   const encoded = payload?.data?.[0]?.b64_json;
-  if (!encoded) throw new Error("OpenAI response did not include an image.");
-  return encoded;
+  if (!encoded) throw new Error(`${label} response did not include an image.`);
+  return {
+    b64: encoded,
+    requestId: response.headers.get("x-request-id"),
+  };
+}
+
+async function withTransientOpenAiRetry(
+  request: () => Promise<Response>,
+  label: string,
+  maxAttempts = 3,
+): Promise<OpenAiImageResult> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const response = await request();
+    if (response.ok || !isTransientOpenAiStatus(response.status) || attempt === maxAttempts - 1) {
+      return parseOpenAiImageResponse(response, label);
+    }
+    lastError = new Error(`${label} transient failure (${response.status}).`);
+    await new Promise((resolve) => setTimeout(resolve, retryAfterMs(response, attempt)));
+  }
+  throw lastError instanceof Error ? lastError : new Error(`${label} failed.`);
+}
+
+export async function requestImageGenerationWithOpenAI(prompt: string) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+  return withTransientOpenAiRetry(
+    () =>
+      fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: openAiImageModelFromEnv(),
+          prompt,
+          size: openAiImageSize(),
+          output_format: openAiOutputFormat(),
+        }),
+      }),
+    "OpenAI image generation",
+  );
+}
+
+export async function generateImageBase64WithOpenAI(prompt: string) {
+  return (await requestImageGenerationWithOpenAI(prompt)).b64;
 }
 
 export interface ImageEditReference {
@@ -94,38 +147,61 @@ export interface ImageEditReference {
   fileName: string;
 }
 
-export async function editImageBase64WithOpenAI(prompt: string, reference: ImageEditReference) {
+const SUPPORTED_REFERENCE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+export function validateImageEditReferences(references: ImageEditReference[]) {
+  if (!references.length) throw new Error("At least one image reference is required.");
+  for (const reference of references) {
+    const mimeType = reference.mimeType.toLowerCase();
+    if (!SUPPORTED_REFERENCE_MIME_TYPES.has(mimeType)) {
+      throw new Error(`Unsupported image reference type: ${reference.mimeType}`);
+    }
+    if (reference.bytes.byteLength > 25 * 1024 * 1024) {
+      throw new Error("Image reference exceeds the supported input size.");
+    }
+  }
+}
+
+export async function requestImageEditWithOpenAI(
+  prompt: string,
+  references: ImageEditReference | ImageEditReference[],
+) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
+  const referenceList = Array.isArray(references) ? references : [references];
+  validateImageEditReferences(referenceList);
   const form = new FormData();
   form.append("model", openAiImageModelFromEnv());
   form.append("prompt", prompt);
-  form.append("size", process.env.OPENAI_IMAGE_SIZE || "1024x1024");
-  form.append("response_format", "b64_json");
-  form.append(
-    "image",
-    new Blob([reference.bytes], { type: reference.mimeType || "image/png" }),
-    reference.fileName || "reference-image.png",
-  );
-  const response = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: form,
+  form.append("size", openAiImageSize());
+  form.append("output_format", openAiOutputFormat());
+  referenceList.forEach((reference, index) => {
+    form.append(
+      "image[]",
+      new Blob([reference.bytes], { type: reference.mimeType || "image/png" }),
+      reference.fileName || `reference-image-${index + 1}.png`,
+    );
   });
-  const payload = (await response.json().catch(() => null)) as {
-    data?: Array<{ b64_json?: string }>;
-    error?: { message?: string };
-  } | null;
-  if (!response.ok) {
-    throw new Error(payload?.error?.message || `OpenAI image edit failed (${response.status}).`);
-  }
-  const encoded = payload?.data?.[0]?.b64_json;
-  if (!encoded) throw new Error("OpenAI image edit response did not include an image.");
-  return encoded;
+  return withTransientOpenAiRetry(
+    () =>
+      fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+      }),
+    "OpenAI image edit",
+  );
+}
+
+export async function editImageBase64WithOpenAI(
+  prompt: string,
+  references: ImageEditReference | ImageEditReference[],
+) {
+  return (await requestImageEditWithOpenAI(prompt, references)).b64;
 }
 
 export function base64ToBlob(base64: string, mimeType = "image/png") {

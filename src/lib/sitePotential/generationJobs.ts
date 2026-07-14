@@ -9,6 +9,9 @@ export interface DesignPackItemLike {
   status: DesignPackItemStatus;
   generated_asset_id?: string | null;
   attempt_count?: number | null;
+  lease_expires_at?: string | null;
+  next_attempt_at?: string | null;
+  worker_id?: string | null;
 }
 
 export interface SourceAssetLike {
@@ -27,6 +30,8 @@ export const DESIGN_PACK_OPTION_INDEXES = Array.from(
 );
 
 export const SITE_POTENTIAL_PROMPT_VERSION = "site-potential-2026-07-secure-v2";
+export const SITE_POTENTIAL_LEASE_MS = 10 * 60 * 1000;
+export const SITE_POTENTIAL_MAX_ATTEMPTS = 3;
 
 export function designPackItemRows(input: {
   userId: string;
@@ -48,6 +53,61 @@ export function retryableDesignPackItems(items: DesignPackItemLike[]) {
       (item) => !item.generated_asset_id && (item.status === "queued" || item.status === "failed"),
     )
     .sort((a, b) => a.option_index - b.option_index);
+}
+
+export function leaseExpiresAt(now = new Date(), leaseMs = SITE_POTENTIAL_LEASE_MS) {
+  return new Date(now.getTime() + leaseMs).toISOString();
+}
+
+export function isLeaseExpired(value: string | null | undefined, now = new Date()) {
+  if (!value) return false;
+  const expiresAt = new Date(value).getTime();
+  return Number.isFinite(expiresAt) && expiresAt <= now.getTime();
+}
+
+export function nextAttemptAt(input: {
+  attemptCount: number;
+  now?: Date;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+}) {
+  const now = input.now ?? new Date();
+  const baseDelayMs = input.baseDelayMs ?? 30_000;
+  const maxDelayMs = input.maxDelayMs ?? 15 * 60_000;
+  const exponent = Math.max(0, input.attemptCount);
+  const delay = Math.min(maxDelayMs, baseDelayMs * 2 ** exponent);
+  return new Date(now.getTime() + delay).toISOString();
+}
+
+export function isPermanentGenerationFailure(code: string | null | undefined) {
+  return (
+    code === "INVALID_INPUT" || code === "MODERATION_BLOCKED" || code === "SOURCE_IMAGE_INVALID"
+  );
+}
+
+export function recoverStaleDesignPackItems(
+  items: DesignPackItemLike[],
+  now = new Date(),
+  maxAttempts = SITE_POTENTIAL_MAX_ATTEMPTS,
+) {
+  return items.map((item) => {
+    if (item.status !== "generating" || !isLeaseExpired(item.lease_expires_at, now)) return item;
+    if ((item.attempt_count ?? 0) >= maxAttempts) {
+      return {
+        ...item,
+        status: "failed" as DesignPackItemStatus,
+        worker_id: null,
+        lease_expires_at: null,
+      };
+    }
+    return {
+      ...item,
+      status: "queued" as DesignPackItemStatus,
+      worker_id: null,
+      lease_expires_at: null,
+      next_attempt_at: now.toISOString(),
+    };
+  });
 }
 
 export function designPackStatusFromItems(items: DesignPackItemLike[]) {
@@ -94,9 +154,12 @@ export function buildGeneratedDesignMetadata(input: {
   optionIndex: number;
   siteProjectId: string;
   sourceAssetIds: string[];
+  originalSourceAssetIds?: string[];
+  primaryConceptAssetId?: string | null;
   model: string;
   prompt: string;
   promptVersion?: string;
+  openAiRequestId?: string | null;
 }) {
   return {
     designPackId: input.designPackId,
@@ -104,8 +167,11 @@ export function buildGeneratedDesignMetadata(input: {
     optionIndex: input.optionIndex,
     siteProjectId: input.siteProjectId,
     sourceAssetIds: input.sourceAssetIds,
+    originalSourceAssetIds: input.originalSourceAssetIds ?? input.sourceAssetIds,
+    primaryConceptAssetId: input.primaryConceptAssetId ?? null,
     model: input.model,
     promptVersion: input.promptVersion ?? SITE_POTENTIAL_PROMPT_VERSION,
+    openAiRequestId: input.openAiRequestId ?? null,
     disclaimer: SITE_POTENTIAL_DISCLAIMER,
     prompt: input.prompt,
   };
