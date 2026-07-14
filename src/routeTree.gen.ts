@@ -43,6 +43,7 @@ import { Route as ApiSitePotentialBetaRequestRouteImport } from './routes/api/si
 import { Route as ApiSitePotentialBetaRedeemRouteImport } from './routes/api/site-potential.beta-redeem'
 import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site-potential.beta-grant'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
+import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
 
 const WhyRoute = WhyRouteImport.update({
   id: '/why',
@@ -221,6 +222,12 @@ const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   path: '/api/listings/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSitePotentialProcessRoute =
+  ApiPublicSitePotentialProcessRouteImport.update({
+    id: '/api/public/site-potential/process',
+    path: '/api/public/site-potential/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -293,6 +301,7 @@ export interface FileRoutesByTo {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -330,6 +339,7 @@ export interface FileRoutesById {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/public/site-potential/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/public/site-potential/process'
   id:
     | '__root__'
     | '/'
@@ -440,6 +452,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/public/site-potential/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -475,6 +488,7 @@ export interface RootRouteChildren {
   ApiSitePotentialGenerateRoute: typeof ApiSitePotentialGenerateRoute
   ApiSitePotentialPackStatusRoute: typeof ApiSitePotentialPackStatusRoute
   ApiSitePotentialProcessRoute: typeof ApiSitePotentialProcessRoute
+  ApiPublicSitePotentialProcessRoute: typeof ApiPublicSitePotentialProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -717,6 +731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiListingsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/site-potential/process': {
+      id: '/api/public/site-potential/process'
+      path: '/api/public/site-potential/process'
+      fullPath: '/api/public/site-potential/process'
+      preLoaderRoute: typeof ApiPublicSitePotentialProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -765,6 +786,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSitePotentialGenerateRoute: ApiSitePotentialGenerateRoute,
   ApiSitePotentialPackStatusRoute: ApiSitePotentialPackStatusRoute,
   ApiSitePotentialProcessRoute: ApiSitePotentialProcessRoute,
+  ApiPublicSitePotentialProcessRoute: ApiPublicSitePotentialProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

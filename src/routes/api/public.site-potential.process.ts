@@ -4,7 +4,7 @@ import {
   SITE_POTENTIAL_WORKER_CORS_HEADERS,
 } from "@/lib/sitePotential/processWorkerRequest";
 
-export const Route = createFileRoute("/api/site-potential/process")({
+export const Route = createFileRoute("/api/public/site-potential/process")({
   server: {
     handlers: {
       OPTIONS: async () =>

@@ -77,6 +77,57 @@ describe("Site Potential production-blocker repair", () => {
     );
   });
 
+  it("keeps generated Supabase types aligned with Site Potential and Erf File Vault migrations", () => {
+    const types = read("src/integrations/supabase/types.ts");
+    const requiredTables = [
+      "erf_asset_events",
+      "erf_assets",
+      "erf_design_packs",
+      "erf_design_pack_items",
+      "erf_site_project_assets",
+      "erf_site_projects",
+      "site_potential_beta_access_requests",
+      "site_potential_beta_credits",
+    ];
+    const requiredFunctions = [
+      "claim_next_site_potential_item",
+      "consume_site_potential_beta_credit",
+      "finalize_site_potential_item",
+      "recover_stale_site_potential_jobs",
+      "renew_site_potential_item_lease",
+    ];
+
+    for (const table of requiredTables) {
+      expect(types).toContain(`${table}: {`);
+    }
+    for (const fn of requiredFunctions) {
+      expect(types).toContain(`${fn}: {`);
+    }
+    expect(types).toContain('Returns: Database["public"]["Tables"]["erf_assets"]["Row"]');
+    expect(types).toContain("p_source_label?: string");
+  });
+
+  it("keeps public and private worker routes on the same shared handler", () => {
+    const privateRoute = read("src/routes/api/site-potential.process.ts");
+    const publicRoute = read("src/routes/api/public.site-potential.process.ts");
+
+    expect(privateRoute).toContain('createFileRoute("/api/site-potential/process")');
+    expect(publicRoute).toContain('createFileRoute("/api/public/site-potential/process")');
+    expect(privateRoute).toContain("@/lib/sitePotential/processWorkerRequest");
+    expect(publicRoute).toContain("@/lib/sitePotential/processWorkerRequest");
+    expect(privateRoute).toContain("handleProcessSitePotentialRequest(request)");
+    expect(publicRoute).toContain("handleProcessSitePotentialRequest(request)");
+    expect(privateRoute).not.toContain("createServiceRoleSupabaseClient");
+    expect(publicRoute).not.toContain("createServiceRoleSupabaseClient");
+  });
+
+  it("exposes the public worker route in the generated route tree", () => {
+    const routeTree = read("src/routeTree.gen.ts");
+
+    expect(routeTree).toContain("'/api/site-potential/process'");
+    expect(routeTree).toContain("'/api/public/site-potential/process'");
+  });
+
   it("removes browser write policies from design packs and adds trusted job items", () => {
     const migration = read(
       "supabase/migrations/20260713100000_repair_site_potential_security_jobs.sql",

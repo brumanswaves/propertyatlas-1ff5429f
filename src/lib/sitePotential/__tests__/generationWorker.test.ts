@@ -478,9 +478,11 @@ describe("durable Site Potential generation worker", () => {
 
   it("keeps process-route errors sanitized", () => {
     const route = read("src/routes/api/site-potential.process.ts");
+    const handler = read("src/lib/sitePotential/processWorkerRequest.ts");
 
-    expect(route).toContain("publicWorkerError");
-    expect(route).toContain("sanitizedGenerationError");
-    expect(route).not.toContain("error instanceof Error ? error.message");
+    expect(route).toContain("handleProcessSitePotentialRequest(request)");
+    expect(handler).toContain("publicWorkerError");
+    expect(handler).toContain("sanitizedGenerationError");
+    expect(handler).not.toContain("error instanceof Error ? error.message");
   });
 });
