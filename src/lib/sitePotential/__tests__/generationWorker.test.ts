@@ -87,6 +87,10 @@ function makeStore(overrides: Partial<SitePotentialGenerationStore> = {}) {
     async findPrimaryConceptReference() {
       return null;
     },
+    async renewLease() {
+      events.push("renew");
+      return true;
+    },
     async downloadReferenceAsset(asset) {
       events.push(`download:${asset.id}`);
       return reference(asset.id);
@@ -329,6 +333,94 @@ describe("durable Site Potential generation worker", () => {
     }
   });
 
+  it("heartbeats while OpenAI generation is pending", async () => {
+    const { store, events } = makeStore();
+
+    await processSitePotentialGenerationQueue({
+      store,
+      workerId: "worker-1",
+      maxItems: 1,
+      leaseRenewalMs: 1,
+      imageClient: {
+        async generate() {
+          return imageResult();
+        },
+        async edit() {
+          await new Promise((resolve) => setTimeout(resolve, 8));
+          return imageResult();
+        },
+      },
+    });
+
+    expect(events.filter((event) => event === "renew").length).toBeGreaterThanOrEqual(4);
+    expect(events).toContain("finalize:1");
+  });
+
+  it("does not make a fourth OpenAI call when max-attempt claims are exhausted", async () => {
+    let claims = 0;
+    const { store } = makeStore({
+      async claimNextItem() {
+        claims += 1;
+        return claims <= 3 ? { ...claim(1), attemptCount: claims } : null;
+      },
+      async loadContext() {
+        throw new Error("simulated worker crash after claim");
+      },
+    });
+    let openAiCalls = 0;
+
+    const result = await processSitePotentialGenerationQueue({
+      store,
+      workerId: "worker-1",
+      maxItems: 6,
+      imageClient: {
+        async generate() {
+          openAiCalls += 1;
+          return imageResult();
+        },
+        async edit() {
+          openAiCalls += 1;
+          return imageResult();
+        },
+      },
+    });
+
+    expect(result).toMatchObject({ claimed: 3, completed: 0, failed: 3 });
+    expect(openAiCalls).toBe(0);
+  });
+
+  it("removes uploaded storage and avoids finalisation after lease ownership is lost", async () => {
+    let renewals = 0;
+    const { store, events } = makeStore({
+      async renewLease() {
+        renewals += 1;
+        events.push(`renew:${renewals}`);
+        return renewals < 4;
+      },
+      async finalizeGeneratedItem() {
+        throw new Error("finalise should not run after losing lease");
+      },
+    });
+
+    const result = await processSitePotentialGenerationQueue({
+      store,
+      workerId: "worker-1",
+      maxItems: 1,
+      imageClient: {
+        async generate() {
+          return imageResult();
+        },
+        async edit() {
+          return imageResult();
+        },
+      },
+    });
+
+    expect(result).toMatchObject({ claimed: 1, completed: 0, failed: 1 });
+    expect(events).toContain("remove:generated/1.png");
+    expect(events.some((event) => event.startsWith("failed:"))).toBe(false);
+  });
+
   it("does not process the same slot when two workers compete for one claim", async () => {
     let claimed = false;
     const finalizedAssets: string[] = [];
@@ -382,5 +474,13 @@ describe("durable Site Potential generation worker", () => {
     expect(route).not.toContain("requestImageEditWithOpenAI");
     expect(route).not.toContain("processSitePotentialGenerationQueue");
     expect(route).not.toMatch(/for\s*\(\s*const\s+item\s+of\s+retry/i);
+  });
+
+  it("keeps process-route errors sanitized", () => {
+    const route = read("src/routes/api/site-potential.process.ts");
+
+    expect(route).toContain("publicWorkerError");
+    expect(route).toContain("sanitizedGenerationError");
+    expect(route).not.toContain("error instanceof Error ? error.message");
   });
 });

@@ -31,6 +31,8 @@ export const DESIGN_PACK_OPTION_INDEXES = Array.from(
 
 export const SITE_POTENTIAL_PROMPT_VERSION = "site-potential-2026-07-secure-v2";
 export const SITE_POTENTIAL_LEASE_MS = 10 * 60 * 1000;
+export const SITE_POTENTIAL_LEASE_RENEWAL_MS = 60 * 1000;
+export const SITE_POTENTIAL_OPENAI_TIMEOUT_MS = SITE_POTENTIAL_LEASE_MS - 60 * 1000;
 export const SITE_POTENTIAL_MAX_ATTEMPTS = 3;
 
 export function designPackItemRows(input: {

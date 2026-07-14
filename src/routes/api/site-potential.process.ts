@@ -4,6 +4,7 @@ import {
   openAiSitePotentialImageClient,
 } from "@/lib/sitePotential/generationSupabaseWorker";
 import { processSitePotentialGenerationQueue } from "@/lib/sitePotential/generationWorker";
+import { sanitizedGenerationError } from "@/lib/sitePotential/generationJobs";
 import { createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 
 const CORS_HEADERS = {
@@ -42,14 +43,23 @@ export async function handleProcessSitePotentialRequest(request: Request) {
     });
     return json({ success: true, result }, 200);
   } catch (error) {
+    console.error("Site Potential worker failed", error);
     return json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Site Potential worker failed.",
+        error: publicWorkerError(error),
       },
       500,
     );
   }
+}
+
+function publicWorkerError(error: unknown) {
+  const sanitized = sanitizedGenerationError(error);
+  if (/sql|postgres|supabase|service[_-]?role|authorization|secret|api[_-]?key/i.test(sanitized)) {
+    return "Site Potential worker failed. Check private worker logs for details.";
+  }
+  return sanitized || "Site Potential worker failed. Check private worker logs for details.";
 }
 
 function isAuthorizedWorker(request: Request) {

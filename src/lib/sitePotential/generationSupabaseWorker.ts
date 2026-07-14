@@ -241,6 +241,20 @@ export function createSupabaseGenerationStore(
       if (error) throw new Error(error.message);
       return data ? (data as AssetRow satisfies StoredReferenceAsset) : null;
     },
+    async renewLease(claim, now) {
+      const { data, error } = await rpc<boolean>(
+        serviceSupabase,
+        "renew_site_potential_item_lease",
+        {
+          p_item_id: claim.itemId,
+          p_worker_id: claim.workerId,
+          p_lease_expires_at: leaseExpiresAt(now),
+          p_now: now.toISOString(),
+        },
+      );
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
     async downloadReferenceAsset(asset) {
       const { data, error } = await serviceSupabase.storage
         .from(asset.storage_bucket || ERF_FILE_BUCKET)
@@ -323,7 +337,6 @@ export function createSupabaseGenerationStore(
         .from("erf_design_pack_items")
         .update({
           status: "failed",
-          attempt_count: input.claim.attemptCount + 1,
           worker_id: null,
           lease_expires_at: null,
           failure_code: input.code,

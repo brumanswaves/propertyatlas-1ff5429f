@@ -16,6 +16,67 @@ function read(path: string) {
 }
 
 describe("Site Potential production-blocker repair", () => {
+  it("locks worker-only RPC functions to service_role with exact signatures", () => {
+    const migration = read(
+      "supabase/migrations/20260714103000_lock_site_potential_worker_rpc_leases.sql",
+    );
+
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.recover_stale_site_potential_jobs(timestamptz, integer)\nFROM PUBLIC, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.claim_next_site_potential_item(text, timestamptz, timestamptz, integer)\nFROM PUBLIC, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.renew_site_potential_item_lease(uuid, text, timestamptz, timestamptz)\nFROM PUBLIC, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.finalize_site_potential_item(text, uuid, uuid, uuid, text, uuid, text, text, text, text, text, integer, jsonb, text)\nFROM PUBLIC, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.recover_stale_site_potential_jobs(timestamptz, integer)\nTO service_role",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.claim_next_site_potential_item(text, timestamptz, timestamptz, integer)\nTO service_role",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.renew_site_potential_item_lease(uuid, text, timestamptz, timestamptz)\nTO service_role",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.finalize_site_potential_item(text, uuid, uuid, uuid, text, uuid, text, text, text, text, text, integer, jsonb, text)\nTO service_role",
+    );
+  });
+
+  it("counts claimed attempts and blocks finalisation after lease ownership is lost", () => {
+    const migration = read(
+      "supabase/migrations/20260714103000_lock_site_potential_worker_rpc_leases.sql",
+    );
+
+    expect(migration).toContain("attempt_count = attempt_count + 1");
+    expect(migration).toContain("RETURNING attempt_count INTO v_attempt_count");
+    expect(migration).toContain("AND item.attempt_count < p_max_attempts");
+    expect(migration).toContain("WHEN attempt_count >= p_max_attempts THEN 'failed'");
+    expect(migration).toContain(
+      "CREATE OR REPLACE FUNCTION public.renew_site_potential_item_lease",
+    );
+    expect(migration).toContain("AND item.worker_id = p_worker_id");
+    expect(migration).toContain("AND item.lease_expires_at > p_now");
+    expect(migration).toContain("OR item_row.lease_expires_at <= now()");
+  });
+
+  it("documents the trusted scheduler required for durable generation", () => {
+    const doc = read("docs/SITE_POTENTIAL_WORKER_DEPLOYMENT.md");
+
+    expect(doc).toContain("POST /api/site-potential/process");
+    expect(doc).toContain("SITE_POTENTIAL_WORKER_SECRET");
+    expect(doc).toContain(
+      "`SITE_POTENTIAL_GENERATION_ENABLED=true` only after staging verification passes",
+    );
+    expect(doc).toContain(
+      "Never expose the worker secret, service-role key, or OpenAI key to the browser.",
+    );
+  });
+
   it("removes browser write policies from design packs and adds trusted job items", () => {
     const migration = read(
       "supabase/migrations/20260713100000_repair_site_potential_security_jobs.sql",

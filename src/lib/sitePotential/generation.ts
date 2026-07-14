@@ -61,6 +61,11 @@ export interface OpenAiImageResult {
   requestId: string | null;
 }
 
+export interface OpenAiImageRequestOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
 function openAiOutputFormat() {
   const configured = String(process.env.OPENAI_IMAGE_OUTPUT_FORMAT ?? "png").toLowerCase();
   return configured === "jpeg" || configured === "webp" ? configured : "png";
@@ -99,41 +104,105 @@ async function parseOpenAiImageResponse(response: Response, label: string) {
 async function withTransientOpenAiRetry(
   request: () => Promise<Response>,
   label: string,
+  options: OpenAiImageRequestOptions = {},
   maxAttempts = 3,
 ): Promise<OpenAiImageResult> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const response = await request();
+    let response: Response;
+    try {
+      response = await request();
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw new Error(`${label} timed out before the worker lease expired.`);
+      }
+      throw error;
+    }
     if (response.ok || !isTransientOpenAiStatus(response.status) || attempt === maxAttempts - 1) {
       return parseOpenAiImageResponse(response, label);
     }
     lastError = new Error(`${label} transient failure (${response.status}).`);
-    await new Promise((resolve) => setTimeout(resolve, retryAfterMs(response, attempt)));
+    await waitForRetry(retryAfterMs(response, attempt), options.signal);
   }
   throw lastError instanceof Error ? lastError : new Error(`${label} failed.`);
 }
 
-export async function requestImageGenerationWithOpenAI(prompt: string) {
+function isAbortError(error: unknown) {
+  return error instanceof DOMException
+    ? error.name === "AbortError"
+    : error instanceof Error && error.name === "AbortError";
+}
+
+function waitForRetry(ms: number, signal?: AbortSignal) {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(resolve, ms);
+    const abort = () => {
+      clearTimeout(timeout);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
+function requestSignal(options: OpenAiImageRequestOptions = {}) {
+  const timeoutMs = options.timeoutMs ?? 9 * 60 * 1000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const abort = () => controller.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timeout);
+      options.signal?.removeEventListener("abort", abort);
+    },
+  };
+}
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  options: OpenAiImageRequestOptions = {},
+) {
+  const { signal, cleanup } = requestSignal(options);
+  try {
+    return await fetch(input, { ...init, signal });
+  } finally {
+    cleanup();
+  }
+}
+
+export async function requestImageGenerationWithOpenAI(
+  prompt: string,
+  options: OpenAiImageRequestOptions = {},
+) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
   return withTransientOpenAiRetry(
     () =>
-      fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      fetchWithTimeout(
+        "https://api.openai.com/v1/images/generations",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: openAiImageModelFromEnv(),
+            prompt,
+            size: openAiImageSize(),
+            output_format: openAiOutputFormat(),
+          }),
         },
-        body: JSON.stringify({
-          model: openAiImageModelFromEnv(),
-          prompt,
-          size: openAiImageSize(),
-          output_format: openAiOutputFormat(),
-        }),
-      }),
+        options,
+      ),
     "OpenAI image generation",
+    options,
   );
 }
 
@@ -165,6 +234,7 @@ export function validateImageEditReferences(references: ImageEditReference[]) {
 export async function requestImageEditWithOpenAI(
   prompt: string,
   references: ImageEditReference | ImageEditReference[],
+  options: OpenAiImageRequestOptions = {},
 ) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -186,14 +256,19 @@ export async function requestImageEditWithOpenAI(
   });
   return withTransientOpenAiRetry(
     () =>
-      fetch("https://api.openai.com/v1/images/edits", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
+      fetchWithTimeout(
+        "https://api.openai.com/v1/images/edits",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: form,
         },
-        body: form,
-      }),
+        options,
+      ),
     "OpenAI image edit",
+    options,
   );
 }
 

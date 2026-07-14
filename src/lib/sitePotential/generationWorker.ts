@@ -11,6 +11,8 @@ import {
   requiresImageEditPath,
   sanitizedGenerationError,
   sourceAssetsForGenerationMode,
+  SITE_POTENTIAL_LEASE_RENEWAL_MS,
+  SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
   type SourceAssetLike,
 } from "./generationJobs";
 import type { SitePotentialProject } from "./types";
@@ -70,6 +72,7 @@ export interface SitePotentialGenerationStore {
   loadContext(claim: GenerationWorkerClaim): Promise<GenerationWorkerContext>;
   findExistingAssetForItem(claim: GenerationWorkerClaim): Promise<ExistingGeneratedAsset | null>;
   findPrimaryConceptReference(claim: GenerationWorkerClaim): Promise<StoredReferenceAsset | null>;
+  renewLease(claim: GenerationWorkerClaim, now: Date): Promise<boolean>;
   downloadReferenceAsset(asset: StoredReferenceAsset): Promise<ImageEditReference>;
   uploadGeneratedImage(
     claim: GenerationWorkerClaim,
@@ -82,8 +85,15 @@ export interface SitePotentialGenerationStore {
 }
 
 export interface SitePotentialImageClient {
-  generate(prompt: string): Promise<OpenAiImageResult>;
-  edit(prompt: string, references: ImageEditReference[]): Promise<OpenAiImageResult>;
+  generate(
+    prompt: string,
+    options?: { signal?: AbortSignal; timeoutMs?: number },
+  ): Promise<OpenAiImageResult>;
+  edit(
+    prompt: string,
+    references: ImageEditReference[],
+    options?: { signal?: AbortSignal; timeoutMs?: number },
+  ): Promise<OpenAiImageResult>;
 }
 
 export interface SitePotentialWorkerResult {
@@ -102,6 +112,7 @@ export async function processSitePotentialGenerationQueue(input: {
   workerId: string;
   maxItems?: number;
   now?: Date;
+  leaseRenewalMs?: number;
 }) {
   const now = input.now ?? new Date();
   const recovery = await input.store.recoverStaleJobs(now);
@@ -134,10 +145,14 @@ export async function processSitePotentialGenerationQueue(input: {
         store: input.store,
         imageClient: input.imageClient,
         claim,
+        leaseRenewalMs: input.leaseRenewalMs,
       });
       result.completed += 1;
     } catch (error) {
       result.failed += 1;
+      if (error instanceof SitePotentialLeaseLostError) {
+        continue;
+      }
       const code = generationFailureCode(error);
       const retryable = !isPermanentGenerationFailure(code);
       await input.store.markItemFailed({
@@ -145,9 +160,7 @@ export async function processSitePotentialGenerationQueue(input: {
         code,
         message: sanitizedGenerationError(error),
         retryable,
-        nextAttemptAt: retryable
-          ? nextAttemptAt({ attemptCount: claim.attemptCount, now: new Date() })
-          : null,
+        nextAttemptAt: retryable ? nextAttemptAt({ attemptCount: claim.attemptCount }) : null,
       });
     }
   }
@@ -159,8 +172,10 @@ async function processClaimedSitePotentialItem(input: {
   store: SitePotentialGenerationStore;
   imageClient: SitePotentialImageClient;
   claim: GenerationWorkerClaim;
+  leaseRenewalMs?: number;
 }) {
   const context = await input.store.loadContext(input.claim);
+  await renewLeaseOrThrow(input.store, input.claim);
   const sourceAssets = sourceAssetsForGenerationMode(context.project.mode, context.inputAssets);
   const originalReferences: ImageEditReference[] = [];
   for (const sourceAsset of sourceAssets) {
@@ -187,13 +202,27 @@ async function processClaimedSitePotentialItem(input: {
     },
     input.claim.optionIndex - 1,
   );
-  const image =
-    requiresImageEditPath(context.project.mode, sourceAssets) || primaryReference
-      ? await input.imageClient.edit(prompt, references)
-      : await input.imageClient.generate(prompt);
+  await renewLeaseOrThrow(input.store, input.claim);
+  const image = await withLeaseHeartbeat({
+    store: input.store,
+    claim: input.claim,
+    renewalMs: input.leaseRenewalMs,
+    run: (signal) =>
+      requiresImageEditPath(context.project.mode, sourceAssets) || primaryReference
+        ? input.imageClient.edit(prompt, references, {
+            signal,
+            timeoutMs: SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
+          })
+        : input.imageClient.generate(prompt, {
+            signal,
+            timeoutMs: SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
+          }),
+  });
   const imageBytes = Uint8Array.from(Buffer.from(image.b64, "base64"));
+  await renewLeaseOrThrow(input.store, input.claim);
   const upload = await input.store.uploadGeneratedImage(input.claim, imageBytes);
   try {
+    await renewLeaseOrThrow(input.store, input.claim);
     await input.store.finalizeGeneratedItem({
       claim: input.claim,
       upload,
@@ -217,6 +246,49 @@ async function processClaimedSitePotentialItem(input: {
   } catch (error) {
     await input.store.removeUploadedImage(upload);
     throw error;
+  }
+}
+
+export class SitePotentialLeaseLostError extends Error {
+  constructor() {
+    super("Site Potential worker lease was lost before completion.");
+    this.name = "SitePotentialLeaseLostError";
+  }
+}
+
+async function renewLeaseOrThrow(
+  store: SitePotentialGenerationStore,
+  claim: GenerationWorkerClaim,
+) {
+  const renewed = await store.renewLease(claim, new Date());
+  if (!renewed) throw new SitePotentialLeaseLostError();
+}
+
+async function withLeaseHeartbeat(input: {
+  store: SitePotentialGenerationStore;
+  claim: GenerationWorkerClaim;
+  renewalMs?: number;
+  run: (signal: AbortSignal) => Promise<OpenAiImageResult>;
+}) {
+  const controller = new AbortController();
+  let leaseLost = false;
+  const interval = setInterval(() => {
+    void input.store.renewLease(input.claim, new Date()).then((renewed) => {
+      if (!renewed) {
+        leaseLost = true;
+        controller.abort();
+      }
+    });
+  }, input.renewalMs ?? SITE_POTENTIAL_LEASE_RENEWAL_MS);
+  try {
+    const result = await input.run(controller.signal);
+    if (leaseLost) throw new SitePotentialLeaseLostError();
+    return result;
+  } catch (error) {
+    if (leaseLost) throw new SitePotentialLeaseLostError();
+    throw error;
+  } finally {
+    clearInterval(interval);
   }
 }
 
