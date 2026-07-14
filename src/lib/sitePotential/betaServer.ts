@@ -265,7 +265,7 @@ export async function readSitePotentialPackStatus(input: {
       provider: String(pack.payment_provider ?? "unknown"),
       status: String(pack.status ?? "queued"),
       requestedCount: Number(pack.requested_count ?? SITE_POTENTIAL_PACK_SIZE),
-      completedCount: Number(pack.completed_count ?? completedCount),
+      completedCount,
       failureCode: pack.failure_code ? String(pack.failure_code) : null,
       failureMessage: safeFailureMessage(pack.failure_message),
       items: safeItems,

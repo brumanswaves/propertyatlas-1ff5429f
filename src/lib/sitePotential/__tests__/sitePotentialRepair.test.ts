@@ -162,6 +162,86 @@ describe("Site Potential production-blocker repair", () => {
     expect(designPackStatusFromItems(completeItems)).toMatchObject({
       status: "complete",
       completedCount: 6,
+      terminal: true,
+    });
+  });
+
+  it("reconciles retry-aware design pack statuses consistently", () => {
+    const item = (
+      optionIndex: number,
+      status: "queued" | "generating" | "complete" | "failed",
+      attemptCount = 0,
+    ) => ({
+      id: `item-${optionIndex}`,
+      option_index: optionIndex,
+      status,
+      generated_asset_id: status === "complete" ? `asset-${optionIndex}` : null,
+      attempt_count: attemptCount,
+    });
+
+    expect(
+      designPackStatusFromItems([
+        item(1, "failed", 1),
+        item(2, "queued"),
+        item(3, "queued"),
+        item(4, "queued"),
+        item(5, "queued"),
+        item(6, "queued"),
+      ]),
+    ).toMatchObject({ status: "partial_failed", completedCount: 0, hasRetryableWork: true });
+
+    expect(
+      designPackStatusFromItems([
+        item(1, "generating"),
+        item(2, "queued"),
+        item(3, "queued"),
+        item(4, "queued"),
+        item(5, "queued"),
+        item(6, "queued"),
+      ]),
+    ).toMatchObject({ status: "generating", hasRetryableWork: true });
+
+    expect(
+      designPackStatusFromItems([
+        item(1, "complete"),
+        item(2, "complete"),
+        item(3, "failed", 1),
+        item(4, "queued"),
+        item(5, "queued"),
+        item(6, "queued"),
+      ]),
+    ).toMatchObject({ status: "partial_failed", completedCount: 2, hasRetryableWork: true });
+
+    expect(
+      designPackStatusFromItems([
+        item(1, "complete"),
+        item(2, "complete"),
+        item(3, "failed", 3),
+        item(4, "failed", 3),
+        item(5, "failed", 3),
+        item(6, "failed", 3),
+      ]),
+    ).toMatchObject({
+      status: "partial_failed",
+      completedCount: 2,
+      hasRetryableWork: false,
+      terminal: true,
+    });
+
+    expect(
+      designPackStatusFromItems([
+        item(1, "failed", 3),
+        item(2, "failed", 3),
+        item(3, "failed", 3),
+        item(4, "failed", 3),
+        item(5, "failed", 3),
+        item(6, "failed", 3),
+      ]),
+    ).toMatchObject({
+      status: "failed",
+      completedCount: 0,
+      hasRetryableWork: false,
+      terminal: true,
     });
   });
 
@@ -208,14 +288,21 @@ describe("Site Potential production-blocker repair", () => {
 
   it("repairs pack completion so one finalized item does not mark the project ready", () => {
     const migration = read(
-      "supabase/migrations/20260714124500_site_potential_pack_completion_status.sql",
+      "supabase/migrations/20260714133000_site_potential_retryable_pack_reconciliation.sql",
     );
 
     expect(migration).toContain("CREATE OR REPLACE FUNCTION public.finalize_site_potential_item");
     expect(migration).toContain("item_row.lease_expires_at <= now()");
     expect(migration).toContain("v_completed_count >= v_requested_count THEN 'complete'");
+    expect(migration).toContain("WHEN v_generating_count > 0 THEN 'generating'");
+    expect(migration).toContain(
+      "WHEN v_failed_count > 0 AND v_eligible_count > 0 THEN 'partial_failed'",
+    );
+    expect(migration).toContain("WHEN v_eligible_count > 0 THEN 'queued'");
     expect(migration).toContain("v_pack_status = 'complete' THEN 'concepts_ready'");
-    expect(migration).toContain("WHEN v_remaining_count > 0 THEN 'generating'");
+    expect(migration).toContain(
+      "WHEN v_eligible_count > 0 OR v_pack_status IN ('queued', 'generating') THEN 'generating'",
+    );
     expect(migration).toContain("WHEN v_pack_status IN ('failed', 'partial_failed') THEN 'failed'");
     expect(migration).not.toContain("SET generation_status = 'concepts_ready'");
     expect(migration).toContain(

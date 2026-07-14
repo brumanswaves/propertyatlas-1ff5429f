@@ -171,8 +171,9 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("/api/site-potential/beta-redeem");
     expect(tab).toContain("/api/site-potential/beta-request");
     expect(tab).toContain("/api/site-potential/pack-status");
-    expect(tab).toContain("window.setInterval(poll, 5000)");
-    expect(tab).toContain("controller?.abort()");
+    expect(tab).toContain("createSitePotentialPackStatusPoller");
+    expect(tab).toContain("poller.start(false)");
+    expect(tab).toContain("poller.stop()");
     expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
     expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
   });

@@ -123,14 +123,14 @@ export async function queueSitePotentialGeneration(input: {
   const items = await readDesignPackItems(input.serviceSupabase, input.designPackId, input.userId);
   const status = designPackStatusFromItems(items);
   if (status.status !== "complete" && status.status !== "generating") {
+    const packUpdate = {
+      status: status.status,
+      next_attempt_at: new Date().toISOString(),
+      ...(status.hasRetryableWork ? { failure_code: null, failure_message: null } : {}),
+    };
     await input.serviceSupabase
       .from("erf_design_packs")
-      .update({
-        status: "queued",
-        next_attempt_at: new Date().toISOString(),
-        failure_code: null,
-        failure_message: null,
-      })
+      .update(packUpdate)
       .eq("id", input.designPackId)
       .eq("user_id", input.userId);
   }
@@ -367,6 +367,19 @@ export function createSupabaseGenerationStore(
         .eq("id", input.claim.designPackId)
         .eq("user_id", input.claim.userId);
       if (packError) throw new Error(packError.message);
+      const { error: projectError } = await serviceSupabase
+        .from("erf_site_projects")
+        .update({
+          generation_status:
+            status.status === "complete"
+              ? "concepts_ready"
+              : status.terminal
+                ? "failed"
+                : "generating",
+        })
+        .eq("id", input.claim.siteProjectId)
+        .eq("user_id", input.claim.userId);
+      if (projectError) throw new Error(projectError.message);
     },
   };
 }
@@ -391,6 +404,8 @@ export function formatQueueStatus(items: DesignPackItemRow[]) {
   return {
     status: status.status,
     completedCount: status.completedCount,
+    hasRetryableWork: status.hasRetryableWork,
+    terminal: status.terminal,
     requestedCount: SITE_POTENTIAL_PACK_SIZE,
     items: items.map((item) => ({
       id: item.id,

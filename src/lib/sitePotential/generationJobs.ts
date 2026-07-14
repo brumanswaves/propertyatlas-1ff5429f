@@ -14,6 +14,13 @@ export interface DesignPackItemLike {
   worker_id?: string | null;
 }
 
+export interface DesignPackStatusResult {
+  status: "queued" | "generating" | "complete" | "partial_failed" | "failed";
+  completedCount: number;
+  hasRetryableWork: boolean;
+  terminal: boolean;
+}
+
 export interface SourceAssetLike {
   id: string;
   asset_category: string;
@@ -52,7 +59,10 @@ export function designPackItemRows(input: {
 export function retryableDesignPackItems(items: DesignPackItemLike[]) {
   return items
     .filter(
-      (item) => !item.generated_asset_id && (item.status === "queued" || item.status === "failed"),
+      (item) =>
+        !item.generated_asset_id &&
+        (item.status === "queued" ||
+          (item.status === "failed" && (item.attempt_count ?? 0) < SITE_POTENTIAL_MAX_ATTEMPTS)),
     )
     .sort((a, b) => a.option_index - b.option_index);
 }
@@ -112,25 +122,50 @@ export function recoverStaleDesignPackItems(
   });
 }
 
-export function designPackStatusFromItems(items: DesignPackItemLike[]) {
+export function isDesignPackItemEligibleForCompletion(
+  item: DesignPackItemLike,
+  maxAttempts = SITE_POTENTIAL_MAX_ATTEMPTS,
+) {
+  return (
+    !item.generated_asset_id &&
+    (item.status === "queued" ||
+      item.status === "generating" ||
+      (item.status === "failed" && (item.attempt_count ?? 0) < maxAttempts))
+  );
+}
+
+export function designPackStatusFromItems(
+  items: DesignPackItemLike[],
+  requestedCount = SITE_POTENTIAL_PACK_SIZE,
+  maxAttempts = SITE_POTENTIAL_MAX_ATTEMPTS,
+): DesignPackStatusResult {
   const completedCount = items.filter(
     (item) => item.status === "complete" && item.generated_asset_id,
   ).length;
   const failedCount = items.filter((item) => item.status === "failed").length;
   const generatingCount = items.filter((item) => item.status === "generating").length;
-  if (completedCount >= SITE_POTENTIAL_PACK_SIZE) {
-    return { status: "complete" as const, completedCount };
+  const eligibleCount = items.filter((item) =>
+    isDesignPackItemEligibleForCompletion(item, maxAttempts),
+  ).length;
+  if (completedCount >= requestedCount) {
+    return { status: "complete", completedCount, hasRetryableWork: false, terminal: true };
   }
   if (generatingCount > 0) {
-    return { status: "generating" as const, completedCount };
+    return { status: "generating", completedCount, hasRetryableWork: true, terminal: false };
   }
-  if (completedCount > 0 && failedCount > 0) {
-    return { status: "partial_failed" as const, completedCount };
+  if (failedCount > 0 && eligibleCount > 0) {
+    return { status: "partial_failed", completedCount, hasRetryableWork: true, terminal: false };
   }
-  if (failedCount > 0 && completedCount === 0) {
-    return { status: "failed" as const, completedCount };
+  if (eligibleCount > 0) {
+    return { status: "queued", completedCount, hasRetryableWork: true, terminal: false };
   }
-  return { status: "queued" as const, completedCount };
+  if (failedCount > 0 && completedCount > 0) {
+    return { status: "partial_failed", completedCount, hasRetryableWork: false, terminal: true };
+  }
+  if (failedCount > 0) {
+    return { status: "failed", completedCount, hasRetryableWork: false, terminal: true };
+  }
+  return { status: "queued", completedCount, hasRetryableWork: false, terminal: false };
 }
 
 export function sourceAssetsForGenerationMode(mode: SitePotentialMode, assets: SourceAssetLike[]) {

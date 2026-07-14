@@ -23,6 +23,7 @@ import {
   SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
 import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
+import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
   useSitePotentialProject,
   type SitePotentialProjectPatch,
@@ -227,8 +228,9 @@ function packHasRetryableSlots(status: SitePotentialPackStatusPayload | null) {
 function shouldPollPackStatus(status: SitePotentialPackStatusPayload | null) {
   if (!status) return false;
   if (status.completedCount >= status.requestedCount || status.status === "complete") return false;
+  if (packHasRetryableSlots(status)) return true;
   if (status.status === "queued" || status.status === "generating") return true;
-  return status.status === "partial_failed" && packHasRetryableSlots(status);
+  return false;
 }
 
 function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
@@ -248,6 +250,9 @@ function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
   if (status.status === "partial_failed" && packHasRetryableSlots(status)) {
     return `Retrying failed concept - ${completed} of ${status.requestedCount} concepts complete.`;
   }
+  if (status.status === "failed" && packHasRetryableSlots(status)) {
+    return `Retrying failed concept - ${completed} of ${status.requestedCount} concepts complete.`;
+  }
   if (status.status === "partial_failed") {
     return `Generation could not be completed - ${completed} of ${status.requestedCount} concepts are ready.`;
   }
@@ -260,6 +265,7 @@ function packProgressState(status: SitePotentialPackStatusPayload | null) {
   if (status.status === "complete" || status.completedCount >= status.requestedCount) {
     return "concepts_ready";
   }
+  if (packHasRetryableSlots(status)) return "generating";
   if (
     status.status === "failed" ||
     (status.status === "partial_failed" && !packHasRetryableSlots(status))
@@ -316,6 +322,11 @@ export function SitePotentialTab({
   );
   const projectState = useSitePotentialProject(parcel.id, generatedDesigns);
   const project = projectState.project;
+  const refreshVault = vault.refresh;
+  const refreshSiteProject = projectState.refresh;
+  const refreshVaultRef = useRef(refreshVault);
+  const refreshSiteProjectRef = useRef(refreshSiteProject);
+  const immediatePackStatusKeyRef = useRef<string | null>(null);
 
   const sitePhotos = vault.assets.filter(
     (asset) =>
@@ -380,22 +391,27 @@ export function SitePotentialTab({
     }
   }, []);
 
-  const applyPackStatus = useCallback(
-    (next: SitePotentialPackStatusPayload) => {
-      setActiveDesignPackId(next.designPackId);
-      const signature = packProgressSignature(next);
-      if (
-        lastPackProgressSignatureRef.current &&
-        lastPackProgressSignatureRef.current !== signature
-      ) {
-        void vault.refresh();
-        void projectState.refresh();
-      }
-      lastPackProgressSignatureRef.current = signature;
-      setPackStatus(next);
-    },
-    [projectState, vault],
-  );
+  useEffect(() => {
+    refreshVaultRef.current = refreshVault;
+  }, [refreshVault]);
+
+  useEffect(() => {
+    refreshSiteProjectRef.current = refreshSiteProject;
+  }, [refreshSiteProject]);
+
+  const applyPackStatus = useCallback((next: SitePotentialPackStatusPayload) => {
+    setActiveDesignPackId(next.designPackId);
+    const signature = packProgressSignature(next);
+    if (
+      lastPackProgressSignatureRef.current &&
+      lastPackProgressSignatureRef.current !== signature
+    ) {
+      void refreshVaultRef.current();
+      void refreshSiteProjectRef.current();
+    }
+    lastPackProgressSignatureRef.current = signature;
+    setPackStatus(next);
+  }, []);
 
   const refreshPackStatus = useCallback(
     async (designPackId?: string | null, signal?: AbortSignal) => {
@@ -445,18 +461,28 @@ export function SitePotentialTab({
     setActiveDesignPackId(null);
     setPackStatus(null);
     lastPackProgressSignatureRef.current = null;
+    immediatePackStatusKeyRef.current = null;
   }, [parcel.id]);
 
   useEffect(() => {
     if (!BETA_UI_ENABLED || !project?.id) return;
+    const requestKey = `${parcel.id}:${project.id}:${activeDesignPackId ?? "latest"}`;
+    if (immediatePackStatusKeyRef.current === requestKey) return;
+    immediatePackStatusKeyRef.current = requestKey;
     const controller = new AbortController();
-    void refreshPackStatus(activeDesignPackId, controller.signal).catch((error) => {
-      if (!controller.signal.aborted) {
-        console.warn("Site Potential pack status refresh failed", error);
-      }
-    });
+    void refreshPackStatus(activeDesignPackId, controller.signal)
+      .then((next) => {
+        if (next?.designPackId && !activeDesignPackId) {
+          immediatePackStatusKeyRef.current = `${parcel.id}:${project.id}:${next.designPackId}`;
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          console.warn("Site Potential pack status refresh failed", error);
+        }
+      });
     return () => controller.abort();
-  }, [activeDesignPackId, project?.id, refreshPackStatus]);
+  }, [activeDesignPackId, parcel.id, project?.id, refreshPackStatus]);
 
   useEffect(() => {
     if (
@@ -467,21 +493,14 @@ export function SitePotentialTab({
     ) {
       return;
     }
-    let controller: AbortController | null = null;
-    const poll = () => {
-      controller?.abort();
-      controller = new AbortController();
-      void refreshPackStatus(activeDesignPackId, controller.signal).catch((error) => {
-        if (!controller?.signal.aborted) {
-          console.warn("Site Potential pack status poll failed", error);
-        }
-      });
-    };
-    const interval = window.setInterval(poll, 5000);
-    return () => {
-      window.clearInterval(interval);
-      controller?.abort();
-    };
+    const poller = createSitePotentialPackStatusPoller({
+      intervalMs: 5000,
+      readStatus: (signal) => refreshPackStatus(activeDesignPackId, signal),
+      shouldContinue: shouldPollPackStatus,
+      onError: (error) => console.warn("Site Potential pack status poll failed", error),
+    });
+    poller.start(false);
+    return () => poller.stop();
   }, [activeDesignPackId, packStatus, project?.id, refreshPackStatus]);
 
   useEffect(() => {
