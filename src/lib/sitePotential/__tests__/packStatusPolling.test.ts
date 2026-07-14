@@ -9,11 +9,13 @@ describe("Site Potential pack status polling lifecycle", () => {
 
   it("does not overlap requests and polls only on the configured interval", async () => {
     vi.useFakeTimers();
-    let resolveFirst: ((value: { status: string }) => void) | null = null;
-    const readStatus = vi.fn((signal: AbortSignal) => {
+    const firstRequest: { resolve: ((value: { status: string }) => void) | null } = {
+      resolve: null,
+    };
+    const readStatus = vi.fn((signal: AbortSignal): Promise<{ status: string }> => {
       expect(signal.aborted).toBe(false);
       return new Promise<{ status: string }>((resolve) => {
-        resolveFirst = resolve;
+        firstRequest.resolve = resolve;
       });
     });
     const poller = createSitePotentialPackStatusPoller({
@@ -31,7 +33,8 @@ describe("Site Potential pack status polling lifecycle", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(readStatus).toHaveBeenCalledTimes(1);
 
-    resolveFirst?.({ status: "generating" });
+    expect(firstRequest.resolve).not.toBeNull();
+    firstRequest.resolve?.({ status: "generating" });
     await vi.runOnlyPendingTimersAsync();
     await vi.advanceTimersByTimeAsync(5000);
     expect(readStatus).toHaveBeenCalledTimes(2);
@@ -42,7 +45,7 @@ describe("Site Potential pack status polling lifecycle", () => {
   it("clears timers and aborts the active request on unmount/change", async () => {
     vi.useFakeTimers();
     const signals: AbortSignal[] = [];
-    const readStatus = vi.fn((signal: AbortSignal) => {
+    const readStatus = vi.fn((signal: AbortSignal): Promise<{ status: string }> => {
       signals.push(signal);
       return new Promise<{ status: string }>(() => undefined);
     });
@@ -65,10 +68,9 @@ describe("Site Potential pack status polling lifecycle", () => {
 
   it("stops polling when the status becomes terminal", async () => {
     vi.useFakeTimers();
-    const readStatus = vi
-      .fn<[AbortSignal], Promise<{ status: string } | null>>()
-      .mockResolvedValueOnce({ status: "generating" })
-      .mockResolvedValueOnce({ status: "complete" });
+    const readStatus = vi.fn<(signal: AbortSignal) => Promise<{ status: string } | null>>();
+    readStatus.mockResolvedValueOnce({ status: "generating" });
+    readStatus.mockResolvedValueOnce({ status: "complete" });
     const poller = createSitePotentialPackStatusPoller({
       intervalMs: 5000,
       readStatus,

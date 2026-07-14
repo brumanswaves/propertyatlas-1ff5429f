@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import {
   readAllWorkspaceAttachments,
   removePaidReportAttachment,
@@ -310,7 +312,7 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
   if (uploadError) throw new Error(uploadError.message);
 
   input.onProgress?.(75, "Saving file metadata");
-  const payload = {
+  const payload: TablesInsert<"erf_assets"> = {
     id: assetId,
     user_id: userId,
     parcel_id: input.parcelId,
@@ -323,7 +325,7 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
     mime_type: input.file.type || "application/octet-stream",
     size_bytes: input.file.size,
     status: input.status ?? "uploaded_reference_only",
-    metadata: input.metadata ?? {},
+    metadata: toSupabaseJson(input.metadata ?? {}),
     local_migration_fingerprint: input.localMigrationFingerprint ?? null,
   };
 

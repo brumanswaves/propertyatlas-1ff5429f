@@ -90,7 +90,7 @@ describe("erfWorkspaceState", () => {
     });
   });
 
-  it("moves checked identity through reviewed sources, market evidence, saved scenarios, then reports", () => {
+  it("moves checked identity through sources, market, strategy, Site Potential, then reports", () => {
     expect(
       buildErfWorkspaceNextStep({
         ...createEmptyErfWorkspaceState(),
@@ -112,6 +112,36 @@ describe("erfWorkspaceState", () => {
         identityStatus: "looks_correct",
         reviewedSourceIds: ["csg-property-viewer"],
       }),
+    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+      }),
+    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        calculatorStarted: true,
+      }),
+    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
+
+    expect(
+      buildErfWorkspaceNextStep({
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        calculatorStarted: true,
+        strategyScenarioCount: 1,
+      }),
     ).toMatchObject({ title: "Explore Site Potential", tab: "site-potential" });
 
     expect(
@@ -119,43 +149,14 @@ describe("erfWorkspaceState", () => {
         ...createEmptyErfWorkspaceState(),
         identityStatus: "checked",
         reviewedSourceIds: ["csg-property-viewer"],
-        sitePotential: {
-          ...createEmptyErfWorkspaceState().sitePotential,
-          skipped: true,
-          progressState: "skipped",
-        },
-        marketEvidenceStarted: true,
-      }),
-    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
-
-    expect(
-      buildErfWorkspaceNextStep({
-        ...createEmptyErfWorkspaceState(),
-        identityStatus: "checked",
-        reviewedSourceIds: ["csg-property-viewer"],
-        sitePotential: {
-          ...createEmptyErfWorkspaceState().sitePotential,
-          skipped: true,
-          progressState: "skipped",
-        },
-        marketEvidenceStarted: true,
-        calculatorStarted: true,
-      }),
-    ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
-
-    expect(
-      buildErfWorkspaceNextStep({
-        ...createEmptyErfWorkspaceState(),
-        identityStatus: "checked",
-        reviewedSourceIds: ["csg-property-viewer"],
-        sitePotential: {
-          ...createEmptyErfWorkspaceState().sitePotential,
-          skipped: true,
-          progressState: "skipped",
-        },
         marketEvidenceStarted: true,
         calculatorStarted: true,
         strategyScenarioCount: 1,
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          skipped: true,
+          progressState: "skipped",
+        },
       }),
     ).toMatchObject({ title: "Create Easy Erf Report", tab: "stoep-report" });
   });
@@ -167,7 +168,7 @@ describe("erfWorkspaceState", () => {
         identityStatus: "checked",
         sgDiagramAttachmentCount: 1,
       }),
-    ).toMatchObject({ title: "Explore Site Potential", tab: "site-potential" });
+    ).toMatchObject({ title: "Build Market Evidence", tab: "listings" });
 
     expect(
       buildErfWorkspaceNextStep({
@@ -182,6 +183,28 @@ describe("erfWorkspaceState", () => {
         marketAddressSaved: true,
       }),
     ).toMatchObject({ title: "Run Strategy Lab calculators", tab: "calculators" });
+  });
+
+  it("does not mark Site Potential complete for a project row without a selected concept or skip", () => {
+    const nextStep = buildErfWorkspaceNextStep({
+      ...createEmptyErfWorkspaceState(),
+      identityStatus: "checked",
+      reviewedSourceIds: ["csg-property-viewer"],
+      marketEvidenceStarted: true,
+      strategyScenarioCount: 1,
+      sitePotential: {
+        ...createEmptyErfWorkspaceState().sitePotential,
+        projectId: "project-1",
+        mode: "vacant_land",
+        progressState: "inputs_added",
+      },
+    });
+
+    expect(nextStep).toMatchObject({
+      title: "Finish or skip Site Potential",
+      tab: "site-potential",
+      doneWhen: "One generated design is selected, or Site Potential is skipped for this erf.",
+    });
   });
 
   it("saves the newest Strategy Lab scenario as the chosen scenario", () => {
@@ -230,9 +253,9 @@ describe("erfWorkspaceState", () => {
     expect(buildStoepStepProgress(createEmptyErfWorkspaceState())).toMatchObject([
       { label: "Identity", status: "Current" },
       { label: "Sources", status: "Needs evidence" },
-      { label: "Site", status: "Not started" },
       { label: "Market", status: "Not started" },
       { label: "Strategy", status: "Not started" },
+      { label: "Site", status: "Not started" },
       { label: "Report", status: "Not started" },
     ]);
 
@@ -269,6 +292,7 @@ describe("erfWorkspaceState", () => {
         expect.objectContaining({ label: "Sources", status: "Done" }),
         expect.objectContaining({ label: "Market", status: "Done" }),
         expect.objectContaining({ label: "Strategy", status: "Done" }),
+        expect.objectContaining({ label: "Site", status: "Done" }),
         expect.objectContaining({ label: "Report", status: "Current" }),
       ]),
     );

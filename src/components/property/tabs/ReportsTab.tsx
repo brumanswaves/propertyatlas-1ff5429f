@@ -202,7 +202,7 @@ export function ReportsTab({
                     uploadErrors[reportProviderForCatalogId(r.id)!] ??
                     (reportVault.signedIn ? undefined : "Sign in to save PDFs to the cloud vault.")
                   }
-                  uploading={reportVault.uploadState.active}
+                  uploading={Boolean(reportVault.uploadState)}
                   onUpload={uploadPaidReport}
                   onRemove={removePaidReport}
                 />

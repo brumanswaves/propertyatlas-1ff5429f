@@ -341,7 +341,7 @@ export function createSupabaseGenerationStore(
           lease_expires_at: null,
           failure_code: input.code,
           failure_message: input.message,
-          next_attempt_at: input.retryable ? input.nextAttemptAt : null,
+          next_attempt_at: input.retryable ? input.nextAttemptAt ?? undefined : undefined,
         })
         .eq("id", input.claim.itemId)
         .eq("user_id", input.claim.userId);

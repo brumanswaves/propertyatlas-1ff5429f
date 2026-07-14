@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BookmarkCheck, CheckCircle2, Copy, ExternalLink, Save, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  BookmarkCheck,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
@@ -476,7 +484,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   }
 
   if (view === "stoep-report") {
-    return <StoepAiReportView parcel={parcel} />;
+    return <StoepAiReportView parcel={parcel} onSelectView={onSelectView} />;
   }
 
   return (
@@ -1113,7 +1121,28 @@ async function openVaultAsset(file: ErfAsset) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
+function sitePotentialReportModeLabel(mode: string | null | undefined) {
+  switch (mode) {
+    case "vacant_land":
+      return "Vacant land concept";
+    case "renovation":
+      return "Existing-house renovation concept";
+    case "other_building":
+      return "Other building concept";
+    case "skipped":
+      return "Skipped";
+    default:
+      return "Site Potential concept";
+  }
+}
+
+function StoepAiReportView({
+  parcel,
+  onSelectView,
+}: {
+  parcel: NormalizedOfficialParcel;
+  onSelectView?: (view: DossierView) => void;
+}) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
@@ -1129,9 +1158,15 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
   const reviewedSources = workspaceState.reviewedSourceIds.length;
   const sgFiles = fileVault.assets.filter((asset) => asset.asset_category === "sg_diagram").length;
   const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
+  const sitePotentialSkipped =
+    selectedSiteMode === "skipped" ||
+    workspaceState.sitePotential.skipped ||
+    workspaceState.sitePotential.progressState === "skipped";
   const missing = [
     reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
-    selectedDesign ? null : "selected Site Potential concept, if relevant",
+    selectedDesign || sitePotentialSkipped
+      ? null
+      : "selected Site Potential concept or explicit skip",
     evidence.length ? null : "saved market evidence",
     chosenScenario ? null : "saved strategy scenario",
   ].filter(Boolean);
@@ -1207,60 +1242,60 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
         </section>
       )}
 
-      <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-          Site Potential
-        </div>
-        <h4 className="mt-2 text-base font-semibold">
-          {selectedDesign ? "Selected property concept" : "No property concept selected"}
-        </h4>
-        <p className="mt-1 text-sm leading-6 text-white/68">
-          {selectedDesign
-            ? "This selected concept is referenced from the Erf File Vault by stable asset ID."
-            : "Generate and select a Site Potential concept if you want it included in the final Easy Erf Report."}
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          {selectedDesign ? (
+      {selectedDesign && (
+        <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+            Site Potential
+          </div>
+          <h4 className="mt-2 text-base font-semibold">Selected property concept</h4>
+          <p className="mt-1 text-sm leading-6 text-white/68">
+            This selected concept is loaded from the Erf File Vault and linked to the saved Site
+            Potential project.
+          </p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
             <SignedAssetPreview asset={selectedDesign} />
-          ) : (
-            <div className="grid aspect-[4/3] place-items-center rounded-[1.25rem] border border-white/10 bg-white/5 text-sm font-semibold text-white/55">
-              Concept image not selected
-            </div>
-          )}
-          <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-            <dl className="grid gap-3 text-sm">
-              <div>
-                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                  Project mode
-                </dt>
-                <dd className="mt-1 capitalize text-white/85">
-                  {String(selectedSiteMode ?? "unknown").replace(/_/g, " ")}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                  Brief
-                </dt>
-                <dd className="mt-1 text-white/85">
-                  {siteProject.project?.design_brief || "No design brief saved yet."}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                  Source/reference files
-                </dt>
-                <dd className="mt-1 text-white/85">
-                  {
-                    fileVault.assets.filter((asset) =>
-                      ["site_photo", "existing_house_photo", "topography", "architectural_plan"].includes(
-                        asset.asset_category,
-                      ),
-                    ).length
-                  }{" "}
-                  vault file(s)
-                </dd>
-              </div>
-              {selectedDesign && (
+            <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+              <dl className="grid gap-3 text-sm">
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Project mode
+                  </dt>
+                  <dd className="mt-1 text-white/85">
+                    {sitePotentialReportModeLabel(selectedSiteMode)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Architectural style
+                  </dt>
+                  <dd className="mt-1 text-white/85">
+                    {siteProject.project?.selected_style || "Style not specified."}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Brief
+                  </dt>
+                  <dd className="mt-1 text-white/85">
+                    {siteProject.project?.design_brief || "No design brief saved yet."}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Rooms and features
+                  </dt>
+                  <dd className="mt-1 text-white/85">
+                    {[
+                      ...(siteProject.project?.requested_rooms ?? []),
+                      ...(siteProject.project?.requested_features ?? []),
+                    ].length
+                      ? [
+                          ...(siteProject.project?.requested_rooms ?? []),
+                          ...(siteProject.project?.requested_features ?? []),
+                        ].join(", ")
+                      : "No rooms or features specified."}
+                  </dd>
+                </div>
                 <div>
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
                     Stable asset ID
@@ -1269,14 +1304,37 @@ function StoepAiReportView({ parcel }: { parcel: NormalizedOfficialParcel }) {
                     {selectedDesign.id}
                   </dd>
                 </div>
-              )}
-            </dl>
+              </dl>
+            </div>
           </div>
-        </div>
-        <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
-          {SITE_POTENTIAL_DISCLAIMER}
-        </p>
-      </section>
+          <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
+            {SITE_POTENTIAL_DISCLAIMER}
+          </p>
+        </section>
+      )}
+
+      {!selectedDesign && !sitePotentialSkipped && (
+        <section className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Site Potential incomplete
+          </div>
+          <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">
+            Select a concept or skip this step
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+            Generate and select a Site Potential concept if you want it included in the Easy Erf
+            Report. If it is not relevant, mark Site Potential skipped and the report will continue
+            without a concept image.
+          </p>
+          <button
+            type="button"
+            onClick={() => onSelectView?.("site-potential")}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#142941]"
+          >
+            Return to Site Potential <ArrowRight className="h-4 w-4" />
+          </button>
+        </section>
+      )}
 
       <section
         id="uploaded-files-and-source-documents"

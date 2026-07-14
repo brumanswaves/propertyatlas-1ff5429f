@@ -161,7 +161,6 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
           : "Open and review official sources before building the report.",
       evidence: `${openedCount} opened / ${reviewedCount} reviewed / ${sgAttachmentCount} SG file${sgAttachmentCount === 1 ? "" : "s"}`,
     },
-    buildSiteRow(workspaceState.sitePotential),
     {
       id: "market",
       label: "Market",
@@ -203,6 +202,7 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
           ? plural(strategyScenarioCount, "saved scenario")
           : "No scenario saved",
     },
+    buildSiteRow(workspaceState.sitePotential),
     {
       id: "report",
       label: "Report",
@@ -231,12 +231,9 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
     ReportProgressRow
   >;
   const sourceMissing = byId.sources.status !== "Done";
-  const siteOpen =
-    byId.site.status !== "Skipped" &&
-    byId.site.status !== "Done" &&
-    byId.site.status !== "In progress";
   const marketMissing = byId.market.status !== "Done";
   const strategyMissing = byId.strategy.status !== "Done";
+  const siteMissing = byId.site.status !== "Done" && byId.site.status !== "Skipped";
 
   return [
     {
@@ -253,13 +250,11 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
       title: "Add evidence",
       body: sourceMissing
         ? "Review an official source first, then add market evidence."
-        : siteOpen
-          ? "Explore Site Potential or skip it before moving deeper into market evidence."
         : "Paste listing URLs, comps, notes or other evidence you have checked.",
-      stat: siteOpen ? byId.site.status : byId.market.evidence,
-      action: siteOpen ? "Open Site Potential" : "Add market evidence",
-      tab: siteOpen ? "site-potential" : "listings",
-      primary: !sourceMissing && (siteOpen || marketMissing),
+      stat: byId.market.evidence,
+      action: "Add market evidence",
+      tab: "listings",
+      primary: !sourceMissing && marketMissing,
     },
     {
       id: "numbers",
@@ -273,11 +268,13 @@ export function buildReportActionCards(input: ReportProgressInput): ReportAction
     {
       id: "report",
       title: "Create report",
-      body: "Combine saved evidence, reviewed sources, notes and assumptions into one Easy Erf Report.",
-      stat: byId.report.status,
-      action: "Open Easy Erf Report",
-      tab: "stoep-report",
-      primary: byId.report.status !== "In progress" && !strategyMissing,
+      body: siteMissing
+        ? "Explore Site Potential or skip it before assembling the Easy Erf Report."
+        : "Combine saved evidence, reviewed sources, notes and assumptions into one Easy Erf Report.",
+      stat: siteMissing ? byId.site.status : byId.report.status,
+      action: siteMissing ? "Open Site Potential" : "Open Easy Erf Report",
+      tab: siteMissing ? "site-potential" : "stoep-report",
+      primary: !strategyMissing && (siteMissing || byId.report.status !== "In progress"),
     },
   ];
 }

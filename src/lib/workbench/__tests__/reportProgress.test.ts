@@ -114,15 +114,56 @@ describe("reportProgress", () => {
       "Create report",
     ]);
     expect(actions.find((action) => action.id === "evidence")).toMatchObject({
+      action: "Add market evidence",
+      tab: "listings",
+      primary: true,
+    });
+    expect(actions.find((action) => action.id === "report")).toMatchObject({
+      action: "Open Site Potential",
+      tab: "site-potential",
+      primary: false,
+    });
+    expect(JSON.stringify(actions)).not.toMatch(/fake|screenshot|auto-fill/i);
+  });
+
+  it("keeps Site Potential after strategy and before the Easy Erf Report", () => {
+    const rows = buildReportBuilderProgress({
+      parcel,
+      workspaceState: {
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        strategyScenarioCount: 1,
+      },
+      savedMarketEvidenceCount: 1,
+    });
+
+    expect(rows.map((row) => row.id)).toEqual([
+      "identity",
+      "sources",
+      "market",
+      "strategy",
+      "site",
+      "report",
+    ]);
+
+    const actions = buildReportActionCards({
+      parcel,
+      workspaceState: {
+        ...createEmptyErfWorkspaceState(),
+        identityStatus: "checked",
+        reviewedSourceIds: ["csg-property-viewer"],
+        marketEvidenceStarted: true,
+        strategyScenarioCount: 1,
+      },
+      savedMarketEvidenceCount: 1,
+    });
+
+    expect(actions.find((action) => action.id === "report")).toMatchObject({
       action: "Open Site Potential",
       tab: "site-potential",
       primary: true,
     });
-    expect(actions.find((action) => action.id === "report")).toMatchObject({
-      action: "Open Easy Erf Report",
-      tab: "stoep-report",
-      primary: false,
-    });
-    expect(JSON.stringify(actions)).not.toMatch(/fake|screenshot|auto-fill/i);
   });
 });

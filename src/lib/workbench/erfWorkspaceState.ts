@@ -462,21 +462,6 @@ export function buildErfWorkspaceNextStep(
     };
   }
 
-  if (!siteDone) {
-    return {
-      title: siteStarted ? "Finish or skip Site Potential" : "Explore Site Potential",
-      body: siteStarted
-        ? "Site Potential is optional. Select a concept when ready, or skip it so the workflow can continue."
-        : "Decide whether this erf needs renovation or new-build concept visuals before you build the market case.",
-      why: "Concept visuals can enrich the final report, but they should never block core due diligence.",
-      doNow: "Upload permitted photos or supporting files, generate/select a concept if entitled, or mark Site Potential skipped.",
-      doneWhen: "One generated design is selected, or Site Potential is skipped for this erf.",
-      next: "Build Market Evidence.",
-      action: siteStarted ? "Review Site Potential" : "Open Site Potential",
-      tab: "site-potential",
-    };
-  }
-
   if (!marketDone) {
     return {
       title: "Build Market Evidence",
@@ -497,9 +482,24 @@ export function buildErfWorkspaceNextStep(
       why: "The report becomes useful when the numbers are tied to your assumptions.",
       doNow: "Test build, flip, hold and max-offer assumptions.",
       doneWhen: "At least one strategy scenario is saved.",
-      next: "Create Easy Erf Report.",
+      next: "Explore Site Potential or skip it.",
       action: "Run calculators",
       tab: "calculators",
+    };
+  }
+
+  if (!siteDone) {
+    return {
+      title: siteStarted ? "Finish or skip Site Potential" : "Explore Site Potential",
+      body: siteStarted
+        ? "Select one generated concept when ready, or skip Site Potential so the report can continue."
+        : "Add optional renovation or new-build concept visuals after the strategy numbers are saved.",
+      why: "Concept visuals can enrich the final report, but they should never block core due diligence.",
+      doNow: "Upload permitted photos or supporting files, generate/select a concept if entitled, or mark Site Potential skipped.",
+      doneWhen: "One generated design is selected, or Site Potential is skipped for this erf.",
+      next: "Create Easy Erf Report.",
+      action: siteStarted ? "Review Site Potential" : "Open Site Potential",
+      tab: "site-potential",
     };
   }
 
@@ -568,25 +568,13 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
       doneWhen: "At least one official source is reviewed by user.",
     },
     {
-      id: "site",
-      label: "Site",
-      status: siteDone
-        ? "Done"
-        : siteStarted
-          ? "Current"
-          : sourcesDone
-            ? "Current"
-            : "Not started",
-      doneWhen: "Site Potential is skipped or one generated design is selected.",
-    },
-    {
       id: "market",
       label: "Market",
       status: identityUncertain
         ? "Blocked / uncertain"
         : marketDone
           ? "Done"
-          : identityDone && siteDone
+          : sourcesDone
             ? "Current"
             : "Not started",
       doneWhen: "A listing, comp, note, report, or market evidence item is saved.",
@@ -604,11 +592,25 @@ export function buildStoepStepProgress(state: ErfWorkspaceState): StoepStepProgr
       doneWhen: "At least one Strategy Lab scenario is saved.",
     },
     {
+      id: "site",
+      label: "Site",
+      status: siteDone
+        ? "Done"
+        : strategyDone && !identityUncertain
+          ? "Current"
+          : siteStarted
+            ? "Current"
+            : identityUncertain
+              ? "Blocked / uncertain"
+              : "Not started",
+      doneWhen: "Site Potential is skipped or one generated design is selected.",
+    },
+    {
       id: "report",
       label: "Report",
       status: state.reportStarted
         ? "Done"
-        : strategyDone && !identityUncertain
+        : siteDone && !identityUncertain
           ? "Current"
           : identityUncertain
             ? "Blocked / uncertain"

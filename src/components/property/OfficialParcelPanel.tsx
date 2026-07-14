@@ -89,16 +89,18 @@ type Tab =
   | "reports"
   | "notes"
   | "calculators"
-  | "stoep-report";
+  | "stoep-report"
+  | "local-services";
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
-  { id: "site-potential", label: "Site Potential" },
   { id: "listings", label: "Market" },
   { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
   { id: "notes", label: "Notes" },
+  { id: "site-potential", label: "Site Potential" },
   { id: "stoep-report", label: "Easy Erf Report" },
+  { id: "local-services", label: "Local Services" },
 ];
 
 const WORKBENCH_SECTIONS: Record<
@@ -153,6 +155,12 @@ const WORKBENCH_SECTIONS: Record<
     guidance:
       "This report shell uses what you have saved so far and labels missing data honestly. It does not fabricate ownership, valuation, zoning or sales history.",
   },
+  "local-services": {
+    title: "Local Services",
+    subtitle: "Keep track of professionals and service providers for follow-up.",
+    guidance:
+      "Use this as a post-report planning step. Easy Erf does not recommend or verify providers in this MVP.",
+  },
 };
 
 interface WorkbenchNextStepModel {
@@ -184,14 +192,6 @@ function buildWorkbenchPageNextStep(
         tab: "listings",
         markStarted: true,
       };
-    case "site-potential":
-      return {
-        title: "Add market evidence",
-        body: "Site Potential is optional. When you're ready, add comparable listings and market context next.",
-        cta: "Go to Market",
-        tab: "listings",
-        markStarted: true,
-      };
     case "listings":
       return opts.paidReportCount > 0
         ? {
@@ -218,16 +218,24 @@ function buildWorkbenchPageNextStep(
       };
     case "calculators":
       return {
-        title: "Build the Easy Erf Report",
-        body: "Saved strategy inputs help shape the final report, risks, and next steps.",
-        cta: "Go to Easy Erf Report",
-        tab: "stoep-report",
+        title: "Explore Site Potential",
+        body: "After the numbers, choose whether to generate a visual concept pack or explicitly skip this optional step.",
+        cta: "Go to Site Potential",
+        tab: "site-potential",
         markStarted: true,
       };
     case "notes":
       return {
+        title: "Explore Site Potential",
+        body: "Use Site Potential before the report, or skip it when it is not relevant to this erf.",
+        cta: "Go to Site Potential",
+        tab: "site-potential",
+        markStarted: true,
+      };
+    case "site-potential":
+      return {
         title: "Build the Easy Erf Report",
-        body: "Bring your notes, evidence, and assumptions together in the report shell.",
+        body: "Select a preferred concept or skip Site Potential, then assemble the final report.",
         cta: "Go to Easy Erf Report",
         tab: "stoep-report",
         markStarted: true,
@@ -241,12 +249,19 @@ function buildWorkbenchPageNextStep(
             tab: "research",
           }
         : {
-            title: "Review source documents",
-            body: "Check uploaded files and missing evidence before using the final report.",
-            cta: "Review uploaded files",
-            tab: "stoep-report",
-            anchorId: "uploaded-files-and-source-documents",
+            title: "Plan local follow-up",
+            body: "After reviewing the report, keep notes for professionals, council, conveyancing, or build-cost checks.",
+            cta: "Go to Local Services",
+            tab: "local-services",
           };
+    case "local-services":
+      return {
+        title: "Review source documents",
+        body: "Check uploaded files and missing evidence before using the final report.",
+        cta: "Review uploaded files",
+        tab: "stoep-report",
+        anchorId: "uploaded-files-and-source-documents",
+      };
   }
 }
 
@@ -2192,7 +2207,40 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
           {tab === "stoep-report" && (
-            <ErfResearchDossier parcel={normalizedParcel} view="stoep-report" />
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="stoep-report"
+              onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
+            />
+          )}
+          {tab === "local-services" && (
+            <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                Local Services
+              </div>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#0D1B2A]">
+                Post-report follow-up
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+                Use this space after the Easy Erf Report to plan practical follow-up with local
+                professionals, council offices, conveyancers, architects, builders, valuers or
+                engineers. Easy Erf does not verify, rank or recommend providers in this MVP.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {[
+                  "Council and municipal checks",
+                  "Architect, engineer or builder questions",
+                  "Conveyancing, transfer or valuation follow-up",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm font-semibold text-[#0D1B2A]"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           <WorkbenchNextStep

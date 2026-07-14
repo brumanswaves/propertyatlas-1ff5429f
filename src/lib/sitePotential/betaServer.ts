@@ -7,6 +7,10 @@ type ServiceSupabase = ReturnType<typeof createServiceRoleSupabaseClient>;
 type QueryResult<T> = Promise<{ data: T | null; error: { message: string } | null }>;
 
 type LooseQuery = {
+  then: PromiseLike<{
+    data: Record<string, unknown>[] | null;
+    error: { message: string } | null;
+  }>["then"];
   select: (columns?: string) => LooseQuery;
   eq: (column: string, value: unknown) => LooseQuery;
   in: (column: string, values: unknown[]) => LooseQuery;

@@ -9,6 +9,7 @@ import {
   createServiceRoleSupabaseClient,
 } from "@/lib/sitePotential/serverAuth";
 import { sourceAssetsForGenerationMode } from "@/lib/sitePotential/generationJobs";
+import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 const CORS_HEADERS = {
@@ -18,6 +19,10 @@ const CORS_HEADERS = {
 } as const;
 
 type AssetRow = ErfAsset & Record<string, unknown>;
+
+function isGenerationMode(value: unknown): value is SitePotentialMode {
+  return value === "vacant_land" || value === "renovation" || value === "other_building";
+}
 
 export const Route = createFileRoute("/api/site-potential/generate")({
   server: {
@@ -66,6 +71,16 @@ export async function handleGenerateSitePotentialRequest(request: Request) {
       .single();
     if (projectError || !project) {
       return json({ success: false, error: "Site Potential project not found." }, 404);
+    }
+
+    if (!isGenerationMode(project.mode)) {
+      return json(
+        {
+          success: false,
+          error: "Choose vacant land or existing-house renovation before generating.",
+        },
+        400,
+      );
     }
 
     if (project.mode === "renovation" && !project.rights_confirmed_at) {

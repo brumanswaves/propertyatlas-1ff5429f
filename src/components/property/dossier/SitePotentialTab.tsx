@@ -302,6 +302,7 @@ export function SitePotentialTab({
   const planInputRef = useRef<HTMLInputElement | null>(null);
   const inspirationInputRef = useRef<HTMLInputElement | null>(null);
   const supportDocumentInputRef = useRef<HTMLInputElement | null>(null);
+  const generationInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -708,6 +709,9 @@ export function SitePotentialTab({
   }
 
   async function generateConcepts() {
+    if (generationInFlightRef.current || generating || packProcessing || conceptsReady) {
+      return;
+    }
     setGenerationError(null);
     if (!GENERATION_UI_ENABLED) {
       toast.error("AI concept generation is not available until secure entitlement is configured.");
@@ -717,23 +721,24 @@ export function SitePotentialTab({
       toast.error("Complete the required Site Potential inputs first.");
       return;
     }
-    if (BETA_UI_ENABLED) {
-      if (!betaGenerationAllowed) {
-        toast.error("No beta credits available.");
+    generationInFlightRef.current = true;
+    try {
+      if (BETA_UI_ENABLED) {
+        if (!betaGenerationAllowed) {
+          toast.error("No beta credits available.");
+          return;
+        }
+        await generateWithBetaCredit();
         return;
       }
-      await generateWithBetaCredit();
-      return;
-    }
-    const currentPack = await grantDevEntitlement();
-    if (!currentPack?.id || !project?.id) return;
-    setActiveDesignPackId(currentPack.id);
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) return;
-    setGenerating(true);
-    await saveProject({ generation_status: "generating" });
-    try {
+      const currentPack = await grantDevEntitlement();
+      if (!currentPack?.id || !project?.id) return;
+      setActiveDesignPackId(currentPack.id);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      setGenerating(true);
+      await saveProject({ generation_status: "generating" });
       const response = await fetch("/api/site-potential/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -762,6 +767,7 @@ export function SitePotentialTab({
       toast.error(message);
     } finally {
       setGenerating(false);
+      generationInFlightRef.current = false;
     }
   }
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth/useAuth";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import type { SitePotentialProject, SitePotentialProjectPatch } from "./types";
 
 export type { SitePotentialProjectPatch } from "./types";
@@ -62,10 +64,21 @@ export async function upsertSitePotentialProject(
 ) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Sign in to save Site Potential.");
-  const payload = {
+  const payload: TablesInsert<"erf_site_projects"> = {
     user_id: userData.user.id,
     parcel_id: parcelId,
-    ...patch,
+    mode: patch.mode,
+    design_brief: patch.design_brief,
+    selected_style: patch.selected_style,
+    renovation_level: patch.renovation_level,
+    requested_rooms: patch.requested_rooms,
+    requested_features: patch.requested_features,
+    custom_instructions: patch.custom_instructions,
+    rights_confirmed_at: patch.rights_confirmed_at,
+    generation_status: patch.generation_status,
+    selected_design_asset_id: patch.selected_design_asset_id,
+    skipped_at: patch.skipped_at,
+    metadata: patch.metadata === undefined ? undefined : toSupabaseJson(patch.metadata),
   };
   const { data, error } = await supabase
     .from("erf_site_projects")

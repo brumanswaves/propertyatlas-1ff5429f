@@ -206,7 +206,19 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('label: "Sources"');
     expect(panel).toContain('label: "Paid Reports"');
     expect(panel).toContain('label: "Notes"');
+    expect(panel).toContain('label: "Site Potential"');
     expect(panel).toContain('label: "Easy Erf Report"');
+    expect(panel).toContain('label: "Local Services"');
+    expect(panel.indexOf('label: "Market"')).toBeLessThan(panel.indexOf('label: "Strategy"'));
+    expect(panel.indexOf('label: "Strategy"')).toBeLessThan(
+      panel.indexOf('label: "Site Potential"'),
+    );
+    expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(
+      panel.indexOf('label: "Easy Erf Report"'),
+    );
+    expect(panel.indexOf('label: "Easy Erf Report"')).toBeLessThan(
+      panel.indexOf('label: "Local Services"'),
+    );
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");
@@ -222,6 +234,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('view="notes"');
     expect(panel).toContain('tab === "stoep-report"');
     expect(panel).toContain('view="stoep-report"');
+    expect(panel).toContain('tab === "local-services"');
   });
 
   it("shows an interactive selected erf mini map without faking parcel precision", () => {
@@ -461,13 +474,14 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('action: "Check official identity"');
     expect(reportProgress).toContain('tab: "research"');
     expect(reportProgress).toContain('title: "Add evidence"');
-    expect(reportProgress).toContain('action: siteOpen ? "Open Site Potential" : "Add market evidence"');
-    expect(reportProgress).toContain('tab: siteOpen ? "site-potential" : "listings"');
+    expect(reportProgress).toContain('action: "Add market evidence"');
+    expect(reportProgress).toContain('tab: "listings"');
     expect(reportProgress).toContain('title: "Run numbers"');
     expect(reportProgress).toContain('action: "Open calculator"');
     expect(reportProgress).toContain('tab: "calculators"');
     expect(reportProgress).toContain('title: "Create report"');
-    expect(reportProgress).toContain('tab: "stoep-report"');
+    expect(reportProgress).toContain('action: siteMissing ? "Open Site Potential" : "Open Easy Erf Report"');
+    expect(reportProgress).toContain('tab: siteMissing ? "site-potential" : "stoep-report"');
     expect(panel).toContain("WorkbenchNextStep");
     expect(panel).toContain("Next best step");
     expect(panel).toContain("Review uploaded files");
@@ -582,6 +596,9 @@ describe("official dossier UX guardrails", () => {
     const workspaceFiles = read("src/lib/workbench/erfWorkspaceFiles.ts");
     const vaultFiles = read("src/lib/workbench/erfFileVault.ts");
     const sitePotential = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const sitePotentialIntegrityMigration = read(
+      "supabase/migrations/20260713100000_repair_site_potential_security_jobs.sql",
+    );
 
     expect(dossier).toContain("ReportBuilderOverview");
     expect(reportBuilder).toContain("Easy Erf Report Builder");
@@ -618,6 +635,14 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(sitePotential).toContain("useErfFileVault");
     expect(sitePotential).toContain("/api/site-potential/generate");
+    expect(sitePotential).toContain("generationInFlightRef");
+    expect(sitePotential).toContain("activeDesignPackId");
+    expect(sitePotential).toContain("assetDesignPackId(asset) === activeDesignPackId");
+    expect(sitePotentialIntegrityMigration).toContain(
+      "erf_site_projects_selected_design_integrity",
+    );
+    expect(sitePotentialIntegrityMigration).toContain("asset_row.user_id <> NEW.user_id");
+    expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
     expect(sitePotential).toContain("GENERATION_UI_ENABLED");
     expect(sitePotential).toContain("Concept generation is unavailable until secure entitlement is configured");
     expect(sitePotential).toContain("Topographical survey");
@@ -646,13 +671,19 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("getChosenStrategyScenario");
     expect(dossier).toContain("Chosen strategy scenario");
     expect(dossier).toContain("Selected property concept");
+    expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
+    expect(dossier).toContain("Return to Site Potential");
+    expect(dossier).toContain("sitePotentialSkipped");
+    expect(dossier).toContain("sitePotentialReportModeLabel");
     expect(dossier).toContain("Stable asset ID");
+    expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(dossier).toContain("newest saved scenario");
     expect(dossier).toContain("Open file");
     expect(dossier).toContain(
       "Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis",
     );
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
+    expect(dossier).not.toContain("Concept image not selected");
   });
 
   it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {

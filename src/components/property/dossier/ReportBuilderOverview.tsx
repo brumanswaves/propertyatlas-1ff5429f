@@ -5,7 +5,11 @@ import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSaved
 import { cn } from "@/lib/utils";
 import type { InvestorWorkflowView } from "./investorWorkflow";
 import { buildReportActionCards, buildReportBuilderProgress } from "@/lib/workbench/reportProgress";
-import { readErfWorkspaceState, type ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import {
+  readErfWorkspaceState,
+  type ErfWorkspaceState,
+  type SitePotentialMode,
+} from "@/lib/workbench/erfWorkspaceState";
 import nextStepBannerAsset from "@/assets/recommended-next-step-banner-bg.png.asset.json";
 
 
@@ -28,9 +32,9 @@ interface StepMeta {
 const STEP_ORDER: StepMeta[] = [
   { id: "identity", index: 1, label: "Identity", view: "research", cta: "Check official identity" },
   { id: "sources", index: 2, label: "Sources", view: "research", cta: "Add or review sources" },
-  { id: "site", index: 3, label: "Site", view: "site-potential", cta: "Explore Site Potential" },
-  { id: "market", index: 4, label: "Market", view: "listings", cta: "Add market evidence" },
-  { id: "strategy", index: 5, label: "Strategy", view: "calculators", cta: "Open calculator" },
+  { id: "market", index: 3, label: "Market", view: "listings", cta: "Add market evidence" },
+  { id: "strategy", index: 4, label: "Strategy", view: "calculators", cta: "Open calculator" },
+  { id: "site", index: 5, label: "Site", view: "site-potential", cta: "Explore Site Potential" },
   { id: "report", index: 6, label: "Report", view: "stoep-report", cta: "Open Easy Erf Report" },
 ];
 
@@ -400,18 +404,18 @@ function nextStepBlurb(id: StepId) {
   }
 }
 
-function sitePotentialModeLabel(
-  mode: "vacant_land" | "existing_house" | "other" | "unsure" | null,
-) {
+function sitePotentialModeLabel(mode: SitePotentialMode | null) {
   switch (mode) {
     case "vacant_land":
       return "Vacant land";
-    case "existing_house":
-      return "Existing house";
-    case "other":
+    case "renovation":
+      return "Existing house / renovation";
+    case "other_building":
       return "Other building";
-    case "unsure":
+    case "unknown":
       return "Not sure";
+    case "skipped":
+      return "Skipped";
     default:
       return "Not set";
   }

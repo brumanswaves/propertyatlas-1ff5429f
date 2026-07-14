@@ -248,9 +248,11 @@ export async function requestImageEditWithOpenAI(
   form.append("size", openAiImageSize());
   form.append("output_format", openAiOutputFormat());
   referenceList.forEach((reference, index) => {
+    const imageBytes = new Uint8Array(reference.bytes.byteLength);
+    imageBytes.set(reference.bytes);
     form.append(
       "image[]",
-      new Blob([reference.bytes], { type: reference.mimeType || "image/png" }),
+      new Blob([imageBytes.buffer], { type: reference.mimeType || "image/png" }),
       reference.fileName || `reference-image-${index + 1}.png`,
     );
   });
