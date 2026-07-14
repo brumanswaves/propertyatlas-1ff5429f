@@ -10,6 +10,25 @@ export function isSitePotentialBetaEnabled(
   return env.SITE_POTENTIAL_BETA_ENABLED === "true";
 }
 
+export function isSitePotentialBetaGenerationReady(
+  env: Pick<
+    NodeJS.ProcessEnv,
+    | "SITE_POTENTIAL_BETA_ENABLED"
+    | "SITE_POTENTIAL_WORKER_ENABLED"
+    | "SITE_POTENTIAL_WORKER_SECRET"
+    | "OPENAI_API_KEY"
+    | "SUPABASE_SERVICE_ROLE_KEY"
+  >,
+) {
+  return (
+    isSitePotentialBetaEnabled(env) &&
+    env.SITE_POTENTIAL_WORKER_ENABLED === "true" &&
+    Boolean(env.SITE_POTENTIAL_WORKER_SECRET) &&
+    Boolean(env.OPENAI_API_KEY) &&
+    Boolean(env.SUPABASE_SERVICE_ROLE_KEY)
+  );
+}
+
 export function isBetaAdminAllowed(
   env: Pick<
     NodeJS.ProcessEnv,

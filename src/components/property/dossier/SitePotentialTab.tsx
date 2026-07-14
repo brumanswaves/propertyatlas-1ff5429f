@@ -22,6 +22,7 @@ import {
   SITE_POTENTIAL_PACK_SIZE,
   SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
+import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
 import {
   useSitePotentialProject,
   type SitePotentialProjectPatch,
@@ -107,6 +108,28 @@ interface BetaCreditUiStatus {
   openRequestStatus?: string | null;
 }
 
+interface SitePotentialPackStatusItem {
+  id: string;
+  optionIndex: number;
+  status: string;
+  generatedAssetId: string | null;
+  attemptCount: number;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  nextAttemptAt?: string | null;
+}
+
+interface SitePotentialPackStatusPayload {
+  designPackId: string;
+  provider: string;
+  status: string;
+  requestedCount: number;
+  completedCount: number;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  items: SitePotentialPackStatusItem[];
+}
+
 function formatPrice() {
   return new Intl.NumberFormat("en-ZA", {
     style: "currency",
@@ -136,6 +159,114 @@ function validationMessage(result: Extract<ErfAssetValidation, { ok: false }>) {
   if (result.reason === "too_large") return "File is too large for the Erf File Vault.";
   if (result.reason === "empty_file") return "That file is empty.";
   return "File type is not supported for this upload.";
+}
+
+function assetDesignPackId(asset: ErfAsset) {
+  const value = asset.metadata?.designPackId;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function normalizePackStatusPayload(payload: unknown): SitePotentialPackStatusPayload | null {
+  if (!payload || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const designPackId = typeof row.designPackId === "string" ? row.designPackId : null;
+  if (!designPackId) return null;
+  const rawItems = Array.isArray(row.items) ? row.items : [];
+  const items = rawItems.map((item) => {
+    const value = item as Record<string, unknown>;
+    return {
+      id: String(value.id ?? ""),
+      optionIndex: Number(value.optionIndex ?? 0),
+      status: String(value.status ?? "queued"),
+      generatedAssetId:
+        typeof value.generatedAssetId === "string" && value.generatedAssetId
+          ? value.generatedAssetId
+          : null,
+      attemptCount: Number(value.attemptCount ?? 0),
+      failureCode: typeof value.failureCode === "string" ? value.failureCode : null,
+      failureMessage: typeof value.failureMessage === "string" ? value.failureMessage : null,
+      nextAttemptAt: typeof value.nextAttemptAt === "string" ? value.nextAttemptAt : null,
+    };
+  });
+  return {
+    designPackId,
+    provider: typeof row.provider === "string" ? row.provider : "unknown",
+    status: typeof row.status === "string" ? row.status : "queued",
+    requestedCount: Number(row.requestedCount ?? SITE_POTENTIAL_PACK_SIZE),
+    completedCount: Number(row.completedCount ?? 0),
+    failureCode: typeof row.failureCode === "string" ? row.failureCode : null,
+    failureMessage: typeof row.failureMessage === "string" ? row.failureMessage : null,
+    items,
+  };
+}
+
+function packProgressSignature(status: SitePotentialPackStatusPayload | null) {
+  if (!status) return "none";
+  return [
+    status.designPackId,
+    status.status,
+    status.completedCount,
+    status.items
+      .map((item) => `${item.optionIndex}:${item.status}:${item.generatedAssetId ?? ""}`)
+      .join("|"),
+  ].join(":");
+}
+
+function packHasRetryableSlots(status: SitePotentialPackStatusPayload | null) {
+  return Boolean(
+    status?.items.some(
+      (item) =>
+        !item.generatedAssetId &&
+        (item.status === "queued" ||
+          item.status === "generating" ||
+          (item.status === "failed" && item.attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS)),
+    ),
+  );
+}
+
+function shouldPollPackStatus(status: SitePotentialPackStatusPayload | null) {
+  if (!status) return false;
+  if (status.completedCount >= status.requestedCount || status.status === "complete") return false;
+  if (status.status === "queued" || status.status === "generating") return true;
+  return status.status === "partial_failed" && packHasRetryableSlots(status);
+}
+
+function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
+  if (!status) return null;
+  const completed = Math.min(status.completedCount, status.requestedCount);
+  if (status.status === "complete" || completed >= status.requestedCount) {
+    return `All ${status.requestedCount} concepts ready.`;
+  }
+  if (status.status === "queued" && completed === 0) {
+    return `Queued - generating concept 1 of ${status.requestedCount}.`;
+  }
+  if (status.status === "generating") {
+    return completed > 0
+      ? `${completed} of ${status.requestedCount} concepts complete.`
+      : `Generating concept 1 of ${status.requestedCount}.`;
+  }
+  if (status.status === "partial_failed" && packHasRetryableSlots(status)) {
+    return `Retrying failed concept - ${completed} of ${status.requestedCount} concepts complete.`;
+  }
+  if (status.status === "partial_failed") {
+    return `Generation could not be completed - ${completed} of ${status.requestedCount} concepts are ready.`;
+  }
+  if (status.status === "failed") return "Generation could not be completed.";
+  return `${completed} of ${status.requestedCount} concepts complete.`;
+}
+
+function packProgressState(status: SitePotentialPackStatusPayload | null) {
+  if (!status) return null;
+  if (status.status === "complete" || status.completedCount >= status.requestedCount) {
+    return "concepts_ready";
+  }
+  if (
+    status.status === "failed" ||
+    (status.status === "partial_failed" && !packHasRetryableSlots(status))
+  ) {
+    return "failed";
+  }
+  return "generating";
 }
 
 function projectPatchToSnapshot(patch: SitePotentialProjectPatch): Partial<SitePotentialSnapshot> {
@@ -172,10 +303,16 @@ export function SitePotentialTab({
   const [strategyDraftReady, setStrategyDraftReady] = useState(false);
   const [betaStatus, setBetaStatus] = useState<BetaCreditUiStatus | null>(null);
   const [requestingBeta, setRequestingBeta] = useState(false);
+  const [activeDesignPackId, setActiveDesignPackId] = useState<string | null>(null);
+  const [packStatus, setPackStatus] = useState<SitePotentialPackStatusPayload | null>(null);
+  const lastPackProgressSignatureRef = useRef<string | null>(null);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
-  const generatedDesigns = vault.assets.filter(
+  const allGeneratedDesigns = vault.assets.filter(
     (asset) => asset.asset_category === "generated_design",
+  );
+  const generatedDesigns = allGeneratedDesigns.filter(
+    (asset) => !activeDesignPackId || assetDesignPackId(asset) === activeDesignPackId,
   );
   const projectState = useSitePotentialProject(parcel.id, generatedDesigns);
   const project = projectState.project;
@@ -201,10 +338,18 @@ export function SitePotentialTab({
     (mode === "vacant_land" || mode === "renovation") &&
     !needsRenovationPhoto &&
     !needsRights;
-  const conceptsReady =
-    generatedDesigns.length >= SITE_POTENTIAL_PACK_SIZE ||
-    project?.generation_status === "concepts_ready" ||
-    project?.generation_status === "design_selected";
+  const packCompletedCount = packStatus?.completedCount ?? generatedDesigns.length;
+  const packRequestedCount = packStatus?.requestedCount ?? SITE_POTENTIAL_PACK_SIZE;
+  const activePackProjectState = packProgressState(packStatus);
+  const packProcessing = shouldPollPackStatus(packStatus);
+  const conceptsReady = packStatus
+    ? packCompletedCount >= packRequestedCount ||
+      packStatus.status === "complete" ||
+      project?.generation_status === "design_selected"
+    : generatedDesigns.length >= SITE_POTENTIAL_PACK_SIZE ||
+      project?.generation_status === "concepts_ready" ||
+      project?.generation_status === "design_selected";
+  const activePackMessage = packStatusMessage(packStatus);
   const betaCreditsRemaining = betaStatus?.creditsRemaining ?? 0;
   const betaGenerationAllowed = BETA_UI_ENABLED && betaStatus?.enabled && betaCreditsRemaining > 0;
 
@@ -235,6 +380,51 @@ export function SitePotentialTab({
     }
   }, []);
 
+  const applyPackStatus = useCallback(
+    (next: SitePotentialPackStatusPayload) => {
+      setActiveDesignPackId(next.designPackId);
+      const signature = packProgressSignature(next);
+      if (
+        lastPackProgressSignatureRef.current &&
+        lastPackProgressSignatureRef.current !== signature
+      ) {
+        void vault.refresh();
+        void projectState.refresh();
+      }
+      lastPackProgressSignatureRef.current = signature;
+      setPackStatus(next);
+    },
+    [projectState, vault],
+  );
+
+  const refreshPackStatus = useCallback(
+    async (designPackId?: string | null, signal?: AbortSignal) => {
+      if (!BETA_UI_ENABLED || !project?.id) return null;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return null;
+      const params = new URLSearchParams({
+        parcelId: parcel.id,
+        siteProjectId: project.id,
+      });
+      if (designPackId) params.set("designPackId", designPackId);
+      const response = await fetch(`/api/site-potential/pack-status?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      });
+      if (response.status === 404) return null;
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Could not read Site Potential pack status.");
+      }
+      const next = normalizePackStatusPayload(payload);
+      if (!next) return null;
+      applyPackStatus(next);
+      return next;
+    },
+    [applyPackStatus, parcel.id, project?.id],
+  );
+
   useEffect(() => {
     if (!vault.signedIn || migrationAttempted) return;
     setMigrationAttempted(true);
@@ -252,11 +442,54 @@ export function SitePotentialTab({
   }, [refreshBetaStatus]);
 
   useEffect(() => {
+    setActiveDesignPackId(null);
+    setPackStatus(null);
+    lastPackProgressSignatureRef.current = null;
+  }, [parcel.id]);
+
+  useEffect(() => {
+    if (!BETA_UI_ENABLED || !project?.id) return;
+    const controller = new AbortController();
+    void refreshPackStatus(activeDesignPackId, controller.signal).catch((error) => {
+      if (!controller.signal.aborted) {
+        console.warn("Site Potential pack status refresh failed", error);
+      }
+    });
+    return () => controller.abort();
+  }, [activeDesignPackId, project?.id, refreshPackStatus]);
+
+  useEffect(() => {
+    if (
+      !BETA_UI_ENABLED ||
+      !activeDesignPackId ||
+      !project?.id ||
+      !shouldPollPackStatus(packStatus)
+    ) {
+      return;
+    }
+    let controller: AbortController | null = null;
+    const poll = () => {
+      controller?.abort();
+      controller = new AbortController();
+      void refreshPackStatus(activeDesignPackId, controller.signal).catch((error) => {
+        if (!controller?.signal.aborted) {
+          console.warn("Site Potential pack status poll failed", error);
+        }
+      });
+    };
+    const interval = window.setInterval(poll, 5000);
+    return () => {
+      window.clearInterval(interval);
+      controller?.abort();
+    };
+  }, [activeDesignPackId, packStatus, project?.id, refreshPackStatus]);
+
+  useEffect(() => {
     onUpdateSite({
       projectId: project?.id ?? null,
       photoCount: sitePhotos.length,
       planCount: supportingFiles.length,
-      conceptCount: generatedDesigns.length,
+      conceptCount: packCompletedCount,
       selectedDesignAssetId: project?.selected_design_asset_id ?? null,
       preferredConceptId: project?.selected_design_asset_id ?? null,
       mode: project?.mode ?? site.mode,
@@ -264,12 +497,14 @@ export function SitePotentialTab({
       imageRightsConfirmed: rightsConfirmed,
       rightsConfirmedAt: project?.rights_confirmed_at ?? null,
       progressState:
+        activePackProjectState ??
         project?.generation_status ??
-        (generatedDesigns.length ? "concepts_ready" : site.progressState),
+        (packCompletedCount >= SITE_POTENTIAL_PACK_SIZE ? "concepts_ready" : site.progressState),
     });
   }, [
-    generatedDesigns.length,
+    activePackProjectState,
     onUpdateSite,
+    packCompletedCount,
     project,
     rightsConfirmed,
     site.mode,
@@ -431,6 +666,11 @@ export function SitePotentialTab({
         creditsRemaining: Number(payload.creditsRemaining ?? 0),
         openRequestStatus: previous?.openRequestStatus ?? null,
       }));
+      const nextPackStatus = normalizePackStatusPayload({
+        ...payload,
+        provider: payload.paymentProvider ?? "beta_credit",
+      });
+      if (nextPackStatus) applyPackStatus(nextPackStatus);
       toast.success(
         payload.durableJobQueued
           ? "Beta concept generation queued."
@@ -468,6 +708,7 @@ export function SitePotentialTab({
     }
     const currentPack = await grantDevEntitlement();
     if (!currentPack?.id || !project?.id) return;
+    setActiveDesignPackId(currentPack.id);
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return;
@@ -494,6 +735,7 @@ export function SitePotentialTab({
       );
       await vault.refresh();
       await projectState.refresh();
+      await refreshPackStatus(currentPack.id).catch(() => null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Generation failed.";
       setGenerationError(message);
@@ -509,7 +751,7 @@ export function SitePotentialTab({
       selected_design_asset_id: asset?.id ?? null,
       generation_status: asset
         ? "design_selected"
-        : generatedDesigns.length
+        : packCompletedCount >= SITE_POTENTIAL_PACK_SIZE
           ? "concepts_ready"
           : "not_started",
     });
@@ -541,7 +783,9 @@ export function SitePotentialTab({
 
   function generationButtonLabel() {
     if (conceptsReady) return "Concepts ready";
-    if (generating || project?.generation_status === "generating") return "Generating concepts";
+    if (generating || packProcessing || project?.generation_status === "generating") {
+      return packStatus?.status === "queued" ? "Queued" : "Generating concepts";
+    }
     if (BETA_UI_ENABLED) {
       if (betaGenerationAllowed) return "Generate with beta credit";
       return "No beta credits available";
@@ -815,6 +1059,7 @@ export function SitePotentialTab({
                 !GENERATION_UI_ENABLED ||
                 !readyToGenerate ||
                 generating ||
+                packProcessing ||
                 saving ||
                 conceptsReady ||
                 (BETA_UI_ENABLED && !betaGenerationAllowed)
@@ -825,6 +1070,7 @@ export function SitePotentialTab({
                 !GENERATION_UI_ENABLED ||
                   !readyToGenerate ||
                   generating ||
+                  packProcessing ||
                   conceptsReady ||
                   (BETA_UI_ENABLED && !betaGenerationAllowed)
                   ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
@@ -865,9 +1111,11 @@ export function SitePotentialTab({
                         ? "Concept generation is unavailable until secure entitlement is configured"
                         : !project?.id
                           ? "Choose a site state first"
-                          : BETA_UI_ENABLED
-                            ? "Ready to use one beta credit"
-                            : "Ready when entitlement and OpenAI server key are configured"}
+                          : activePackMessage
+                            ? activePackMessage
+                            : BETA_UI_ENABLED
+                              ? "Ready to use one beta credit"
+                              : "Ready when entitlement and OpenAI server key are configured"}
             </span>
           </div>
         </div>
@@ -880,9 +1128,20 @@ export function SitePotentialTab({
             Generated concepts
           </h3>
           <span className="text-xs text-[#64748B]">
-            {generatedDesigns.length} of {SITE_POTENTIAL_PACK_SIZE}
+            {packCompletedCount} of {packRequestedCount}
           </span>
         </div>
+        {packStatus && (
+          <Notice
+            tone={
+              packStatus.status === "complete" || packCompletedCount >= packRequestedCount
+                ? "green"
+                : "amber"
+            }
+          >
+            {activePackMessage}
+          </Notice>
+        )}
         {generatedDesigns.length ? (
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {generatedDesigns.map((asset) => (

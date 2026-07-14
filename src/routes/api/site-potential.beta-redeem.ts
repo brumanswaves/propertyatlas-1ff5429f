@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { isSitePotentialBetaEnabled } from "@/lib/sitePotential/betaEntitlements";
+import {
+  isSitePotentialBetaEnabled,
+  isSitePotentialBetaGenerationReady,
+} from "@/lib/sitePotential/betaEntitlements";
 import { consumeBetaCreditForDesignPack } from "@/lib/sitePotential/betaServer";
 import {
   formatQueueStatus,
@@ -44,6 +47,16 @@ export async function handleBetaRedeemRequest(request: Request) {
   try {
     if (!isSitePotentialBetaEnabled(process.env)) {
       return json({ success: false, error: "Site Potential beta access is disabled." }, 403);
+    }
+    if (!isSitePotentialBetaGenerationReady(process.env)) {
+      return json(
+        {
+          success: false,
+          error:
+            "Private beta generation is temporarily unavailable. Your beta credit has not been used.",
+        },
+        503,
+      );
     }
 
     const { supabase, user } = await authenticateApiRequest(request);

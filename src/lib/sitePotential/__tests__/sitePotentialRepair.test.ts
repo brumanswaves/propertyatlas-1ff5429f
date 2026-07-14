@@ -150,6 +150,19 @@ describe("Site Potential production-blocker repair", () => {
       status: "generating",
       completedCount: 1,
     });
+
+    const completeItems = designPackItemRows({ userId: "u1", designPackId: "pack2" }).map(
+      (item) => ({
+        ...item,
+        id: `item-${item.option_index}`,
+        status: "complete" as const,
+        generated_asset_id: `asset-${item.option_index}`,
+      }),
+    );
+    expect(designPackStatusFromItems(completeItems)).toMatchObject({
+      status: "complete",
+      completedCount: 6,
+    });
   });
 
   it("requires image-edit/reference-image generation for renovation source photos", () => {
@@ -191,5 +204,25 @@ describe("Site Potential production-blocker repair", () => {
       promptVersion: "site-potential-2026-07-secure-v2",
       disclaimer: expect.stringContaining("AI-generated concept visualisation"),
     });
+  });
+
+  it("repairs pack completion so one finalized item does not mark the project ready", () => {
+    const migration = read(
+      "supabase/migrations/20260714124500_site_potential_pack_completion_status.sql",
+    );
+
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.finalize_site_potential_item");
+    expect(migration).toContain("item_row.lease_expires_at <= now()");
+    expect(migration).toContain("v_completed_count >= v_requested_count THEN 'complete'");
+    expect(migration).toContain("v_pack_status = 'complete' THEN 'concepts_ready'");
+    expect(migration).toContain("WHEN v_remaining_count > 0 THEN 'generating'");
+    expect(migration).toContain("WHEN v_pack_status IN ('failed', 'partial_failed') THEN 'failed'");
+    expect(migration).not.toContain("SET generation_status = 'concepts_ready'");
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.finalize_site_potential_item(text, uuid, uuid, uuid, text, uuid, text, text, text, text, text, integer, jsonb, text)\nFROM PUBLIC, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.finalize_site_potential_item(text, uuid, uuid, uuid, text, uuid, text, text, text, text, text, integer, jsonb, text)\nTO service_role",
+    );
   });
 });

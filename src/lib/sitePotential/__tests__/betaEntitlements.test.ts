@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   betaIdempotencyPrefix,
   isBetaAdminAllowed,
+  isSitePotentialBetaGenerationReady,
   isSitePotentialBetaEnabled,
 } from "../betaEntitlements";
 
@@ -59,6 +60,38 @@ describe("Site Potential private beta entitlements", () => {
     ).toBe("beta:user-1:parcel-1:project-1");
   });
 
+  it("requires the worker and server secrets before beta generation is ready", () => {
+    expect(
+      isSitePotentialBetaGenerationReady({
+        SITE_POTENTIAL_BETA_ENABLED: "true",
+        SITE_POTENTIAL_WORKER_ENABLED: "true",
+        SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
+        OPENAI_API_KEY: "openai-key",
+        SUPABASE_SERVICE_ROLE_KEY: "service-role",
+      }),
+    ).toBe(true);
+
+    expect(
+      isSitePotentialBetaGenerationReady({
+        SITE_POTENTIAL_BETA_ENABLED: "true",
+        SITE_POTENTIAL_WORKER_ENABLED: "false",
+        SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
+        OPENAI_API_KEY: "openai-key",
+        SUPABASE_SERVICE_ROLE_KEY: "service-role",
+      }),
+    ).toBe(false);
+
+    expect(
+      isSitePotentialBetaGenerationReady({
+        SITE_POTENTIAL_BETA_ENABLED: "true",
+        SITE_POTENTIAL_WORKER_ENABLED: "true",
+        SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
+        OPENAI_API_KEY: "",
+        SUPABASE_SERVICE_ROLE_KEY: "service-role",
+      }),
+    ).toBe(false);
+  });
+
   it("creates secure beta-credit tables and a service-role-only redemption RPC", () => {
     const migration = read("supabase/migrations/20260714113000_site_potential_beta_credits.sql");
 
@@ -96,6 +129,13 @@ describe("Site Potential private beta entitlements", () => {
     const route = read("src/routes/api/site-potential.beta-redeem.ts");
 
     expect(route).toContain("isSitePotentialBetaEnabled");
+    expect(route).toContain("isSitePotentialBetaGenerationReady");
+    expect(route).toContain(
+      "Private beta generation is temporarily unavailable. Your beta credit has not been used.",
+    );
+    expect(route.indexOf("isSitePotentialBetaGenerationReady")).toBeLessThan(
+      route.indexOf("consumeBetaCreditForDesignPack"),
+    );
     expect(route).toContain("consumeBetaCreditForDesignPack");
     expect(route).toContain("queueSitePotentialGeneration");
     expect(route).toContain('paymentProvider: "beta_credit"');
@@ -110,6 +150,11 @@ describe("Site Potential private beta entitlements", () => {
     expect(route).toContain("targetUserId");
     expect(route).toContain("A grant reason is required.");
     expect(route).not.toContain("VITE_SITE_POTENTIAL_BETA_UI");
+
+    const server = read("src/lib/sitePotential/betaServer.ts");
+    expect(server).toContain('from("site_potential_beta_access_requests")');
+    expect(server).toContain('status: "approved"');
+    expect(server).toContain('.eq("status", "open")');
   });
 
   it("shows private beta UI states without fake checkout copy", () => {
@@ -125,5 +170,35 @@ describe("Site Potential private beta entitlements", () => {
     );
     expect(tab).toContain("/api/site-potential/beta-redeem");
     expect(tab).toContain("/api/site-potential/beta-request");
+    expect(tab).toContain("/api/site-potential/pack-status");
+    expect(tab).toContain("window.setInterval(poll, 5000)");
+    expect(tab).toContain("controller?.abort()");
+    expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
+    expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
+  });
+
+  it("adds a provider-neutral authenticated pack status endpoint", () => {
+    const route = read("src/routes/api/site-potential.pack-status.ts");
+    const server = read("src/lib/sitePotential/betaServer.ts");
+
+    expect(route).toContain('createFileRoute("/api/site-potential/pack-status")');
+    expect(route).toContain("authenticateApiRequest");
+    expect(route).toContain("readSitePotentialPackStatus");
+    expect(route).toContain("parcelId and siteProjectId are required.");
+    expect(server).toContain('from("erf_site_projects")');
+    expect(server).toContain('from("erf_design_packs")');
+    expect(server).toContain('from("erf_design_pack_items")');
+    expect(server).toContain('.eq("user_id", input.userId)');
+    expect(server).not.toContain("worker_id:");
+    expect(server).not.toContain("lease_expires_at:");
+  });
+
+  it("keeps real staging proof separate from mocked/local tests", () => {
+    const script = read("scripts/site-potential-beta-staging-check.ts");
+
+    expect(script).toContain("This intentionally calls the real beta redemption endpoint");
+    expect(script).toContain("/api/site-potential/beta-redeem");
+    expect(script).toContain("/api/site-potential/pack-status");
+    expect(script).toContain("EASY_ERF_BASE_URL");
   });
 });
