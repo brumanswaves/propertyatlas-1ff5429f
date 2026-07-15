@@ -336,66 +336,138 @@ export async function testDirectFetch(
 ): Promise<PublicDataResult> {
   const attempts: PublicDataAttempt[] = [];
   for (const endpoint of PUBLIC_LAYER_CONFIG[layer].endpoints) {
-    for (const format of ["geojson", "json"] as const) {
-      const requestUrl = buildArcGisUrl(endpoint, bbox, limit, format);
-      try {
-        const res = await fetchWithTimeout(
-          requestUrl,
-          {
-            headers: {
-              Accept:
-                format === "geojson" ? "application/geo+json,application/json" : "application/json",
-            },
-          },
-          9000,
-        );
-        if (!res.ok) {
-          const preview = (await res.text().catch(() => "")).slice(0, 500);
-          attempts.push({
-            method: "direct",
-            layer,
-            requestUrl,
-            ok: false,
-            httpStatus: res.status,
-            errorMessage: `HTTP ${res.status}`,
-            responsePreview: preview,
-            fallbackUsed: "direct",
-          });
-          continue;
-        }
-        const { fc, preview } = await parseGeoJsonResponse(res, format);
+    // Try GeoJSON first for this endpoint. Only fall through to the JSON retry
+    // when the GeoJSON attempt fails, is non-JSON, or is an ArcGIS error — a
+    // valid FeatureCollection with zero features skips the redundant retry.
+    let retryAsJson = false;
+    let validEmptyGeoJson = false;
+    const geojsonUrl = buildArcGisUrl(endpoint, bbox, limit, "geojson");
+    try {
+      const res = await fetchWithTimeout(
+        geojsonUrl,
+        { headers: { Accept: "application/geo+json,application/json" } },
+        9000,
+      );
+      if (!res.ok) {
+        const preview = (await res.text().catch(() => "")).slice(0, 500);
         attempts.push({
           method: "direct",
           layer,
-          requestUrl,
-          ok: true,
+          requestUrl: geojsonUrl,
+          ok: false,
           httpStatus: res.status,
-          featureCount: fc.features.length,
+          errorMessage: `HTTP ${res.status}`,
           responsePreview: preview,
           fallbackUsed: "direct",
         });
-        if (fc.features.length > 0) {
-          return {
-            type: "FeatureCollection",
-            features: fc.features,
+        retryAsJson = true;
+      } else {
+        try {
+          const { fc, preview } = await parseGeoJsonResponse(res, "geojson");
+          attempts.push({
+            method: "direct",
             layer,
-            sourceLabel: PUBLIC_LAYER_CONFIG[layer].sourceLabel,
-            official: true,
+            requestUrl: geojsonUrl,
+            ok: true,
+            httpStatus: res.status,
+            featureCount: fc.features.length,
+            responsePreview: preview,
             fallbackUsed: "direct",
-            fetchedAt: nowIso(),
-            attempts,
-          };
+          });
+          if (fc.features.length > 0) {
+            return {
+              type: "FeatureCollection",
+              features: fc.features,
+              layer,
+              sourceLabel: PUBLIC_LAYER_CONFIG[layer].sourceLabel,
+              official: true,
+              fallbackUsed: "direct",
+              fetchedAt: nowIso(),
+              attempts,
+            };
+          }
+          validEmptyGeoJson = true;
+        } catch (parseErr) {
+          // Non-JSON, malformed, or ArcGIS `error` envelope — worth retrying as JSON.
+          attempts.push({
+            method: "direct",
+            layer,
+            requestUrl: geojsonUrl,
+            ok: false,
+            httpStatus: res.status,
+            errorMessage: parseErr instanceof Error ? parseErr.message : "parse failed",
+            fallbackUsed: "direct",
+          });
+          retryAsJson = true;
         }
-      } catch (err) {
+      }
+    } catch (err) {
+      attempts.push({
+        method: "direct",
+        layer,
+        requestUrl: geojsonUrl,
+        ok: false,
+        errorMessage: err instanceof Error ? err.message : "fetch failed",
+        fallbackUsed: "direct",
+      });
+      retryAsJson = true;
+    }
+
+    if (validEmptyGeoJson || !retryAsJson) continue;
+
+    const jsonUrl = buildArcGisUrl(endpoint, bbox, limit, "json");
+    try {
+      const res = await fetchWithTimeout(
+        jsonUrl,
+        { headers: { Accept: "application/json" } },
+        9000,
+      );
+      if (!res.ok) {
+        const preview = (await res.text().catch(() => "")).slice(0, 500);
         attempts.push({
           method: "direct",
           layer,
-          requestUrl,
+          requestUrl: jsonUrl,
           ok: false,
-          errorMessage: err instanceof Error ? err.message : "fetch failed",
+          httpStatus: res.status,
+          errorMessage: `HTTP ${res.status}`,
+          responsePreview: preview,
           fallbackUsed: "direct",
         });
+        continue;
       }
+      const { fc, preview } = await parseGeoJsonResponse(res, "json");
+      attempts.push({
+        method: "direct",
+        layer,
+        requestUrl: jsonUrl,
+        ok: true,
+        httpStatus: res.status,
+        featureCount: fc.features.length,
+        responsePreview: preview,
+        fallbackUsed: "direct",
+      });
+      if (fc.features.length > 0) {
+        return {
+          type: "FeatureCollection",
+          features: fc.features,
+          layer,
+          sourceLabel: PUBLIC_LAYER_CONFIG[layer].sourceLabel,
+          official: true,
+          fallbackUsed: "direct",
+          fetchedAt: nowIso(),
+          attempts,
+        };
+      }
+    } catch (err) {
+      attempts.push({
+        method: "direct",
+        layer,
+        requestUrl: jsonUrl,
+        ok: false,
+        errorMessage: err instanceof Error ? err.message : "fetch failed",
+        fallbackUsed: "direct",
+      });
     }
   }
   return emptyResult(
@@ -495,15 +567,16 @@ export async function loadOfficialPublicLayer(
 ): Promise<PublicDataResult> {
   const attempts: PublicDataAttempt[] = [];
 
-  // PRIMARY: direct browser fetch (Kouga SG Properties layer 32 is first in endpoints list, CORS-enabled)
-  const direct = await testDirectFetch(layer, bbox, limit);
-  attempts.push(...direct.attempts);
-  if (direct.features.length > 0) return { ...direct, attempts, official: true };
-
-  // SECONDARY: edge proxy (handles CORS-restricted national CSG endpoints)
+  // PRIMARY: edge proxy — server-side ArcGIS fetch avoids browser CORS,
+  // upstream rate-limiting quirks, and ad/tracker blockers.
   const edge = await testEdgeProxy(layer, bbox, limit);
   attempts.push(...edge.attempts);
   if (edge.features.length > 0) return { ...edge, attempts, official: true };
+
+  // SECONDARY: direct browser fetch (Kouga SG Properties layer 32 is CORS-enabled).
+  const direct = await testDirectFetch(layer, bbox, limit);
+  attempts.push(...direct.attempts);
+  if (direct.features.length > 0) return { ...direct, attempts, official: true };
 
   // TERTIARY: imported static GeoJSON file
   const stat = await testStaticGeoJson(layer, false);

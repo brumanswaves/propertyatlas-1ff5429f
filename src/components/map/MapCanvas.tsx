@@ -1303,13 +1303,23 @@ export function MapCanvas({
           clearOfficialSource("csg-parcels");
         } else {
           requests.push(
-            loadLayer("csg-parcels", bbox).then((r) => {
-              if (!r.status) return;
-              status.csg = r.status;
-              nextMsgs.csg = r.message;
-              setLayerMessages((m) => ({ ...m, csg: r.message }));
-              publishStatus(status);
-            }),
+            loadLayer("csg-parcels", bbox)
+              .then((r) => {
+                if (!r.status) return;
+                status.csg = r.status;
+                nextMsgs.csg = r.message;
+                setLayerMessages((m) => ({ ...m, csg: r.message }));
+                publishStatus(status);
+              })
+              .catch(() => {
+                if (cancelled) return;
+                const msg = "CSG unavailable";
+                clearOfficialSource("csg-parcels");
+                status.csg = { state: "failed", count: 0, message: msg };
+                nextMsgs.csg = msg;
+                setLayerMessages((m) => ({ ...m, csg: msg }));
+                publishStatus(status);
+              }),
           );
         }
       }
@@ -1320,13 +1330,23 @@ export function MapCanvas({
           clearOfficialSource("kouga-zoning");
         } else {
           requests.push(
-            loadLayer("kouga-zoning", bbox).then((r) => {
-              if (!r.status) return;
-              status.kouga = r.status;
-              nextMsgs.kouga = r.message;
-              setLayerMessages((m) => ({ ...m, kouga: r.message }));
-              publishStatus(status);
-            }),
+            loadLayer("kouga-zoning", bbox)
+              .then((r) => {
+                if (!r.status) return;
+                status.kouga = r.status;
+                nextMsgs.kouga = r.message;
+                setLayerMessages((m) => ({ ...m, kouga: r.message }));
+                publishStatus(status);
+              })
+              .catch(() => {
+                if (cancelled) return;
+                const msg = "Kouga unavailable";
+                clearOfficialSource("kouga-zoning");
+                status.kouga = { state: "failed", count: 0, message: msg };
+                nextMsgs.kouga = msg;
+                setLayerMessages((m) => ({ ...m, kouga: msg }));
+                publishStatus(status);
+              }),
           );
         }
       }
