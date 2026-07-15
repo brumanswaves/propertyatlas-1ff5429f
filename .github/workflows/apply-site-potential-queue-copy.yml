@@ -22,30 +22,34 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('src/components/property/dossier/SitePotentialTab.tsx')
           text = path.read_text()
 
-          replacements = {
-              'return `Queued - generating concept 1 of ${status.requestedCount}.`;':
+          changes = [
+              (
+                  r'return `Queued - generating concept 1 of \$\{status\.requestedCount\}\.`;',
                   'return `Your ${status.requestedCount} concepts are queued. They will appear here as each image is created.`;',
-              'return packStatus?.status === "queued" ? "Queued" : "Generating 3 concepts";':
+              ),
+              (
+                  r'return packStatus\?\.status === "queued" \? "Queued" : "Generating 3 concepts";',
                   'return packStatus?.status === "queued" ? "3 concepts queued" : "Generating 3 concepts";',
-              '''          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
-            No generated concepts saved yet. Generated images will appear here only after the server
-            stores them in the Erf File Vault.
-          </p>''':
-                  '''          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
+              ),
+              (
+                  r'''<p className="mt-4 rounded-2xl border border-dashed border-\[#D9E6F2\] bg-\[#F7FBFF\] px-4 py-3 text-sm text-\[#0D1B2A\]/60">\s*No generated concepts saved yet\. Generated images will appear here only after the server\s*stores them in the Erf File Vault\.\s*</p>''',
+                  '''<p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
             {packStatus
               ? "Your concepts are being created. Images will appear here as each one is completed, and this page will update automatically."
               : "No concepts generated yet. Complete the brief and generate a three-concept pack."}
           </p>''',
-          }
+              ),
+          ]
 
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f'Expected text not found: {old[:100]}')
-              text = text.replace(old, new, 1)
+          for pattern, replacement in changes:
+              text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, found {count}: {pattern[:100]}')
 
           path.write_text(text)
           PY
