@@ -21,7 +21,7 @@ jobs:
         run: python scripts/apply-local-property-team-mvp.py
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run tests
         run: npx vitest run
