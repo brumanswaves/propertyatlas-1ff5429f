@@ -1,0 +1,1 @@
+Trigger isolated GitHub verification for Local Property Team MVP.
