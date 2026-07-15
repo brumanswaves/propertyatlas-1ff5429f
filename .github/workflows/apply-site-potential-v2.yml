@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - site-potential-v2-upload-final
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
