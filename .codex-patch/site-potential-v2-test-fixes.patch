@@ -1,0 +1,24 @@
+diff --git a/src/lib/sitePotential/__tests__/betaEntitlements.test.ts b/src/lib/sitePotential/__tests__/betaEntitlements.test.ts
+--- a/src/lib/sitePotential/__tests__/betaEntitlements.test.ts
++++ b/src/lib/sitePotential/__tests__/betaEntitlements.test.ts
+@@ -162,7 +162,7 @@
+     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+ 
+     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
+-    expect(tab).toContain("AI Property Concepts - Private Beta");
++    expect(tab).toContain("Three site-grounded concepts");
+     expect(tab).toContain("Generate 3 free concepts");
+     expect(tab).toContain("Use 1 credit for 3 concepts");
+     expect(tab).toContain("Free allowance used");
+diff --git a/src/lib/sitePotential/generation.ts b/src/lib/sitePotential/generation.ts
+--- a/src/lib/sitePotential/generation.ts
++++ b/src/lib/sitePotential/generation.ts
+@@ -95,7 +95,7 @@
+       : null,
+     input.customInstructions ? `Additional instructions: ${input.customInstructions}.` : null,
+     input.mode === "renovation"
+-      ? "Preserve recognisable existing structure, site relationship, camera evidence and major openings unless the renovation level expressly permits major structural change."
++      ? "Preserve the recognisable house structure, site relationship, camera evidence and major openings unless the renovation level expressly permits major structural change."
+       : "Use the official parcel map and site photographs as grounding. Respect the visible road side, neighbouring development, orientation, terrain and view direction. Do not place the house on a generic imaginary waterfront lot.",
+     "Create a realistic South African residential architectural visualisation with buildable-looking proportions, restrained materials and credible landscaping.",
+     "The three concepts are independent. Do not imitate or preserve any previously generated Easy Erf concept. The footprint, massing, roof form, outdoor-space logic and camera composition must follow this concept's named direction.",
