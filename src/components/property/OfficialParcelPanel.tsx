@@ -1394,7 +1394,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   });
-  const { propertyIdentity, marketAddressIntelligence } = useSavedMarketEvidence(parcelId);
+  const {
+    loading: marketAddressLoading,
+    propertyIdentity,
+    marketAddressIntelligence,
+  } = useSavedMarketEvidence(parcelId);
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
   const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
@@ -2213,6 +2217,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <LocalPropertyTeam
               parcel={normalizedParcel}
               siteMode={workspaceState.sitePotential.mode}
+              marketAddress={savedMarketAddress}
+              marketAddressLoading={marketAddressLoading}
+              onOpenMarket={() => selectWorkbenchTab("listings", { markStarted: true })}
             />
           )}
 

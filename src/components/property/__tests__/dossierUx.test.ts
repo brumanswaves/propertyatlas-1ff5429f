@@ -841,10 +841,18 @@ describe("Local Property Team MVP guardrails", () => {
     expect(localCatalog).toContain("Buy, Sell or Manage");
     expect(localTeam).toContain("Google place result");
     expect(localTeam).toContain("Search wider area");
+    expect(localTeam).toContain("Add the property address first");
+    expect(localTeam).toContain("Go to Market and update address");
+    expect(localTeam).toContain("Change address in Market");
+    expect(localTeam).toContain("marketAddress?.formattedAddress");
+    expect(localTeam).toContain("onOpenMarket");
     expect(localTeam).toContain("Results are sourced from Google");
     expect(serverRoute).toContain("process.env.GOOGLE_PLACES_API_KEY");
     expect(serverRoute).not.toContain("VITE_GOOGLE_PLACES_API_KEY");
     expect(serverRoute).toContain("pageSize: 3");
+    expect(serverRoute).toContain("address_required");
+    expect(serverRoute).toContain('`near ${address}`');
+    expect(serverRoute).not.toContain("cleanText(body.suburb)");
     expect(serverRoute).toContain('place.businessStatus !== "CLOSED_PERMANENTLY"');
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
