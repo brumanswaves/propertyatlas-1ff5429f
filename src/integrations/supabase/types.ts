@@ -14,6 +14,369 @@ export type Database = {
   }
   public: {
     Tables: {
+      erf_asset_events: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          parcel_id: string
+          user_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          parcel_id: string
+          user_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          parcel_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erf_asset_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "erf_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erf_assets: {
+        Row: {
+          asset_category: string
+          asset_type: string
+          checksum_sha256: string | null
+          created_at: string
+          id: string
+          local_migration_fingerprint: string | null
+          metadata: Json
+          mime_type: string
+          original_file_name: string
+          parcel_id: string
+          size_bytes: number
+          source_label: string | null
+          status: string
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_category: string
+          asset_type: string
+          checksum_sha256?: string | null
+          created_at?: string
+          id?: string
+          local_migration_fingerprint?: string | null
+          metadata?: Json
+          mime_type: string
+          original_file_name: string
+          parcel_id: string
+          size_bytes: number
+          source_label?: string | null
+          status?: string
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_category?: string
+          asset_type?: string
+          checksum_sha256?: string | null
+          created_at?: string
+          id?: string
+          local_migration_fingerprint?: string | null
+          metadata?: Json
+          mime_type?: string
+          original_file_name?: string
+          parcel_id?: string
+          size_bytes?: number
+          source_label?: string | null
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      erf_design_pack_items: {
+        Row: {
+          attempt_count: number
+          claimed_at: string | null
+          created_at: string
+          design_pack_id: string
+          failure_code: string | null
+          failure_message: string | null
+          generated_asset_id: string | null
+          heartbeat_at: string | null
+          id: string
+          lease_expires_at: string | null
+          next_attempt_at: string
+          option_index: number
+          status: string
+          updated_at: string
+          user_id: string
+          worker_id: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          claimed_at?: string | null
+          created_at?: string
+          design_pack_id: string
+          failure_code?: string | null
+          failure_message?: string | null
+          generated_asset_id?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          option_index: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          worker_id?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          claimed_at?: string | null
+          created_at?: string
+          design_pack_id?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          generated_asset_id?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          option_index?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erf_design_pack_items_design_pack_id_fkey"
+            columns: ["design_pack_id"]
+            isOneToOne: false
+            referencedRelation: "erf_design_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erf_design_pack_items_generated_asset_id_fkey"
+            columns: ["generated_asset_id"]
+            isOneToOne: false
+            referencedRelation: "erf_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erf_design_packs: {
+        Row: {
+          claimed_at: string | null
+          completed_count: number
+          created_at: string
+          entitlement_status: string
+          failure_code: string | null
+          failure_message: string | null
+          heartbeat_at: string | null
+          id: string
+          idempotency_key: string
+          lease_expires_at: string | null
+          next_attempt_at: string
+          parcel_id: string
+          payment_provider: string | null
+          payment_reference: string | null
+          prompt_snapshot: Json
+          requested_count: number
+          site_project_id: string
+          status: string
+          updated_at: string
+          user_id: string
+          worker_id: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          completed_count?: number
+          created_at?: string
+          entitlement_status?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          idempotency_key: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          parcel_id: string
+          payment_provider?: string | null
+          payment_reference?: string | null
+          prompt_snapshot?: Json
+          requested_count?: number
+          site_project_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          worker_id?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          completed_count?: number
+          created_at?: string
+          entitlement_status?: string
+          failure_code?: string | null
+          failure_message?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          idempotency_key?: string
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          parcel_id?: string
+          payment_provider?: string | null
+          payment_reference?: string | null
+          prompt_snapshot?: Json
+          requested_count?: number
+          site_project_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erf_design_packs_site_project_id_fkey"
+            columns: ["site_project_id"]
+            isOneToOne: false
+            referencedRelation: "erf_site_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erf_site_project_assets: {
+        Row: {
+          asset_id: string
+          created_at: string
+          display_order: number
+          id: string
+          role: string
+          site_project_id: string
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          role: string
+          site_project_id: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          role?: string
+          site_project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erf_site_project_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "erf_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erf_site_project_assets_site_project_id_fkey"
+            columns: ["site_project_id"]
+            isOneToOne: false
+            referencedRelation: "erf_site_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erf_site_projects: {
+        Row: {
+          created_at: string
+          custom_instructions: string | null
+          design_brief: string | null
+          generation_status: string
+          id: string
+          metadata: Json
+          mode: string
+          parcel_id: string
+          renovation_level: string | null
+          requested_features: string[]
+          requested_rooms: string[]
+          rights_confirmed_at: string | null
+          selected_design_asset_id: string | null
+          selected_style: string | null
+          skipped_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_instructions?: string | null
+          design_brief?: string | null
+          generation_status?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          parcel_id: string
+          renovation_level?: string | null
+          requested_features?: string[]
+          requested_rooms?: string[]
+          rights_confirmed_at?: string | null
+          selected_design_asset_id?: string | null
+          selected_style?: string | null
+          skipped_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_instructions?: string | null
+          design_brief?: string | null
+          generation_status?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          parcel_id?: string
+          renovation_level?: string | null
+          requested_features?: string[]
+          requested_rooms?: string[]
+          rights_confirmed_at?: string | null
+          selected_design_asset_id?: string | null
+          selected_style?: string | null
+          skipped_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erf_site_projects_selected_design_asset_id_fkey"
+            columns: ["selected_design_asset_id"]
+            isOneToOne: false
+            referencedRelation: "erf_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_type: string
@@ -392,6 +755,78 @@ export type Database = {
         }
         Relationships: []
       }
+      site_potential_beta_access_requests: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          parcel_id: string | null
+          reason: string | null
+          requested_mode: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          parcel_id?: string | null
+          reason?: string | null
+          requested_mode?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          parcel_id?: string | null
+          reason?: string | null
+          requested_mode?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      site_potential_beta_credits: {
+        Row: {
+          created_at: string
+          credits_granted: number
+          credits_used: number
+          expires_at: string | null
+          granted_by: string | null
+          id: string
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_granted: number
+          credits_used?: number
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_granted?: number
+          credits_used?: number
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -442,10 +877,100 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_next_site_potential_item: {
+        Args: {
+          p_lease_expires_at: string
+          p_max_attempts?: number
+          p_now?: string
+          p_worker_id: string
+        }
+        Returns: {
+          attempt_count: number
+          design_pack_id: string
+          item_id: string
+          option_index: number
+          parcel_id: string
+          site_project_id: string
+          user_id: string
+        }[]
+      }
+      consume_site_potential_beta_credit: {
+        Args: {
+          p_idempotency_prefix: string
+          p_now?: string
+          p_parcel_id: string
+          p_site_project_id: string
+          p_user_id: string
+        }
+        Returns: {
+          beta_credit_id: string
+          credits_remaining: number
+          design_pack_id: string
+        }[]
+      }
+      finalize_site_potential_item: {
+        Args: {
+          p_asset_id: string
+          p_asset_type: string
+          p_item_id: string
+          p_metadata: Json
+          p_mime_type: string
+          p_original_file_name: string
+          p_parcel_id: string
+          p_site_project_id: string
+          p_size_bytes: number
+          p_source_label?: string
+          p_storage_bucket: string
+          p_storage_path: string
+          p_user_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          asset_category: string
+          asset_type: string
+          checksum_sha256: string | null
+          created_at: string
+          id: string
+          local_migration_fingerprint: string | null
+          metadata: Json
+          mime_type: string
+          original_file_name: string
+          parcel_id: string
+          size_bytes: number
+          source_label: string | null
+          status: string
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "erf_assets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      recover_stale_site_potential_jobs: {
+        Args: { p_max_attempts?: number; p_now?: string }
+        Returns: {
+          recovered_items: number
+          recovered_packs: number
+        }[]
+      }
+      renew_site_potential_item_lease: {
+        Args: {
+          p_item_id: string
+          p_lease_expires_at: string
+          p_now?: string
+          p_worker_id: string
         }
         Returns: boolean
       }
