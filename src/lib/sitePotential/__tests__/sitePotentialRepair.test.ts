@@ -103,8 +103,36 @@ describe("Site Potential production-blocker repair", () => {
     for (const fn of requiredFunctions) {
       expect(types).toContain(`${fn}: {`);
     }
-    expect(types).toContain('Returns: Database["public"]["Tables"]["erf_assets"]["Row"]');
-    expect(types).toContain("p_source_label?: string");
+    // Scope the erf_assets return check to the finalize_site_potential_item RPC
+    // definition so the guardrail keeps proving that this specific RPC returns
+    // an erf_assets row, regardless of which representation the Supabase type
+    // generator currently emits (legacy Row alias vs. new SetofOptions metadata).
+    const finalizeStart = types.indexOf("finalize_site_potential_item: {");
+    expect(finalizeStart).toBeGreaterThan(-1);
+    // Find the matching closing brace for this RPC block.
+    let depth = 0;
+    let finalizeEnd = -1;
+    for (let i = finalizeStart; i < types.length; i++) {
+      const ch = types[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          finalizeEnd = i + 1;
+          break;
+        }
+      }
+    }
+    expect(finalizeEnd).toBeGreaterThan(finalizeStart);
+    const finalizeBlock = types.slice(finalizeStart, finalizeEnd);
+    const hasLegacyReturnAlias = finalizeBlock.includes(
+      'Returns: Database["public"]["Tables"]["erf_assets"]["Row"]',
+    );
+    const hasSetofRelationship = /SetofOptions:\s*\{[^}]*to:\s*"erf_assets"/s.test(
+      finalizeBlock,
+    );
+    expect(hasLegacyReturnAlias || hasSetofRelationship).toBe(true);
+    expect(finalizeBlock).toContain("p_source_label?: string");
   });
 
   it("keeps public and private worker routes on the same shared handler", () => {
