@@ -3,7 +3,7 @@ import {
   isSitePotentialBetaEnabled,
   isSitePotentialBetaGenerationReady,
 } from "@/lib/sitePotential/betaEntitlements";
-import { consumeBetaCreditForDesignPack } from "@/lib/sitePotential/betaServer";
+import { consumeSitePotentialEntitlement } from "@/lib/sitePotential/betaServer";
 import {
   formatQueueStatus,
   queueSitePotentialGeneration,
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/site-potential/beta-redeem")({
 });
 
 export async function handleBetaRedeemRequest(request: Request) {
-  let body: { parcelId?: string; siteProjectId?: string } = {};
+  let body: { parcelId?: string; siteProjectId?: string; requestId?: string } = {};
   try {
     body = await request.json();
   } catch {
@@ -53,7 +53,7 @@ export async function handleBetaRedeemRequest(request: Request) {
         {
           success: false,
           error:
-            "Private beta generation is temporarily unavailable. Your beta credit has not been used.",
+            "Site Potential generation is temporarily unavailable. No free allowance or credit has been used.",
         },
         503,
       );
@@ -96,18 +96,22 @@ export async function handleBetaRedeemRequest(request: Request) {
       project.mode,
       (inputAssets ?? []) as AssetRow[],
     );
-    if (project.mode === "renovation" && sourceAssets.length === 0) {
+    if (
+      project.mode === "renovation" &&
+      !sourceAssets.some((asset) => asset.asset_category === "existing_house_photo")
+    ) {
       return json(
         { success: false, error: "Upload at least one permitted property photo first." },
         400,
       );
     }
 
-    const entitlement = await consumeBetaCreditForDesignPack({
+    const entitlement = await consumeSitePotentialEntitlement({
       serviceSupabase,
       userId: user.id,
       parcelId: body.parcelId,
       siteProjectId: body.siteProjectId,
+      requestId: body.requestId || crypto.randomUUID(),
     });
     if (!entitlement.ok) {
       return json({ success: false, error: entitlement.error }, entitlement.status);
@@ -127,14 +131,15 @@ export async function handleBetaRedeemRequest(request: Request) {
         success: true,
         accepted: queued.status !== "complete",
         durableJobQueued: queued.status !== "complete",
-        paymentProvider: "beta_credit",
+        paymentProvider: entitlement.entitlementSource,
         designPackId: entitlement.designPackId,
-        betaCreditId: entitlement.betaCreditId,
-        creditsRemaining: entitlement.creditsRemaining,
+        creditsRemaining: entitlement.betaCreditsRemaining,
+        betaCreditsRemaining: entitlement.betaCreditsRemaining,
+        purchasedCreditsRemaining: entitlement.purchasedCreditsRemaining,
         message:
           queued.status === "complete"
             ? "Concept pack is already complete."
-            : "Beta concept generation has been queued for the durable Site Potential worker.",
+            : "Three independent property concepts have been queued for generation.",
         ...formatQueueStatus(queued.items),
       },
       queued.status === "complete" ? 200 : 202,

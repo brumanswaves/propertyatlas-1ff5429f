@@ -17,6 +17,7 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
+  SITE_POTENTIAL_CREDIT_PACKS,
   SITE_POTENTIAL_CURRENCY,
   SITE_POTENTIAL_DISCLAIMER,
   SITE_POTENTIAL_PACK_SIZE,
@@ -30,8 +31,14 @@ import {
   type SitePotentialProjectPatch,
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
+import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import type { ErfAsset, ErfAssetCategory, ErfAssetValidation } from "@/lib/workbench/erfFileVault";
+import {
+  createErfAssetSignedUrl,
+  type ErfAsset,
+  type ErfAssetCategory,
+  type ErfAssetValidation,
+} from "@/lib/workbench/erfFileVault";
 import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
 import { toast } from "sonner";
 
@@ -40,7 +47,6 @@ export interface SitePotentialTabProps {
   workspaceState: ErfWorkspaceState;
   onUpdateSite: (patch: Partial<SitePotentialSnapshot>) => void;
   onExploreReport?: () => void;
-  onOpenStrategy?: () => void;
 }
 
 const STYLES = [
@@ -107,6 +113,20 @@ const BETA_UI_ENABLED = import.meta.env.VITE_SITE_POTENTIAL_BETA_UI === "true";
 interface BetaCreditUiStatus {
   enabled: boolean;
   creditsRemaining: number;
+  betaCreditsRemaining?: number;
+  purchasedCredits?: number;
+  freeEligible?: boolean;
+  canGenerate?: boolean;
+  nextEntitlementSource?: string | null;
+  free?: {
+    used24Hours: number;
+    used7Days: number;
+    used30Days: number;
+    remaining24Hours: number;
+    remaining7Days: number;
+    remaining30Days: number;
+    sameParcelEligible: boolean;
+  };
   openRequestStatus?: string | null;
 }
 
@@ -153,8 +173,17 @@ function formatDate(value: string | null | undefined) {
 }
 
 function assetTitle(asset: ErfAsset) {
+  const conceptName = asset.metadata?.conceptName;
+  if (typeof conceptName === "string" && conceptName.trim()) return conceptName;
   const title = asset.metadata?.title;
   return typeof title === "string" && title.trim() ? title : asset.original_file_name;
+}
+
+function assetRationale(asset: ErfAsset) {
+  const value = asset.metadata?.conceptRationale;
+  return typeof value === "string" && value.trim()
+    ? value
+    : "A site-grounded design direction created from the available erf context and brief.";
 }
 
 function validationMessage(result: Extract<ErfAssetValidation, { ok: false }>) {
@@ -295,7 +324,6 @@ export function SitePotentialTab({
   workspaceState,
   onUpdateSite,
   onExploreReport,
-  onOpenStrategy,
 }: SitePotentialTabProps) {
   const site = workspaceState.sitePotential;
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -308,9 +336,7 @@ export function SitePotentialTab({
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [migrationAttempted, setMigrationAttempted] = useState(false);
-  const [strategyDraftReady, setStrategyDraftReady] = useState(false);
   const [betaStatus, setBetaStatus] = useState<BetaCreditUiStatus | null>(null);
-  const [requestingBeta, setRequestingBeta] = useState(false);
   const [activeDesignPackId, setActiveDesignPackId] = useState<string | null>(null);
   const [packStatus, setPackStatus] = useState<SitePotentialPackStatusPayload | null>(null);
   const lastPackProgressSignatureRef = useRef<string | null>(null);
@@ -334,6 +360,9 @@ export function SitePotentialTab({
     (asset) =>
       asset.asset_category === "site_photo" || asset.asset_category === "existing_house_photo",
   );
+  const existingHousePhotos = sitePhotos.filter(
+    (asset) => asset.asset_category === "existing_house_photo",
+  );
   const supportingFiles = vault.assets.filter(
     (asset) =>
       asset.asset_category === "topography" ||
@@ -344,7 +373,7 @@ export function SitePotentialTab({
   const selectedDesign = projectState.selectedDesign;
   const mode = project?.mode ?? site.mode ?? "unknown";
   const rightsConfirmed = Boolean(project?.rights_confirmed_at ?? site.rightsConfirmedAt);
-  const needsRenovationPhoto = mode === "renovation" && sitePhotos.length === 0;
+  const needsRenovationPhoto = mode === "renovation" && existingHousePhotos.length === 0;
   const needsRights = mode === "renovation" && sitePhotos.length > 0 && !rightsConfirmed;
   const readyToGenerate =
     Boolean(project?.id) &&
@@ -363,8 +392,12 @@ export function SitePotentialTab({
       project?.generation_status === "concepts_ready" ||
       project?.generation_status === "design_selected";
   const activePackMessage = packStatusMessage(packStatus);
-  const betaCreditsRemaining = betaStatus?.creditsRemaining ?? 0;
-  const betaGenerationAllowed = BETA_UI_ENABLED && betaStatus?.enabled && betaCreditsRemaining > 0;
+  const betaCreditsRemaining =
+    betaStatus?.betaCreditsRemaining ?? betaStatus?.creditsRemaining ?? 0;
+  const purchasedCreditsRemaining = betaStatus?.purchasedCredits ?? 0;
+  const freeAllowance = betaStatus?.free;
+  const generationEntitled =
+    BETA_UI_ENABLED && Boolean(betaStatus?.enabled && betaStatus?.canGenerate);
 
   const identityLine = useMemo(() => {
     const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
@@ -380,7 +413,8 @@ export function SitePotentialTab({
       setBetaStatus({ enabled: true, creditsRemaining: 0, openRequestStatus: null });
       return;
     }
-    const response = await fetch("/api/site-potential/beta-status", {
+    const params = new URLSearchParams({ parcelId: parcel.id });
+    const response = await fetch(`/api/site-potential/beta-status?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const payload = await response.json().catch(() => null);
@@ -388,10 +422,16 @@ export function SitePotentialTab({
       setBetaStatus({
         enabled: Boolean(payload.enabled),
         creditsRemaining: Number(payload.creditsRemaining ?? 0),
+        betaCreditsRemaining: Number(payload.betaCreditsRemaining ?? payload.creditsRemaining ?? 0),
+        purchasedCredits: Number(payload.purchasedCredits ?? 0),
+        freeEligible: Boolean(payload.freeEligible),
+        canGenerate: Boolean(payload.canGenerate),
+        nextEntitlementSource: payload.nextEntitlementSource ?? null,
+        free: payload.free ?? undefined,
         openRequestStatus: payload.openRequestStatus ?? null,
       });
     }
-  }, []);
+  }, [parcel.id]);
 
   useEffect(() => {
     refreshVaultRef.current = refreshVault;
@@ -603,8 +643,15 @@ export function SitePotentialTab({
   }
 
   async function grantDevEntitlement() {
-    const current =
-      project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
+    const parcelContext = buildSitePotentialParcelContext(parcel);
+    const current = await saveProject({
+      mode,
+      generation_status: "ready_to_generate",
+      metadata: {
+        ...(project?.metadata ?? {}),
+        parcelContext,
+      },
+    });
     if (!current) return null;
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -626,48 +673,21 @@ export function SitePotentialTab({
     return payload.designPack as { id: string };
   }
 
-  async function requestBetaAccess() {
-    if (!BETA_UI_ENABLED) return;
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      toast.error("Sign in to request private beta access.");
-      return;
-    }
-    setRequestingBeta(true);
-    try {
-      const response = await fetch("/api/site-potential/beta-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          parcelId: parcel.id,
-          requestedMode: mode,
-          reason: "Requested from the Site Potential private beta panel.",
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Could not request beta access.");
-      }
-      toast.success(
-        payload.created ? "Beta access request sent." : "Beta access request already open.",
-      );
-      await refreshBetaStatus();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not request beta access.");
-    } finally {
-      setRequestingBeta(false);
-    }
-  }
-
-  async function generateWithBetaCredit() {
-    const current =
-      project ?? (await saveProject({ mode, generation_status: "ready_to_generate" }));
+  async function generateWithEntitlement() {
+    const parcelContext = buildSitePotentialParcelContext(parcel);
+    const current = await saveProject({
+      mode,
+      generation_status: "ready_to_generate",
+      metadata: {
+        ...(project?.metadata ?? {}),
+        parcelContext,
+      },
+    });
     if (!current) return;
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) {
-      toast.error("Sign in to use a beta credit.");
+      toast.error("Sign in to generate Site Potential concepts.");
       return;
     }
     setGenerating(true);
@@ -676,16 +696,23 @@ export function SitePotentialTab({
       const response = await fetch("/api/site-potential/beta-redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ parcelId: parcel.id, siteProjectId: current.id }),
+        body: JSON.stringify({
+          parcelId: parcel.id,
+          siteProjectId: current.id,
+          requestId: crypto.randomUUID(),
+        }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Beta credit redemption failed.");
+        throw new Error(payload?.error || "Site Potential entitlement could not be redeemed.");
       }
       setBetaStatus((previous) => ({
-        enabled: previous?.enabled ?? true,
-        creditsRemaining: Number(payload.creditsRemaining ?? 0),
-        openRequestStatus: previous?.openRequestStatus ?? null,
+        ...(previous ?? { enabled: true, creditsRemaining: 0 }),
+        creditsRemaining: Number(payload.betaCreditsRemaining ?? payload.creditsRemaining ?? 0),
+        betaCreditsRemaining: Number(payload.betaCreditsRemaining ?? payload.creditsRemaining ?? 0),
+        purchasedCredits: Number(
+          payload.purchasedCreditsRemaining ?? previous?.purchasedCredits ?? 0,
+        ),
       }));
       const nextPackStatus = normalizePackStatusPayload({
         ...payload,
@@ -694,13 +721,14 @@ export function SitePotentialTab({
       if (nextPackStatus) applyPackStatus(nextPackStatus);
       toast.success(
         payload.durableJobQueued
-          ? "Beta concept generation queued."
+          ? "Three independent property concepts queued."
           : "Concept pack is already ready.",
       );
       await vault.refresh();
       await projectState.refresh();
+      await refreshBetaStatus();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Beta credit redemption failed.";
+      const message = error instanceof Error ? error.message : "Site Potential generation failed.";
       setGenerationError(message);
       await saveProject({ generation_status: "failed" });
       toast.error(message);
@@ -710,7 +738,7 @@ export function SitePotentialTab({
   }
 
   async function generateConcepts() {
-    if (generationInFlightRef.current || generating || packProcessing || conceptsReady) {
+    if (generationInFlightRef.current || generating || packProcessing) {
       return;
     }
     setGenerationError(null);
@@ -725,11 +753,11 @@ export function SitePotentialTab({
     generationInFlightRef.current = true;
     try {
       if (BETA_UI_ENABLED) {
-        if (!betaGenerationAllowed) {
-          toast.error("No beta credits available.");
+        if (!generationEntitled) {
+          toast.error("Free allowance used and no purchased Site Potential credits are available.");
           return;
         }
-        await generateWithBetaCredit();
+        await generateWithEntitlement();
         return;
       }
       const currentPack = await grantDevEntitlement();
@@ -793,40 +821,17 @@ export function SitePotentialTab({
     }
   }
 
-  function useInStrategy() {
-    const floorArea = String(project?.metadata?.approxFloorArea ?? "");
-    const draft = {
-      source: "site-potential",
-      projectId: project?.id,
-      selectedDesignAssetId: project?.selected_design_asset_id,
-      conceptTitle: selectedDesign ? assetTitle(selectedDesign) : null,
-      buildableSqm: floorArea,
-      notes: [
-        project?.design_brief ? `Brief: ${project.design_brief}` : null,
-        project?.requested_rooms?.length ? `Rooms: ${project.requested_rooms.join(", ")}` : null,
-        project?.requested_features?.length
-          ? `Features: ${project.requested_features.join(", ")}`
-          : null,
-      ].filter(Boolean),
-    };
-    window.localStorage.setItem(
-      `easyErf.sitePotential.strategyDraft.${parcel.id}`,
-      JSON.stringify(draft),
-    );
-    setStrategyDraftReady(true);
-    toast.success("Site Potential assumptions prepared. Review before applying in Strategy.");
-  }
-
   function generationButtonLabel() {
-    if (conceptsReady) return "Concepts ready";
     if (generating || packProcessing || project?.generation_status === "generating") {
-      return packStatus?.status === "queued" ? "Queued" : "Generating concepts";
+      return packStatus?.status === "queued" ? "Queued" : "Generating 3 concepts";
     }
     if (BETA_UI_ENABLED) {
-      if (betaGenerationAllowed) return "Generate with beta credit";
-      return "No beta credits available";
+      if (!generationEntitled) return "Free allowance used";
+      if (conceptsReady) return "Generate another 3 concepts";
+      if (betaStatus?.nextEntitlementSource === "free_allowance") return "Generate 3 free concepts";
+      return "Use 1 credit for 3 concepts";
     }
-    return "Generate concepts";
+    return conceptsReady ? "Generate another 3 concepts" : "Generate 3 concepts";
   }
 
   return (
@@ -846,28 +851,20 @@ export function SitePotentialTab({
               or municipal approvals.
             </p>
           </div>
-          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-[12px] text-[#0D1B2A]/72">
-            <div className="font-semibold text-[#0D1B2A]">
-              {BETA_UI_ENABLED ? "AI Property Concepts - Private Beta" : "Six AI Property Concepts"}
-            </div>
-            {BETA_UI_ENABLED ? (
-              <>
-                <div>{SITE_POTENTIAL_PACK_SIZE} concepts included per beta credit</div>
-                <div className="mt-1 text-[11px]">
-                  {betaCreditsRemaining} beta credit{betaCreditsRemaining === 1 ? "" : "s"}{" "}
-                  remaining
-                </div>
-              </>
-            ) : (
-              <>
+          <div className="min-w-[250px] rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-[12px] text-[#0D1B2A]/72">
+            <div className="font-semibold text-[#0D1B2A]">Three site-grounded concepts</div>
+            <div className="mt-1">1 property / day · 3 / week · 6 / month free</div>
+            {BETA_UI_ENABLED && (
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#0D1B2A]/8 pt-2 text-[11px]">
                 <div>
-                  {formatPrice()} / {SITE_POTENTIAL_PACK_SIZE} concepts
+                  <div className="font-semibold text-[#0D1B2A]">Free this month</div>
+                  <div>{freeAllowance ? freeAllowance.remaining30Days : "–"} packs left</div>
                 </div>
-                <div className="mt-1 text-[11px]">
-                  Payment provider is not connected; use development entitlement only in enabled
-                  environments.
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">Purchased credits</div>
+                  <div>{purchasedCreditsRemaining + betaCreditsRemaining} available</div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1071,22 +1068,23 @@ export function SitePotentialTab({
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#FF6A00]" />
               <h3 className="text-[16px] font-semibold tracking-tight text-[#0D1B2A]">
-                {BETA_UI_ENABLED
-                  ? "AI Property Concepts - Private Beta"
-                  : `Generate ${SITE_POTENTIAL_PACK_SIZE} AI Property Concepts`}
+                Generate three independent Site Potential concepts
               </h3>
             </div>
             <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#4A5A6A]">
-              {BETA_UI_ENABLED
-                ? "Easy Erf is currently testing AI property visualisations with selected users. Beta outputs are concept studies, not architectural plans, quotations or municipal approvals."
-                : "Concept generation is server-gated. When enabled, the server verifies entitlement, uses permitted uploaded reference photos where required, saves each successful concept to the Erf File Vault, and lets you choose exactly one concept for the Easy Erf Report."}
+              Easy Erf combines the official erf record, satellite site context, uploaded photos,
+              topography, plans, inspiration and your brief to produce three deliberately different
+              design directions. Each concept is generated independently and can be selected only
+              for the Easy Erf Report.
             </p>
             <p className="mt-2 text-[11.5px] text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
           </div>
           <div className="flex flex-col items-start gap-2 lg:items-end">
             <div className="text-[26px] font-bold text-[#0D1B2A]">
               {BETA_UI_ENABLED
-                ? `${betaCreditsRemaining} credit${betaCreditsRemaining === 1 ? "" : "s"}`
+                ? betaStatus?.nextEntitlementSource === "free_allowance"
+                  ? "Free pack"
+                  : "1 credit"
                 : formatPrice()}
             </div>
             <button
@@ -1097,8 +1095,7 @@ export function SitePotentialTab({
                 generating ||
                 packProcessing ||
                 saving ||
-                conceptsReady ||
-                (BETA_UI_ENABLED && !betaGenerationAllowed)
+                (BETA_UI_ENABLED && !generationEntitled)
               }
               onClick={() => void generateConcepts()}
               className={cn(
@@ -1107,8 +1104,7 @@ export function SitePotentialTab({
                   !readyToGenerate ||
                   generating ||
                   packProcessing ||
-                  conceptsReady ||
-                  (BETA_UI_ENABLED && !betaGenerationAllowed)
+                  (BETA_UI_ENABLED && !generationEntitled)
                   ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                   : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
               )}
@@ -1120,38 +1116,24 @@ export function SitePotentialTab({
               )}
               {generationButtonLabel()}
             </button>
-            {BETA_UI_ENABLED && !betaGenerationAllowed && !conceptsReady && (
-              <button
-                type="button"
-                disabled={requestingBeta || betaStatus?.openRequestStatus === "open"}
-                onClick={() => void requestBetaAccess()}
-                className="rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {betaStatus?.openRequestStatus === "open"
-                  ? "Beta access requested"
-                  : requestingBeta
-                    ? "Requesting beta access"
-                    : "Request beta access"}
-              </button>
-            )}
             <span className="text-[11px] text-[#64748B]">
               {needsRenovationPhoto
                 ? "Needs a permitted property photo"
                 : needsRights
                   ? "Needs image-rights confirmation"
                   : BETA_UI_ENABLED && !betaStatus?.enabled
-                    ? "Private beta is disabled in this environment"
-                    : BETA_UI_ENABLED && !betaGenerationAllowed && !conceptsReady
-                      ? "No beta credits available"
+                    ? "Site Potential generation is disabled in this environment"
+                    : BETA_UI_ENABLED && !generationEntitled
+                      ? "Free allowance used. Purchase credits to create another 3-concept pack."
                       : !GENERATION_UI_ENABLED
                         ? "Concept generation is unavailable until secure entitlement is configured"
                         : !project?.id
                           ? "Choose a site state first"
                           : activePackMessage
                             ? activePackMessage
-                            : BETA_UI_ENABLED
-                              ? "Ready to use one beta credit"
-                              : "Ready when entitlement and OpenAI server key are configured"}
+                            : betaStatus?.nextEntitlementSource === "free_allowance"
+                              ? "This pack will use your free allowance"
+                              : "This pack will use one Site Potential credit"}
             </span>
           </div>
         </div>
@@ -1199,39 +1181,62 @@ export function SitePotentialTab({
         )}
       </section>
 
-      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
-        <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-          Use selected concept in Strategy
-        </h3>
-        <p className="mt-2 text-[13px] leading-6 text-[#64748B]">
-          Easy Erf will not overwrite calculator assumptions automatically. Use this action to
-          prepare a draft with the selected concept title, brief, rooms and features, then review it
-          in Strategy.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!selectedDesign}
-            onClick={useInStrategy}
-            className={cn(
-              "rounded-full px-4 py-2 text-xs font-semibold",
-              selectedDesign
-                ? "bg-[#0D1B2A] text-white hover:bg-[#142941]"
-                : "cursor-not-allowed bg-[#0D1B2A]/8 text-[#0D1B2A]/40",
-            )}
-          >
-            Use in Strategy
-          </button>
-          {strategyDraftReady && onOpenStrategy && (
-            <button
-              type="button"
-              onClick={onOpenStrategy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
-            >
-              Open Strategy <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          )}
+      <section
+        id="site-potential-credits"
+        className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6"
+      >
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
+              Buy more Site Potential credits
+            </h3>
+            <p className="mt-1 text-[12.5px] leading-5 text-[#64748B]">
+              One credit creates one complete pack of three independent concepts for one property.
+              Purchased credits sit outside the free daily, weekly and monthly allowance.
+            </p>
+          </div>
+          <div className="text-xs font-semibold text-[#0D1B2A]">
+            {purchasedCreditsRemaining} purchased credit{purchasedCreditsRemaining === 1 ? "" : "s"}{" "}
+            available
+          </div>
         </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {SITE_POTENTIAL_CREDIT_PACKS.map((creditPack) => (
+            <article
+              key={creditPack.credits}
+              className="rounded-2xl border border-[#EADFC9] bg-[#FBF6EC] p-4"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#FF6A00]">
+                {creditPack.label}
+              </div>
+              <div className="mt-2 text-xl font-bold text-[#0D1B2A]">
+                {creditPack.credits} credits
+              </div>
+              <div className="mt-1 text-sm text-[#64748B]">
+                {new Intl.NumberFormat("en-ZA", {
+                  style: "currency",
+                  currency: SITE_POTENTIAL_CURRENCY,
+                  maximumFractionDigits: 0,
+                }).format(creditPack.priceCents / 100)}
+              </div>
+              <div className="mt-1 text-xs text-[#64748B]">
+                {creditPack.credits * SITE_POTENTIAL_PACK_SIZE} concept images total
+              </div>
+              <button
+                type="button"
+                disabled
+                title="Checkout will be connected after the three-concept Preview quality test is approved."
+                className="mt-4 w-full cursor-not-allowed rounded-full bg-[#0D1B2A]/10 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/45"
+              >
+                Checkout connection pending
+              </button>
+            </article>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] text-[#64748B]">
+          The credit wallet and immutable ledger are included in this build. Live checkout remains
+          disabled until the new image quality passes Preview testing.
+        </p>
       </section>
 
       <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
@@ -1490,32 +1495,71 @@ function AssetCard({
   onRemove: () => void;
   onSelect: () => void;
 }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setImageUrl(null);
+    setImageError(false);
+    void createErfAssetSignedUrl(asset)
+      .then((url) => {
+        if (active) setImageUrl(url);
+      })
+      .catch(() => {
+        if (active) setImageError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [asset]);
+
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-2xl border bg-[#FBF6EC]",
-        selected ? "border-[#FF6A00]" : "border-[#EADFC9]",
+        "overflow-hidden rounded-2xl border bg-[#FBF6EC] shadow-sm",
+        selected ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/15" : "border-[#EADFC9]",
       )}
     >
-      <div className="grid aspect-[4/3] place-items-center bg-[#0D1B2A]/5 p-4 text-center text-xs font-semibold text-[#0D1B2A]/60">
-        Open concept to preview signed cloud file
-      </div>
-      <div className="p-4">
-        <div className="text-sm font-semibold text-[#0D1B2A]">{assetTitle(asset)}</div>
-        <p className="mt-1 text-xs leading-5 text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
-        {selected && (
-          <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#FF6A00] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-white">
-            <CheckCircle2 className="h-3 w-3" /> Selected for report
-          </span>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group relative block aspect-[3/2] w-full overflow-hidden bg-[#0D1B2A]/5 text-left"
+        aria-label={`Open ${assetTitle(asset)}`}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={assetTitle(asset)}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.015]"
+            onError={() => setImageError(true)}
+          />
+        ) : imageError ? (
+          <div className="grid h-full place-items-center p-5 text-center text-xs font-semibold text-[#0D1B2A]/55">
+            Preview unavailable. Open the stored concept directly.
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center text-[#0D1B2A]/50">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fffaf2]"
-          >
-            Open
-          </button>
+        <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] shadow-sm backdrop-blur">
+          View larger
+        </span>
+      </button>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-[#0D1B2A]">{assetTitle(asset)}</div>
+            <p className="mt-1 text-xs leading-5 text-[#64748B]">{assetRationale(asset)}</p>
+          </div>
+          {selected && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#FF6A00] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+              <CheckCircle2 className="h-3 w-3" /> Report
+            </span>
+          )}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             disabled={selected}
@@ -1527,12 +1571,12 @@ function AssetCard({
                 : "bg-[#0D1B2A] text-white hover:bg-[#142941]",
             )}
           >
-            Select for report
+            {selected ? "Selected for report" : "Select for Easy Erf Report"}
           </button>
           <button
             type="button"
             onClick={onRemove}
-            className="rounded-full border border-[#C75A31]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[#7A2D12] hover:bg-[#fff1e9]"
+            className="rounded-full border border-[#C75A31]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#7A2D12] hover:bg-[#fff1e9]"
           >
             Remove
           </button>

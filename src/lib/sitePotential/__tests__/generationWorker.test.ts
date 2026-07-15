@@ -84,9 +84,6 @@ function makeStore(overrides: Partial<SitePotentialGenerationStore> = {}) {
     async findExistingAssetForItem() {
       return null;
     },
-    async findPrimaryConceptReference() {
-      return null;
-    },
     async renewLease() {
       events.push("renew");
       return true;
@@ -151,19 +148,16 @@ describe("durable Site Potential generation worker", () => {
     expect(events).toContain("finalize:1");
   });
 
-  it("references the primary concept image for coordinated alternatives", async () => {
+  it("keeps option 2 independent and uses only real site references", async () => {
     let metadata: Record<string, unknown> | null = null;
+    const downloaded: string[] = [];
     const { store } = makeStore({
       async claimNextItem() {
         return claim(2);
       },
-      async findPrimaryConceptReference() {
-        return {
-          id: "primary-concept-asset",
-          asset_category: "generated_design",
-          storage_path: "primary.png",
-          mime_type: "image/png",
-        };
+      async downloadReferenceAsset(asset) {
+        downloaded.push(asset.id);
+        return reference(asset.id);
       },
       async finalizeGeneratedItem(input) {
         metadata = input.metadata;
@@ -171,6 +165,7 @@ describe("durable Site Potential generation worker", () => {
       },
     });
     let referenceCount = 0;
+    let prompt = "";
 
     await processSitePotentialGenerationQueue({
       store,
@@ -178,22 +173,28 @@ describe("durable Site Potential generation worker", () => {
       maxItems: 1,
       imageClient: {
         async generate() {
-          throw new Error("Should not generate prompt-only for coordinated alternative.");
+          throw new Error("Uploaded site references require the image-edit path.");
         },
-        async edit(_prompt, references) {
+        async edit(nextPrompt, references) {
+          prompt = nextPrompt;
           referenceCount = references.length;
           return imageResult();
         },
       },
     });
 
-    expect(referenceCount).toBe(2);
+    expect(referenceCount).toBe(1);
+    expect(downloaded).toEqual(["source-photo-1"]);
+    expect(prompt).toContain("View-Focused Linear");
+    expect(prompt).toContain("The three concepts are independent");
     expect(metadata).toMatchObject({
       originalSourceAssetIds: ["source-photo-1"],
-      primaryConceptAssetId: "primary-concept-asset",
-      sourceAssetIds: ["source-photo-1", "primary-concept-asset"],
+      sourceAssetIds: ["source-photo-1"],
+      conceptKey: "view-focused-linear",
+      conceptName: "View-Focused Linear",
       openAiRequestId: "req_123",
     });
+    expect(metadata).not.toHaveProperty("primaryConceptAssetId");
   });
 
   it("does not regenerate a slot with an existing canonical asset", async () => {
@@ -281,23 +282,15 @@ describe("durable Site Potential generation worker", () => {
     });
   });
 
-  it("creates exactly six canonical assets for six successful slots", async () => {
+  it("creates exactly three independent canonical assets for three successful slots", async () => {
     let nextOptionIndex = 1;
     const finalizedAssets = new Set<string>();
     const metadataByOption = new Map<number, Record<string, unknown>>();
+    const prompts: string[] = [];
     const { store } = makeStore({
       async claimNextItem() {
-        if (nextOptionIndex > 6) return null;
+        if (nextOptionIndex > 3) return null;
         return claim(nextOptionIndex++);
-      },
-      async findPrimaryConceptReference(claimed) {
-        if (claimed.optionIndex === 1) return null;
-        return {
-          id: "asset-1",
-          asset_category: "generated_design",
-          storage_path: "primary.png",
-          mime_type: "image/png",
-        };
       },
       async finalizeGeneratedItem(input) {
         finalizedAssets.add(input.upload.assetId);
@@ -309,27 +302,33 @@ describe("durable Site Potential generation worker", () => {
     const result = await processSitePotentialGenerationQueue({
       store,
       workerId: "worker-1",
-      maxItems: 6,
+      maxItems: 3,
       imageClient: {
-        async generate() {
+        async generate(prompt) {
+          prompts.push(prompt);
           return imageResult();
         },
-        async edit() {
+        async edit(prompt) {
+          prompts.push(prompt);
           return imageResult();
         },
       },
     });
 
-    expect(result).toMatchObject({ claimed: 6, completed: 6, failed: 0 });
-    expect(finalizedAssets).toEqual(
-      new Set(["asset-1", "asset-2", "asset-3", "asset-4", "asset-5", "asset-6"]),
-    );
-    expect(metadataByOption.get(1)).toMatchObject({ primaryConceptAssetId: null });
-    for (const optionIndex of [2, 3, 4, 5, 6]) {
+    expect(result).toMatchObject({ claimed: 3, completed: 3, failed: 0 });
+    expect(finalizedAssets).toEqual(new Set(["asset-1", "asset-2", "asset-3"]));
+    expect(new Set(prompts).size).toBe(3);
+    expect([...metadataByOption.values()].map((metadata) => metadata.conceptKey)).toEqual([
+      "sheltered-courtyard",
+      "view-focused-linear",
+      "split-level-site-response",
+    ]);
+    for (const optionIndex of [1, 2, 3]) {
       expect(metadataByOption.get(optionIndex)).toMatchObject({
-        primaryConceptAssetId: "asset-1",
         originalSourceAssetIds: ["source-photo-1"],
+        sourceAssetIds: ["source-photo-1"],
       });
+      expect(metadataByOption.get(optionIndex)).not.toHaveProperty("primaryConceptAssetId");
     }
   });
 

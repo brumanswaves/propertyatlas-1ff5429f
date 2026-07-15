@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readBetaCreditStatus } from "@/lib/sitePotential/betaServer";
+import { readSitePotentialAccessStatus } from "@/lib/sitePotential/betaServer";
 import { isSitePotentialBetaEnabled } from "@/lib/sitePotential/betaEntitlements";
 import {
   ApiRequestError,
@@ -29,16 +29,18 @@ export async function handleBetaStatusRequest(request: Request) {
     if (!enabled) {
       return json({ success: true, enabled: false, creditsRemaining: 0 }, 200);
     }
-    const status = await readBetaCreditStatus({
+    const parcelId = new URL(request.url).searchParams.get("parcelId");
+    const status = await readSitePotentialAccessStatus({
       serviceSupabase: createServiceRoleSupabaseClient(),
       userId: user.id,
+      parcelId,
     });
     return json({ success: true, enabled, ...status }, 200);
   } catch (error) {
     if (error instanceof ApiRequestError) {
       return json({ success: false, error: error.message }, error.status);
     }
-    return json({ success: false, error: "Could not read beta credit status." }, 500);
+    return json({ success: false, error: "Could not read Site Potential access status." }, 500);
   }
 }
 

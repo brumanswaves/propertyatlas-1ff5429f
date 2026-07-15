@@ -125,20 +125,21 @@ describe("Site Potential private beta entitlements", () => {
     );
   });
 
-  it("routes beta redemption through the entitlement transaction and durable queue", () => {
+  it("routes generation through free-first or purchased-credit entitlement and the durable queue", () => {
     const route = read("src/routes/api/site-potential.beta-redeem.ts");
 
     expect(route).toContain("isSitePotentialBetaEnabled");
     expect(route).toContain("isSitePotentialBetaGenerationReady");
     expect(route).toContain(
-      "Private beta generation is temporarily unavailable. Your beta credit has not been used.",
+      "Site Potential generation is temporarily unavailable. No free allowance or credit has been used.",
     );
     expect(route.indexOf("isSitePotentialBetaGenerationReady")).toBeLessThan(
-      route.indexOf("consumeBetaCreditForDesignPack"),
+      route.indexOf("consumeSitePotentialEntitlement"),
     );
-    expect(route).toContain("consumeBetaCreditForDesignPack");
+    expect(route).toContain("consumeSitePotentialEntitlement");
     expect(route).toContain("queueSitePotentialGeneration");
-    expect(route).toContain('paymentProvider: "beta_credit"');
+    expect(route).toContain("paymentProvider: entitlement.entitlementSource");
+    expect(route).toContain("Three independent property concepts have been queued");
     expect(route).not.toContain("SITE_POTENTIAL_PRICE_CENTS");
   });
 
@@ -157,25 +158,57 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).toContain('.eq("status", "open")');
   });
 
-  it("shows private beta UI states without fake checkout copy", () => {
+  it("shows free allowance, purchased credits and inline report-only concept selection", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
 
     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
-    expect(tab).toContain("AI Property Concepts - Private Beta");
-    expect(tab).toContain("Generate with beta credit");
-    expect(tab).toContain("No beta credits available");
-    expect(tab).toContain("Request beta access");
-    expect(tab).toContain(
-      "Easy Erf is currently testing AI property visualisations with selected users.",
-    );
+    expect(tab).toContain("Three site-grounded concepts");
+    expect(tab).toContain("Generate 3 free concepts");
+    expect(tab).toContain("Use 1 credit for 3 concepts");
+    expect(tab).toContain("Free allowance used");
+    expect(tab).toContain("Purchased credits");
+    expect(tab).toContain("Buy more Site Potential credits");
+    expect(tab).toContain("Checkout connection pending");
+    expect(tab).toContain("Select for Easy Erf Report");
+    expect(tab).toContain("createErfAssetSignedUrl");
+    expect(tab).toContain("<img");
+    expect(tab).not.toContain("Use selected concept in Strategy");
+    expect(tab).not.toContain("onOpenStrategy");
     expect(tab).toContain("/api/site-potential/beta-redeem");
-    expect(tab).toContain("/api/site-potential/beta-request");
     expect(tab).toContain("/api/site-potential/pack-status");
     expect(tab).toContain("createSitePotentialPackStatusPoller");
     expect(tab).toContain("poller.start(false)");
     expect(tab).toContain("poller.stop()");
     expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
     expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
+  });
+
+  it("adds free rolling limits and an immutable purchased-credit ledger for three-image packs", () => {
+    const migration = read("supabase/migrations/20260715150000_site_potential_v2_entitlements.sql");
+    const config = read("src/lib/sitePotential/config.ts");
+
+    expect(config).toContain("rolling24Hours: 1");
+    expect(config).toContain("rolling7Days: 3");
+    expect(config).toContain("rolling30Days: 6");
+    expect(config).toContain("sameParcelRolling30Days: 1");
+    expect(config).toContain("{ credits: 5, priceCents: 49_900");
+    expect(config).toContain("{ credits: 10, priceCents: 89_900");
+    expect(config).toContain("{ credits: 25, priceCents: 199_900");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.site_potential_credit_wallets");
+    expect(migration).toContain(
+      "CREATE TABLE IF NOT EXISTS public.site_potential_credit_purchases",
+    );
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.site_potential_credit_ledger");
+    expect(migration).toContain("idempotency_key text NOT NULL UNIQUE");
+    expect(migration).toContain("v_used_24 < 1 AND v_used_7 < 3 AND v_used_30 < 6");
+    expect(migration).toContain("v_same_parcel_30 < 1");
+    expect(migration).toContain("requested_count, completed_count");
+    expect(migration).toContain("'packSize', 3");
+    expect(migration).toContain("'reserved', -1");
+    expect(migration).toContain("'restored', 1");
+    expect(migration).toContain("Pack did not complete all three concepts");
+    expect(migration).not.toContain("item.option_index = 1");
+    expect(migration).not.toContain("primary_item.option_index = 1");
   });
 
   it("adds a provider-neutral authenticated pack status endpoint", () => {
