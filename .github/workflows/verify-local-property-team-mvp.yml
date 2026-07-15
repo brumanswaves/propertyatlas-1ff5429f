@@ -21,10 +21,30 @@ jobs:
         run: python scripts/apply-local-property-team-mvp.py
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --silent
 
-      - name: Run tests
-        run: npx vitest run
+      - name: Run tests and capture output
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          npx vitest run > local-property-team-test-output.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-property-team-test-output
+          path: local-property-team-test-output.txt
+          retention-days: 1
+
+      - name: Stop on test failure
+        if: steps.tests.outputs.exit_code != '0'
+        run: |
+          tail -160 local-property-team-test-output.txt
+          exit 1
 
       - name: Run production build
         run: npm run build
