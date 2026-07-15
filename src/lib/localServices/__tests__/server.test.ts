@@ -21,7 +21,7 @@ describe("Local Property Team server search", () => {
   it("keeps the Places API key server-side and returns an honest configuration error", async () => {
     delete process.env.GOOGLE_PLACES_API_KEY;
     const response = await handleLocalServicesSearchRequest(
-      request({ categoryId: "estate-agents", latitude: -34.1, longitude: 24.8 }),
+      request({ categoryId: "estate-agents", address: "8 Harbour Drive, St Francis Bay", latitude: -34.1, longitude: 24.8 }),
     );
     expect(response.status).toBe(503);
     const payload = await response.json();
@@ -64,10 +64,9 @@ describe("Local Property Team server search", () => {
     const response = await handleLocalServicesSearchRequest(
       request({
         categoryId: "estate-agents",
+        address: "8 Harbour Drive, St Francis Bay, Eastern Cape",
         latitude: -34.1,
         longitude: 24.8,
-        suburb: "Sea Vista",
-        municipality: "Kouga Local Municipality",
       }),
     );
     const payload = await response.json();
@@ -89,7 +88,19 @@ describe("Local Property Team server search", () => {
     expect((options?.headers as Record<string, string>)["X-Goog-FieldMask"]).toContain(
       "places.displayName",
     );
-    expect(JSON.parse(String(options?.body)).pageSize).toBe(3);
+    const googleBody = JSON.parse(String(options?.body));
+    expect(googleBody.pageSize).toBe(3);
+    expect(googleBody.textQuery).toContain("near 8 Harbour Drive, St Francis Bay, Eastern Cape");
+    expect(googleBody.textQuery).not.toContain("Kouga Local Municipality");
+  });
+
+  it("requires the saved Market address before provider search", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const response = await handleLocalServicesSearchRequest(
+      request({ categoryId: "estate-agents", latitude: -34.1, longitude: 24.8 }),
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).code).toBe("address_required");
   });
 
   it("rejects unknown categories instead of becoming an open Google proxy", async () => {

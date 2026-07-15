@@ -18,13 +18,12 @@ import {
   Wifi,
 } from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import type { AddressCandidate } from "@/features/marketEvidence/types";
 import {
-  buildGoogleMapsFallbackUrl,
   canShowEasyErfVerified,
   canShowSponsored,
   categoriesForGroup,
   inferLocalPropertyState,
-  localServiceLocationLabel,
   orderedLocalServiceGroups,
   type LocalProvider,
   type LocalServiceCategory,
@@ -39,6 +38,9 @@ import { cn } from "@/lib/utils";
 interface Props {
   parcel: NormalizedOfficialParcel;
   siteMode?: string | null;
+  marketAddress?: AddressCandidate | null;
+  marketAddressLoading?: boolean;
+  onOpenMarket: () => void;
 }
 
 interface SearchState {
@@ -182,7 +184,13 @@ function ProviderCard({
   );
 }
 
-export function LocalPropertyTeam({ parcel, siteMode }: Props) {
+export function LocalPropertyTeam({
+  parcel,
+  siteMode,
+  marketAddress,
+  marketAddressLoading = false,
+  onOpenMarket,
+}: Props) {
   const propertyState = useMemo(
     () => inferLocalPropertyState(parcel, siteMode),
     [parcel, siteMode],
@@ -219,8 +227,13 @@ export function LocalPropertyTeam({ parcel, siteMode }: Props) {
   }, [activeCategoryId, activeGroupId, propertyState]);
 
   const currentSearch = activeCategory ? searches[activeCategory.id] ?? EMPTY_SEARCH : EMPTY_SEARCH;
-  const fallbackUrl = activeCategory ? buildGoogleMapsFallbackUrl(activeCategory, parcel) : null;
-  const locationLabel = localServiceLocationLabel(parcel) || "Selected erf area";
+  const marketAddressLabel = marketAddress?.formattedAddress.trim() ?? "";
+  const hasMarketAddress = Boolean(marketAddressLabel);
+  const fallbackUrl =
+    activeCategory && hasMarketAddress
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeCategory.searchQuery} near ${marketAddressLabel}`)}`
+      : null;
+  const locationLabel = marketAddressLabel || "Property address not set";
   const stateLabel =
     propertyState === "vacant_land"
       ? "Vacant land priorities"
@@ -229,6 +242,10 @@ export function LocalPropertyTeam({ parcel, siteMode }: Props) {
         : "General property priorities";
 
   async function searchCategory(category: LocalServiceCategory, widerArea = false) {
+    if (!hasMarketAddress) {
+      onOpenMarket();
+      return;
+    }
     setSearches((current) => ({
       ...current,
       [category.id]: {
@@ -246,12 +263,9 @@ export function LocalPropertyTeam({ parcel, siteMode }: Props) {
         body: JSON.stringify({
           categoryId: category.id,
           parcelId: parcel.id,
-          latitude: parcel.coordinates?.lat ?? null,
-          longitude: parcel.coordinates?.lng ?? null,
-          suburb: parcel.suburbOrArea,
-          town: parcel.town,
-          municipality: parcel.municipality,
-          province: parcel.province,
+          address: marketAddressLabel,
+          latitude: marketAddress?.lat ?? null,
+          longitude: marketAddress?.lng ?? null,
           widerArea,
         }),
       });
@@ -293,15 +307,55 @@ export function LocalPropertyTeam({ parcel, siteMode }: Props) {
   function chooseGroup(groupId: LocalServiceGroup["id"]) {
     setActiveGroupId(groupId);
     const category = categoriesForGroup(groupId, propertyState)[0];
-    if (category) setActiveCategoryId(category.id);
+    if (category) {
+      setActiveCategoryId(category.id);
+      if (hasMarketAddress) void searchCategory(category, false);
+    }
   }
 
   function chooseCategory(category: LocalServiceCategory) {
     setActiveCategoryId(category.id);
+    if (hasMarketAddress) void searchCategory(category, false);
   }
 
   function toggleSaved(provider: LocalProvider) {
     setSavedProviders(toggleSavedLocalProvider(parcel.id, provider));
+  }
+
+  if (marketAddressLoading) {
+    return (
+      <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
+        <div className="flex min-h-40 items-center justify-center text-sm font-semibold text-[#0D1B2A]/62">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking the saved Market address
+        </div>
+      </section>
+    );
+  }
+
+  if (!hasMarketAddress) {
+    return (
+      <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+          <MapPin className="h-3.5 w-3.5" /> Local Property Team
+        </div>
+        <div className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+          <h3 className="text-xl font-semibold tracking-tight text-[#0D1B2A]">
+            Add the property address first
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+            Local provider results are searched around the confirmed property address, not the erf
+            number or parcel description. Open Market, add or correct the address, then return here.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenMarket}
+            className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
+          >
+            Go to Market and update address <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -315,15 +369,21 @@ export function LocalPropertyTeam({ parcel, siteMode }: Props) {
             Find local help for this erf
           </h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-            Find local professionals, services, and property connections that may help you move this
-            erf forward. Easy Erf prioritizes categories using the property state and available erf
-            context.
+            Choose the service you need and Easy Erf will return up to three relevant Google results
+            around the confirmed Market address. Results are not based on the erf number or parcel label.
           </p>
         </div>
         <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66 lg:max-w-sm">
-          <div className="font-semibold text-[#0D1B2A]">{stateLabel}</div>
+          <div className="font-semibold text-[#0D1B2A]">Searching around</div>
           <div className="mt-1">{locationLabel}</div>
-          <div className="mt-2">{savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"} saved</div>
+          <button
+            type="button"
+            onClick={onOpenMarket}
+            className="mt-2 font-semibold text-[#B24A00] underline underline-offset-2"
+          >
+            Change address in Market
+          </button>
+          <div className="mt-2">{stateLabel} · {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"} saved</div>
         </div>
       </div>
 

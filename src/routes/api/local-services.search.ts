@@ -25,12 +25,9 @@ const FIELD_MASK = [
 interface SearchRequestBody {
   categoryId?: unknown;
   parcelId?: unknown;
+  address?: unknown;
   latitude?: unknown;
   longitude?: unknown;
-  suburb?: unknown;
-  town?: unknown;
-  municipality?: unknown;
-  province?: unknown;
   widerArea?: unknown;
 }
 
@@ -82,6 +79,18 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     return json({ success: false, code: "invalid_category", error: "Unknown service category." }, 400);
   }
 
+  const address = cleanText(body.address);
+  if (!address) {
+    return json(
+      {
+        success: false,
+        code: "address_required",
+        error: "Add or confirm the property address in Market before searching for local providers.",
+      },
+      400,
+    );
+  }
+
   const latitude = finiteNumber(body.latitude);
   const longitude = finiteNumber(body.longitude);
   if ((latitude == null) !== (longitude == null)) {
@@ -111,21 +120,12 @@ export async function handleLocalServicesSearchRequest(request: Request) {
 
   const widerArea = body.widerArea === true;
   const radiusKm = Math.min(widerArea ? WIDE_RADIUS_KM : DEFAULT_RADIUS_KM, MAX_RADIUS_KM);
-  const location = uniqueLocation([
-    cleanText(body.suburb),
-    cleanText(body.town),
-    cleanText(body.municipality),
-    cleanText(body.province),
-    "South Africa",
-  ]);
-  const textQuery = [category.searchQuery, location ? `near ${location}` : null]
-    .filter(Boolean)
-    .join(" ");
+  const textQuery = [category.searchQuery, `near ${address}`].join(" ");
   const cacheKey = [
     category.id,
     latitude == null ? "no-lat" : latitude.toFixed(3),
     longitude == null ? "no-lng" : longitude.toFixed(3),
-    location.toLowerCase(),
+    address.toLowerCase(),
     radiusKm,
   ].join("|");
 
@@ -275,10 +275,6 @@ function cleanText(value: unknown) {
 function finiteNumber(value: unknown): number | null {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function uniqueLocation(parts: string[]) {
-  return parts.filter(Boolean).filter((value, index, all) => all.indexOf(value) === index).join(", ");
 }
 
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
