@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build-local-team:
-    if: github.head_ref == 'local-property-team-mvp'
+    if: github.base_ref == 'local-property-team-mvp'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
