@@ -39,6 +39,23 @@ jobs:
             | xz --decompress > /tmp/site-potential-v2.patch
           git apply --check /tmp/site-potential-v2.patch
           git apply /tmp/site-potential-v2.patch
+          python - <<'PY'
+          from pathlib import Path
+          prompt = Path('src/lib/sitePotential/generation.ts')
+          text = prompt.read_text()
+          text = text.replace(
+              'Preserve recognisable existing structure, site relationship, camera evidence and major openings unless the renovation level expressly permits major structural change.',
+              'Preserve the recognisable house structure, site relationship, camera evidence and major openings unless the renovation level expressly permits major structural change.',
+          )
+          prompt.write_text(text)
+
+          test = Path('src/lib/sitePotential/__tests__/betaEntitlements.test.ts')
+          text = test.read_text().replace(
+              'expect(tab).toContain("AI Property Concepts - Private Beta");',
+              'expect(tab).toContain("Three site-grounded concepts");',
+          )
+          test.write_text(text)
+          PY
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
