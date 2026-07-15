@@ -1,0 +1,68 @@
+name: Apply and verify Site Potential v2
+
+on:
+  push:
+    branches:
+      - site-potential-v2-upload-final
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-potential-v2-upload-final
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: site-potential-v2-upload-final
+          fetch-depth: 0
+
+      - name: Reconstruct and apply implementation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .codex-patch/site-potential-v2.xz.b64.part00 \
+              .codex-patch/site-potential-v2.xz.b64.part01 \
+              .codex-patch/site-potential-v2.xz.b64.part02 \
+              .codex-patch/site-potential-v2.xz.b64.part03 \
+            | base64 --decode \
+            | xz --decompress > /tmp/site-potential-v2.patch
+          git apply --check /tmp/site-potential-v2.patch
+          git apply /tmp/site-potential-v2.patch
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run full test suite
+        run: npx --no-install vitest run
+
+      - name: Run production build
+        run: npm run build
+
+      - name: Remove temporary machinery and restore protected artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .codex-patch
+          rm -f .github/workflows/codex-checkout-artifact.yml
+          rm -f .github/workflows/apply-site-potential-v2.yml
+          git restore --source=HEAD -- package.json package-lock.json bun.lock src/routeTree.gen.ts
+          git diff --exit-code -- package.json package-lock.json bun.lock src/routeTree.gen.ts
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --stat
+          git commit -m "Rebuild Site Potential around three grounded concepts"
+          git push origin HEAD:site-potential-v2-upload-final
