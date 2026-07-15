@@ -12,8 +12,9 @@ const corsHeaders = {
 
 const layers: Record<LayerId, { sourceLabel: string; endpoints: string[] }> = {
   "csg-parcels": {
-    sourceLabel: "Chief Surveyor-General",
+    sourceLabel: "Kouga SG Properties (Public Mapping Viewer)",
     endpoints: [
+      "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query",
       "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query",
       "https://dffeportal.environment.gov.za/hosting/rest/services/CSG_Cadaster/CSG_Cadastral_Data/MapServer/2/query",
     ],
@@ -120,7 +121,9 @@ Deno.serve(async (req) => {
   const attempts = [];
 
   for (const endpoint of cfg.endpoints) {
+    let geojsonOk = false;
     for (const format of ["geojson", "json"] as const) {
+      if (format === "json" && geojsonOk) break;
       const result = await attempt(body.layer, endpoint, body.bbox, limit, format);
       const { features, ...diag } = result as typeof result & { features?: JsonFeature[] };
       attempts.push(diag);
@@ -136,6 +139,7 @@ Deno.serve(async (req) => {
           attempts,
         });
       }
+      if (format === "geojson" && result.ok) geojsonOk = true;
     }
   }
 
