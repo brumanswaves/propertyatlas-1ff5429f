@@ -827,6 +827,129 @@ export type Database = {
         }
         Relationships: []
       }
+      site_potential_credit_ledger: {
+        Row: {
+          balance_after: number
+          created_at: string
+          credits_delta: number
+          design_pack_id: string | null
+          entry_type: string
+          id: string
+          idempotency_key: string
+          metadata: Json
+          purchase_id: string | null
+          user_id: string
+        }
+        Insert: {
+          balance_after: number
+          created_at?: string
+          credits_delta: number
+          design_pack_id?: string | null
+          entry_type: string
+          id?: string
+          idempotency_key: string
+          metadata?: Json
+          purchase_id?: string | null
+          user_id: string
+        }
+        Update: {
+          balance_after?: number
+          created_at?: string
+          credits_delta?: number
+          design_pack_id?: string | null
+          entry_type?: string
+          id?: string
+          idempotency_key?: string
+          metadata?: Json
+          purchase_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_potential_credit_ledger_design_pack_id_fkey"
+            columns: ["design_pack_id"]
+            isOneToOne: false
+            referencedRelation: "erf_design_packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_potential_credit_ledger_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "site_potential_credit_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_potential_credit_purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          credit_count: number
+          currency: string
+          id: string
+          metadata: Json
+          payment_provider: string | null
+          provider_reference: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          credit_count: number
+          currency?: string
+          id?: string
+          metadata?: Json
+          payment_provider?: string | null
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          credit_count?: number
+          currency?: string
+          id?: string
+          metadata?: Json
+          payment_provider?: string | null
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      site_potential_credit_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          lifetime_consumed: number
+          lifetime_purchased: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          lifetime_consumed?: number
+          lifetime_purchased?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          lifetime_consumed?: number
+          lifetime_purchased?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -951,6 +1074,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      grant_site_potential_credits: {
+        Args: {
+          p_credits: number
+          p_entry_type: string
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_purchase_id?: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -965,6 +1099,24 @@ export type Database = {
           recovered_packs: number
         }[]
       }
+      redeem_site_potential_pack_v2: {
+        Args: {
+          p_now?: string
+          p_parcel_id: string
+          p_request_id: string
+          p_site_project_id: string
+          p_user_id: string
+        }
+        Returns: {
+          beta_credits_remaining: number
+          design_pack_id: string
+          entitlement_source: string
+          free_used_24h: number
+          free_used_30d: number
+          free_used_7d: number
+          purchased_credits_remaining: number
+        }[]
+      }
       renew_site_potential_item_lease: {
         Args: {
           p_item_id: string
@@ -973,6 +1125,10 @@ export type Database = {
           p_worker_id: string
         }
         Returns: boolean
+      }
+      settle_site_potential_pack_entitlement: {
+        Args: { p_design_pack_id: string }
+        Returns: undefined
       }
     }
     Enums: {
