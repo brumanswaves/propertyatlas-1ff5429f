@@ -30,17 +30,23 @@ jobs:
       - name: Reconstruct and apply implementation patch
         shell: bash
         run: |
-          set -euo pipefail
-          cat .codex-patch/site-potential-v2.xz.b64.part00 \
-              .codex-patch/site-potential-v2.xz.b64.part01 \
-              .codex-patch/site-potential-v2.xz.b64.part02 \
-              .codex-patch/site-potential-v2.xz.b64.part03 \
-            | base64 --decode \
-            | xz --decompress > /tmp/site-potential-v2.patch
-          git apply --check /tmp/site-potential-v2.patch
-          git apply /tmp/site-potential-v2.patch
-          git apply --check .codex-patch/site-potential-v2-test-fixes.patch
-          git apply .codex-patch/site-potential-v2-test-fixes.patch
+          set +e
+          (
+            set -euxo pipefail
+            cat .codex-patch/site-potential-v2.xz.b64.part00 \
+                .codex-patch/site-potential-v2.xz.b64.part01 \
+                .codex-patch/site-potential-v2.xz.b64.part02 \
+                .codex-patch/site-potential-v2.xz.b64.part03 \
+              | base64 --decode \
+              | xz --decompress > /tmp/site-potential-v2.patch
+            git apply --check /tmp/site-potential-v2.patch
+            git apply /tmp/site-potential-v2.patch
+            git apply --check .codex-patch/site-potential-v2-test-fixes.patch
+            git apply .codex-patch/site-potential-v2-test-fixes.patch
+          ) > /tmp/site-potential-v2-reconstruct.log 2>&1
+          status=$?
+          cat /tmp/site-potential-v2-reconstruct.log
+          exit "$status"
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -55,8 +61,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: site-potential-v2-test-failure
-          path: /tmp/site-potential-v2-tests.log
+          name: site-potential-v2-failure-diagnostics
+          path: |
+            /tmp/site-potential-v2-reconstruct.log
+            /tmp/site-potential-v2-tests.log
+          if-no-files-found: warn
           retention-days: 1
 
       - name: Run production build
