@@ -1,0 +1,41 @@
+name: Verify Local Services Market Address
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-market-address:
+    if: github.head_ref == 'local-services-market-address'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: local-services-market-address
+          fetch-depth: 0
+
+      - name: Apply bounded address-source change
+        run: python scripts/apply-local-services-market-address.py
+
+      - name: Install dependencies
+        run: npm install --silent
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Run production build
+        run: npm run build
+
+      - name: Commit verified feature branch
+        shell: bash
+        run: |
+          rm -f scripts/apply-local-services-market-address.py
+          git checkout -- package.json package-lock.json bun.lock 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src scripts/apply-local-services-market-address.py
+          git commit -m "Use confirmed Market address for local provider search"
+          git push origin HEAD:local-services-market-address
