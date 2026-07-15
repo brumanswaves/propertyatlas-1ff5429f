@@ -121,7 +121,9 @@ Deno.serve(async (req) => {
   const attempts = [];
 
   for (const endpoint of cfg.endpoints) {
+    let geojsonOk = false;
     for (const format of ["geojson", "json"] as const) {
+      if (format === "json" && geojsonOk) break;
       const result = await attempt(body.layer, endpoint, body.bbox, limit, format);
       const { features, ...diag } = result as typeof result & { features?: JsonFeature[] };
       attempts.push(diag);
@@ -137,6 +139,7 @@ Deno.serve(async (req) => {
           attempts,
         });
       }
+      if (format === "geojson" && result.ok) geojsonOk = true;
     }
   }
 
