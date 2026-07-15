@@ -12,8 +12,9 @@ const corsHeaders = {
 
 const layers: Record<LayerId, { sourceLabel: string; endpoints: string[] }> = {
   "csg-parcels": {
-    sourceLabel: "Chief Surveyor-General",
+    sourceLabel: "Kouga SG Properties (Public Mapping Viewer)",
     endpoints: [
+      "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query",
       "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query",
       "https://dffeportal.environment.gov.za/hosting/rest/services/CSG_Cadaster/CSG_Cadastral_Data/MapServer/2/query",
     ],
