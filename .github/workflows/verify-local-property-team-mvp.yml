@@ -1,0 +1,42 @@
+name: Verify Local Property Team MVP
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  verify-local-team:
+    if: github.head_ref == 'local-property-team-mvp'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: local-property-team-mvp
+          fetch-depth: 0
+
+      - name: Apply bounded integration
+        run: python scripts/apply-local-property-team-mvp.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Run production build
+        run: npm run build
+
+      - name: Commit verified feature branch
+        shell: bash
+        run: |
+          rm -f .github/workflows/apply-local-property-team-mvp.yml
+          rm -f scripts/apply-local-property-team-mvp.py
+          git checkout -- package.json package-lock.json bun.lock 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src .github/workflows/apply-local-property-team-mvp.yml scripts/apply-local-property-team-mvp.py
+          git commit -m "Build Local Property Team provider workflow"
+          git push origin HEAD:local-property-team-mvp
