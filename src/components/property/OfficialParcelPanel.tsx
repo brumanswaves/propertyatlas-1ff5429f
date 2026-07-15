@@ -40,6 +40,7 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
+import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
@@ -2209,33 +2210,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
           {tab === "local-services" && (
-            <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-                Local Services
-              </div>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#0D1B2A]">
-                Post-report follow-up
-              </h3>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-                Use this space after the Easy Erf Report to plan practical follow-up with local
-                professionals, council offices, conveyancers, architects, builders, valuers or
-                engineers. Easy Erf does not verify, rank or recommend providers in this MVP.
-              </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {[
-                  "Council and municipal checks",
-                  "Architect, engineer or builder questions",
-                  "Conveyancing, transfer or valuation follow-up",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm font-semibold text-[#0D1B2A]"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </section>
+            <LocalPropertyTeam
+              parcel={normalizedParcel}
+              siteMode={workspaceState.sitePotential.mode}
+            />
           )}
 
           <WorkbenchNextStep

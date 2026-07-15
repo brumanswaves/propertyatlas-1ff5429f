@@ -70,7 +70,8 @@ export type DossierView =
   | "reports"
   | "notes"
   | "calculators"
-  | "stoep-report";
+  | "stoep-report"
+  | "local-services";
 
 const DOSSIER_STATUSES = [
   { id: "not_started", label: "Not started" },
@@ -1430,6 +1431,27 @@ function StoepAiReportView({
           )}
         </article>
       </div>
+
+      <section className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+          Take action on this erf
+        </div>
+        <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h4 className="text-lg font-semibold text-[#0D1B2A]">Assemble a local property team</h4>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
+              Find relevant local professionals and services based on this erf's location and property context.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectView?.("local-services")}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
+          >
+            Find Local Property Team <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
     </section>
   );
 }

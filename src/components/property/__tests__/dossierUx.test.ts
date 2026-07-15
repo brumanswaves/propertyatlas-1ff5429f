@@ -818,3 +818,35 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("bg-[#fff8ec]");
   });
 });
+
+
+describe("Local Property Team MVP guardrails", () => {
+  it("connects the report to a real Local Property Team and hides purchases", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const localTeam = read("src/components/property/dossier/LocalPropertyTeam.tsx");
+    const localCatalog = read("src/lib/localServices/catalog.ts");
+    const sitePotential = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const serverRoute = read("src/routes/api/local-services.search.ts");
+
+    expect(panel.indexOf('label: "Easy Erf Report"')).toBeLessThan(
+      panel.indexOf('label: "Local Services"'),
+    );
+    expect(panel).toContain("<LocalPropertyTeam");
+    expect(dossier).toContain("Find Local Property Team");
+    expect(dossier).toContain('onSelectView?.("local-services")');
+    expect(localCatalog).toContain("Plan and Build");
+    expect(localCatalog).toContain("Protect and Maintain");
+    expect(localCatalog).toContain("Connect the Property");
+    expect(localCatalog).toContain("Buy, Sell or Manage");
+    expect(localTeam).toContain("Google place result");
+    expect(localTeam).toContain("Search wider area");
+    expect(localTeam).toContain("Results are sourced from Google");
+    expect(serverRoute).toContain("process.env.GOOGLE_PLACES_API_KEY");
+    expect(serverRoute).not.toContain("VITE_GOOGLE_PLACES_API_KEY");
+    expect(serverRoute).toContain("pageSize: 3");
+    expect(serverRoute).toContain('place.businessStatus !== "CLOSED_PERMANENTLY"');
+    expect(sitePotential).not.toContain('id="site-potential-credits"');
+    expect(sitePotential).not.toContain("Checkout connection pending");
+  });
+});

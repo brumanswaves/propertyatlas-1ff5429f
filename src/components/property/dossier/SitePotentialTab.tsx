@@ -1181,64 +1181,7 @@ export function SitePotentialTab({
 </p>
         )}
       </section>
-
-      <section
-        id="site-potential-credits"
-        className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6"
-      >
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">
-              Buy more Site Potential credits
-            </h3>
-            <p className="mt-1 text-[12.5px] leading-5 text-[#64748B]">
-              One credit creates one complete pack of three independent concepts for one property.
-              Purchased credits sit outside the free daily, weekly and monthly allowance.
-            </p>
-          </div>
-          <div className="text-xs font-semibold text-[#0D1B2A]">
-            {purchasedCreditsRemaining} purchased credit{purchasedCreditsRemaining === 1 ? "" : "s"}{" "}
-            available
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {SITE_POTENTIAL_CREDIT_PACKS.map((creditPack) => (
-            <article
-              key={creditPack.credits}
-              className="rounded-2xl border border-[#EADFC9] bg-[#FBF6EC] p-4"
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#FF6A00]">
-                {creditPack.label}
-              </div>
-              <div className="mt-2 text-xl font-bold text-[#0D1B2A]">
-                {creditPack.credits} credits
-              </div>
-              <div className="mt-1 text-sm text-[#64748B]">
-                {new Intl.NumberFormat("en-ZA", {
-                  style: "currency",
-                  currency: SITE_POTENTIAL_CURRENCY,
-                  maximumFractionDigits: 0,
-                }).format(creditPack.priceCents / 100)}
-              </div>
-              <div className="mt-1 text-xs text-[#64748B]">
-                {creditPack.credits * SITE_POTENTIAL_PACK_SIZE} concept images total
-              </div>
-              <button
-                type="button"
-                disabled
-                title="Checkout will be connected after the three-concept Preview quality test is approved."
-                className="mt-4 w-full cursor-not-allowed rounded-full bg-[#0D1B2A]/10 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/45"
-              >
-                Checkout connection pending
-              </button>
-            </article>
-          ))}
-        </div>
-        <p className="mt-3 text-[11px] text-[#64748B]">
-          The credit wallet and immutable ledger are included in this build. Live checkout remains
-          disabled until the new image quality passes Preview testing.
-        </p>
-      </section>
+      {/* Credit purchases are intentionally hidden for the no-payment MVP. */}
 
       <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
         <h3 className="text-[15px] font-semibold tracking-tight text-[#0D1B2A]">

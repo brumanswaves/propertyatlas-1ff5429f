@@ -42,6 +42,7 @@ import { Route as ApiSitePotentialBetaStatusRouteImport } from './routes/api/sit
 import { Route as ApiSitePotentialBetaRequestRouteImport } from './routes/api/site-potential.beta-request'
 import { Route as ApiSitePotentialBetaRedeemRouteImport } from './routes/api/site-potential.beta-redeem'
 import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site-potential.beta-grant'
+import { Route as ApiLocalServicesSearchRouteImport } from './routes/api/local-services.search'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
 import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
 
@@ -217,6 +218,11 @@ const ApiSitePotentialBetaGrantRoute =
     path: '/api/site-potential/beta-grant',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiLocalServicesSearchRoute = ApiLocalServicesSearchRouteImport.update({
+  id: '/api/local-services/search',
+  path: '/api/local-services/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   id: '/api/listings/import',
   path: '/api/listings/import',
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -293,6 +300,7 @@ export interface FileRoutesByTo {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
+  '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -370,6 +379,7 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/local-services/search'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -407,6 +417,7 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/local-services/search'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/api/listings/import'
+    | '/api/local-services/search'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -480,6 +492,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
+  ApiLocalServicesSearchRoute: typeof ApiLocalServicesSearchRoute
   ApiSitePotentialBetaGrantRoute: typeof ApiSitePotentialBetaGrantRoute
   ApiSitePotentialBetaRedeemRoute: typeof ApiSitePotentialBetaRedeemRoute
   ApiSitePotentialBetaRequestRoute: typeof ApiSitePotentialBetaRequestRoute
@@ -724,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSitePotentialBetaGrantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/local-services/search': {
+      id: '/api/local-services/search'
+      path: '/api/local-services/search'
+      fullPath: '/api/local-services/search'
+      preLoaderRoute: typeof ApiLocalServicesSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/listings/import': {
       id: '/api/listings/import'
       path: '/api/listings/import'
@@ -778,6 +798,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
+  ApiLocalServicesSearchRoute: ApiLocalServicesSearchRoute,
   ApiSitePotentialBetaGrantRoute: ApiSitePotentialBetaGrantRoute,
   ApiSitePotentialBetaRedeemRoute: ApiSitePotentialBetaRedeemRoute,
   ApiSitePotentialBetaRequestRoute: ApiSitePotentialBetaRequestRoute,
