@@ -44,7 +44,21 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run full test suite
-        run: npx --no-install vitest run
+        shell: bash
+        run: |
+          set +e
+          npx --no-install vitest run 2>&1 | tee /tmp/site-potential-v2-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            tail -n 300 /tmp/site-potential-v2-tests.log > .site-potential-v2-test-failure.log
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .site-potential-v2-test-failure.log
+            git commit -m "Record Site Potential v2 test failure"
+            git push origin HEAD:site-potential-v2-upload-final
+            exit "$status"
+          fi
 
       - name: Run production build
         run: npm run build
@@ -54,6 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf .codex-patch
+          rm -f .site-potential-v2-test-failure.log
           rm -f .github/workflows/codex-checkout-artifact.yml
           rm -f .github/workflows/apply-site-potential-v2.yml
           git restore --source=HEAD -- package.json package-lock.json bun.lock src/routeTree.gen.ts
