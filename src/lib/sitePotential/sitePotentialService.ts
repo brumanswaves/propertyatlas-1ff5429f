@@ -31,8 +31,7 @@ function normalizeProject(row: Record<string, unknown>): SitePotentialProject {
       ? row.requested_features.map(String)
       : [],
     custom_instructions: row.custom_instructions == null ? null : String(row.custom_instructions),
-    rights_confirmed_at:
-      row.rights_confirmed_at == null ? null : String(row.rights_confirmed_at),
+    rights_confirmed_at: row.rights_confirmed_at == null ? null : String(row.rights_confirmed_at),
     generation_status: String(
       row.generation_status ?? "not_started",
     ) as SitePotentialProject["generation_status"],
@@ -89,17 +88,28 @@ export async function upsertSitePotentialProject(
   return normalizeProject(data);
 }
 
-export async function clearMissingSelectedDesign(
+export function resolveSelectedSitePotentialDesign(
   project: SitePotentialProject | null,
   generatedDesigns: ErfAsset[],
 ) {
-  if (!project?.selected_design_asset_id) return project;
-  const stillExists = generatedDesigns.some((asset) => asset.id === project.selected_design_asset_id);
-  if (stillExists) return project;
-  return upsertSitePotentialProject(project.parcel_id, {
+  if (!project?.selected_design_asset_id) return null;
+  return generatedDesigns.find((asset) => asset.id === project.selected_design_asset_id) ?? null;
+}
+
+export function buildSelectedDesignDeletionPatch(
+  project: SitePotentialProject | null,
+  deletedAsset: ErfAsset,
+  generatedDesigns: ErfAsset[],
+): SitePotentialProjectPatch | null {
+  if (!project?.selected_design_asset_id) return null;
+  if (project.selected_design_asset_id !== deletedAsset.id) return null;
+  const remainingGeneratedDesigns = generatedDesigns.filter(
+    (asset) => asset.id !== deletedAsset.id,
+  );
+  return {
     selected_design_asset_id: null,
-    generation_status: generatedDesigns.length ? "concepts_ready" : "not_started",
-  });
+    generation_status: remainingGeneratedDesigns.length ? "concepts_ready" : "not_started",
+  };
 }
 
 export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfAsset[] = []) {
@@ -130,12 +140,6 @@ export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfA
     void refresh();
   }, [refresh]);
 
-  useEffect(() => {
-    void clearMissingSelectedDesign(project, generatedDesigns).then((next) => {
-      if (next && next !== project) setProject(next);
-    });
-  }, [generatedDesigns, project]);
-
   const save = useCallback(
     async (patch: SitePotentialProjectPatch) => {
       const next = await upsertSitePotentialProject(parcelId, patch);
@@ -146,11 +150,8 @@ export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfA
   );
 
   const selectedDesign = useMemo(
-    () =>
-      project?.selected_design_asset_id
-        ? generatedDesigns.find((asset) => asset.id === project.selected_design_asset_id) ?? null
-        : null,
-    [generatedDesigns, project?.selected_design_asset_id],
+    () => resolveSelectedSitePotentialDesign(project, generatedDesigns),
+    [generatedDesigns, project],
   );
 
   return {

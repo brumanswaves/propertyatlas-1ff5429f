@@ -25,6 +25,7 @@ import {
 import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
+  buildSelectedDesignDeletionPatch,
   useSitePotentialProject,
   type SitePotentialProjectPatch,
 } from "@/lib/sitePotential/sitePotentialService";
@@ -321,7 +322,7 @@ export function SitePotentialTab({
   const generatedDesigns = allGeneratedDesigns.filter(
     (asset) => !activeDesignPackId || assetDesignPackId(asset) === activeDesignPackId,
   );
-  const projectState = useSitePotentialProject(parcel.id, generatedDesigns);
+  const projectState = useSitePotentialProject(parcel.id, allGeneratedDesigns);
   const project = projectState.project;
   const refreshVault = vault.refresh;
   const refreshSiteProject = projectState.refresh;
@@ -782,6 +783,16 @@ export function SitePotentialTab({
     });
   }
 
+  async function removeGeneratedDesign(asset: ErfAsset) {
+    const deletionPatch = buildSelectedDesignDeletionPatch(project, asset, allGeneratedDesigns);
+    try {
+      await vault.remove(asset);
+      if (deletionPatch) await saveProject(deletionPatch);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove generated concept.");
+    }
+  }
+
   function useInStrategy() {
     const floorArea = String(project?.metadata?.approxFloorArea ?? "");
     const draft = {
@@ -1175,7 +1186,7 @@ export function SitePotentialTab({
                 asset={asset}
                 selected={asset.id === project?.selected_design_asset_id}
                 onOpen={() => void vault.open(asset)}
-                onRemove={() => void vault.remove(asset)}
+                onRemove={() => void removeGeneratedDesign(asset)}
                 onSelect={() => void selectDesign(asset)}
               />
             ))}
