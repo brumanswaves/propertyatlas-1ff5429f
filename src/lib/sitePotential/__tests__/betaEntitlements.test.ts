@@ -158,7 +158,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).toContain('.eq("status", "open")');
   });
 
-  it("shows free allowance, purchased credits and inline report-only concept selection", () => {
+  it("shows free allowance and inline report-only concept selection while purchase UI is hidden", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
 
     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
@@ -167,8 +167,8 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Use 1 credit for 3 concepts");
     expect(tab).toContain("Free allowance used");
     expect(tab).toContain("Purchased credits");
-    expect(tab).toContain("Buy more Site Potential credits");
-    expect(tab).toContain("Checkout connection pending");
+    expect(tab).not.toContain("Buy more Site Potential credits");
+    expect(tab).not.toContain("Checkout connection pending");
     expect(tab).toContain("Select for Easy Erf Report");
     expect(tab).toContain("createErfAssetSignedUrl");
     expect(tab).toContain("<img");
