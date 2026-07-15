@@ -6,6 +6,9 @@ import {
   type PublicBbox,
 } from "../publicDataClient";
 
+// Node test env lacks `window`; fetchWithTimeout uses window.set/clearTimeout.
+(globalThis as unknown as { window: unknown }).window = globalThis;
+
 const BBOX: PublicBbox = [24.83, -34.19, 24.84, -34.18];
 
 const SAMPLE_FEATURE: GeoJSON.Feature = {
