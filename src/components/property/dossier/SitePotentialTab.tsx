@@ -270,7 +270,7 @@ function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
     return `All ${status.requestedCount} concepts ready.`;
   }
   if (status.status === "queued" && completed === 0) {
-    return `Queued - generating concept 1 of ${status.requestedCount}.`;
+    return `Your ${status.requestedCount} concepts are queued. They will appear here as each image is created.`;
   }
   if (status.status === "generating") {
     return completed > 0
@@ -823,7 +823,7 @@ export function SitePotentialTab({
 
   function generationButtonLabel() {
     if (generating || packProcessing || project?.generation_status === "generating") {
-      return packStatus?.status === "queued" ? "Queued" : "Generating 3 concepts";
+      return packStatus?.status === "queued" ? "3 concepts queued" : "Generating 3 concepts";
     }
     if (BETA_UI_ENABLED) {
       if (!generationEntitled) return "Free allowance used";
@@ -1175,9 +1175,10 @@ export function SitePotentialTab({
           </div>
         ) : (
           <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
-            No generated concepts saved yet. Generated images will appear here only after the server
-            stores them in the Erf File Vault.
-          </p>
+  {packStatus
+    ? "Your concepts are being created. Images will appear here as each one is completed, and this page will update automatically."
+    : "No concepts generated yet. Complete the brief and generate a three-concept pack."}
+</p>
         )}
       </section>
 
