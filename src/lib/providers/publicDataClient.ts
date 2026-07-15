@@ -567,15 +567,16 @@ export async function loadOfficialPublicLayer(
 ): Promise<PublicDataResult> {
   const attempts: PublicDataAttempt[] = [];
 
-  // PRIMARY: direct browser fetch (Kouga SG Properties layer 32 is first in endpoints list, CORS-enabled)
-  const direct = await testDirectFetch(layer, bbox, limit);
-  attempts.push(...direct.attempts);
-  if (direct.features.length > 0) return { ...direct, attempts, official: true };
-
-  // SECONDARY: edge proxy (handles CORS-restricted national CSG endpoints)
+  // PRIMARY: edge proxy — server-side ArcGIS fetch avoids browser CORS,
+  // upstream rate-limiting quirks, and ad/tracker blockers.
   const edge = await testEdgeProxy(layer, bbox, limit);
   attempts.push(...edge.attempts);
   if (edge.features.length > 0) return { ...edge, attempts, official: true };
+
+  // SECONDARY: direct browser fetch (Kouga SG Properties layer 32 is CORS-enabled).
+  const direct = await testDirectFetch(layer, bbox, limit);
+  attempts.push(...direct.attempts);
+  if (direct.features.length > 0) return { ...direct, attempts, official: true };
 
   // TERTIARY: imported static GeoJSON file
   const stat = await testStaticGeoJson(layer, false);
