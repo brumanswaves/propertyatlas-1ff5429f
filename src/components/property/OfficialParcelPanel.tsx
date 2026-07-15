@@ -103,10 +103,7 @@ const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "local-services", label: "Local Services" },
 ];
 
-const WORKBENCH_SECTIONS: Record<
-  Tab,
-  { title: string; subtitle: string; guidance: string }
-> = {
+const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidance: string }> = {
   overview: {
     title: "Overview",
     subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
@@ -397,17 +394,19 @@ function SgDiagramEvidenceSection({
     }
     let savedCount = 0;
     for (const file of list) {
-      const result = await vault.upload({
-        file,
-        fileName: file.name,
-        category: "sg_diagram",
-        assetType: "sg_diagram",
-        sourceLabel: "User uploaded SG diagram",
-        metadata: { source: "sources-tab" },
-      }).catch((error: Error) => {
-        toast.error(error.message);
-        return null;
-      });
+      const result = await vault
+        .upload({
+          file,
+          fileName: file.name,
+          category: "sg_diagram",
+          assetType: "sg_diagram",
+          sourceLabel: "User uploaded SG diagram",
+          metadata: { source: "sources-tab" },
+        })
+        .catch((error: Error) => {
+          toast.error(error.message);
+          return null;
+        });
       if (!result) continue;
       if (!result.ok) {
         if (result.reason === "too_large") {
@@ -1995,8 +1994,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 type="button"
                 onClick={() => selectWorkbenchTab(item.id)}
                 className={cn(
-                   "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                   active
+                  "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                  active
                     ? "border-[#FF8A33]/70 bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_55%,#0D1B2A_100%)] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
                     : "border-[#0D1B2A]/12 bg-white/82 text-[#0D1B2A] hover:bg-white",
                 )}
@@ -2093,8 +2092,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   {resolved.displayTitle}
                 </h3>
                 <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-                  Coordinates are approximate. This read-only map context is centered on the selected erf area.
-                  Treat it as parcel context unless confirmed by an official source.
+                  Coordinates are approximate. This read-only map context is centered on the
+                  selected erf area. Treat it as parcel context unless confirmed by an official
+                  source.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
                   {normalizedParcel.erfNumber && (
@@ -2188,12 +2188,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   dirty: true,
                 })
               }
-              onExploreReport={() =>
-                selectWorkbenchTab("stoep-report", { markStarted: true })
-              }
-              onOpenStrategy={() =>
-                selectWorkbenchTab("calculators", { markStarted: true })
-              }
+              onExploreReport={() => selectWorkbenchTab("stoep-report", { markStarted: true })}
             />
           )}
           {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}

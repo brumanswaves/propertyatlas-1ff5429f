@@ -36,7 +36,7 @@ export const DESIGN_PACK_OPTION_INDEXES = Array.from(
   (_, index) => index + 1,
 );
 
-export const SITE_POTENTIAL_PROMPT_VERSION = "site-potential-2026-07-secure-v2";
+export const SITE_POTENTIAL_PROMPT_VERSION = "site-potential-2026-07-grounded-v3";
 export const SITE_POTENTIAL_LEASE_MS = 10 * 60 * 1000;
 export const SITE_POTENTIAL_LEASE_RENEWAL_MS = 60 * 1000;
 export const SITE_POTENTIAL_OPENAI_TIMEOUT_MS = SITE_POTENTIAL_LEASE_MS - 60 * 1000;
@@ -168,17 +168,40 @@ export function designPackStatusFromItems(
   return { status: "queued", completedCount, hasRetryableWork: false, terminal: false };
 }
 
+function isUsableImageAsset(asset: SourceAssetLike) {
+  const mime = String(asset.mime_type ?? "").toLowerCase();
+  const name = String(asset.original_file_name ?? "").toLowerCase();
+  return (
+    mime === "image/png" ||
+    mime === "image/jpeg" ||
+    mime === "image/webp" ||
+    /\.(png|jpe?g|webp)$/.test(name)
+  );
+}
+
+const SITE_CONTEXT_ASSET_PRIORITY: Record<string, number> = {
+  existing_house_photo: 0,
+  site_photo: 1,
+  topography: 2,
+  architectural_plan: 3,
+  inspiration_image: 4,
+};
+
 export function sourceAssetsForGenerationMode(mode: SitePotentialMode, assets: SourceAssetLike[]) {
-  const active = assets.filter((asset) => asset.storage_path);
-  if (mode === "renovation") {
-    return active.filter((asset) => asset.asset_category === "existing_house_photo").slice(0, 1);
-  }
-  return active
-    .filter(
-      (asset) =>
-        asset.asset_category === "site_photo" || asset.asset_category === "inspiration_image",
-    )
-    .slice(0, 1);
+  const active = assets
+    .filter((asset) => asset.storage_path && isUsableImageAsset(asset))
+    .filter((asset) => asset.asset_category in SITE_CONTEXT_ASSET_PRIORITY)
+    .sort((a, b) => {
+      const aPriority = SITE_CONTEXT_ASSET_PRIORITY[a.asset_category] ?? 99;
+      const bPriority = SITE_CONTEXT_ASSET_PRIORITY[b.asset_category] ?? 99;
+      if (mode === "renovation") {
+        if (a.asset_category === "existing_house_photo") return -1;
+        if (b.asset_category === "existing_house_photo") return 1;
+      }
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
+    });
+  return active.slice(0, 5);
 }
 
 export function requiresImageEditPath(mode: SitePotentialMode, sourceAssets: SourceAssetLike[]) {
@@ -192,7 +215,10 @@ export function buildGeneratedDesignMetadata(input: {
   siteProjectId: string;
   sourceAssetIds: string[];
   originalSourceAssetIds?: string[];
-  primaryConceptAssetId?: string | null;
+  conceptKey?: string;
+  conceptName?: string;
+  conceptRationale?: string;
+  automaticSiteMapUsed?: boolean;
   model: string;
   prompt: string;
   promptVersion?: string;
@@ -205,7 +231,10 @@ export function buildGeneratedDesignMetadata(input: {
     siteProjectId: input.siteProjectId,
     sourceAssetIds: input.sourceAssetIds,
     originalSourceAssetIds: input.originalSourceAssetIds ?? input.sourceAssetIds,
-    primaryConceptAssetId: input.primaryConceptAssetId ?? null,
+    conceptKey: input.conceptKey ?? null,
+    conceptName: input.conceptName ?? null,
+    conceptRationale: input.conceptRationale ?? null,
+    automaticSiteMapUsed: Boolean(input.automaticSiteMapUsed),
     model: input.model,
     promptVersion: input.promptVersion ?? SITE_POTENTIAL_PROMPT_VERSION,
     openAiRequestId: input.openAiRequestId ?? null,

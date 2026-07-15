@@ -1,6 +1,7 @@
 import {
   buildSitePotentialPrompt,
   openAiImageModelFromEnv,
+  sitePotentialConceptDirection,
   type ImageEditReference,
   type OpenAiImageResult,
 } from "./generation";
@@ -16,6 +17,8 @@ import {
   type SourceAssetLike,
 } from "./generationJobs";
 import type { SitePotentialProject } from "./types";
+import { sitePotentialParcelContextFromProject } from "./parcelContext";
+import { buildAutomaticSiteContextReference } from "./siteContextReference";
 
 export interface GenerationWorkerClaim {
   itemId: string;
@@ -71,7 +74,6 @@ export interface SitePotentialGenerationStore {
   claimNextItem(workerId: string, now: Date): Promise<GenerationWorkerClaim | null>;
   loadContext(claim: GenerationWorkerClaim): Promise<GenerationWorkerContext>;
   findExistingAssetForItem(claim: GenerationWorkerClaim): Promise<ExistingGeneratedAsset | null>;
-  findPrimaryConceptReference(claim: GenerationWorkerClaim): Promise<StoredReferenceAsset | null>;
   renewLease(claim: GenerationWorkerClaim, now: Date): Promise<boolean>;
   downloadReferenceAsset(asset: StoredReferenceAsset): Promise<ImageEditReference>;
   uploadGeneratedImage(
@@ -177,18 +179,23 @@ async function processClaimedSitePotentialItem(input: {
   const context = await input.store.loadContext(input.claim);
   await renewLeaseOrThrow(input.store, input.claim);
   const sourceAssets = sourceAssetsForGenerationMode(context.project.mode, context.inputAssets);
-  const originalReferences: ImageEditReference[] = [];
-  for (const sourceAsset of sourceAssets) {
-    originalReferences.push(await input.store.downloadReferenceAsset(sourceAsset));
+  const parcelContext = sitePotentialParcelContextFromProject(context.project);
+  const references: ImageEditReference[] = [];
+  const referenceLabels: string[] = [];
+  const automaticMapReference = await buildAutomaticSiteContextReference(parcelContext);
+  if (automaticMapReference) {
+    references.push(automaticMapReference);
+    referenceLabels.push(
+      "official satellite site map with the selected parcel highlighted or pinned; use it for road side, orientation, surrounding buildings and terrain context",
+    );
   }
-  const primaryConcept =
-    input.claim.optionIndex > 1 ? await input.store.findPrimaryConceptReference(input.claim) : null;
-  const primaryReference = primaryConcept
-    ? await input.store.downloadReferenceAsset(primaryConcept)
-    : null;
-  const references = primaryReference
-    ? [...originalReferences, primaryReference]
-    : originalReferences;
+  for (const sourceAsset of sourceAssets) {
+    references.push(await input.store.downloadReferenceAsset(sourceAsset));
+    referenceLabels.push(
+      `${sourceAsset.asset_category.replaceAll("_", " ")} uploaded by the user (${sourceAsset.original_file_name ?? "reference image"})`,
+    );
+  }
+  const conceptDirection = sitePotentialConceptDirection(input.claim.optionIndex - 1);
   const prompt = buildSitePotentialPrompt(
     {
       mode: context.project.mode,
@@ -198,7 +205,8 @@ async function processClaimedSitePotentialItem(input: {
       requestedRooms: context.project.requested_rooms ?? [],
       requestedFeatures: context.project.requested_features ?? [],
       customInstructions: context.project.custom_instructions,
-      parcelSummary: `Parcel ${input.claim.parcelId}`,
+      parcelContext,
+      referenceLabels,
     },
     input.claim.optionIndex - 1,
   );
@@ -208,7 +216,7 @@ async function processClaimedSitePotentialItem(input: {
     claim: input.claim,
     renewalMs: input.leaseRenewalMs,
     run: (signal) =>
-      requiresImageEditPath(context.project.mode, sourceAssets) || primaryReference
+      references.length > 0 || requiresImageEditPath(context.project.mode, sourceAssets)
         ? input.imageClient.edit(prompt, references, {
             signal,
             timeoutMs: SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
@@ -232,12 +240,12 @@ async function processClaimedSitePotentialItem(input: {
         designPackItemId: input.claim.itemId,
         optionIndex: input.claim.optionIndex,
         siteProjectId: input.claim.siteProjectId,
-        sourceAssetIds: [
-          ...sourceAssets.map((asset) => asset.id),
-          ...(primaryConcept ? [primaryConcept.id] : []),
-        ],
+        sourceAssetIds: sourceAssets.map((asset) => asset.id),
         originalSourceAssetIds: sourceAssets.map((asset) => asset.id),
-        primaryConceptAssetId: primaryConcept?.id ?? null,
+        conceptKey: conceptDirection.key,
+        conceptName: conceptDirection.name,
+        conceptRationale: conceptDirection.rationale,
+        automaticSiteMapUsed: Boolean(automaticMapReference),
         model: openAiImageModelFromEnv(),
         prompt,
         openAiRequestId: image.requestId,

@@ -1,9 +1,14 @@
 import {
   SITE_POTENTIAL_DEFAULT_IMAGE_MODEL,
-  SITE_POTENTIAL_DISCLAIMER,
+  SITE_POTENTIAL_DEFAULT_IMAGE_QUALITY,
+  SITE_POTENTIAL_DEFAULT_IMAGE_SIZE,
   SITE_POTENTIAL_PACK_SIZE,
 } from "./config";
 import { SITE_POTENTIAL_PROMPT_VERSION } from "./generationJobs";
+import {
+  describeSitePotentialParcelContext,
+  type SitePotentialParcelContext,
+} from "./parcelContext";
 
 export interface SitePotentialPromptInput {
   mode: "vacant_land" | "renovation" | "other_building" | "unknown" | "skipped";
@@ -13,47 +18,103 @@ export interface SitePotentialPromptInput {
   requestedRooms?: string[];
   requestedFeatures?: string[];
   customInstructions?: string | null;
-  parcelSummary?: string | null;
+  parcelContext?: SitePotentialParcelContext | null;
+  referenceLabels?: string[];
+}
+
+export interface SitePotentialConceptDirection {
+  key: string;
+  name: string;
+  rationale: string;
+  designInstruction: string;
+  cameraInstruction: string;
+}
+
+export const SITE_POTENTIAL_CONCEPT_DIRECTIONS: SitePotentialConceptDirection[] = [
+  {
+    key: "sheltered-courtyard",
+    name: "Sheltered Courtyard",
+    rationale:
+      "A protected indoor-outdoor heart that uses the building mass to reduce prevailing-wind exposure.",
+    designInstruction:
+      "Develop a compact L-shaped or courtyard-led home. Use garage, service rooms and solid walls as a wind buffer. Place the main outdoor living area in a sheltered, sunny position with a private street edge.",
+    cameraInstruction:
+      "Use an elevated oblique view from the street corner that clearly shows the entry, the building footprint and the sheltered courtyard relationship.",
+  },
+  {
+    key: "view-focused-linear",
+    name: "View-Focused Linear",
+    rationale:
+      "A long, view-oriented plan that gives the primary living spaces a strong relationship to the best outlook.",
+    designInstruction:
+      "Develop an elongated linear or gently cranked home with a materially different footprint from a courtyard house. Organise living spaces and bedrooms toward the best view, with a long covered deck or terrace and service spaces forming a buffer on the exposed side.",
+    cameraInstruction:
+      "Use a low-to-mid elevated oblique view from the primary view side so the linear massing, deck and relationship to the landscape are unmistakable.",
+  },
+  {
+    key: "split-level-site-response",
+    name: "Split-Level Site Response",
+    rationale:
+      "A stepped concept that works with terrain and separates arrival, living and private zones across levels.",
+    designInstruction:
+      "Develop a stepped split-level home that follows the apparent slope. Put arrival and garage at the most practical road level, step the main living level toward views and use terraces rather than a flat generic platform. The massing and roof form must be clearly different from the other concepts.",
+    cameraInstruction:
+      "Use an elevated side-oblique perspective that makes the slope, stepped floor levels, retaining strategy and road access legible.",
+  },
+];
+
+export function sitePotentialConceptDirection(optionIndex: number) {
+  return (
+    SITE_POTENTIAL_CONCEPT_DIRECTIONS[optionIndex] ??
+    SITE_POTENTIAL_CONCEPT_DIRECTIONS[optionIndex % SITE_POTENTIAL_CONCEPT_DIRECTIONS.length]
+  );
 }
 
 export function buildSitePotentialPrompt(input: SitePotentialPromptInput, optionIndex: number) {
-  const modeLabel = input.mode === "renovation" ? "renovation concept" : "vacant-land concept";
-  const optionNumber = optionIndex + 1;
-  const primaryDirection =
-    "Primary concept direction: a coherent premium South African residential concept with restrained coastal materials, practical indoor-outdoor living, and a calm investor-grade presentation.";
-  const coordinatedVariation =
-    optionNumber === 1
-      ? "This is the primary concept. Establish the overall architectural direction for the pack."
-      : `This is coordinated alternative ${optionNumber - 1}. Keep the same property identity and primary direction, varying only controlled elements such as exterior colour, material emphasis, landscaping, roof treatment, outdoor living, and renovation intensity. Do not create an unrelated property.`;
-  const parts = [
-    `Create option ${optionNumber} of ${SITE_POTENTIAL_PACK_SIZE} for an Easy Erf ${modeLabel}.`,
+  const direction = sitePotentialConceptDirection(optionIndex);
+  const modeLabel = input.mode === "renovation" ? "renovation" : "new-build";
+  const references = input.referenceLabels?.length
+    ? input.referenceLabels
+        .map((label, index) => `Reference image ${index + 1}: ${label}.`)
+        .join(" ")
+    : "No reference image was available; rely on the written official parcel context and avoid claiming surveyed accuracy.";
+  return [
+    `Create one premium landscape-format architectural ${modeLabel} concept visualisation for Easy Erf.`,
+    `This is concept ${optionIndex + 1} of ${SITE_POTENTIAL_PACK_SIZE}: ${direction.name}.`,
     `Prompt version: ${SITE_POTENTIAL_PROMPT_VERSION}.`,
-    primaryDirection,
-    coordinatedVariation,
-    input.parcelSummary ? `Parcel context: ${input.parcelSummary}.` : null,
+    `Distinct design direction: ${direction.designInstruction}`,
+    `Camera and composition: ${direction.cameraInstruction}`,
+    `Official parcel context: ${describeSitePotentialParcelContext(input.parcelContext ?? null)}`,
+    references,
     input.designBrief ? `User brief: ${input.designBrief}.` : null,
-    input.selectedStyle ? `Style: ${input.selectedStyle}.` : null,
+    input.selectedStyle ? `Preferred style: ${input.selectedStyle}.` : null,
     input.renovationLevel ? `Renovation level: ${input.renovationLevel}.` : null,
     input.requestedRooms?.length ? `Requested rooms: ${input.requestedRooms.join(", ")}.` : null,
     input.requestedFeatures?.length
       ? `Requested features: ${input.requestedFeatures.join(", ")}.`
       : null,
-    input.customInstructions ? `Custom instructions: ${input.customInstructions}.` : null,
-    "Produce a premium South African residential property concept visualisation.",
+    input.customInstructions ? `Additional instructions: ${input.customInstructions}.` : null,
     input.mode === "renovation"
-      ? "Use the supplied user-uploaded property photograph as the visual reference. Preserve the recognisable house structure, camera viewpoint, site relationship, major openings and massing unless the selected renovation level explicitly allows major changes."
-      : "Do not imply surveyed placement, municipal approval, or exact parcel positioning.",
-    input.mode !== "renovation"
-      ? "If a site photograph is supplied, use it only as an illustrative context reference and do not claim exact parcel or building geometry."
-      : null,
-    "No large text overlay. If watermarking is needed, keep it tiny and unobtrusive.",
-    SITE_POTENTIAL_DISCLAIMER,
-  ].filter(Boolean);
-  return parts.join(" ");
+      ? "Preserve the recognisable house structure, site relationship, camera evidence and major openings unless the renovation level expressly permits major structural change."
+      : "Use the official parcel map and site photographs as grounding. Respect the visible road side, neighbouring development, orientation, terrain and view direction. Do not place the house on a generic imaginary waterfront lot.",
+    "Create a realistic South African residential architectural visualisation with buildable-looking proportions, restrained materials and credible landscaping.",
+    "The three concepts are independent. Do not imitate or preserve any previously generated Easy Erf concept. The footprint, massing, roof form, outdoor-space logic and camera composition must follow this concept's named direction.",
+    "Do not generate words, captions, labels, signs, watermarks, logos, disclaimers, borders, floor-plan annotations or presentation-board text inside the image.",
+    "Do not imply municipal approval, surveyed placement or exact legal buildability. Produce one coherent photorealistic image only.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function openAiImageModelFromEnv() {
   return process.env.OPENAI_IMAGE_MODEL || SITE_POTENTIAL_DEFAULT_IMAGE_MODEL;
+}
+
+export function openAiImageQualityFromEnv() {
+  const value = String(
+    process.env.OPENAI_IMAGE_QUALITY || SITE_POTENTIAL_DEFAULT_IMAGE_QUALITY,
+  ).toLowerCase();
+  return value === "low" || value === "high" || value === "auto" ? value : "medium";
 }
 
 export interface OpenAiImageResult {
@@ -72,7 +133,7 @@ function openAiOutputFormat() {
 }
 
 function openAiImageSize() {
-  return process.env.OPENAI_IMAGE_SIZE || "1024x1024";
+  return process.env.OPENAI_IMAGE_SIZE || SITE_POTENTIAL_DEFAULT_IMAGE_SIZE;
 }
 
 function isTransientOpenAiStatus(status: number) {
@@ -197,6 +258,7 @@ export async function requestImageGenerationWithOpenAI(
             prompt,
             size: openAiImageSize(),
             output_format: openAiOutputFormat(),
+            quality: openAiImageQualityFromEnv(),
           }),
         },
         options,
@@ -247,6 +309,7 @@ export async function requestImageEditWithOpenAI(
   form.append("prompt", prompt);
   form.append("size", openAiImageSize());
   form.append("output_format", openAiOutputFormat());
+  form.append("quality", openAiImageQualityFromEnv());
   referenceList.forEach((reference, index) => {
     const imageBytes = new Uint8Array(reference.bytes.byteLength);
     imageBytes.set(reference.bytes);

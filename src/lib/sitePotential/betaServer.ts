@@ -16,6 +16,7 @@ type LooseQuery = {
   in: (column: string, values: unknown[]) => LooseQuery;
   order: (column: string, options?: Record<string, unknown>) => LooseQuery;
   limit: (count: number) => LooseQuery;
+  gte: (column: string, value: unknown) => LooseQuery;
   insert: (value: unknown) => LooseQuery;
   update: (value: unknown) => LooseQuery;
   maybeSingle: () => QueryResult<Record<string, unknown> | null>;
@@ -79,6 +80,120 @@ export async function readBetaCreditStatus(input: {
   return {
     creditsRemaining,
     openRequestStatus: request?.status ? String(request.status) : null,
+  };
+}
+
+export async function readSitePotentialAccessStatus(input: {
+  serviceSupabase: ServiceSupabase;
+  userId: string;
+  parcelId?: string | null;
+  now?: Date;
+}) {
+  const db = loose(input.serviceSupabase);
+  const now = input.now ?? new Date();
+  const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const since24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: freePacks, error: packError } = await db
+    .from("erf_design_packs")
+    .select("parcel_id,created_at")
+    .eq("user_id", input.userId)
+    .eq("payment_provider", "free_allowance")
+    .eq("entitlement_status", "paid")
+    .gte("created_at", since30);
+  if (packError) throw new Error(packError.message);
+  const rows = freePacks ?? [];
+  const used24Hours = rows.filter((row) => String(row.created_at) >= since24).length;
+  const used7Days = rows.filter((row) => String(row.created_at) >= since7).length;
+  const used30Days = rows.length;
+  const sameParcelUsed30Days = input.parcelId
+    ? rows.filter((row) => String(row.parcel_id) === input.parcelId).length
+    : 0;
+
+  const { data: wallet, error: walletError } = await db
+    .from("site_potential_credit_wallets")
+    .select("balance")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  if (walletError) throw new Error(walletError.message);
+
+  const beta = await readBetaCreditStatus(input);
+  const free = {
+    used24Hours,
+    used7Days,
+    used30Days,
+    remaining24Hours: Math.max(0, 1 - used24Hours),
+    remaining7Days: Math.max(0, 3 - used7Days),
+    remaining30Days: Math.max(0, 6 - used30Days),
+    sameParcelEligible: !input.parcelId || sameParcelUsed30Days < 1,
+  };
+  const freeEligible =
+    free.remaining24Hours > 0 &&
+    free.remaining7Days > 0 &&
+    free.remaining30Days > 0 &&
+    free.sameParcelEligible;
+  const purchasedCredits = Number(wallet?.balance ?? 0);
+  return {
+    ...beta,
+    betaCreditsRemaining: beta.creditsRemaining,
+    purchasedCredits,
+    free,
+    freeEligible,
+    canGenerate: freeEligible || beta.creditsRemaining > 0 || purchasedCredits > 0,
+    nextEntitlementSource: freeEligible
+      ? "free_allowance"
+      : beta.creditsRemaining > 0
+        ? "beta_credit"
+        : purchasedCredits > 0
+          ? "site_potential_credit"
+          : null,
+  };
+}
+
+export async function consumeSitePotentialEntitlement(input: {
+  serviceSupabase: ServiceSupabase;
+  userId: string;
+  parcelId: string;
+  siteProjectId: string;
+  requestId: string;
+}) {
+  const db = loose(input.serviceSupabase);
+  const { data, error } = await db.rpc<
+    Array<{
+      design_pack_id: string;
+      entitlement_source: string;
+      purchased_credits_remaining: number;
+      beta_credits_remaining: number;
+      free_used_24h: number;
+      free_used_7d: number;
+      free_used_30d: number;
+    }>
+  >("redeem_site_potential_pack_v2", {
+    p_user_id: input.userId,
+    p_parcel_id: input.parcelId,
+    p_site_project_id: input.siteProjectId,
+    p_request_id: input.requestId,
+  });
+  if (error) {
+    if (error.message.includes("NO_SITE_POTENTIAL_ENTITLEMENT")) {
+      return {
+        ok: false as const,
+        status: 402,
+        error: "Free Site Potential allowance used and no purchased credits are available.",
+      };
+    }
+    throw new Error(error.message);
+  }
+  const row = data?.[0];
+  if (!row?.design_pack_id) throw new Error("Entitlement redemption did not return a design pack.");
+  return {
+    ok: true as const,
+    designPackId: row.design_pack_id,
+    entitlementSource: row.entitlement_source,
+    purchasedCreditsRemaining: Number(row.purchased_credits_remaining ?? 0),
+    betaCreditsRemaining: Number(row.beta_credits_remaining ?? 0),
+    requestedCount: SITE_POTENTIAL_PACK_SIZE,
   };
 }
 

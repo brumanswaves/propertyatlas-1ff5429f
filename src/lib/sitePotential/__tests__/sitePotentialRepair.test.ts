@@ -128,9 +128,7 @@ describe("Site Potential production-blocker repair", () => {
     const hasLegacyReturnAlias = finalizeBlock.includes(
       'Returns: Database["public"]["Tables"]["erf_assets"]["Row"]',
     );
-    const hasSetofRelationship = /SetofOptions:\s*\{[^}]*to:\s*"erf_assets"/s.test(
-      finalizeBlock,
-    );
+    const hasSetofRelationship = /SetofOptions:\s*\{[^}]*to:\s*"erf_assets"/s.test(finalizeBlock);
     expect(hasLegacyReturnAlias || hasSetofRelationship).toBe(true);
     expect(finalizeBlock).toContain("p_source_label?: string");
   });
@@ -207,26 +205,22 @@ describe("Site Potential production-blocker repair", () => {
     ).toMatchObject({ allowed: true });
   });
 
-  it("creates stable six-slot jobs, retries only failed or missing options and reuses completed items", () => {
+  it("creates stable three-slot jobs, retries only failed or missing options and reuses completed items", () => {
     expect(designPackItemRows({ userId: "u1", designPackId: "pack1" })).toMatchObject([
       { option_index: 1, status: "queued" },
       { option_index: 2, status: "queued" },
       { option_index: 3, status: "queued" },
-      { option_index: 4, status: "queued" },
-      { option_index: 5, status: "queued" },
-      { option_index: 6, status: "queued" },
     ]);
 
     const items = [
       { id: "i1", option_index: 1, status: "complete" as const, generated_asset_id: "a1" },
       { id: "i2", option_index: 2, status: "failed" as const, generated_asset_id: null },
       { id: "i3", option_index: 3, status: "queued" as const, generated_asset_id: null },
-      { id: "i4", option_index: 4, status: "generating" as const, generated_asset_id: null },
     ];
 
     expect(retryableDesignPackItems(items).map((item) => item.option_index)).toEqual([2, 3]);
     expect(designPackStatusFromItems(items)).toMatchObject({
-      status: "generating",
+      status: "partial_failed",
       completedCount: 1,
     });
 
@@ -240,12 +234,12 @@ describe("Site Potential production-blocker repair", () => {
     );
     expect(designPackStatusFromItems(completeItems)).toMatchObject({
       status: "complete",
-      completedCount: 6,
+      completedCount: 3,
       terminal: true,
     });
   });
 
-  it("reconciles retry-aware design pack statuses consistently", () => {
+  it("reconciles retry-aware three-concept pack statuses consistently", () => {
     const item = (
       optionIndex: number,
       status: "queued" | "generating" | "complete" | "failed",
@@ -259,47 +253,19 @@ describe("Site Potential production-blocker repair", () => {
     });
 
     expect(
-      designPackStatusFromItems([
-        item(1, "failed", 1),
-        item(2, "queued"),
-        item(3, "queued"),
-        item(4, "queued"),
-        item(5, "queued"),
-        item(6, "queued"),
-      ]),
+      designPackStatusFromItems([item(1, "failed", 1), item(2, "queued"), item(3, "queued")]),
     ).toMatchObject({ status: "partial_failed", completedCount: 0, hasRetryableWork: true });
 
     expect(
-      designPackStatusFromItems([
-        item(1, "generating"),
-        item(2, "queued"),
-        item(3, "queued"),
-        item(4, "queued"),
-        item(5, "queued"),
-        item(6, "queued"),
-      ]),
+      designPackStatusFromItems([item(1, "generating"), item(2, "queued"), item(3, "queued")]),
     ).toMatchObject({ status: "generating", hasRetryableWork: true });
 
     expect(
-      designPackStatusFromItems([
-        item(1, "complete"),
-        item(2, "complete"),
-        item(3, "failed", 1),
-        item(4, "queued"),
-        item(5, "queued"),
-        item(6, "queued"),
-      ]),
+      designPackStatusFromItems([item(1, "complete"), item(2, "complete"), item(3, "failed", 1)]),
     ).toMatchObject({ status: "partial_failed", completedCount: 2, hasRetryableWork: true });
 
     expect(
-      designPackStatusFromItems([
-        item(1, "complete"),
-        item(2, "complete"),
-        item(3, "failed", 3),
-        item(4, "failed", 3),
-        item(5, "failed", 3),
-        item(6, "failed", 3),
-      ]),
+      designPackStatusFromItems([item(1, "complete"), item(2, "complete"), item(3, "failed", 3)]),
     ).toMatchObject({
       status: "partial_failed",
       completedCount: 2,
@@ -308,14 +274,7 @@ describe("Site Potential production-blocker repair", () => {
     });
 
     expect(
-      designPackStatusFromItems([
-        item(1, "failed", 3),
-        item(2, "failed", 3),
-        item(3, "failed", 3),
-        item(4, "failed", 3),
-        item(5, "failed", 3),
-        item(6, "failed", 3),
-      ]),
+      designPackStatusFromItems([item(1, "failed", 3), item(2, "failed", 3), item(3, "failed", 3)]),
     ).toMatchObject({
       status: "failed",
       completedCount: 0,
@@ -334,12 +293,69 @@ describe("Site Potential production-blocker repair", () => {
 
     expect(sourceAssetsForGenerationMode("renovation", [source])).toEqual([source]);
     expect(requiresImageEditPath("renovation", [source])).toBe(true);
-    expect(buildSitePotentialPrompt({ mode: "renovation" }, 0)).toContain(
-      "Use the supplied user-uploaded property photograph as the visual reference.",
-    );
+    expect(
+      buildSitePotentialPrompt(
+        {
+          mode: "renovation",
+          referenceLabels: ["existing house photo uploaded by the user"],
+        },
+        0,
+      ),
+    ).toContain("Reference image 1: existing house photo uploaded by the user");
     expect(buildSitePotentialPrompt({ mode: "renovation" }, 0)).toContain(
       "Preserve the recognisable house structure",
     );
+  });
+
+  it("creates three materially different site-grounded prompt directions without image text", () => {
+    const parcelContext = {
+      parcelId: "csg:lpi:test",
+      sourceLabel: "Kouga SG Properties",
+      erfNumber: 1570,
+      portion: 0,
+      lpi: "C03400140000157000000",
+      parcelKey: "E108C034001400001570000000",
+      municipality: "Kouga",
+      province: "Eastern Cape",
+      suburbOrArea: "St Francis Bay",
+      town: "St Francis Bay",
+      coordinates: { lng: 24.82, lat: -34.17 },
+      knownFields: [],
+      sourceAttributes: {},
+      capturedAt: "2026-07-15T00:00:00.000Z",
+    };
+    const prompts = [0, 1, 2].map((optionIndex) =>
+      buildSitePotentialPrompt(
+        {
+          mode: "vacant_land",
+          parcelContext,
+          referenceLabels: ["official highlighted parcel map", "uploaded topography image"],
+        },
+        optionIndex,
+      ),
+    );
+
+    expect(prompts[0]).toContain("Sheltered Courtyard");
+    expect(prompts[1]).toContain("View-Focused Linear");
+    expect(prompts[2]).toContain("Split-Level Site Response");
+    expect(new Set(prompts).size).toBe(3);
+    for (const prompt of prompts) {
+      expect(prompt).toContain("The three concepts are independent");
+      expect(prompt).toContain("official highlighted parcel map");
+      expect(prompt).toContain("Do not generate words, captions, labels");
+      expect(prompt).not.toContain("AI-generated concept visualisation. Not an architectural plan");
+    }
+  });
+
+  it("defaults OpenAI image generation to GPT Image 2 landscape medium", () => {
+    const config = read("src/lib/sitePotential/config.ts");
+    const generation = read("src/lib/sitePotential/generation.ts");
+
+    expect(config).toContain('SITE_POTENTIAL_DEFAULT_IMAGE_MODEL = "gpt-image-2"');
+    expect(config).toContain('SITE_POTENTIAL_DEFAULT_IMAGE_SIZE = "1536x1024"');
+    expect(config).toContain('SITE_POTENTIAL_DEFAULT_IMAGE_QUALITY = "medium"');
+    expect(generation).toContain("quality: openAiImageQualityFromEnv()");
+    expect(generation).toContain('form.append("quality", openAiImageQualityFromEnv())');
   });
 
   it("records generated-design provenance and source asset IDs", () => {
@@ -350,7 +366,7 @@ describe("Site Potential production-blocker repair", () => {
         optionIndex: 2,
         siteProjectId: "project-1",
         sourceAssetIds: ["photo-1"],
-        model: "gpt-image-1",
+        model: "gpt-image-2",
         prompt: "prompt text",
       }),
     ).toMatchObject({
@@ -359,8 +375,8 @@ describe("Site Potential production-blocker repair", () => {
       optionIndex: 2,
       siteProjectId: "project-1",
       sourceAssetIds: ["photo-1"],
-      model: "gpt-image-1",
-      promptVersion: "site-potential-2026-07-secure-v2",
+      model: "gpt-image-2",
+      promptVersion: "site-potential-2026-07-grounded-v3",
       disclaimer: expect.stringContaining("AI-generated concept visualisation"),
     });
   });

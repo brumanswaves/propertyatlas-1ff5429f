@@ -480,7 +480,9 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('action: "Open calculator"');
     expect(reportProgress).toContain('tab: "calculators"');
     expect(reportProgress).toContain('title: "Create report"');
-    expect(reportProgress).toContain('action: siteMissing ? "Open Site Potential" : "Open Easy Erf Report"');
+    expect(reportProgress).toContain(
+      'action: siteMissing ? "Open Site Potential" : "Open Easy Erf Report"',
+    );
     expect(reportProgress).toContain('tab: siteMissing ? "site-potential" : "stoep-report"');
     expect(panel).toContain("WorkbenchNextStep");
     expect(panel).toContain("Next best step");
@@ -644,7 +646,9 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotentialIntegrityMigration).toContain("asset_row.user_id <> NEW.user_id");
     expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
     expect(sitePotential).toContain("GENERATION_UI_ENABLED");
-    expect(sitePotential).toContain("Concept generation is unavailable until secure entitlement is configured");
+    expect(sitePotential).toContain(
+      "Concept generation is unavailable until secure entitlement is configured",
+    );
     expect(sitePotential).toContain("Topographical survey");
     expect(sitePotential).toContain("Architectural plans");
     expect(sitePotential).toContain("Inspiration images");
@@ -659,12 +663,7 @@ describe("official dossier UX guardrails", () => {
     expect(read("src/routes/api/site-potential.generate.ts")).not.toContain(
       "requestImageGenerationWithOpenAI",
     );
-    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain(
-      "downloadReferenceAsset",
-    );
-    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain(
-      "primaryConceptAssetId",
-    );
+    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain("downloadReferenceAsset");
     expect(dossier).toContain("Uploaded files and source documents");
     expect(dossier).toContain("groupErfAssets");
     expect(dossier).toContain("workspaceAssetCategory");
@@ -760,7 +759,7 @@ describe("official dossier UX guardrails", () => {
     expect(tab).not.toContain("Add listing or comp evidence");
     expect(tab).not.toContain("Add comp");
     expect(tab).not.toContain("Find listings and comps for this erf");
-    expect(tab).not.toContain("<Search className=\"h-3.5 w-3.5\" /> Listings & Comps");
+    expect(tab).not.toContain('<Search className="h-3.5 w-3.5" /> Listings & Comps');
     expect(tab).toContain("Listing or comp URL required");
     expect(tab).toContain("Evidence type");
     expect(tab).toContain("Active listing");

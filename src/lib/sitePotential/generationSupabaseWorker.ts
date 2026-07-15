@@ -229,18 +229,6 @@ export function createSupabaseGenerationStore(
       if (error) throw new Error(error.message);
       return data ? ({ id: String(data.id) } satisfies ExistingGeneratedAsset) : null;
     },
-    async findPrimaryConceptReference(claim) {
-      const { data, error } = await serviceSupabase
-        .from("erf_assets")
-        .select("*")
-        .eq("user_id", claim.userId)
-        .eq("parcel_id", claim.parcelId)
-        .eq("asset_category", "generated_design")
-        .contains("metadata", { designPackId: claim.designPackId, optionIndex: 1 })
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return data ? (data as AssetRow satisfies StoredReferenceAsset) : null;
-    },
     async renewLease(claim, now) {
       const { data, error } = await rpc<boolean>(
         serviceSupabase,
@@ -341,7 +329,7 @@ export function createSupabaseGenerationStore(
           lease_expires_at: null,
           failure_code: input.code,
           failure_message: input.message,
-          next_attempt_at: input.retryable ? input.nextAttemptAt ?? undefined : undefined,
+          next_attempt_at: input.retryable ? (input.nextAttemptAt ?? undefined) : undefined,
         })
         .eq("id", input.claim.itemId)
         .eq("user_id", input.claim.userId);
