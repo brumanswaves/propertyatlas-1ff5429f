@@ -1,0 +1,61 @@
+name: Apply Site Potential queue copy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-copy:
+    if: github.head_ref == 'site-potential-queue-copy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: site-potential-queue-copy
+          fetch-depth: 0
+
+      - name: Update queued-generation wording
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/property/dossier/SitePotentialTab.tsx')
+          text = path.read_text()
+
+          replacements = {
+              'return `Queued - generating concept 1 of ${status.requestedCount}.`;':
+                  'return `Your ${status.requestedCount} concepts are queued. They will appear here as each image is created.`;',
+              'return packStatus?.status === "queued" ? "Queued" : "Generating 3 concepts";':
+                  'return packStatus?.status === "queued" ? "3 concepts queued" : "Generating 3 concepts";',
+              '''          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
+            No generated concepts saved yet. Generated images will appear here only after the server
+            stores them in the Erf File Vault.
+          </p>''':
+                  '''          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
+            {packStatus
+              ? "Your concepts are being created. Images will appear here as each one is completed, and this page will update automatically."
+              : "No concepts generated yet. Complete the brief and generate a three-concept pack."}
+          </p>''',
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected text not found: {old[:100]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/apply-site-potential-queue-copy.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/property/dossier/SitePotentialTab.tsx .github/workflows/apply-site-potential-queue-copy.yml
+          git commit -m "Clarify Site Potential generation progress"
+          git push origin HEAD:site-potential-queue-copy
