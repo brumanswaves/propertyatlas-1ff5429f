@@ -55,6 +55,11 @@ import { useSitePotentialProject } from "@/lib/sitePotential/sitePotentialServic
 import { SITE_POTENTIAL_DISCLAIMER } from "@/lib/sitePotential/config";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 import { StrategyLab } from "./strategy/StrategyLab";
+import {
+  buildReportViewModel,
+  REPORT_SECTIONS,
+  type EvidenceBadge,
+} from "@/lib/reports/buildReportViewModel";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
