@@ -985,7 +985,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <ReportSectionTitle icon={<BookmarkCheck className="h-3.5 w-3.5" />}>
+          <SectionTitle icon={<BookmarkCheck className="h-3.5 w-3.5" />}>
             Dossier Status
           </SectionTitle>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
