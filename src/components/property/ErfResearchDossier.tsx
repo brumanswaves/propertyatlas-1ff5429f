@@ -980,7 +980,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <SectionTitle icon={<BookmarkCheck className="h-3.5 w-3.5" />}>
+          <ReportSectionTitle icon={<BookmarkCheck className="h-3.5 w-3.5" />}>
             Dossier Status
           </SectionTitle>
           <p className="text-[12px] leading-relaxed text-muted-foreground">
@@ -1351,7 +1351,7 @@ function StoepAiReportView({
         id="report-identity"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle
+        <ReportSectionTitle
           eyebrow="Property Identity"
           title="Official identifiers and confirmed address"
         />
@@ -1395,7 +1395,7 @@ function StoepAiReportView({
         id="report-ownership"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Ownership & Deeds" title="Not verified by Easy Erf" />
+        <ReportSectionTitle eyebrow="Ownership & Deeds" title="Not verified by Easy Erf" />
         <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{report.ownership.message}</p>
         {report.ownership.hasUploadedReport && (
           <ul className="mt-3 space-y-1 text-xs text-[#0D1B2A]/70">
@@ -1424,7 +1424,7 @@ function StoepAiReportView({
         id="report-planning"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
+        <ReportSectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {report.planning.map((field) => (
             <div
@@ -1450,7 +1450,7 @@ function StoepAiReportView({
         id="report-market"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle
+        <ReportSectionTitle
           eyebrow="Market Evidence"
           title={`${report.market.evidenceCount} saved evidence item${report.market.evidenceCount === 1 ? "" : "s"}`}
         />
@@ -1498,7 +1498,7 @@ function StoepAiReportView({
         id="report-risk"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle
+        <ReportSectionTitle
           eyebrow="Risk Register"
           title="Evidence gaps and open uncertainties"
         />
@@ -1548,7 +1548,7 @@ function StoepAiReportView({
         id="report-site"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Site Potential" title="Concept visualisation" />
+        <ReportSectionTitle eyebrow="Site Potential" title="Concept visualisation" />
         {selectedDesign ? (
           <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
@@ -1628,7 +1628,7 @@ function StoepAiReportView({
         id="report-strategy"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Strategy Scenarios" title="Saved assumptions and results" />
+        <ReportSectionTitle eyebrow="Strategy Scenarios" title="Saved assumptions and results" />
         {chosenScenario ? (
           <div className="mt-3 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
@@ -1669,7 +1669,7 @@ function StoepAiReportView({
         id="report-documents"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Evidence & Documents" title="Uploaded files and source documents" />
+        <ReportSectionTitle eyebrow="Evidence & Documents" title="Uploaded files and source documents" />
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
           Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis
           are not enabled yet.
@@ -1725,7 +1725,7 @@ function StoepAiReportView({
         id="report-recommendations"
         className="report-section rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5 scroll-mt-24"
       >
-        <SectionTitle eyebrow="Recommendations" title="Ordered next actions" />
+        <ReportSectionTitle eyebrow="Recommendations" title="Ordered next actions" />
         {report.recommendations.length === 0 ? (
           <p className="mt-3 text-sm text-[#0D1B2A]/70">
             No outstanding recommendations. Continue keeping evidence fresh.
