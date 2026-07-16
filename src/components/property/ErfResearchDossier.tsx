@@ -1144,7 +1144,7 @@ function StoepAiReportView({
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: DossierView) => void;
 }) {
-  const { evidence } = useSavedMarketEvidence(parcel.id);
+  const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
@@ -1155,243 +1155,559 @@ function StoepAiReportView({
   const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
   const selectedDesign = siteProject.selectedDesign;
   const groupedAssets = groupErfAssets(fileVault.assets);
-  const identityLabel = parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected erf";
-  const reviewedSources = workspaceState.reviewedSourceIds.length;
-  const sgFiles = fileVault.assets.filter((asset) => asset.asset_category === "sg_diagram").length;
   const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const sitePotentialSkipped =
     selectedSiteMode === "skipped" ||
     workspaceState.sitePotential.skipped ||
     workspaceState.sitePotential.progressState === "skipped";
-  const missing = [
-    reviewedSources || sgFiles ? null : "reviewed official sources or SG diagram evidence",
-    selectedDesign || sitePotentialSkipped
-      ? null
-      : "selected Site Potential concept or explicit skip",
-    evidence.length ? null : "saved market evidence",
-    chosenScenario ? null : "saved strategy scenario",
-  ].filter(Boolean);
+
+  const report = buildReportViewModel({
+    parcel,
+    workspaceState,
+    savedEvidence: evidence,
+    marketAddress: marketAddressIntelligence ?? null,
+    assets: fileVault.assets,
+    chosenScenario,
+    strategyScenarios: scenarios,
+    selectedSiteDesign: selectedDesign,
+    siteBrief: siteProject.project?.design_brief ?? null,
+  });
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") window.print();
+  };
+
+  const readinessStroke = (state: string) =>
+    state === "confirmed"
+      ? "bg-[#16a34a] text-white"
+      : state === "partial"
+        ? "bg-[#F59E0B] text-[#0D1B2A]"
+        : state === "not_reviewed"
+          ? "bg-[#D9E6F2] text-[#0D1B2A]"
+          : "bg-[#0D1B2A]/10 text-[#0D1B2A]/70";
+
+  const readinessLabel = (state: string) =>
+    state === "confirmed"
+      ? "Confirmed"
+      : state === "partial"
+        ? "Partial"
+        : state === "not_reviewed"
+          ? "Not reviewed"
+          : "Missing";
+
+  const routeTabFor = (tab?: string): DossierView => {
+    switch (tab) {
+      case "research":
+        return "research";
+      case "reports":
+        return "reports";
+      case "listings":
+        return "listings";
+      case "calculators":
+        return "calculators";
+      case "site-potential":
+        return "site-potential";
+      default:
+        return "overview";
+    }
+  };
 
   return (
-    <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
-      <div className="inline-flex rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-        Easy Erf Report
-      </div>
-      <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-        Report shell for {identityLabel}
-      </h3>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-        This page assembles the report from saved identity checks, reviewed sources, market evidence
-        and saved strategy assumptions. Missing data stays labelled; Easy Erf does not fabricate
-        ownership, valuation, zoning, sales history or paid-provider data.
-      </p>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          [
-            "Identity",
-            workspaceState.identityStatus === "none"
-              ? "Needs check"
-              : workspaceState.identityStatus,
-          ],
-          ["Sources", `${reviewedSources} reviewed / ${sgFiles} SG files`],
-          [
-            "Site Potential",
-            selectedDesign
-              ? `Selected: ${assetTitle(selectedDesign)}`
-              : selectedSiteMode === "skipped"
-                ? "Skipped"
-                : `${generatedDesigns.length} concept${generatedDesigns.length === 1 ? "" : "s"}`,
-          ],
-          ["Market", `${evidence.length} saved evidence item${evidence.length === 1 ? "" : "s"}`],
-          [
-            "Strategy",
-            chosenScenario
-              ? `Chosen: ${chosenScenario.label}`
-              : `${scenarios.length} saved scenario${scenarios.length === 1 ? "" : "s"}`,
-          ],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              {label}
-            </div>
-            <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      {chosenScenario && (
-        <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-            Chosen strategy scenario
-          </div>
-          <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">{chosenScenario.label}</h4>
-          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-            Easy Erf Report uses the chosen scenario first. If no chosen scenario exists, it falls
-            back to the newest saved scenario.
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {chosenScenario.summary.slice(0, 4).map((item) => (
-              <div key={item.label} className="rounded-2xl border border-[#D9E6F2] bg-white p-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  {item.label}
-                </div>
-                <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {selectedDesign && (
-        <section className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-            Site Potential
-          </div>
-          <h4 className="mt-2 text-base font-semibold">Selected property concept</h4>
-          <p className="mt-1 text-sm leading-6 text-white/68">
-            This selected concept is loaded from the Erf File Vault and linked to the saved Site
-            Potential project.
-          </p>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-            <SignedAssetPreview asset={selectedDesign} />
-            <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-              <dl className="grid gap-3 text-sm">
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                    Project mode
-                  </dt>
-                  <dd className="mt-1 text-white/85">
-                    {sitePotentialReportModeLabel(selectedSiteMode)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                    Architectural style
-                  </dt>
-                  <dd className="mt-1 text-white/85">
-                    {siteProject.project?.selected_style || "Style not specified."}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                    Brief
-                  </dt>
-                  <dd className="mt-1 text-white/85">
-                    {siteProject.project?.design_brief || "No design brief saved yet."}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                    Rooms and features
-                  </dt>
-                  <dd className="mt-1 text-white/85">
-                    {[
-                      ...(siteProject.project?.requested_rooms ?? []),
-                      ...(siteProject.project?.requested_features ?? []),
-                    ].length
-                      ? [
-                          ...(siteProject.project?.requested_rooms ?? []),
-                          ...(siteProject.project?.requested_features ?? []),
-                        ].join(", ")
-                      : "No rooms or features specified."}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                    Stable asset ID
-                  </dt>
-                  <dd className="mt-1 break-all font-mono text-xs text-white/75">
-                    {selectedDesign.id}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-          <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
-            {SITE_POTENTIAL_DISCLAIMER}
-          </p>
-        </section>
-      )}
-
-      {!selectedDesign && !sitePotentialSkipped && (
-        <section className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-            Site Potential incomplete
-          </div>
-          <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">
-            Select a concept or skip this step
-          </h4>
-          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-            Generate and select a Site Potential concept if you want it included in the Easy Erf
-            Report. If it is not relevant, mark Site Potential skipped and the report will continue
-            without a concept image.
-          </p>
-          <button
-            type="button"
-            onClick={() => onSelectView?.("site-potential")}
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#142941]"
-          >
-            Return to Site Potential <ArrowRight className="h-4 w-4" />
-          </button>
-        </section>
-      )}
-
+    <div className="report-page space-y-5">
+      {/* HEADER */}
       <section
-        id="uploaded-files-and-source-documents"
-        className="mt-5 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4 scroll-mt-24"
+        id="report-brief"
+        className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
       >
-        <h4 className="text-base font-semibold text-[#0D1B2A]">
-          Uploaded files and source documents
-        </h4>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+              Easy Erf Property Intelligence Report
+              <span className="rounded-full bg-[#FF6A00] px-2 py-[1px] text-[9px] tracking-[0.14em] text-white">
+                Living report
+              </span>
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] sm:text-3xl">
+              {report.identity.displayName}
+            </h2>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[#0D1B2A]/70">
+              {report.identity.officialLine && (
+                <span>{report.identity.officialLine}</span>
+              )}
+              {report.identity.areaM2 != null && (
+                <span>· {report.identity.areaM2.toLocaleString()} m²</span>
+              )}
+              {report.identity.lpi && <span>· LPI {report.identity.lpi}</span>}
+            </div>
+            <p className="mt-2 text-xs text-[#64748B]">
+              Report updated {new Date(report.generatedAt).toLocaleString()} — updates each time you save evidence.
+            </p>
+          </div>
+          <div className="report-no-print flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff8ec]"
+            >
+              Print / Save PDF
+            </button>
+          </div>
+        </div>
+
+        {/* DECISION BRIEF */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-[220px_1fr]">
+          <div className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+              Decision readiness
+            </div>
+            <div className="mt-3 flex items-center gap-4">
+              <div
+                className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-[#0D1B2A]"
+                style={{
+                  background: `conic-gradient(#FF6A00 ${report.brief.readinessPercent}%, #E2E8F0 0)`,
+                }}
+              >
+                <span className="grid h-16 w-16 place-items-center rounded-full bg-white">
+                  {report.brief.readinessPercent}%
+                </span>
+              </div>
+              <p className="text-xs leading-5 text-[#0D1B2A]/70">
+                Based on evidence completeness only. This is not a property quality score.
+              </p>
+            </div>
+            <ul className="mt-4 space-y-1.5">
+              {report.brief.categories.map((cat) => (
+                <li key={cat.id} className="flex items-center justify-between text-xs">
+                  <span className="text-[#0D1B2A]/80" title={cat.explanation}>
+                    {cat.label}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                      readinessStroke(cat.state),
+                    )}
+                  >
+                    {readinessLabel(cat.state)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <article className="rounded-[1.5rem] border border-[#16a34a]/25 bg-[#f0fdf4] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#166534]">
+                What looks positive
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/80">
+                {report.brief.positives.map((p) => (
+                  <li key={p}>· {p}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="rounded-[1.5rem] border border-[#F59E0B]/30 bg-[#fffbeb] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#92400E]">
+                What needs attention
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/80">
+                {report.brief.attention.map((a) => (
+                  <li key={a}>· {a}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+                Next three actions
+              </div>
+              <ol className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/85">
+                {report.brief.nextActions.map((n, i) => (
+                  <li key={`${i}-${n.label}`}>
+                    {i + 1}. {n.label}
+                  </li>
+                ))}
+              </ol>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* STICKY REPORT NAV */}
+      <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
+        <ul className="flex min-w-max gap-1 text-xs">
+          {REPORT_SECTIONS.map((s) => (
+            <li key={s.id}>
+              <a
+                href={`#${s.anchorId}`}
+                className="inline-flex items-center rounded-full px-3 py-1.5 font-semibold text-[#0D1B2A]/75 hover:bg-[#F7FBFF] hover:text-[#0D1B2A]"
+              >
+                {s.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* IDENTITY */}
+      <section
+        id="report-identity"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle
+          eyebrow="Property Identity"
+          title="Official identifiers and confirmed address"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
+          <IdRow label="Portion" value={report.identity.portion} badge="official" />
+          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
+          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
+          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
+          <IdRow label="Province" value={report.identity.province} badge="official" />
+          <IdRow
+            label="Erf size (m²)"
+            value={report.identity.areaM2 != null ? report.identity.areaM2.toLocaleString() : null}
+            badge="official"
+          />
+          <IdRow
+            label="Coordinates"
+            value={
+              report.identity.coordinates
+                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
+                : null
+            }
+            badge="official"
+          />
+          <IdRow
+            label="Market address (user-confirmed)"
+            value={report.identity.marketAddressLine}
+            badge="user_confirmed"
+          />
+        </dl>
+        {report.identity.addressAndOfficialMismatch && (
+          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
+            Possible mismatch: the saved market address municipality differs from the official parcel
+            municipality. Recheck identity before using downstream data.
+          </p>
+        )}
+      </section>
+
+      {/* OWNERSHIP */}
+      <section
+        id="report-ownership"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Ownership & Deeds" title="Not verified by Easy Erf" />
+        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{report.ownership.message}</p>
+        {report.ownership.hasUploadedReport && (
+          <ul className="mt-3 space-y-1 text-xs text-[#0D1B2A]/70">
+            {report.ownership.uploadedReportNames.map((n) => (
+              <li key={n}>· {n} (uploaded)</li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <EvidenceBadgeChip badge="missing" label="Owner name" />
+          <EvidenceBadgeChip badge="missing" label="Deed number" />
+          <EvidenceBadgeChip badge="missing" label="Bond info" />
+          <EvidenceBadgeChip badge="missing" label="Transfer history" />
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelectView?.("reports")}
+          className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+        >
+          Open Reports tab <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </section>
+
+      {/* PLANNING */}
+      <section
+        id="report-planning"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          {report.planning.map((field) => (
+            <div
+              key={field.label}
+              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
+            >
+              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                {field.label}
+              </dt>
+              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
+                {field.value ?? (
+                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
+                )}
+              </dd>
+              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* MARKET */}
+      <section
+        id="report-market"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle
+          eyebrow="Market Evidence"
+          title={`${report.market.evidenceCount} saved evidence item${report.market.evidenceCount === 1 ? "" : "s"}`}
+        />
+        <p className="mt-2 text-sm text-[#0D1B2A]/70">
+          {report.market.canShowIndicativeValue
+            ? `Included comps: ${report.market.includedCount}. Median asking price R ${report.market.summary.medianAskingPrice?.toLocaleString("en-ZA")}.`
+            : "Evidence is currently too thin to responsibly calculate an indicative value. Add more comparables to strengthen the summary."}
+        </p>
+        {report.market.subjectListing && (
+          <div className="mt-3 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-3 text-xs">
+            <span className="font-semibold text-[#B24A00]">Active listing:</span>{" "}
+            {report.market.subjectListing.title || report.market.subjectListing.sourceUrl}
+            <EvidenceBadgeChip badge="listing" label="Asking price" />
+          </div>
+        )}
+        {report.market.strongest.length > 0 && (
+          <ul className="mt-3 grid gap-2 md:grid-cols-3">
+            {report.market.strongest.map((c) => (
+              <li
+                key={c.id}
+                className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-xs"
+              >
+                <div className="font-semibold text-[#0D1B2A]">
+                  {c.title || c.sourcePortal || "Comp"}
+                </div>
+                <div className="mt-1 text-[#0D1B2A]/70">
+                  {c.askingPrice ? `Asking R ${c.askingPrice.toLocaleString("en-ZA")}` : "Price not captured"}
+                </div>
+                <EvidenceBadgeChip badge="listing" label={c.confidence} />
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => onSelectView?.("listings")}
+          className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
+        >
+          Add or manage market evidence <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </section>
+
+      {/* RISK REGISTER */}
+      <section
+        id="report-risk"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle
+          eyebrow="Risk Register"
+          title="Evidence gaps and open uncertainties"
+        />
+        {report.risks.length === 0 ? (
+          <p className="mt-3 text-sm text-[#0D1B2A]/70">
+            No blocking risks identified in current evidence. Continue to verify sources.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {report.risks.map((r) => (
+              <li
+                key={r.id}
+                className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                      r.severity === "high"
+                        ? "bg-[#dc2626] text-white"
+                        : r.severity === "medium"
+                          ? "bg-[#F59E0B] text-[#0D1B2A]"
+                          : "bg-[#D9E6F2] text-[#0D1B2A]",
+                    )}
+                  >
+                    {r.severity}
+                  </span>
+                  <span className="font-semibold text-[#0D1B2A]">{r.title}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/70">{r.why}</p>
+                <p className="mt-1 text-[11px] text-[#64748B]">Evidence: {r.evidence}</p>
+                <button
+                  type="button"
+                  onClick={() => onSelectView?.(routeTabFor(r.actionTab))}
+                  className="report-no-print mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+                >
+                  {r.nextAction} <ArrowRight className="h-3 w-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* SITE POTENTIAL — retains existing selected concept card */}
+      <section
+        id="report-site"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Site Potential" title="Concept visualisation" />
+        {selectedDesign ? (
+          <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+              Site Potential
+            </div>
+            <h4 className="mt-2 text-base font-semibold">Selected property concept</h4>
+            <p className="mt-1 text-sm leading-6 text-white/68">
+              This selected concept is loaded from the Erf File Vault and linked to the saved Site
+              Potential project.
+            </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+              <SignedAssetPreview asset={selectedDesign} />
+              <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+                <dl className="grid gap-3 text-sm">
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                      Project mode
+                    </dt>
+                    <dd className="mt-1 text-white/85">
+                      {sitePotentialReportModeLabel(selectedSiteMode)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                      Architectural style
+                    </dt>
+                    <dd className="mt-1 text-white/85">
+                      {siteProject.project?.selected_style || "Style not specified."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                      Brief
+                    </dt>
+                    <dd className="mt-1 text-white/85">
+                      {siteProject.project?.design_brief || "No design brief saved yet."}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                      Stable asset ID
+                    </dt>
+                    <dd className="mt-1 break-all font-mono text-xs text-white/75">
+                      {selectedDesign.id}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
+              Concept visualisation only. Not an architectural plan, feasibility study, quotation or
+              municipal approval. {SITE_POTENTIAL_DISCLAIMER}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
+            <p className="text-sm leading-6 text-[#0D1B2A]/75">
+              {sitePotentialSkipped
+                ? "Site Potential has been skipped for this report."
+                : "No Site Potential concept has been selected yet."}
+            </p>
+            {!sitePotentialSkipped && (
+              <button
+                type="button"
+                onClick={() => onSelectView?.("site-potential")}
+                className="report-no-print mt-3 inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
+              >
+                Return to Site Potential <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* STRATEGY */}
+      <section
+        id="report-strategy"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Strategy Scenarios" title="Saved assumptions and results" />
+        {chosenScenario ? (
+          <div className="mt-3 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+              Chosen strategy scenario
+            </div>
+            <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">{chosenScenario.label}</h4>
+            <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
+              Easy Erf Report uses the chosen scenario first. If no chosen scenario exists, it falls
+              back to the newest saved scenario. Every number below reflects your assumptions, not a
+              verified valuation.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {chosenScenario.summary.slice(0, 4).map((item) => (
+                <div key={item.label} className="rounded-2xl border border-[#D9E6F2] bg-white p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                    {item.label}
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{item.value}</p>
+                  <EvidenceBadgeChip badge="assumption" label="Assumption" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-[#0D1B2A]/70">
+            No strategy scenario saved yet. Open Strategy Lab to test purchase, build, flip and hold
+            assumptions.
+          </p>
+        )}
+        <p className="mt-3 text-xs text-[#64748B]">
+          {scenarios.length} saved scenario{scenarios.length === 1 ? "" : "s"} — chosen wins, else the
+          newest saved scenario is used.
+        </p>
+      </section>
+
+      {/* DOCUMENTS — retains existing uploaded files block */}
+      <section
+        id="report-documents"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Evidence & Documents" title="Uploaded files and source documents" />
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
           Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis
           are not enabled yet.
         </p>
         {fileVault.assets.length ? (
           <div className="mt-4 space-y-4">
-            {REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length).map(
-              (group) => (
-                <section key={group}>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    {group}
-                  </div>
-                  <div className="mt-2 grid gap-3 md:grid-cols-2">
-                    {groupedAssets[group].map((file) => (
-                      <article
-                        key={file.id}
-                        className="rounded-2xl border border-[#D9E6F2] bg-white p-4"
+            {REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length).map((group) => (
+              <section key={group}>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  {group}
+                </div>
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  {groupedAssets[group].map((file) => (
+                    <article
+                      key={file.id}
+                      className="rounded-2xl border border-[#D9E6F2] bg-white p-4"
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                        {workspaceAssetCategory(file)}
+                      </div>
+                      <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
+                        {file.original_file_name}
+                      </p>
+                      <p className="mt-1 text-xs text-[#0D1B2A]/60">
+                        {formatAssetSize(file.size_bytes)} - uploaded {formatAssetDate(file.created_at)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void openVaultAsset(file)}
+                        className="report-no-print mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
                       >
-                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                          {workspaceAssetCategory(file)}
-                        </div>
-                        <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
-                          {file.original_file_name}
-                        </p>
-                        <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                          {formatAssetSize(file.size_bytes)} - uploaded{" "}
-                          {formatAssetDate(file.created_at)}
-                        </p>
-                        <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                          Status:{" "}
-                          {file.status === "uploaded_reference_only"
-                            ? "uploaded for reference only"
-                            : file.status.replace(/_/g, " ")}
-                          .
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => void openVaultAsset(file)}
-                          className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                        >
-                          Open file
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ),
-            )}
+                        Open file
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         ) : (
           <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-3 text-sm text-[#0D1B2A]/60">
@@ -1399,60 +1715,111 @@ function StoepAiReportView({
             are stored for this erf yet.
           </p>
         )}
+        <p className="mt-3 text-xs text-[#64748B]">
+          Evidence completeness: {report.documents.completenessPercent}%.
+        </p>
       </section>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4">
-          <h4 className="text-base font-semibold text-[#0D1B2A]">Draft report outline</h4>
-          <ol className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/70">
-            <li>1. Official parcel identity and known public fields</li>
-            <li>2. Reviewed sources and SG diagram evidence</li>
-            <li>3. Market evidence, comps and address notes</li>
-            <li>
-              4. Strategy assumptions and scenario summary
-              {chosenScenario ? ` - chosen scenario: ${chosenScenario.label}` : ""}
-            </li>
-            <li>5. Risks, missing evidence and recommended next actions</li>
+      {/* RECOMMENDATIONS */}
+      <section
+        id="report-recommendations"
+        className="report-section rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5 scroll-mt-24"
+      >
+        <SectionTitle eyebrow="Recommendations" title="Ordered next actions" />
+        {report.recommendations.length === 0 ? (
+          <p className="mt-3 text-sm text-[#0D1B2A]/70">
+            No outstanding recommendations. Continue keeping evidence fresh.
+          </p>
+        ) : (
+          <ol className="mt-3 space-y-2 text-sm">
+            {report.recommendations.map((r) => (
+              <li key={r.id} className="rounded-2xl border border-[#FF6A00]/20 bg-white p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+                      Step {r.order}
+                    </div>
+                    <div className="mt-1 font-semibold text-[#0D1B2A]">{r.title}</div>
+                    <p className="mt-1 text-xs text-[#0D1B2A]/70">{r.detail}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSelectView?.(routeTabFor(r.actionTab))}
+                    className="report-no-print inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#142941]"
+                  >
+                    {r.actionLabel} <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              </li>
+            ))}
           </ol>
-        </article>
-        <article className="rounded-[1.5rem] border border-[#FF6A00]/20 bg-[#fff8ec] p-4">
-          <h4 className="text-base font-semibold text-[#0D1B2A]">Missing before final report</h4>
-          {missing.length ? (
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/70">
-              {missing.map((item) => (
-                <li key={item}>Needs {item}.</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/70">
-              Enough saved workflow state exists for a first report draft. Review every source
-              before sharing.
-            </p>
-          )}
-        </article>
-      </div>
-
-      <section className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-          Take action on this erf
-        </div>
-        <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h4 className="text-lg font-semibold text-[#0D1B2A]">Assemble a local property team</h4>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Find relevant local professionals and services based on this erf's location and property context.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onSelectView?.("local-services")}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
-          >
-            Find Local Property Team <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
+        )}
       </section>
-    </section>
+    </div>
+  );
+}
+
+function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+        {eyebrow}
+      </div>
+      <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
+    </div>
+  );
+}
+
+function IdRow({
+  label,
+  value,
+  badge,
+}: {
+  label: string;
+  value: string | null;
+  badge: EvidenceBadge;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-[#0D1B2A]">
+        {value ?? <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>}
+      </div>
+      <EvidenceBadgeChip badge={value ? badge : "missing"} label={value ? undefined : "Missing"} />
+    </div>
+  );
+}
+
+function EvidenceBadgeChip({ badge, label }: { badge: EvidenceBadge; label?: string }) {
+  const tone: Record<EvidenceBadge, string> = {
+    official: "bg-[#0D1B2A] text-white",
+    uploaded_report: "bg-[#0F766E] text-white",
+    user_confirmed: "bg-[#2563EB] text-white",
+    listing: "bg-[#FF6A00] text-white",
+    ai_interpretation: "bg-[#7C3AED] text-white",
+    assumption: "bg-[#F59E0B] text-[#0D1B2A]",
+    missing: "bg-[#E2E8F0] text-[#0D1B2A]/70",
+  };
+  const defaultLabel: Record<EvidenceBadge, string> = {
+    official: "Official source",
+    uploaded_report: "Uploaded report",
+    user_confirmed: "User-confirmed",
+    listing: "Listing source",
+    ai_interpretation: "AI interpretation",
+    assumption: "Assumption",
+    missing: "Missing evidence",
+  };
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+        tone[badge],
+      )}
+    >
+      {label ?? defaultLabel[badge]}
+    </span>
   );
 }
 
