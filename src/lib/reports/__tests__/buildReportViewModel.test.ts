@@ -165,10 +165,10 @@ function buildEvidence(n: number): SavedMarketEvidence[] {
     sourcePortal: "example",
     title: `Comp ${i}`,
     askingPrice: 1_000_000 + i * 50_000,
-    relationship: "nearby",
+    relationship: "same_node_comp",
     confidence: "medium",
     includeInSummary: true,
-    listingRole: "nearby_comp",
+    listingRole: "comparable_evidence",
     savedAt: "2026-06-01T00:00:00Z",
     updatedAt: "2026-06-02T00:00:00Z",
   }));
