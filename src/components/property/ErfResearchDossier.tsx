@@ -1759,7 +1759,7 @@ function StoepAiReportView({
   );
 }
 
-function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
+function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
