@@ -2,14 +2,22 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildReportSnapshot,
   clearReportSnapshots,
   compareReportSnapshots,
   readReportSnapshots,
   reportSnapshotStorageKey,
   saveReportSnapshot,
   snapshotFingerprint,
+  snapshotsForActiveParcel,
+  type ReportSnapshotState,
   type ReportSnapshot,
 } from "../reportSnapshots";
+import type { DecisionIntelligence } from "../buildDecisionIntelligence";
+import type { ReportViewModel } from "../buildReportViewModel";
+import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
 
 function storage() {
   const data = new Map<string, string>();
@@ -65,6 +73,20 @@ function snapshot(overrides: SnapshotOverrides = {}): ReportSnapshot {
     market: {
       evidenceCount: 2,
       includedCount: 1,
+      evidence: [
+        {
+          id: "evidence-1",
+          confidence: "medium",
+          includeInSummary: true,
+          listingRole: "comparable_evidence",
+        },
+        {
+          id: "subject-1",
+          confidence: "high",
+          includeInSummary: false,
+          listingRole: "subject_active_listing",
+        },
+      ],
       evidenceIds: ["evidence-1", "subject-1"],
       evidenceConfidence: [
         { id: "evidence-1", confidence: "medium" },
@@ -113,6 +135,134 @@ function changedTypes(previous: ReportSnapshot, current: ReportSnapshot) {
   }));
 }
 
+function evidence(overrides: Partial<SavedMarketEvidence> = {}): SavedMarketEvidence {
+  return {
+    id: "evidence-1",
+    parcelId: "parcel-1",
+    sourceUrl: "https://example.test/listing",
+    sourcePortal: "Property24",
+    title: "Saved comp",
+    askingPrice: 1_000_000,
+    propertyType: "House",
+    relationship: "same_suburb_comp",
+    confidence: "medium",
+    includeInSummary: true,
+    listingRole: "comparable_evidence",
+    notes: "Short note",
+    savedAt: "2026-07-17T08:00:00Z",
+    updatedAt: "2026-07-17T09:00:00Z",
+    ...overrides,
+  };
+}
+
+function scenario(overrides: Partial<ErfStrategyScenario> = {}): ErfStrategyScenario {
+  return {
+    id: "scenario-1",
+    parcelId: "parcel-1",
+    label: "Buy and hold",
+    strategy: "buy_hold",
+    inputs: {},
+    summary: [{ label: "Yield", value: "8%" }],
+    selected: true,
+    savedAt: "2026-07-17T09:00:00Z",
+    ...overrides,
+  };
+}
+
+function report(overrides: Partial<ReportViewModel> = {}): ReportViewModel {
+  return {
+    parcelId: "parcel-1",
+    generatedAt: "2026-07-17T10:00:00Z",
+    identity: {
+      displayName: "Erf 1021",
+      officialLine: "Erf 1021 / Kouga",
+      marketAddressLine: "8 Harbour Road",
+      addressAndOfficialMismatch: false,
+      municipality: "Kouga",
+      province: "Eastern Cape",
+      erfNumber: "1021",
+      portion: "0",
+      lpi: "LPI-1021",
+      parcelKey: "KEY-1021",
+      sourceLabel: "Kouga SG Properties",
+      coordinates: { lng: 24.8, lat: -34.1 },
+      areaM2: 721,
+    },
+    ownership: {
+      hasUploadedReport: false,
+      uploadedReportNames: [],
+      isVerified: false,
+      message: "Not verified",
+    },
+    planning: [],
+    market: {
+      evidenceCount: 0,
+      includedCount: 0,
+      subjectListing: null,
+      strongest: [],
+      summary: {
+        totalEvidence: 0,
+        includedEvidence: 0,
+        relationshipMix: {},
+        confidenceMix: {},
+        hasUsablePriceData: false,
+      },
+      canShowIndicativeValue: false,
+      askingCount: 0,
+      soldCount: 0,
+      latestUpdatedAt: null,
+    },
+    site: {
+      selectedDesign: null,
+      conceptCount: 0,
+      skipped: false,
+      hasBrief: false,
+      disclaimer: "Not an architectural plan.",
+    },
+    strategy: {
+      chosen: scenario(),
+      scenarioCount: 1,
+      hasSaved: true,
+    },
+    documents: {
+      assetCount: 0,
+      savedEvidenceCount: 0,
+      sgDiagramCount: 0,
+      uploadedReportCount: 0,
+      completenessPercent: 0,
+    },
+    risks: [],
+    recommendations: [],
+    brief: {
+      positives: [],
+      attention: [],
+      nextActions: [],
+      readinessPercent: 0,
+      categories: [],
+    },
+    heroImage: null,
+    ...overrides,
+  };
+}
+
+const decision: DecisionIntelligence = {
+  verdict: "investigate_further",
+  verdictLabel: "Investigate further",
+  confidencePercent: 52,
+  summary: "Summary",
+  confidenceCategories: [
+    { id: "identity", label: "Identity", score: 100, state: "confirmed", explanation: "Known" },
+  ],
+  known: [],
+  stillNeeded: ["Add comps"],
+  contradictions: [],
+  immediateActions: [],
+  matrix: [],
+  timeline: [],
+};
+
+const assets: ErfAsset[] = [];
+
 describe("Easy Erf report snapshots", () => {
   it("supports the first snapshot state and explicit baseline save", () => {
     const panel = readFileSync(
@@ -125,7 +275,8 @@ describe("Easy Erf report snapshots", () => {
     const s = storage();
     expect(readReportSnapshots("parcel-1", s)).toEqual([]);
     const saved = saveReportSnapshot(snapshot(), s);
-    expect(saved).toHaveLength(1);
+    expect(saved.saved).toBe(true);
+    expect(saved.snapshots).toHaveLength(1);
     expect(readReportSnapshots("parcel-1", s)[0].parcelId).toBe("parcel-1");
   });
 
@@ -133,19 +284,24 @@ describe("Easy Erf report snapshots", () => {
     const s = storage();
     const first = snapshot();
     saveReportSnapshot(first, s);
-    saveReportSnapshot({ ...first, savedAt: "2026-07-17T10:02:00Z" }, s);
+    const duplicate = saveReportSnapshot({ ...first, savedAt: "2026-07-17T10:02:00Z" }, s);
+    expect(duplicate.saved).toBe(false);
     expect(readReportSnapshots("parcel-1", s)).toHaveLength(1);
 
     for (let i = 0; i < 12; i += 1) {
-      saveReportSnapshot(
+      const result = saveReportSnapshot(
         snapshot({
           savedAt: `2026-07-17T11:${String(i).padStart(2, "0")}:00Z`,
           decision: { confidencePercent: 40 + i },
         }),
         s,
       );
+      if (i === 11) expect(result.saved).toBe(true);
     }
-    expect(readReportSnapshots("parcel-1", s)).toHaveLength(10);
+    const history = readReportSnapshots("parcel-1", s);
+    expect(history).toHaveLength(10);
+    expect(history[0].decision.confidencePercent).toBe(51);
+    expect(history.at(-1)?.decision.confidencePercent).toBe(42);
   });
 
   it("isolates snapshot history per parcel and handles malformed or unsupported data safely", () => {
@@ -173,7 +329,20 @@ describe("Easy Erf report snapshots", () => {
   it("detects evidence additions, removals, and confidence changes", () => {
     expect(
       changedTypes(
-        snapshot({ market: { evidenceIds: ["evidence-1"], evidenceConfidence: [{ id: "evidence-1", confidence: "low" }] } }),
+        snapshot({
+          market: {
+            evidence: [
+              {
+                id: "evidence-1",
+                confidence: "low",
+                includeInSummary: true,
+                listingRole: "comparable_evidence",
+              },
+            ],
+            evidenceIds: ["evidence-1"],
+            evidenceConfidence: [{ id: "evidence-1", confidence: "low" }],
+          },
+        }),
         snapshot(),
       ),
     ).toEqual(
@@ -185,9 +354,162 @@ describe("Easy Erf report snapshots", () => {
     expect(
       changedTypes(
         snapshot(),
-        snapshot({ market: { evidenceIds: ["subject-1"], evidenceConfidence: [{ id: "subject-1", confidence: "high" }] } }),
+        snapshot({
+          market: {
+            evidence: [
+              {
+                id: "subject-1",
+                confidence: "high",
+                includeInSummary: false,
+                listingRole: "subject_active_listing",
+              },
+            ],
+            evidenceIds: ["subject-1"],
+            evidenceConfidence: [{ id: "subject-1", confidence: "high" }],
+          },
+        }),
       ),
     ).toContainEqual({ type: "removed", label: "Market evidence removed" });
+  });
+
+  it("detects non-strongest evidence changes, inclusion changes, role changes, and replacements", () => {
+    const weakEvidence = {
+      id: "weak-1",
+      confidence: "low" as const,
+      includeInSummary: false,
+      listingRole: "comparable_evidence" as const,
+    };
+    expect(
+      changedTypes(
+        snapshot(),
+        snapshot({
+          market: {
+            evidence: [...snapshot().market.evidence, weakEvidence],
+            evidenceIds: [...snapshot().market.evidenceIds, "weak-1"],
+            evidenceConfidence: [
+              ...snapshot().market.evidenceConfidence,
+              { id: "weak-1", confidence: "low" },
+            ],
+            evidenceCount: 3,
+          },
+        }),
+      ),
+    ).toContainEqual({ type: "added", label: "Market evidence added" });
+
+    expect(
+      changedTypes(
+        snapshot(),
+        snapshot({
+          market: {
+            evidence: snapshot().market.evidence.map((item) =>
+              item.id === "evidence-1" ? { ...item, includeInSummary: false } : item,
+            ),
+            includedCount: 0,
+          },
+        }),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        { type: "changed", label: "Evidence inclusion changed" },
+        { type: "changed", label: "Included market evidence count" },
+      ]),
+    );
+
+    expect(
+      changedTypes(
+        snapshot(),
+        snapshot({
+          market: {
+            evidence: snapshot().market.evidence.map((item) =>
+              item.id === "evidence-1" ? { ...item, listingRole: "market_note" } : item,
+            ),
+          },
+        }),
+      ),
+    ).toContainEqual({ type: "changed", label: "Evidence role changed" });
+
+    expect(
+      changedTypes(
+        snapshot({
+          market: {
+            evidence: [weakEvidence],
+            evidenceIds: ["weak-1"],
+            evidenceConfidence: [{ id: "weak-1", confidence: "low" }],
+            evidenceCount: 1,
+          },
+        }),
+        snapshot({
+          market: {
+            evidence: [{ ...weakEvidence, id: "weak-2" }],
+            evidenceIds: ["weak-2"],
+            evidenceConfidence: [{ id: "weak-2", confidence: "low" }],
+            evidenceCount: 1,
+          },
+        }),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        { type: "removed", label: "Market evidence removed" },
+        { type: "added", label: "Market evidence added" },
+      ]),
+    );
+  });
+
+  it("builds market snapshots from all current-parcel evidence and excludes other parcels", () => {
+    const current = evidence({ id: "current-weak", confidence: "low", includeInSummary: false });
+    const subject = evidence({
+      id: "subject-current",
+      confidence: "high",
+      listingRole: "subject_active_listing",
+      includeInSummary: false,
+    });
+    const other = evidence({ id: "other-parcel", parcelId: "parcel-2", confidence: "high" });
+    const built = buildReportSnapshot({
+      report: report(),
+      decision,
+      assets,
+      savedEvidence: [current, subject, other],
+      strategyScenarios: [scenario()],
+      savedAt: "2026-07-17T10:01:00Z",
+    });
+
+    expect(built.market.evidence.map((item) => item.id)).toEqual([
+      "current-weak",
+      "subject-current",
+    ]);
+    expect(built.market.evidence).toContainEqual({
+      id: "current-weak",
+      confidence: "low",
+      includeInSummary: false,
+      listingRole: "comparable_evidence",
+    });
+    expect(built.market.subjectListingId).toBe("subject-current");
+    expect(JSON.stringify(built)).not.toContain("other-parcel");
+    expect(JSON.stringify(built)).not.toContain("https://example.test/listing");
+    expect(JSON.stringify(built)).not.toContain("Short note");
+  });
+
+  it("builds strategy state only from current-parcel scenarios", () => {
+    const built = buildReportSnapshot({
+      report: report({
+        strategy: {
+          chosen: scenario({ id: "other-chosen", parcelId: "parcel-2", selected: true }),
+          scenarioCount: 99,
+          hasSaved: true,
+        },
+      }),
+      decision,
+      assets,
+      savedEvidence: [],
+      strategyScenarios: [
+        scenario({ id: "current-selected", selected: true }),
+        scenario({ id: "other-selected", parcelId: "parcel-2", selected: true }),
+      ],
+      savedAt: "2026-07-17T10:01:00Z",
+    });
+
+    expect(built.strategy.chosenScenarioId).toBe("current-selected");
+    expect(built.strategy.scenarioCount).toBe(1);
   });
 
   it("detects risk and contradiction additions, removals, and severity changes", () => {
@@ -269,11 +591,66 @@ describe("Easy Erf report snapshots", () => {
     const current = snapshot({
       reportGeneratedAt: "2026-07-18T10:00:00Z",
       savedAt: "2026-07-18T10:01:00Z",
+      market: { latestMarketEvidenceAt: "2026-07-18T09:00:00Z" },
       decision: { missingInformation: [...previous.decision.missingInformation].reverse() },
       documents: { assets: [...previous.documents.assets].reverse() },
     });
     expect(compareReportSnapshots(previous, current).changes).toEqual([]);
     expect(snapshotFingerprint(previous)).toBe(snapshotFingerprint(snapshot()));
+  });
+
+  it("ignores deeply malformed stored snapshots safely", () => {
+    const s = storage();
+    s.setItem(
+      reportSnapshotStorageKey("parcel-1"),
+      JSON.stringify([
+        { ...snapshot(), decision: { ...snapshot().decision, risks: { id: "bad" } } },
+        { ...snapshot(), market: { ...snapshot().market, evidence: "bad" } },
+        { ...snapshot(), documents: { ...snapshot().documents, assets: undefined } },
+        { ...snapshot(), decision: { ...snapshot().decision, confidencePercent: Number.NaN } },
+        { ...snapshot(), market: { ...snapshot().market, evidenceCount: "many" } },
+        { ...snapshot(), identity: { ...snapshot().identity, parcelId: "other-parcel" } },
+        {
+          ...snapshot({ savedAt: "2026-07-17T11:00:00Z" }),
+          market: {
+            ...snapshot().market,
+            evidence: [
+              "bad",
+              { id: "bad-confidence", confidence: "certain", includeInSummary: true },
+              {
+                id: "good-evidence",
+                confidence: "medium",
+                includeInSummary: true,
+                listingRole: "comparable_evidence",
+              },
+            ],
+          },
+          documents: {
+            ...snapshot().documents,
+            assets: ["bad", { id: "good-asset", category: "paid_report" }],
+          },
+        },
+      ]),
+    );
+
+    const read = readReportSnapshots("parcel-1", s);
+    expect(read).toHaveLength(1);
+    expect(read[0].market.evidence).toEqual([
+      {
+        id: "good-evidence",
+        confidence: "medium",
+        includeInSummary: true,
+        listingRole: "comparable_evidence",
+      },
+    ]);
+    expect(read[0].documents.assets).toEqual([{ id: "good-asset", category: "paid_report" }]);
+    expect(compareReportSnapshots(read[0], snapshot()).changes.length).toBeGreaterThan(0);
+  });
+
+  it("keeps old parcel snapshot state out of a new parcel render", () => {
+    const state: ReportSnapshotState = { parcelId: "parcel-1", snapshots: [snapshot()] };
+    expect(snapshotsForActiveParcel("parcel-1", state)).toHaveLength(1);
+    expect(snapshotsForActiveParcel("parcel-2", state)).toEqual([]);
   });
 
   it("does not persist Ask Easy Erf questions, answers, or cross-parcel assets and does not add migrations", () => {

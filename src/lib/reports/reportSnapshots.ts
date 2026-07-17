@@ -1,6 +1,13 @@
 import type { DecisionIntelligence } from "./buildDecisionIntelligence";
 import type { ReportViewModel } from "./buildReportViewModel";
+import { calculateMarketEvidenceSummary } from "@/features/marketEvidence/calculateMarketEvidenceSummary";
+import type {
+  MarketEvidenceConfidence,
+  MarketEvidenceListingRole,
+  SavedMarketEvidence,
+} from "@/features/marketEvidence/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
 
 export const REPORT_SNAPSHOT_SCHEMA_VERSION = 1;
 export const MAX_REPORT_SNAPSHOTS_PER_PARCEL = 10;
@@ -39,6 +46,12 @@ export interface ReportSnapshot {
   market: {
     evidenceCount: number;
     includedCount: number;
+    evidence: Array<{
+      id: string;
+      confidence: MarketEvidenceConfidence;
+      includeInSummary: boolean;
+      listingRole: MarketEvidenceListingRole | null;
+    }>;
     evidenceIds: string[];
     evidenceConfidence: Array<{ id: string; confidence: string }>;
     subjectListingId: string | null;
@@ -67,6 +80,8 @@ export interface BuildReportSnapshotInput {
   report: ReportViewModel;
   decision: DecisionIntelligence;
   assets: ErfAsset[];
+  savedEvidence: SavedMarketEvidence[];
+  strategyScenarios: ErfStrategyScenario[];
   savedAt?: string;
 }
 
@@ -89,8 +104,33 @@ export interface ReportSnapshotComparison {
 
 type SnapshotStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
+export interface SaveReportSnapshotResult {
+  snapshots: ReportSnapshot[];
+  saved: boolean;
+}
+
+export interface ReportSnapshotState {
+  parcelId: string;
+  snapshots: ReportSnapshot[];
+}
+
+const DECISION_VERDICTS = [
+  "proceed",
+  "proceed_with_conditions",
+  "investigate_further",
+  "high_risk",
+] as const;
+const READINESS_STATES = ["confirmed", "partial", "missing", "not_reviewed"] as const;
+const SEVERITIES = ["low", "medium", "high"] as const;
+const EVIDENCE_CONFIDENCES = ["high", "medium", "low", "excluded"] as const;
+const LISTING_ROLES = ["subject_active_listing", "comparable_evidence", "market_note"] as const;
+
 export function reportSnapshotStorageKey(parcelId: string) {
   return `easyerf.reportSnapshots.v1.${parcelId}`;
+}
+
+export function snapshotsForActiveParcel(parcelId: string, state: ReportSnapshotState) {
+  return state.parcelId === parcelId ? state.snapshots : [];
 }
 
 export function buildReportSnapshot(input: BuildReportSnapshotInput): ReportSnapshot {
@@ -103,6 +143,34 @@ export function buildReportSnapshot(input: BuildReportSnapshotInput): ReportSnap
       category: cleanText(asset.asset_category, 120),
     }))
     .sort(byId);
+  const currentEvidence = input.savedEvidence
+    .filter((evidence) => evidence.parcelId === parcelId)
+    .slice()
+    .sort(byId);
+  const marketSummary = calculateMarketEvidenceSummary(currentEvidence);
+  const subjectListing = currentEvidence.find(
+    (evidence) => evidence.listingRole === "subject_active_listing",
+  );
+  const strongestComparableIds = currentEvidence
+    .filter(
+      (evidence) =>
+        evidence.listingRole !== "subject_active_listing" &&
+        evidence.includeInSummary &&
+        evidence.relationship !== "not_related" &&
+        evidence.confidence !== "excluded",
+    )
+    .sort((a, b) => confidenceRank(b.confidence) - confidenceRank(a.confidence) || a.id.localeCompare(b.id))
+    .slice(0, 3)
+    .map((evidence) => evidence.id);
+  const currentScenarios = input.strategyScenarios
+    .filter((scenario) => scenario.parcelId === parcelId)
+    .slice()
+    .sort(byId);
+  const chosenScenarioId =
+    report.strategy.chosen?.parcelId === parcelId &&
+    currentScenarios.some((scenario) => scenario.id === report.strategy.chosen?.id)
+      ? report.strategy.chosen.id
+      : currentScenarios.find((scenario) => scenario.selected)?.id ?? null;
 
   return {
     schemaVersion: REPORT_SNAPSHOT_SCHEMA_VERSION,
@@ -140,24 +208,26 @@ export function buildReportSnapshot(input: BuildReportSnapshotInput): ReportSnap
       missingInformation: sortedStrings(input.decision.stillNeeded),
     },
     market: {
-      evidenceCount: report.market.evidenceCount,
-      includedCount: report.market.includedCount,
-      evidenceIds: sortedStrings([
-        ...report.market.strongest.map((item) => item.id),
-        ...(report.market.subjectListing ? [report.market.subjectListing.id] : []),
-      ]),
-      evidenceConfidence: [
-        ...report.market.strongest,
-        ...(report.market.subjectListing ? [report.market.subjectListing] : []),
-      ]
+      evidenceCount: currentEvidence.length,
+      includedCount: marketSummary.includedEvidence,
+      evidence: currentEvidence
+        .map((item) => ({
+          id: cleanText(item.id, 160),
+          confidence: item.confidence,
+          includeInSummary: item.includeInSummary,
+          listingRole: item.listingRole ?? null,
+        }))
+        .sort(byId),
+      evidenceIds: currentEvidence.map((item) => cleanText(item.id, 160)).sort(),
+      evidenceConfidence: currentEvidence
         .map((item) => ({ id: cleanText(item.id, 160), confidence: cleanText(item.confidence, 80) }))
         .sort(byId),
-      subjectListingId: report.market.subjectListing?.id ?? null,
-      strongestComparableIds: sortedStrings(report.market.strongest.map((item) => item.id)),
-      indicativeMedianAskingPrice: report.market.canShowIndicativeValue
-        ? numberOrNull(report.market.summary.medianAskingPrice)
+      subjectListingId: subjectListing?.id ?? null,
+      strongestComparableIds,
+      indicativeMedianAskingPrice: marketSummary.includedEvidence >= 3
+        ? numberOrNull(marketSummary.medianAskingPrice)
         : null,
-      latestMarketEvidenceAt: report.market.latestUpdatedAt ?? null,
+      latestMarketEvidenceAt: marketSummary.lastUpdated ?? null,
     },
     documents: {
       assetCount: currentAssets.length,
@@ -172,9 +242,8 @@ export function buildReportSnapshot(input: BuildReportSnapshotInput): ReportSnap
       skipped: report.site.skipped,
     },
     strategy: {
-      chosenScenarioId:
-        report.strategy.chosen?.parcelId === parcelId ? report.strategy.chosen.id : null,
-      scenarioCount: report.strategy.scenarioCount,
+      chosenScenarioId,
+      scenarioCount: currentScenarios.length,
     },
   };
 }
@@ -218,15 +287,16 @@ export function readReportSnapshots(
 export function saveReportSnapshot(
   snapshot: ReportSnapshot,
   storage: SnapshotStorage | undefined = defaultStorage(),
-): ReportSnapshot[] {
-  if (!storage) return [];
-  const existing = readReportSnapshots(snapshot.parcelId, storage);
-  if (existing[0] && snapshotFingerprint(existing[0]) === snapshotFingerprint(snapshot)) {
-    return existing;
+): SaveReportSnapshotResult {
+  if (!storage) return { snapshots: [], saved: false };
+  const normalized = coerceSnapshot(snapshot) ?? snapshot;
+  const existing = readReportSnapshots(normalized.parcelId, storage);
+  if (existing[0] && snapshotFingerprint(existing[0]) === snapshotFingerprint(normalized)) {
+    return { snapshots: existing, saved: false };
   }
-  const next = [snapshot, ...existing].slice(0, MAX_REPORT_SNAPSHOTS_PER_PARCEL);
-  storage.setItem(reportSnapshotStorageKey(snapshot.parcelId), JSON.stringify(next));
-  return next;
+  const next = [normalized, ...existing].slice(0, MAX_REPORT_SNAPSHOTS_PER_PARCEL);
+  storage.setItem(reportSnapshotStorageKey(normalized.parcelId), JSON.stringify(next));
+  return { snapshots: next, saved: true };
 }
 
 export function clearReportSnapshots(
@@ -238,7 +308,13 @@ export function clearReportSnapshots(
 
 export function snapshotFingerprint(snapshot: ReportSnapshot): string {
   const { reportGeneratedAt: _reportGeneratedAt, savedAt: _savedAt, ...stable } = snapshot;
-  return stableStringify(stable);
+  return stableStringify({
+    ...stable,
+    market: {
+      ...stable.market,
+      latestMarketEvidenceAt: null,
+    },
+  });
 }
 
 function detectChanges(previous: ReportSnapshot, current: ReportSnapshot): ReportSnapshotChange[] {
@@ -279,9 +355,24 @@ function detectChanges(previous: ReportSnapshot, current: ReportSnapshot): Repor
   compareMissingInformation(changes, previous.decision.missingInformation, current.decision.missingInformation);
   compareCategories(changes, previous.decision.categories, current.decision.categories);
 
-  compareIdSet(changes, "market", "evidence", "Market evidence", previous.market.evidenceIds, current.market.evidenceIds);
-  compareEvidenceConfidence(changes, previous.market.evidenceConfidence, current.market.evidenceConfidence);
+  compareIdSet(
+    changes,
+    "market",
+    "evidence",
+    "Market evidence",
+    previous.market.evidence.map((item) => item.id),
+    current.market.evidence.map((item) => item.id),
+  );
+  compareEvidenceState(changes, previous.market.evidence, current.market.evidence);
   compareNullableField(changes, "market", "subject-listing", "Subject listing", previous.market.subjectListingId, current.market.subjectListingId);
+  compareChanged(
+    changes,
+    "market",
+    "included-count",
+    "Included market evidence count",
+    String(previous.market.includedCount),
+    String(current.market.includedCount),
+  );
   compareNullableField(
     changes,
     "market",
@@ -449,22 +540,43 @@ function compareCategories(
   }
 }
 
-function compareEvidenceConfidence(
+function compareEvidenceState(
   changes: ReportSnapshotChange[],
-  previousItems: ReportSnapshot["market"]["evidenceConfidence"],
-  currentItems: ReportSnapshot["market"]["evidenceConfidence"],
+  previousItems: ReportSnapshot["market"]["evidence"],
+  currentItems: ReportSnapshot["market"]["evidence"],
 ) {
-  const previous = new Map(previousItems.map((item) => [item.id, item.confidence]));
+  const previous = new Map(previousItems.map((item) => [item.id, item]));
   for (const current of currentItems) {
     const old = previous.get(current.id);
-    if (old && old !== current.confidence) {
+    if (!old) continue;
+    if (old.confidence !== current.confidence) {
       changes.push({
         id: `market-confidence-${current.id}`,
         category: "market",
         type: "changed",
         label: "Evidence confidence changed",
-        previousValue: old,
+        previousValue: old.confidence,
         currentValue: current.confidence,
+      });
+    }
+    if (old.includeInSummary !== current.includeInSummary) {
+      changes.push({
+        id: `market-inclusion-${current.id}`,
+        category: "market",
+        type: "changed",
+        label: "Evidence inclusion changed",
+        previousValue: old.includeInSummary ? "Included" : "Excluded",
+        currentValue: current.includeInSummary ? "Included" : "Excluded",
+      });
+    }
+    if (old.listingRole !== current.listingRole) {
+      changes.push({
+        id: `market-role-${current.id}`,
+        category: "market",
+        type: "changed",
+        label: "Evidence role changed",
+        previousValue: old.listingRole,
+        currentValue: current.listingRole,
       });
     }
   }
@@ -472,13 +584,187 @@ function compareEvidenceConfidence(
 
 function coerceSnapshot(value: unknown): ReportSnapshot | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const raw = value as ReportSnapshot;
+  const raw = value as Record<string, unknown>;
   if (raw.schemaVersion !== REPORT_SNAPSHOT_SCHEMA_VERSION) return null;
-  if (typeof raw.parcelId !== "string" || !raw.parcelId) return null;
-  if (typeof raw.savedAt !== "string" || typeof raw.reportGeneratedAt !== "string") return null;
-  if (!raw.identity || raw.identity.parcelId !== raw.parcelId) return null;
-  if (!raw.decision || !raw.market || !raw.documents || !raw.sitePotential || !raw.strategy) return null;
-  return raw;
+  const parcelId = safeString(raw.parcelId, 160);
+  const reportGeneratedAt = safeString(raw.reportGeneratedAt, 80);
+  const savedAt = safeString(raw.savedAt, 80);
+  if (!parcelId || !reportGeneratedAt || !savedAt) return null;
+
+  const identity = coerceIdentity(raw.identity, parcelId);
+  const decision = coerceDecision(raw.decision);
+  const market = coerceMarket(raw.market);
+  const documents = coerceDocuments(raw.documents);
+  const sitePotential = coerceSitePotentialSnapshot(raw.sitePotential);
+  const strategy = coerceStrategySnapshot(raw.strategy);
+  if (!identity || !decision || !market || !documents || !sitePotential || !strategy) {
+    return null;
+  }
+
+  return {
+    schemaVersion: REPORT_SNAPSHOT_SCHEMA_VERSION,
+    parcelId,
+    reportGeneratedAt,
+    savedAt,
+    identity,
+    decision,
+    market,
+    documents,
+    sitePotential,
+    strategy,
+  };
+}
+
+function coerceIdentity(value: unknown, parcelId: string): ReportSnapshot["identity"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  if (safeString(raw.parcelId, 160) !== parcelId) return null;
+  return {
+    parcelId,
+    erfNumber: safeNullableString(raw.erfNumber, 80),
+    portion: safeNullableString(raw.portion, 80),
+    lpi: safeNullableString(raw.lpi, 120),
+    parcelKey: safeNullableString(raw.parcelKey, 160),
+    municipality: safeNullableString(raw.municipality, 160),
+    province: safeNullableString(raw.province, 160),
+    marketAddressLine: safeNullableString(raw.marketAddressLine, 240),
+    areaM2: safeNullableNumber(raw.areaM2),
+  };
+}
+
+function coerceDecision(value: unknown): ReportSnapshot["decision"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  const verdict = enumValue(raw.verdict, DECISION_VERDICTS);
+  const confidencePercent = safeNumber(raw.confidencePercent);
+  if (!verdict || confidencePercent == null || confidencePercent < 0 || confidencePercent > 100) {
+    return null;
+  }
+  if (!Array.isArray(raw.categories) || !Array.isArray(raw.contradictions) || !Array.isArray(raw.risks) || !Array.isArray(raw.missingInformation)) {
+    return null;
+  }
+  return {
+    verdict,
+    confidencePercent,
+    categories: raw.categories.slice(0, 20).flatMap((item) => {
+      const category = objectRecord(item);
+      const id = safeString(category?.id, 80);
+      const label = safeString(category?.label, 120);
+      const score = safeNumber(category?.score);
+      const state = enumValue(category?.state, READINESS_STATES);
+      if (!id || !label || score == null || score < 0 || score > 100 || !state) return [];
+      return [{ id, label, score, state }];
+    }).sort(byId),
+    contradictions: coerceSeverityItems(raw.contradictions),
+    risks: coerceSeverityItems(raw.risks),
+    missingInformation: raw.missingInformation
+      .slice(0, 80)
+      .flatMap((item) => {
+        const text = safeString(item, 240);
+        return text ? [text] : [];
+      })
+      .sort(),
+  };
+}
+
+function coerceMarket(value: unknown): ReportSnapshot["market"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  const evidenceCount = safeCount(raw.evidenceCount);
+  const includedCount = safeCount(raw.includedCount);
+  if (evidenceCount == null || includedCount == null) return null;
+  if (!Array.isArray(raw.evidence) || !Array.isArray(raw.evidenceIds) || !Array.isArray(raw.evidenceConfidence) || !Array.isArray(raw.strongestComparableIds)) {
+    return null;
+  }
+  const evidence = raw.evidence.slice(0, 200).flatMap((item) => {
+    const entry = objectRecord(item);
+    const id = safeString(entry?.id, 160);
+    const confidence = enumValue(entry?.confidence, EVIDENCE_CONFIDENCES);
+    const listingRole =
+      entry?.listingRole == null ? null : enumValue(entry.listingRole, LISTING_ROLES);
+    if (!id || !confidence || listingRole === undefined) return [];
+    return [
+      {
+        id,
+        confidence,
+        includeInSummary: Boolean(entry?.includeInSummary),
+        listingRole,
+      },
+    ];
+  }).sort(byId);
+  return {
+    evidenceCount,
+    includedCount,
+    evidence,
+    evidenceIds: raw.evidenceIds
+      .slice(0, 200)
+      .flatMap((item) => {
+        const id = safeString(item, 160);
+        return id ? [id] : [];
+      })
+      .sort(),
+    evidenceConfidence: raw.evidenceConfidence.slice(0, 200).flatMap((item) => {
+      const entry = objectRecord(item);
+      const id = safeString(entry?.id, 160);
+      const confidence = enumValue(entry?.confidence, EVIDENCE_CONFIDENCES);
+      return id && confidence ? [{ id, confidence }] : [];
+    }).sort(byId),
+    subjectListingId: safeNullableString(raw.subjectListingId, 160),
+    strongestComparableIds: raw.strongestComparableIds
+      .slice(0, 20)
+      .flatMap((item) => {
+        const id = safeString(item, 160);
+        return id ? [id] : [];
+      })
+      .sort(),
+    indicativeMedianAskingPrice: safeNullableNumber(raw.indicativeMedianAskingPrice),
+    latestMarketEvidenceAt: safeNullableString(raw.latestMarketEvidenceAt, 80),
+  };
+}
+
+function coerceDocuments(value: unknown): ReportSnapshot["documents"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  const assetCount = safeCount(raw.assetCount);
+  const uploadedReportCount = safeCount(raw.uploadedReportCount);
+  const sgDiagramCount = safeCount(raw.sgDiagramCount);
+  if (assetCount == null || uploadedReportCount == null || sgDiagramCount == null || !Array.isArray(raw.assets)) {
+    return null;
+  }
+  return {
+    assetCount,
+    uploadedReportCount,
+    sgDiagramCount,
+    assets: raw.assets.slice(0, 200).flatMap((item) => {
+      const asset = objectRecord(item);
+      const id = safeString(asset?.id, 160);
+      const category = safeString(asset?.category, 120);
+      return id && category ? [{ id, category }] : [];
+    }).sort(byId),
+  };
+}
+
+function coerceSitePotentialSnapshot(value: unknown): ReportSnapshot["sitePotential"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  const conceptCount = safeCount(raw.conceptCount);
+  if (conceptCount == null || typeof raw.skipped !== "boolean") return null;
+  return {
+    selectedConceptAssetId: safeNullableString(raw.selectedConceptAssetId, 160),
+    conceptCount,
+    skipped: raw.skipped,
+  };
+}
+
+function coerceStrategySnapshot(value: unknown): ReportSnapshot["strategy"] | null {
+  const raw = objectRecord(value);
+  if (!raw) return null;
+  const scenarioCount = safeCount(raw.scenarioCount);
+  if (scenarioCount == null) return null;
+  return {
+    chosenScenarioId: safeNullableString(raw.chosenScenarioId, 160),
+    scenarioCount,
+  };
 }
 
 function stableStringify(value: unknown): string {
@@ -490,12 +776,67 @@ function stableStringify(value: unknown): string {
     .join(",")}}`;
 }
 
+function coerceSeverityItems(values: unknown[]): Array<{ id: string; severity: string }> {
+  return values
+    .slice(0, 80)
+    .flatMap((item) => {
+      const raw = objectRecord(item);
+      const id = safeString(raw?.id, 160);
+      const severity = enumValue(raw?.severity, SEVERITIES);
+      return id && severity ? [{ id, severity }] : [];
+    })
+    .sort(byId);
+}
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function safeString(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const text = cleanText(value, max);
+  return text ? text : null;
+}
+
+function safeNullableString(value: unknown, max: number): string | null {
+  return value == null ? null : safeString(value, max);
+}
+
+function safeNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value;
+}
+
+function safeNullableNumber(value: unknown): number | null {
+  return value == null ? null : safeNumber(value);
+}
+
+function safeCount(value: unknown): number | null {
+  const count = safeNumber(value);
+  return count == null || count < 0 || !Number.isInteger(count) ? null : count;
+}
+
+function enumValue<const T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+): T[number] | undefined {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T[number])
+    : undefined;
+}
+
 function defaultStorage(): SnapshotStorage | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
 }
 
 function byId<T extends { id: string }>(a: T, b: T) {
   return a.id.localeCompare(b.id);
+}
+
+function confidenceRank(confidence: MarketEvidenceConfidence) {
+  return confidence === "high" ? 3 : confidence === "medium" ? 2 : confidence === "low" ? 1 : 0;
 }
 
 function sortedStrings(values: Array<string | null | undefined>) {

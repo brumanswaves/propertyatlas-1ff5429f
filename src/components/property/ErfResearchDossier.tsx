@@ -85,7 +85,9 @@ import {
   compareReportSnapshots,
   readReportSnapshots,
   saveReportSnapshot,
+  snapshotsForActiveParcel,
   type ReportSnapshot,
+  type ReportSnapshotState,
   type ReportSnapshotChange,
   type ReportSnapshotChangeType,
 } from "@/lib/reports/reportSnapshots";
@@ -1224,19 +1226,23 @@ function StoepAiReportView({
         report,
         decision,
         assets: fileVault.assets,
+        savedEvidence: evidence,
+        strategyScenarios: scenarios,
       }),
-    [decision, fileVault.assets, report],
+    [decision, evidence, fileVault.assets, report, scenarios],
   );
-  const [reportSnapshots, setReportSnapshots] = useState<ReportSnapshot[]>(() =>
-    readReportSnapshots(parcel.id),
-  );
+  const [reportSnapshotState, setReportSnapshotState] = useState<ReportSnapshotState>(() => ({
+    parcelId: parcel.id,
+    snapshots: readReportSnapshots(parcel.id),
+  }));
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
   useEffect(() => {
-    setReportSnapshots(readReportSnapshots(parcel.id));
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
     setSnapshotMessage(null);
     setClearSnapshotsRequested(false);
   }, [parcel.id]);
+  const reportSnapshots = snapshotsForActiveParcel(parcel.id, reportSnapshotState);
   const snapshotComparison = useMemo(
     () => compareReportSnapshots(reportSnapshots[0] ?? null, currentReportSnapshot),
     [currentReportSnapshot, reportSnapshots],
@@ -1247,22 +1253,23 @@ function StoepAiReportView({
       report,
       decision,
       assets: fileVault.assets,
+      savedEvidence: evidence,
+      strategyScenarios: scenarios,
       savedAt: new Date().toISOString(),
     });
-    const before = reportSnapshots.length;
-    const next = saveReportSnapshot(snapshot);
-    setReportSnapshots(next);
+    const result = saveReportSnapshot(snapshot);
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: result.snapshots });
     setClearSnapshotsRequested(false);
     setSnapshotMessage(
-      next.length === before
-        ? "This report already matches the latest saved snapshot."
-        : "Current report snapshot saved.",
+      result.saved
+        ? "Current report snapshot saved."
+        : "This report already matches the latest saved snapshot.",
     );
   };
 
   const handleClearReportSnapshots = () => {
     clearReportSnapshots(parcel.id);
-    setReportSnapshots([]);
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: [] });
     setClearSnapshotsRequested(false);
     setSnapshotMessage("Report snapshot history cleared for this property.");
   };
