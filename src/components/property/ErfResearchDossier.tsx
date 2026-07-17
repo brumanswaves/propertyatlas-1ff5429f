@@ -1979,11 +1979,17 @@ function AskEasyErfSection({
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const currentParcelIdRef = useRef(payload.parcelId);
+  const requestGenerationRef = useRef(0);
+  const renderedParcelIdRef = useRef(payload.parcelId);
+  if (renderedParcelIdRef.current !== payload.parcelId) {
+    renderedParcelIdRef.current = payload.parcelId;
+    requestGenerationRef.current += 1;
+  }
+  currentParcelIdRef.current = payload.parcelId;
   const suggestions = suggestedAskEasyErfQuestions(payload);
   const hasEvidence = hasEnoughAskEasyErfEvidence(payload);
 
   useEffect(() => {
-    currentParcelIdRef.current = payload.parcelId;
     abortRef.current?.abort();
     abortRef.current = null;
     setQuestion("");
@@ -2007,7 +2013,10 @@ function AskEasyErfSection({
     const controller = new AbortController();
     abortRef.current = controller;
     const requestParcelId = payload.parcelId;
-    const isCurrentRequest = () => currentParcelIdRef.current === requestParcelId;
+    const requestGeneration = requestGenerationRef.current;
+    const isCurrentRequest = () =>
+      currentParcelIdRef.current === requestParcelId &&
+      requestGenerationRef.current === requestGeneration;
     const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
       const { data } = await supabase.auth.getSession();

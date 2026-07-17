@@ -94,6 +94,16 @@ export async function handleAskEasyErfRequest(
       409,
     );
   }
+  if (!nestedEvidenceMatchesParcel(evidence, parcelId)) {
+    return json(
+      {
+        success: false,
+        code: "INVALID_REQUEST",
+        error: "Ask Easy Erf received evidence that does not match the selected property.",
+      },
+      400,
+    );
+  }
   if (!hasEnoughAskEasyErfEvidence(evidence)) {
     return json(
       {
@@ -128,6 +138,23 @@ export async function handleAskEasyErfRequest(
   });
   if (!result.success) return json(result, statusForCode(result.code));
   return json(result, 200);
+}
+
+function nestedEvidenceMatchesParcel(evidence: AskEasyErfEvidencePayload, parcelId: string) {
+  if (evidence.market.subjectListing && evidence.market.subjectListing.parcelId !== parcelId) {
+    return false;
+  }
+  if (evidence.market.strongest.some((item) => item.parcelId !== parcelId)) return false;
+  if (evidence.strategy.chosen && evidence.strategy.chosen.parcelId !== parcelId) return false;
+  if (evidence.strategy.scenarios.some((scenario) => scenario.parcelId !== parcelId)) return false;
+  if (evidence.uploadedAssets.some((asset) => asset.parcelId !== parcelId)) return false;
+  if (
+    evidence.sitePotential.selectedConcept &&
+    evidence.sitePotential.selectedConcept.parcelId !== parcelId
+  ) {
+    return false;
+  }
+  return true;
 }
 
 async function parseRequestBody(
