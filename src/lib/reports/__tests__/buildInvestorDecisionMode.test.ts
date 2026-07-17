@@ -110,6 +110,77 @@ function compactCurrency(value: string | undefined) {
   return String(value ?? "").replace(/\s|\u00A0/g, " ");
 }
 
+function realisticStrategyDefaults(defaultPrice = 1_500_000): Record<string, string> {
+  const price = defaultPrice > 0 ? String(defaultPrice) : "";
+  return {
+    purchasePrice: price,
+    transferDuty: "",
+    transferCosts: "",
+    bondCosts: "",
+    attorneyFees: "",
+    inspectionCosts: "",
+    agentCommission: "",
+    otherAcquisitionCosts: "",
+    depositPercent: "10",
+    deposit: "",
+    loanAmount: "",
+    interestRate: "11.75",
+    termYears: "20",
+    interestOnlyMonths: "",
+    monthlyBondPayment: "",
+    financeFees: "",
+    monthlyRent: "",
+    otherIncome: "",
+    vacancyPercent: "5",
+    monthlyRates: "",
+    monthlyLevies: "",
+    insurance: "",
+    utilitiesPaidByOwner: "",
+    security: "",
+    gardenPool: "",
+    propertyManagementPercent: "8",
+    maintenanceReserve: "",
+    otherMonthlyCosts: "",
+    renovationBudget: "",
+    contingencyPercent: "10",
+    holdingMonths: "6",
+    monthlyHoldingCost: "",
+    expectedResalePrice: "",
+    sellingCosts: "",
+    landCost: price,
+    buildCost: "",
+    professionalFees: "",
+    municipalPlanningFees: "",
+    developmentDurationMonths: "12",
+    exitSellingCosts: "",
+    expectedSaleValue: "",
+    expectedMonthlyRent: "",
+    operatingExpenses: "",
+    averageDailyRate: "",
+    occupancyPercent: "50",
+    nightsPerMonth: "30.4",
+    platformFeePercent: "15",
+    cleaningRevenue: "",
+    cleaningCost: "",
+    utilities: "",
+    internet: "",
+    linenLaundry: "",
+    strManagementPercent: "12",
+    furnishingSetupCost: "",
+    allInCost: "",
+    afterRepairValue: "",
+    refinanceLtv: "75",
+    refinanceFees: "",
+    monthlyExpenses: "",
+    monthlyDebtService: "",
+    targetDscr: "1.2",
+    futureValue: "",
+    annualHoldingYears: "5",
+    customUpside: "",
+    customNotes: "",
+  };
+}
+
 describe("report decision mode preference", () => {
   it("defaults to Standard, validates stored values and isolates parcels", () => {
     const storage = new Map<string, string>();
@@ -235,6 +306,72 @@ describe("buildInvestorDecisionMode", () => {
     ).toBe("R 1 048 000");
   });
 
+  it("does not infer acquisition totals or financing from sparse legacy purchase inputs", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1000000",
+        monthlyRent: "12000",
+      }),
+    });
+
+    expect(result.numberRows.find((row) => row.id === "acquisition-costs")).toMatchObject({
+      value: "Not provided",
+      state: "missing",
+    });
+    expect(result.numberRows.find((row) => row.id === "total-acquisition-cost")).toMatchObject({
+      value: "Not calculated",
+      state: "not_calculated",
+    });
+    expect(result.numberRows.find((row) => row.id === "total-cash-required")).toMatchObject({
+      value: "Not calculated",
+      state: "not_calculated",
+    });
+    expect(result.numberRows.find((row) => row.id === "monthly-bond-payment")).toMatchObject({
+      value: "Not calculated",
+      state: "not_calculated",
+    });
+    expect(result.numberRows.map((row) => row.value)).not.toContain("R 100 000");
+  });
+
+  it("allows explicitly entered zero acquisition costs to participate in cash totals", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1000000",
+        loanAmount: "0",
+        monthlyRent: "12000",
+        transferDuty: "0",
+        transferCosts: "0",
+      }),
+    });
+
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "acquisition-costs")?.value),
+    ).toBe("R 0");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-cash-required")?.value),
+    ).toBe("R 1 000 000");
+  });
+
+  it("calculates total cash required only when valid financing inputs are saved", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1000000",
+        depositPercent: "20",
+        interestRate: "12",
+        termYears: "20",
+        monthlyRent: "12000",
+        transferDuty: "10000",
+      }),
+    });
+
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "monthly-bond-payment")?.value),
+    ).toBe("R 8 809");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-cash-required")?.value),
+    ).toBe("R 210 000");
+  });
+
   it("preserves explicit cash purchases as zero debt instead of missing finance", () => {
     const result = investor({
       chosenScenario: scenario("buy_hold", {
@@ -321,6 +458,7 @@ describe("buildInvestorDecisionMode", () => {
         monthlyRent: "12000",
         afterRepairValue: "1300000",
         renovationBudget: "100000",
+        refinanceLtv: "75",
       },
       "cash-left-in-deal",
     ],
@@ -336,6 +474,192 @@ describe("buildInvestorDecisionMode", () => {
     expect(result.numberRows.find((row) => row.id === rowId)).toMatchObject({
       state: "available",
     });
+  });
+
+  it("supports loan-only bond scenarios without requiring purchase price", () => {
+    const result = investor({
+      chosenScenario: scenario("bond", {
+        loanAmount: "900000",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+    });
+
+    expect(result.readinessStatus).not.toBe("Strategy assumptions incomplete");
+    expect(result.calculationStatus).toBe(
+      "Core deterministic calculation outputs are available from saved raw inputs.",
+    );
+    expect(result.missingInputs).not.toContain("purchase price");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "monthly-bond-payment")?.value),
+    ).toBe("R 9 753");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "annual-debt-service")?.value),
+    ).toBe("R 117 040");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-interest")?.value),
+    ).toBe("R 1 440 807");
+  });
+
+  it("uses land cost only for development when realistic defaults also contain purchase price", () => {
+    const result = investor({
+      chosenScenario: scenario("development_sell", {
+        ...realisticStrategyDefaults(1_500_000),
+        buildCost: "2200000",
+        expectedSaleValue: "4300000",
+      }),
+      savedEvidence: [evidence(), evidence({ id: "e2" }), evidence({ id: "e3" })],
+    });
+
+    expect(result.numberRows.filter((row) => row.id === "land-cost")).toHaveLength(1);
+    expect(result.numberRows.find((row) => row.id === "acquisition-price")).toBeUndefined();
+    expect(result.numberRows.find((row) => row.id === "total-cash-required")).toBeUndefined();
+    expect(compactCurrency(result.numberRows.find((row) => row.id === "land-cost")?.value)).toBe(
+      "R 1 500 000",
+    );
+  });
+
+  it("gates BRRRR refinance outputs until renovation and refinance LTV are complete", () => {
+    const missingRehab = investor({
+      chosenScenario: scenario("brrrr", {
+        ...realisticStrategyDefaults(900_000),
+        monthlyRent: "12000",
+        afterRepairValue: "1300000",
+      }),
+    });
+    expect(missingRehab.missingInputs).toContain("renovation budget or all-in cost");
+    expect(missingRehab.numberRows.find((row) => row.id === "cash-left-in-deal")).toBeUndefined();
+
+    const missingRefi = investor({
+      chosenScenario: scenario("brrrr", {
+        ...realisticStrategyDefaults(900_000),
+        monthlyRent: "12000",
+        afterRepairValue: "1300000",
+        renovationBudget: "100000",
+        refinanceLtv: "",
+      }),
+    });
+    expect(missingRefi.missingInputs).toContain("refinance LTV");
+    expect(missingRefi.numberRows.find((row) => row.id === "cash-left-in-deal")).toBeUndefined();
+
+    const zeroRefi = investor({
+      chosenScenario: scenario("brrrr", {
+        ...realisticStrategyDefaults(900_000),
+        monthlyRent: "12000",
+        afterRepairValue: "1300000",
+        renovationBudget: "100000",
+        refinanceLtv: "0",
+      }),
+    });
+    expect(zeroRefi.missingInputs).toContain("refinance LTV");
+    expect(zeroRefi.numberRows.find((row) => row.id === "cash-left-in-deal")).toBeUndefined();
+  });
+
+  it("marks BRRRR cash-on-cash not calculated when cash left in deal is zero", () => {
+    const result = investor({
+      chosenScenario: scenario("brrrr", {
+        ...realisticStrategyDefaults(900_000),
+        monthlyRent: "12000",
+        afterRepairValue: "1300000",
+        renovationBudget: "75000",
+        refinanceLtv: "75",
+      }),
+    });
+
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "cash-left-in-deal")?.value),
+    ).toBe("R 0");
+    expect(result.numberRows.find((row) => row.id === "cash-on-cash-return")).toMatchObject({
+      value: "Not calculated",
+      state: "not_calculated",
+    });
+  });
+
+  it("allows complete BRRRR scenarios to render refinance outputs", () => {
+    const result = investor({
+      chosenScenario: scenario("brrrr", {
+        ...realisticStrategyDefaults(900_000),
+        monthlyRent: "12000",
+        afterRepairValue: "1200000",
+        renovationBudget: "250000",
+        refinanceLtv: "70",
+      }),
+    });
+
+    expect(result.missingInputs).not.toContain("refinance LTV");
+    expect(result.numberRows.find((row) => row.id === "cash-left-in-deal")).toMatchObject({
+      state: "available",
+    });
+  });
+
+  it("ignores shared Strategy Lab defaults for custom scenarios", () => {
+    const defaultsOnly = investor({
+      chosenScenario: scenario("custom", realisticStrategyDefaults(1_500_000)),
+    });
+    expect(defaultsOnly.readinessStatus).toBe("Strategy assumptions incomplete");
+    expect(defaultsOnly.missingInputs).toContain("at least one saved custom assumption");
+    expect(defaultsOnly.numberRows.find((row) => row.id === "projected-profit")).toBeUndefined();
+
+    const noteOnly = investor({
+      chosenScenario: scenario("custom", {
+        ...realisticStrategyDefaults(1_500_000),
+        customNotes: "Wait for updated zoning evidence.",
+      }),
+    });
+    expect(noteOnly.missingInputs).not.toContain("at least one saved custom assumption");
+    expect(noteOnly.numberRows.find((row) => row.id === "projected-profit")).toBeUndefined();
+
+    const financial = investor({
+      chosenScenario: scenario("custom", {
+        ...realisticStrategyDefaults(1_500_000),
+        customUpside: "85000",
+      }),
+    });
+    expect(
+      compactCurrency(financial.numberRows.find((row) => row.id === "projected-profit")?.value),
+    ).toBe("R 85 000");
+  });
+
+  it("accepts one land-bank acquisition basis without duplication", () => {
+    const purchaseOnly = investor({
+      chosenScenario: scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        purchasePrice: "700000",
+      }),
+    });
+    expect(purchaseOnly.readinessStatus).not.toBe("Strategy assumptions incomplete");
+    expect(
+      compactCurrency(purchaseOnly.numberRows.find((row) => row.id === "acquisition-price")?.value),
+    ).toBe("R 700 000");
+    expect(purchaseOnly.numberRows.find((row) => row.id === "land-cost")).toBeUndefined();
+
+    const landOnly = investor({
+      chosenScenario: scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        landCost: "650000",
+      }),
+    });
+    expect(landOnly.readinessStatus).not.toBe("Strategy assumptions incomplete");
+    expect(compactCurrency(landOnly.numberRows.find((row) => row.id === "land-cost")?.value)).toBe(
+      "R 650 000",
+    );
+    expect(landOnly.numberRows.find((row) => row.id === "acquisition-price")).toBeUndefined();
+
+    const both = investor({
+      chosenScenario: scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        purchasePrice: "700000",
+        landCost: "650000",
+      }),
+    });
+    expect(both.numberRows.filter((row) => row.id === "land-cost")).toHaveLength(1);
+    expect(both.numberRows.find((row) => row.id === "acquisition-price")).toBeUndefined();
+
+    const neither = investor({
+      chosenScenario: scenario("land_bank", realisticStrategyDefaults(0)),
+    });
+    expect(neither.readinessStatus).toBe("Strategy assumptions incomplete");
+    expect(neither.missingInputs).toContain("land or acquisition price");
   });
 
   it("does not let generic comps satisfy rental-specific support", () => {

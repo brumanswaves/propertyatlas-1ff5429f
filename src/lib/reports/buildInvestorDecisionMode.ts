@@ -1,6 +1,5 @@
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import {
-  calculateAcquisition,
   calculateBond,
   calculateBrrrr,
   calculateBuyHold,
@@ -102,6 +101,15 @@ const ACQUISITION_COST_KEYS = [
   "otherAcquisitionCosts",
 ] as const;
 
+const CUSTOM_MEANINGFUL_FIELDS = [
+  "customUpside",
+  "customNotes",
+  "customCashRequired",
+  "customPurchasePrice",
+  "customRent",
+  "customExitValue",
+] as const;
+
 interface ParsedInput {
   present: boolean;
   value: number | null;
@@ -123,6 +131,12 @@ interface StrategyAnalysis {
   rows: InvestorNumberRow[];
   assumptions: string[];
   needsMarket: MarketNeed[];
+}
+
+interface AcquisitionBasis {
+  id: "acquisition-price" | "land-cost";
+  label: "Assumed acquisition price" | "Land cost";
+  input: ParsedInput;
 }
 
 interface MarketSupport {
@@ -269,82 +283,49 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
     return values;
   };
 
-  const purchasePrice = ["buy_hold", "flip", "brrrr", "bond", "land_bank"].includes(strategy)
-    ? requirePositive(
-        strategy === "land_bank" ? "land or acquisition price" : "purchase price",
-        "purchasePrice",
-      )
-    : value("purchasePrice");
-  const landCost = strategy.startsWith("development")
-    ? requirePositive("land cost", "landCost")
-    : value("landCost");
+  let purchasePrice = value("purchasePrice");
+  let landCost = value("landCost");
+  let acquisitionBasis: AcquisitionBasis | null = null;
+
+  if (["buy_hold", "flip", "brrrr"].includes(strategy)) {
+    purchasePrice = requirePositive("purchase price", "purchasePrice");
+    acquisitionBasis = {
+      id: "acquisition-price",
+      label: "Assumed acquisition price",
+      input: purchasePrice,
+    };
+  } else if (strategy === "development_sell" || strategy === "development_rent") {
+    landCost = requirePositive("land cost", "landCost");
+    acquisitionBasis = { id: "land-cost", label: "Land cost", input: landCost };
+  } else if (strategy === "land_bank") {
+    if (!isPositive(purchasePrice) && !isPositive(landCost)) {
+      missing.push("land or acquisition price");
+    }
+    acquisitionBasis = isPositive(landCost)
+      ? { id: "land-cost", label: "Land cost", input: landCost }
+      : { id: "acquisition-price", label: "Assumed acquisition price", input: purchasePrice };
+  } else if (strategy === "bond" && isPositive(purchasePrice) && !isPositive(value("loanAmount"))) {
+    acquisitionBasis = {
+      id: "acquisition-price",
+      label: "Assumed acquisition price",
+      input: purchasePrice,
+    };
+  }
+
   const acquisitionCosts = acquisitionCostInputs(value);
-  const acquisition = isPositive(purchasePrice)
-    ? calculateAcquisition({
-        purchasePrice: purchasePrice.value,
-        depositPercent: value("depositPercent").value ?? 10,
-        transferDuty: value("transferDuty").value ?? 0,
-        conveyancerFees: (value("transferCosts").value ?? 0) + (value("attorneyFees").value ?? 0),
-        bondRegistrationFees: value("bondCosts").value ?? 0,
-        initiationFees: value("financeFees").value ?? 0,
-        inspectionAllowance: value("inspectionCosts").value ?? 0,
-        renovationBudget: value("renovationBudget").value ?? 0,
-        furnitureBudget: value("furnishingSetupCost").value ?? 0,
-        cashBuffer: value("otherAcquisitionCosts").value ?? 0,
-      })
-    : null;
   const debt = resolveDebt(value, isPositive(purchasePrice) ? purchasePrice.value : null);
-
-  if (isPositive(purchasePrice)) {
-    rows.push(
-      moneyRow(
-        "acquisition-price",
-        "Assumed acquisition price",
-        purchasePrice.value,
-        "User assumption",
-      ),
-    );
-    assumptions.push(`Assumed acquisition price: ${formatMoney(purchasePrice.value)}`);
-    rows.push(
-      acquisitionCosts.present
-        ? moneyRow(
-            "acquisition-costs",
-            "Acquisition and transfer costs",
-            acquisitionCosts.value,
-            "User assumption",
-          )
-        : missingRow("acquisition-costs", "Acquisition and transfer costs", "User assumption"),
-    );
-    rows.push(
-      moneyRow(
-        "total-acquisition-cost",
-        "Total acquisition cost including purchase price",
-        purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0),
-        "Deterministic calculation",
-      ),
-    );
-    rows.push(
-      acquisition
-        ? moneyRow(
-            "total-cash-required",
-            "Total cash required",
-            debt.cashPurchase
-              ? purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0)
-              : acquisition.totalCashRequired,
-            "Deterministic calculation",
-          )
-        : notCalculatedRow(
-            "total-cash-required",
-            "Total cash required",
-            "Deterministic calculation",
-          ),
-    );
-  }
-
-  if (isPositive(landCost)) {
-    rows.push(moneyRow("land-cost", "Land cost", landCost.value, "User assumption"));
-    assumptions.push(`Land cost: ${formatMoney(landCost.value)}`);
-  }
+  const acquisitionCashRequired =
+    acquisitionBasis && isPositive(acquisitionBasis.input)
+      ? appendAcquisitionBasisRows({
+          rows,
+          assumptions,
+          basis: acquisitionBasis,
+          acquisitionCosts,
+          debt,
+          depositPercent: value("depositPercent"),
+          includeTotals: strategy !== "development_sell" && strategy !== "development_rent",
+        })
+      : null;
   const renovation = value("renovationBudget");
   if (isPositive(renovation)) {
     rows.push(moneyRow("renovation-cost", "Renovation cost", renovation.value, "User assumption"));
@@ -392,9 +373,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
         missing.push(...debt.missingFinanceInputs);
       }
       if (isPositive(purchasePrice) && isPositive(monthlyRent)) {
-        const totalCashInvested = debt.cashPurchase
-          ? purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0)
-          : acquisition?.totalCashRequired;
+        const totalCashInvested = acquisitionCashRequired;
         const monthlyBondPayment = debt.monthlyBondPayment;
         rows.push(
           netYieldRow({
@@ -628,7 +607,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
           maintenanceReserve: value("maintenanceReserve").value ?? 0,
           furnishingSetupCost: value("furnishingSetupCost").value ?? 0,
           bondPayment: debt.monthlyBondPayment ?? 0,
-          cashInvested: acquisition?.totalCashRequired,
+          cashInvested: acquisitionCashRequired ?? undefined,
         });
         rows.push(
           moneyRow(
@@ -662,7 +641,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
             "Deterministic calculation",
           ),
         );
-        if (acquisition?.totalCashRequired && acquisition.totalCashRequired > 0) {
+        if (acquisitionCashRequired != null && acquisitionCashRequired > 0) {
           rows.push(
             percentRow(
               "cash-on-cash-return",
@@ -687,7 +666,11 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
     case "brrrr": {
       const rent = requirePositive("monthly rental income", "monthlyRent");
       const arv = requirePositive("after-repair value", "afterRepairValue");
-      requirePositiveOneOf("renovation budget or all-in cost", ["renovationBudget", "allInCost"]);
+      const rehabInputs = requirePositiveOneOf("renovation budget or all-in cost", [
+        "renovationBudget",
+        "allInCost",
+      ]);
+      const refinanceLtv = requirePositive("refinance LTV", "refinanceLtv");
       if (isPositive(rent))
         rows.push(
           moneyRow("monthly-rental-income", "Monthly rental income", rent.value, "User assumption"),
@@ -696,13 +679,19 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
         rows.push(
           moneyRow("after-repair-value", "After-repair value", arv.value, "User assumption"),
         );
-      if (isPositive(purchasePrice) && isPositive(rent) && isPositive(arv)) {
+      if (
+        isPositive(purchasePrice) &&
+        isPositive(rent) &&
+        isPositive(arv) &&
+        rehabInputs.some(isPositive) &&
+        isPositive(refinanceLtv)
+      ) {
         const result = calculateBrrrr({
           purchasePrice: purchasePrice.value,
           renovationBudget: value("renovationBudget").value ?? 0,
           allInCost: value("allInCost").value ?? 0,
           afterRepairValue: arv.value,
-          refinanceLtv: value("refinanceLtv").value ?? 0,
+          refinanceLtv: refinanceLtv.value,
           refinanceFees: value("refinanceFees").value ?? 0,
           monthlyRent: rent.value,
           monthlyExpenses: value("monthlyExpenses").value ?? 0,
@@ -718,12 +707,18 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
           ),
         );
         rows.push(
-          percentRow(
-            "cash-on-cash-return",
-            "Cash-on-cash return",
-            result.cashOnCashReturn,
-            "Deterministic calculation",
-          ),
+          result.cashLeftInDeal > 0
+            ? percentRow(
+                "cash-on-cash-return",
+                "Cash-on-cash return",
+                result.cashOnCashReturn,
+                "Deterministic calculation",
+              )
+            : notCalculatedRow(
+                "cash-on-cash-return",
+                "Cash-on-cash return",
+                "Deterministic calculation",
+              ),
         );
         if ((value("monthlyDebtService").value ?? debt.monthlyBondPayment ?? 0) > 0) {
           rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
@@ -748,7 +743,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
         const result = calculateBond({
           loanAmount: isPositive(explicitLoan)
             ? explicitLoan.value
-            : Math.max(0, loanSource.value * (1 - (value("depositPercent").value ?? 10) / 100)),
+            : derivedLoanAmountFromPurchase(loanSource.value, value("depositPercent")),
           interestRate: value("interestRate").value ?? 0,
           termYears: value("termYears").value ?? 0,
           extraMonthlyPayment: value("extraMonthlyPayment").value ?? 0,
@@ -811,9 +806,13 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
       break;
     }
     case "custom": {
-      const meaningful = Object.entries(scenario.inputs).filter(([, raw]) =>
-        String(raw ?? "").trim(),
-      );
+      const meaningful = CUSTOM_MEANINGFUL_FIELDS.map(
+        (key) => [key, scenario.inputs[key]] as const,
+      ).filter(([key, raw]) => {
+        const trimmed = String(raw ?? "").trim();
+        if (!trimmed) return false;
+        return key === "customNotes" || isPositive(parseInput(trimmed));
+      });
       if (meaningful.length === 0) missing.push("at least one saved custom assumption");
       const customUpside = value("customUpside");
       if (isPositive(customUpside)) {
@@ -833,10 +832,94 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
     supported: missing.length === 0,
     missingInputs: unique(missing),
     warnings: strategyWarnings(strategy, missing),
-    rows: rows.length ? rows : fallbackSummaryRows(scenario),
+    rows: rows.length || strategy === "custom" ? rows : fallbackSummaryRows(scenario),
     assumptions,
     needsMarket: unique(needsMarket),
   };
+}
+
+function appendAcquisitionBasisRows(input: {
+  rows: InvestorNumberRow[];
+  assumptions: string[];
+  basis: AcquisitionBasis;
+  acquisitionCosts: { present: boolean; value: number };
+  debt: DebtResolution;
+  depositPercent: ParsedInput;
+  includeTotals: boolean;
+}) {
+  const basis = input.basis;
+  if (!isPositive(basis.input)) return null;
+  input.rows.push(moneyRow(basis.id, basis.label, basis.input.value, "User assumption"));
+  input.assumptions.push(`${basis.label}: ${formatMoney(basis.input.value)}`);
+  if (!input.includeTotals) return null;
+
+  input.rows.push(
+    input.acquisitionCosts.present
+      ? moneyRow(
+          "acquisition-costs",
+          "Acquisition and transfer costs",
+          input.acquisitionCosts.value,
+          "User assumption",
+        )
+      : missingRow("acquisition-costs", "Acquisition and transfer costs", "User assumption"),
+  );
+
+  input.rows.push(
+    input.acquisitionCosts.present
+      ? moneyRow(
+          "total-acquisition-cost",
+          "Total acquisition cost including purchase price",
+          basis.input.value + input.acquisitionCosts.value,
+          "Deterministic calculation",
+        )
+      : notCalculatedRow(
+          "total-acquisition-cost",
+          "Total acquisition cost including purchase price",
+          "Deterministic calculation",
+        ),
+  );
+
+  const totalCashRequired = totalCashRequiredFromSavedInputs(
+    basis.input.value,
+    input.acquisitionCosts,
+    input.debt,
+    input.depositPercent,
+  );
+  input.rows.push(
+    totalCashRequired != null
+      ? moneyRow(
+          "total-cash-required",
+          "Total cash required",
+          totalCashRequired,
+          "Deterministic calculation",
+        )
+      : notCalculatedRow("total-cash-required", "Total cash required", "Deterministic calculation"),
+  );
+  return totalCashRequired;
+}
+
+function totalCashRequiredFromSavedInputs(
+  basisValue: number,
+  acquisitionCosts: { present: boolean; value: number },
+  debt: DebtResolution,
+  depositPercent: ParsedInput,
+) {
+  if (!acquisitionCosts.present) return null;
+  if (debt.cashPurchase) return basisValue + acquisitionCosts.value;
+  if (debt.loanAmount != null && debt.loanAmount > 0) {
+    return Math.max(0, basisValue - debt.loanAmount) + acquisitionCosts.value;
+  }
+  if (isPositive(depositPercent)) {
+    return basisValue * (depositPercent.value / 100) + acquisitionCosts.value;
+  }
+  return null;
+}
+
+function derivedLoanAmountFromPurchase(purchasePrice: number, depositPercent: ParsedInput) {
+  if (isPositive(depositPercent)) {
+    return Math.max(0, purchasePrice * (1 - depositPercent.value / 100));
+  }
+  return purchasePrice;
 }
 
 function buyHoldResult(
@@ -888,10 +971,8 @@ function resolveDebt(
   const hasDebtTerms =
     isPositive(explicitLoan) ||
     explicitLoan.present ||
-    isPositive(interestRate) ||
-    isPositive(termYears) ||
     isPositive(explicitMonthlyBond) ||
-    (depositPercent.present && (depositPercent.value ?? 0) < 100);
+    (depositPercent.present && depositPercent.value != null && depositPercent.value < 100);
 
   if (explicitLoan.present && explicitLoan.value === 0) {
     return {
@@ -927,7 +1008,7 @@ function resolveDebt(
   const loanAmount = isPositive(explicitLoan)
     ? explicitLoan.value
     : purchasePrice != null && depositPercent.present
-      ? Math.max(0, purchasePrice * (1 - (depositPercent.value ?? 0) / 100))
+      ? derivedLoanAmountFromPurchase(purchasePrice, depositPercent)
       : null;
   if (loanAmount === 0) {
     return {
