@@ -42,6 +42,7 @@ import { Route as ApiSitePotentialBetaStatusRouteImport } from './routes/api/sit
 import { Route as ApiSitePotentialBetaRequestRouteImport } from './routes/api/site-potential.beta-request'
 import { Route as ApiSitePotentialBetaRedeemRouteImport } from './routes/api/site-potential.beta-redeem'
 import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site-potential.beta-grant'
+import { Route as ApiReportsAskEasyErfRouteImport } from './routes/api/reports.ask-easy-erf'
 import { Route as ApiLocalServicesSearchRouteImport } from './routes/api/local-services.search'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
 import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
@@ -218,6 +219,11 @@ const ApiSitePotentialBetaGrantRoute =
     path: '/api/site-potential/beta-grant',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiReportsAskEasyErfRoute = ApiReportsAskEasyErfRouteImport.update({
+  id: '/api/reports/ask-easy-erf',
+  path: '/api/reports/ask-easy-erf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLocalServicesSearchRoute = ApiLocalServicesSearchRouteImport.update({
   id: '/api/local-services/search',
   path: '/api/local-services/search',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
+  '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
+  '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/admin/readiness': typeof AdminReadinessRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
+  '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
   '/api/site-potential/beta-grant': typeof ApiSitePotentialBetaGrantRoute
   '/api/site-potential/beta-redeem': typeof ApiSitePotentialBetaRedeemRoute
   '/api/site-potential/beta-request': typeof ApiSitePotentialBetaRequestRoute
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/admin/readiness'
     | '/api/listings/import'
     | '/api/local-services/search'
+    | '/api/reports/ask-easy-erf'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/admin/readiness'
     | '/api/listings/import'
     | '/api/local-services/search'
+    | '/api/reports/ask-easy-erf'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '/admin/readiness'
     | '/api/listings/import'
     | '/api/local-services/search'
+    | '/api/reports/ask-easy-erf'
     | '/api/site-potential/beta-grant'
     | '/api/site-potential/beta-redeem'
     | '/api/site-potential/beta-request'
@@ -493,6 +505,7 @@ export interface RootRouteChildren {
   WhyRoute: typeof WhyRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
   ApiLocalServicesSearchRoute: typeof ApiLocalServicesSearchRoute
+  ApiReportsAskEasyErfRoute: typeof ApiReportsAskEasyErfRoute
   ApiSitePotentialBetaGrantRoute: typeof ApiSitePotentialBetaGrantRoute
   ApiSitePotentialBetaRedeemRoute: typeof ApiSitePotentialBetaRedeemRoute
   ApiSitePotentialBetaRequestRoute: typeof ApiSitePotentialBetaRequestRoute
@@ -737,6 +750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSitePotentialBetaGrantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/reports/ask-easy-erf': {
+      id: '/api/reports/ask-easy-erf'
+      path: '/api/reports/ask-easy-erf'
+      fullPath: '/api/reports/ask-easy-erf'
+      preLoaderRoute: typeof ApiReportsAskEasyErfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/local-services/search': {
       id: '/api/local-services/search'
       path: '/api/local-services/search'
@@ -799,6 +819,7 @@ const rootRouteChildren: RootRouteChildren = {
   WhyRoute: WhyRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
   ApiLocalServicesSearchRoute: ApiLocalServicesSearchRoute,
+  ApiReportsAskEasyErfRoute: ApiReportsAskEasyErfRoute,
   ApiSitePotentialBetaGrantRoute: ApiSitePotentialBetaGrantRoute,
   ApiSitePotentialBetaRedeemRoute: ApiSitePotentialBetaRedeemRoute,
   ApiSitePotentialBetaRequestRoute: ApiSitePotentialBetaRequestRoute,
