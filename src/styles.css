@@ -234,6 +234,10 @@
   .report-page .report-decision-hero * {
     color: #0D1B2A !important;
   }
+  .report-page #report-ask-easy-erf {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
   .report-section {
     break-inside: avoid;
     page-break-inside: avoid;
