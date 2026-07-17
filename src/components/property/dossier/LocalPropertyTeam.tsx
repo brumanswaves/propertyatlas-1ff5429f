@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
@@ -20,8 +20,6 @@ import {
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { AddressCandidate } from "@/features/marketEvidence/types";
 import {
-  canShowEasyErfVerified,
-  canShowSponsored,
   categoriesForGroup,
   inferLocalPropertyState,
   orderedLocalServiceGroups,
@@ -32,6 +30,7 @@ import {
 import {
   readSavedLocalProviders,
   toggleSavedLocalProvider,
+  type SavedLocalProvider,
 } from "@/lib/localServices/savedProviders";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +49,7 @@ interface SearchState {
   error: string | null;
   errorCode: string | null;
   widerArea: boolean;
+  attribution: string | null;
 }
 
 const EMPTY_SEARCH: SearchState = {
@@ -59,6 +59,7 @@ const EMPTY_SEARCH: SearchState = {
   error: null,
   errorCode: null,
   widerArea: false,
+  attribution: null,
 };
 
 function groupIcon(groupId: LocalServiceGroup["id"]) {
@@ -104,16 +105,6 @@ function ProviderCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
             <span>Google place result</span>
-            {canShowSponsored(provider) && (
-              <span className="rounded-full bg-[#FF6A00]/12 px-2 py-0.5 text-[#B24A00]">
-                {provider.sponsorshipLabel}
-              </span>
-            )}
-            {canShowEasyErfVerified(provider) && (
-              <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-emerald-700">
-                Easy Erf Verified
-              </span>
-            )}
           </div>
           <h5 className="mt-1 text-sm font-semibold leading-5 text-[#0D1B2A]">{provider.name}</h5>
           <p className="mt-1 text-[11px] font-medium text-[#64748B]">{category.label}</p>
@@ -138,7 +129,12 @@ function ProviderCard({
           <span className="inline-flex items-center gap-1 rounded-full bg-[#fff8ec] px-2.5 py-1">
             <Star className="h-3.5 w-3.5 fill-[#FFB020] text-[#FFB020]" />
             {provider.rating.toFixed(1)}
-            {provider.reviewCount != null ? ` (${provider.reviewCount.toLocaleString()})` : ""}
+            {provider.userRatingCount != null ? ` (${provider.userRatingCount.toLocaleString()})` : ""}
+          </span>
+        )}
+        {provider.openNow != null && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#F7FBFF] px-2.5 py-1">
+            {provider.openNow ? "Open now" : "Closed now"}
           </span>
         )}
         {distance && (
@@ -161,9 +157,9 @@ function ProviderCard({
             <Phone className="h-3.5 w-3.5" /> Call
           </a>
         )}
-        {provider.websiteUrl && (
+        {provider.website && (
           <a
-            href={provider.websiteUrl}
+            href={provider.website}
             target="_blank"
             rel="noreferrer"
             className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
@@ -205,9 +201,17 @@ export function LocalPropertyTeam({
   const activeCategory =
     activeCategories.find((category) => category.id === activeCategoryId) ?? activeCategories[0];
   const [searches, setSearches] = useState<Record<string, SearchState>>({});
-  const [savedProviders, setSavedProviders] = useState<LocalProvider[]>(() =>
+  const [savedProviders, setSavedProviders] = useState<SavedLocalProvider[]>(() =>
     readSavedLocalProviders(parcel.id),
   );
+  const activeRequestRef = useRef<{
+    id: number;
+    parcelId: string;
+    categoryId: string;
+    address: string;
+    controller: AbortController;
+  } | null>(null);
+  const requestSequenceRef = useRef(0);
 
   useEffect(() => {
     const nextGroups = orderedLocalServiceGroups(propertyState);
@@ -217,6 +221,8 @@ export function LocalPropertyTeam({
     setActiveCategoryId(nextCategory);
     setSearches({});
     setSavedProviders(readSavedLocalProviders(parcel.id));
+    activeRequestRef.current?.controller.abort();
+    activeRequestRef.current = null;
   }, [parcel.id, propertyState]);
 
   useEffect(() => {
@@ -239,13 +245,32 @@ export function LocalPropertyTeam({
       ? "Vacant land priorities"
       : propertyState === "existing_home"
         ? "Existing home priorities"
-        : "General property priorities";
+      : "General property priorities";
+
+  useEffect(() => {
+    activeRequestRef.current?.controller.abort();
+    activeRequestRef.current = null;
+    setSearches({});
+  }, [parcel.id, marketAddressLabel]);
 
   async function searchCategory(category: LocalServiceCategory, widerArea = false) {
     if (!hasMarketAddress) {
       onOpenMarket();
       return;
     }
+
+    activeRequestRef.current?.controller.abort();
+    const requestId = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestId;
+    const controller = new AbortController();
+    activeRequestRef.current = {
+      id: requestId,
+      parcelId: parcel.id,
+      categoryId: category.id,
+      address: marketAddressLabel,
+      controller,
+    };
+
     setSearches((current) => ({
       ...current,
       [category.id]: {
@@ -254,23 +279,34 @@ export function LocalPropertyTeam({
         error: null,
         errorCode: null,
         widerArea,
+        attribution: null,
       },
     }));
     try {
       const response = await fetch("/api/local-services/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
-          categoryId: category.id,
+          serviceCategory: category.id,
           parcelId: parcel.id,
-          address: marketAddressLabel,
+          confirmedAddress: marketAddressLabel,
           latitude: marketAddress?.lat ?? null,
           longitude: marketAddress?.lng ?? null,
           widerArea,
         }),
       });
       const payload = (await response.json().catch(() => null)) as
-        | { success?: boolean; providers?: LocalProvider[]; error?: string; code?: string }
+        | {
+            success?: boolean;
+            providers?: LocalProvider[];
+            error?: string;
+            code?: string;
+            attribution?: string;
+            parcelId?: string;
+            categoryId?: string;
+            confirmedAddress?: string;
+          }
         | null;
       if (!response.ok || !payload?.success) {
         throw new LocalSearchError(
@@ -278,6 +314,7 @@ export function LocalPropertyTeam({
           payload?.code || "provider_search_failed",
         );
       }
+      if (!isCurrentSearch(requestId, category.id, marketAddressLabel, payload)) return;
       setSearches((current) => ({
         ...current,
         [category.id]: {
@@ -287,9 +324,12 @@ export function LocalPropertyTeam({
           error: null,
           errorCode: null,
           widerArea,
+          attribution: payload.attribution ?? "Google",
         },
       }));
     } catch (error) {
+      if (controller.signal.aborted) return;
+      if (!isCurrentSearch(requestId, category.id, marketAddressLabel)) return;
       setSearches((current) => ({
         ...current,
         [category.id]: {
@@ -299,9 +339,43 @@ export function LocalPropertyTeam({
           error: error instanceof Error ? error.message : "Local provider results are unavailable.",
           errorCode: error instanceof LocalSearchError ? error.code : "provider_search_failed",
           widerArea,
+          attribution: null,
         },
       }));
     }
+  }
+
+  function isCurrentSearch(
+    requestId: number,
+    categoryId: string,
+    address: string,
+    payload?: { parcelId?: string; categoryId?: string; confirmedAddress?: string } | null,
+  ) {
+    return (
+      activeRequestRef.current?.id === requestId &&
+      activeRequestRef.current.parcelId === parcel.id &&
+      activeRequestRef.current.categoryId === categoryId &&
+      activeRequestRef.current.address === address &&
+      (!payload ||
+        (payload.parcelId === parcel.id &&
+          payload.categoryId === categoryId &&
+          payload.confirmedAddress === address))
+    );
+  }
+
+  function cancelSearch() {
+    activeRequestRef.current?.controller.abort();
+    activeRequestRef.current = null;
+    if (!activeCategory) return;
+    setSearches((current) => ({
+      ...current,
+      [activeCategory.id]: {
+        ...(current[activeCategory.id] ?? EMPTY_SEARCH),
+        loading: false,
+        error: null,
+        errorCode: null,
+      },
+    }));
   }
 
   function chooseGroup(groupId: LocalServiceGroup["id"]) {
@@ -383,7 +457,7 @@ export function LocalPropertyTeam({
           >
             Change address in Market
           </button>
-          <div className="mt-2">{stateLabel} · {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"} saved</div>
+          <div className="mt-2">{stateLabel} - {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"} saved</div>
         </div>
       </div>
 
@@ -442,6 +516,9 @@ export function LocalPropertyTeam({
         <section className="mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                Top local Google results
+              </p>
               <h4 className="text-base font-semibold text-[#0D1B2A]">{activeCategory.label}</h4>
               <p className="mt-1 max-w-3xl text-xs leading-5 text-[#0D1B2A]/62">
                 {activeCategory.reason[propertyState]}
@@ -464,8 +541,17 @@ export function LocalPropertyTeam({
                   rel="noreferrer"
                   className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
                 >
-                  Google Maps <ExternalLink className="h-3.5 w-3.5" />
+                  Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
                 </a>
+              )}
+              {currentSearch.loading && (
+                <button
+                  type="button"
+                  onClick={cancelSearch}
+                  className="inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
+                >
+                  Cancel
+                </button>
               )}
             </div>
           </div>
@@ -475,24 +561,34 @@ export function LocalPropertyTeam({
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finding local providers
             </div>
           ) : currentSearch.providers.length ? (
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              {currentSearch.providers.slice(0, 3).map((provider) => (
-                <ProviderCard
-                  key={provider.placeId}
-                  provider={provider}
-                  category={activeCategory}
-                  saved={savedProviders.some((item) => item.placeId === provider.placeId)}
-                  onToggleSaved={() => toggleSaved(provider)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {currentSearch.providers.slice(0, 3).map((provider) => (
+                  <ProviderCard
+                    key={provider.placeId}
+                    provider={provider}
+                    category={activeCategory}
+                    saved={savedProviders.some((item) => item.placeId === provider.placeId)}
+                    onToggleSaved={() => toggleSaved(provider)}
+                  />
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] font-medium text-[#64748B]">
+                Results provided by {currentSearch.attribution ?? "Google"}.
+              </p>
+            </>
           ) : currentSearch.loaded ? (
             <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
               <p>
                 {currentSearch.error
                   ? currentSearch.error
-                  : "No strong local matches were found in the immediate area. Expand the search area or review the wider municipality."}
+                  : "No eligible Google results were found for this service near the confirmed property address."}
               </p>
+              {!currentSearch.error && (
+                <p className="mt-1 text-xs text-[#0D1B2A]/54">
+                  Try another service or open this search in Google Maps.
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -500,7 +596,7 @@ export function LocalPropertyTeam({
                   onClick={() => void searchCategory(activeCategory, true)}
                   className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941] disabled:opacity-50"
                 >
-                  Search wider area
+                  Try wider area
                 </button>
                 {fallbackUrl && (
                   <a
@@ -509,14 +605,14 @@ export function LocalPropertyTeam({
                     rel="noreferrer"
                     className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
                   >
-                    Review Google Maps <ExternalLink className="h-3.5 w-3.5" />
+                    Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </div>
             </div>
           ) : (
             <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
-              Search only when you need this category. Easy Erf will show up to three real Google place results or an honest fallback.
+              Search only when you need this category. Easy Erf will show up to three genuine Google business results or an honest fallback.
             </div>
           )}
         </section>
