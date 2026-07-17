@@ -1978,10 +1978,12 @@ function AskEasyErfSection({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const currentParcelIdRef = useRef(payload.parcelId);
   const suggestions = suggestedAskEasyErfQuestions(payload);
   const hasEvidence = hasEnoughAskEasyErfEvidence(payload);
 
   useEffect(() => {
+    currentParcelIdRef.current = payload.parcelId;
     abortRef.current?.abort();
     abortRef.current = null;
     setQuestion("");
@@ -2004,9 +2006,12 @@ function AskEasyErfSection({
     setError(null);
     const controller = new AbortController();
     abortRef.current = controller;
+    const requestParcelId = payload.parcelId;
+    const isCurrentRequest = () => currentParcelIdRef.current === requestParcelId;
     const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
       const { data } = await supabase.auth.getSession();
+      if (!isCurrentRequest()) return;
       const token = data.session?.access_token;
       if (!token) {
         setAnswer(null);
@@ -2027,6 +2032,7 @@ function AskEasyErfSection({
         }),
       });
       const result = (await response.json().catch(() => null)) as AskEasyErfApiResponse | null;
+      if (!isCurrentRequest()) return;
       if (response.ok && result?.success) {
         setAnswer(result.answer);
         setError(null);
@@ -2035,6 +2041,7 @@ function AskEasyErfSection({
         setError(result && !result.success ? result.error : "Ask Easy Erf could not answer right now.");
       }
     } catch (requestError) {
+      if (!isCurrentRequest()) return;
       setAnswer(null);
       setError(
         requestError instanceof DOMException && requestError.name === "AbortError"
@@ -2044,7 +2051,7 @@ function AskEasyErfSection({
     } finally {
       window.clearTimeout(timeout);
       if (abortRef.current === controller) abortRef.current = null;
-      setLoading(false);
+      if (isCurrentRequest()) setLoading(false);
     }
   };
 
