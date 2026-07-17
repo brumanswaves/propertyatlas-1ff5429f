@@ -226,15 +226,30 @@
 @media print {
   .report-no-print { display: none !important; }
   .report-page { background: #ffffff !important; }
+  .report-page .report-decision-hero {
+    background: #ffffff !important;
+    color: #0D1B2A !important;
+    border-color: #cbd5e1 !important;
+  }
+  .report-page .report-decision-hero * {
+    color: #0D1B2A !important;
+  }
   .report-section {
     break-inside: avoid;
     page-break-inside: avoid;
     box-shadow: none !important;
     border-color: #cbd5e1 !important;
   }
+  .report-section article,
+  .report-section details,
+  .report-section li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .report-nav-sticky { position: static !important; display: none !important; }
   .report-print-single-column > * + * { margin-top: 12px; }
   .report-print-single-column { display: block !important; }
   .report-print-single-column * { grid-template-columns: none !important; }
+  .report-section [style*="conic-gradient"] { background: #ffffff !important; border: 2px solid #FF6A00 !important; }
   a[href]:after { content: ""; }
 }

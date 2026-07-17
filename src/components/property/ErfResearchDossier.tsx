@@ -60,6 +60,12 @@ import {
   REPORT_SECTIONS,
   type EvidenceBadge,
 } from "@/lib/reports/buildReportViewModel";
+import {
+  buildDecisionIntelligence,
+  type DecisionMatrixRow,
+  type DecisionVerdict,
+  type EvidenceTimelineItem,
+} from "@/lib/reports/buildDecisionIntelligence";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -1177,6 +1183,7 @@ function StoepAiReportView({
     selectedSiteDesign: selectedDesign,
     siteBrief: siteProject.project?.design_brief ?? null,
   });
+  const decision = buildDecisionIntelligence(report);
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
@@ -1212,6 +1219,8 @@ function StoepAiReportView({
         return "calculators";
       case "site-potential":
         return "site-potential";
+      case "stoep-report":
+        return "stoep-report";
       default:
         return "overview";
     }
@@ -1259,80 +1268,207 @@ function StoepAiReportView({
           </div>
         </div>
 
-        {/* DECISION BRIEF */}
-        <div className="mt-6 grid gap-5 lg:grid-cols-[220px_1fr]">
-          <div className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Decision readiness
-            </div>
-            <div className="mt-3 flex items-center gap-4">
-              <div
-                className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-[#0D1B2A]"
-                style={{
-                  background: `conic-gradient(#FF6A00 ${report.brief.readinessPercent}%, #E2E8F0 0)`,
-                }}
-              >
-                <span className="grid h-16 w-16 place-items-center rounded-full bg-white">
-                  {report.brief.readinessPercent}%
-                </span>
+        {/* EXECUTIVE DECISION BRIEF */}
+        <div className="mt-6 space-y-5">
+          <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
+            <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                Overall verdict
               </div>
-              <p className="text-xs leading-5 text-[#0D1B2A]/70">
-                Based on evidence completeness only. This is not a property quality score.
+              <h3 className="mt-3 text-3xl font-semibold tracking-tight">
+                {decisionVerdictLabel(decision.verdict)}
+              </h3>
+              <div className="mt-4 flex items-center gap-4">
+                <div
+                  className="grid h-24 w-24 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
+                  style={{
+                    background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
+                  }}
+                  aria-label={`Evidence confidence ${decision.confidencePercent}%`}
+                >
+                  <span className="grid h-20 w-20 place-items-center rounded-full bg-[#0D1B2A]">
+                    {decision.confidencePercent}%
+                  </span>
+                </div>
+                <p className="text-xs leading-5 text-white/68">
+                  Evidence confidence measures completeness and recorded-risk coverage. It is not a
+                  property-quality score, valuation confidence, or purchase recommendation.
+                </p>
+              </div>
+            </article>
+            <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                Evidence-grounded interpretation
+              </div>
+              <p className="mt-3 max-w-4xl text-base leading-7 text-white/82">
+                {decision.summary}
+              </p>
+              <p className="mt-3 text-xs leading-5 text-white/58">
+                This interpretation is assembled from official, uploaded, user-confirmed, market,
+                and saved workspace data. It is not labelled human verified.
+              </p>
+            </article>
+          </div>
+
+          <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                  Property IQ / Confidence Engine
+                </div>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                  Why the report confidence exists
+                </h3>
+              </div>
+              <p className="max-w-xl text-xs leading-5 text-[#64748B]">
+                Each category is scored from the recorded evidence state. Open a row to see the
+                reason behind the score.
               </p>
             </div>
-            <ul className="mt-4 space-y-1.5">
-              {report.brief.categories.map((cat) => (
-                <li key={cat.id} className="flex items-center justify-between text-xs">
-                  <span className="text-[#0D1B2A]/80" title={cat.explanation}>
-                    {cat.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                      readinessStroke(cat.state),
-                    )}
-                  >
-                    {readinessLabel(cat.state)}
-                  </span>
-                </li>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+              {decision.confidenceCategories.map((category) => (
+                <details
+                  key={category.id}
+                  className="group rounded-2xl border border-[#D9E6F2] bg-white p-3 open:border-[#FF6A00]/35"
+                >
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-[#0D1B2A]">
+                        {category.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                          readinessStroke(category.state),
+                        )}
+                      >
+                        {readinessLabel(category.state)}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
+                      {category.score}
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
+                      <div
+                        className="h-full rounded-full bg-[#FF6A00]"
+                        style={{ width: `${category.score}%` }}
+                      />
+                    </div>
+                  </summary>
+                  <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
+                    {category.explanation}
+                  </p>
+                </details>
               ))}
-            </ul>
+            </div>
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <DecisionListPanel
+              title="What Easy Erf knows"
+              items={decision.known}
+              empty="No structured facts are strong enough to list yet."
+            />
+            <DecisionListPanel
+              title="What Easy Erf still needs"
+              items={decision.stillNeeded}
+              empty="No immediate evidence gaps were generated from the current structured state."
+              footnote="Completing these items may improve report confidence."
+            />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <article className="rounded-[1.5rem] border border-[#16a34a]/25 bg-[#f0fdf4] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#166534]">
-                What looks positive
-              </div>
-              <ul className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/80">
-                {report.brief.positives.map((p) => (
-                  <li key={p}>· {p}</li>
+
+          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+            <ReportSectionTitle eyebrow="Contradictions" title="Conflicting structured evidence" />
+            {decision.contradictions.length ? (
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {decision.contradictions.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-2xl border border-[#F59E0B]/35 bg-[#fffbeb] p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                          severityTone(item.severity),
+                        )}
+                      >
+                        {item.severity}
+                      </span>
+                      <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">
+                      {item.explanation}
+                    </p>
+                    <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
+                      {item.evidence.map((line) => (
+                        <li key={line}>- {line}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-xs font-semibold text-[#92400E]">
+                      Next action: {item.nextAction}
+                    </p>
+                  </article>
                 ))}
-              </ul>
-            </article>
-            <article className="rounded-[1.5rem] border border-[#F59E0B]/30 bg-[#fffbeb] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#92400E]">
-                What needs attention
               </div>
-              <ul className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/80">
-                {report.brief.attention.map((a) => (
-                  <li key={a}>· {a}</li>
-                ))}
-              </ul>
-            </article>
-            <article className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-                Next three actions
+            ) : (
+              <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/72">
+                No direct contradictions were detected in the currently available structured
+                evidence.
+                <span className="mt-1 block text-xs text-[#64748B]">
+                  Missing evidence is not proof that no conflict exists.
+                </span>
               </div>
-              <ol className="mt-2 space-y-1.5 text-sm leading-5 text-[#0D1B2A]/85">
-                {report.brief.nextActions.map((n, i) => (
-                  <li key={`${i}-${n.label}`}>
-                    {i + 1}. {n.label}
-                  </li>
+            )}
+          </section>
+
+          <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+            <ReportSectionTitle eyebrow="Immediate next actions" title="Move the report forward" />
+            {decision.immediateActions.length ? (
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                {decision.immediateActions.map((action, index) => (
+                  <button
+                    key={`${index}-${action.label}`}
+                    type="button"
+                    onClick={() => onSelectView?.(routeTabFor(action.tab))}
+                    className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
+                  >
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+                      Action {index + 1}
+                    </span>
+                    <span className="mt-1 flex items-center justify-between gap-2">
+                      {action.label}
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                    </span>
+                  </button>
                 ))}
-              </ol>
-            </article>
-          </div>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-sm text-[#0D1B2A]/66">
+                No immediate action is generated from the current structured evidence.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+            <ReportSectionTitle eyebrow="Decision Matrix" title="Key questions and answers" />
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {decision.matrix.map((row) => (
+                <DecisionMatrixCard key={row.id} row={row} />
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+            <ReportSectionTitle eyebrow="Evidence Timeline" title="Saved evidence chronology" />
+            <ol className="mt-4 space-y-3">
+              {decision.timeline.map((item) => (
+                <EvidenceTimelineRow key={item.id} item={item} />
+              ))}
+            </ol>
+          </section>
         </div>
+
       </section>
 
       {/* STICKY REPORT NAV */}
@@ -1794,6 +1930,121 @@ function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string
       </div>
       <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
     </div>
+  );
+}
+
+function decisionVerdictLabel(verdict: DecisionVerdict) {
+  switch (verdict) {
+    case "proceed":
+      return "Proceed";
+    case "proceed_with_conditions":
+      return "Proceed with conditions";
+    case "investigate_further":
+      return "Investigate further";
+    case "high_risk":
+      return "High risk";
+  }
+}
+
+function severityTone(severity: "low" | "medium" | "high") {
+  return severity === "high"
+    ? "bg-[#dc2626] text-white"
+    : severity === "medium"
+      ? "bg-[#F59E0B] text-[#0D1B2A]"
+      : "bg-[#D9E6F2] text-[#0D1B2A]";
+}
+
+function matrixAnswerLabel(answer: DecisionMatrixRow["answer"]) {
+  switch (answer) {
+    case "yes":
+      return "Yes";
+    case "no":
+      return "No";
+    case "conditional":
+      return "Conditional";
+    case "unknown":
+      return "Unknown";
+  }
+}
+
+function matrixAnswerTone(answer: DecisionMatrixRow["answer"]) {
+  switch (answer) {
+    case "yes":
+      return "bg-[#dcfce7] text-[#166534]";
+    case "no":
+      return "bg-[#fee2e2] text-[#991b1b]";
+    case "conditional":
+      return "bg-[#fffbeb] text-[#92400E]";
+    case "unknown":
+      return "bg-[#D9E6F2] text-[#0D1B2A]";
+  }
+}
+
+function DecisionListPanel({
+  title,
+  items,
+  empty,
+  footnote,
+}: {
+  title: string;
+  items: string[];
+  empty: string;
+  footnote?: string;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-white p-5">
+      <h3 className="text-base font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
+      {items.length ? (
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/72">
+          {items.map((item) => (
+            <li key={item} className="rounded-2xl bg-[#F7FBFF] px-3 py-2">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-sm text-[#0D1B2A]/60">
+          {empty}
+        </p>
+      )}
+      {footnote && <p className="mt-3 text-xs text-[#64748B]">{footnote}</p>}
+    </section>
+  );
+}
+
+function DecisionMatrixCard({ row }: { row: DecisionMatrixRow }) {
+  return (
+    <article className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-[#0D1B2A]">{row.question}</h4>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
+            matrixAnswerTone(row.answer),
+          )}
+        >
+          {matrixAnswerLabel(row.answer)}
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/66">{row.explanation}</p>
+    </article>
+  );
+}
+
+function EvidenceTimelineRow({ item }: { item: EvidenceTimelineItem }) {
+  return (
+    <li className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <time className="text-xs font-semibold text-[#0D1B2A]">
+          {new Date(item.occurredAt).toLocaleDateString()}
+        </time>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
+          {item.source}
+        </span>
+      </div>
+      <h4 className="mt-2 text-sm font-semibold text-[#0D1B2A]">{item.label}</h4>
+      <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">{item.detail}</p>
+    </li>
   );
 }
 
