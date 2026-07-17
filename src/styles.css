@@ -250,6 +250,10 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .report-change-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .report-nav-sticky { position: static !important; display: none !important; }
   .report-print-single-column > * + * { margin-top: 12px; }
   .report-print-single-column { display: block !important; }
