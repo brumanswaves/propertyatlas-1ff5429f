@@ -130,4 +130,22 @@ describe("buildDecisionIntelligence", () => {
     expect(result.timeline.at(-1)?.id).toBe("report-generated");
     expect(result.timeline.some((item) => item.id === "market-updated")).toBe(true);
   });
+
+  it("returns all seven confidence categories and allowed verdict labels", () => {
+    const report = buildReportViewModel(reportInput());
+    const result = buildDecisionIntelligence(report);
+
+    expect(result.confidenceCategories.map((category) => category.label)).toEqual([
+      "Identity",
+      "Planning",
+      "Ownership",
+      "Market",
+      "Risk review",
+      "Strategy",
+      "Documents",
+    ]);
+    expect(["proceed", "proceed_with_conditions", "investigate_further", "high_risk"]).toContain(
+      result.verdict,
+    );
+  });
 });

@@ -140,10 +140,53 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"),
     "utf8",
   );
+  const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
 
   it("wires a print action using window.print", () => {
     expect(source).toContain("window.print()");
     expect(source).toContain("Print / Save PDF");
+  });
+
+  it("renders the Phase 2 Executive Decision Brief from decision intelligence", () => {
+    expect(source).toContain("buildDecisionIntelligence(report)");
+    expect(source).toContain("Overall verdict");
+    expect(source).toContain('return "Proceed"');
+    expect(source).toContain('return "Proceed with conditions"');
+    expect(source).toContain('return "Investigate further"');
+    expect(source).toContain('return "High risk"');
+    expect(source).toContain("Evidence-grounded interpretation");
+    expect(source).toContain("Property IQ / Confidence Engine");
+    expect(source).toContain("What Easy Erf knows");
+    expect(source).toContain("What Easy Erf still needs");
+    expect(source).toContain("No direct contradictions were detected");
+    expect(source).toContain("Missing evidence is not proof that no conflict exists");
+    expect(source).toContain("Immediate next actions");
+    expect(source).toContain("Decision Matrix");
+    expect(source).toContain("Evidence Timeline");
+  });
+
+  it("routes decision actions through the existing Workbench navigation", () => {
+    expect(source).toContain("onSelectView?.(routeTabFor(action.tab))");
+    expect(source).toContain('case "research"');
+    expect(source).toContain('case "listings"');
+    expect(source).toContain('case "reports"');
+    expect(source).toContain('case "calculators"');
+    expect(source).toContain('case "site-potential"');
+    expect(source).toContain('case "stoep-report"');
+  });
+
+  it("keeps the visible report away from unsupported advice claims", () => {
+    expect(source).toContain("property-quality score, valuation confidence, or purchase recommendation");
+    expect(source).not.toMatch(/\bBuy recommendation\b/i);
+    expect(source).not.toMatch(/\bSell recommendation\b/i);
+    expect(source).not.toMatch(/\bownership is verified\b/i);
+  });
+
+  it("prints the decision intelligence sections without heavy interactive chrome", () => {
+    expect(styles).toContain(".report-no-print { display: none !important; }");
+    expect(styles).toContain(".report-decision-hero");
+    expect(styles).toContain("break-inside: avoid");
+    expect(styles).toContain('[style*="conic-gradient"]');
   });
 
   it("renders section anchor targets that match REPORT_SECTIONS", () => {
