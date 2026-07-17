@@ -904,6 +904,7 @@ describe("Investor Decision Mode guardrails", () => {
 
     expect(dossier).toContain("Investor Decision Brief");
     expect(dossier).toContain("Investor Numbers");
+    expect(dossier).toContain("Chosen strategy");
     expect(dossier).toContain("Evidence supporting the case");
     expect(dossier).toContain("Evidence weakening the case");
     expect(dossier).toContain("Assumptions the case depends on");

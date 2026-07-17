@@ -2137,10 +2137,11 @@ function InvestorDecisionBrief({
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <InvestorStatusCard title="Evidence strength" value={data.evidenceStrength} />
         <InvestorStatusCard title="Acquisition price" value={data.acquisitionPriceStatus} />
         <InvestorStatusCard title="Market evidence" value={data.marketEvidenceStatus} />
+        <InvestorStatusCard title="Chosen strategy" value={data.chosenStrategyStatus} />
         <InvestorStatusCard title="Strategy calculations" value={data.calculationStatus} />
       </section>
 

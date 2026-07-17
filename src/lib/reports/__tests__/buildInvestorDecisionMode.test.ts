@@ -6,10 +6,7 @@ import {
   type InvestorReadinessStatus,
 } from "@/lib/reports/buildInvestorDecisionMode";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
-import {
-  buildReportViewModel,
-  type BuildReportInput,
-} from "@/lib/reports/buildReportViewModel";
+import { buildReportViewModel, type BuildReportInput } from "@/lib/reports/buildReportViewModel";
 import {
   coerceReportDecisionMode,
   readReportDecisionMode,
@@ -129,6 +126,20 @@ describe("report decision mode preference", () => {
     expect(readReportDecisionMode("parcel-a", mockStorage)).toBe("investor");
     expect(readReportDecisionMode("parcel-b", mockStorage)).toBe("standard");
   });
+
+  it("falls back safely when browser storage throws", () => {
+    const throwingStorage = {
+      getItem: () => {
+        throw new Error("blocked storage");
+      },
+      setItem: () => {
+        throw new Error("blocked storage");
+      },
+    } as unknown as Storage;
+
+    expect(readReportDecisionMode("parcel-a", throwingStorage)).toBe("standard");
+    expect(writeReportDecisionMode("parcel-a", "investor", throwingStorage)).toBe("investor");
+  });
 });
 
 describe("buildInvestorDecisionMode", () => {
@@ -139,7 +150,9 @@ describe("buildInvestorDecisionMode", () => {
       value: "Not provided",
       state: "missing",
     });
-    expect(JSON.stringify(result)).not.toMatch(/\bR\s?0\b|Strong buy|Buy this property|Sell|Undervalued|Overvalued|Guaranteed|Great investment|Recommended investment|Expected return|Verified return/i);
+    expect(JSON.stringify(result)).not.toMatch(
+      /\bR\s?0\b|Strong buy|Buy this property|Sell|Undervalued|Overvalued|Guaranteed|Great investment|Recommended investment|Expected return|Verified return/i,
+    );
   });
 
   it("uses subject listing asking price only from current-parcel evidence", () => {
@@ -151,9 +164,7 @@ describe("buildInvestorDecisionMode", () => {
     });
     const result = investor({ savedEvidence: [otherParcelSubject] });
 
-    expect(result.numberRows.find((row) => row.id === "asking-price")?.value).toBe(
-      "Not provided",
-    );
+    expect(result.numberRows.find((row) => row.id === "asking-price")?.value).toBe("Not provided");
 
     const currentSubject = evidence({
       id: "subject",
@@ -193,25 +204,201 @@ describe("buildInvestorDecisionMode", () => {
     expect(result.numberRows.map((row) => row.value)).not.toContain("R 999");
   });
 
+  it("separates purchase price from acquisition and transfer costs", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1000000",
+        loanAmount: "0",
+        monthlyRent: "12000",
+        transferDuty: "10000",
+        transferCosts: "20000",
+        attorneyFees: "5000",
+        bondCosts: "7000",
+        financeFees: "3000",
+        inspectionCosts: "2000",
+        otherAcquisitionCosts: "1000",
+      }),
+      savedEvidence: [evidence({ id: "rental", askingPrice: 1_000_000 })],
+    });
+
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "acquisition-price")?.value),
+    ).toBe("R 1 000 000");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "acquisition-costs")?.value),
+    ).toBe("R 48 000");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-acquisition-cost")?.value),
+    ).toBe("R 1 048 000");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-cash-required")?.value),
+    ).toBe("R 1 048 000");
+  });
+
+  it("preserves explicit cash purchases as zero debt instead of missing finance", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1200000",
+        loanAmount: "0",
+        monthlyRent: "11000",
+      }),
+    });
+
+    const bond = result.numberRows.find((row) => row.id === "monthly-bond-payment");
+    expect(bond).toMatchObject({ label: "Monthly bond payment", state: "available" });
+    expect(compactCurrency(bond?.value)).toBe("R 0");
+    expect(result.missingInputs.join(" ")).not.toMatch(/interest rate|loan term|finance terms/i);
+  });
+
+  it("uses precise STR labels and avoids fake zero cash-on-cash when cash investment is missing", () => {
+    const result = investor({
+      chosenScenario: scenario("str_airbnb", {
+        averageDailyRate: "1800",
+        occupancyPercent: "45",
+      }),
+    });
+
+    expect(result.numberRows.find((row) => row.id === "average-daily-rate")).toMatchObject({
+      label: "Average daily rate",
+      state: "available",
+    });
+    expect(result.numberRows.map((row) => row.label)).not.toContain("Projected rental income");
+    expect(result.numberRows.find((row) => row.id === "cash-on-cash-return")).toMatchObject({
+      value: "Not calculated",
+      state: "not_calculated",
+    });
+  });
+
   it.each([
-    ["buy_hold", { purchasePrice: "1000000", monthlyRent: "10000" }],
-    ["flip", { purchasePrice: "1000000", renovationBudget: "100000", expectedResalePrice: "1300000" }],
-    ["development_sell", { landCost: "800000", buildCost: "1200000", expectedSaleValue: "2500000" }],
-    ["development_rent", { landCost: "800000", buildCost: "1200000", expectedMonthlyRent: "18000" }],
-    ["str_airbnb", { averageDailyRate: "1800", occupancyPercent: "40" }],
-    ["brrrr", { purchasePrice: "900000", monthlyRent: "12000", afterRepairValue: "1300000" }],
-    ["bond", { purchasePrice: "1000000", interestRate: "11.75", termYears: "20" }],
-    ["land_bank", { purchasePrice: "700000", futureValue: "900000" }],
-    ["custom", { customUpside: "50000" }],
-  ])("handles %s safely without relying on a shared structure", (kind, inputs) => {
+    ["buy_hold", { monthlyRent: "10000" }, "purchase price"],
+    ["buy_hold", { purchasePrice: "1000000" }, "monthly rental income"],
+    ["flip", { renovationBudget: "100000", expectedResalePrice: "1300000" }, "purchase price"],
+    ["flip", { purchasePrice: "1000000", expectedResalePrice: "1300000" }, "renovation budget"],
+    ["development_sell", { landCost: "800000", expectedSaleValue: "2500000" }, "build cost"],
+    ["development_sell", { landCost: "800000", buildCost: "1200000" }, "projected exit value"],
+    ["development_rent", { buildCost: "1200000", expectedMonthlyRent: "18000" }, "land cost"],
+    ["development_rent", { landCost: "800000", buildCost: "1200000" }, "monthly rental income"],
+    ["str_airbnb", { occupancyPercent: "40" }, "average daily rate"],
+    ["str_airbnb", { averageDailyRate: "1800" }, "occupancy percentage"],
+    ["brrrr", { purchasePrice: "900000", monthlyRent: "12000" }, "after-repair value"],
+    [
+      "brrrr",
+      { purchasePrice: "900000", monthlyRent: "12000", afterRepairValue: "1300000" },
+      "renovation budget or all-in cost",
+    ],
+    ["bond", { purchasePrice: "1000000", termYears: "20" }, "interest rate"],
+    ["bond", { purchasePrice: "1000000", interestRate: "11.75" }, "loan term"],
+    ["land_bank", { futureValue: "900000" }, "land or acquisition price"],
+    ["custom", {}, "at least one saved custom assumption"],
+  ])("marks missing required %s input: %s", (kind, inputs, missingLabel) => {
     const result = investor({ chosenScenario: scenario(kind, inputs) });
-    expect(result.numberRows.length).toBeGreaterThan(0);
-    expect(result.numberRows.every((row) => row.value.trim().length > 0)).toBe(true);
+    expect(result.readinessStatus).toBe("Strategy assumptions incomplete");
+    expect(result.missingInputs).toContain(missingLabel);
+  });
+
+  it.each([
+    ["buy_hold", { purchasePrice: "1000000", loanAmount: "0", monthlyRent: "10000" }, "net-yield"],
+    [
+      "flip",
+      { purchasePrice: "1000000", renovationBudget: "100000", expectedResalePrice: "1300000" },
+      "projected-profit",
+    ],
+    [
+      "development_sell",
+      { landCost: "800000", buildCost: "1200000", expectedSaleValue: "2500000" },
+      "total-project-cost",
+    ],
+    [
+      "development_rent",
+      { landCost: "800000", buildCost: "1200000", expectedMonthlyRent: "18000" },
+      "monthly-cash-flow",
+    ],
+    ["str_airbnb", { averageDailyRate: "1800", occupancyPercent: "40" }, "monthly-net-income"],
+    [
+      "brrrr",
+      {
+        purchasePrice: "900000",
+        monthlyRent: "12000",
+        afterRepairValue: "1300000",
+        renovationBudget: "100000",
+      },
+      "cash-left-in-deal",
+    ],
+    [
+      "bond",
+      { loanAmount: "900000", interestRate: "11.75", termYears: "20" },
+      "monthly-bond-payment",
+    ],
+    ["land_bank", { purchasePrice: "700000", futureValue: "900000" }, "projected-exit-value"],
+    ["custom", { customUpside: "50000" }, "projected-profit"],
+  ])("produces an exact core output for %s", (kind, inputs, rowId) => {
+    const result = investor({ chosenScenario: scenario(kind, inputs) });
+    expect(result.numberRows.find((row) => row.id === rowId)).toMatchObject({
+      state: "available",
+    });
+  });
+
+  it("does not let generic comps satisfy rental-specific support", () => {
+    const result = investor({
+      chosenScenario: scenario("buy_hold", {
+        purchasePrice: "1000000",
+        loanAmount: "0",
+        monthlyRent: "10000",
+      }),
+      savedEvidence: [evidence(), evidence({ id: "e2" }), evidence({ id: "e3" })],
+    });
+
+    expect(result.marketEvidenceStatus).toContain("Rental support: not structurally verified");
+    expect(result.missingInputs).toContain("Rental support is not structurally verified.");
+    expect(result.readinessStatus).toBe("Market support insufficient");
+  });
+
+  it("counts priced exit comparables for exit strategies but not rental support", () => {
+    const comps = [evidence(), evidence({ id: "e2" }), evidence({ id: "e3" })];
+    const flipResult = investor({
+      chosenScenario: scenario("flip", {
+        purchasePrice: "1000000",
+        renovationBudget: "100000",
+        expectedResalePrice: "1500000",
+      }),
+      savedEvidence: comps,
+    });
+    expect(flipResult.marketEvidenceStatus).toContain("Exit-value support: 3 priced comparables");
+    expect(flipResult.missingInputs).not.toContain("Add exit-value market support.");
+
+    const strResult = investor({
+      chosenScenario: scenario("str_airbnb", {
+        averageDailyRate: "1800",
+        occupancyPercent: "40",
+      }),
+      savedEvidence: comps,
+    });
+    expect(strResult.marketEvidenceStatus).toContain("Rental support: not structurally verified");
+  });
+
+  it("does not require irrelevant market support for a bond-only scenario", () => {
+    const result = investor({
+      chosenScenario: scenario("bond", {
+        loanAmount: "900000",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+    });
+
+    expect(result.marketEvidenceStatus).toContain(
+      "Strategy does not require extra market support yet",
+    );
+    expect(result.missingInputs).not.toContain("Save comparable market evidence.");
+    expect(result.readinessStatus).not.toBe("Market support insufficient");
   });
 
   it("fails unsupported legacy scenarios honestly", () => {
     const result = investor({
-      chosenScenario: scenario("legacy_strategy", {}, { summary: [{ label: "Saved old row", value: "R 1" }] }),
+      chosenScenario: scenario(
+        "legacy_strategy",
+        {},
+        { summary: [{ label: "Saved old row", value: "R 1" }] },
+      ),
     });
 
     expect(result.readinessStatus).toBe("Strategy assumptions incomplete");
@@ -248,6 +435,19 @@ describe("buildInvestorDecisionMode", () => {
   it("routes investor next actions to existing Workbench sections", () => {
     const result = investor();
     const tabs = [result.primaryAction, ...result.nextActions].map((action) => action.tab);
-    expect(tabs.every((tab) => !tab || ["research", "reports", "listings", "calculators", "site-potential", "stoep-report"].includes(tab))).toBe(true);
+    expect(
+      tabs.every(
+        (tab) =>
+          !tab ||
+          [
+            "research",
+            "reports",
+            "listings",
+            "calculators",
+            "site-potential",
+            "stoep-report",
+          ].includes(tab),
+      ),
+    ).toBe(true);
   });
 });

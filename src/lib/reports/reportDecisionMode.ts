@@ -17,7 +17,11 @@ export function readReportDecisionMode(
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ): ReportDecisionMode {
   if (!storage) return "standard";
-  return coerceReportDecisionMode(storage.getItem(reportDecisionModeStorageKey(parcelId)));
+  try {
+    return coerceReportDecisionMode(storage.getItem(reportDecisionModeStorageKey(parcelId)));
+  } catch {
+    return "standard";
+  }
 }
 
 export function writeReportDecisionMode(
@@ -26,7 +30,10 @@ export function writeReportDecisionMode(
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ) {
   const next = coerceReportDecisionMode(mode);
-  storage?.setItem(reportDecisionModeStorageKey(parcelId), next);
+  try {
+    storage?.setItem(reportDecisionModeStorageKey(parcelId), next);
+  } catch {
+    return next;
+  }
   return next;
 }
-

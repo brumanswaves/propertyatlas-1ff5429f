@@ -78,6 +78,8 @@ type StrategyKind =
   | "land_bank"
   | "custom";
 
+type MarketNeed = "rental" | "exit" | "asking" | "comparable";
+
 const STRATEGY_KINDS: StrategyKind[] = [
   "buy_hold",
   "flip",
@@ -90,9 +92,28 @@ const STRATEGY_KINDS: StrategyKind[] = [
   "custom",
 ];
 
+const ACQUISITION_COST_KEYS = [
+  "transferDuty",
+  "transferCosts",
+  "attorneyFees",
+  "bondCosts",
+  "financeFees",
+  "inspectionCosts",
+  "otherAcquisitionCosts",
+] as const;
+
 interface ParsedInput {
   present: boolean;
   value: number | null;
+}
+
+interface DebtResolution {
+  loanAmount: number | null;
+  monthlyBondPayment: number | null;
+  bondResult: ReturnType<typeof calculateBond> | null;
+  cashPurchase: boolean;
+  debtIntended: boolean;
+  missingFinanceInputs: string[];
 }
 
 interface StrategyAnalysis {
@@ -101,7 +122,20 @@ interface StrategyAnalysis {
   warnings: string[];
   rows: InvestorNumberRow[];
   assumptions: string[];
-  needsMarket: Array<"rental" | "exit" | "asking" | "comparable">;
+  needsMarket: MarketNeed[];
+}
+
+interface MarketSupport {
+  subjectListingSaved: boolean;
+  comparableCount: number;
+  pricedExitComparableCount: number;
+  needsRentalSupport: boolean;
+  needsExitSupport: boolean;
+  needsComparableSupport: boolean;
+  needsSubjectListing: boolean;
+  insufficient: boolean;
+  missingInputs: string[];
+  status: string;
 }
 
 const EMPTY_ANALYSIS: StrategyAnalysis = {
@@ -119,19 +153,18 @@ export function buildInvestorDecisionMode(
   const report = input.report;
   const evidence = input.savedEvidence.filter((item) => item.parcelId === report.parcelId);
   const subjectListing = evidence.find((item) => item.listingRole === "subject_active_listing");
-  const comps = evidence.filter(
-    (item) =>
-      item.listingRole !== "subject_active_listing" &&
-      item.includeInSummary &&
-      item.relationship !== "not_related" &&
-      item.confidence !== "excluded",
-  );
-  const chosen =
-    input.chosenScenario?.parcelId === report.parcelId ? input.chosenScenario : null;
+  const comps = includedComparableEvidence(evidence);
+  const chosen = input.chosenScenario?.parcelId === report.parcelId ? input.chosenScenario : null;
   const strategy = analyzeStrategy(chosen);
+  const marketSupport = buildMarketSupport(strategy, comps, subjectListing);
   const rows = [
     subjectListing?.askingPrice
-      ? moneyRow("asking-price", "Asking price", subjectListing.askingPrice, "Saved subject listing")
+      ? moneyRow(
+          "asking-price",
+          "Asking price",
+          subjectListing.askingPrice,
+          "Saved subject listing",
+        )
       : missingRow("asking-price", "Asking price", "Saved subject listing"),
     ...strategy.rows,
   ];
@@ -140,14 +173,13 @@ export function buildInvestorDecisionMode(
   );
   const missingInputs = unique([
     ...strategy.missingInputs,
-    ...marketMissingInputs(strategy, comps, subjectListing),
+    ...marketSupport.missingInputs,
     ...input.decision.stillNeeded,
   ]).slice(0, 10);
   const contradictionPriority = input.decision.contradictions.some(
     (item) => item.severity === "high" || item.severity === "medium",
   );
   const strategyIncomplete = !chosen || strategy.missingInputs.length > 0 || !strategy.supported;
-  const marketInsufficient = marketSupportInsufficient(strategy, comps, subjectListing);
   const moreEvidenceRequired =
     report.brief.categories.some(
       (category) =>
@@ -159,18 +191,16 @@ export function buildInvestorDecisionMode(
     ? "Material contradiction requires review"
     : strategyIncomplete
       ? "Strategy assumptions incomplete"
-      : marketInsufficient
+      : marketSupport.insufficient
         ? "Market support insufficient"
         : moreEvidenceRequired
           ? "More evidence required"
           : "Ready for preliminary evaluation";
 
   const nextActions = buildInvestorActions({
-    status: readinessStatus,
     report,
     strategy,
-    subjectListing: Boolean(subjectListing),
-    comparableCount: comps.length,
+    marketSupport,
     contradictions: input.decision.contradictions.length,
   });
 
@@ -179,22 +209,32 @@ export function buildInvestorDecisionMode(
     readinessExplanation: readinessExplanation(readinessStatus),
     evidenceStrength: `${report.brief.readinessPercent}% evidence readiness from the neutral report; ${report.market.includedCount} included market evidence item${report.market.includedCount === 1 ? "" : "s"}.`,
     acquisitionPriceStatus: acquisitionPriceStatus(chosen, strategy),
-    marketEvidenceStatus: marketStatus(strategy, comps.length, Boolean(subjectListing)),
+    marketEvidenceStatus: marketSupport.status,
     chosenStrategyStatus: chosen
       ? `${chosen.label} is selected for this erf.`
       : "No parcel-matched strategy scenario is selected.",
     calculationStatus: strategy.supported
-      ? "Deterministic calculations are available from saved raw inputs where required inputs exist."
-      : "Calculations are incomplete or unavailable for the selected strategy.",
+      ? "Core deterministic calculation outputs are available from saved raw inputs."
+      : "Strategy calculations are incomplete until required inputs are saved.",
     numberRows: uniqueRows,
-    supportingEvidence: supportingEvidence(report, comps.length, Boolean(subjectListing)),
+    supportingEvidence: supportingEvidence(report, marketSupport),
     weakeningEvidence: weakeningEvidence(input.decision, report, strategy),
     assumptions: unique(strategy.assumptions).slice(0, 8),
     missingInputs,
-    downsideRisks: downsideRisks(input.decision, report, strategy, comps.length),
+    downsideRisks: downsideRisks(input.decision, report, strategy, marketSupport),
     primaryAction: nextActions[0],
     nextActions: nextActions.slice(1),
   };
+}
+
+function includedComparableEvidence(evidence: SavedMarketEvidence[]) {
+  return evidence.filter(
+    (item) =>
+      item.listingRole !== "subject_active_listing" &&
+      item.includeInSummary &&
+      item.relationship !== "not_related" &&
+      item.confidence !== "excluded",
+  );
 }
 
 function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis {
@@ -211,200 +251,372 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
     }
     return EMPTY_ANALYSIS;
   }
+
   const strategy = scenario.strategy as StrategyKind;
-  const value = (key: string) => parseInput(scenario.inputs[key]);
   const rows: InvestorNumberRow[] = [];
   const missing: string[] = [];
   const assumptions: string[] = [];
-  const needsMarket: StrategyAnalysis["needsMarket"] = ["comparable"];
-
-  const addInput = (id: string, label: string, key: string) => {
+  const needsMarket: MarketNeed[] = [];
+  const value = (key: string) => parseInput(scenario.inputs[key]);
+  const requirePositive = (label: string, key: string) => {
     const parsed = value(key);
-    rows.push(parsed.present ? moneyRow(id, label, parsed.value ?? 0, "User assumption") : missingRow(id, label, "User assumption"));
-    if (parsed.present) assumptions.push(`${label}: ${formatMoney(parsed.value ?? 0)}`);
+    if (!isPositive(parsed)) missing.push(label);
     return parsed;
   };
-  const requireInput = (label: string, key: string) => {
-    const parsed = value(key);
-    if (!parsed.present) missing.push(label);
-    return parsed;
+  const requirePositiveOneOf = (label: string, keys: string[]) => {
+    const values = keys.map((key) => value(key));
+    if (!values.some(isPositive)) missing.push(label);
+    return values;
   };
 
-  const purchasePrice = addInput("acquisition-price", "Assumed acquisition price", "purchasePrice");
+  const purchasePrice = ["buy_hold", "flip", "brrrr", "bond", "land_bank"].includes(strategy)
+    ? requirePositive(
+        strategy === "land_bank" ? "land or acquisition price" : "purchase price",
+        "purchasePrice",
+      )
+    : value("purchasePrice");
   const landCost = strategy.startsWith("development")
-    ? addInput("land-cost", "Land cost", "landCost")
+    ? requirePositive("land cost", "landCost")
+    : value("landCost");
+  const acquisitionCosts = acquisitionCostInputs(value);
+  const acquisition = isPositive(purchasePrice)
+    ? calculateAcquisition({
+        purchasePrice: purchasePrice.value,
+        depositPercent: value("depositPercent").value ?? 10,
+        transferDuty: value("transferDuty").value ?? 0,
+        conveyancerFees: (value("transferCosts").value ?? 0) + (value("attorneyFees").value ?? 0),
+        bondRegistrationFees: value("bondCosts").value ?? 0,
+        initiationFees: value("financeFees").value ?? 0,
+        inspectionAllowance: value("inspectionCosts").value ?? 0,
+        renovationBudget: value("renovationBudget").value ?? 0,
+        furnitureBudget: value("furnishingSetupCost").value ?? 0,
+        cashBuffer: value("otherAcquisitionCosts").value ?? 0,
+      })
     : null;
+  const debt = resolveDebt(value, isPositive(purchasePrice) ? purchasePrice.value : null);
 
-  const loanAmount =
-    value("loanAmount").value ??
-    (purchasePrice.present && purchasePrice.value != null
-      ? Math.max(0, purchasePrice.value * (1 - (value("depositPercent").value ?? 10) / 100))
-      : null);
-  const monthlyBond =
-    value("monthlyBondPayment").value ??
-    (loanAmount && value("interestRate").present && value("termYears").present
-      ? calculateBond({
-          loanAmount,
-          interestRate: value("interestRate").value ?? 0,
-          termYears: value("termYears").value ?? 0,
-          extraMonthlyPayment: 0,
-          monthlyNoi: 0,
-          monthlyRent: value("monthlyRent").value ?? 0,
-        }).monthlyBondPayment
-      : null);
-
-  const acquisition =
-    purchasePrice.present && purchasePrice.value != null
-      ? calculateAcquisition({
-          purchasePrice: purchasePrice.value,
-          depositPercent: value("depositPercent").value ?? 10,
-          transferDuty: value("transferDuty").value ?? 0,
-          conveyancerFees: (value("transferCosts").value ?? 0) + (value("attorneyFees").value ?? 0),
-          bondRegistrationFees: value("bondCosts").value ?? 0,
-          initiationFees: value("financeFees").value ?? 0,
-          inspectionAllowance: value("inspectionCosts").value ?? 0,
-          renovationBudget: value("renovationBudget").value ?? 0,
-          furnitureBudget: value("furnishingSetupCost").value ?? 0,
-          cashBuffer: value("otherAcquisitionCosts").value ?? 0,
-        })
-      : null;
-
-  if (acquisition) {
-    rows.push(moneyRow("acquisition-costs", "Acquisition and transfer costs", acquisition.totalAcquisitionCost, "Deterministic calculation"));
-    rows.push(moneyRow("total-cash-required", "Total cash required", acquisition.totalCashRequired, "Deterministic calculation"));
-  } else {
-    rows.push(notCalculatedRow("acquisition-costs", "Acquisition and transfer costs", "Deterministic calculation"));
-    rows.push(notCalculatedRow("total-cash-required", "Total cash required", "Deterministic calculation"));
+  if (isPositive(purchasePrice)) {
+    rows.push(
+      moneyRow(
+        "acquisition-price",
+        "Assumed acquisition price",
+        purchasePrice.value,
+        "User assumption",
+      ),
+    );
+    assumptions.push(`Assumed acquisition price: ${formatMoney(purchasePrice.value)}`);
+    rows.push(
+      acquisitionCosts.present
+        ? moneyRow(
+            "acquisition-costs",
+            "Acquisition and transfer costs",
+            acquisitionCosts.value,
+            "User assumption",
+          )
+        : missingRow("acquisition-costs", "Acquisition and transfer costs", "User assumption"),
+    );
+    rows.push(
+      moneyRow(
+        "total-acquisition-cost",
+        "Total acquisition cost including purchase price",
+        purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0),
+        "Deterministic calculation",
+      ),
+    );
+    rows.push(
+      acquisition
+        ? moneyRow(
+            "total-cash-required",
+            "Total cash required",
+            debt.cashPurchase
+              ? purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0)
+              : acquisition.totalCashRequired,
+            "Deterministic calculation",
+          )
+        : notCalculatedRow(
+            "total-cash-required",
+            "Total cash required",
+            "Deterministic calculation",
+          ),
+    );
   }
 
-  if (value("renovationBudget").present) {
-    rows.push(moneyRow("renovation-cost", "Renovation cost", value("renovationBudget").value ?? 0, "User assumption"));
+  if (isPositive(landCost)) {
+    rows.push(moneyRow("land-cost", "Land cost", landCost.value, "User assumption"));
+    assumptions.push(`Land cost: ${formatMoney(landCost.value)}`);
   }
-  if (value("buildCost").present) {
-    rows.push(moneyRow("build-cost", "Build cost", value("buildCost").value ?? 0, "User assumption"));
+  const renovation = value("renovationBudget");
+  if (isPositive(renovation)) {
+    rows.push(moneyRow("renovation-cost", "Renovation cost", renovation.value, "User assumption"));
+    assumptions.push(`Renovation budget: ${formatMoney(renovation.value)}`);
   }
-  if (monthlyBond != null) {
-    rows.push(moneyRow("finance-cost", "Finance cost", monthlyBond, "Deterministic calculation"));
-  } else if (strategy === "bond" || strategy === "buy_hold" || strategy === "brrrr") {
-    rows.push(notCalculatedRow("finance-cost", "Finance cost", "Deterministic calculation"));
+  const build = value("buildCost");
+  if (isPositive(build)) {
+    rows.push(moneyRow("build-cost", "Build cost", build.value, "User assumption"));
+    assumptions.push(`Build cost: ${formatMoney(build.value)}`);
   }
-  if (value("monthlyHoldingCost").present && value("holdingMonths").present) {
-    rows.push(moneyRow("holding-cost", "Holding cost", (value("monthlyHoldingCost").value ?? 0) * (value("holdingMonths").value ?? 0), "Deterministic calculation"));
+
+  if (debt.cashPurchase) {
+    rows.push(
+      moneyRow("monthly-bond-payment", "Monthly bond payment", 0, "Deterministic calculation"),
+    );
+  } else if (debt.bondResult) {
+    rows.push(
+      moneyRow(
+        "monthly-bond-payment",
+        "Monthly bond payment",
+        debt.bondResult.monthlyBondPayment,
+        "Deterministic calculation",
+      ),
+    );
+  } else if (["bond", "buy_hold", "brrrr", "development_rent", "str_airbnb"].includes(strategy)) {
+    rows.push(
+      notCalculatedRow("monthly-bond-payment", "Monthly bond payment", "Deterministic calculation"),
+    );
   }
 
   switch (strategy) {
     case "buy_hold": {
-      const monthlyRent = requireInput("projected rental income", "monthlyRent");
-      if (monthlyRent.present) rows.push(moneyRow("projected-rental-income", "Projected rental income", monthlyRent.value ?? 0, "User assumption"));
-      if (purchasePrice.present && monthlyRent.present && acquisition && monthlyBond != null) {
-        const result = calculateBuyHold({
-          purchasePrice: purchasePrice.value ?? 0,
-          totalCashInvested: acquisition.totalCashRequired,
-          monthlyRent: monthlyRent.value ?? 0,
-          otherIncome: value("otherIncome").value ?? 0,
-          vacancyPercent: value("vacancyPercent").value ?? 0,
-          monthlyRates: value("monthlyRates").value ?? 0,
-          monthlyLevies: value("monthlyLevies").value ?? 0,
-          insurance: value("insurance").value ?? 0,
-          utilitiesPaidByOwner: value("utilitiesPaidByOwner").value ?? 0,
-          capitalExpenditureReserve: value("maintenanceReserve").value ?? 0,
-          maintenancePercent: 0,
-          managementPercent: value("propertyManagementPercent").value ?? 0,
-          otherMonthlyCosts: (value("security").value ?? 0) + (value("gardenPool").value ?? 0) + (value("otherMonthlyCosts").value ?? 0),
-          monthlyBondPayment: monthlyBond,
-          holdingPeriodYears: value("annualHoldingYears").value ?? 0,
-          sellingCostPercent: 6,
-          loanAmount: loanAmount ?? 0,
-        });
-        rows.push(percentRow("cash-on-cash-return", "Cash-on-cash return", result.cashOnCashReturn, "Deterministic calculation"));
-        rows.push(percentRow("net-yield", "Net yield", result.netYield, "Deterministic calculation"));
-        rows.push(moneyRow("break-even-rent", "Break-even rent", result.breakEvenRent, "Deterministic calculation"));
+      const monthlyRent = requirePositive("monthly rental income", "monthlyRent");
+      if (isPositive(monthlyRent)) {
+        rows.push(
+          moneyRow(
+            "monthly-rental-income",
+            "Monthly rental income",
+            monthlyRent.value,
+            "User assumption",
+          ),
+        );
+      }
+      if (debt.debtIntended && debt.missingFinanceInputs.length) {
+        missing.push(...debt.missingFinanceInputs);
+      }
+      if (isPositive(purchasePrice) && isPositive(monthlyRent)) {
+        const totalCashInvested = debt.cashPurchase
+          ? purchasePrice.value + (acquisitionCosts.present ? acquisitionCosts.value : 0)
+          : acquisition?.totalCashRequired;
+        const monthlyBondPayment = debt.monthlyBondPayment;
+        rows.push(
+          netYieldRow({
+            purchasePrice: purchasePrice.value,
+            monthlyRent: monthlyRent.value,
+            otherIncome: value("otherIncome").value ?? 0,
+            vacancyPercent: value("vacancyPercent").value ?? 0,
+            monthlyRates: value("monthlyRates").value ?? 0,
+            monthlyLevies: value("monthlyLevies").value ?? 0,
+            insurance: value("insurance").value ?? 0,
+            utilitiesPaidByOwner: value("utilitiesPaidByOwner").value ?? 0,
+            capitalExpenditureReserve: value("maintenanceReserve").value ?? 0,
+            maintenancePercent: 0,
+            managementPercent: value("propertyManagementPercent").value ?? 0,
+            otherMonthlyCosts:
+              (value("security").value ?? 0) +
+              (value("gardenPool").value ?? 0) +
+              (value("otherMonthlyCosts").value ?? 0),
+            monthlyBondPayment: monthlyBondPayment ?? 0,
+            totalCashInvested: totalCashInvested ?? 0,
+            loanAmount: debt.loanAmount ?? 0,
+          }),
+        );
+        if (monthlyBondPayment != null && totalCashInvested && totalCashInvested > 0) {
+          const result = buyHoldResult(
+            value,
+            purchasePrice.value,
+            monthlyRent.value,
+            monthlyBondPayment,
+            totalCashInvested,
+            debt.loanAmount ?? 0,
+          );
+          rows.push(
+            percentRow(
+              "cash-on-cash-return",
+              "Cash-on-cash return",
+              result.cashOnCashReturn,
+              "Deterministic calculation",
+            ),
+          );
+          rows.push(
+            moneyRow(
+              "cash-flow-after-debt",
+              "Monthly cash flow after debt",
+              result.cashFlowAfterDebt,
+              "Deterministic calculation",
+            ),
+          );
+          rows.push(
+            moneyRow(
+              "break-even-rent",
+              "Break-even monthly rent",
+              result.breakEvenRent,
+              "Deterministic calculation",
+            ),
+          );
+        }
       }
       needsMarket.push("rental");
       break;
     }
     case "flip": {
-      const resale = requireInput("projected exit value", "expectedResalePrice");
-      const renovation = requireInput("renovation cost", "renovationBudget");
-      if (resale.present) rows.push(moneyRow("projected-exit-value", "Projected exit value", resale.value ?? 0, "User assumption"));
-      if (purchasePrice.present && resale.present && renovation.present) {
+      const resale = requirePositive("projected exit value", "expectedResalePrice");
+      const renovationRequired = requirePositive("renovation budget", "renovationBudget");
+      if (isPositive(resale))
+        rows.push(
+          moneyRow("projected-exit-value", "Projected exit value", resale.value, "User assumption"),
+        );
+      if (isPositive(purchasePrice) && isPositive(resale) && isPositive(renovationRequired)) {
         const result = calculateFlip({
-          purchasePrice: purchasePrice.value ?? 0,
-          acquisitionCosts: (value("transferDuty").value ?? 0) + (value("transferCosts").value ?? 0) + (value("bondCosts").value ?? 0) + (value("attorneyFees").value ?? 0) + (value("inspectionCosts").value ?? 0) + (value("otherAcquisitionCosts").value ?? 0),
-          renovationBudget: renovation.value ?? 0,
+          purchasePrice: purchasePrice.value,
+          acquisitionCosts: acquisitionCosts.value,
+          renovationBudget: renovationRequired.value,
           contingencyPercent: value("contingencyPercent").value ?? 0,
           holdingMonths: value("holdingMonths").value ?? 0,
           monthlyHoldingCost: value("monthlyHoldingCost").value ?? 0,
-          expectedResalePrice: resale.value ?? 0,
+          expectedResalePrice: resale.value,
           agentCommissionPercent: value("agentCommission").value ?? 0,
           sellingCosts: value("sellingCosts").value ?? 0,
           targetProfit: 0,
           targetRoiPercent: 20,
         });
-        rows.push(moneyRow("projected-profit", "Projected profit", result.profit, "Deterministic calculation"));
-        rows.push(percentRow("return", "Return", result.roi, "Deterministic calculation"));
+        rows.push(
+          moneyRow(
+            "projected-profit",
+            "Projected profit",
+            result.profit,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(percentRow("roi", "ROI", result.roi, "Deterministic calculation"));
       }
       needsMarket.push("exit");
       break;
     }
     case "development_sell": {
-      const build = requireInput("build cost", "buildCost");
-      const sale = requireInput("projected exit value", "expectedSaleValue");
-      if (sale.present) rows.push(moneyRow("projected-exit-value", "Projected exit value", sale.value ?? 0, "User assumption"));
-      if (landCost?.present && build.present && sale.present) {
+      const buildCost = requirePositive("build cost", "buildCost");
+      const sale = requirePositive("projected exit value", "expectedSaleValue");
+      requireDevelopmentDurationIfHoldingCost(value, missing);
+      if (isPositive(sale))
+        rows.push(
+          moneyRow("projected-exit-value", "Projected exit value", sale.value, "User assumption"),
+        );
+      if (isPositive(landCost) && isPositive(buildCost) && isPositive(sale)) {
         const result = calculateDevelopmentToSell({
-          landCost: landCost.value ?? 0,
-          buildCost: build.value ?? 0,
+          landCost: landCost.value,
+          buildCost: buildCost.value,
           professionalFees: value("professionalFees").value ?? 0,
           municipalPlanningFees: value("municipalPlanningFees").value ?? 0,
           contingencyPercent: value("contingencyPercent").value ?? 0,
           developmentDurationMonths: value("developmentDurationMonths").value ?? 0,
           monthlyHoldingCost: value("monthlyHoldingCost").value ?? 0,
-          exitSellingCosts: (value("exitSellingCosts").value ?? 0) + (value("sellingCosts").value ?? 0),
-          expectedSaleValue: sale.value ?? 0,
+          exitSellingCosts:
+            (value("exitSellingCosts").value ?? 0) + (value("sellingCosts").value ?? 0),
+          expectedSaleValue: sale.value,
         });
-        rows.push(moneyRow("total-project-cost", "Total project cost", result.totalProjectCost, "Deterministic calculation"));
-        rows.push(moneyRow("projected-profit", "Projected profit", result.netProfit, "Deterministic calculation"));
-        rows.push(percentRow("gross-margin", "Gross margin", result.margin, "Deterministic calculation"));
-        rows.push(percentRow("return-on-cost", "Return on cost", result.returnOnCost, "Deterministic calculation"));
-        rows.push(moneyRow("break-even-sale-price", "Break-even sale price", result.breakEvenSalePrice, "Deterministic calculation"));
+        rows.push(
+          moneyRow(
+            "total-project-cost",
+            "Total project cost",
+            result.totalProjectCost,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "projected-profit",
+            "Projected profit",
+            result.netProfit,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          percentRow("gross-margin", "Gross margin", result.margin, "Deterministic calculation"),
+        );
+        rows.push(
+          percentRow(
+            "return-on-cost",
+            "Return on cost",
+            result.returnOnCost,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "break-even-sale-price",
+            "Break-even sale price",
+            result.breakEvenSalePrice,
+            "Deterministic calculation",
+          ),
+        );
       }
       needsMarket.push("exit");
       break;
     }
     case "development_rent": {
-      const build = requireInput("build cost", "buildCost");
-      const rent = requireInput("projected rental income", "expectedMonthlyRent");
-      if (rent.present) rows.push(moneyRow("projected-rental-income", "Projected rental income", rent.value ?? 0, "User assumption"));
-      if (landCost?.present && build.present && rent.present) {
+      const buildCost = requirePositive("build cost", "buildCost");
+      const rent = requirePositive("monthly rental income", "expectedMonthlyRent");
+      requireDevelopmentDurationIfHoldingCost(value, missing);
+      if (isPositive(rent))
+        rows.push(
+          moneyRow("monthly-rental-income", "Monthly rental income", rent.value, "User assumption"),
+        );
+      if (debt.debtIntended && debt.missingFinanceInputs.length) {
+        missing.push(...debt.missingFinanceInputs);
+      }
+      if (isPositive(landCost) && isPositive(buildCost) && isPositive(rent)) {
         const result = calculateDevelopmentToRent({
-          landCost: landCost.value ?? 0,
-          buildCost: build.value ?? 0,
+          landCost: landCost.value,
+          buildCost: buildCost.value,
           professionalFees: value("professionalFees").value ?? 0,
           municipalPlanningFees: value("municipalPlanningFees").value ?? 0,
           contingencyPercent: value("contingencyPercent").value ?? 0,
           developmentDurationMonths: value("developmentDurationMonths").value ?? 0,
           monthlyHoldingCost: value("monthlyHoldingCost").value ?? 0,
-          expectedMonthlyRent: rent.value ?? 0,
+          expectedMonthlyRent: rent.value,
           vacancyPercent: value("vacancyPercent").value ?? 0,
           operatingExpenses: value("operatingExpenses").value ?? 0,
-          bondPayment: monthlyBond ?? 0,
+          bondPayment: debt.monthlyBondPayment ?? 0,
         });
-        rows.push(moneyRow("total-project-cost", "Total project cost", result.totalProjectCost, "Deterministic calculation"));
-        rows.push(percentRow("net-yield", "Net yield", result.netYield, "Deterministic calculation"));
-        rows.push(moneyRow("break-even-rent", "Break-even rent", result.breakEvenRent, "Deterministic calculation"));
+        rows.push(
+          moneyRow(
+            "total-project-cost",
+            "Total project cost",
+            result.totalProjectCost,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          percentRow("net-yield", "Net yield", result.netYield, "Deterministic calculation"),
+        );
+        rows.push(
+          moneyRow(
+            "monthly-cash-flow",
+            "Monthly cash flow",
+            result.monthlyCashFlow,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "break-even-rent",
+            "Break-even monthly rent",
+            result.breakEvenRent,
+            "Deterministic calculation",
+          ),
+        );
       }
       needsMarket.push("rental");
       break;
     }
     case "str_airbnb": {
-      const adr = requireInput("average daily rate", "averageDailyRate");
-      const occupancy = requireInput("occupancy percentage", "occupancyPercent");
-      if (adr.present) rows.push(moneyRow("projected-rental-income", "Projected rental income", adr.value ?? 0, "User assumption"));
-      if (adr.present && occupancy.present) {
+      const adr = requirePositive("average daily rate", "averageDailyRate");
+      const occupancy = requirePositive("occupancy percentage", "occupancyPercent");
+      if (isPositive(adr))
+        rows.push(
+          moneyRow("average-daily-rate", "Average daily rate", adr.value, "User assumption"),
+        );
+      if (isPositive(adr) && isPositive(occupancy)) {
         const result = calculateShortTermRental({
-          averageDailyRate: adr.value ?? 0,
-          occupancyPercent: occupancy.value ?? 0,
+          averageDailyRate: adr.value,
+          occupancyPercent: occupancy.value,
           nightsPerMonth: value("nightsPerMonth").value ?? 30.4,
           platformFeePercent: value("platformFeePercent").value ?? 0,
           cleaningRevenue: value("cleaningRevenue").value ?? 0,
@@ -415,72 +627,204 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
           managementPercent: value("strManagementPercent").value ?? 0,
           maintenanceReserve: value("maintenanceReserve").value ?? 0,
           furnishingSetupCost: value("furnishingSetupCost").value ?? 0,
-          bondPayment: monthlyBond ?? 0,
+          bondPayment: debt.monthlyBondPayment ?? 0,
           cashInvested: acquisition?.totalCashRequired,
         });
-        rows.push(moneyRow("projected-profit", "Projected monthly net income", result.monthlyNetIncome, "Deterministic calculation"));
-        rows.push(percentRow("break-even-occupancy", "Break-even occupancy", result.breakEvenOccupancy, "Deterministic calculation"));
-        rows.push(percentRow("cash-on-cash-return", "Cash-on-cash return", result.cashOnCashReturn, "Deterministic calculation"));
+        rows.push(
+          moneyRow(
+            "monthly-str-revenue",
+            "Monthly STR revenue",
+            result.grossAccommodationRevenue,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "monthly-str-costs",
+            "Monthly STR costs",
+            result.monthlyOperatingCost,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "monthly-net-income",
+            "Monthly net income",
+            result.monthlyNetIncome,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          percentRow(
+            "break-even-occupancy",
+            "Break-even occupancy",
+            result.breakEvenOccupancy,
+            "Deterministic calculation",
+          ),
+        );
+        if (acquisition?.totalCashRequired && acquisition.totalCashRequired > 0) {
+          rows.push(
+            percentRow(
+              "cash-on-cash-return",
+              "Cash-on-cash return",
+              result.cashOnCashReturn,
+              "Deterministic calculation",
+            ),
+          );
+        } else {
+          rows.push(
+            notCalculatedRow(
+              "cash-on-cash-return",
+              "Cash-on-cash return",
+              "Deterministic calculation",
+            ),
+          );
+        }
       }
       needsMarket.push("rental");
       break;
     }
     case "brrrr": {
-      const rent = requireInput("projected rental income", "monthlyRent");
-      const arv = requireInput("projected exit value", "afterRepairValue");
-      if (rent.present) rows.push(moneyRow("projected-rental-income", "Projected rental income", rent.value ?? 0, "User assumption"));
-      if (arv.present) rows.push(moneyRow("projected-exit-value", "Projected exit value", arv.value ?? 0, "User assumption"));
-      if (purchasePrice.present && rent.present && arv.present) {
+      const rent = requirePositive("monthly rental income", "monthlyRent");
+      const arv = requirePositive("after-repair value", "afterRepairValue");
+      requirePositiveOneOf("renovation budget or all-in cost", ["renovationBudget", "allInCost"]);
+      if (isPositive(rent))
+        rows.push(
+          moneyRow("monthly-rental-income", "Monthly rental income", rent.value, "User assumption"),
+        );
+      if (isPositive(arv))
+        rows.push(
+          moneyRow("after-repair-value", "After-repair value", arv.value, "User assumption"),
+        );
+      if (isPositive(purchasePrice) && isPositive(rent) && isPositive(arv)) {
         const result = calculateBrrrr({
-          purchasePrice: purchasePrice.value ?? 0,
+          purchasePrice: purchasePrice.value,
           renovationBudget: value("renovationBudget").value ?? 0,
           allInCost: value("allInCost").value ?? 0,
-          afterRepairValue: arv.value ?? 0,
+          afterRepairValue: arv.value,
           refinanceLtv: value("refinanceLtv").value ?? 0,
           refinanceFees: value("refinanceFees").value ?? 0,
-          monthlyRent: rent.value ?? 0,
+          monthlyRent: rent.value,
           monthlyExpenses: value("monthlyExpenses").value ?? 0,
-          monthlyDebtService: value("monthlyDebtService").value ?? monthlyBond ?? 0,
+          monthlyDebtService: value("monthlyDebtService").value ?? debt.monthlyBondPayment ?? 0,
           targetDscr: value("targetDscr").value ?? 1.2,
         });
-        rows.push(moneyRow("cash-left-in-deal", "Cash left in deal", result.cashLeftInDeal, "Deterministic calculation"));
-        rows.push(percentRow("cash-on-cash-return", "Cash-on-cash return", result.cashOnCashReturn, "Deterministic calculation"));
-        rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
+        rows.push(
+          moneyRow(
+            "cash-left-in-deal",
+            "Cash left in deal",
+            result.cashLeftInDeal,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          percentRow(
+            "cash-on-cash-return",
+            "Cash-on-cash return",
+            result.cashOnCashReturn,
+            "Deterministic calculation",
+          ),
+        );
+        if ((value("monthlyDebtService").value ?? debt.monthlyBondPayment ?? 0) > 0) {
+          rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
+        } else {
+          rows.push(notCalculatedRow("dscr", "DSCR", "Deterministic calculation"));
+        }
       }
       needsMarket.push("rental", "exit");
       break;
     }
     case "bond": {
-      if (loanAmount && value("interestRate").present && value("termYears").present) {
+      const explicitLoan = value("loanAmount");
+      const loanSource = isPositive(explicitLoan) ? explicitLoan : purchasePrice;
+      if (!isPositive(loanSource)) missing.push("loan amount or purchase price");
+      if (!isPositive(value("interestRate"))) missing.push("interest rate");
+      if (!isPositive(value("termYears"))) missing.push("loan term");
+      if (
+        isPositive(loanSource) &&
+        isPositive(value("interestRate")) &&
+        isPositive(value("termYears"))
+      ) {
         const result = calculateBond({
-          loanAmount,
+          loanAmount: isPositive(explicitLoan)
+            ? explicitLoan.value
+            : Math.max(0, loanSource.value * (1 - (value("depositPercent").value ?? 10) / 100)),
           interestRate: value("interestRate").value ?? 0,
           termYears: value("termYears").value ?? 0,
-          extraMonthlyPayment: 0,
-          monthlyNoi: 0,
+          extraMonthlyPayment: value("extraMonthlyPayment").value ?? 0,
+          monthlyNoi: value("monthlyNoi").value ?? 0,
           monthlyRent: value("monthlyRent").value ?? 0,
         });
-        rows.push(moneyRow("finance-cost", "Finance cost", result.monthlyBondPayment, "Deterministic calculation"));
-        rows.push(percentRow("break-even-occupancy", "Break-even occupancy", result.breakEvenOccupancy, "Deterministic calculation"));
-        rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
-      } else {
-        requireInput("loan amount or purchase price", "purchasePrice");
-        requireInput("interest rate", "interestRate");
-        requireInput("loan term", "termYears");
+        rows.push(
+          moneyRow(
+            "monthly-bond-payment",
+            "Monthly bond payment",
+            result.monthlyBondPayment,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "annual-debt-service",
+            "Annual debt service",
+            result.annualDebtService,
+            "Deterministic calculation",
+          ),
+        );
+        rows.push(
+          moneyRow(
+            "total-interest",
+            "Total interest",
+            result.totalInterest,
+            "Deterministic calculation",
+          ),
+        );
+        if (isPositive(value("monthlyRent"))) {
+          rows.push(
+            percentRow(
+              "break-even-occupancy",
+              "Break-even occupancy",
+              result.breakEvenOccupancy,
+              "Deterministic calculation",
+            ),
+          );
+        }
+        if (isPositive(value("monthlyNoi"))) {
+          rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
+        }
       }
       break;
     }
     case "land_bank": {
-      requireInput("land or acquisition price", "purchasePrice");
-      if (value("futureValue").present) {
-        rows.push(moneyRow("projected-exit-value", "Projected exit value", value("futureValue").value ?? 0, "User assumption"));
+      const futureValue = value("futureValue");
+      if (isPositive(futureValue)) {
+        rows.push(
+          moneyRow(
+            "projected-exit-value",
+            "Projected exit value",
+            futureValue.value,
+            "User assumption",
+          ),
+        );
+        needsMarket.push("exit");
       }
       break;
     }
     case "custom": {
-      if (value("customUpside").present) {
-        rows.push(moneyRow("projected-profit", "Projected profit", value("customUpside").value ?? 0, "User assumption"));
+      const meaningful = Object.entries(scenario.inputs).filter(([, raw]) =>
+        String(raw ?? "").trim(),
+      );
+      if (meaningful.length === 0) missing.push("at least one saved custom assumption");
+      const customUpside = value("customUpside");
+      if (isPositive(customUpside)) {
+        rows.push(
+          moneyRow("projected-profit", "Projected profit", customUpside.value, "User assumption"),
+        );
+        needsMarket.push("comparable");
       }
+      assumptions.push(
+        ...meaningful.slice(0, 4).map(([key, raw]) => `${labelFromKey(key)}: ${raw}`),
+      );
       break;
     }
   }
@@ -495,10 +839,170 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
   };
 }
 
+function buyHoldResult(
+  value: (key: string) => ParsedInput,
+  purchasePrice: number,
+  monthlyRent: number,
+  monthlyBondPayment: number,
+  totalCashInvested: number,
+  loanAmount: number,
+) {
+  return calculateBuyHold({
+    purchasePrice,
+    totalCashInvested,
+    monthlyRent,
+    otherIncome: value("otherIncome").value ?? 0,
+    vacancyPercent: value("vacancyPercent").value ?? 0,
+    monthlyRates: value("monthlyRates").value ?? 0,
+    monthlyLevies: value("monthlyLevies").value ?? 0,
+    insurance: value("insurance").value ?? 0,
+    utilitiesPaidByOwner: value("utilitiesPaidByOwner").value ?? 0,
+    capitalExpenditureReserve: value("maintenanceReserve").value ?? 0,
+    maintenancePercent: 0,
+    managementPercent: value("propertyManagementPercent").value ?? 0,
+    otherMonthlyCosts:
+      (value("security").value ?? 0) +
+      (value("gardenPool").value ?? 0) +
+      (value("otherMonthlyCosts").value ?? 0),
+    monthlyBondPayment,
+    holdingPeriodYears: value("annualHoldingYears").value ?? 0,
+    sellingCostPercent: 6,
+    loanAmount,
+  });
+}
+
+function netYieldRow(input: Parameters<typeof calculateBuyHold>[0]) {
+  const result = calculateBuyHold(input);
+  return percentRow("net-yield", "Net yield", result.netYield, "Deterministic calculation");
+}
+
+function resolveDebt(
+  value: (key: string) => ParsedInput,
+  purchasePrice: number | null,
+): DebtResolution {
+  const explicitLoan = value("loanAmount");
+  const depositPercent = value("depositPercent");
+  const interestRate = value("interestRate");
+  const termYears = value("termYears");
+  const explicitMonthlyBond = value("monthlyBondPayment");
+  const hasDebtTerms =
+    isPositive(explicitLoan) ||
+    explicitLoan.present ||
+    isPositive(interestRate) ||
+    isPositive(termYears) ||
+    isPositive(explicitMonthlyBond) ||
+    (depositPercent.present && (depositPercent.value ?? 0) < 100);
+
+  if (explicitLoan.present && explicitLoan.value === 0) {
+    return {
+      loanAmount: 0,
+      monthlyBondPayment: 0,
+      bondResult: null,
+      cashPurchase: true,
+      debtIntended: false,
+      missingFinanceInputs: [],
+    };
+  }
+  if (depositPercent.present && depositPercent.value === 100) {
+    return {
+      loanAmount: 0,
+      monthlyBondPayment: 0,
+      bondResult: null,
+      cashPurchase: true,
+      debtIntended: false,
+      missingFinanceInputs: [],
+    };
+  }
+  if (isPositive(explicitMonthlyBond)) {
+    return {
+      loanAmount: isPositive(explicitLoan) ? explicitLoan.value : null,
+      monthlyBondPayment: explicitMonthlyBond.value,
+      bondResult: null,
+      cashPurchase: false,
+      debtIntended: true,
+      missingFinanceInputs: [],
+    };
+  }
+
+  const loanAmount = isPositive(explicitLoan)
+    ? explicitLoan.value
+    : purchasePrice != null && depositPercent.present
+      ? Math.max(0, purchasePrice * (1 - (depositPercent.value ?? 0) / 100))
+      : null;
+  if (loanAmount === 0) {
+    return {
+      loanAmount: 0,
+      monthlyBondPayment: 0,
+      bondResult: null,
+      cashPurchase: true,
+      debtIntended: false,
+      missingFinanceInputs: [],
+    };
+  }
+  if (loanAmount != null && loanAmount > 0 && isPositive(interestRate) && isPositive(termYears)) {
+    const result = calculateBond({
+      loanAmount,
+      interestRate: interestRate.value,
+      termYears: termYears.value,
+      extraMonthlyPayment: value("extraMonthlyPayment").value ?? 0,
+      monthlyNoi: value("monthlyNoi").value ?? 0,
+      monthlyRent: value("monthlyRent").value ?? 0,
+    });
+    return {
+      loanAmount,
+      monthlyBondPayment: result.monthlyBondPayment,
+      bondResult: result,
+      cashPurchase: false,
+      debtIntended: true,
+      missingFinanceInputs: [],
+    };
+  }
+
+  const missingFinanceInputs: string[] = [];
+  if (hasDebtTerms) {
+    if (loanAmount == null || loanAmount <= 0) missingFinanceInputs.push("loan amount");
+    if (!isPositive(interestRate)) missingFinanceInputs.push("interest rate");
+    if (!isPositive(termYears)) missingFinanceInputs.push("loan term");
+  }
+  return {
+    loanAmount,
+    monthlyBondPayment: null,
+    bondResult: null,
+    cashPurchase: false,
+    debtIntended: hasDebtTerms,
+    missingFinanceInputs,
+  };
+}
+
+function acquisitionCostInputs(value: (key: string) => ParsedInput) {
+  const parsed = ACQUISITION_COST_KEYS.map((key) => value(key));
+  return {
+    present: parsed.some((item) => item.present),
+    value: parsed.reduce((sum, item) => sum + (item.value ?? 0), 0),
+  };
+}
+
+function requireDevelopmentDurationIfHoldingCost(
+  value: (key: string) => ParsedInput,
+  missing: string[],
+) {
+  const monthlyHoldingCost = value("monthlyHoldingCost");
+  const duration = value("developmentDurationMonths");
+  if (isPositive(monthlyHoldingCost) && !isPositive(duration)) {
+    missing.push("development duration");
+  }
+}
+
 function parseInput(raw: string | undefined): ParsedInput {
   if (raw == null || raw.trim() === "") return { present: false, value: null };
   const parsed = Number(raw.replace(/[^\d.-]/g, ""));
-  return Number.isFinite(parsed) ? { present: true, value: parsed } : { present: false, value: null };
+  return Number.isFinite(parsed)
+    ? { present: true, value: parsed }
+    : { present: false, value: null };
+}
+
+function isPositive(input: ParsedInput): input is { present: true; value: number } {
+  return input.present && input.value != null && input.value > 0;
 }
 
 function moneyRow(
@@ -507,6 +1011,7 @@ function moneyRow(
   value: number,
   provenance: InvestorNumberProvenance,
 ): InvestorNumberRow {
+  if (!Number.isFinite(value)) return notCalculatedRow(id, label, provenance);
   return { id, label, value: formatMoney(value), provenance, state: "available" };
 }
 
@@ -516,10 +1021,11 @@ function percentRow(
   value: number,
   provenance: InvestorNumberProvenance,
 ): InvestorNumberRow {
+  if (!Number.isFinite(value)) return notCalculatedRow(id, label, provenance);
   return {
     id,
     label,
-    value: `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`,
+    value: `${(value * 100).toFixed(1)}%`,
     provenance,
     state: "available",
   };
@@ -565,36 +1071,71 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "ZAR",
     maximumFractionDigits: 0,
-  }).format(Math.round(Number.isFinite(value) ? value : 0));
+  }).format(Math.round(value));
 }
 
 function strategyWarnings(strategy: StrategyKind, missing: string[]) {
   const warnings = missing.map((item) => `Missing ${item}.`);
   if (strategy === "str_airbnb") warnings.push("Verify STR rules, seasonality and occupancy.");
-  if (strategy.startsWith("development")) warnings.push("Verify zoning, services and buildability.");
+  if (strategy.startsWith("development"))
+    warnings.push("Verify zoning, services and buildability.");
   return warnings;
 }
 
-function marketSupportInsufficient(
+function buildMarketSupport(
   strategy: StrategyAnalysis,
   comps: SavedMarketEvidence[],
   subjectListing?: SavedMarketEvidence | null,
-) {
-  if (strategy.needsMarket.includes("asking") && !subjectListing) return true;
-  return comps.length < 3;
-}
+): MarketSupport {
+  const pricedExitComparableCount = comps.filter((item) => (item.askingPrice ?? 0) > 0).length;
+  const needsRentalSupport = strategy.needsMarket.includes("rental");
+  const needsExitSupport = strategy.needsMarket.includes("exit");
+  const needsComparableSupport = strategy.needsMarket.includes("comparable");
+  const needsSubjectListing = strategy.needsMarket.includes("asking");
+  const missingInputs: string[] = [];
 
-function marketMissingInputs(
-  strategy: StrategyAnalysis,
-  comps: SavedMarketEvidence[],
-  subjectListing?: SavedMarketEvidence | null,
-) {
-  const missing: string[] = [];
-  if (!subjectListing) missing.push("Add the active subject listing.");
-  if (comps.length < 3) missing.push("Save comparable market evidence.");
-  if (strategy.needsMarket.includes("rental")) missing.push("Add rental evidence.");
-  if (strategy.needsMarket.includes("exit")) missing.push("Add exit-value market support.");
-  return missing;
+  if (needsSubjectListing && !subjectListing) missingInputs.push("Add the active subject listing.");
+  if (needsComparableSupport && comps.length < 3)
+    missingInputs.push("Save comparable market evidence.");
+  if (needsRentalSupport) {
+    missingInputs.push("Rental support is not structurally verified.");
+  }
+  if (needsExitSupport && pricedExitComparableCount < 3) {
+    missingInputs.push("Add exit-value market support.");
+  }
+
+  const insufficient =
+    (needsSubjectListing && !subjectListing) ||
+    (needsComparableSupport && comps.length < 3) ||
+    needsRentalSupport ||
+    (needsExitSupport && pricedExitComparableCount < 3);
+
+  const parts = [
+    `Subject listing: ${subjectListing ? "saved" : "not saved"}`,
+    `Comparable evidence: ${comps.length} included item${comps.length === 1 ? "" : "s"}`,
+  ];
+  if (needsRentalSupport) parts.push("Rental support: not structurally verified");
+  if (needsExitSupport) {
+    parts.push(
+      `Exit-value support: ${pricedExitComparableCount} priced comparable${pricedExitComparableCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (!needsRentalSupport && !needsExitSupport && !needsComparableSupport && !needsSubjectListing) {
+    parts.push("Strategy does not require extra market support yet");
+  }
+
+  return {
+    subjectListingSaved: Boolean(subjectListing),
+    comparableCount: comps.length,
+    pricedExitComparableCount,
+    needsRentalSupport,
+    needsExitSupport,
+    needsComparableSupport,
+    needsSubjectListing,
+    insufficient,
+    missingInputs,
+    status: parts.join("; "),
+  };
 }
 
 function readinessExplanation(status: InvestorReadinessStatus) {
@@ -622,24 +1163,27 @@ function acquisitionPriceStatus(chosen: ErfStrategyScenario | null, strategy: St
     : "Acquisition or land price is not provided.";
 }
 
-function marketStatus(strategy: StrategyAnalysis, compCount: number, hasSubject: boolean) {
-  const parts = [`${compCount} included comparable${compCount === 1 ? "" : "s"}`];
-  parts.push(hasSubject ? "subject listing saved" : "no subject listing saved");
-  if (strategy.needsMarket.includes("rental")) parts.push("rental evidence needed");
-  if (strategy.needsMarket.includes("exit")) parts.push("exit evidence needed");
-  return parts.join("; ");
-}
-
-function supportingEvidence(report: ReportViewModel, compCount: number, hasSubject: boolean) {
+function supportingEvidence(report: ReportViewModel, marketSupport: MarketSupport) {
   const items = new Set<string>();
   if (report.identity.erfNumber || report.identity.lpi || report.identity.parcelKey) {
     items.add("Official parcel identifiers are available.");
   }
   if (report.identity.marketAddressLine) items.add("A user-confirmed Market address is saved.");
-  if (hasSubject) items.add("A subject active listing is saved for this erf.");
-  if (compCount > 0) items.add(`${compCount} comparable evidence item${compCount === 1 ? "" : "s"} saved.`);
+  if (marketSupport.subjectListingSaved)
+    items.add("A subject active listing is saved for this erf.");
+  if (marketSupport.comparableCount > 0) {
+    items.add(
+      `${marketSupport.comparableCount} comparable evidence item${marketSupport.comparableCount === 1 ? "" : "s"} saved.`,
+    );
+  }
+  if (marketSupport.pricedExitComparableCount > 0) {
+    items.add(
+      `${marketSupport.pricedExitComparableCount} priced exit comparable${marketSupport.pricedExitComparableCount === 1 ? "" : "s"} saved.`,
+    );
+  }
   if (report.site.selectedDesign) items.add("A selected Site Potential concept is linked.");
-  if (report.documents.uploadedReportCount > 0) items.add("Paid report documents are uploaded for reference.");
+  if (report.documents.uploadedReportCount > 0)
+    items.add("Paid report documents are uploaded for reference.");
   return Array.from(items);
 }
 
@@ -659,10 +1203,11 @@ function downsideRisks(
   decision: DecisionIntelligence,
   report: ReportViewModel,
   strategy: StrategyAnalysis,
-  compCount: number,
+  marketSupport: MarketSupport,
 ) {
   const risks = new Set<string>();
-  if (compCount < 3) risks.add("Market support is weak or missing.");
+  if (marketSupport.insufficient)
+    risks.add("Market support is weak, missing, or not structurally verified.");
   if (report.brief.categories.find((item) => item.id === "planning")?.state !== "confirmed") {
     risks.add("Planning or zoning is not fully confirmed.");
   }
@@ -674,11 +1219,9 @@ function downsideRisks(
 }
 
 function buildInvestorActions(input: {
-  status: InvestorReadinessStatus;
   report: ReportViewModel;
   strategy: StrategyAnalysis;
-  subjectListing: boolean;
-  comparableCount: number;
+  marketSupport: MarketSupport;
   contradictions: number;
 }): InvestorAction[] {
   const actions: InvestorAction[] = [];
@@ -699,10 +1242,10 @@ function buildInvestorActions(input: {
     });
   }
   for (const missing of input.strategy.missingInputs) {
-    if (/acquisition|land/.test(missing)) {
+    if (/purchase|acquisition|land/.test(missing)) {
       actions.push({
         id: "confirm-acquisition-price",
-        label: "Confirm the exact acquisition price",
+        label: "Confirm the acquisition or land price",
         body: "Add the purchase or land-cost assumption in Strategy Lab.",
         tab: "calculators",
       });
@@ -740,7 +1283,7 @@ function buildInvestorActions(input: {
       });
     }
   }
-  if (!input.subjectListing) {
+  if (!input.marketSupport.subjectListingSaved) {
     actions.push({
       id: "add-subject-listing",
       label: "Add the active subject listing",
@@ -748,7 +1291,23 @@ function buildInvestorActions(input: {
       tab: "listings",
     });
   }
-  if (input.comparableCount < 3) {
+  if (input.marketSupport.needsRentalSupport) {
+    actions.push({
+      id: "save-rental-support",
+      label: "Save rental support",
+      body: "Add rental or STR-specific evidence before relying on rental assumptions.",
+      tab: "listings",
+    });
+  }
+  if (input.marketSupport.needsExitSupport && input.marketSupport.pricedExitComparableCount < 3) {
+    actions.push({
+      id: "save-exit-comps",
+      label: "Save priced exit comparables",
+      body: "Add priced comparable evidence for the selected exit strategy.",
+      tab: "listings",
+    });
+  }
+  if (input.marketSupport.needsComparableSupport && input.marketSupport.comparableCount < 3) {
     actions.push({
       id: "save-comps",
       label: "Save comparable market evidence",
@@ -773,6 +1332,10 @@ function buildInvestorActions(input: {
   return uniqueActions(actions);
 }
 
+function labelFromKey(key: string) {
+  return key.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+}
+
 function unique<T>(items: T[]) {
   return Array.from(new Set(items));
 }
@@ -785,4 +1348,3 @@ function uniqueActions(actions: InvestorAction[]) {
     return true;
   });
 }
-
