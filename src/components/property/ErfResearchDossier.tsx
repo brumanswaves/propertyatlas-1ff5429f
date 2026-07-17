@@ -91,6 +91,16 @@ import {
   type ReportSnapshotChange,
   type ReportSnapshotChangeType,
 } from "@/lib/reports/reportSnapshots";
+import {
+  buildInvestorDecisionMode,
+  type InvestorDecisionMode,
+  type InvestorNumberRow,
+} from "@/lib/reports/buildInvestorDecisionMode";
+import {
+  readReportDecisionMode,
+  writeReportDecisionMode,
+  type ReportDecisionMode,
+} from "@/lib/reports/reportDecisionMode";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -1209,6 +1219,25 @@ function StoepAiReportView({
     siteBrief: siteProject.project?.design_brief ?? null,
   });
   const decision = buildDecisionIntelligence(report);
+  const investorMode = useMemo(
+    () =>
+      buildInvestorDecisionMode({
+        report,
+        decision,
+        savedEvidence: evidence,
+        chosenScenario,
+      }),
+    [chosenScenario, decision, evidence, report],
+  );
+  const [decisionMode, setDecisionMode] = useState<ReportDecisionMode>(() =>
+    readReportDecisionMode(parcel.id),
+  );
+  useEffect(() => {
+    setDecisionMode(readReportDecisionMode(parcel.id));
+  }, [parcel.id]);
+  const updateDecisionMode = (mode: ReportDecisionMode) => {
+    setDecisionMode(writeReportDecisionMode(parcel.id, mode));
+  };
   const askEvidencePayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
@@ -1357,7 +1386,12 @@ function StoepAiReportView({
           </div>
         </div>
 
+        <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+
         {/* EXECUTIVE DECISION BRIEF */}
+        {decisionMode === "investor" ? (
+          <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
+        ) : (
         <div className="mt-6 space-y-5">
           <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
             <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
@@ -1557,6 +1591,7 @@ function StoepAiReportView({
             </ol>
           </section>
         </div>
+        )}
 
       </section>
 
@@ -1573,6 +1608,7 @@ function StoepAiReportView({
 
       <AskEasyErfSection
         payload={askEvidencePayload}
+        decisionMode={decisionMode}
         onSelectView={onSelectView}
       />
 
@@ -2027,6 +2063,251 @@ function StoepAiReportView({
   );
 }
 
+function DecisionLensSelector({
+  mode,
+  onChange,
+}: {
+  mode: ReportDecisionMode;
+  onChange: (mode: ReportDecisionMode) => void;
+}) {
+  return (
+    <div className="report-no-print mt-5 inline-flex rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] p-1">
+      {(["standard", "investor"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={cn(
+            "rounded-full px-4 py-2 text-xs font-semibold transition",
+            mode === option
+              ? "bg-[#0D1B2A] text-white shadow-sm"
+              : "text-[#0D1B2A]/65 hover:bg-white hover:text-[#0D1B2A]",
+          )}
+          aria-pressed={mode === option}
+        >
+          {option === "standard" ? "Standard" : "Investor"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function InvestorDecisionBrief({
+  data,
+  onSelectView,
+}: {
+  data: InvestorDecisionMode;
+  onSelectView?: (view: DossierView) => void;
+}) {
+  return (
+    <div className="mt-6 space-y-5">
+      <section className="report-investor-brief rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+              Investor Decision Brief
+            </div>
+            <h3 className="mt-3 text-3xl font-semibold tracking-tight">
+              {data.readinessStatus}
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-white/72">
+              {data.readinessExplanation}
+            </p>
+            <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-xs leading-5 text-white/62">
+              Investor Mode is a presentation lens over saved evidence and user-entered assumptions.
+              It does not create a valuation, forecast, offer recommendation, or purchase advice.
+            </p>
+          </div>
+          <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+              Next investor action
+            </div>
+            <h4 className="mt-2 text-lg font-semibold">{data.primaryAction.label}</h4>
+            <p className="mt-2 text-sm leading-6 text-white/68">{data.primaryAction.body}</p>
+            {data.primaryAction.tab && (
+              <button
+                type="button"
+                onClick={() => onSelectView?.(routeTabForInvestor(data.primaryAction.tab))}
+                className="report-no-print mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff7a1a]"
+              >
+                Open next step <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <InvestorStatusCard title="Evidence strength" value={data.evidenceStrength} />
+        <InvestorStatusCard title="Acquisition price" value={data.acquisitionPriceStatus} />
+        <InvestorStatusCard title="Market evidence" value={data.marketEvidenceStatus} />
+        <InvestorStatusCard title="Strategy calculations" value={data.calculationStatus} />
+      </section>
+
+      <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
+        <ReportSectionTitle eyebrow="Investor Numbers" title="Real inputs and deterministic outputs" />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {data.numberRows.map((row) => (
+            <InvestorNumberCard key={row.id} row={row} />
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#64748B]">
+          Projected rows come from user assumptions and deterministic calculators. Missing values are
+          shown as not provided or not calculated.
+        </p>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <InvestorListPanel
+          title="Evidence supporting the case"
+          items={data.supportingEvidence}
+          empty="No case-supporting evidence is strong enough to list yet."
+        />
+        <InvestorListPanel
+          title="Evidence weakening the case"
+          items={data.weakeningEvidence}
+          empty="No weakening evidence is recorded yet."
+        />
+        <InvestorListPanel
+          title="Assumptions the case depends on"
+          items={data.assumptions}
+          empty="No strategy assumptions are available yet."
+        />
+        <InvestorListPanel
+          title="Missing information that could change the decision"
+          items={data.missingInputs}
+          empty="No investor-specific missing information was generated."
+        />
+      </section>
+
+      <section className="rounded-[1.5rem] border border-[#F59E0B]/35 bg-[#FFFBEB] p-5">
+        <ReportSectionTitle eyebrow="Downside View" title="Issues that could weaken the investor case" />
+        {data.downsideRisks.length ? (
+          <ul className="mt-4 grid gap-2 md:grid-cols-2">
+            {data.downsideRisks.map((risk) => (
+              <li
+                key={risk}
+                className="rounded-2xl border border-[#F59E0B]/25 bg-white px-4 py-3 text-sm leading-6 text-[#0D1B2A]/74"
+              >
+                {risk}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 rounded-2xl border border-[#F59E0B]/20 bg-white px-4 py-3 text-sm text-[#0D1B2A]/66">
+            No investor-specific downside issue is currently supported by the saved evidence.
+          </p>
+        )}
+      </section>
+
+      {data.nextActions.length > 0 && (
+        <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+          <ReportSectionTitle eyebrow="Additional next actions" title="Keep the investor case grounded" />
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {data.nextActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                onClick={() => action.tab && onSelectView?.(routeTabForInvestor(action.tab))}
+                className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
+              >
+                <span className="flex items-center justify-between gap-2">
+                  {action.label}
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                </span>
+                <span className="mt-1 block text-xs font-normal leading-5 text-[#0D1B2A]/62">
+                  {action.body}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function InvestorStatusCard({ title, value }: { title: string; value: string }) {
+  return (
+    <article className="rounded-[1.25rem] border border-[#D9E6F2] bg-white p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        {title}
+      </div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[#0D1B2A]">{value}</p>
+    </article>
+  );
+}
+
+function InvestorNumberCard({ row }: { row: InvestorNumberRow }) {
+  return (
+    <article className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        {row.label}
+      </div>
+      <p
+        className={cn(
+          "mt-2 text-lg font-semibold",
+          row.state === "available" ? "text-[#0D1B2A]" : "text-[#0D1B2A]/48",
+        )}
+      >
+        {row.value}
+      </p>
+      <EvidenceBadgeChip
+        badge={row.provenance === "User assumption" ? "assumption" : row.provenance === "Saved subject listing" || row.provenance === "Saved market evidence" ? "listing" : "user_confirmed"}
+        label={row.provenance}
+      />
+    </article>
+  );
+}
+
+function InvestorListPanel({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: string[];
+  empty: string;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+      <h4 className="text-base font-semibold text-[#0D1B2A]">{title}</h4>
+      {items.length ? (
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-[#0D1B2A]/72">
+          {items.map((item) => (
+            <li key={item} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-sm text-[#0D1B2A]/58">
+          {empty}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function routeTabForInvestor(tab?: string): DossierView {
+  switch (tab) {
+    case "research":
+      return "research";
+    case "reports":
+      return "reports";
+    case "listings":
+      return "listings";
+    case "calculators":
+      return "calculators";
+    case "site-potential":
+      return "site-potential";
+    case "stoep-report":
+      return "stoep-report";
+    default:
+      return "overview";
+  }
+}
+
 function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
@@ -2290,9 +2571,11 @@ function formatSnapshotDate(value?: string | null) {
 
 function AskEasyErfSection({
   payload,
+  decisionMode,
   onSelectView,
 }: {
   payload: AskEasyErfEvidencePayload;
+  decisionMode?: ReportDecisionMode;
   onSelectView?: (view: DossierView) => void;
 }) {
   const [question, setQuestion] = useState("");
@@ -2308,7 +2591,7 @@ function AskEasyErfSection({
     requestGenerationRef.current += 1;
   }
   currentParcelIdRef.current = payload.parcelId;
-  const suggestions = suggestedAskEasyErfQuestions(payload);
+  const suggestions = suggestedAskEasyErfQuestions(payload, decisionMode);
   const hasEvidence = hasEnoughAskEasyErfEvidence(payload);
 
   useEffect(() => {

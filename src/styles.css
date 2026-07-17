@@ -234,6 +234,16 @@
   .report-page .report-decision-hero * {
     color: #0D1B2A !important;
   }
+  .report-page .report-investor-brief {
+    background: #ffffff !important;
+    color: #0D1B2A !important;
+    border-color: #cbd5e1 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-page .report-investor-brief * {
+    color: #0D1B2A !important;
+  }
   .report-page #report-ask-easy-erf {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
