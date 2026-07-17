@@ -7,6 +7,7 @@ import type {
 } from "@/features/marketEvidence/types";
 import type { DecisionIntelligence } from "./buildDecisionIntelligence";
 import type { ReportViewModel, RiskItem } from "./buildReportViewModel";
+import type { ReportDecisionMode } from "./reportDecisionMode";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
 
@@ -233,7 +234,20 @@ export function sanitizeAskEasyErfEvidencePayloadForTransport(
   return sanitized;
 }
 
-export function suggestedAskEasyErfQuestions(payload: AskEasyErfEvidencePayload): string[] {
+export function suggestedAskEasyErfQuestions(
+  payload: AskEasyErfEvidencePayload,
+  mode: ReportDecisionMode = "standard",
+): string[] {
+  if (mode === "investor") {
+    return unique([
+      "What assumptions have the greatest effect on this investment case?",
+      "What evidence is still needed before evaluating an offer?",
+      "What could invalidate the chosen strategy?",
+      "Which costs are still missing?",
+      "What should I verify before making an offer?",
+      "How strong is the market support for the exit assumption?",
+    ]).slice(0, 5);
+  }
   const questions: string[] = [];
   if (!payload.ownership.isVerified) questions.push("Why is ownership still unverified?");
   if (payload.missingInformation.length) {

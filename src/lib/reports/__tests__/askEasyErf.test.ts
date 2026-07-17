@@ -347,6 +347,17 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(questions).toHaveLength(5);
   });
 
+  it("uses investor suggestions without changing the evidence payload", () => {
+    const evidencePayload = payload({ assets: [] });
+    const standard = suggestedAskEasyErfQuestions(evidencePayload);
+    const investor = suggestedAskEasyErfQuestions(evidencePayload, "investor");
+
+    expect(investor).toContain("What assumptions have the greatest effect on this investment case?");
+    expect(investor).toContain("What should I verify before making an offer?");
+    expect(standard).not.toEqual(investor);
+    expect(JSON.stringify(evidencePayload)).toEqual(JSON.stringify(payload({ assets: [] })));
+  });
+
   it("marks truly empty evidence as insufficient", () => {
     const empty = payload({
       parcel: parcel({

@@ -883,3 +883,48 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).not.toContain("Checkout connection pending");
   });
 });
+
+describe("Investor Decision Mode guardrails", () => {
+  it("adds exactly Standard and Investor lenses and hides the selector when printing", () => {
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const styles = read("src/styles.css");
+
+    expect(dossier).toContain("DecisionLensSelector");
+    expect(dossier).toContain('(["standard", "investor"] as const)');
+    expect(dossier).toContain("Standard");
+    expect(dossier).toContain("Investor");
+    expect(dossier).not.toContain("Developer</button>");
+    expect(dossier).not.toContain("Renovator</button>");
+    expect(dossier).toContain("report-no-print mt-5 inline-flex");
+    expect(styles).toContain(".report-no-print { display: none !important; }");
+  });
+
+  it("renders the Investor Decision Brief with existing Workbench routing only", () => {
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+
+    expect(dossier).toContain("Investor Decision Brief");
+    expect(dossier).toContain("Investor Numbers");
+    expect(dossier).toContain("Chosen strategy");
+    expect(dossier).toContain("Evidence supporting the case");
+    expect(dossier).toContain("Evidence weakening the case");
+    expect(dossier).toContain("Assumptions the case depends on");
+    expect(dossier).toContain("Missing information that could change the decision");
+    expect(dossier).toContain("Downside View");
+    expect(dossier).toContain("routeTabForInvestor");
+    expect(dossier).toContain('case "research"');
+    expect(dossier).toContain('case "reports"');
+    expect(dossier).toContain('case "listings"');
+    expect(dossier).toContain('case "calculators"');
+    expect(dossier).toContain('case "site-potential"');
+    expect(dossier).toContain('case "stoep-report"');
+  });
+
+  it("keeps Investor Mode away from unsupported investment recommendation language", () => {
+    const helper = read("src/lib/reports/buildInvestorDecisionMode.ts");
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const investorSource = `${helper}\n${dossier}`;
+
+    expect(investorSource).not.toMatch(/Strong buy|Buy this property|Undervalued|Overvalued|Guaranteed|Great investment|Recommended investment|Expected return|Verified return/i);
+    expect(investorSource).toContain("It does not create a valuation, forecast, offer recommendation, or purchase advice.");
+  });
+});

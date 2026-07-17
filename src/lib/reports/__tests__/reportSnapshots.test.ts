@@ -18,6 +18,7 @@ import type { ReportViewModel } from "../buildReportViewModel";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
+import { writeReportDecisionMode } from "../reportDecisionMode";
 
 function storage() {
   const data = new Map<string, string>();
@@ -660,6 +661,16 @@ describe("Easy Erf report snapshots", () => {
     expect(source).toContain("report.site.selectedDesign?.parcel_id === parcelId");
     const migrationNames = readdirSync(resolve(__dirname, "../../../../supabase/migrations"));
     expect(migrationNames.filter((name) => /report[-_]?snapshot|change[-_]?tracking/i.test(name))).toEqual([]);
+  });
+
+  it("keeps decision lens preference out of snapshot fingerprints", () => {
+    const s = storage();
+    const before = snapshotFingerprint(snapshot());
+    writeReportDecisionMode("parcel-1", "investor", s as unknown as Storage);
+    const after = snapshotFingerprint(snapshot());
+
+    expect(after).toBe(before);
+    expect(JSON.stringify(snapshot())).not.toMatch(/decisionLens|investor|standard/i);
   });
 
   it("renders print-safe controls and explicit clear confirmation copy", () => {
