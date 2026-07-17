@@ -79,6 +79,18 @@ import {
   type AskEasyErfEvidencePayload,
   type AskEasyErfEvidenceSourceType,
 } from "@/lib/reports/askEasyErf";
+import {
+  buildReportSnapshot,
+  clearReportSnapshots,
+  compareReportSnapshots,
+  readReportSnapshots,
+  saveReportSnapshot,
+  snapshotsForActiveParcel,
+  type ReportSnapshot,
+  type ReportSnapshotState,
+  type ReportSnapshotChange,
+  type ReportSnapshotChangeType,
+} from "@/lib/reports/reportSnapshots";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -1208,6 +1220,59 @@ function StoepAiReportView({
       }),
     [decision, evidence, fileVault.assets, report, scenarios],
   );
+  const currentReportSnapshot = useMemo(
+    () =>
+      buildReportSnapshot({
+        report,
+        decision,
+        assets: fileVault.assets,
+        savedEvidence: evidence,
+        strategyScenarios: scenarios,
+      }),
+    [decision, evidence, fileVault.assets, report, scenarios],
+  );
+  const [reportSnapshotState, setReportSnapshotState] = useState<ReportSnapshotState>(() => ({
+    parcelId: parcel.id,
+    snapshots: readReportSnapshots(parcel.id),
+  }));
+  const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
+  const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
+  useEffect(() => {
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
+    setSnapshotMessage(null);
+    setClearSnapshotsRequested(false);
+  }, [parcel.id]);
+  const reportSnapshots = snapshotsForActiveParcel(parcel.id, reportSnapshotState);
+  const snapshotComparison = useMemo(
+    () => compareReportSnapshots(reportSnapshots[0] ?? null, currentReportSnapshot),
+    [currentReportSnapshot, reportSnapshots],
+  );
+
+  const handleSaveReportSnapshot = () => {
+    const snapshot = buildReportSnapshot({
+      report,
+      decision,
+      assets: fileVault.assets,
+      savedEvidence: evidence,
+      strategyScenarios: scenarios,
+      savedAt: new Date().toISOString(),
+    });
+    const result = saveReportSnapshot(snapshot);
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: result.snapshots });
+    setClearSnapshotsRequested(false);
+    setSnapshotMessage(
+      result.saved
+        ? "Current report snapshot saved."
+        : "This report already matches the latest saved snapshot.",
+    );
+  };
+
+  const handleClearReportSnapshots = () => {
+    clearReportSnapshots(parcel.id);
+    setReportSnapshotState({ parcelId: parcel.id, snapshots: [] });
+    setClearSnapshotsRequested(false);
+    setSnapshotMessage("Report snapshot history cleared for this property.");
+  };
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
@@ -1494,6 +1559,17 @@ function StoepAiReportView({
         </div>
 
       </section>
+
+      <ReportChangeTrackingSection
+        comparison={snapshotComparison}
+        snapshots={reportSnapshots}
+        message={snapshotMessage}
+        clearRequested={clearSnapshotsRequested}
+        onSave={handleSaveReportSnapshot}
+        onRequestClear={() => setClearSnapshotsRequested(true)}
+        onCancelClear={() => setClearSnapshotsRequested(false)}
+        onConfirmClear={handleClearReportSnapshots}
+      />
 
       <AskEasyErfSection
         payload={askEvidencePayload}
@@ -1965,6 +2041,252 @@ function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string
 type AskEasyErfApiResponse =
   | { success: true; answer: AskEasyErfAnswer }
   | { success: false; code: string; error: string };
+
+function ReportChangeTrackingSection({
+  comparison,
+  snapshots,
+  message,
+  clearRequested,
+  onSave,
+  onRequestClear,
+  onCancelClear,
+  onConfirmClear,
+}: {
+  comparison: ReturnType<typeof compareReportSnapshots>;
+  snapshots: ReportSnapshot[];
+  message: string | null;
+  clearRequested: boolean;
+  onSave: () => void;
+  onRequestClear: () => void;
+  onCancelClear: () => void;
+  onConfirmClear: () => void;
+}) {
+  const hasPrevious = Boolean(comparison.previous);
+  const hasChanges = comparison.changes.length > 0;
+  const canSave = !comparison.isDuplicate;
+  const grouped: Record<ReportSnapshotChangeType, ReportSnapshotChange[]> = {
+    added: comparison.changes.filter((change) => change.type === "added"),
+    resolved: comparison.changes.filter((change) => change.type === "resolved"),
+    changed: comparison.changes.filter((change) => change.type === "changed"),
+    removed: comparison.changes.filter((change) => change.type === "removed"),
+  };
+
+  return (
+    <section
+      id="report-change-tracking"
+      className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.32)] scroll-mt-24"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <ReportSectionTitle
+          eyebrow="Report changes"
+          title="What changed since the previous report"
+        />
+        <div className="report-no-print flex flex-wrap gap-2">
+          {canSave && (
+            <button
+              type="button"
+              onClick={onSave}
+              className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7a1a]"
+            >
+              <Save className="h-3.5 w-3.5" />
+              Save current report snapshot
+            </button>
+          )}
+          {snapshots.length > 0 && (
+            <button
+              type="button"
+              onClick={onRequestClear}
+              className="inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
+            >
+              Clear snapshot history
+            </button>
+          )}
+        </div>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/68">
+        Changes are calculated from saved Easy Erf report snapshots on this device. They do not
+        represent official registry notifications or automatic monitoring of external sources.
+      </p>
+
+      {message && (
+        <div className="report-no-print mt-4 rounded-2xl border border-[#16A34A]/20 bg-[#ECFDF5] px-4 py-3 text-sm font-semibold text-[#166534]">
+          {message}
+        </div>
+      )}
+
+      {!hasPrevious ? (
+        <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+          <p className="text-sm font-semibold text-[#0D1B2A]">
+            No previous report snapshot has been saved for this property.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/68">
+            Save the current report to establish a baseline for future comparisons.
+          </p>
+        </div>
+      ) : !hasChanges ? (
+        <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+          <p className="text-sm font-semibold text-[#0D1B2A]">
+            No meaningful changes were detected since the previous saved report.
+          </p>
+          <dl className="mt-3 grid gap-2 text-xs text-[#0D1B2A]/70 sm:grid-cols-2">
+            <SnapshotDateRow label="Previous snapshot" value={comparison.previous?.savedAt} />
+            <SnapshotDateRow label="Current report" value={comparison.current.reportGeneratedAt} />
+          </dl>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-2 sm:grid-cols-4">
+            {(["added", "resolved", "changed", "removed"] as const).map((type) => (
+              <div
+                key={type}
+                className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-center"
+              >
+                <div className="text-2xl font-semibold text-[#0D1B2A]">
+                  {comparison.counts[type]}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  {changeGroupLabel(type)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {(["added", "resolved", "changed", "removed"] as const).map(
+            (type) =>
+              grouped[type].length > 0 && (
+                <div key={type}>
+                  <h4 className="text-sm font-semibold text-[#0D1B2A]">
+                    {changeGroupLabel(type)}
+                  </h4>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    {grouped[type].map((change) => (
+                      <ChangeCard key={change.id} change={change} />
+                    ))}
+                  </div>
+                </div>
+              ),
+          )}
+        </div>
+      )}
+
+      {snapshots.length > 0 && (
+        <div className="mt-4 border-t border-[#D9E6F2] pt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748B]">
+            Previous snapshot date
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">
+            {formatSnapshotDate(snapshots[0]?.savedAt)}
+          </p>
+          <details className="report-no-print mt-3 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-[#0D1B2A]">
+              View recent snapshot history
+            </summary>
+            <ol className="mt-3 space-y-1 text-sm text-[#0D1B2A]/70">
+              {snapshots.slice(0, 5).map((snapshot) => (
+                <li key={`${snapshot.savedAt}-${snapshot.parcelId}`}>
+                  {formatSnapshotDate(snapshot.savedAt)}
+                </li>
+              ))}
+            </ol>
+          </details>
+        </div>
+      )}
+
+      {clearRequested && (
+        <div className="report-no-print mt-4 rounded-2xl border border-[#F59E0B]/35 bg-[#FFFBEB] p-4">
+          <p className="text-sm font-semibold text-[#0D1B2A]">
+            Clear saved report snapshots for this property?
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
+            This only clears browser snapshot history for this parcel on this device. It does not
+            delete evidence, files, or official source reviews.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onConfirmClear}
+              className="rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Yes, clear history
+            </button>
+            <button
+              type="button"
+              onClick={onCancelClear}
+              className="rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SnapshotDateRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="rounded-2xl border border-[#D9E6F2] bg-white px-3 py-2">
+      <dt className="font-semibold text-[#64748B]">{label}</dt>
+      <dd className="mt-1 text-[#0D1B2A]">{formatSnapshotDate(value)}</dd>
+    </div>
+  );
+}
+
+function ChangeCard({ change }: { change: ReportSnapshotChange }) {
+  return (
+    <article className="report-change-card rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]", changeTone(change.type))}>
+          {change.type}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+          {change.category}
+        </span>
+      </div>
+      <h5 className="mt-2 text-sm font-semibold text-[#0D1B2A]">{change.label}</h5>
+      {(change.previousValue || change.currentValue) && (
+        <dl className="mt-2 grid gap-2 text-xs text-[#0D1B2A]/70 sm:grid-cols-2">
+          {change.previousValue && (
+            <div>
+              <dt className="font-semibold text-[#64748B]">Previous</dt>
+              <dd>{change.previousValue}</dd>
+            </div>
+          )}
+          {change.currentValue && (
+            <div>
+              <dt className="font-semibold text-[#64748B]">Current</dt>
+              <dd>{change.currentValue}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+    </article>
+  );
+}
+
+function changeGroupLabel(type: ReportSnapshotChangeType) {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function changeTone(type: ReportSnapshotChangeType) {
+  switch (type) {
+    case "added":
+      return "bg-[#ECFDF5] text-[#166534]";
+    case "resolved":
+      return "bg-[#EFF6FF] text-[#1D4ED8]";
+    case "removed":
+      return "bg-[#FEF2F2] text-[#991B1B]";
+    default:
+      return "bg-[#FFF7ED] text-[#B24A00]";
+  }
+}
+
+function formatSnapshotDate(value?: string | null) {
+  if (!value) return "Not saved yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
 
 function AskEasyErfSection({
   payload,
