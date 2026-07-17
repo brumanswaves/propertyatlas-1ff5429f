@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LOCAL_SERVICE_CATEGORIES, type LocalProvider } from "@/lib/localServices/catalog";
 
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_RADIUS_KM = 15;
 const WIDE_RADIUS_KM = 35;
 const MAX_RADIUS_KM = 50;
 const MAX_REQUEST_BYTES = 4096;
 const MAX_PROVIDERS = 3;
+const GOOGLE_CANDIDATE_PAGE_SIZE = 10;
 const GOOGLE_PLACES_ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
 const FIELD_MASK = [
   "places.id",
@@ -49,18 +49,6 @@ interface GooglePlace {
   businessStatus?: string;
   types?: string[];
 }
-
-interface CacheEntry {
-  expiresAt: number;
-  providers: LocalProvider[];
-}
-
-const globalCache = globalThis as typeof globalThis & {
-  __easyErfLocalServicesCache?: Map<string, CacheEntry>;
-};
-const cache =
-  globalCache.__easyErfLocalServicesCache ??
-  (globalCache.__easyErfLocalServicesCache = new Map<string, CacheEntry>());
 
 export const Route = createFileRoute("/api/local-services/search")({
   server: {
@@ -151,33 +139,10 @@ export async function handleLocalServicesSearchRequest(request: Request) {
 
   const widerArea = body.widerArea === true;
   const radiusKm = Math.min(widerArea ? WIDE_RADIUS_KM : DEFAULT_RADIUS_KM, MAX_RADIUS_KM);
-  const cacheKey = [
-    parcelId,
-    category.id,
-    latitude == null ? "no-lat" : latitude.toFixed(3),
-    longitude == null ? "no-lng" : longitude.toFixed(3),
-    address.toLowerCase(),
-    radiusKm,
-  ].join("|");
-
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return json({
-      success: true,
-      providers: cached.providers,
-      attribution: "Google",
-      categoryId: category.id,
-      parcelId,
-      confirmedAddress: address,
-      radiusKm,
-      cached: true,
-    });
-  }
-  if (cached) cache.delete(cacheKey);
 
   const payload: Record<string, unknown> = {
     textQuery,
-    pageSize: 3,
+    pageSize: GOOGLE_CANDIDATE_PAGE_SIZE,
     languageCode: "en",
     regionCode: "ZA",
   };
@@ -248,10 +213,10 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     places: upstream.places,
     categoryId: category.id,
     origin: latitude != null && longitude != null ? { lat: latitude, lng: longitude } : null,
+    radiusKm,
     fallbackQuery: textQuery,
   });
 
-  cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, providers });
   return json({
     success: true,
     providers,
@@ -268,6 +233,7 @@ function normalizeProviders(input: {
   places: GooglePlace[];
   categoryId: string;
   origin: { lat: number; lng: number } | null;
+  radiusKm: number;
   fallbackQuery: string;
 }) {
   const seenPlaceIds = new Set<string>();
@@ -291,9 +257,10 @@ function normalizeProvider(input: {
   place: GooglePlace;
   categoryId: string;
   origin: { lat: number; lng: number } | null;
+  radiusKm: number;
   fallbackQuery: string;
 }): LocalProvider | null {
-  const { place, categoryId, origin, fallbackQuery } = input;
+  const { place, categoryId, origin, radiusKm, fallbackQuery } = input;
   if (place.businessStatus === "CLOSED_PERMANENTLY") return null;
   const placeId = cleanText(place.id, 180);
   if (!placeId) return null;
@@ -309,7 +276,7 @@ function normalizeProvider(input: {
       ? { lat: place.location.latitude, lng: place.location.longitude }
       : null;
   const distanceKm = origin && coordinates ? haversineKm(origin, coordinates) : null;
-  if (distanceKm != null && distanceKm > MAX_RADIUS_KM) return null;
+  if (distanceKm != null && distanceKm > Math.min(radiusKm, MAX_RADIUS_KM)) return null;
   const mapsQuery = [name, place.formattedAddress, fallbackQuery].filter(Boolean).join(" ");
   return {
     placeId,
