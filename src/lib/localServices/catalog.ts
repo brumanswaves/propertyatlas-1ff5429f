@@ -30,10 +30,13 @@ export interface LocalProvider {
   coordinates: { lat: number; lng: number } | null;
   rating: number | null;
   reviewCount: number | null;
+  userRatingCount: number | null;
   phone: string | null;
   websiteUrl: string | null;
+  website: string | null;
   googleMapsUrl: string;
   businessStatus: string | null;
+  openNow: boolean | null;
   distanceKm: number | null;
   source: "google";
   isSponsored: boolean;
