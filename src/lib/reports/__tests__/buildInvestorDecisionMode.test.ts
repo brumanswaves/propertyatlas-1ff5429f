@@ -501,6 +501,121 @@ describe("buildInvestorDecisionMode", () => {
     ).toBe("R 1 440 807");
   });
 
+  it("keeps development rent debt on land cost when stale purchase price defaults exist", () => {
+    const result = investor({
+      chosenScenario: scenario("development_rent", {
+        ...realisticStrategyDefaults(1_500_000),
+        landCost: "900000",
+        buildCost: "1200000",
+        expectedMonthlyRent: "22000",
+        depositPercent: "20",
+      }),
+    });
+
+    expect(compactCurrency(result.numberRows.find((row) => row.id === "land-cost")?.value)).toBe(
+      "R 900 000",
+    );
+    expect(result.numberRows.find((row) => row.id === "acquisition-price")).toBeUndefined();
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "monthly-bond-payment")?.value),
+    ).toBe("R 7 803");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "monthly-cash-flow")?.value),
+    ).toBe("R 13 097");
+  });
+
+  it("keeps land-bank cash and debt on the selected acquisition basis", () => {
+    const result = investor({
+      chosenScenario: scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        purchasePrice: "700000",
+        landCost: "650000",
+        transferCosts: "10000",
+        depositPercent: "20",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+    });
+
+    expect(result.numberRows.find((row) => row.id === "acquisition-price")).toBeUndefined();
+    expect(compactCurrency(result.numberRows.find((row) => row.id === "land-cost")?.value)).toBe(
+      "R 650 000",
+    );
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "monthly-bond-payment")?.value),
+    ).toBe("R 5 635");
+    expect(
+      compactCurrency(result.numberRows.find((row) => row.id === "total-cash-required")?.value),
+    ).toBe("R 140 000");
+  });
+
+  it("does not create hidden STR debt from shared acquisition defaults", () => {
+    const defaultsOnlyDebt = investor({
+      chosenScenario: scenario("str_airbnb", {
+        ...realisticStrategyDefaults(1_500_000),
+        averageDailyRate: "1800",
+        occupancyPercent: "45",
+      }),
+    });
+
+    expect(
+      defaultsOnlyDebt.numberRows.find((row) => row.id === "monthly-bond-payment"),
+    ).toMatchObject({
+      state: "not_calculated",
+      value: "Not calculated",
+    });
+
+    const explicitLoan = investor({
+      chosenScenario: scenario("str_airbnb", {
+        ...realisticStrategyDefaults(1_500_000),
+        averageDailyRate: "1800",
+        occupancyPercent: "45",
+        loanAmount: "500000",
+      }),
+    });
+
+    expect(explicitLoan.numberRows.find((row) => row.id === "monthly-bond-payment")).toMatchObject({
+      state: "available",
+    });
+  });
+
+  it("requires a saved deposit percentage before deriving bond debt from purchase price", () => {
+    const purchaseOnly = investor({
+      chosenScenario: scenario("bond", {
+        purchasePrice: "1000000",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+    });
+    expect(purchaseOnly.readinessStatus).toBe("Strategy assumptions incomplete");
+    expect(purchaseOnly.missingInputs).toContain(
+      "loan amount or purchase price with deposit percentage",
+    );
+    expect(purchaseOnly.calculationStatus).toBe(
+      "Strategy calculations are incomplete until required inputs are saved.",
+    );
+
+    const withDeposit = investor({
+      chosenScenario: scenario("bond", {
+        purchasePrice: "1000000",
+        depositPercent: "20",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+    });
+    expect(withDeposit.missingInputs).not.toContain(
+      "loan amount or purchase price with deposit percentage",
+    );
+    expect(withDeposit.calculationStatus).toBe(
+      "Core deterministic calculation outputs are available from saved raw inputs.",
+    );
+    expect(
+      compactCurrency(
+        withDeposit.numberRows.find((row) => row.id === "monthly-bond-payment")?.value,
+      ),
+    ).toBe("R 8 670");
+  });
+
   it("uses land cost only for development when realistic defaults also contain purchase price", () => {
     const result = investor({
       chosenScenario: scenario("development_sell", {
@@ -590,6 +705,70 @@ describe("buildInvestorDecisionMode", () => {
     expect(result.numberRows.find((row) => row.id === "cash-left-in-deal")).toMatchObject({
       state: "available",
     });
+  });
+
+  it.each([
+    [
+      "note-only custom",
+      scenario("custom", {
+        ...realisticStrategyDefaults(1_500_000),
+        customNotes: "Hold until zoning evidence improves.",
+      }),
+      "Assumptions are saved, but no deterministic financial calculation is available for this scenario.",
+    ],
+    [
+      "custom upside",
+      scenario("custom", {
+        ...realisticStrategyDefaults(1_500_000),
+        customUpside: "50000",
+      }),
+      "Assumptions are saved, but no deterministic financial calculation is available for this scenario.",
+    ],
+    [
+      "price-only land bank",
+      scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        purchasePrice: "700000",
+      }),
+      "Assumptions are saved, but no deterministic financial calculation is available for this scenario.",
+    ],
+    [
+      "land bank with holding-cost calculation",
+      scenario("land_bank", {
+        ...realisticStrategyDefaults(0),
+        purchasePrice: "700000",
+        monthlyHoldingCost: "1500",
+        annualHoldingYears: "5",
+      }),
+      "Core deterministic calculation outputs are available from saved raw inputs.",
+    ],
+    [
+      "loan-only bond",
+      scenario("bond", {
+        loanAmount: "900000",
+        interestRate: "11.75",
+        termYears: "20",
+      }),
+      "Core deterministic calculation outputs are available from saved raw inputs.",
+    ],
+    [
+      "complete flip",
+      scenario("flip", {
+        purchasePrice: "1000000",
+        renovationBudget: "100000",
+        expectedResalePrice: "1500000",
+      }),
+      "Core deterministic calculation outputs are available from saved raw inputs.",
+    ],
+    [
+      "unsupported legacy",
+      scenario("old_strategy", {
+        purchasePrice: "1000000",
+      }),
+      "This legacy scenario must be reviewed and resaved before calculations are available.",
+    ],
+  ])("reports calculation status for %s", (_label, chosenScenario, expectedStatus) => {
+    expect(investor({ chosenScenario }).calculationStatus).toBe(expectedStatus);
   });
 
   it("ignores shared Strategy Lab defaults for custom scenarios", () => {

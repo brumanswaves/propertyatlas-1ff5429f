@@ -125,7 +125,9 @@ interface DebtResolution {
 }
 
 interface StrategyAnalysis {
-  supported: boolean;
+  supportedStrategy: boolean;
+  requiredInputsComplete: boolean;
+  calculationAvailable: boolean;
   missingInputs: string[];
   warnings: string[];
   rows: InvestorNumberRow[];
@@ -153,7 +155,9 @@ interface MarketSupport {
 }
 
 const EMPTY_ANALYSIS: StrategyAnalysis = {
-  supported: false,
+  supportedStrategy: true,
+  requiredInputsComplete: false,
+  calculationAvailable: false,
   missingInputs: ["Choose an investment strategy."],
   warnings: ["No chosen Strategy Lab scenario is saved for this erf."],
   rows: [],
@@ -193,7 +197,8 @@ export function buildInvestorDecisionMode(
   const contradictionPriority = input.decision.contradictions.some(
     (item) => item.severity === "high" || item.severity === "medium",
   );
-  const strategyIncomplete = !chosen || strategy.missingInputs.length > 0 || !strategy.supported;
+  const strategyIncomplete =
+    !chosen || !strategy.supportedStrategy || !strategy.requiredInputsComplete;
   const moreEvidenceRequired =
     report.brief.categories.some(
       (category) =>
@@ -227,9 +232,7 @@ export function buildInvestorDecisionMode(
     chosenStrategyStatus: chosen
       ? `${chosen.label} is selected for this erf.`
       : "No parcel-matched strategy scenario is selected.",
-    calculationStatus: strategy.supported
-      ? "Core deterministic calculation outputs are available from saved raw inputs."
-      : "Strategy calculations are incomplete until required inputs are saved.",
+    calculationStatus: strategyCalculationStatus(strategy),
     numberRows: uniqueRows,
     supportingEvidence: supportingEvidence(report, marketSupport),
     weakeningEvidence: weakeningEvidence(input.decision, report, strategy),
@@ -251,11 +254,26 @@ function includedComparableEvidence(evidence: SavedMarketEvidence[]) {
   );
 }
 
+function strategyCalculationStatus(strategy: StrategyAnalysis) {
+  if (!strategy.supportedStrategy) {
+    return "This legacy scenario must be reviewed and resaved before calculations are available.";
+  }
+  if (!strategy.requiredInputsComplete) {
+    return "Strategy calculations are incomplete until required inputs are saved.";
+  }
+  if (strategy.calculationAvailable) {
+    return "Core deterministic calculation outputs are available from saved raw inputs.";
+  }
+  return "Assumptions are saved, but no deterministic financial calculation is available for this scenario.";
+}
+
 function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis {
   if (!scenario || !STRATEGY_KINDS.includes(scenario.strategy as StrategyKind)) {
     if (scenario) {
       return {
-        supported: false,
+        supportedStrategy: false,
+        requiredInputsComplete: false,
+        calculationAvailable: false,
         missingInputs: [`Unsupported or legacy strategy type: ${scenario.strategy}.`],
         warnings: ["Review and resave this scenario in Strategy Lab."],
         rows: fallbackSummaryRows(scenario),
@@ -271,6 +289,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
   const missing: string[] = [];
   const assumptions: string[] = [];
   const needsMarket: MarketNeed[] = [];
+  let calculationAvailable = false;
   const value = (key: string) => parseInput(scenario.inputs[key]);
   const requirePositive = (label: string, key: string) => {
     const parsed = value(key);
@@ -313,7 +332,10 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
   }
 
   const acquisitionCosts = acquisitionCostInputs(value);
-  const debt = resolveDebt(value, isPositive(purchasePrice) ? purchasePrice.value : null);
+  const debt = resolveDebt(
+    value,
+    debtBasisForStrategy(strategy, value, purchasePrice, landCost, acquisitionBasis),
+  );
   const acquisitionCashRequired =
     acquisitionBasis && isPositive(acquisitionBasis.input)
       ? appendAcquisitionBasisRows({
@@ -430,6 +452,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
               "Deterministic calculation",
             ),
           );
+          calculationAvailable = true;
         }
       }
       needsMarket.push("rental");
@@ -465,6 +488,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
           ),
         );
         rows.push(percentRow("roi", "ROI", result.roi, "Deterministic calculation"));
+        calculationAvailable = true;
       }
       needsMarket.push("exit");
       break;
@@ -525,6 +549,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
             "Deterministic calculation",
           ),
         );
+        calculationAvailable = true;
       }
       needsMarket.push("exit");
       break;
@@ -581,6 +606,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
             "Deterministic calculation",
           ),
         );
+        calculationAvailable = true;
       }
       needsMarket.push("rental");
       break;
@@ -659,6 +685,7 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
             ),
           );
         }
+        calculationAvailable = true;
       }
       needsMarket.push("rental");
       break;
@@ -725,25 +752,53 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
         } else {
           rows.push(notCalculatedRow("dscr", "DSCR", "Deterministic calculation"));
         }
+        calculationAvailable = true;
       }
       needsMarket.push("rental", "exit");
       break;
     }
     case "bond": {
       const explicitLoan = value("loanAmount");
-      const loanSource = isPositive(explicitLoan) ? explicitLoan : purchasePrice;
-      if (!isPositive(loanSource)) missing.push("loan amount or purchase price");
+      const depositPercent = value("depositPercent");
+      const cashDeclaration =
+        (explicitLoan.present && explicitLoan.value === 0) ||
+        (depositPercent.present && depositPercent.value === 100);
+      const loanSource =
+        isPositive(explicitLoan) || cashDeclaration
+          ? explicitLoan
+          : isPositive(purchasePrice) && hasValidDepositPercent(depositPercent)
+            ? purchasePrice
+            : { present: false, value: null };
+      const loanAmount = isPositive(explicitLoan)
+        ? explicitLoan.value
+        : isPositive(loanSource)
+          ? derivedLoanAmountFromPurchase(loanSource.value, depositPercent)
+          : cashDeclaration
+            ? 0
+            : null;
+      if (!isPositive(loanSource) && !cashDeclaration) {
+        missing.push("loan amount or purchase price with deposit percentage");
+      }
       if (!isPositive(value("interestRate"))) missing.push("interest rate");
       if (!isPositive(value("termYears"))) missing.push("loan term");
+      if (cashDeclaration && isPositive(value("interestRate")) && isPositive(value("termYears"))) {
+        rows.push(
+          moneyRow("monthly-bond-payment", "Monthly bond payment", 0, "Deterministic calculation"),
+        );
+        rows.push(
+          moneyRow("annual-debt-service", "Annual debt service", 0, "Deterministic calculation"),
+        );
+        rows.push(moneyRow("total-interest", "Total interest", 0, "Deterministic calculation"));
+        calculationAvailable = true;
+      }
       if (
-        isPositive(loanSource) &&
+        loanAmount != null &&
+        loanAmount > 0 &&
         isPositive(value("interestRate")) &&
         isPositive(value("termYears"))
       ) {
         const result = calculateBond({
-          loanAmount: isPositive(explicitLoan)
-            ? explicitLoan.value
-            : derivedLoanAmountFromPurchase(loanSource.value, value("depositPercent")),
+          loanAmount,
           interestRate: value("interestRate").value ?? 0,
           termYears: value("termYears").value ?? 0,
           extraMonthlyPayment: value("extraMonthlyPayment").value ?? 0,
@@ -787,11 +842,14 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
         if (isPositive(value("monthlyNoi"))) {
           rows.push(numberRow("dscr", "DSCR", result.dscr.toFixed(2), "Deterministic calculation"));
         }
+        calculationAvailable = true;
       }
       break;
     }
     case "land_bank": {
       const futureValue = value("futureValue");
+      const monthlyHoldingCost = value("monthlyHoldingCost");
+      const holdingYears = value("annualHoldingYears");
       if (isPositive(futureValue)) {
         rows.push(
           moneyRow(
@@ -802,6 +860,17 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
           ),
         );
         needsMarket.push("exit");
+      }
+      if (isPositive(monthlyHoldingCost) && isPositive(holdingYears)) {
+        rows.push(
+          moneyRow(
+            "holding-cost",
+            "Projected holding cost",
+            monthlyHoldingCost.value * holdingYears.value * 12,
+            "Deterministic calculation",
+          ),
+        );
+        calculationAvailable = true;
       }
       break;
     }
@@ -829,7 +898,9 @@ function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis
   }
 
   return {
-    supported: missing.length === 0,
+    supportedStrategy: true,
+    requiredInputsComplete: missing.length === 0,
+    calculationAvailable,
     missingInputs: unique(missing),
     warnings: strategyWarnings(strategy, missing),
     rows: rows.length || strategy === "custom" ? rows : fallbackSummaryRows(scenario),
@@ -915,11 +986,50 @@ function totalCashRequiredFromSavedInputs(
   return null;
 }
 
-function derivedLoanAmountFromPurchase(purchasePrice: number, depositPercent: ParsedInput) {
-  if (isPositive(depositPercent)) {
-    return Math.max(0, purchasePrice * (1 - depositPercent.value / 100));
+function debtBasisForStrategy(
+  strategy: StrategyKind,
+  value: (key: string) => ParsedInput,
+  purchasePrice: ParsedInput,
+  landCost: ParsedInput,
+  acquisitionBasis: AcquisitionBasis | null,
+) {
+  switch (strategy) {
+    case "buy_hold":
+    case "flip":
+    case "brrrr":
+      return isPositive(purchasePrice) ? purchasePrice.value : null;
+    case "development_rent":
+      return isPositive(landCost) ? landCost.value : null;
+    case "development_sell":
+      return null;
+    case "land_bank":
+      return acquisitionBasis && isPositive(acquisitionBasis.input)
+        ? acquisitionBasis.input.value
+        : null;
+    case "bond":
+      return isPositive(purchasePrice) && hasValidDepositPercent(value("depositPercent"))
+        ? purchasePrice.value
+        : null;
+    case "str_airbnb":
+    case "custom":
+      return null;
   }
-  return purchasePrice;
+}
+
+function hasValidDepositPercent(depositPercent: ParsedInput) {
+  return (
+    depositPercent.present &&
+    depositPercent.value != null &&
+    depositPercent.value >= 0 &&
+    depositPercent.value <= 100
+  );
+}
+
+function derivedLoanAmountFromPurchase(purchasePrice: number, depositPercent: ParsedInput) {
+  if (hasValidDepositPercent(depositPercent)) {
+    return Math.max(0, purchasePrice * (1 - Number(depositPercent.value) / 100));
+  }
+  return null;
 }
 
 function buyHoldResult(
