@@ -23,6 +23,7 @@ export interface ReportPrintLifecycleController {
   markPrintStarted: () => void;
   dispose: () => void;
   hasEnteredPrintMedia: () => boolean;
+  isPrintMediaActive: () => boolean;
 }
 
 type PrintMediaQuery = MediaQueryList & {
@@ -42,6 +43,7 @@ export function createReportPrintLifecycleController({
   let disposed = false;
   let printStartedAt = 0;
   let printMediaEntered = false;
+  let printMediaActive = Boolean(printMedia?.matches);
   let emergencyTimeoutId: number | undefined;
 
   const finish = () => {
@@ -53,12 +55,16 @@ export function createReportPrintLifecycleController({
   const handlePrintMediaChange = (event: MediaQueryListEvent | MediaQueryList) => {
     if (event.matches) {
       printMediaEntered = true;
+      printMediaActive = true;
       return;
     }
+    printMediaActive = false;
     if (printMediaEntered) finish();
   };
   const handleParentFocus = () => {
     if (!printStartedAt) return;
+    if (printMedia?.matches) return;
+    if (printMediaActive) printMediaActive = false;
     if (printMediaEntered) {
       finish();
       return;
@@ -91,7 +97,10 @@ export function createReportPrintLifecycleController({
     },
     markPrintStarted() {
       printStartedAt = now();
-      if (printMedia?.matches) printMediaEntered = true;
+      if (printMedia?.matches) {
+        printMediaEntered = true;
+        printMediaActive = true;
+      }
     },
     dispose() {
       if (disposed) return;
@@ -103,6 +112,9 @@ export function createReportPrintLifecycleController({
     },
     hasEnteredPrintMedia() {
       return printMediaEntered;
+    },
+    isPrintMediaActive() {
+      return printMediaActive || Boolean(printMedia?.matches);
     },
   };
 }

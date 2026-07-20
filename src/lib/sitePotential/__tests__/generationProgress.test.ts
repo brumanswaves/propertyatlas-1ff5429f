@@ -126,6 +126,42 @@ describe("Site Potential runtime generation progress", () => {
     expect(futureBackoff?.stalled).toBe(false);
   });
 
+  it("uses the newest item or pack transition as the stalled anchor", () => {
+    const recentlyTouchedItem = buildSitePotentialRuntimeProgress(
+      {
+        status: "queued",
+        requestedCount: 3,
+        completedCount: 0,
+        createdAt: "2026-07-20T11:00:00Z",
+        updatedAt: "2026-07-20T11:30:00Z",
+        workerActive: false,
+        items: [
+          { optionIndex: 1, status: "queued", updatedAt: "2026-07-20T12:04:15Z" },
+          { optionIndex: 2, status: "queued", updatedAt: "2026-07-20T11:30:00Z" },
+          { optionIndex: 3, status: "queued" },
+        ],
+      },
+      now,
+      now,
+    );
+    const futureItemBackoff = buildSitePotentialRuntimeProgress(
+      {
+        status: "queued",
+        requestedCount: 3,
+        completedCount: 0,
+        createdAt: "2026-07-20T11:00:00Z",
+        updatedAt: "2026-07-20T11:30:00Z",
+        workerActive: false,
+        items: [{ optionIndex: 1, status: "queued", nextAttemptAt: "2026-07-20T12:08:00Z" }],
+      },
+      now,
+      now,
+    );
+
+    expect(recentlyTouchedItem?.stalled).toBe(false);
+    expect(futureItemBackoff?.stalled).toBe(false);
+  });
+
   it("shows retryable and terminal failure states with sanitized messages", () => {
     const retryable = buildSitePotentialRuntimeProgress(
       {
@@ -157,7 +193,7 @@ describe("Site Potential runtime generation progress", () => {
       now,
     );
 
-    expect(retryable?.heading).toBe("Retrying concept 2");
+    expect(retryable?.heading).toBe("Eligible concepts can be retried");
     expect(retryable?.slots[1].status).toBe("Retrying");
     expect(terminal?.heading).toBe("Generation needs attention");
     expect(terminal?.sanitizedFailure).toBe(
@@ -166,6 +202,73 @@ describe("Site Potential runtime generation progress", () => {
     expect(terminal?.sanitizedFailure).not.toContain("sk-secret");
     expect(terminal?.sanitizedFailure).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(terminal?.sanitizedFailure).not.toContain("erf_design_pack_items");
+  });
+
+  it("does not treat retryable failed packs as terminal", () => {
+    const failedRetryable = buildSitePotentialRuntimeProgress(
+      {
+        status: "failed",
+        requestedCount: 3,
+        completedCount: 0,
+        terminal: false,
+        hasRetryableWork: true,
+        canRetry: true,
+        items: [{ optionIndex: 1, status: "failed", attemptCount: 1, canRetry: true }],
+      },
+      now,
+      now,
+    );
+    const partialRetryable = buildSitePotentialRuntimeProgress(
+      {
+        status: "partial_failed",
+        requestedCount: 3,
+        completedCount: 1,
+        terminal: false,
+        hasRetryableWork: true,
+        items: [
+          { optionIndex: 1, status: "complete", generatedAssetReady: true },
+          { optionIndex: 2, status: "failed", attemptCount: 1, canRetry: true },
+        ],
+      },
+      now,
+      now,
+    );
+    const terminalFailed = buildSitePotentialRuntimeProgress(
+      {
+        status: "failed",
+        requestedCount: 3,
+        completedCount: 0,
+        terminal: true,
+        hasRetryableWork: false,
+        canRetry: false,
+        items: [{ optionIndex: 1, status: "failed", attemptCount: 3 }],
+      },
+      now,
+      now,
+    );
+    const activeWorkerWithPriorFailure = buildSitePotentialRuntimeProgress(
+      {
+        status: "partial_failed",
+        requestedCount: 3,
+        completedCount: 0,
+        terminal: false,
+        hasRetryableWork: true,
+        workerActive: true,
+        items: [
+          { optionIndex: 1, status: "generating" },
+          { optionIndex: 2, status: "failed", attemptCount: 1 },
+        ],
+      },
+      now,
+      now,
+    );
+
+    expect(failedRetryable?.heading).toBe("Eligible concepts can be retried");
+    expect(failedRetryable?.canRetry).toBe(true);
+    expect(partialRetryable?.heading).toBe("Eligible concepts can be retried");
+    expect(terminalFailed?.heading).toBe("Generation needs attention");
+    expect(activeWorkerWithPriorFailure?.heading).toBe("Creating concept 1 of 3");
+    expect(activeWorkerWithPriorFailure?.workerActive).toBe(true);
   });
 
   it("maps sensitive infrastructure failures to safe public categories", () => {

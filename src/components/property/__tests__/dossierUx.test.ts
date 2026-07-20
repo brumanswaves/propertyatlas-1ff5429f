@@ -918,10 +918,35 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).toContain("/api/site-potential/retry-pack");
     expect(sitePotential).toContain('role="status"');
     expect(sitePotential).toContain('aria-live="polite"');
+    expect(sitePotential).toContain("Eligible concepts can be retried.");
+    expect(sitePotential).toContain("Waiting for eligible concepts to be retried.");
+    expect(sitePotential).toContain("failedish && packStatus.terminal && !retryable && !activeWorker");
   });
 });
 
 describe("Investor Decision Mode guardrails", () => {
+  it("keeps report print iframe cleanup idempotent across effect and unmount cleanup", () => {
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const lifecycle = read("src/lib/reports/reportPrintLifecycle.ts");
+
+    expect(dossier).toContain("let preparationCancelled = false;");
+    expect(dossier).toContain("let finalCleaned = false;");
+    expect(dossier).toContain("const finalCleanup = (updateState = true) => {");
+    expect(dossier).toContain("if (finalCleaned) return;");
+    expect(dossier).toContain("printInProgressRef.current = false;");
+    expect(dossier).toContain("printFrame.remove();");
+    expect(dossier).toContain("printCleanupRef.current = () => finalCleanup(false);");
+    expect(dossier).toContain("return () => {");
+    expect(dossier).toContain("finalCleanup(false);");
+    expect(dossier).toContain("if (preparationCancelled) return;");
+    expect(dossier).toContain("frameWindow.print();");
+    expect(dossier).not.toContain("window.print()");
+    expect(lifecycle).toContain("let printMediaActive");
+    expect(lifecycle).toContain("if (printMedia?.matches) return;");
+    expect(lifecycle).toContain("if (printMediaActive) printMediaActive = false;");
+    expect(lifecycle).toContain("isPrintMediaActive");
+  });
+
   it("adds exactly Standard and Investor lenses and hides the selector when printing", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const styles = read("src/styles.css");

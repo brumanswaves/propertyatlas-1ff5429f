@@ -319,7 +319,16 @@ function generatedConceptsEmptyMessage(
   if (packStatus.status === "complete" || packStatus.completedCount >= packStatus.requestedCount) {
     return "Concept generation completed, but the saved images could not be displayed. Refresh the Erf File Vault.";
   }
-  if (packStatus.terminal || packStatus.status === "failed") {
+  const retryable = progress?.canRetry === true || packHasRetryableSlots(packStatus);
+  const activeWorker = progress?.workerActive === true || packStatus.workerActive === true;
+  const failedish = packStatus.status === "failed" || packStatus.status === "partial_failed";
+  if (failedish && retryable && !activeWorker) {
+    return "Eligible concepts can be retried.";
+  }
+  if (failedish && retryable) {
+    return "Waiting for eligible concepts to be retried.";
+  }
+  if (failedish && packStatus.terminal && !retryable && !activeWorker) {
     return "Generation stopped before a concept was completed. Review the failure above.";
   }
   if (progress?.slots.some((slot) => slot.status === "Retrying")) {

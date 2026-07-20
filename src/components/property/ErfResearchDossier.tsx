@@ -1520,10 +1520,12 @@ function StoepAiReportView({
     const root = frameDocument?.getElementById(REPORT_PRINT_ROOT_ID);
     if (!frameWindow || !frameDocument || !root) return;
     let lifecycle: ReturnType<typeof createReportPrintLifecycleController> | null = null;
-    let cancelled = false;
-    const cleanup = (updateState = true) => {
-      if (cancelled) return;
-      cancelled = true;
+    let preparationCancelled = false;
+    let finalCleaned = false;
+    const finalCleanup = (updateState = true) => {
+      if (finalCleaned) return;
+      preparationCancelled = true;
+      finalCleaned = true;
       lifecycle?.dispose();
       printCleanupRef.current = null;
       printStylesReadyRef.current = null;
@@ -1536,24 +1538,23 @@ function StoepAiReportView({
       parentWindow: window,
       emergencyCleanupMs: REPORT_PRINT_EMERGENCY_CLEANUP_MS,
       focusMinimumHoldMs: REPORT_PRINT_FOCUS_MIN_HOLD_MS,
-      onFinish: () => cleanup(),
+      onFinish: () => finalCleanup(),
     });
     const printWhenReady = async () => {
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       await printStylesReadyRef.current;
       await frameDocument.fonts?.ready.catch(() => undefined);
       await waitForReportPrintPreparation(root);
-      if (cancelled) return;
+      if (preparationCancelled) return;
       frameWindow.focus();
       lifecycle?.markPrintStarted();
       frameWindow.print();
     };
-    printCleanupRef.current = () => cleanup(false);
+    printCleanupRef.current = () => finalCleanup(false);
     lifecycle.register();
     void printWhenReady();
     return () => {
-      cancelled = true;
-      lifecycle?.dispose();
+      finalCleanup(false);
     };
   }, [printFrame]);
 

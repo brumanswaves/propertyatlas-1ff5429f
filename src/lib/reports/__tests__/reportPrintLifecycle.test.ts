@@ -101,6 +101,7 @@ describe("report print lifecycle controller", () => {
   it("does not clean up solely from an early parent focus event", () => {
     const harness = createHarness();
     harness.controller.register();
+    harness.setNow(1);
     harness.controller.markPrintStarted();
     harness.setNow(600);
     harness.parent.emit("focus");
@@ -112,15 +113,31 @@ describe("report print lifecycle controller", () => {
   it("keeps the iframe mounted while print media is active and removes it after print media exits", () => {
     const harness = createHarness();
     harness.controller.register();
+    harness.setNow(1);
     harness.controller.markPrintStarted();
 
     harness.media.emit(true);
     expect(harness.controller.hasEnteredPrintMedia()).toBe(true);
+    expect(harness.controller.isPrintMediaActive()).toBe(true);
+    harness.setNow(45_000);
+    harness.parent.emit("focus");
     expect(harness.cleanupCount).toBe(0);
 
     harness.media.emit(false);
+    expect(harness.controller.isPrintMediaActive()).toBe(false);
     expect(harness.cleanupCount).toBe(1);
     expect(harness.frame.count("afterprint")).toBe(0);
+  });
+
+  it("allows conservative parent focus cleanup only after print media is no longer active", () => {
+    const harness = createHarness();
+    harness.controller.register();
+    harness.setNow(1);
+    harness.controller.markPrintStarted();
+
+    harness.setNow(60_000);
+    harness.parent.emit("focus");
+    expect(harness.cleanupCount).toBe(1);
   });
 
   it("cleans up after iframe afterprint and emergency timeout", () => {
@@ -128,9 +145,14 @@ describe("report print lifecycle controller", () => {
     afterPrint.controller.register();
     afterPrint.frame.emit("afterprint");
     expect(afterPrint.cleanupCount).toBe(1);
+    afterPrint.media.emit(false);
+    afterPrint.parent.emit("focus");
+    expect(afterPrint.cleanupCount).toBe(1);
 
     const emergency = createHarness();
     emergency.controller.register();
+    emergency.fireTimeout();
+    expect(emergency.cleanupCount).toBe(1);
     emergency.fireTimeout();
     expect(emergency.cleanupCount).toBe(1);
   });

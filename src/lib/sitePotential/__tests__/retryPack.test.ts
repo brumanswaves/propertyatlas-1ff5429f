@@ -8,12 +8,18 @@ const fresh = "2026-07-20T11:59:30Z";
 const expiredLease = "2026-07-20T11:59:00Z";
 const activeLease = "2026-07-20T12:05:00Z";
 
+interface RetryPackRows {
+  projects: Array<Record<string, unknown>>;
+  packs: Array<Record<string, unknown>>;
+  items: Array<Record<string, unknown>>;
+}
+
 function baseRows(overrides: {
   item?: Partial<Record<string, unknown>>;
   pack?: Partial<Record<string, unknown>>;
   project?: Partial<Record<string, unknown>>;
-} = {}) {
-  return {
+} = {}): RetryPackRows {
+  const rows: RetryPackRows = {
     projects: [
       {
         id: "project-1",
@@ -36,6 +42,8 @@ function baseRows(overrides: {
         created_at: "2026-07-20T11:50:00Z",
         updated_at: stale,
         heartbeat_at: null,
+        worker_id: null,
+        lease_expires_at: null,
         next_attempt_at: null,
         ...overrides.pack,
       },
@@ -49,6 +57,7 @@ function baseRows(overrides: {
         status: "queued",
         generated_asset_id: null,
         attempt_count: 0,
+        worker_id: null,
         lease_expires_at: null,
         next_attempt_at: null,
         heartbeat_at: null,
@@ -59,9 +68,13 @@ function baseRows(overrides: {
       },
     ],
   };
+  return rows;
 }
 
-function createServiceClient(rows: ReturnType<typeof baseRows>, options: { beforeItemUpdate?: () => void } = {}) {
+function createServiceClient(
+  rows: ReturnType<typeof baseRows>,
+  options: { beforeItemUpdate?: () => void; beforePackUpdate?: () => void } = {},
+) {
   const calls: string[] = [];
   const tables: Record<string, Record<string, unknown>[]> = {
     erf_site_projects: rows.projects,
@@ -85,7 +98,7 @@ function createServiceClient(rows: ReturnType<typeof baseRows>, options: { befor
 function createQuery(
   tableRows: Record<string, unknown>[],
   table: string,
-  options: { beforeItemUpdate?: () => void },
+  options: { beforeItemUpdate?: () => void; beforePackUpdate?: () => void },
 ) {
   const filters: Array<(row: Record<string, unknown>) => boolean> = [];
   let updateData: Record<string, unknown> | null = null;
@@ -148,6 +161,7 @@ function createQuery(
 
   function execute() {
     if (updateData && table === "erf_design_pack_items") options.beforeItemUpdate?.();
+    if (updateData && table === "erf_design_packs") options.beforePackUpdate?.();
     const matched = tableRows.filter((row) => filters.every((filter) => filter(row)));
     if (updateData) {
       for (const row of matched) Object.assign(row, updateData);
@@ -167,7 +181,10 @@ function createQuery(
   return api;
 }
 
-async function retry(rows: ReturnType<typeof baseRows>, options?: { beforeItemUpdate?: () => void }) {
+async function retry(
+  rows: ReturnType<typeof baseRows>,
+  options?: { beforeItemUpdate?: () => void; beforePackUpdate?: () => void },
+) {
   return retrySitePotentialPack({
     serviceSupabase: createServiceClient(rows, options) as never,
     userId: "user-1",
@@ -181,6 +198,14 @@ async function retry(rows: ReturnType<typeof baseRows>, options?: { beforeItemUp
 describe("retrySitePotentialPack", () => {
   it("does not retry a newly queued pack", async () => {
     const rows = baseRows({ item: { updated_at: fresh }, pack: { updated_at: fresh } });
+    const result = await retry(rows);
+
+    expect(result).toMatchObject({ ok: true, retried: false });
+    expect(rows.items[0].next_attempt_at).toBeNull();
+  });
+
+  it("uses the newest pack queue transition when deciding whether queued work is stalled", async () => {
+    const rows = baseRows({ item: { updated_at: stale }, pack: { updated_at: fresh } });
     const result = await retry(rows);
 
     expect(result).toMatchObject({ ok: true, retried: false });
@@ -203,6 +228,50 @@ describe("retrySitePotentialPack", () => {
 
     expect(result).toMatchObject({ ok: true, retried: false });
     expect(rows.items[0]).toMatchObject({ status: "generating", lease_expires_at: activeLease });
+  });
+
+  it("does not retry a failed item while another item in the same pack has an active worker", async () => {
+    const rows = baseRows({
+      pack: {
+        status: "generating",
+        worker_id: "worker-live",
+        heartbeat_at: fresh,
+        lease_expires_at: activeLease,
+      },
+    });
+    rows.items = [
+      {
+        ...rows.items[0],
+        id: "item-1",
+        option_index: 1,
+        status: "generating",
+        worker_id: "worker-live",
+        lease_expires_at: activeLease,
+        heartbeat_at: fresh,
+      },
+      {
+        ...rows.items[0],
+        id: "item-2",
+        option_index: 2,
+        status: "failed",
+        attempt_count: 1,
+      },
+    ];
+
+    const result = await retry(rows);
+
+    expect(result).toMatchObject({ ok: true, retried: false });
+    expect(rows.items[0]).toMatchObject({
+      status: "generating",
+      worker_id: "worker-live",
+      lease_expires_at: activeLease,
+    });
+    expect(rows.items[1]).toMatchObject({ status: "failed", next_attempt_at: null });
+    expect(rows.packs[0]).toMatchObject({
+      worker_id: "worker-live",
+      heartbeat_at: fresh,
+      lease_expires_at: activeLease,
+    });
   });
 
   it("requeues expired generating leases", async () => {
@@ -263,6 +332,32 @@ describe("retrySitePotentialPack", () => {
     expect(result).toMatchObject({ ok: true, retried: false });
     expect(rows.items[0]).toMatchObject({ status: "generating", lease_expires_at: activeLease });
     expect(rows.packs[0].next_attempt_at).toBeNull();
+  });
+
+  it("preserves a cron pack claim that happens between item requeue and pack update", async () => {
+    const rows = baseRows({ item: { status: "failed", attempt_count: 1 } });
+    let claimed = false;
+    const result = await retry(rows, {
+      beforePackUpdate: () => {
+        if (claimed) return;
+        claimed = true;
+        rows.packs[0].status = "generating";
+        rows.packs[0].worker_id = "cron-worker";
+        rows.packs[0].heartbeat_at = fresh;
+        rows.packs[0].lease_expires_at = activeLease;
+        rows.packs[0].updated_at = fresh;
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, retried: true });
+    expect(rows.items[0]).toMatchObject({ status: "queued", next_attempt_at: now.toISOString() });
+    expect(rows.packs[0]).toMatchObject({
+      status: "generating",
+      worker_id: "cron-worker",
+      heartbeat_at: fresh,
+      lease_expires_at: activeLease,
+    });
+    expect(rows.projects[0]).toMatchObject({ generation_status: "generating" });
   });
 
   it("uses the same pack and does not call entitlement redemption, beta credit redemption or worker secrets", async () => {

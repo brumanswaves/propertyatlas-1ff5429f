@@ -144,10 +144,13 @@ export function buildSitePotentialRuntimeProgress(
     );
   const anyGenerating = items.some((item) => item.status === "generating");
   const retryableSlot = items.find((item) => item.canRetry === true);
+  const canRetry = input.canRetry === true || items.some((item) => item.canRetry === true);
+  const hasRetryableWork = input.hasRetryableWork === true || canRetry;
   const firstGenerating = items.find((item) => item.status === "generating");
   const stalledAnchor = newestDate([
     parseDate(input.updatedAt),
     parseDate(input.nextAttemptAt),
+    ...items.map((item) => parseDate(item.updatedAt)),
     ...items.map((item) => parseDate(item.nextAttemptAt)),
     createdAt,
   ]);
@@ -165,10 +168,9 @@ export function buildSitePotentialRuntimeProgress(
       stalledAnchor &&
         now.getTime() - stalledAnchor.getTime() >= SITE_POTENTIAL_STALLED_AFTER_MS,
     );
+  const failedish = input.status === "failed" || input.status === "partial_failed";
   const terminal =
-    input.terminal === true ||
-    input.status === "failed" ||
-    (input.status === "partial_failed" && input.hasRetryableWork === false);
+    failedish && input.terminal === true && !hasRetryableWork && !canRetry && !workerActive;
 
   let heading = "Request accepted";
   let detail = "Easy Erf saved the request and is checking the background queue.";
@@ -183,8 +185,13 @@ export function buildSitePotentialRuntimeProgress(
       mapSitePotentialFailureForPublic(input.failureCode, input.failureMessage)?.message ||
       "Generation stopped before all concepts were created.";
   } else if (retryableSlot) {
-    heading = `Retrying concept ${retryableSlot.optionIndex}`;
-    detail = "Easy Erf will retry eligible failed concepts without using another credit.";
+    heading =
+      failedish && !workerActive
+        ? "Eligible concepts can be retried"
+        : `Retrying concept ${retryableSlot.optionIndex}`;
+    detail = failedish
+      ? "Retry this pack to requeue eligible concepts without using another credit."
+      : "Easy Erf will retry eligible failed concepts without using another credit.";
     estimate = "Retries can add several minutes.";
   } else if (firstGenerating) {
     heading = `Creating concept ${firstGenerating.optionIndex} of ${requestedCount}`;
@@ -217,7 +224,7 @@ export function buildSitePotentialRuntimeProgress(
     estimate,
     stalled,
     workerActive,
-    canRetry: input.canRetry === true || items.some((item) => item.canRetry === true),
+    canRetry,
     sanitizedFailure: mapSitePotentialFailureForPublic(input.failureCode, input.failureMessage)
       ?.message ?? null,
     slots: items.map((item) => ({
