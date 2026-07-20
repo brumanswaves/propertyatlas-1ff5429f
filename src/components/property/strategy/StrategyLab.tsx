@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/lib/auth/useAuth";
 import {
   calculateAcquisition,
   calculateBond,
@@ -14,11 +15,18 @@ import {
 } from "@/lib/research/calculators";
 import { cn } from "@/lib/utils";
 import {
+  mergeStrategyWorkspaces,
   getChosenStrategyScenario,
+  readStrategyWorkspace,
   readStrategyScenarios,
+  saveStrategyDraft,
   saveStrategyScenario,
+  strategyWorkspaceFromUserData,
+  writeStrategyWorkspace,
+  type ErfStrategyWorkspace,
   type ErfStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
+import { supabase } from "@/integrations/supabase/client";
 
 type StrategyType =
   | "buy_hold"
@@ -224,6 +232,41 @@ function readSitePotentialStrategyDraft(parcelId: string): SitePotentialStrategy
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function persistStrategyWorkspaceToCloud(
+  userId: string,
+  parcelId: string,
+  workspace: ErfStrategyWorkspace,
+) {
+  const { data, error: readError } = await supabase
+    .from("saved_properties")
+    .select("user_data")
+    .eq("user_id", userId)
+    .eq("parcel_id", parcelId)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  const existingUserData = isRecord(data?.user_data) ? data.user_data : {};
+  const userData = {
+    ...existingUserData,
+    normalizedParcelId: parcelId,
+    strategyWorkspace: workspace,
+    strategyWorkspaceUpdatedAt: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("saved_properties").upsert(
+    {
+      user_id: userId,
+      parcel_id: parcelId,
+      user_data: userData as unknown as Record<string, unknown> as never,
+    },
+    { onConflict: "user_id,parcel_id" },
+  );
+  if (error) throw error;
+}
+
 export function StrategyLab({
   parcelId,
   defaultPrice,
@@ -233,28 +276,112 @@ export function StrategyLab({
   defaultPrice: number;
   onOpenReport?: () => void;
 }) {
-  const [active, setActive] = useState<StrategyType>("buy_hold");
-  const [values, setValues] = useState(() => strategyDefaults(defaultPrice));
+  const { user } = useAuth();
+  const initialWorkspace = readStrategyWorkspace(parcelId);
+  const [active, setActive] = useState<StrategyType>(() =>
+    STRATEGY_OPTIONS.some((option) => option.id === initialWorkspace.activeStrategy)
+      ? (initialWorkspace.activeStrategy as StrategyType)
+      : "buy_hold",
+  );
+  const [values, setValues] = useState(() => ({
+    ...strategyDefaults(defaultPrice),
+    ...initialWorkspace.draftInputs,
+  }));
   const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
   const [chosenScenario, setChosenScenario] = useState(() => getChosenStrategyScenario(parcelId));
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
     readSitePotentialStrategyDraft(parcelId),
   );
+  const defaultPriceRef = useRef(defaultPrice);
+  const cloudSaveErrorShownRef = useRef(false);
+  defaultPriceRef.current = defaultPrice;
 
   useEffect(() => {
+    const workspace = readStrategyWorkspace(parcelId);
     const chosen = getChosenStrategyScenario(parcelId);
-    setSavedScenarios(readStrategyScenarios(parcelId));
+    setSavedScenarios(workspace.scenarios);
     setChosenScenario(chosen);
-    setActive(selectedStrategyId(chosen));
-    setValues({ ...strategyDefaults(defaultPrice), ...(chosen?.inputs ?? {}) });
+    setActive(
+      STRATEGY_OPTIONS.some((option) => option.id === workspace.activeStrategy)
+        ? (workspace.activeStrategy as StrategyType)
+        : selectedStrategyId(chosen),
+    );
+    setValues({ ...strategyDefaults(defaultPriceRef.current), ...workspace.draftInputs });
     setShowChosenState(Boolean(chosen));
     setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
-  }, [defaultPrice, parcelId]);
+    cloudSaveErrorShownRef.current = false;
+  }, [parcelId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!user) return () => {
+      alive = false;
+    };
+
+    supabase
+      .from("saved_properties")
+      .select("user_data")
+      .eq("user_id", user.id)
+      .eq("parcel_id", parcelId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) {
+          console.warn("[Easy Erf] Strategy workspace cloud load failed", error.message);
+          return;
+        }
+        const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
+        if (!remote) return;
+        const merged = writeStrategyWorkspace(
+          parcelId,
+          mergeStrategyWorkspaces(parcelId, readStrategyWorkspace(parcelId), remote),
+        );
+        const chosen = getChosenStrategyScenario(parcelId);
+        setSavedScenarios(merged.scenarios);
+        setChosenScenario(chosen);
+        setActive(
+          STRATEGY_OPTIONS.some((option) => option.id === merged.activeStrategy)
+            ? (merged.activeStrategy as StrategyType)
+            : selectedStrategyId(chosen),
+        );
+        setValues({ ...strategyDefaults(defaultPriceRef.current), ...merged.draftInputs });
+        setShowChosenState(Boolean(chosen));
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [parcelId, user]);
+
+  function persistWorkspace(workspace: ErfStrategyWorkspace) {
+    if (!user) return;
+    void persistStrategyWorkspaceToCloud(user.id, parcelId, workspace).catch((error) => {
+      console.warn("[Easy Erf] Strategy workspace cloud save failed", error);
+      if (!cloudSaveErrorShownRef.current) {
+        cloudSaveErrorShownRef.current = true;
+        toast.message("Strategy draft saved on this device. Cloud sync will retry on the next edit.");
+      }
+    });
+  }
+
+  function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>) {
+    const workspace = saveStrategyDraft(parcelId, {
+      activeStrategy: nextActive,
+      draftInputs: nextValues,
+    });
+    persistWorkspace(workspace);
+    return workspace;
+  }
 
   const n = (key: string) => toNumber(values[key]);
   const setValue = (key: string, value: string) =>
-    setValues((current) => ({ ...current, [key]: value }));
+    setValues((current) => {
+      const next = { ...current, [key]: value };
+      persistDraft(active, next);
+      setShowChosenState(false);
+      return next;
+    });
 
   const loanAmount =
     n("loanAmount") || Math.max(0, n("purchasePrice") * (1 - n("depositPercent") / 100));
@@ -468,11 +595,14 @@ export function StrategyLab({
 
   function chooseStrategy(id: StrategyType) {
     setActive(id);
+    persistDraft(id, values);
     setShowChosenState(false);
   }
 
   function reset() {
-    setValues(strategyDefaults(defaultPrice));
+    const next = strategyDefaults(defaultPrice);
+    setValues(next);
+    persistDraft(active, next);
     setShowChosenState(false);
   }
 
@@ -487,11 +617,16 @@ export function StrategyLab({
         ? `Selected design asset: ${sitePotentialDraft.selectedDesignAssetId}`
         : null,
     ].filter((note): note is string => Boolean(note));
-    setActive("development_sell");
-    setValues((current) => ({
+    const nextActive = "development_sell";
+    setActive(nextActive);
+    setValues((current) => {
+      const next = {
       ...current,
       customNotes: [current.customNotes, ...notes].filter(Boolean).join("\n"),
-    }));
+      };
+      persistDraft(nextActive, next);
+      return next;
+    });
     setShowChosenState(false);
     toast.success("Site Potential draft applied. Review the numbers before saving.");
   }
@@ -507,6 +642,7 @@ export function StrategyLab({
     setSavedScenarios(scenarios);
     setChosenScenario(scenario);
     setShowChosenState(true);
+    persistWorkspace(readStrategyWorkspace(parcelId));
     toast.success("Scenario chosen for this erf.");
   }
 
@@ -524,9 +660,12 @@ export function StrategyLab({
               Choose a strategy for this erf
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-              Choose a strategy, adjust the assumptions, and save the scenario that should feed the
-              Easy Erf Report.
+              Every input autosaves as a draft for this erf. Save a scenario only when you want that
+              version to feed the Easy Erf Report.
             </p>
+            <div className="mt-3 inline-flex rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A]/70">
+              Autosaved draft separate from chosen report scenario
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -604,22 +743,51 @@ export function StrategyLab({
         </section>
       )}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {STRATEGY_OPTIONS.map((option) => (
           <button
             key={option.id}
             type="button"
             onClick={() => chooseStrategy(option.id)}
             className={cn(
-              "rounded-[1.25rem] border p-4 text-left transition",
+              "group rounded-[1.5rem] border p-5 text-left transition",
               active === option.id
-                ? "border-[#FF6A00]/60 bg-[#fff8ec] shadow-[0_18px_40px_-32px_rgba(255,106,0,0.55)]"
-                : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/35",
+                ? "border-[#FF6A00]/70 bg-[#0D1B2A] text-white shadow-[0_24px_60px_-38px_rgba(13,27,42,0.8)]"
+                : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/35 hover:shadow-[0_18px_45px_-38px_rgba(13,27,42,0.4)]",
             )}
           >
-            <div className="text-sm font-semibold text-[#0D1B2A]">{option.label}</div>
-            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">{option.description}</p>
-            <div className="mt-3 grid gap-1 text-[11px] text-[#0D1B2A]/60">
+            <div
+              className={cn(
+                "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
+                active === option.id ? "bg-[#FF6A00] text-white" : "bg-[#FFF7ED] text-[#B24A00]",
+              )}
+            >
+              {active === option.id ? "Drafting" : "Strategy option"}
+            </div>
+            <div
+              className={cn(
+                "mt-4 text-base font-semibold",
+                active === option.id ? "text-white" : "text-[#0D1B2A]",
+              )}
+            >
+              {option.label}
+            </div>
+            <p
+              className={cn(
+                "mt-2 text-sm leading-6",
+                active === option.id ? "text-white/72" : "text-[#0D1B2A]/64",
+              )}
+            >
+              {option.description}
+            </p>
+            <div
+              className={cn(
+                "mt-4 grid gap-2 rounded-2xl border px-3 py-2 text-[11px]",
+                active === option.id
+                  ? "border-white/10 bg-white/[0.06] text-white/70"
+                  : "border-[#D9E6F2] bg-[#F7FBFF] text-[#0D1B2A]/60",
+              )}
+            >
               <span>Best for: {option.bestFor}</span>
               <span>Key output: {option.keyOutput}</span>
             </div>
@@ -680,8 +848,8 @@ export function StrategyLab({
 
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
         {savedScenarios.length > 0
-          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Easy Erf Report. The chosen scenario is used first.`
-          : "Save a scenario to move Strategy progress. Estimates remain based on your assumptions."}
+          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} on file. Only the chosen scenario feeds the Easy Erf Report.`
+          : "Your draft is autosaved, but the Easy Erf Report waits for you to save a chosen scenario."}
         {savedScenarios.length > 0 && (
           <button
             type="button"

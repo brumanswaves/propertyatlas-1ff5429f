@@ -568,7 +568,8 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Listings & Comps");
     expect(dossier).toContain("<StrategyLab");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
-    expect(strategyLab).toContain("Choose a strategy, adjust the assumptions");
+    expect(strategyLab).toContain("Every input autosaves as a draft");
+    expect(strategyLab).toContain("Only the chosen scenario feeds the Easy Erf Report");
     expect(strategyLab).toContain("Buy and hold rental");
     expect(strategyLab).toContain("Development to rent");
     expect(strategyLab).toContain("STR / Airbnb");
@@ -952,12 +953,13 @@ describe("Investor Decision Mode guardrails", () => {
     const styles = read("src/styles.css");
 
     expect(dossier).toContain("DecisionLensSelector");
-    expect(dossier).toContain('(["standard", "investor"] as const)');
-    expect(dossier).toContain("Standard");
-    expect(dossier).toContain("Investor");
+    expect(dossier).toContain("Standard Easy Erf Report");
+    expect(dossier).toContain("Investor Decision Mode");
+    expect(dossier).toContain("General decision document");
+    expect(dossier).toContain("Numbers-first lens");
+    expect(dossier).toContain("report-no-print mt-5 grid");
     expect(dossier).not.toContain("Developer</button>");
     expect(dossier).not.toContain("Renovator</button>");
-    expect(dossier).toContain("report-no-print mt-5 inline-flex");
     expect(styles).toContain(".report-no-print { display: none !important; }");
   });
 
@@ -979,6 +981,39 @@ describe("Investor Decision Mode guardrails", () => {
     expect(dossier).toContain('case "calculators"');
     expect(dossier).toContain('case "site-potential"');
     expect(dossier).toContain('case "stoep-report"');
+  });
+
+  it("keeps Strategy drafts durable and separate from the chosen report scenario", () => {
+    const strategyLab = read("src/components/property/strategy/StrategyLab.tsx");
+    const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+
+    expect(workspace).toContain("ErfStrategyWorkspace");
+    expect(workspace).toContain("easyerf.strategyWorkspace.v1");
+    expect(workspace).toContain("saveStrategyDraft");
+    expect(workspace).toContain("strategyWorkspaceFromLegacy");
+    expect(strategyLab).toContain("Autosaved draft separate from chosen report scenario");
+    expect(strategyLab).toContain("persistStrategyWorkspaceToCloud");
+    expect(strategyLab).toContain("strategyWorkspace: workspace");
+    expect(strategyLab).toContain("...existingUserData");
+    expect(dossier).toContain("strategyWorkspaceFromUserData");
+    expect(dossier).toContain("easyerf:strategy-workspace-updated");
+    expect(dossier).toContain("mergeStrategyWorkspaces");
+  });
+
+  it("redesigns the report as a professional decision document without replacing iframe print", () => {
+    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+
+    expect(dossier).toContain("report-cover");
+    expect(dossier).toContain("Executive summary");
+    expect(dossier).toContain("ReportCoverMetric");
+    expect(dossier).toContain("Decision confidence");
+    expect(dossier).toContain("Chosen strategy");
+    expect(dossier).toContain("Feeds Standard and Investor reports");
+    expect(dossier).toContain("createReportPrintFrame");
+    expect(dossier).toContain("prepareReportPrintFrame");
+    expect(dossier).toContain("frameWindow.print()");
+    expect(dossier).not.toContain("window.print()");
   });
 
   it("keeps Investor Mode away from unsupported investment recommendation language", () => {

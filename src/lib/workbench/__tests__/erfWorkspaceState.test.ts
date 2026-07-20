@@ -3,10 +3,15 @@ import {
   buildErfWorkspaceNextStep,
   buildStoepStepProgress,
   createEmptyErfWorkspaceState,
+  erfStrategyWorkspaceKey,
   erfWorkspaceStateKey,
   getChosenStrategyScenario,
+  mergeStrategyWorkspaces,
+  readStrategyWorkspace,
   readErfWorkspaceState,
+  saveStrategyDraft,
   saveStrategyScenario,
+  strategyWorkspaceFromUserData,
   updateErfWorkspaceState,
 } from "../erfWorkspaceState";
 
@@ -247,6 +252,112 @@ describe("erfWorkspaceState", () => {
     expect(second.scenarios.find((scenario) => scenario.id === first.scenario.id)?.selected).toBe(
       false,
     );
+  });
+
+  it("autosaves Strategy Lab draft inputs separately from the chosen report scenario", () => {
+    const storage = memoryStorage();
+    const parcelId = "csg:lpi:c03400140000102100000";
+
+    const draft = saveStrategyDraft(
+      parcelId,
+      {
+        activeStrategy: "flip",
+        draftInputs: { purchasePrice: "2100000", expectedResalePrice: "2800000" },
+        updatedAt: "2026-07-20T10:00:00.000Z",
+      },
+      storage,
+    );
+
+    expect(storage.getItem(erfStrategyWorkspaceKey(parcelId))).toContain("expectedResalePrice");
+    expect(draft.chosenScenarioId).toBeNull();
+    expect(readErfWorkspaceState(parcelId, storage)).toMatchObject({
+      calculatorStarted: true,
+      strategyScenarioCount: 0,
+      chosenScenarioId: null,
+    });
+
+    const { scenario } = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Buy and hold rental scenario",
+        strategy: "buy_hold",
+        inputs: { monthlyRent: "18000" },
+        summary: [{ label: "Monthly cash flow", value: "R2,000" }],
+      },
+      storage,
+    );
+
+    const workspace = readStrategyWorkspace(parcelId, storage);
+    expect(workspace.draftInputs.monthlyRent).toBe("18000");
+    expect(workspace.chosenScenarioId).toBe(scenario.id);
+    expect(getChosenStrategyScenario(parcelId, storage)?.id).toBe(scenario.id);
+  });
+
+  it("migrates legacy local strategy scenarios into the durable workspace shape", () => {
+    const storage = memoryStorage();
+    const parcelId = "legacy-parcel";
+    storage.setItem(
+      `erfstoep.strategyScenarios.${parcelId}`,
+      JSON.stringify([
+        {
+          id: "legacy-scenario",
+          parcelId,
+          label: "Legacy scenario",
+          strategy: "development_sell",
+          inputs: { landCost: "1200000" },
+          summary: [{ label: "Margin", value: "18%" }],
+          selected: true,
+          savedAt: "2026-07-18T12:00:00.000Z",
+        },
+      ]),
+    );
+
+    const workspace = readStrategyWorkspace(parcelId, storage);
+
+    expect(workspace.migratedFromLegacy).toBe(true);
+    expect(workspace.activeStrategy).toBe("development_sell");
+    expect(workspace.draftInputs.landCost).toBe("1200000");
+    expect(workspace.chosenScenarioId).toBe("legacy-scenario");
+  });
+
+  it("merges signed-in cloud Strategy workspace without losing local draft edits", () => {
+    const parcelId = "cloud-parcel";
+    const local = {
+      ...readStrategyWorkspace(parcelId, memoryStorage()),
+      activeStrategy: "flip",
+      draftInputs: { expectedResalePrice: "3000000" },
+      draftUpdatedAt: "2026-07-20T12:00:00.000Z",
+    };
+    const remote = strategyWorkspaceFromUserData(parcelId, {
+      savedMarketEvidence: [{ id: "untouched-market-namespace" }],
+      strategyWorkspace: {
+        schemaVersion: 1,
+        parcelId,
+        activeStrategy: "buy_hold",
+        draftInputs: { monthlyRent: "22000" },
+        draftUpdatedAt: "2026-07-19T12:00:00.000Z",
+        scenarios: [
+          {
+            id: "remote-scenario",
+            parcelId,
+            label: "Remote scenario",
+            strategy: "buy_hold",
+            inputs: { monthlyRent: "22000" },
+            summary: [{ label: "Net yield", value: "6.2%" }],
+            selected: true,
+            savedAt: "2026-07-19T12:01:00.000Z",
+          },
+        ],
+        chosenScenarioId: "remote-scenario",
+      },
+    });
+
+    const merged = mergeStrategyWorkspaces(parcelId, local, remote);
+
+    expect(merged.activeStrategy).toBe("flip");
+    expect(merged.draftInputs.expectedResalePrice).toBe("3000000");
+    expect(merged.scenarios).toHaveLength(1);
+    expect(merged.chosenScenarioId).toBe("remote-scenario");
   });
 
   it("builds honest Easy Erf Steps progress from workspace state", () => {

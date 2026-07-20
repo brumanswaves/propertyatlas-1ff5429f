@@ -46,9 +46,13 @@ import { InvestorDueDiligenceProgress } from "./dossier/InvestorDueDiligenceProg
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import {
   getChosenStrategyScenario,
+  mergeStrategyWorkspaces,
   readErfWorkspaceState,
+  readStrategyWorkspace,
   readStrategyScenarios,
   saveStrategyScenario,
+  strategyWorkspaceFromUserData,
+  writeStrategyWorkspace,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
   createErfAssetSignedUrl,
@@ -1136,6 +1140,29 @@ const REPORT_PRINT_IFRAME_CSS = `
     break-inside: auto;
     page-break-inside: auto;
     box-shadow: none !important;
+    border-color: #d9e6f2 !important;
+    background: #ffffff !important;
+  }
+  .report-print-document .report-cover {
+    border: 1px solid #0D1B2A !important;
+    background: #0D1B2A !important;
+    color: #ffffff !important;
+    padding: 16mm !important;
+    min-height: 170mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+    page-break-after: always;
+  }
+  .report-print-document .report-print-cover-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .report-print-document .report-print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .report-print-document article,
   .report-print-document details,
@@ -1382,11 +1409,22 @@ function StoepAiReportView({
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: DossierView) => void;
 }) {
+  const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
-  const scenarios = readStrategyScenarios(parcel.id);
-  const chosenScenario = getChosenStrategyScenario(parcel.id);
+  const [strategyRevision, setStrategyRevision] = useState(0);
+  const scenarios = useMemo(() => {
+    void strategyRevision;
+    return readStrategyScenarios(parcel.id);
+  }, [parcel.id, strategyRevision]);
+  const chosenScenario = useMemo(
+    () => {
+      void strategyRevision;
+      return getChosenStrategyScenario(parcel.id);
+    },
+    [parcel.id, strategyRevision],
+  );
   const generatedDesigns = fileVault.assets.filter(
     (asset) => asset.asset_category === "generated_design",
   );
@@ -1398,6 +1436,53 @@ function StoepAiReportView({
     selectedSiteMode === "skipped" ||
     workspaceState.sitePotential.skipped ||
     workspaceState.sitePotential.progressState === "skipped";
+
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      if (!detail?.parcelId || detail.parcelId === parcel.id) {
+        setStrategyRevision((current) => current + 1);
+      }
+    };
+    window.addEventListener("easyerf:strategy-workspace-updated", refresh);
+    window.addEventListener("erfstoep:workspace-updated", refresh);
+    return () => {
+      window.removeEventListener("easyerf:strategy-workspace-updated", refresh);
+      window.removeEventListener("erfstoep:workspace-updated", refresh);
+    };
+  }, [parcel.id]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!user) return () => {
+      alive = false;
+    };
+
+    supabase
+      .from("saved_properties")
+      .select("user_data")
+      .eq("user_id", user.id)
+      .eq("parcel_id", parcel.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) {
+          console.warn("[Easy Erf] Report strategy workspace cloud load failed", error.message);
+          return;
+        }
+        const remote = strategyWorkspaceFromUserData(parcel.id, data?.user_data);
+        if (!remote) return;
+        writeStrategyWorkspace(
+          parcel.id,
+          mergeStrategyWorkspaces(parcel.id, readStrategyWorkspace(parcel.id), remote),
+        );
+        setStrategyRevision((current) => current + 1);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [parcel.id, user]);
 
   const report = buildReportViewModel({
     parcel,
@@ -1610,20 +1695,20 @@ function StoepAiReportView({
       {/* HEADER */}
       <section
         id="report-brief"
-        className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
+        className="report-section report-cover rounded-[2rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-6 text-white shadow-[0_28px_80px_-48px_rgba(13,27,42,0.9)] scroll-mt-24"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.08] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
               Easy Erf Property Intelligence Report
               <span className="rounded-full bg-[#FF6A00] px-2 py-[1px] text-[9px] tracking-[0.14em] text-white">
                 Living report
               </span>
             </div>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] sm:text-3xl">
+            <h2 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">
               {report.identity.displayName}
             </h2>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[#0D1B2A]/70">
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/72">
               {report.identity.officialLine && (
                 <span>{report.identity.officialLine}</span>
               )}
@@ -1632,7 +1717,7 @@ function StoepAiReportView({
               )}
               {report.identity.lpi && <span>· LPI {report.identity.lpi}</span>}
             </div>
-            <p className="mt-2 text-xs text-[#64748B]">
+            <p className="mt-2 text-xs text-white/52">
               Report updated {new Date(report.generatedAt).toLocaleString()} — updates each time you save evidence.
             </p>
           </div>
@@ -1640,11 +1725,48 @@ function StoepAiReportView({
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff8ec]"
+              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff8ec]"
             >
               Print / Save PDF
             </button>
           </div>
+        </div>
+
+        <div className="report-print-cover-grid mt-7 grid gap-3 md:grid-cols-4">
+          <ReportCoverMetric
+            label="Decision confidence"
+            value={`${decision.confidencePercent}%`}
+            detail={decisionVerdictLabel(decision.verdict)}
+          />
+          <ReportCoverMetric
+            label="Chosen strategy"
+            value={report.strategy.chosen?.label ?? "Not chosen"}
+            detail={report.strategy.chosen ? "Feeds Standard and Investor reports" : "Open Strategy Lab"}
+          />
+          <ReportCoverMetric
+            label="Market evidence"
+            value={`${report.market.includedCount} included`}
+            detail={`${report.market.evidenceCount} saved item${report.market.evidenceCount === 1 ? "" : "s"}`}
+          />
+          <ReportCoverMetric
+            label="Documents"
+            value={`${report.documents.assetCount} files`}
+            detail={`${report.documents.uploadedReportCount} paid report PDF${report.documents.uploadedReportCount === 1 ? "" : "s"}`}
+          />
+        </div>
+
+        <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+            Executive summary
+          </div>
+          <p className="mt-3 max-w-5xl text-base leading-7 text-white/78">
+            {decision.summary}
+          </p>
+          <p className="mt-3 text-xs leading-5 text-white/50">
+            This report is built from saved Easy Erf evidence, official parcel fields where
+            available, user-entered assumptions and uploaded files. It is not legal, financial,
+            valuation, municipal-planning or investment advice.
+          </p>
         </div>
 
         <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
@@ -1654,7 +1776,7 @@ function StoepAiReportView({
           <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
         ) : (
         <div className="mt-6 space-y-5">
-          <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
+          <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 text-white lg:grid-cols-[260px_1fr]">
             <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
                 Overall verdict
@@ -2343,22 +2465,71 @@ function DecisionLensSelector({
   mode: ReportDecisionMode;
   onChange: (mode: ReportDecisionMode) => void;
 }) {
+  const options: Array<{
+    id: ReportDecisionMode;
+    title: string;
+    eyebrow: string;
+    body: string;
+    points: string[];
+  }> = [
+    {
+      id: "standard",
+      eyebrow: "General decision document",
+      title: "Standard Easy Erf Report",
+      body: "Best for a clean property file: identity, evidence, risks, next steps and documents.",
+      points: ["Evidence readiness", "Known gaps", "Source-backed next actions"],
+    },
+    {
+      id: "investor",
+      eyebrow: "Numbers-first lens",
+      title: "Investor Decision Mode",
+      body: "Best when a chosen Strategy Lab scenario should lead the decision conversation.",
+      points: ["Chosen strategy", "Investor numbers", "Assumption and downside view"],
+    },
+  ];
+
   return (
-    <div className="report-no-print mt-5 inline-flex rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] p-1">
-      {(["standard", "investor"] as const).map((option) => (
+    <div className="report-no-print mt-5 grid gap-3 md:grid-cols-2">
+      {options.map((option) => (
         <button
-          key={option}
+          key={option.id}
           type="button"
-          onClick={() => onChange(option)}
+          onClick={() => onChange(option.id)}
           className={cn(
-            "rounded-full px-4 py-2 text-xs font-semibold transition",
-            mode === option
-              ? "bg-[#0D1B2A] text-white shadow-sm"
-              : "text-[#0D1B2A]/65 hover:bg-white hover:text-[#0D1B2A]",
+            "rounded-[1.25rem] border p-4 text-left transition",
+            mode === option.id
+              ? "border-[#FF6A00]/70 bg-[#0D1B2A] text-white shadow-[0_24px_60px_-42px_rgba(13,27,42,0.85)]"
+              : "border-[#0D1B2A]/10 bg-[#F7FBFF] text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-white",
           )}
-          aria-pressed={mode === option}
+          aria-pressed={mode === option.id}
         >
-          {option === "standard" ? "Standard" : "Investor"}
+          <span
+            className={cn(
+              "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
+              mode === option.id ? "bg-[#FF6A00] text-white" : "bg-white text-[#B24A00]",
+            )}
+          >
+            {option.eyebrow}
+          </span>
+          <span className="mt-3 block text-lg font-semibold tracking-tight">{option.title}</span>
+          <span
+            className={cn(
+              "mt-2 block text-sm leading-6",
+              mode === option.id ? "text-white/72" : "text-[#0D1B2A]/66",
+            )}
+          >
+            {option.body}
+          </span>
+          <span className="mt-3 grid gap-1 text-xs">
+            {option.points.map((point) => (
+              <span
+                key={point}
+                className={cn(mode === option.id ? "text-white/62" : "text-[#64748B]")}
+              >
+                {point}
+              </span>
+            ))}
+          </span>
         </button>
       ))}
     </div>
@@ -2784,6 +2955,26 @@ function SnapshotDateRow({ label, value }: { label: string; value?: string | nul
       <dt className="font-semibold text-[#64748B]">{label}</dt>
       <dd className="mt-1 text-[#0D1B2A]">{formatSnapshotDate(value)}</dd>
     </div>
+  );
+}
+
+function ReportCoverMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <article className="report-print-avoid-break rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+        {label}
+      </div>
+      <div className="mt-2 line-clamp-2 text-lg font-semibold leading-6 text-white">{value}</div>
+      <p className="mt-1 text-xs leading-5 text-white/58">{detail}</p>
+    </article>
   );
 }
 

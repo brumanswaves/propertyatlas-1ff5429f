@@ -108,12 +108,27 @@ export interface ErfStrategyScenario {
   savedAt: string;
 }
 
+export interface ErfStrategyWorkspace {
+  schemaVersion: 1;
+  parcelId: string;
+  activeStrategy: string;
+  draftInputs: Record<string, string>;
+  draftUpdatedAt: string | null;
+  scenarios: ErfStrategyScenario[];
+  chosenScenarioId: string | null;
+  migratedFromLegacy: boolean;
+}
+
 export function erfWorkspaceStateKey(parcelId: string) {
   return `erfstoep.workspace.${parcelId}`;
 }
 
 export function erfStrategyScenariosKey(parcelId: string) {
   return `erfstoep.strategyScenarios.${parcelId}`;
+}
+
+export function erfStrategyWorkspaceKey(parcelId: string) {
+  return `easyerf.strategyWorkspace.v1.${parcelId}`;
 }
 
 export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
@@ -192,7 +207,7 @@ function coerceSitePotential(value: unknown): SitePotentialSnapshot {
     rightsConfirmedAt:
       typeof raw.rightsConfirmedAt === "string"
         ? raw.rightsConfirmedAt
-        : Boolean(raw.imageRightsConfirmed)
+        : raw.imageRightsConfirmed
           ? new Date().toISOString()
           : null,
     progressState,
@@ -303,10 +318,229 @@ function coerceStrategyScenario(value: unknown, parcelId: string): ErfStrategySc
   };
 }
 
+function coerceStrategyInputs(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, input]) => [
+      key,
+      String(input ?? ""),
+    ]),
+  );
+}
+
+function newestIso(a: string | null | undefined, b: string | null | undefined) {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
+function coerceStrategyWorkspace(value: unknown, parcelId: string): ErfStrategyWorkspace | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const raw = value as Partial<ErfStrategyWorkspace>;
+  const scenarios = Array.isArray(raw.scenarios)
+    ? raw.scenarios
+        .map((item) => coerceStrategyScenario(item, parcelId))
+        .filter((item): item is ErfStrategyScenario => Boolean(item))
+    : [];
+  const chosenScenarioId =
+    typeof raw.chosenScenarioId === "string" &&
+    scenarios.some((scenario) => scenario.id === raw.chosenScenarioId)
+      ? raw.chosenScenarioId
+      : scenarios.find((scenario) => scenario.selected)?.id ?? null;
+  const activeStrategy =
+    typeof raw.activeStrategy === "string" && raw.activeStrategy.trim()
+      ? raw.activeStrategy
+      : scenarios.find((scenario) => scenario.id === chosenScenarioId)?.strategy ??
+        scenarios[0]?.strategy ??
+        "buy_hold";
+
+  return {
+    schemaVersion: 1,
+    parcelId,
+    activeStrategy,
+    draftInputs: coerceStrategyInputs(raw.draftInputs),
+    draftUpdatedAt: typeof raw.draftUpdatedAt === "string" ? raw.draftUpdatedAt : null,
+    scenarios: scenarios.map((scenario) => ({
+      ...scenario,
+      selected: scenario.id === chosenScenarioId,
+    })),
+    chosenScenarioId,
+    migratedFromLegacy: Boolean(raw.migratedFromLegacy),
+  };
+}
+
+export function createEmptyStrategyWorkspace(parcelId: string): ErfStrategyWorkspace {
+  return {
+    schemaVersion: 1,
+    parcelId,
+    activeStrategy: "buy_hold",
+    draftInputs: {},
+    draftUpdatedAt: null,
+    scenarios: [],
+    chosenScenarioId: null,
+    migratedFromLegacy: false,
+  };
+}
+
+export function strategyWorkspaceFromLegacy(
+  parcelId: string,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+): ErfStrategyWorkspace {
+  const scenarios = readStrategyScenarios(parcelId, storage);
+  const workspace = readErfWorkspaceState(parcelId, storage);
+  const chosenScenarioId =
+    scenarios.find((scenario) => scenario.id === workspace.chosenScenarioId)?.id ??
+    scenarios.find((scenario) => scenario.selected)?.id ??
+    scenarios[0]?.id ??
+    null;
+  const chosen = scenarios.find((scenario) => scenario.id === chosenScenarioId) ?? null;
+  return {
+    schemaVersion: 1,
+    parcelId,
+    activeStrategy: chosen?.strategy ?? scenarios[0]?.strategy ?? "buy_hold",
+    draftInputs: chosen?.inputs ?? {},
+    draftUpdatedAt: chosen?.savedAt ?? null,
+    scenarios: scenarios.map((scenario) => ({
+      ...scenario,
+      selected: scenario.id === chosenScenarioId,
+    })),
+    chosenScenarioId,
+    migratedFromLegacy: scenarios.length > 0,
+  };
+}
+
+export function readStrategyWorkspace(
+  parcelId: string,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+): ErfStrategyWorkspace {
+  if (!storage) return createEmptyStrategyWorkspace(parcelId);
+  try {
+    const parsed = JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId)) ?? "null");
+    const workspace = coerceStrategyWorkspace(parsed, parcelId);
+    if (workspace) return workspace;
+  } catch {
+    // Fall through to legacy migration.
+  }
+  return strategyWorkspaceFromLegacy(parcelId, storage);
+}
+
+export function writeStrategyWorkspace(
+  parcelId: string,
+  workspace: ErfStrategyWorkspace,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+) {
+  const next = coerceStrategyWorkspace(workspace, parcelId) ?? createEmptyStrategyWorkspace(parcelId);
+  if (storage) {
+    storage.setItem(erfStrategyWorkspaceKey(parcelId), JSON.stringify(next));
+    storage.setItem(erfStrategyScenariosKey(parcelId), JSON.stringify(next.scenarios));
+  }
+  updateErfWorkspaceState(
+    parcelId,
+    {
+      calculatorStarted: Boolean(next.draftUpdatedAt || next.scenarios.length > 0),
+      strategyScenarioCount: next.scenarios.length,
+      chosenScenarioId: next.chosenScenarioId,
+      dirty: true,
+    },
+    storage,
+  );
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("easyerf:strategy-workspace-updated", { detail: { parcelId } }),
+    );
+  }
+  return next;
+}
+
+export function saveStrategyDraft(
+  parcelId: string,
+  draft: { activeStrategy: string; draftInputs: Record<string, string>; updatedAt?: string },
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+) {
+  const current = readStrategyWorkspace(parcelId, storage);
+  return writeStrategyWorkspace(
+    parcelId,
+    {
+      ...current,
+      activeStrategy: draft.activeStrategy,
+      draftInputs: coerceStrategyInputs(draft.draftInputs),
+      draftUpdatedAt: draft.updatedAt ?? new Date().toISOString(),
+    },
+    storage,
+  );
+}
+
+export function mergeStrategyWorkspaces(
+  parcelId: string,
+  local: ErfStrategyWorkspace,
+  remote: ErfStrategyWorkspace | null,
+): ErfStrategyWorkspace {
+  if (!remote) return local;
+  const scenariosById = new Map<string, ErfStrategyScenario>();
+  for (const scenario of [...local.scenarios, ...remote.scenarios]) {
+    const existing = scenariosById.get(scenario.id);
+    if (!existing || new Date(scenario.savedAt).getTime() >= new Date(existing.savedAt).getTime()) {
+      scenariosById.set(scenario.id, { ...scenario, parcelId });
+    }
+  }
+  const scenarios = Array.from(scenariosById.values()).sort(
+    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+  );
+  const remoteDraftUpdatedAt = remote.draftUpdatedAt;
+  const draftFromRemote =
+    remoteDraftUpdatedAt != null &&
+    (!local.draftUpdatedAt ||
+      new Date(remoteDraftUpdatedAt).getTime() > new Date(local.draftUpdatedAt).getTime());
+  const chosenScenarioId =
+    (remote.chosenScenarioId && scenarios.some((scenario) => scenario.id === remote.chosenScenarioId)
+      ? remote.chosenScenarioId
+      : null) ??
+    (local.chosenScenarioId && scenarios.some((scenario) => scenario.id === local.chosenScenarioId)
+      ? local.chosenScenarioId
+      : null) ??
+    scenarios.find((scenario) => scenario.selected)?.id ??
+    null;
+  return {
+    schemaVersion: 1,
+    parcelId,
+    activeStrategy: draftFromRemote ? remote.activeStrategy : local.activeStrategy,
+    draftInputs: draftFromRemote ? remote.draftInputs : local.draftInputs,
+    draftUpdatedAt: newestIso(local.draftUpdatedAt, remote.draftUpdatedAt),
+    scenarios: scenarios.map((scenario) => ({
+      ...scenario,
+      selected: scenario.id === chosenScenarioId,
+    })),
+    chosenScenarioId,
+    migratedFromLegacy: local.migratedFromLegacy || remote.migratedFromLegacy,
+  };
+}
+
+export function strategyWorkspaceFromUserData(
+  parcelId: string,
+  userData: unknown,
+): ErfStrategyWorkspace | null {
+  if (!userData || typeof userData !== "object" || Array.isArray(userData)) return null;
+  return coerceStrategyWorkspace(
+    (userData as Record<string, unknown>).strategyWorkspace,
+    parcelId,
+  );
+}
+
 export function readStrategyScenarios(
   parcelId: string,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ): ErfStrategyScenario[] {
+  if (storage) {
+    try {
+      const workspace = coerceStrategyWorkspace(
+        JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId)) ?? "null"),
+        parcelId,
+      );
+      if (workspace) return workspace.scenarios;
+    } catch {
+      // Fall back to the legacy scenario list.
+    }
+  }
   if (!storage) return [];
   try {
     const raw = storage.getItem(erfStrategyScenariosKey(parcelId));
@@ -325,7 +559,8 @@ export function saveStrategyScenario(
   scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt"> & { id?: string },
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ) {
-  const current = readStrategyScenarios(parcelId, storage);
+  const currentWorkspace = readStrategyWorkspace(parcelId, storage);
+  const current = currentWorkspace.scenarios;
   const saved: ErfStrategyScenario = {
     id: scenario.id ?? crypto.randomUUID(),
     parcelId,
@@ -345,18 +580,19 @@ export function saveStrategyScenario(
         selected: false,
       })),
   ];
-  if (storage) storage.setItem(erfStrategyScenariosKey(parcelId), JSON.stringify(next));
-  updateErfWorkspaceState(
+  const workspace = writeStrategyWorkspace(
     parcelId,
     {
-      calculatorStarted: true,
-      strategyScenarioCount: next.length,
+      ...currentWorkspace,
+      activeStrategy: saved.strategy,
+      draftInputs: saved.inputs,
+      draftUpdatedAt: saved.savedAt,
+      scenarios: next,
       chosenScenarioId: saved.id,
-      dirty: true,
     },
     storage,
   );
-  return { scenario: saved, scenarios: next };
+  return { scenario: saved, scenarios: workspace.scenarios, workspace };
 }
 
 export function getChosenStrategyScenario(
