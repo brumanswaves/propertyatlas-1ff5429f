@@ -109,7 +109,7 @@ describe("Local Property Team server search", () => {
     expect(payload.providers[1].openNow).toBe(true);
     expect(payload.providers[1].source).toBe("google");
     expect(payload.providers.every((item: { isSponsored: boolean }) => !item.isSponsored)).toBe(true);
-    expect(payload.attribution).toBe("Google");
+    expect(payload.attribution).toBe("Google Maps");
     expect(payload.parcelId).toBe("parcel-1");
     expect(payload.confirmedAddress).toBe("8 Harbour Drive, St Francis Bay, Eastern Cape");
 
@@ -359,7 +359,7 @@ describe("Local Property Team server search", () => {
     expect(payload.confirmedAddress).toBe("8 Harbour Drive, St Francis Bay, Eastern Cape");
   });
 
-  it("normalizes Google Places third-party attributions without leaking markup", async () => {
+  it("normalizes Google Maps third-party attributions without leaking markup", async () => {
     process.env.GOOGLE_PLACES_API_KEY = "server-secret";
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -367,7 +367,11 @@ describe("Local Property Team server search", () => {
           places: [
             place("credited", "Credited Provider", {
               attributions: [{ provider: "Example Data", providerUri: "https://example.com" }],
-              htmlAttributions: ['<a href="https://photos.example">Photo Partner</a>'],
+              htmlAttributions: [
+                '<a href="https://photos.example">Photo Partner</a>',
+                '<a href="javascript:alert(1)">Unsafe Partner</a>',
+                '<a href="https://photos.example">Photo Partner</a>',
+              ],
             }),
           ],
         }),
@@ -385,9 +389,14 @@ describe("Local Property Team server search", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload.providers[0].attributions).toContain("Example Data - https://example.com");
-    expect(payload.providers[0].attributions).toContain("Photo Partner");
+    expect(payload.providers[0].attributions).toEqual([
+      { provider: "Example Data", providerUri: "https://example.com/" },
+      { provider: "Photo Partner", providerUri: "https://photos.example/" },
+      { provider: "Unsafe Partner", providerUri: null },
+    ]);
+    expect(payload.providers[0].attributions).toHaveLength(3);
     expect(JSON.stringify(payload.providers[0].attributions)).not.toContain("<a");
+    expect(JSON.stringify(payload.providers[0].attributions)).not.toContain("javascript:");
   });
 
   it("enforces normal and wider search radii when Google returns coordinates", async () => {

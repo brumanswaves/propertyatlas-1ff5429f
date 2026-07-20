@@ -4,6 +4,7 @@ import {
   LOCAL_SERVICE_CATEGORIES,
   localServiceSearchQueries,
   type LocalProvider,
+  type LocalProviderAttribution,
 } from "@/lib/localServices/catalog";
 
 const DEFAULT_RADIUS_KM = 15;
@@ -188,7 +189,7 @@ export async function handleLocalServicesSearchRequest(request: Request) {
   return json({
     success: true,
     providers,
-    attribution: "Google",
+    attribution: "Google Maps",
     categoryId: category.id,
     parcelId,
     confirmedAddress: address,
@@ -452,29 +453,48 @@ function isRelevantPlaceType(types: string[] | undefined) {
   return !types.every((type) => irrelevant.has(type));
 }
 
-function normalizePlaceAttributions(place: GooglePlace): string[] {
+function normalizePlaceAttributions(place: GooglePlace): LocalProviderAttribution[] {
   const raw = [place.attributions, place.htmlAttributions].flatMap((value) =>
     Array.isArray(value) ? value : value ? [value] : [],
   );
-  return Array.from(
-    new Set(
-      raw
-        .map((value) => {
-          if (typeof value === "string") return cleanText(stripHtml(value), 260);
-          if (value && typeof value === "object") {
-            const row = value as Record<string, unknown>;
-            return cleanText(
-              [row.provider, row.displayName, row.authorName, row.providerUri]
-                .filter((item) => typeof item === "string" && item.trim())
-                .join(" - "),
-              260,
-            );
-          }
-          return "";
-        })
-        .filter(Boolean),
-    ),
-  );
+  const attributions: LocalProviderAttribution[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    const attribution = normalizePlaceAttribution(value);
+    if (!attribution) continue;
+    const key = `${attribution.provider.toLowerCase()}|${attribution.providerUri ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    attributions.push(attribution);
+  }
+  return attributions;
+}
+
+function normalizePlaceAttribution(value: unknown): LocalProviderAttribution | null {
+  if (typeof value === "string") {
+    const provider = cleanText(stripHtml(value), 160);
+    const providerUri = safeHttpsUrl(htmlHref(value));
+    return provider ? { provider, providerUri } : null;
+  }
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const provider = cleanText(row.provider ?? row.displayName ?? row.authorName, 160);
+  const providerUri = safeHttpsUrl(row.providerUri);
+  return provider ? { provider, providerUri } : null;
+}
+
+function htmlHref(value: string) {
+  return /href\s*=\s*["']([^"']+)["']/i.exec(value)?.[1] ?? null;
+}
+
+function safeHttpsUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function stripHtml(value: string) {

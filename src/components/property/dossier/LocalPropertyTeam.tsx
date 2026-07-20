@@ -93,35 +93,71 @@ function phoneHref(phone: string) {
   return `tel:${phone.replace(/[^+\d]/g, "")}`;
 }
 
-const GOOGLE_PLACES_ATTRIBUTION_LOGO =
-  "https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-white3.png";
+const GOOGLE_MAPS_ATTRIBUTION_LOGO = "/third-party/google-maps/google-maps-logo-dark-gray.svg";
 
 function GooglePlacesAttribution({ providers }: { providers: LocalProvider[] }) {
-  const attributions = Array.from(
-    new Set(providers.flatMap((provider) => provider.attributions ?? []).filter(Boolean)),
-  );
+  const attributions = providers
+    .flatMap((provider) => provider.attributions ?? [])
+    .reduce<Array<{ provider: string; providerUri: string | null }>>((items, attribution) => {
+      const provider = attribution.provider.trim();
+      const providerUri = safeHttpsUrl(attribution.providerUri);
+      const key = `${provider.toLowerCase()}|${providerUri ?? ""}`;
+      if (
+        provider &&
+        !items.some((item) => `${item.provider.toLowerCase()}|${item.providerUri ?? ""}` === key)
+      ) {
+        items.push({ provider, providerUri });
+      }
+      return items;
+    }, []);
   return (
-    <div className="mt-3 flex flex-col gap-2 text-[11px] text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
-      <div className="inline-flex min-h-6 items-center rounded-md bg-white px-2 py-1">
+    <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-[#D9E6F2] bg-white px-3 py-2 text-[11px] text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
+      <div className="inline-flex items-center rounded-md bg-white px-[10px] pb-[5px] pt-[10px]">
         <img
-          src={GOOGLE_PLACES_ATTRIBUTION_LOGO}
-          alt="Powered by Google"
-          width={120}
-          height={14}
-          className="h-[14px] w-[120px] object-contain"
+          src={GOOGLE_MAPS_ATTRIBUTION_LOGO}
+          alt="Google Maps"
+          width={98}
+          height={18}
+          className="h-[18px] w-auto object-contain"
           loading="lazy"
           decoding="async"
         />
       </div>
       {attributions.length ? (
-        <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Google Places third-party attributions">
+        <ul
+          className="flex flex-wrap gap-x-3 gap-y-1"
+          aria-label="Google Maps third-party attributions"
+        >
           {attributions.map((attribution) => (
-            <li key={attribution}>{attribution}</li>
+            <li key={`${attribution.provider}|${attribution.providerUri ?? ""}`}>
+              {attribution.providerUri ? (
+                <a
+                  href={attribution.providerUri}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[#334155] underline underline-offset-2"
+                >
+                  {attribution.provider}
+                </a>
+              ) : (
+                attribution.provider
+              )}
+            </li>
           ))}
         </ul>
       ) : null}
     </div>
   );
+}
+
+function safeHttpsUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function ProviderCard({
@@ -618,7 +654,7 @@ export function LocalPropertyTeam({
                 ))}
               </div>
               <p className="mt-3 text-[11px] font-medium text-[#64748B]">
-                Results provided by {currentSearch.attribution ?? "Google"}.{" "}
+                Results provided by Google Maps.{" "}
                 {currentSearch.radiusKm ? `Search radius: ${currentSearch.radiusKm} km.` : null}
               </p>
               <GooglePlacesAttribution providers={currentSearch.providers.slice(0, 3)} />

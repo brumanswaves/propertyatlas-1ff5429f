@@ -857,12 +857,25 @@ describe("Local Property Team MVP guardrails", () => {
     expect(localTeam).toContain("confirmedAddress: marketAddressLabel");
     expect(localTeam).toContain("Open this search in Google Maps");
     expect(localTeam).toContain("Results are sourced from Google");
-    expect(localTeam).toContain("GOOGLE_PLACES_ATTRIBUTION_LOGO");
-    expect(localTeam).toContain("powered-by-google-on-white3.png");
-    expect(localTeam).toContain('alt="Powered by Google"');
+    expect(localTeam).toContain("GOOGLE_MAPS_ATTRIBUTION_LOGO");
+    expect(localTeam).toContain("/third-party/google-maps/google-maps-logo-dark-gray.svg");
+    expect(localTeam).toContain('alt="Google Maps"');
+    expect(localTeam).toContain("height={18}");
+    expect(localTeam).toContain("h-[18px] w-auto");
+    expect(localTeam).toContain("px-[10px] pb-[5px] pt-[10px]");
+    expect(localTeam).toContain("Results provided by Google Maps.");
     expect(localTeam).toContain("GooglePlacesAttribution");
-    expect(localTeam).toContain("Google Places third-party attributions");
+    expect(localTeam).toContain(
+      "<GooglePlacesAttribution providers={currentSearch.providers.slice(0, 3)} />",
+    );
+    expect(localTeam).toContain("Google Maps third-party attributions");
     expect(localTeam).toContain("provider.attributions");
+    expect(localTeam).toContain('target="_blank"');
+    expect(localTeam).toContain('rel="noreferrer"');
+    expect(localTeam).toContain("safeHttpsUrl(attribution.providerUri)");
+    expect(localTeam).not.toContain("powered-by-google-on-white3.png");
+    expect(localTeam).not.toContain('alt="Powered by Google"');
+    expect(localTeam).not.toContain("dangerouslySetInnerHTML");
     expect(localTeam).not.toContain("places.googleapis.com");
     expect(localTeam).not.toContain("GOOGLE_PLACES_API_KEY");
     expect(serverRoute).toContain("process.env.GOOGLE_PLACES_API_KEY");
@@ -877,6 +890,10 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).toContain("MAX_QUERY_VARIANTS = 3");
     expect(serverRoute).toContain('"places.attributions"');
     expect(serverRoute).toContain("normalizePlaceAttributions(place)");
+    expect(serverRoute).toContain("LocalProviderAttribution");
+    expect(serverRoute).toContain("const providerUri = safeHttpsUrl");
+    expect(serverRoute).toContain('url.protocol === "https:"');
+    expect(serverRoute).not.toContain("dangerouslySetInnerHTML");
     expect(serverRoute).toContain("localitySearchContext(address)");
     expect(serverRoute).toContain('return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`');
     expect(serverRoute).toContain("includePureServiceAreaBusinesses");

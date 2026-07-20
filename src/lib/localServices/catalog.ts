@@ -22,6 +22,11 @@ export interface LocalServiceGroup {
   description: string;
 }
 
+export interface LocalProviderAttribution {
+  provider: string;
+  providerUri: string | null;
+}
+
 export interface LocalProvider {
   placeId: string;
   name: string;
@@ -46,7 +51,7 @@ export interface LocalProvider {
   verificationDate: string | null;
   serviceAreas: string[];
   categories: string[];
-  attributions?: string[];
+  attributions?: LocalProviderAttribution[];
   leadTrackingId: string | null;
 }
 
