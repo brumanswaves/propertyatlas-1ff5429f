@@ -141,22 +141,39 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     "utf8",
   );
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
+  const lifecycleSource = readFileSync(
+    resolve(__dirname, "../reportPrintLifecycle.ts"),
+    "utf8",
+  );
 
-  it("wires print through an isolated report portal", () => {
-    expect(source).toContain("window.print()");
+  it("wires print through a dedicated iframe document", () => {
+    expect(source).toContain("createReportPrintFrame");
+    expect(source).toContain("prepareReportPrintFrame");
+    expect(source).toContain("contentWindow");
+    expect(source).toContain("frameWindow.print()");
+    expect(source).not.toContain("window.print()");
+    expect(source).toContain("easy-erf-report-print-frame");
     expect(source).toContain("easy-erf-report-print-root");
     expect(source).toContain("createPortal");
-    expect(source).toContain("easy-erf-report-printing");
+    expect(source).not.toContain("easy-erf-report-printing");
     expect(source).toContain("Printable Easy Erf Report");
     expect(source).toContain("waitForPrintableReportImages");
     expect(source).toContain("waitForReportPrintPreparation");
-    expect(source).toContain("REPORT_PRINT_PREPARATION_TIMEOUT_MS = 5000");
+    expect(source).toContain("REPORT_PRINT_EMERGENCY_CLEANUP_MS = 2 * 60 * 1000");
     expect(source).toContain("pendingSignedAssetPreviewSettlements");
     expect(source).toContain("signedAssetPreviewUrlCache");
     expect(source).toContain("SignedAssetPreviewState");
     expect(source).toContain('status: "unavailable"');
     expect(source).toContain("onError");
-    expect(source).toContain("if (printReportMounted) return");
+    expect(source).toContain("printInProgressRef.current");
+    expect(source).toContain("createReportPrintLifecycleController");
+    expect(source).toContain("REPORT_PRINT_FOCUS_MIN_HOLD_MS = 30_000");
+    expect(source).toContain("lifecycle?.markPrintStarted()");
+    expect(source).not.toContain("setTimeout(() => cleanup(), 600)");
+    expect(lifecycleSource).toContain('frameWindow.addEventListener("afterprint"');
+    expect(lifecycleSource).toContain('frameWindow.matchMedia?.("print")');
+    expect(lifecycleSource).toContain("printMediaEntered = true");
+    expect(lifecycleSource).toContain("now() - printStartedAt >= focusMinimumHoldMs");
     expect(source).toContain("Print / Save PDF");
   });
 
@@ -196,8 +213,12 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   });
 
   it("prints the decision intelligence sections without heavy interactive chrome", () => {
-    expect(styles).toContain("body.easy-erf-report-printing #root");
-    expect(styles).toContain("#easy-erf-report-print-root");
+    expect(styles).not.toContain("body.easy-erf-report-printing #root");
+    expect(source).toContain("REPORT_PRINT_IFRAME_CSS");
+    expect(source.indexOf('document.querySelectorAll<HTMLStyleElement>("style")')).toBeLessThan(
+      source.indexOf("style.textContent = REPORT_PRINT_IFRAME_CSS"),
+    );
+    expect(source).toContain(".report-print-document");
     expect(styles).toContain(".report-no-print { display: none !important; }");
     expect(styles).toContain(".report-decision-hero");
     expect(styles).toContain("break-inside: avoid");

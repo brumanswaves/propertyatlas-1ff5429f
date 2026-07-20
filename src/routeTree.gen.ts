@@ -34,6 +34,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as ApiSitePotentialRetryPackRouteImport } from './routes/api/site-potential.retry-pack'
 import { Route as ApiSitePotentialProcessRouteImport } from './routes/api/site-potential.process'
 import { Route as ApiSitePotentialPackStatusRouteImport } from './routes/api/site-potential.pack-status'
 import { Route as ApiSitePotentialGenerateRouteImport } from './routes/api/site-potential.generate'
@@ -172,6 +173,12 @@ const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   path: '/public-data-debug',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiSitePotentialRetryPackRoute =
+  ApiSitePotentialRetryPackRouteImport.update({
+    id: '/api/site-potential/retry-pack',
+    path: '/api/site-potential/retry-pack',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSitePotentialProcessRoute = ApiSitePotentialProcessRouteImport.update({
   id: '/api/site-potential/process',
   path: '/api/site-potential/process',
@@ -278,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/site-potential/retry-pack': typeof ApiSitePotentialRetryPackRoute
   '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRoutesByTo {
@@ -317,6 +325,7 @@ export interface FileRoutesByTo {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/site-potential/retry-pack': typeof ApiSitePotentialRetryPackRoute
   '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRoutesById {
@@ -357,6 +366,7 @@ export interface FileRoutesById {
   '/api/site-potential/generate': typeof ApiSitePotentialGenerateRoute
   '/api/site-potential/pack-status': typeof ApiSitePotentialPackStatusRoute
   '/api/site-potential/process': typeof ApiSitePotentialProcessRoute
+  '/api/site-potential/retry-pack': typeof ApiSitePotentialRetryPackRoute
   '/api/public/site-potential/process': typeof ApiPublicSitePotentialProcessRoute
 }
 export interface FileRouteTypes {
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/site-potential/retry-pack'
     | '/api/public/site-potential/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/site-potential/retry-pack'
     | '/api/public/site-potential/process'
   id:
     | '__root__'
@@ -476,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/site-potential/generate'
     | '/api/site-potential/pack-status'
     | '/api/site-potential/process'
+    | '/api/site-potential/retry-pack'
     | '/api/public/site-potential/process'
   fileRoutesById: FileRoutesById
 }
@@ -514,6 +527,7 @@ export interface RootRouteChildren {
   ApiSitePotentialGenerateRoute: typeof ApiSitePotentialGenerateRoute
   ApiSitePotentialPackStatusRoute: typeof ApiSitePotentialPackStatusRoute
   ApiSitePotentialProcessRoute: typeof ApiSitePotentialProcessRoute
+  ApiSitePotentialRetryPackRoute: typeof ApiSitePotentialRetryPackRoute
   ApiPublicSitePotentialProcessRoute: typeof ApiPublicSitePotentialProcessRoute
 }
 
@@ -694,6 +708,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/site-potential/retry-pack': {
+      id: '/api/site-potential/retry-pack'
+      path: '/api/site-potential/retry-pack'
+      fullPath: '/api/site-potential/retry-pack'
+      preLoaderRoute: typeof ApiSitePotentialRetryPackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/site-potential/process': {
       id: '/api/site-potential/process'
       path: '/api/site-potential/process'
@@ -828,6 +849,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSitePotentialGenerateRoute: ApiSitePotentialGenerateRoute,
   ApiSitePotentialPackStatusRoute: ApiSitePotentialPackStatusRoute,
   ApiSitePotentialProcessRoute: ApiSitePotentialProcessRoute,
+  ApiSitePotentialRetryPackRoute: ApiSitePotentialRetryPackRoute,
   ApiPublicSitePotentialProcessRoute: ApiPublicSitePotentialProcessRoute,
 }
 export const routeTree = rootRouteImport

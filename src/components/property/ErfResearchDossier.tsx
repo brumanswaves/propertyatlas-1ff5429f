@@ -102,6 +102,7 @@ import {
   writeReportDecisionMode,
   type ReportDecisionMode,
 } from "@/lib/reports/reportDecisionMode";
+import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -1106,7 +1107,45 @@ const REPORT_ASSET_GROUP_ORDER: ErfAssetGroup[] = [
   "Other",
 ];
 
-const REPORT_PRINT_PREPARATION_TIMEOUT_MS = 5000;
+const REPORT_PRINT_PREPARATION_TIMEOUT_MS = 8000;
+const REPORT_PRINT_EMERGENCY_CLEANUP_MS = 2 * 60 * 1000;
+const REPORT_PRINT_FOCUS_MIN_HOLD_MS = 30_000;
+const REPORT_PRINT_FRAME_ID = "easy-erf-report-print-frame";
+const REPORT_PRINT_ROOT_ID = "easy-erf-report-print-root";
+
+const REPORT_PRINT_IFRAME_CSS = `
+  @page { size: A4 portrait; margin: 14mm; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #0D1B2A;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  body { min-width: 0; overflow: visible; }
+  #${REPORT_PRINT_ROOT_ID} { display: block; }
+  .report-print-document {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #0D1B2A;
+  }
+  .report-print-document .report-section {
+    break-inside: auto;
+    page-break-inside: auto;
+    box-shadow: none !important;
+  }
+  .report-print-document article,
+  .report-print-document details,
+  .report-print-document li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-no-print { display: none !important; }
+  img { max-width: 100%; }
+`;
 const signedAssetPreviewUrlCache = new Map<string, string>();
 const pendingSignedAssetPreviewSettlements = new Set<Promise<void>>();
 
@@ -1149,19 +1188,17 @@ function waitForSignedAssetPreviewSettlements() {
   return Promise.allSettled(Array.from(pendingSignedAssetPreviewSettlements)).then(() => undefined);
 }
 
-async function waitForReportPrintPreparation() {
+async function waitForReportPrintPreparation(root: ParentNode | null | undefined) {
   await Promise.race([
     (async () => {
       await waitForSignedAssetPreviewSettlements();
-      await waitForPrintableReportImages();
+      await waitForPrintableReportImages(root);
     })(),
     new Promise<void>((resolve) => window.setTimeout(resolve, REPORT_PRINT_PREPARATION_TIMEOUT_MS)),
   ]);
 }
 
-function waitForPrintableReportImages() {
-  if (typeof document === "undefined") return Promise.resolve();
-  const root = document.getElementById("easy-erf-report-print-root");
+function waitForPrintableReportImages(root: ParentNode | null | undefined) {
   if (!root) return Promise.resolve();
   const images = Array.from(root.querySelectorAll("img"));
   return Promise.all(
@@ -1182,6 +1219,68 @@ function waitForPrintableReportImages() {
         }),
     ),
   ).then(() => undefined);
+}
+
+function createReportPrintFrame() {
+  const existing = document.getElementById(REPORT_PRINT_FRAME_ID);
+  if (existing instanceof HTMLIFrameElement) existing.remove();
+  const iframe = document.createElement("iframe");
+  iframe.id = REPORT_PRINT_FRAME_ID;
+  iframe.title = "Printable Easy Erf Report";
+  iframe.setAttribute("aria-hidden", "true");
+  Object.assign(iframe.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "794px",
+    height: "1123px",
+    border: "0",
+    opacity: "0",
+    pointerEvents: "none",
+    zIndex: "-1",
+  });
+  document.body.appendChild(iframe);
+  return iframe;
+}
+
+function prepareReportPrintFrame(iframe: HTMLIFrameElement) {
+  const frameDocument = iframe.contentDocument;
+  if (!frameDocument) return Promise.resolve();
+  frameDocument.open();
+  frameDocument.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>Printable Easy Erf Report</title></head><body><div id="${REPORT_PRINT_ROOT_ID}"></div></body></html>`,
+  );
+  frameDocument.close();
+
+  const stylesheetPromises = Array.from(
+    document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
+  ).map(
+    (link) =>
+      new Promise<void>((resolve) => {
+        const clone = frameDocument.createElement("link");
+        clone.rel = "stylesheet";
+        clone.href = link.href;
+        clone.media = link.media || "all";
+        clone.onload = () => resolve();
+        clone.onerror = () => resolve();
+        frameDocument.head.appendChild(clone);
+      }),
+  );
+
+  document.querySelectorAll<HTMLStyleElement>("style").forEach((sourceStyle) => {
+    const clone = frameDocument.createElement("style");
+    clone.textContent = sourceStyle.textContent;
+    frameDocument.head.appendChild(clone);
+  });
+
+  const style = frameDocument.createElement("style");
+  style.textContent = REPORT_PRINT_IFRAME_CSS;
+  frameDocument.head.appendChild(style);
+
+  return Promise.race([
+    Promise.allSettled(stylesheetPromises).then(() => undefined),
+    new Promise<void>((resolve) => window.setTimeout(resolve, REPORT_PRINT_PREPARATION_TIMEOUT_MS)),
+  ]);
 }
 
 function SignedAssetPreview({ asset }: { asset: ErfAsset }) {
@@ -1359,7 +1458,10 @@ function StoepAiReportView({
   }));
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
-  const [printReportMounted, setPrintReportMounted] = useState(false);
+  const [printFrame, setPrintFrame] = useState<HTMLIFrameElement | null>(null);
+  const printStylesReadyRef = useRef<Promise<void> | null>(null);
+  const printCleanupRef = useRef<(() => void) | null>(null);
+  const printInProgressRef = useRef(false);
   useEffect(() => {
     setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
     setSnapshotMessage(null);
@@ -1398,39 +1500,70 @@ function StoepAiReportView({
   };
 
   const handlePrint = () => {
-    if (printReportMounted) return;
-    if (typeof window !== "undefined") setPrintReportMounted(true);
+    if (
+      printInProgressRef.current ||
+      typeof window === "undefined" ||
+      typeof document === "undefined"
+    ) {
+      return;
+    }
+    printInProgressRef.current = true;
+    const iframe = createReportPrintFrame();
+    printStylesReadyRef.current = prepareReportPrintFrame(iframe);
+    setPrintFrame(iframe);
   };
 
   useEffect(() => {
-    if (!printReportMounted || typeof window === "undefined" || typeof document === "undefined") {
-      return;
-    }
-    let timeoutId: number | undefined;
-    let cancelled = false;
-    const cleanup = () => {
-      window.clearTimeout(timeoutId);
-      document.body.classList.remove("easy-erf-report-printing");
-      setPrintReportMounted(false);
+    if (!printFrame || typeof window === "undefined") return;
+    const frameWindow = printFrame.contentWindow;
+    const frameDocument = printFrame.contentDocument;
+    const root = frameDocument?.getElementById(REPORT_PRINT_ROOT_ID);
+    if (!frameWindow || !frameDocument || !root) return;
+    let lifecycle: ReturnType<typeof createReportPrintLifecycleController> | null = null;
+    let preparationCancelled = false;
+    let finalCleaned = false;
+    const finalCleanup = (updateState = true) => {
+      if (finalCleaned) return;
+      preparationCancelled = true;
+      finalCleaned = true;
+      lifecycle?.dispose();
+      printCleanupRef.current = null;
+      printStylesReadyRef.current = null;
+      printInProgressRef.current = false;
+      if (updateState) setPrintFrame(null);
+      printFrame.remove();
     };
+    lifecycle = createReportPrintLifecycleController({
+      frameWindow,
+      parentWindow: window,
+      emergencyCleanupMs: REPORT_PRINT_EMERGENCY_CLEANUP_MS,
+      focusMinimumHoldMs: REPORT_PRINT_FOCUS_MIN_HOLD_MS,
+      onFinish: () => finalCleanup(),
+    });
     const printWhenReady = async () => {
-      document.body.classList.add("easy-erf-report-printing");
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-      await document.fonts?.ready.catch(() => undefined);
-      await waitForReportPrintPreparation();
-      if (cancelled) return;
-      window.print();
-      timeoutId = window.setTimeout(cleanup, 1500);
+      await printStylesReadyRef.current;
+      await frameDocument.fonts?.ready.catch(() => undefined);
+      await waitForReportPrintPreparation(root);
+      if (preparationCancelled) return;
+      frameWindow.focus();
+      lifecycle?.markPrintStarted();
+      frameWindow.print();
     };
-    window.addEventListener("afterprint", cleanup, { once: true });
+    printCleanupRef.current = () => finalCleanup(false);
+    lifecycle.register();
     void printWhenReady();
     return () => {
-      cancelled = true;
-      window.removeEventListener("afterprint", cleanup);
-      window.clearTimeout(timeoutId);
-      document.body.classList.remove("easy-erf-report-printing");
+      finalCleanup(false);
     };
-  }, [printReportMounted]);
+  }, [printFrame]);
+
+  useEffect(
+    () => () => {
+      printCleanupRef.current?.();
+    },
+    [],
+  );
 
   const readinessStroke = (state: string) =>
     state === "confirmed"
@@ -2193,10 +2326,10 @@ function StoepAiReportView({
   return (
     <>
       {reportDocument()}
-      {printReportMounted && typeof document !== "undefined"
+      {printFrame?.contentDocument?.getElementById(REPORT_PRINT_ROOT_ID)
         ? createPortal(
-            <div id="easy-erf-report-print-root">{reportDocument(true)}</div>,
-            document.body,
+            reportDocument(true),
+            printFrame.contentDocument.getElementById(REPORT_PRINT_ROOT_ID) as HTMLElement,
           )
         : null}
     </>

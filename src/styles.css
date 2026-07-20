@@ -223,21 +223,8 @@
 .pa-popup .mapboxgl-popup-tip { display: none; }
 
 /* Property Intelligence Report — print stylesheet */
-#easy-erf-report-print-root { display: none; }
-
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
-  body.easy-erf-report-printing {
-    background: #ffffff !important;
-  }
-  body.easy-erf-report-printing #root {
-    display: none !important;
-  }
-  body.easy-erf-report-printing #easy-erf-report-print-root {
-    display: block !important;
-    background: #ffffff !important;
-    color: #0D1B2A !important;
-  }
   .report-no-print { display: none !important; }
   .report-page {
     background: #ffffff !important;
