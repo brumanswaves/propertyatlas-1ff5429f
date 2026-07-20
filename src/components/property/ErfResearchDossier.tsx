@@ -102,6 +102,7 @@ import {
   writeReportDecisionMode,
   type ReportDecisionMode,
 } from "@/lib/reports/reportDecisionMode";
+import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -1108,6 +1109,7 @@ const REPORT_ASSET_GROUP_ORDER: ErfAssetGroup[] = [
 
 const REPORT_PRINT_PREPARATION_TIMEOUT_MS = 8000;
 const REPORT_PRINT_EMERGENCY_CLEANUP_MS = 2 * 60 * 1000;
+const REPORT_PRINT_FOCUS_MIN_HOLD_MS = 30_000;
 const REPORT_PRINT_FRAME_ID = "easy-erf-report-print-frame";
 const REPORT_PRINT_ROOT_ID = "easy-erf-report-print-root";
 
@@ -1249,9 +1251,6 @@ function prepareReportPrintFrame(iframe: HTMLIFrameElement) {
     `<!doctype html><html><head><meta charset="utf-8"><title>Printable Easy Erf Report</title></head><body><div id="${REPORT_PRINT_ROOT_ID}"></div></body></html>`,
   );
   frameDocument.close();
-  const style = frameDocument.createElement("style");
-  style.textContent = REPORT_PRINT_IFRAME_CSS;
-  frameDocument.head.appendChild(style);
 
   const stylesheetPromises = Array.from(
     document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
@@ -1273,6 +1272,10 @@ function prepareReportPrintFrame(iframe: HTMLIFrameElement) {
     clone.textContent = sourceStyle.textContent;
     frameDocument.head.appendChild(clone);
   });
+
+  const style = frameDocument.createElement("style");
+  style.textContent = REPORT_PRINT_IFRAME_CSS;
+  frameDocument.head.appendChild(style);
 
   return Promise.race([
     Promise.allSettled(stylesheetPromises).then(() => undefined),
@@ -1516,27 +1519,25 @@ function StoepAiReportView({
     const frameDocument = printFrame.contentDocument;
     const root = frameDocument?.getElementById(REPORT_PRINT_ROOT_ID);
     if (!frameWindow || !frameDocument || !root) return;
-    let emergencyTimeoutId: number | undefined;
-    let focusCleanupTimeoutId: number | undefined;
+    let lifecycle: ReturnType<typeof createReportPrintLifecycleController> | null = null;
     let cancelled = false;
     const cleanup = (updateState = true) => {
       if (cancelled) return;
       cancelled = true;
-      window.clearTimeout(emergencyTimeoutId);
-      window.clearTimeout(focusCleanupTimeoutId);
-      frameWindow.removeEventListener("afterprint", cleanupAfterPrint);
-      window.removeEventListener("focus", cleanupAfterFocusReturn);
+      lifecycle?.dispose();
       printCleanupRef.current = null;
       printStylesReadyRef.current = null;
       printInProgressRef.current = false;
       if (updateState) setPrintFrame(null);
       printFrame.remove();
     };
-    const cleanupAfterFocusReturn = () => {
-      window.clearTimeout(focusCleanupTimeoutId);
-      focusCleanupTimeoutId = window.setTimeout(() => cleanup(), 600);
-    };
-    const cleanupAfterPrint = () => cleanup();
+    lifecycle = createReportPrintLifecycleController({
+      frameWindow,
+      parentWindow: window,
+      emergencyCleanupMs: REPORT_PRINT_EMERGENCY_CLEANUP_MS,
+      focusMinimumHoldMs: REPORT_PRINT_FOCUS_MIN_HOLD_MS,
+      onFinish: () => cleanup(),
+    });
     const printWhenReady = async () => {
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       await printStylesReadyRef.current;
@@ -1544,19 +1545,15 @@ function StoepAiReportView({
       await waitForReportPrintPreparation(root);
       if (cancelled) return;
       frameWindow.focus();
+      lifecycle?.markPrintStarted();
       frameWindow.print();
-      emergencyTimeoutId = window.setTimeout(() => cleanup(), REPORT_PRINT_EMERGENCY_CLEANUP_MS);
     };
     printCleanupRef.current = () => cleanup(false);
-    frameWindow.addEventListener("afterprint", cleanupAfterPrint, { once: true });
-    window.addEventListener("focus", cleanupAfterFocusReturn);
+    lifecycle.register();
     void printWhenReady();
     return () => {
       cancelled = true;
-      frameWindow.removeEventListener("afterprint", cleanupAfterPrint);
-      window.removeEventListener("focus", cleanupAfterFocusReturn);
-      window.clearTimeout(emergencyTimeoutId);
-      window.clearTimeout(focusCleanupTimeoutId);
+      lifecycle?.dispose();
     };
   }, [printFrame]);
 

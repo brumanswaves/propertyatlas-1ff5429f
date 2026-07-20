@@ -1,6 +1,11 @@
 import { SITE_POTENTIAL_PACK_SIZE } from "./config";
 import { SITE_POTENTIAL_MAX_ATTEMPTS, designPackStatusFromItems } from "./generationJobs";
 import { betaIdempotencyPrefix } from "./betaEntitlements";
+import {
+  SITE_POTENTIAL_STALLED_AFTER_MS,
+  SITE_POTENTIAL_WORKER_ACTIVE_MS,
+  mapSitePotentialFailureForPublic,
+} from "./generationProgress";
 import type { createServiceRoleSupabaseClient } from "./serverAuth";
 
 type ServiceSupabase = ReturnType<typeof createServiceRoleSupabaseClient>;
@@ -18,6 +23,9 @@ type LooseQuery = {
   order: (column: string, options?: Record<string, unknown>) => LooseQuery;
   limit: (count: number) => LooseQuery;
   gte: (column: string, value: unknown) => LooseQuery;
+  lt: (column: string, value: unknown) => LooseQuery;
+  lte: (column: string, value: unknown) => LooseQuery;
+  is: (column: string, value: unknown) => LooseQuery;
   insert: (value: unknown) => LooseQuery;
   update: (value: unknown) => LooseQuery;
   maybeSingle: () => QueryResult<Record<string, unknown> | null>;
@@ -44,18 +52,73 @@ function loose(client: ServiceSupabase) {
   return client as unknown as LooseSupabase;
 }
 
-function safeFailureMessage(value: unknown) {
-  if (!value) return null;
-  return String(value)
-    .replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]")
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-    .slice(0, 240);
-}
-
 function workerActiveFromHeartbeat(value: unknown, now = new Date()) {
   if (!value) return false;
   const heartbeat = new Date(String(value)).getTime();
-  return Number.isFinite(heartbeat) && now.getTime() - heartbeat <= 90_000;
+  return Number.isFinite(heartbeat) && now.getTime() - heartbeat <= SITE_POTENTIAL_WORKER_ACTIVE_MS;
+}
+
+function parseDate(value: unknown) {
+  if (!value) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function publicFailureCode(code: unknown, message: unknown) {
+  return mapSitePotentialFailureForPublic(code, message)?.code ?? null;
+}
+
+function publicFailureMessage(code: unknown, message: unknown) {
+  return mapSitePotentialFailureForPublic(code, message)?.message ?? null;
+}
+
+function isFutureDate(value: unknown, now: Date) {
+  const date = parseDate(value);
+  return Boolean(date && date.getTime() > now.getTime());
+}
+
+function queuedRetryAnchor(item: Record<string, unknown>, pack: Record<string, unknown>) {
+  return (
+    parseDate(item.updated_at) ??
+    parseDate(item.next_attempt_at) ??
+    parseDate(pack.updated_at) ??
+    parseDate(pack.next_attempt_at) ??
+    parseDate(pack.created_at)
+  );
+}
+
+function queuedItemIsStalled(
+  item: Record<string, unknown>,
+  pack: Record<string, unknown>,
+  now: Date,
+  workerActive: boolean,
+) {
+  if (String(item.status) !== "queued") return false;
+  if (workerActive) return false;
+  if (isFutureDate(item.next_attempt_at, now) || isFutureDate(pack.next_attempt_at, now)) return false;
+  const anchor = queuedRetryAnchor(item, pack);
+  return Boolean(anchor && now.getTime() - anchor.getTime() >= SITE_POTENTIAL_STALLED_AFTER_MS);
+}
+
+function generatingLeaseExpired(item: Record<string, unknown>, now: Date) {
+  if (String(item.status) !== "generating") return false;
+  const expiresAt = parseDate(item.lease_expires_at);
+  return Boolean(expiresAt && expiresAt.getTime() <= now.getTime());
+}
+
+function itemCanRetry(
+  item: Record<string, unknown>,
+  pack: Record<string, unknown>,
+  now: Date,
+  workerActive: boolean,
+) {
+  if (item.generated_asset_id) return false;
+  const status = String(item.status ?? "queued");
+  const attemptCount = Number(item.attempt_count ?? 0);
+  if (status === "failed") return attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS;
+  if (status === "queued") return queuedItemIsStalled(item, pack, now, workerActive);
+  if (status === "generating") return generatingLeaseExpired(item, now);
+  return false;
 }
 
 export async function readBetaCreditStatus(input: {
@@ -317,8 +380,10 @@ export async function readSitePotentialPackStatus(input: {
   parcelId: string;
   siteProjectId: string;
   designPackId?: string | null;
+  now?: Date;
 }) {
   const db = loose(input.serviceSupabase);
+  const now = input.now ?? new Date();
   const { data: project, error: projectError } = await db
     .from("erf_site_projects")
     .select("id,user_id,parcel_id,generation_status")
@@ -363,25 +428,30 @@ export async function readSitePotentialPackStatus(input: {
   const { data: items, error: itemsError } = await db
     .from("erf_design_pack_items")
     .select(
-      "id,option_index,status,generated_asset_id,attempt_count,failure_code,failure_message,next_attempt_at,heartbeat_at",
+      "id,option_index,status,generated_asset_id,attempt_count,failure_code,failure_message,next_attempt_at,heartbeat_at,lease_expires_at,updated_at",
     )
     .eq("design_pack_id", pack.id)
     .eq("user_id", input.userId)
     .order("option_index", { ascending: true });
   if (itemsError) throw new Error(itemsError.message);
 
+  const preliminaryWorkerActive =
+    workerActiveFromHeartbeat(pack.heartbeat_at) ||
+    (items ?? []).some((item: Record<string, unknown>) => workerActiveFromHeartbeat(item.heartbeat_at));
   const safeItems = (items ?? []).map((item: Record<string, unknown>) => ({
     id: String(item.id),
     optionIndex: Number(item.option_index),
     status: String(item.status),
     generatedAssetReady: Boolean(item.generated_asset_id),
     attemptCount: Number(item.attempt_count ?? 0),
-    failureCode: item.failure_code ? String(item.failure_code) : null,
-    failureMessage: safeFailureMessage(item.failure_message),
+    failureCode: publicFailureCode(item.failure_code, item.failure_message),
+    failureMessage: publicFailureMessage(item.failure_code, item.failure_message),
     nextAttemptAt: item.next_attempt_at ? String(item.next_attempt_at) : null,
+    updatedAt: item.updated_at ? String(item.updated_at) : null,
     workerHeartbeatAt: item.heartbeat_at ? String(item.heartbeat_at) : null,
     workerActive:
       String(item.status) === "generating" || workerActiveFromHeartbeat(item.heartbeat_at),
+    canRetry: itemCanRetry(item, pack, now, preliminaryWorkerActive),
   }));
   const completedCount = safeItems.filter(
     (item) => item.status === "complete" && item.generatedAssetReady,
@@ -399,6 +469,7 @@ export async function readSitePotentialPackStatus(input: {
   );
   const workerActive =
     workerActiveFromHeartbeat(pack.heartbeat_at) || safeItems.some((item) => item.workerActive);
+  const canRetry = safeItems.some((item) => item.canRetry);
 
   return {
     ok: true as const,
@@ -413,10 +484,11 @@ export async function readSitePotentialPackStatus(input: {
       workerHeartbeatAt: pack.heartbeat_at ? String(pack.heartbeat_at) : null,
       workerActive,
       nextAttemptAt: pack.next_attempt_at ? String(pack.next_attempt_at) : null,
+      canRetry,
       hasRetryableWork: status.hasRetryableWork,
       terminal: status.terminal,
-      failureCode: pack.failure_code ? String(pack.failure_code) : null,
-      failureMessage: safeFailureMessage(pack.failure_message),
+      failureCode: publicFailureCode(pack.failure_code, pack.failure_message),
+      failureMessage: publicFailureMessage(pack.failure_code, pack.failure_message),
       items: safeItems,
     },
   };
@@ -434,49 +506,51 @@ export async function retrySitePotentialPack(input: {
   const now = input.now ?? new Date();
   const ownership = await readSitePotentialPackStatus(input);
   if (!ownership.ok) return ownership;
-  if (ownership.pack.status === "complete" || ownership.pack.completedCount >= ownership.pack.requestedCount) {
+  if (
+    ownership.pack.status === "complete" ||
+    ownership.pack.completedCount >= ownership.pack.requestedCount
+  ) {
     return { ok: true as const, pack: ownership.pack, retried: false };
   }
 
   const { data: rawItems, error: itemsError } = await db
     .from("erf_design_pack_items")
     .select(
-      "id,option_index,status,generated_asset_id,attempt_count,lease_expires_at,next_attempt_at",
+      "id,option_index,status,generated_asset_id,attempt_count,lease_expires_at,next_attempt_at,updated_at,heartbeat_at",
     )
     .eq("design_pack_id", input.designPackId)
     .eq("user_id", input.userId)
     .order("option_index", { ascending: true });
   if (itemsError) throw new Error(itemsError.message);
 
-  const retryableItems = (rawItems ?? []).filter((item) => {
-    if (item.generated_asset_id) return false;
-    const status = String(item.status ?? "queued");
-    const attemptCount = Number(item.attempt_count ?? 0);
-    if (status === "failed") return attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS;
-    if (status === "queued") return true;
-    if (status !== "generating") return false;
-    const expiresAt = item.lease_expires_at ? new Date(String(item.lease_expires_at)).getTime() : null;
-    return Boolean(expiresAt && Number.isFinite(expiresAt) && expiresAt <= now.getTime());
-  });
+  const packForRetry = {
+    created_at: ownership.pack.createdAt,
+    updated_at: ownership.pack.updatedAt,
+    next_attempt_at: ownership.pack.nextAttemptAt,
+    heartbeat_at: ownership.pack.workerHeartbeatAt,
+  };
+  const workerActive = ownership.pack.workerActive === true;
+  const retryableItems = (rawItems ?? []).filter((item) =>
+    itemCanRetry(item, packForRetry, now, workerActive),
+  );
 
+  const requeuedIds = new Set<string>();
   for (const item of retryableItems) {
-    const { error } = await db
-      .from("erf_design_pack_items")
-      .update({
-        status: "queued",
-        worker_id: null,
-        heartbeat_at: null,
-        lease_expires_at: null,
-        failure_code: null,
-        failure_message: null,
-        next_attempt_at: now.toISOString(),
-      })
-      .eq("id", item.id)
-      .eq("user_id", input.userId);
+    const { data: updatedRows, error } = await requeueDesignPackItemIfStillEligible({
+      db,
+      item,
+      input,
+      now,
+      pack: packForRetry,
+      workerActive,
+    });
     if (error) throw new Error(error.message);
+    for (const row of updatedRows ?? []) {
+      if (row?.id) requeuedIds.add(String(row.id));
+    }
   }
 
-  if (retryableItems.length) {
+  if (requeuedIds.size) {
     const { error: packError } = await db
       .from("erf_design_packs")
       .update({
@@ -504,5 +578,59 @@ export async function retrySitePotentialPack(input: {
 
   const refreshed = await readSitePotentialPackStatus(input);
   if (!refreshed.ok) return refreshed;
-  return { ok: true as const, pack: refreshed.pack, retried: retryableItems.length > 0 };
+  return { ok: true as const, pack: refreshed.pack, retried: requeuedIds.size > 0 };
+}
+
+async function requeueDesignPackItemIfStillEligible(input: {
+  db: LooseSupabase;
+  item: Record<string, unknown>;
+  input: {
+    userId: string;
+    parcelId: string;
+    siteProjectId: string;
+    designPackId: string;
+  };
+  now: Date;
+  pack: Record<string, unknown>;
+  workerActive: boolean;
+}) {
+  const status = String(input.item.status ?? "queued");
+  let query = input.db
+    .from("erf_design_pack_items")
+    .update({
+      status: "queued",
+      worker_id: null,
+      heartbeat_at: null,
+      lease_expires_at: null,
+      failure_code: null,
+      failure_message: null,
+      next_attempt_at: input.now.toISOString(),
+    })
+    .eq("id", input.item.id)
+    .eq("user_id", input.input.userId)
+    .eq("design_pack_id", input.input.designPackId)
+    .eq("status", status);
+
+  if (status === "failed") {
+    query = query.lt("attempt_count", SITE_POTENTIAL_MAX_ATTEMPTS);
+  } else if (status === "queued") {
+    if (!queuedItemIsStalled(input.item, input.pack, input.now, input.workerActive)) {
+      return { data: [], error: null };
+    }
+    query = addCurrentValueGuard(query, "updated_at", input.item.updated_at);
+  } else if (status === "generating") {
+    if (!generatingLeaseExpired(input.item, input.now)) {
+      return { data: [], error: null };
+    }
+    query = query.lte("lease_expires_at", input.now.toISOString());
+  } else {
+    return { data: [], error: null };
+  }
+
+  return query.select("id");
+}
+
+function addCurrentValueGuard(query: LooseQuery, column: string, value: unknown) {
+  if (value === null || value === undefined) return query.is(column, null);
+  return query.eq(column, value);
 }

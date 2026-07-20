@@ -23,7 +23,6 @@ import {
   SITE_POTENTIAL_PACK_SIZE,
   SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
-import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
 import {
   buildSitePotentialRuntimeProgress,
   type SitePotentialRuntimeProgress,
@@ -145,6 +144,7 @@ interface SitePotentialPackStatusItem {
   nextAttemptAt?: string | null;
   workerHeartbeatAt?: string | null;
   workerActive?: boolean;
+  canRetry?: boolean;
 }
 
 interface SitePotentialPackStatusPayload {
@@ -159,6 +159,7 @@ interface SitePotentialPackStatusPayload {
   workerActive?: boolean;
   nextAttemptAt?: string | null;
   hasRetryableWork?: boolean;
+  canRetry?: boolean;
   terminal?: boolean;
   failureCode?: string | null;
   failureMessage?: string | null;
@@ -232,6 +233,7 @@ function normalizePackStatusPayload(payload: unknown): SitePotentialPackStatusPa
       workerHeartbeatAt:
         typeof value.workerHeartbeatAt === "string" ? value.workerHeartbeatAt : null,
       workerActive: value.workerActive === true,
+      canRetry: value.canRetry === true,
     };
   });
   return {
@@ -246,6 +248,7 @@ function normalizePackStatusPayload(payload: unknown): SitePotentialPackStatusPa
     workerActive: row.workerActive === true,
     nextAttemptAt: typeof row.nextAttemptAt === "string" ? row.nextAttemptAt : null,
     hasRetryableWork: row.hasRetryableWork === true,
+    canRetry: row.canRetry === true,
     terminal: row.terminal === true,
     failureCode: typeof row.failureCode === "string" ? row.failureCode : null,
     failureMessage: typeof row.failureMessage === "string" ? row.failureMessage : null,
@@ -263,19 +266,12 @@ function packProgressSignature(status: SitePotentialPackStatusPayload | null) {
       .map((item) => `${item.optionIndex}:${item.status}:${item.generatedAssetReady}`)
       .join("|"),
     status.workerHeartbeatAt ?? "",
+    status.canRetry === true ? "retryable" : "not-retryable",
   ].join(":");
 }
 
 function packHasRetryableSlots(status: SitePotentialPackStatusPayload | null) {
-  return Boolean(
-    status?.items.some(
-      (item) =>
-        !item.generatedAssetReady &&
-        (item.status === "queued" ||
-          item.status === "generating" ||
-          (item.status === "failed" && item.attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS)),
-    ),
-  );
+  return status?.canRetry === true || Boolean(status?.items.some((item) => item.canRetry === true));
 }
 
 function shouldPollPackStatus(status: SitePotentialPackStatusPayload | null) {
@@ -313,6 +309,34 @@ function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
   return `${completed} of ${status.requestedCount} concepts complete.`;
 }
 
+function generatedConceptsEmptyMessage(
+  packStatus: SitePotentialPackStatusPayload | null,
+  progress: SitePotentialRuntimeProgress | null,
+) {
+  if (!packStatus) {
+    return "No concepts generated yet. Complete the brief and generate a three-concept pack.";
+  }
+  if (packStatus.status === "complete" || packStatus.completedCount >= packStatus.requestedCount) {
+    return "Concept generation completed, but the saved images could not be displayed. Refresh the Erf File Vault.";
+  }
+  if (packStatus.terminal || packStatus.status === "failed") {
+    return "Generation stopped before a concept was completed. Review the failure above.";
+  }
+  if (progress?.slots.some((slot) => slot.status === "Retrying")) {
+    return "Eligible concepts have been requeued.";
+  }
+  if (progress?.stalled) {
+    return "The generator has not started. Refresh the status or retry this pack.";
+  }
+  if (packStatus.status === "generating" || progress?.workerActive) {
+    return "Your concepts are being created. Images will appear as they finish.";
+  }
+  if (packStatus.status === "queued") {
+    return "Your concepts are waiting for the background generator.";
+  }
+  return "No concepts are visible yet. Refresh the Erf File Vault or status panel.";
+}
+
 function packProgressState(status: SitePotentialPackStatusPayload | null) {
   if (!status) return null;
   if (status.status === "complete" || status.completedCount >= status.requestedCount) {
@@ -344,7 +368,7 @@ function projectPatchToSnapshot(patch: SitePotentialProjectPatch): Partial<SiteP
 
 function slotTone(status: SitePotentialRuntimeProgress["slots"][number]["status"]) {
   if (status === "Ready") return "border-[#16A34A]/25 bg-[#ECFDF5] text-[#166534]";
-  if (status === "Generating" || status === "Saving") {
+  if (status === "Generating") {
     return "border-[#FF6A00]/30 bg-[#FFF7ED] text-[#B24A00]";
   }
   if (status === "Retrying") return "border-[#F59E0B]/35 bg-[#FFFBEB] text-[#92400E]";
@@ -368,7 +392,7 @@ function SitePotentialGenerationProgressPanel({
   const retryDisabled =
     retrying ||
     progress.completedCount >= progress.requestedCount ||
-    !progress.slots.some((slot) => slot.status === "Retrying" || slot.status === "Waiting");
+    !progress.canRetry;
 
   return (
     <section
@@ -1384,10 +1408,8 @@ export function SitePotentialTab({
           </div>
         ) : (
           <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A]/60">
-  {packStatus
-    ? "Your concepts are being created. Images will appear here as each one is completed, and this page will update automatically."
-    : "No concepts generated yet. Complete the brief and generate a three-concept pack."}
-</p>
+            {generatedConceptsEmptyMessage(packStatus, runtimeProgress)}
+          </p>
         )}
       </section>
       {/* Credit purchases are intentionally hidden for the no-payment MVP. */}

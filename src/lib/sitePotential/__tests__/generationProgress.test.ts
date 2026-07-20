@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildSitePotentialRuntimeProgress } from "../generationProgress";
+import {
+  SITE_POTENTIAL_STALLED_AFTER_MS,
+  buildSitePotentialRuntimeProgress,
+  mapSitePotentialFailureForPublic,
+} from "../generationProgress";
 
 const now = new Date("2026-07-20T12:05:00Z");
 
@@ -35,7 +39,7 @@ describe("Site Potential runtime generation progress", () => {
         completedCount: 0,
         workerHeartbeatAt: "2026-07-20T12:04:45Z",
         items: [
-          { optionIndex: 1, status: "generating" },
+          { optionIndex: 1, status: "generating", canRetry: false },
           { optionIndex: 2, status: "queued" },
           { optionIndex: 3, status: "queued" },
         ],
@@ -72,13 +76,14 @@ describe("Site Potential runtime generation progress", () => {
     expect(progress?.lastCheckedLabel).toBe("Last status check 10 seconds ago");
   });
 
-  it("detects stalled queued packs without worker activity", () => {
+  it("detects stalled queued packs from the latest queue transition, not display elapsed time", () => {
     const progress = buildSitePotentialRuntimeProgress(
       {
         status: "queued",
         requestedCount: 3,
         completedCount: 0,
-        createdAt: "2026-07-20T12:02:00Z",
+        createdAt: "2026-07-20T11:00:00Z",
+        updatedAt: "2026-07-20T12:02:00Z",
         workerActive: false,
       },
       now,
@@ -87,6 +92,38 @@ describe("Site Potential runtime generation progress", () => {
 
     expect(progress?.stalled).toBe(true);
     expect(progress?.detail).toContain("background worker");
+  });
+
+  it("does not call a recently retried or future-backoff queued pack stalled", () => {
+    const justRetried = buildSitePotentialRuntimeProgress(
+      {
+        status: "queued",
+        requestedCount: 3,
+        completedCount: 0,
+        createdAt: "2026-07-20T11:00:00Z",
+        updatedAt: "2026-07-20T12:04:30Z",
+        workerActive: false,
+      },
+      now,
+      now,
+    );
+    const futureBackoff = buildSitePotentialRuntimeProgress(
+      {
+        status: "queued",
+        requestedCount: 3,
+        completedCount: 0,
+        createdAt: "2026-07-20T11:00:00Z",
+        updatedAt: "2026-07-20T12:00:00Z",
+        nextAttemptAt: "2026-07-20T12:08:00Z",
+        workerActive: false,
+      },
+      now,
+      now,
+    );
+
+    expect(SITE_POTENTIAL_STALLED_AFTER_MS).toBe(90_000);
+    expect(justRetried?.stalled).toBe(false);
+    expect(futureBackoff?.stalled).toBe(false);
   });
 
   it("shows retryable and terminal failure states with sanitized messages", () => {
@@ -98,7 +135,7 @@ describe("Site Potential runtime generation progress", () => {
         hasRetryableWork: true,
         items: [
           { optionIndex: 1, status: "complete", generatedAssetReady: true },
-          { optionIndex: 2, status: "failed", attemptCount: 1 },
+          { optionIndex: 2, status: "failed", attemptCount: 1, canRetry: true },
           { optionIndex: 3, status: "queued" },
         ],
       },
@@ -111,7 +148,9 @@ describe("Site Potential runtime generation progress", () => {
         requestedCount: 3,
         completedCount: 0,
         terminal: true,
-        failureMessage: "SUPABASE_SERVICE_ROLE_KEY sk-secret raw failure",
+        failureCode: "postgres_error",
+        failureMessage:
+          "SQL failed on public.erf_design_pack_items with SUPABASE_SERVICE_ROLE_KEY sk-secret raw failure",
         items: [{ optionIndex: 1, status: "failed", attemptCount: 3 }],
       },
       now,
@@ -121,7 +160,25 @@ describe("Site Potential runtime generation progress", () => {
     expect(retryable?.heading).toBe("Retrying concept 2");
     expect(retryable?.slots[1].status).toBe("Retrying");
     expect(terminal?.heading).toBe("Generation needs attention");
+    expect(terminal?.sanitizedFailure).toBe(
+      "Generation stopped before all concepts were created. Refresh the status or retry eligible concepts.",
+    );
     expect(terminal?.sanitizedFailure).not.toContain("sk-secret");
     expect(terminal?.sanitizedFailure).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(terminal?.sanitizedFailure).not.toContain("erf_design_pack_items");
+  });
+
+  it("maps sensitive infrastructure failures to safe public categories", () => {
+    const mapped = mapSitePotentialFailureForPublic(
+      "supabase_storage_error",
+      "Postgres RPC finalize_site_potential_item failed with service role and Authorization Bearer sk-secret",
+    );
+
+    expect(mapped).toMatchObject({
+      code: "image_save_failed",
+      message:
+        "The concept image could not be saved to the Erf File Vault. Refresh the vault or retry.",
+    });
+    expect(mapped?.message).not.toMatch(/postgres|rpc|service role|authorization|sk-secret/i);
   });
 });
