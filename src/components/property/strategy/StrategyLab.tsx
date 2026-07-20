@@ -15,6 +15,7 @@ import {
 } from "@/lib/research/calculators";
 import { cn } from "@/lib/utils";
 import {
+  createEmptyStrategyWorkspace,
   mergeStrategyWorkspaces,
   getChosenStrategyScenario,
   readStrategyWorkspace,
@@ -27,6 +28,7 @@ import {
   type ErfStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import { supabase } from "@/integrations/supabase/client";
+import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 
 type StrategyType =
   | "buy_hold"
@@ -55,6 +57,16 @@ interface SitePotentialStrategyDraft {
   buildableSqm?: string;
   notes?: string[];
 }
+
+type StrategySaveStatus =
+  | "idle"
+  | "loading"
+  | "saving"
+  | "saved"
+  | "failed"
+  | "offline"
+  | "cloud-restored"
+  | "migrated";
 
 const STRATEGY_OPTIONS: StrategyOption[] = [
   {
@@ -210,6 +222,36 @@ function formatPercent(value: number) {
   return `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`;
 }
 
+function formatSaveTime(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function saveStatusCopy(status: StrategySaveStatus, lastSavedAt: string | null) {
+  switch (status) {
+    case "loading":
+      return "Loading saved Strategy";
+    case "saving":
+      return "Saving draft";
+    case "saved":
+      return formatSaveTime(lastSavedAt)
+        ? `Draft saved at ${formatSaveTime(lastSavedAt)}`
+        : "Draft saved";
+    case "failed":
+      return "Save failed";
+    case "offline":
+      return "Offline draft saved in this browser";
+    case "cloud-restored":
+      return "Cloud draft restored";
+    case "migrated":
+      return "Local draft moved to your account";
+    default:
+      return "Draft saved";
+  }
+}
+
 function optionFor(id: StrategyType) {
   return STRATEGY_OPTIONS.find((option) => option.id === id) ?? STRATEGY_OPTIONS[0];
 }
@@ -237,34 +279,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function persistStrategyWorkspaceToCloud(
-  userId: string,
   parcelId: string,
   workspace: ErfStrategyWorkspace,
 ) {
-  const { data, error: readError } = await supabase
-    .from("saved_properties")
-    .select("user_data")
-    .eq("user_id", userId)
-    .eq("parcel_id", parcelId)
-    .maybeSingle();
-  if (readError) throw readError;
-
-  const existingUserData = isRecord(data?.user_data) ? data.user_data : {};
-  const userData = {
-    ...existingUserData,
+  await patchSavedPropertyUserData(parcelId, {
     normalizedParcelId: parcelId,
     strategyWorkspace: workspace,
-    strategyWorkspaceUpdatedAt: new Date().toISOString(),
-  };
-  const { error } = await supabase.from("saved_properties").upsert(
-    {
-      user_id: userId,
-      parcel_id: parcelId,
-      user_data: userData as unknown as Record<string, unknown> as never,
-    },
-    { onConflict: "user_id,parcel_id" },
-  );
-  if (error) throw error;
+    strategyWorkspaceUpdatedAt: workspace.draftUpdatedAt ?? new Date().toISOString(),
+  });
 }
 
 export function StrategyLab({
@@ -293,8 +315,14 @@ export function StrategyLab({
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
     readSitePotentialStrategyDraft(parcelId),
   );
+  const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(user ? "loading" : "offline");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const defaultPriceRef = useRef(defaultPrice);
-  const cloudSaveErrorShownRef = useRef(false);
+  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudSaveInFlightRef = useRef(false);
+  const pendingCloudWorkspaceRef = useRef<ErfStrategyWorkspace | null>(null);
+  const latestWorkspaceRef = useRef(initialWorkspace);
   defaultPriceRef.current = defaultPrice;
 
   useEffect(() => {
@@ -310,15 +338,23 @@ export function StrategyLab({
     setValues({ ...strategyDefaults(defaultPriceRef.current), ...workspace.draftInputs });
     setShowChosenState(Boolean(chosen));
     setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
-    cloudSaveErrorShownRef.current = false;
+    latestWorkspaceRef.current = workspace;
+    pendingCloudWorkspaceRef.current = null;
+    setSaveError(null);
+    setLastSavedAt(null);
+    setSaveStatus(user ? "loading" : "offline");
   }, [parcelId]);
 
   useEffect(() => {
     let alive = true;
-    if (!user) return () => {
-      alive = false;
-    };
+    if (!user) {
+      setSaveStatus("offline");
+      return () => {
+        alive = false;
+      };
+    }
 
+    setSaveStatus("loading");
     supabase
       .from("saved_properties")
       .select("user_data")
@@ -329,14 +365,13 @@ export function StrategyLab({
         if (!alive) return;
         if (error) {
           console.warn("[Easy Erf] Strategy workspace cloud load failed", error.message);
+          setSaveStatus("failed");
+          setSaveError(error.message);
           return;
         }
         const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
-        if (!remote) return;
-        const merged = writeStrategyWorkspace(
-          parcelId,
-          mergeStrategyWorkspaces(parcelId, readStrategyWorkspace(parcelId), remote),
-        );
+        const local = readStrategyWorkspace(parcelId);
+        const merged = writeStrategyWorkspace(parcelId, mergeStrategyWorkspaces(parcelId, local, remote));
         const chosen = getChosenStrategyScenario(parcelId);
         setSavedScenarios(merged.scenarios);
         setChosenScenario(chosen);
@@ -347,41 +382,116 @@ export function StrategyLab({
         );
         setValues({ ...strategyDefaults(defaultPriceRef.current), ...merged.draftInputs });
         setShowChosenState(Boolean(chosen));
+        latestWorkspaceRef.current = merged;
+        const cloudMissing = !remote && Boolean(local.draftUpdatedAt || local.scenarios.length);
+        const localHadNewer =
+          JSON.stringify(merged) !== JSON.stringify(remote ?? createEmptyStrategyWorkspace(parcelId));
+        if (cloudMissing || localHadNewer) {
+          queueCloudSave(merged, true);
+          setSaveStatus(cloudMissing ? "migrated" : "saving");
+        } else {
+          setSaveStatus("cloud-restored");
+        }
       });
 
     return () => {
       alive = false;
+      flushStrategySave();
     };
   }, [parcelId, user]);
 
-  function persistWorkspace(workspace: ErfStrategyWorkspace) {
-    if (!user) return;
-    void persistStrategyWorkspaceToCloud(user.id, parcelId, workspace).catch((error) => {
-      console.warn("[Easy Erf] Strategy workspace cloud save failed", error);
-      if (!cloudSaveErrorShownRef.current) {
-        cloudSaveErrorShownRef.current = true;
-        toast.message("Strategy draft saved on this device. Cloud sync will retry on the next edit.");
-      }
-    });
+  useEffect(
+    () => () => {
+      clearCloudSaveTimer();
+      flushStrategySave();
+    },
+    [parcelId, user],
+  );
+
+  function clearCloudSaveTimer() {
+    if (cloudSaveTimerRef.current) {
+      clearTimeout(cloudSaveTimerRef.current);
+      cloudSaveTimerRef.current = null;
+    }
   }
 
-  function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>) {
+  async function runCloudSave(workspace: ErfStrategyWorkspace) {
+    if (!user) {
+      setSaveStatus("offline");
+      return;
+    }
+    if (cloudSaveInFlightRef.current) {
+      pendingCloudWorkspaceRef.current = workspace;
+      setSaveStatus("saving");
+      return;
+    }
+
+    cloudSaveInFlightRef.current = true;
+    pendingCloudWorkspaceRef.current = null;
+    setSaveStatus("saving");
+    setSaveError(null);
+    try {
+      await persistStrategyWorkspaceToCloud(parcelId, workspace);
+      setLastSavedAt(new Date().toISOString());
+      const pending = pendingCloudWorkspaceRef.current;
+      cloudSaveInFlightRef.current = false;
+      if (pending && pending !== workspace) {
+        pendingCloudWorkspaceRef.current = null;
+        await runCloudSave(pending);
+        return;
+      }
+      setSaveStatus("saved");
+    } catch (error) {
+      cloudSaveInFlightRef.current = false;
+      pendingCloudWorkspaceRef.current = workspace;
+      setSaveError(error instanceof Error ? error.message : "Cloud save failed");
+      setSaveStatus("failed");
+      console.warn("[Easy Erf] Strategy workspace cloud save failed", error);
+    }
+  }
+
+  function queueCloudSave(workspace: ErfStrategyWorkspace, immediate = false) {
+    latestWorkspaceRef.current = workspace;
+    if (!user) {
+      setSaveStatus("offline");
+      return;
+    }
+    pendingCloudWorkspaceRef.current = workspace;
+    setSaveStatus("saving");
+    if (immediate) {
+      clearCloudSaveTimer();
+      void runCloudSave(workspace);
+      return;
+    }
+    clearCloudSaveTimer();
+    cloudSaveTimerRef.current = setTimeout(() => {
+      const pending = pendingCloudWorkspaceRef.current;
+      if (pending) void runCloudSave(pending);
+    }, 750);
+  }
+
+  function flushStrategySave() {
+    const pending = pendingCloudWorkspaceRef.current ?? latestWorkspaceRef.current;
+    if (!pending) return;
+    queueCloudSave(pending, true);
+  }
+
+  function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
     const workspace = saveStrategyDraft(parcelId, {
       activeStrategy: nextActive,
       draftInputs: nextValues,
     });
-    persistWorkspace(workspace);
+    queueCloudSave(workspace, immediate);
     return workspace;
   }
 
   const n = (key: string) => toNumber(values[key]);
-  const setValue = (key: string, value: string) =>
-    setValues((current) => {
-      const next = { ...current, [key]: value };
-      persistDraft(active, next);
-      setShowChosenState(false);
-      return next;
-    });
+  const setValue = (key: string, value: string) => {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    persistDraft(active, next);
+    setShowChosenState(false);
+  };
 
   const loanAmount =
     n("loanAmount") || Math.max(0, n("purchasePrice") * (1 - n("depositPercent") / 100));
@@ -619,30 +729,32 @@ export function StrategyLab({
     ].filter((note): note is string => Boolean(note));
     const nextActive = "development_sell";
     setActive(nextActive);
-    setValues((current) => {
-      const next = {
-      ...current,
-      customNotes: [current.customNotes, ...notes].filter(Boolean).join("\n"),
-      };
-      persistDraft(nextActive, next);
-      return next;
-    });
+    const next = {
+      ...values,
+      customNotes: [values.customNotes, ...notes].filter(Boolean).join("\n"),
+    };
+    setValues(next);
+    persistDraft(nextActive, next, true);
     setShowChosenState(false);
     toast.success("Site Potential draft applied. Review the numbers before saving.");
   }
 
-  function saveScenario() {
+  function saveScenario(asNew = false) {
     const option = optionFor(active);
-    const { scenario, scenarios } = saveStrategyScenario(parcelId, {
-      label: `${option.label} scenario`,
-      strategy: active,
-      inputs: values,
-      summary: summary.map(([label, value]) => ({ label, value })),
-    });
+    const { scenario, scenarios, workspace } = saveStrategyScenario(
+      parcelId,
+      {
+        label: `${option.label} scenario`,
+        strategy: active,
+        inputs: values,
+        summary: summary.map(([label, value]) => ({ label, value })),
+      },
+      { asNew },
+    );
     setSavedScenarios(scenarios);
     setChosenScenario(scenario);
     setShowChosenState(true);
-    persistWorkspace(readStrategyWorkspace(parcelId));
+    queueCloudSave(workspace, true);
     toast.success("Scenario chosen for this erf.");
   }
 
@@ -677,11 +789,18 @@ export function StrategyLab({
             </button>
             <button
               type="button"
-              onClick={saveScenario}
+              onClick={() => saveScenario()}
               className="rounded-full bg-[#FF6A00] px-4 py-2 text-[11px] font-semibold text-white hover:bg-[#ff7d1f]"
             >
               <Save className="mr-1 inline h-3.5 w-3.5" />
-              Save scenario
+              Use this scenario in report
+            </button>
+            <button
+              type="button"
+              onClick={() => saveScenario(true)}
+              className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fbf8f1]"
+            >
+              Save as a new scenario
             </button>
           </div>
         </div>
@@ -802,12 +921,44 @@ export function StrategyLab({
               Assumptions
             </div>
             <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">{activeOption.label}</h4>
+            <div
+              className={cn(
+                "mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold",
+                saveStatus === "failed"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : saveStatus === "saved" ||
+                      saveStatus === "cloud-restored" ||
+                      saveStatus === "migrated"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-[#D9E6F2] bg-white text-[#0D1B2A]/68",
+              )}
+            >
+              {saveStatusCopy(saveStatus, lastSavedAt)}
+              {saveStatus === "failed" && (
+                <button
+                  type="button"
+                  onClick={flushStrategySave}
+                  className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+            {saveError && saveStatus === "failed" && (
+              <p className="mt-1 text-xs text-red-700">Cloud save failed. Your browser draft is still kept locally.</p>
+            )}
             <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/62">
               Adjust these assumptions before relying on the result.
             </p>
           </div>
           {fieldGroupsFor(active).map((group) => (
-            <FieldGroup key={group.title} group={group} values={values} setValue={setValue} />
+            <FieldGroup
+              key={group.title}
+              group={group}
+              values={values}
+              setValue={setValue}
+              onBlur={flushStrategySave}
+            />
           ))}
         </div>
 
@@ -837,10 +988,10 @@ export function StrategyLab({
             </ul>
             <button
               type="button"
-              onClick={saveScenario}
+              onClick={() => saveScenario()}
               className="mt-4 w-full rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
             >
-              Save as chosen scenario
+              Use this scenario in report
             </button>
           </section>
         </div>
@@ -1087,10 +1238,12 @@ function FieldGroup({
   group,
   values,
   setValue,
+  onBlur,
 }: {
   group: FieldGroupModel;
   values: Record<string, string>;
   setValue: (key: string, value: string) => void;
+  onBlur: () => void;
 }) {
   return (
     <section className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
@@ -1106,6 +1259,7 @@ function FieldGroup({
               inputMode="decimal"
               value={values[key] ?? ""}
               onChange={(event) => setValue(key, event.target.value)}
+              onBlur={onBlur}
               placeholder="0"
               className="mt-1 w-full rounded-lg border border-[#D9E6F2] bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none focus:border-[#FF6A00]/60"
             />

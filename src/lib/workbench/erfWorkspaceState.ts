@@ -106,6 +106,7 @@ export interface ErfStrategyScenario {
   summary: Array<{ label: string; value: string }>;
   selected?: boolean;
   savedAt: string;
+  updatedAt?: string;
 }
 
 export interface ErfStrategyWorkspace {
@@ -116,6 +117,7 @@ export interface ErfStrategyWorkspace {
   draftUpdatedAt: string | null;
   scenarios: ErfStrategyScenario[];
   chosenScenarioId: string | null;
+  chosenScenarioUpdatedAt: string | null;
   migratedFromLegacy: boolean;
 }
 
@@ -315,6 +317,12 @@ function coerceStrategyScenario(value: unknown, parcelId: string): ErfStrategySc
     summary,
     selected: Boolean(raw.selected),
     savedAt: typeof raw.savedAt === "string" ? raw.savedAt : new Date().toISOString(),
+    updatedAt:
+      typeof raw.updatedAt === "string"
+        ? raw.updatedAt
+        : typeof raw.savedAt === "string"
+          ? raw.savedAt
+          : new Date().toISOString(),
   };
 }
 
@@ -328,10 +336,25 @@ function coerceStrategyInputs(value: unknown): Record<string, string> {
   );
 }
 
-function newestIso(a: string | null | undefined, b: string | null | undefined) {
-  if (!a) return b ?? null;
-  if (!b) return a;
-  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+export function validTimestampMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function newestIso(a: string | null | undefined, b: string | null | undefined) {
+  const aMs = validTimestampMs(a);
+  const bMs = validTimestampMs(b);
+  if (aMs == null) return bMs == null ? null : (b ?? null);
+  if (bMs == null) return a ?? null;
+  return aMs >= bMs ? (a ?? null) : (b ?? null);
+}
+
+export function nextMonotonicIso(previous: string | null | undefined, now = new Date()) {
+  const previousMs = validTimestampMs(previous);
+  const currentMs = now.getTime();
+  const nextMs = previousMs != null && currentMs <= previousMs ? previousMs + 1 : currentMs;
+  return new Date(nextMs).toISOString();
 }
 
 function coerceStrategyWorkspace(value: unknown, parcelId: string): ErfStrategyWorkspace | null {
@@ -347,6 +370,7 @@ function coerceStrategyWorkspace(value: unknown, parcelId: string): ErfStrategyW
     scenarios.some((scenario) => scenario.id === raw.chosenScenarioId)
       ? raw.chosenScenarioId
       : scenarios.find((scenario) => scenario.selected)?.id ?? null;
+  const selectedScenario = scenarios.find((scenario) => scenario.id === chosenScenarioId);
   const activeStrategy =
     typeof raw.activeStrategy === "string" && raw.activeStrategy.trim()
       ? raw.activeStrategy
@@ -365,6 +389,10 @@ function coerceStrategyWorkspace(value: unknown, parcelId: string): ErfStrategyW
       selected: scenario.id === chosenScenarioId,
     })),
     chosenScenarioId,
+    chosenScenarioUpdatedAt:
+      typeof raw.chosenScenarioUpdatedAt === "string"
+        ? raw.chosenScenarioUpdatedAt
+        : selectedScenario?.updatedAt ?? selectedScenario?.savedAt ?? null,
     migratedFromLegacy: Boolean(raw.migratedFromLegacy),
   };
 }
@@ -378,6 +406,7 @@ export function createEmptyStrategyWorkspace(parcelId: string): ErfStrategyWorks
     draftUpdatedAt: null,
     scenarios: [],
     chosenScenarioId: null,
+    chosenScenarioUpdatedAt: null,
     migratedFromLegacy: false,
   };
 }
@@ -405,6 +434,7 @@ export function strategyWorkspaceFromLegacy(
       selected: scenario.id === chosenScenarioId,
     })),
     chosenScenarioId,
+    chosenScenarioUpdatedAt: chosen?.updatedAt ?? chosen?.savedAt ?? null,
     migratedFromLegacy: scenarios.length > 0,
   };
 }
@@ -458,13 +488,14 @@ export function saveStrategyDraft(
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
 ) {
   const current = readStrategyWorkspace(parcelId, storage);
+  const draftUpdatedAt = draft.updatedAt ?? nextMonotonicIso(current.draftUpdatedAt);
   return writeStrategyWorkspace(
     parcelId,
     {
       ...current,
       activeStrategy: draft.activeStrategy,
       draftInputs: coerceStrategyInputs(draft.draftInputs),
-      draftUpdatedAt: draft.updatedAt ?? new Date().toISOString(),
+      draftUpdatedAt,
     },
     storage,
   );
@@ -479,24 +510,34 @@ export function mergeStrategyWorkspaces(
   const scenariosById = new Map<string, ErfStrategyScenario>();
   for (const scenario of [...local.scenarios, ...remote.scenarios]) {
     const existing = scenariosById.get(scenario.id);
-    if (!existing || new Date(scenario.savedAt).getTime() >= new Date(existing.savedAt).getTime()) {
+    const scenarioMs =
+      validTimestampMs(scenario.updatedAt) ?? validTimestampMs(scenario.savedAt) ?? 0;
+    const existingMs =
+      validTimestampMs(existing?.updatedAt) ?? validTimestampMs(existing?.savedAt) ?? -1;
+    if (!existing || scenarioMs >= existingMs) {
       scenariosById.set(scenario.id, { ...scenario, parcelId });
     }
   }
   const scenarios = Array.from(scenariosById.values()).sort(
-    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+    (a, b) =>
+      (validTimestampMs(b.updatedAt) ?? validTimestampMs(b.savedAt) ?? 0) -
+      (validTimestampMs(a.updatedAt) ?? validTimestampMs(a.savedAt) ?? 0),
   );
-  const remoteDraftUpdatedAt = remote.draftUpdatedAt;
-  const draftFromRemote =
-    remoteDraftUpdatedAt != null &&
-    (!local.draftUpdatedAt ||
-      new Date(remoteDraftUpdatedAt).getTime() > new Date(local.draftUpdatedAt).getTime());
+  const localDraftMs = validTimestampMs(local.draftUpdatedAt);
+  const remoteDraftMs = validTimestampMs(remote.draftUpdatedAt);
+  const draftFromRemote = remoteDraftMs != null && (localDraftMs == null || remoteDraftMs > localDraftMs);
+  const localChosenMs = validTimestampMs(local.chosenScenarioUpdatedAt);
+  const remoteChosenMs = validTimestampMs(remote.chosenScenarioUpdatedAt);
+  const chosenFromRemote =
+    remoteChosenMs != null && (localChosenMs == null || remoteChosenMs > localChosenMs);
+  const preferredChosenId = chosenFromRemote ? remote.chosenScenarioId : local.chosenScenarioId;
+  const fallbackChosenId = chosenFromRemote ? local.chosenScenarioId : remote.chosenScenarioId;
   const chosenScenarioId =
-    (remote.chosenScenarioId && scenarios.some((scenario) => scenario.id === remote.chosenScenarioId)
-      ? remote.chosenScenarioId
+    (preferredChosenId && scenarios.some((scenario) => scenario.id === preferredChosenId)
+      ? preferredChosenId
       : null) ??
-    (local.chosenScenarioId && scenarios.some((scenario) => scenario.id === local.chosenScenarioId)
-      ? local.chosenScenarioId
+    (fallbackChosenId && scenarios.some((scenario) => scenario.id === fallbackChosenId)
+      ? fallbackChosenId
       : null) ??
     scenarios.find((scenario) => scenario.selected)?.id ??
     null;
@@ -511,6 +552,7 @@ export function mergeStrategyWorkspaces(
       selected: scenario.id === chosenScenarioId,
     })),
     chosenScenarioId,
+    chosenScenarioUpdatedAt: newestIso(local.chosenScenarioUpdatedAt, remote.chosenScenarioUpdatedAt),
     migratedFromLegacy: local.migratedFromLegacy || remote.migratedFromLegacy,
   };
 }
@@ -556,20 +598,40 @@ export function readStrategyScenarios(
 
 export function saveStrategyScenario(
   parcelId: string,
-  scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt"> & { id?: string },
-  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt" | "updatedAt"> & {
+    id?: string;
+  },
+  optionsOrStorage: { asNew?: boolean } | Storage = {},
+  storageArg?: Storage,
 ) {
+  const options =
+    "getItem" in optionsOrStorage && "setItem" in optionsOrStorage ? {} : optionsOrStorage;
+  const storage =
+    "getItem" in optionsOrStorage && "setItem" in optionsOrStorage
+      ? optionsOrStorage
+      : storageArg ?? (typeof window !== "undefined" ? window.localStorage : undefined);
   const currentWorkspace = readStrategyWorkspace(parcelId, storage);
   const current = currentWorkspace.scenarios;
+  const existingChosen =
+    !options.asNew && currentWorkspace.chosenScenarioId
+      ? current.find((item) => item.id === currentWorkspace.chosenScenarioId)
+      : null;
+  const now = nextMonotonicIso(
+    newestIso(currentWorkspace.draftUpdatedAt, currentWorkspace.chosenScenarioUpdatedAt),
+  );
+  const scenarioId = options.asNew
+    ? scenario.id ?? crypto.randomUUID()
+    : existingChosen?.id ?? scenario.id ?? crypto.randomUUID();
   const saved: ErfStrategyScenario = {
-    id: scenario.id ?? crypto.randomUUID(),
+    id: scenarioId,
     parcelId,
     label: scenario.label,
     strategy: scenario.strategy,
     inputs: scenario.inputs,
     summary: scenario.summary,
     selected: true,
-    savedAt: new Date().toISOString(),
+    savedAt: existingChosen?.savedAt ?? now,
+    updatedAt: now,
   };
   const next = [
     saved,
@@ -586,9 +648,10 @@ export function saveStrategyScenario(
       ...currentWorkspace,
       activeStrategy: saved.strategy,
       draftInputs: saved.inputs,
-      draftUpdatedAt: saved.savedAt,
+      draftUpdatedAt: now,
       scenarios: next,
       chosenScenarioId: saved.id,
+      chosenScenarioUpdatedAt: now,
     },
     storage,
   );

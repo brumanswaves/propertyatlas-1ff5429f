@@ -107,6 +107,7 @@ import {
   type ReportDecisionMode,
 } from "@/lib/reports/reportDecisionMode";
 import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
+import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -842,8 +843,7 @@ function ManualResearchFields({ parcel }: { parcel: NormalizedOfficialParcel }) 
     }
 
     setSaving(true);
-    const userData = {
-      ...existingUserData,
+    const patch = {
       normalizedParcelId: parcel.id,
       displayTitle:
         existingUserData.displayTitle ??
@@ -862,22 +862,15 @@ function ManualResearchFields({ parcel }: { parcel: NormalizedOfficialParcel }) 
       manualResearchUpdatedAt: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("saved_properties").upsert(
-      {
-        user_id: user.id,
-        parcel_id: parcel.id,
-        user_data: userData as unknown as Record<string, unknown> as never,
-      },
-      { onConflict: "user_id,parcel_id" },
-    );
-
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const merged = await patchSavedPropertyUserData(parcel.id, patch);
+      setExistingUserData(merged);
+      toast.success("Manual research fields saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Manual research could not be saved");
+    } finally {
+      setSaving(false);
     }
-    setExistingUserData(userData);
-    toast.success("Manual research fields saved");
   }
 
   const fields = [
@@ -986,8 +979,7 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
-    const userData = {
-      ...existingUserData,
+    const patch = {
       normalizedParcelId: parcel.id,
       provider: parcel.sourceLabel,
       sourceLayer: parcel.layer ?? null,
@@ -1007,25 +999,21 @@ function DossierStatusControl({ parcel }: { parcel: NormalizedOfficialParcel }) 
       fetchedAt: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("saved_properties").upsert(
-      {
-        user_id: user.id,
-        parcel_id: parcel.id,
-        research_status: status,
-        status,
-        tags,
-        user_data: userData as unknown as Record<string, unknown> as never,
-      },
-      { onConflict: "user_id,parcel_id" },
-    );
-
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const merged = await patchSavedPropertyUserData(parcel.id, patch);
+      const { error } = await supabase
+        .from("saved_properties")
+        .update({ research_status: status, status, tags })
+        .eq("user_id", user.id)
+        .eq("parcel_id", parcel.id);
+      if (error) throw error;
+      setExistingUserData(merged);
+      toast.success("Dossier status saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Dossier status could not be saved");
+    } finally {
+      setSaving(false);
     }
-    setExistingUserData(userData);
-    toast.success("Dossier status saved");
   }
 
   return (
@@ -1687,11 +1675,24 @@ function StoepAiReportView({
     }
   };
 
-  const reportDocument = (printOnly = false) => (
-    <div
-      className={cn("report-page space-y-5", printOnly && "report-print-document")}
-      aria-label={printOnly ? "Printable Easy Erf Report" : undefined}
-    >
+  const reportDocument = (printOnly = false) =>
+    printOnly ? (
+      <EasyErfPrintReport
+        report={report}
+        decision={decision}
+        investorMode={investorMode}
+        decisionMode={decisionMode}
+        selectedDesign={selectedDesign}
+        selectedSiteMode={selectedSiteMode}
+        siteProject={siteProject}
+        sitePotentialSkipped={sitePotentialSkipped}
+        fileAssets={fileVault.assets}
+        groupedAssets={groupedAssets}
+        chosenScenario={chosenScenario}
+        scenarios={scenarios}
+      />
+    ) : (
+    <EasyErfScreenReport>
       {/* HEADER */}
       <section
         id="report-brief"
@@ -2442,7 +2443,7 @@ function StoepAiReportView({
           </button>
         </div>
       </section>
-    </div>
+    </EasyErfScreenReport>
   );
 
   return (
@@ -2455,6 +2456,234 @@ function StoepAiReportView({
           )
         : null}
     </>
+  );
+}
+
+function EasyErfScreenReport({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="report-page easy-erf-screen-report mx-auto max-w-[1040px] space-y-5 rounded-[2rem] bg-[#F8FBFF] p-3 sm:p-5"
+      aria-label="Easy Erf screen report"
+    >
+      {children}
+    </div>
+  );
+}
+
+function EasyErfPrintReport({
+  report,
+  decision,
+  investorMode,
+  decisionMode,
+  selectedDesign,
+  selectedSiteMode,
+  siteProject,
+  sitePotentialSkipped,
+  fileAssets,
+  groupedAssets,
+  chosenScenario,
+  scenarios,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  decision: ReturnType<typeof buildDecisionIntelligence>;
+  investorMode: InvestorDecisionMode;
+  decisionMode: ReportDecisionMode;
+  selectedDesign: ErfAsset | null;
+  selectedSiteMode: string | null | undefined;
+  siteProject: ReturnType<typeof useSitePotentialProject>;
+  sitePotentialSkipped: boolean;
+  fileAssets: ErfAsset[];
+  groupedAssets: Record<ErfAssetGroup, ErfAsset[]>;
+  chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
+  scenarios: ReturnType<typeof readStrategyScenarios>;
+}) {
+  const riskTitles = report.risks.slice(0, 3).map((risk) => risk.title);
+  const actionTitles = report.recommendations.slice(0, 3).map((item) => item.title);
+  const planningFields = report.planning.slice(0, 6);
+  const documentGroups = REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length);
+
+  return (
+    <article className="report-print-document easy-erf-print-report" aria-label="Printable Easy Erf Report">
+      <section className="report-print-page report-print-cover">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+          Easy Erf
+        </div>
+        <h1 className="mt-3 text-3xl font-semibold text-[#0D1B2A]">
+          {decisionMode === "investor" ? "Investor Decision Mode" : "Standard Easy Erf Report"}
+        </h1>
+        <p className="mt-2 text-lg font-semibold text-[#0D1B2A]">{report.identity.displayName}</p>
+        <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
+          <PrintFact label="Municipality" value={report.identity.municipality} />
+          <PrintFact label="Area" value={report.identity.marketAddressLine ?? report.identity.officialLine} />
+          <PrintFact label="Report date" value={new Date(report.generatedAt).toLocaleDateString()} />
+          <PrintFact label="Evidence confidence" value={`${decision.confidencePercent}%`} />
+          <PrintFact label="Chosen Strategy" value={report.strategy.chosen?.label ?? "Not chosen"} />
+          <PrintFact label="Evidence items" value={`${report.market.evidenceCount} market item${report.market.evidenceCount === 1 ? "" : "s"}`} />
+        </dl>
+        <div className="mt-6 grid grid-cols-2 gap-5">
+          <PrintList title="Three key risks" items={riskTitles} empty="No top risks recorded yet." />
+          <PrintList title="Three immediate actions" items={actionTitles} empty="No immediate actions generated yet." />
+        </div>
+        <p className="mt-6 border-t border-[#D9E6F2] pt-3 text-xs leading-5 text-[#64748B]">
+          This is a living Easy Erf report built from saved evidence, official parcel fields where
+          available, user assumptions and uploaded files. It is not legal, valuation, municipal
+          planning, financial or investment advice.
+        </p>
+      </section>
+
+      <section className="report-print-page">
+        <PrintPageHeading title="Property identity" />
+        <dl className="print-table">
+          <PrintFact label="Erf number" value={report.identity.erfNumber} />
+          <PrintFact label="Portion" value={report.identity.portion} />
+          <PrintFact label="LPI" value={report.identity.lpi} />
+          <PrintFact label="Parcel key" value={report.identity.parcelKey} />
+          <PrintFact label="Municipality" value={report.identity.municipality} />
+          <PrintFact label="Province" value={report.identity.province} />
+          <PrintFact
+            label="Coordinates"
+            value={
+              report.identity.coordinates
+                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
+                : null
+            }
+          />
+          <PrintFact
+            label="Erf size"
+            value={report.identity.areaM2 != null ? `${report.identity.areaM2.toLocaleString()} m2` : null}
+          />
+        </dl>
+        <PrintPageHeading title="Ownership and deeds" />
+        <p className="print-paragraph">{report.ownership.message}</p>
+        <PrintPageHeading title="Planning and land use" />
+        <dl className="print-table">
+          {planningFields.map((field) => (
+            <PrintFact key={field.label} label={field.label} value={field.value} />
+          ))}
+        </dl>
+        <PrintPageHeading title="Constraints and missing evidence" />
+        <PrintList
+          title="Still needed"
+          items={decision.stillNeeded}
+          empty="No structured missing-evidence items were generated."
+        />
+      </section>
+
+      <section className="report-print-page">
+        <PrintPageHeading title="Market evidence" />
+        <p className="print-paragraph">
+          {report.market.canShowIndicativeValue
+            ? `Included comps: ${report.market.includedCount}. Median asking price R ${report.market.summary.medianAskingPrice?.toLocaleString("en-ZA")}.`
+            : "Evidence is currently too thin to responsibly calculate an indicative value."}
+        </p>
+        <PrintPageHeading title="Chosen Strategy" />
+        {chosenScenario ? (
+          <dl className="print-table">
+            <PrintFact label="Scenario" value={chosenScenario.label} />
+            <PrintFact label="Saved scenarios" value={`${scenarios.length}`} />
+            {chosenScenario.summary.slice(0, 6).map((item) => (
+              <PrintFact key={item.label} label={item.label} value={item.value} />
+            ))}
+          </dl>
+        ) : (
+          <p className="print-paragraph">No chosen Strategy Lab scenario has been saved yet.</p>
+        )}
+        {decisionMode === "investor" && (
+          <>
+            <PrintPageHeading title="Investor Numbers" />
+            <dl className="print-table">
+              {investorMode.numberRows.map((row) => (
+                <PrintFact key={row.label} label={row.label} value={row.value} />
+              ))}
+            </dl>
+          </>
+        )}
+      </section>
+
+      <section className="report-print-page">
+        <PrintPageHeading title="Site Potential" />
+        <p className="print-paragraph">
+          {selectedDesign
+            ? `Selected concept: ${selectedDesign.original_file_name}. Mode: ${sitePotentialReportModeLabel(selectedSiteMode)}.`
+            : sitePotentialSkipped
+              ? "Site Potential has been skipped for this report."
+              : "No Site Potential concept has been selected yet."}
+        </p>
+        <p className="print-paragraph">
+          {siteProject.project?.design_brief || "No Site Potential design brief is saved yet."}
+        </p>
+        <PrintPageHeading title="Evidence and documents" />
+        {fileAssets.length ? (
+          <div className="space-y-3">
+            {documentGroups.map((group) => (
+              <PrintList
+                key={group}
+                title={group}
+                items={groupedAssets[group].map(
+                  (file) =>
+                    `${workspaceAssetCategory(file)}: ${file.original_file_name} (${formatAssetSize(file.size_bytes)})`,
+                )}
+                empty="No files in this group."
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="print-paragraph">No uploaded files or source documents are stored for this erf yet.</p>
+        )}
+      </section>
+
+      <section className="report-print-page">
+        <PrintPageHeading title="Recommendations" />
+        <PrintList
+          title="Ordered next actions"
+          items={report.recommendations.map((item) => `${item.order}. ${item.title} - ${item.detail}`)}
+          empty="No outstanding recommendations. Continue keeping evidence fresh."
+        />
+        <PrintPageHeading title="Outstanding evidence" />
+        <PrintList
+          title="Open gaps"
+          items={decision.stillNeeded}
+          empty="No outstanding evidence gaps were generated from the current structured state."
+        />
+        <PrintPageHeading title="Disclaimers" />
+        <p className="print-paragraph">
+          Easy Erf does not provide legal, valuation, municipal-planning, financial or investment
+          advice. Verify official source records, paid reports, zoning, title deed, rates and
+          professional assumptions before making a decision.
+        </p>
+      </section>
+    </article>
+  );
+}
+
+function PrintPageHeading({ title }: { title: string }) {
+  return <h2 className="mt-5 border-b border-[#D9E6F2] pb-2 text-lg font-semibold text-[#0D1B2A]">{title}</h2>;
+}
+
+function PrintFact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="print-fact">
+      <dt>{label}</dt>
+      <dd>{value || "Not yet verified"}</dd>
+    </div>
+  );
+}
+
+function PrintList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+  const visibleItems = items.filter(Boolean);
+  return (
+    <section>
+      <h3 className="text-sm font-semibold text-[#0D1B2A]">{title}</h3>
+      {visibleItems.length ? (
+        <ul className="mt-2 space-y-1 text-sm text-[#0D1B2A]/78">
+          {visibleItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-[#64748B]">{empty}</p>
+      )}
+    </section>
   );
 }
 
@@ -2488,51 +2717,73 @@ function DecisionLensSelector({
     },
   ];
 
+  const current = options.find((option) => option.id === mode) ?? options[0];
+
   return (
-    <div className="report-no-print mt-5 grid gap-3 md:grid-cols-2">
-      {options.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          onClick={() => onChange(option.id)}
-          className={cn(
-            "rounded-[1.25rem] border p-4 text-left transition",
-            mode === option.id
-              ? "border-[#FF6A00]/70 bg-[#0D1B2A] text-white shadow-[0_24px_60px_-42px_rgba(13,27,42,0.85)]"
-              : "border-[#0D1B2A]/10 bg-[#F7FBFF] text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-white",
-          )}
-          aria-pressed={mode === option.id}
-        >
-          <span
+    <section className="report-no-print mt-5">
+      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+            Choose your report view
+          </div>
+          <p className="mt-1 text-sm text-white/62">
+            Currently viewing and printing: {current.title}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
             className={cn(
-              "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
-              mode === option.id ? "bg-[#FF6A00] text-white" : "bg-white text-[#B24A00]",
+              "rounded-[1.25rem] border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-[#FFB86B]",
+              mode === option.id
+                ? "border-[#FF6A00]/70 bg-[#0D1B2A] text-white shadow-[0_24px_60px_-42px_rgba(13,27,42,0.85)]"
+                : "border-[#0D1B2A]/10 bg-[#F7FBFF] text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-white",
             )}
+            aria-pressed={mode === option.id}
           >
-            {option.eyebrow}
-          </span>
-          <span className="mt-3 block text-lg font-semibold tracking-tight">{option.title}</span>
-          <span
-            className={cn(
-              "mt-2 block text-sm leading-6",
-              mode === option.id ? "text-white/72" : "text-[#0D1B2A]/66",
-            )}
-          >
-            {option.body}
-          </span>
-          <span className="mt-3 grid gap-1 text-xs">
-            {option.points.map((point) => (
+            <span className="flex items-start justify-between gap-3">
               <span
-                key={point}
-                className={cn(mode === option.id ? "text-white/62" : "text-[#64748B]")}
+                className={cn(
+                  "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
+                  mode === option.id ? "bg-[#FF6A00] text-white" : "bg-white text-[#B24A00]",
+                )}
               >
-                {point}
+                {option.eyebrow}
               </span>
-            ))}
-          </span>
-        </button>
-      ))}
-    </div>
+              {mode === option.id && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6A00] px-2 py-0.5 text-[10px] font-bold text-white">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Selected
+                </span>
+              )}
+            </span>
+            <span className="mt-3 block text-lg font-semibold tracking-tight">{option.title}</span>
+            <span
+              className={cn(
+                "mt-2 block text-sm leading-6",
+                mode === option.id ? "text-white/72" : "text-[#0D1B2A]/66",
+              )}
+            >
+              {option.body}
+            </span>
+            <span className="mt-3 grid gap-1 text-xs">
+              {option.points.map((point) => (
+                <span
+                  key={point}
+                  className={cn(mode === option.id ? "text-white/62" : "text-[#64748B]")}
+                >
+                  {point}
+                </span>
+              ))}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

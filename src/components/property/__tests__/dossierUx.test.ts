@@ -576,7 +576,8 @@ describe("official dossier UX guardrails", () => {
     expect(strategyLab).toContain("Land bank / hold vacant land");
     expect(strategyLab).toContain("Scenario chosen");
     expect(strategyLab).toContain("Choose another scenario");
-    expect(strategyLab).toContain("Save as chosen scenario");
+    expect(strategyLab).toContain("Use this scenario in report");
+    expect(strategyLab).toContain("Save as a new scenario");
     expect(strategyLab).toContain("Continue to Easy Erf Report");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
@@ -957,7 +958,8 @@ describe("Investor Decision Mode guardrails", () => {
     expect(dossier).toContain("Investor Decision Mode");
     expect(dossier).toContain("General decision document");
     expect(dossier).toContain("Numbers-first lens");
-    expect(dossier).toContain("report-no-print mt-5 grid");
+    expect(dossier).toContain("Choose your report view");
+    expect(dossier).toContain("Currently viewing and printing");
     expect(dossier).not.toContain("Developer</button>");
     expect(dossier).not.toContain("Renovator</button>");
     expect(styles).toContain(".report-no-print { display: none !important; }");
@@ -994,8 +996,13 @@ describe("Investor Decision Mode guardrails", () => {
     expect(workspace).toContain("strategyWorkspaceFromLegacy");
     expect(strategyLab).toContain("Autosaved draft separate from chosen report scenario");
     expect(strategyLab).toContain("persistStrategyWorkspaceToCloud");
-    expect(strategyLab).toContain("strategyWorkspace: workspace");
-    expect(strategyLab).toContain("...existingUserData");
+    expect(strategyLab).toContain("patchSavedPropertyUserData");
+    expect(strategyLab).toContain("setTimeout");
+    expect(strategyLab).toContain("750");
+    expect(strategyLab).toContain("Saving draft");
+    expect(strategyLab).toContain("Draft saved at");
+    expect(strategyLab).toContain("Save failed");
+    expect(strategyLab).not.toContain("...existingUserData");
     expect(dossier).toContain("strategyWorkspaceFromUserData");
     expect(dossier).toContain("easyerf:strategy-workspace-updated");
     expect(dossier).toContain("mergeStrategyWorkspaces");
@@ -1004,12 +1011,14 @@ describe("Investor Decision Mode guardrails", () => {
   it("redesigns the report as a professional decision document without replacing iframe print", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
 
-    expect(dossier).toContain("report-cover");
+    expect(dossier).toContain("EasyErfScreenReport");
+    expect(dossier).toContain("EasyErfPrintReport");
+    expect(dossier).toContain("report-print-cover");
     expect(dossier).toContain("Executive summary");
-    expect(dossier).toContain("ReportCoverMetric");
     expect(dossier).toContain("Decision confidence");
     expect(dossier).toContain("Chosen strategy");
     expect(dossier).toContain("Feeds Standard and Investor reports");
+    expect(dossier).toContain("PrintPageHeading");
     expect(dossier).toContain("createReportPrintFrame");
     expect(dossier).toContain("prepareReportPrintFrame");
     expect(dossier).toContain("frameWindow.print()");

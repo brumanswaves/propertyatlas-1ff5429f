@@ -212,7 +212,7 @@ describe("erfWorkspaceState", () => {
     });
   });
 
-  it("saves the newest Strategy Lab scenario as the chosen scenario", () => {
+  it("updates the chosen Strategy Lab scenario as the chosen scenario", () => {
     const storage = memoryStorage();
     const parcelId = "csg:lpi:c03400140000102100000";
 
@@ -239,9 +239,10 @@ describe("erfWorkspaceState", () => {
 
     expect(first.scenario.selected).toBe(true);
     expect(second.scenario.selected).toBe(true);
+    expect(second.scenario.id).toBe(first.scenario.id);
     expect(readErfWorkspaceState(parcelId, storage)).toMatchObject({
       calculatorStarted: true,
-      strategyScenarioCount: 2,
+      strategyScenarioCount: 1,
       chosenScenarioId: second.scenario.id,
     });
     expect(getChosenStrategyScenario(parcelId, storage)).toMatchObject({
@@ -249,9 +250,7 @@ describe("erfWorkspaceState", () => {
       label: "Development to rent scenario",
       selected: true,
     });
-    expect(second.scenarios.find((scenario) => scenario.id === first.scenario.id)?.selected).toBe(
-      false,
-    );
+    expect(second.scenarios).toHaveLength(1);
   });
 
   it("autosaves Strategy Lab draft inputs separately from the chosen report scenario", () => {
@@ -358,6 +357,111 @@ describe("erfWorkspaceState", () => {
     expect(merged.draftInputs.expectedResalePrice).toBe("3000000");
     expect(merged.scenarios).toHaveLength(1);
     expect(merged.chosenScenarioId).toBe("remote-scenario");
+  });
+
+  it("resolves Strategy draft and chosen scenario conflicts by valid timestamps", () => {
+    const parcelId = "timestamp-parcel";
+    const local = {
+      ...readStrategyWorkspace(parcelId, memoryStorage()),
+      activeStrategy: "flip",
+      draftInputs: { expectedResalePrice: "3300000" },
+      draftUpdatedAt: "2026-07-20T12:00:00.000Z",
+      chosenScenarioId: "local-choice",
+      chosenScenarioUpdatedAt: "2026-07-20T12:05:00.000Z",
+      scenarios: [
+        {
+          id: "local-choice",
+          parcelId,
+          label: "Local flip",
+          strategy: "flip",
+          inputs: { expectedResalePrice: "3300000" },
+          summary: [{ label: "ROI", value: "21%" }],
+          selected: true,
+          savedAt: "2026-07-20T12:01:00.000Z",
+          updatedAt: "2026-07-20T12:05:00.000Z",
+        },
+      ],
+    };
+    const remote = strategyWorkspaceFromUserData(parcelId, {
+      strategyWorkspace: {
+        schemaVersion: 1,
+        parcelId,
+        activeStrategy: "buy_hold",
+        draftInputs: { monthlyRent: "18000" },
+        draftUpdatedAt: "2026-07-20T11:00:00.000Z",
+        chosenScenarioId: "remote-choice",
+        chosenScenarioUpdatedAt: "2026-07-20T11:05:00.000Z",
+        scenarios: [
+          {
+            id: "remote-choice",
+            parcelId,
+            label: "Remote rental",
+            strategy: "buy_hold",
+            inputs: { monthlyRent: "18000" },
+            summary: [{ label: "Yield", value: "6%" }],
+            selected: true,
+            savedAt: "2026-07-20T11:01:00.000Z",
+            updatedAt: "2026-07-20T11:05:00.000Z",
+          },
+        ],
+      },
+    });
+
+    const merged = mergeStrategyWorkspaces(parcelId, local, remote);
+
+    expect(merged.activeStrategy).toBe("flip");
+    expect(merged.draftInputs.expectedResalePrice).toBe("3300000");
+    expect(merged.chosenScenarioId).toBe("local-choice");
+    expect(merged.scenarios).toHaveLength(2);
+  });
+
+  it("updates the chosen Strategy scenario instead of duplicating unless requested", () => {
+    const parcelId = "chosen-update-parcel";
+    const storage = memoryStorage();
+
+    const first = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Buy and hold rental scenario",
+        strategy: "buy_hold",
+        inputs: { monthlyRent: "15000" },
+        summary: [{ label: "Cash flow", value: "R 1,000" }],
+        selected: true,
+      },
+      storage,
+    );
+    const updated = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Buy and hold rental scenario",
+        strategy: "buy_hold",
+        inputs: { monthlyRent: "18000" },
+        summary: [{ label: "Cash flow", value: "R 2,000" }],
+        selected: true,
+      },
+      storage,
+    );
+
+    expect(updated.scenarios).toHaveLength(1);
+    expect(updated.scenario.id).toBe(first.scenario.id);
+    expect(updated.scenario.savedAt).toBe(first.scenario.savedAt);
+    expect(updated.scenario.updatedAt).not.toBe(first.scenario.updatedAt);
+
+    const asNew = saveStrategyScenario(
+      parcelId,
+      {
+        label: "Flip scenario",
+        strategy: "flip",
+        inputs: { expectedResalePrice: "3000000" },
+        summary: [{ label: "ROI", value: "18%" }],
+        selected: true,
+      },
+      { asNew: true },
+      storage,
+    );
+
+    expect(asNew.scenarios).toHaveLength(2);
+    expect(asNew.scenario.id).not.toBe(first.scenario.id);
   });
 
   it("builds honest Easy Erf Steps progress from workspace state", () => {
