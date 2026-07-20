@@ -23,8 +23,11 @@ import {
   SITE_POTENTIAL_PACK_SIZE,
   SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
-import { buildSitePotentialGenerationEstimate } from "@/lib/sitePotential/generationEstimate";
 import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
+import {
+  buildSitePotentialRuntimeProgress,
+  type SitePotentialRuntimeProgress,
+} from "@/lib/sitePotential/generationProgress";
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
   buildSelectedDesignDeletionPatch,
@@ -135,11 +138,13 @@ interface SitePotentialPackStatusItem {
   id: string;
   optionIndex: number;
   status: string;
-  generatedAssetId: string | null;
+  generatedAssetReady: boolean;
   attemptCount: number;
   failureCode?: string | null;
   failureMessage?: string | null;
   nextAttemptAt?: string | null;
+  workerHeartbeatAt?: string | null;
+  workerActive?: boolean;
 }
 
 interface SitePotentialPackStatusPayload {
@@ -148,6 +153,13 @@ interface SitePotentialPackStatusPayload {
   status: string;
   requestedCount: number;
   completedCount: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  workerHeartbeatAt?: string | null;
+  workerActive?: boolean;
+  nextAttemptAt?: string | null;
+  hasRetryableWork?: boolean;
+  terminal?: boolean;
   failureCode?: string | null;
   failureMessage?: string | null;
   items: SitePotentialPackStatusItem[];
@@ -210,14 +222,16 @@ function normalizePackStatusPayload(payload: unknown): SitePotentialPackStatusPa
       id: String(value.id ?? ""),
       optionIndex: Number(value.optionIndex ?? 0),
       status: String(value.status ?? "queued"),
-      generatedAssetId:
-        typeof value.generatedAssetId === "string" && value.generatedAssetId
-          ? value.generatedAssetId
-          : null,
+      generatedAssetReady:
+        value.generatedAssetReady === true ||
+        (typeof value.generatedAssetId === "string" && value.generatedAssetId.length > 0),
       attemptCount: Number(value.attemptCount ?? 0),
       failureCode: typeof value.failureCode === "string" ? value.failureCode : null,
       failureMessage: typeof value.failureMessage === "string" ? value.failureMessage : null,
       nextAttemptAt: typeof value.nextAttemptAt === "string" ? value.nextAttemptAt : null,
+      workerHeartbeatAt:
+        typeof value.workerHeartbeatAt === "string" ? value.workerHeartbeatAt : null,
+      workerActive: value.workerActive === true,
     };
   });
   return {
@@ -226,6 +240,13 @@ function normalizePackStatusPayload(payload: unknown): SitePotentialPackStatusPa
     status: typeof row.status === "string" ? row.status : "queued",
     requestedCount: Number(row.requestedCount ?? SITE_POTENTIAL_PACK_SIZE),
     completedCount: Number(row.completedCount ?? 0),
+    createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
+    updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : null,
+    workerHeartbeatAt: typeof row.workerHeartbeatAt === "string" ? row.workerHeartbeatAt : null,
+    workerActive: row.workerActive === true,
+    nextAttemptAt: typeof row.nextAttemptAt === "string" ? row.nextAttemptAt : null,
+    hasRetryableWork: row.hasRetryableWork === true,
+    terminal: row.terminal === true,
     failureCode: typeof row.failureCode === "string" ? row.failureCode : null,
     failureMessage: typeof row.failureMessage === "string" ? row.failureMessage : null,
     items,
@@ -239,8 +260,9 @@ function packProgressSignature(status: SitePotentialPackStatusPayload | null) {
     status.status,
     status.completedCount,
     status.items
-      .map((item) => `${item.optionIndex}:${item.status}:${item.generatedAssetId ?? ""}`)
+      .map((item) => `${item.optionIndex}:${item.status}:${item.generatedAssetReady}`)
       .join("|"),
+    status.workerHeartbeatAt ?? "",
   ].join(":");
 }
 
@@ -248,7 +270,7 @@ function packHasRetryableSlots(status: SitePotentialPackStatusPayload | null) {
   return Boolean(
     status?.items.some(
       (item) =>
-        !item.generatedAssetId &&
+        !item.generatedAssetReady &&
         (item.status === "queued" ||
           item.status === "generating" ||
           (item.status === "failed" && item.attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS)),
@@ -320,6 +342,119 @@ function projectPatchToSnapshot(patch: SitePotentialProjectPatch): Partial<SiteP
   };
 }
 
+function slotTone(status: SitePotentialRuntimeProgress["slots"][number]["status"]) {
+  if (status === "Ready") return "border-[#16A34A]/25 bg-[#ECFDF5] text-[#166534]";
+  if (status === "Generating" || status === "Saving") {
+    return "border-[#FF6A00]/30 bg-[#FFF7ED] text-[#B24A00]";
+  }
+  if (status === "Retrying") return "border-[#F59E0B]/35 bg-[#FFFBEB] text-[#92400E]";
+  if (status === "Failed") return "border-[#DC2626]/25 bg-[#FEF2F2] text-[#991B1B]";
+  return "border-[#D9E6F2] bg-[#F7FBFF] text-[#0D1B2A]/68";
+}
+
+function SitePotentialGenerationProgressPanel({
+  progress,
+  onRefresh,
+  onRetry,
+  refreshing,
+  retrying,
+}: {
+  progress: SitePotentialRuntimeProgress;
+  onRefresh: () => void;
+  onRetry: () => void;
+  refreshing: boolean;
+  retrying: boolean;
+}) {
+  const retryDisabled =
+    retrying ||
+    progress.completedCount >= progress.requestedCount ||
+    !progress.slots.some((slot) => slot.status === "Retrying" || slot.status === "Waiting");
+
+  return (
+    <section
+      role="status"
+      aria-live="polite"
+      className="mt-4 rounded-[1.35rem] border border-[#FF6A00]/25 bg-white p-4 text-left shadow-[0_18px_44px_-34px_rgba(13,27,42,0.45)]"
+    >
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+            Site Potential generation progress
+          </div>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+            {progress.heading}
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
+            {progress.detail}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF] disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {refreshing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Refresh status
+          </button>
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={retryDisabled}
+            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#142941] disabled:cursor-not-allowed disabled:bg-[#0D1B2A]/20"
+          >
+            {retrying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Retry current pack
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs font-semibold text-[#0D1B2A]">
+          <span>Overall progress</span>
+          <span>{progress.progressLabel}</span>
+        </div>
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#D9E6F2]">
+          <div
+            className="h-full rounded-full bg-[#FF6A00]"
+            style={{ width: `${progress.progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {progress.slots.map((slot) => (
+          <article
+            key={slot.optionIndex}
+            className={cn("rounded-2xl border p-3 text-xs", slotTone(slot.status))}
+          >
+            <div className="font-bold uppercase tracking-[0.14em]">Concept {slot.optionIndex}</div>
+            <div className="mt-2 text-base font-semibold">{slot.status}</div>
+            <p className="mt-1 leading-5 opacity-80">{slot.detail}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-2 text-xs text-[#64748B] md:grid-cols-3">
+        <div>{progress.startedLabel}</div>
+        <div>{progress.lastCheckedLabel}</div>
+        <div>{progress.estimate ?? "No countdown shown."}</div>
+      </div>
+      {progress.stalled && (
+        <div className="mt-3 rounded-2xl border border-[#F59E0B]/35 bg-[#FFFBEB] px-3 py-2 text-xs leading-5 text-[#92400E]">
+          The generator has not started yet. Easy Erf is checking the background worker.
+        </div>
+      )}
+      {progress.sanitizedFailure && (
+        <div className="mt-3 rounded-2xl border border-[#DC2626]/20 bg-[#FEF2F2] px-3 py-2 text-xs leading-5 text-[#991B1B]">
+          {progress.sanitizedFailure}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function SitePotentialTab({
   parcel,
   workspaceState,
@@ -340,6 +475,9 @@ export function SitePotentialTab({
   const [betaStatus, setBetaStatus] = useState<BetaCreditUiStatus | null>(null);
   const [activeDesignPackId, setActiveDesignPackId] = useState<string | null>(null);
   const [packStatus, setPackStatus] = useState<SitePotentialPackStatusPayload | null>(null);
+  const [lastPackStatusCheckedAt, setLastPackStatusCheckedAt] = useState<Date | null>(null);
+  const [refreshingPackStatus, setRefreshingPackStatus] = useState(false);
+  const [retryingPack, setRetryingPack] = useState(false);
   const lastPackProgressSignatureRef = useRef<string | null>(null);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
@@ -385,8 +523,10 @@ export function SitePotentialTab({
   const packRequestedCount = packStatus?.requestedCount ?? SITE_POTENTIAL_PACK_SIZE;
   const activePackProjectState = packProgressState(packStatus);
   const packProcessing = shouldPollPackStatus(packStatus);
-  const generationEstimate = buildSitePotentialGenerationEstimate(
-    packStatus ? { ...packStatus, hasRetryableWork: packHasRetryableSlots(packStatus) } : null,
+  const runtimeProgress = buildSitePotentialRuntimeProgress(
+    packStatus,
+    new Date(),
+    lastPackStatusCheckedAt,
   );
   const conceptsReady = packStatus
     ? packCompletedCount >= packRequestedCount ||
@@ -457,6 +597,7 @@ export function SitePotentialTab({
     }
     lastPackProgressSignatureRef.current = signature;
     setPackStatus(next);
+    setLastPackStatusCheckedAt(new Date());
   }, []);
 
   const refreshPackStatus = useCallback(
@@ -487,6 +628,60 @@ export function SitePotentialTab({
     [applyPackStatus, parcel.id, project?.id],
   );
 
+  const retryCurrentPack = useCallback(async () => {
+    if (!packStatus?.designPackId || !project?.id || retryingPack) return;
+    setRetryingPack(true);
+    setGenerationError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        toast.error("Sign in to retry Site Potential generation.");
+        return;
+      }
+      const response = await fetch("/api/site-potential/retry-pack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          parcelId: parcel.id,
+          siteProjectId: project.id,
+          designPackId: packStatus.designPackId,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Could not retry Site Potential generation.");
+      }
+      const next = normalizePackStatusPayload(payload);
+      if (next) applyPackStatus(next);
+      toast.success(
+        payload.retried
+          ? "Retry queued for this concept pack. No additional credit was used."
+          : "This concept pack does not need a retry.",
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not retry Site Potential.";
+      setGenerationError(message);
+      toast.error(message);
+    } finally {
+      setRetryingPack(false);
+    }
+  }, [applyPackStatus, packStatus, parcel.id, project?.id, retryingPack]);
+
+  const refreshCurrentPackStatus = useCallback(async () => {
+    if (!project?.id || refreshingPackStatus) return;
+    setRefreshingPackStatus(true);
+    try {
+      await refreshPackStatus(activeDesignPackId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not refresh pack status.";
+      setGenerationError(message);
+      toast.error(message);
+    } finally {
+      setRefreshingPackStatus(false);
+    }
+  }, [activeDesignPackId, project?.id, refreshPackStatus, refreshingPackStatus]);
+
   useEffect(() => {
     if (!vault.signedIn || migrationAttempted) return;
     setMigrationAttempted(true);
@@ -506,6 +701,7 @@ export function SitePotentialTab({
   useEffect(() => {
     setActiveDesignPackId(null);
     setPackStatus(null);
+    setLastPackStatusCheckedAt(null);
     lastPackProgressSignatureRef.current = null;
     immediatePackStatusKeyRef.current = null;
   }, [parcel.id]);
@@ -1139,19 +1335,17 @@ export function SitePotentialTab({
                               ? "This pack will use your free allowance"
                               : "This pack will use one Site Potential credit"}
             </span>
-            {generationEstimate && generationEstimate.active && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="max-w-[22rem] rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-left text-[11.5px] leading-5 text-[#0D1B2A]/68 shadow-[0_10px_24px_-22px_rgba(13,27,42,0.5)]"
-              >
-                <div className="font-semibold text-[#0D1B2A]">{generationEstimate.label}</div>
-                <div>{generationEstimate.message}</div>
-                <div className="mt-1 text-[#64748B]">{generationEstimate.detail}</div>
-              </div>
-            )}
           </div>
         </div>
+        {runtimeProgress && (
+          <SitePotentialGenerationProgressPanel
+            progress={runtimeProgress}
+            onRefresh={() => void refreshCurrentPackStatus()}
+            onRetry={() => void retryCurrentPack()}
+            refreshing={refreshingPackStatus}
+            retrying={retryingPack}
+          />
+        )}
         {generationError && <Notice tone="amber">{generationError}</Notice>}
       </section>
 

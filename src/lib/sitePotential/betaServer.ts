@@ -1,4 +1,5 @@
 import { SITE_POTENTIAL_PACK_SIZE } from "./config";
+import { SITE_POTENTIAL_MAX_ATTEMPTS, designPackStatusFromItems } from "./generationJobs";
 import { betaIdempotencyPrefix } from "./betaEntitlements";
 import type { createServiceRoleSupabaseClient } from "./serverAuth";
 
@@ -49,6 +50,12 @@ function safeFailureMessage(value: unknown) {
     .replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]")
     .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
     .slice(0, 240);
+}
+
+function workerActiveFromHeartbeat(value: unknown, now = new Date()) {
+  if (!value) return false;
+  const heartbeat = new Date(String(value)).getTime();
+  return Number.isFinite(heartbeat) && now.getTime() - heartbeat <= 90_000;
 }
 
 export async function readBetaCreditStatus(input: {
@@ -327,7 +334,7 @@ export async function readSitePotentialPackStatus(input: {
   let packQuery = db
     .from("erf_design_packs")
     .select(
-      "id,user_id,parcel_id,site_project_id,payment_provider,status,requested_count,completed_count,failure_code,failure_message,created_at",
+      "id,user_id,parcel_id,site_project_id,payment_provider,status,requested_count,completed_count,failure_code,failure_message,created_at,updated_at,heartbeat_at,next_attempt_at",
     )
     .eq("user_id", input.userId)
     .eq("parcel_id", input.parcelId)
@@ -356,7 +363,7 @@ export async function readSitePotentialPackStatus(input: {
   const { data: items, error: itemsError } = await db
     .from("erf_design_pack_items")
     .select(
-      "id,option_index,status,generated_asset_id,attempt_count,failure_code,failure_message,next_attempt_at",
+      "id,option_index,status,generated_asset_id,attempt_count,failure_code,failure_message,next_attempt_at,heartbeat_at",
     )
     .eq("design_pack_id", pack.id)
     .eq("user_id", input.userId)
@@ -367,27 +374,135 @@ export async function readSitePotentialPackStatus(input: {
     id: String(item.id),
     optionIndex: Number(item.option_index),
     status: String(item.status),
-    generatedAssetId: item.generated_asset_id ? String(item.generated_asset_id) : null,
+    generatedAssetReady: Boolean(item.generated_asset_id),
     attemptCount: Number(item.attempt_count ?? 0),
     failureCode: item.failure_code ? String(item.failure_code) : null,
     failureMessage: safeFailureMessage(item.failure_message),
     nextAttemptAt: item.next_attempt_at ? String(item.next_attempt_at) : null,
+    workerHeartbeatAt: item.heartbeat_at ? String(item.heartbeat_at) : null,
+    workerActive:
+      String(item.status) === "generating" || workerActiveFromHeartbeat(item.heartbeat_at),
   }));
   const completedCount = safeItems.filter(
-    (item) => item.status === "complete" && item.generatedAssetId,
+    (item) => item.status === "complete" && item.generatedAssetReady,
   ).length;
+  const status = designPackStatusFromItems(
+    safeItems.map((item) => ({
+      id: item.id,
+      option_index: item.optionIndex,
+      status: item.status as never,
+      generated_asset_id: item.generatedAssetReady ? "ready" : null,
+      attempt_count: item.attemptCount,
+      next_attempt_at: item.nextAttemptAt,
+    })),
+    Number(pack.requested_count ?? SITE_POTENTIAL_PACK_SIZE),
+  );
+  const workerActive =
+    workerActiveFromHeartbeat(pack.heartbeat_at) || safeItems.some((item) => item.workerActive);
 
   return {
     ok: true as const,
     pack: {
       designPackId: String(pack.id),
       provider: String(pack.payment_provider ?? "unknown"),
-      status: String(pack.status ?? "queued"),
+      status: status.status,
       requestedCount: Number(pack.requested_count ?? SITE_POTENTIAL_PACK_SIZE),
       completedCount,
+      createdAt: pack.created_at ? String(pack.created_at) : null,
+      updatedAt: pack.updated_at ? String(pack.updated_at) : null,
+      workerHeartbeatAt: pack.heartbeat_at ? String(pack.heartbeat_at) : null,
+      workerActive,
+      nextAttemptAt: pack.next_attempt_at ? String(pack.next_attempt_at) : null,
+      hasRetryableWork: status.hasRetryableWork,
+      terminal: status.terminal,
       failureCode: pack.failure_code ? String(pack.failure_code) : null,
       failureMessage: safeFailureMessage(pack.failure_message),
       items: safeItems,
     },
   };
+}
+
+export async function retrySitePotentialPack(input: {
+  serviceSupabase: ServiceSupabase;
+  userId: string;
+  parcelId: string;
+  siteProjectId: string;
+  designPackId: string;
+  now?: Date;
+}) {
+  const db = loose(input.serviceSupabase);
+  const now = input.now ?? new Date();
+  const ownership = await readSitePotentialPackStatus(input);
+  if (!ownership.ok) return ownership;
+  if (ownership.pack.status === "complete" || ownership.pack.completedCount >= ownership.pack.requestedCount) {
+    return { ok: true as const, pack: ownership.pack, retried: false };
+  }
+
+  const { data: rawItems, error: itemsError } = await db
+    .from("erf_design_pack_items")
+    .select(
+      "id,option_index,status,generated_asset_id,attempt_count,lease_expires_at,next_attempt_at",
+    )
+    .eq("design_pack_id", input.designPackId)
+    .eq("user_id", input.userId)
+    .order("option_index", { ascending: true });
+  if (itemsError) throw new Error(itemsError.message);
+
+  const retryableItems = (rawItems ?? []).filter((item) => {
+    if (item.generated_asset_id) return false;
+    const status = String(item.status ?? "queued");
+    const attemptCount = Number(item.attempt_count ?? 0);
+    if (status === "failed") return attemptCount < SITE_POTENTIAL_MAX_ATTEMPTS;
+    if (status === "queued") return true;
+    if (status !== "generating") return false;
+    const expiresAt = item.lease_expires_at ? new Date(String(item.lease_expires_at)).getTime() : null;
+    return Boolean(expiresAt && Number.isFinite(expiresAt) && expiresAt <= now.getTime());
+  });
+
+  for (const item of retryableItems) {
+    const { error } = await db
+      .from("erf_design_pack_items")
+      .update({
+        status: "queued",
+        worker_id: null,
+        heartbeat_at: null,
+        lease_expires_at: null,
+        failure_code: null,
+        failure_message: null,
+        next_attempt_at: now.toISOString(),
+      })
+      .eq("id", item.id)
+      .eq("user_id", input.userId);
+    if (error) throw new Error(error.message);
+  }
+
+  if (retryableItems.length) {
+    const { error: packError } = await db
+      .from("erf_design_packs")
+      .update({
+        status: "queued",
+        worker_id: null,
+        heartbeat_at: null,
+        lease_expires_at: null,
+        failure_code: null,
+        failure_message: null,
+        next_attempt_at: now.toISOString(),
+      })
+      .eq("id", input.designPackId)
+      .eq("user_id", input.userId)
+      .eq("parcel_id", input.parcelId)
+      .eq("site_project_id", input.siteProjectId);
+    if (packError) throw new Error(packError.message);
+    const { error: projectError } = await db
+      .from("erf_site_projects")
+      .update({ generation_status: "generating" })
+      .eq("id", input.siteProjectId)
+      .eq("user_id", input.userId)
+      .eq("parcel_id", input.parcelId);
+    if (projectError) throw new Error(projectError.message);
+  }
+
+  const refreshed = await readSitePotentialPackStatus(input);
+  if (!refreshed.ok) return refreshed;
+  return { ok: true as const, pack: refreshed.pack, retried: retryableItems.length > 0 };
 }

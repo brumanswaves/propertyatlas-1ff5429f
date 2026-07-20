@@ -911,8 +911,11 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).not.toContain('"Google place result"');
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
-    expect(sitePotential).toContain("buildSitePotentialGenerationEstimate");
-    expect(sitePotential).toContain("hasRetryableWork: packHasRetryableSlots(packStatus)");
+    expect(sitePotential).toContain("buildSitePotentialRuntimeProgress");
+    expect(sitePotential).toContain("Site Potential generation progress");
+    expect(sitePotential).toContain("Refresh status");
+    expect(sitePotential).toContain("Retry current pack");
+    expect(sitePotential).toContain("/api/site-potential/retry-pack");
     expect(sitePotential).toContain('role="status"');
     expect(sitePotential).toContain('aria-live="polite"');
   });

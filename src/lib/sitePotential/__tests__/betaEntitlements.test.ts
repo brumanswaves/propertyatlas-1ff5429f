@@ -160,6 +160,7 @@ describe("Site Potential private beta entitlements", () => {
 
   it("shows free allowance and inline report-only concept selection while purchase UI is hidden", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const progress = read("src/lib/sitePotential/generationProgress.ts");
 
     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
     expect(tab).toContain("Three site-grounded concepts");
@@ -176,6 +177,12 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).not.toContain("onOpenStrategy");
     expect(tab).toContain("/api/site-potential/beta-redeem");
     expect(tab).toContain("/api/site-potential/pack-status");
+    expect(tab).toContain("/api/site-potential/retry-pack");
+    expect(tab).toContain("Site Potential generation progress");
+    expect(progress).toContain("Waiting for generator");
+    expect(progress).toContain("Waiting for the image generator to start.");
+    expect(tab).toContain("Refresh status");
+    expect(tab).toContain("Retry current pack");
     expect(tab).toContain("createSitePotentialPackStatusPoller");
     expect(tab).toContain("poller.start(false)");
     expect(tab).toContain("poller.stop()");
@@ -223,8 +230,29 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).toContain('from("erf_design_packs")');
     expect(server).toContain('from("erf_design_pack_items")');
     expect(server).toContain('.eq("user_id", input.userId)');
-    expect(server).not.toContain("worker_id:");
-    expect(server).not.toContain("lease_expires_at:");
+    expect(server).toContain("workerHeartbeatAt");
+    expect(server).toContain("workerActive");
+    expect(server).toContain("hasRetryableWork");
+    expect(server).toContain("terminal");
+    expect(server).not.toContain("workerId: String");
+  });
+
+  it("retries the current pack without consuming another entitlement or worker secret", () => {
+    const route = read("src/routes/api/site-potential.retry-pack.ts");
+    const server = read("src/lib/sitePotential/betaServer.ts");
+    const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+
+    expect(route).toContain('createFileRoute("/api/site-potential/retry-pack")');
+    expect(route).toContain("authenticateApiRequest");
+    expect(route).toContain("retrySitePotentialPack");
+    expect(route).not.toContain("SITE_POTENTIAL_WORKER_SECRET");
+    expect(route).not.toContain("consumeSitePotentialEntitlement");
+    expect(route).not.toContain("consumeSitePotentialBetaCredit");
+    expect(route).not.toContain("redeem_site_potential_pack_v2");
+    expect(server).toContain("export async function retrySitePotentialPack");
+    expect(server).toContain('status: "queued"');
+    expect(server).toContain('generation_status: "generating"');
+    expect(tab).toContain("No additional credit was used.");
   });
 
   it("keeps real staging proof separate from mocked/local tests", () => {
