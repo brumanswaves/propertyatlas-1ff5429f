@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LOCAL_SERVICE_CATEGORIES, type LocalProvider } from "@/lib/localServices/catalog";
+import {
+  includePureServiceAreaBusinesses,
+  LOCAL_SERVICE_CATEGORIES,
+  localServiceSearchQueries,
+  type LocalProvider,
+  type LocalProviderAttribution,
+} from "@/lib/localServices/catalog";
 
 const DEFAULT_RADIUS_KM = 15;
 const WIDE_RADIUS_KM = 35;
@@ -7,6 +13,7 @@ const MAX_RADIUS_KM = 50;
 const MAX_REQUEST_BYTES = 4096;
 const MAX_PROVIDERS = 3;
 const GOOGLE_CANDIDATE_PAGE_SIZE = 10;
+const MAX_QUERY_VARIANTS = 3;
 const GOOGLE_PLACES_ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
 const FIELD_MASK = [
   "places.id",
@@ -21,6 +28,7 @@ const FIELD_MASK = [
   "places.googleMapsUri",
   "places.businessStatus",
   "places.types",
+  "places.attributions",
 ].join(",");
 
 interface SearchRequestBody {
@@ -48,6 +56,8 @@ interface GooglePlace {
   googleMapsUri?: string;
   businessStatus?: string;
   types?: string[];
+  attributions?: unknown;
+  htmlAttributions?: unknown;
 }
 
 export const Route = createFileRoute("/api/local-services/search")({
@@ -97,9 +107,18 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     );
   }
 
-  const textQuery = buildServiceQuery(category.searchQuery, address);
+  const latitude = finiteNumber(body.latitude);
+  const longitude = finiteNumber(body.longitude);
+  const hasCoordinates = latitude != null && longitude != null;
+  const radiusKm = Math.min(body.widerArea === true ? WIDE_RADIUS_KM : DEFAULT_RADIUS_KM, MAX_RADIUS_KM);
+  const serverQueries = localServiceSearchQueries(category)
+    .slice(0, MAX_QUERY_VARIANTS)
+    .map((query) => buildServiceQuery(query, address, hasCoordinates));
   const clientQuery = cleanText(body.query, 280);
-  if (clientQuery && normalizeQuery(clientQuery) !== normalizeQuery(textQuery)) {
+  if (
+    clientQuery &&
+    !serverQueries.some((allowedQuery) => normalizeQuery(allowedQuery) === normalizeQuery(clientQuery))
+  ) {
     return json(
       {
         success: false,
@@ -110,8 +129,6 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     );
   }
 
-  const latitude = finiteNumber(body.latitude);
-  const longitude = finiteNumber(body.longitude);
   if ((latitude == null) !== (longitude == null)) {
     return json(
       { success: false, code: "invalid_coordinates", error: "Both latitude and longitude are required." },
@@ -137,20 +154,72 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     );
   }
 
-  const widerArea = body.widerArea === true;
-  const radiusKm = Math.min(widerArea ? WIDE_RADIUS_KM : DEFAULT_RADIUS_KM, MAX_RADIUS_KM);
+  const providers: LocalProvider[] = [];
+  const seenPlaceIds = new Set<string>();
+  const seenBusinessKeys = new Set<string>();
+  let queriesAttempted = 0;
+  const includeServiceAreaBusinesses = includePureServiceAreaBusinesses(category);
+  const origin = hasCoordinates ? { lat: latitude, lng: longitude } : null;
 
+  for (const textQuery of serverQueries) {
+    if (providers.length >= MAX_PROVIDERS) break;
+    queriesAttempted += 1;
+    const result = await fetchGooglePlaces({
+      apiKey,
+      textQuery,
+      latitude,
+      longitude,
+      radiusKm,
+      includeServiceAreaBusinesses,
+    });
+    if (!result.success) return result.response;
+    const nextProviders = normalizeProviders({
+      places: result.places,
+      categoryId: category.id,
+      origin,
+      radiusKm,
+      fallbackQuery: textQuery,
+      seenPlaceIds,
+      seenBusinessKeys,
+      remainingSlots: MAX_PROVIDERS - providers.length,
+    });
+    providers.push(...nextProviders);
+  }
+
+  return json({
+    success: true,
+    providers,
+    attribution: "Google Maps",
+    categoryId: category.id,
+    parcelId,
+    confirmedAddress: address,
+    radiusKm,
+    queriesAttempted,
+    includePureServiceAreaBusinesses: includeServiceAreaBusinesses,
+    cached: false,
+  });
+}
+
+async function fetchGooglePlaces(input: {
+  apiKey: string;
+  textQuery: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusKm: number;
+  includeServiceAreaBusinesses: boolean;
+}): Promise<{ success: true; places: GooglePlace[] } | { success: false; response: Response }> {
   const payload: Record<string, unknown> = {
-    textQuery,
+    textQuery: input.textQuery,
     pageSize: GOOGLE_CANDIDATE_PAGE_SIZE,
     languageCode: "en",
     regionCode: "ZA",
+    includePureServiceAreaBusinesses: input.includeServiceAreaBusinesses,
   };
-  if (latitude != null && longitude != null) {
+  if (input.latitude != null && input.longitude != null) {
     payload.locationBias = {
       circle: {
-        center: { latitude, longitude },
-        radius: radiusKm * 1000,
+        center: { latitude: input.latitude, longitude: input.longitude },
+        radius: input.radiusKm * 1000,
       },
     };
   }
@@ -161,7 +230,7 @@ export async function handleLocalServicesSearchRequest(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
+        "X-Goog-Api-Key": input.apiKey,
         "X-Goog-FieldMask": FIELD_MASK,
       },
       body: JSON.stringify(payload),
@@ -169,64 +238,71 @@ export async function handleLocalServicesSearchRequest(request: Request) {
     });
   } catch (error) {
     const timeout = error instanceof Error && error.name === "TimeoutError";
-    return json(
-      {
-        success: false,
-        code: timeout ? "places_timeout" : "places_unavailable",
-        error: timeout
-          ? "Google place results took too long to respond."
-          : "Google place results are temporarily unavailable.",
-      },
-      502,
-    );
+    return {
+      success: false,
+      response: json(
+        {
+          success: false,
+          code: timeout ? "places_timeout" : "places_unavailable",
+          error: timeout
+            ? "Google place results took too long to respond."
+            : "Google place results are temporarily unavailable.",
+        },
+        502,
+      ),
+    };
   }
 
-  const upstream = (await response.json().catch(() => null)) as {
-    places?: GooglePlace[];
-    error?: { status?: string; message?: string };
-  } | null;
+  const upstream = (await response.json().catch(() => null)) as
+    | {
+        places?: unknown;
+        error?: { status?: string; message?: string };
+      }
+    | null;
   if (!response.ok) {
     const quota = upstream?.error?.status === "RESOURCE_EXHAUSTED" || response.status === 429;
-    return json(
-      {
-        success: false,
-        code: quota ? "places_quota" : "places_error",
-        error: quota
-          ? "Google place search quota is temporarily unavailable."
-          : "Google place results could not be loaded.",
-      },
-      response.status === 429 ? 429 : 502,
-    );
+    return {
+      success: false,
+      response: json(
+        {
+          success: false,
+          code: quota ? "places_quota" : "places_error",
+          error: quota
+            ? "Google place search quota is temporarily unavailable."
+            : "Google place results could not be loaded.",
+        },
+        response.status === 429 ? 429 : 502,
+      ),
+    };
   }
-  if (!upstream || !Array.isArray(upstream.places)) {
-    return json(
-      {
-        success: false,
-        code: "places_malformed",
-        error: "Google place results could not be read.",
-      },
-      502,
-    );
+  if (!upstream || typeof upstream !== "object") {
+    return {
+      success: false,
+      response: json(
+        {
+          success: false,
+          code: "places_malformed",
+          error: "Google place results could not be read.",
+        },
+        502,
+      ),
+    };
   }
-
-  const providers = normalizeProviders({
-    places: upstream.places,
-    categoryId: category.id,
-    origin: latitude != null && longitude != null ? { lat: latitude, lng: longitude } : null,
-    radiusKm,
-    fallbackQuery: textQuery,
-  });
-
-  return json({
-    success: true,
-    providers,
-    attribution: "Google",
-    categoryId: category.id,
-    parcelId,
-    confirmedAddress: address,
-    radiusKm,
-    cached: false,
-  });
+  if (upstream.places == null) return { success: true, places: [] };
+  if (!Array.isArray(upstream.places)) {
+    return {
+      success: false,
+      response: json(
+        {
+          success: false,
+          code: "places_malformed",
+          error: "Google place results could not be read.",
+        },
+        502,
+      ),
+    };
+  }
+  return { success: true, places: upstream.places as GooglePlace[] };
 }
 
 function normalizeProviders(input: {
@@ -235,12 +311,16 @@ function normalizeProviders(input: {
   origin: { lat: number; lng: number } | null;
   radiusKm: number;
   fallbackQuery: string;
+  seenPlaceIds?: Set<string>;
+  seenBusinessKeys?: Set<string>;
+  remainingSlots?: number;
 }) {
-  const seenPlaceIds = new Set<string>();
-  const seenBusinessKeys = new Set<string>();
+  const seenPlaceIds = input.seenPlaceIds ?? new Set<string>();
+  const seenBusinessKeys = input.seenBusinessKeys ?? new Set<string>();
+  const remainingSlots = input.remainingSlots ?? MAX_PROVIDERS;
   const providers: LocalProvider[] = [];
   for (const place of input.places) {
-    if (providers.length >= MAX_PROVIDERS) break;
+    if (providers.length >= remainingSlots) break;
     const provider = normalizeProvider({ ...input, place });
     if (!provider) continue;
     if (seenPlaceIds.has(provider.placeId)) continue;
@@ -307,12 +387,27 @@ function normalizeProvider(input: {
     verificationDate: null,
     serviceAreas: [],
     categories: [categoryId],
+    attributions: normalizePlaceAttributions(place),
     leadTrackingId: null,
   };
 }
 
-function buildServiceQuery(searchQuery: string, address: string) {
-  return `${searchQuery} near ${address}`;
+function buildServiceQuery(searchQuery: string, address: string, hasCoordinates: boolean) {
+  return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`;
+}
+
+function localitySearchContext(address: string) {
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return address;
+  const [first, ...rest] = parts;
+  const firstLooksLikeStreetAddress =
+    /\d/.test(first) ||
+    /\b(street|road|drive|avenue|lane|close|way|crescent|harbour)\b/i.test(first);
+  const localityParts = firstLooksLikeStreetAddress ? rest : parts;
+  return localityParts.slice(0, 3).join(", ") || address;
 }
 
 function cleanText(value: unknown, max = 180) {
@@ -356,6 +451,54 @@ function isRelevantPlaceType(types: string[] | undefined) {
     "street_address",
   ]);
   return !types.every((type) => irrelevant.has(type));
+}
+
+function normalizePlaceAttributions(place: GooglePlace): LocalProviderAttribution[] {
+  const raw = [place.attributions, place.htmlAttributions].flatMap((value) =>
+    Array.isArray(value) ? value : value ? [value] : [],
+  );
+  const attributions: LocalProviderAttribution[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    const attribution = normalizePlaceAttribution(value);
+    if (!attribution) continue;
+    const key = `${attribution.provider.toLowerCase()}|${attribution.providerUri ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    attributions.push(attribution);
+  }
+  return attributions;
+}
+
+function normalizePlaceAttribution(value: unknown): LocalProviderAttribution | null {
+  if (typeof value === "string") {
+    const provider = cleanText(stripHtml(value), 160);
+    const providerUri = safeHttpsUrl(htmlHref(value));
+    return provider ? { provider, providerUri } : null;
+  }
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const provider = cleanText(row.provider ?? row.displayName ?? row.authorName, 160);
+  const providerUri = safeHttpsUrl(row.providerUri);
+  return provider ? { provider, providerUri } : null;
+}
+
+function htmlHref(value: string) {
+  return /href\s*=\s*["']([^"']+)["']/i.exec(value)?.[1] ?? null;
+}
+
+function safeHttpsUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, " ");
 }
 
 function json(payload: unknown, status = 200) {

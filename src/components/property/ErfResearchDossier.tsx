@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   ArrowRight,
@@ -1105,6 +1106,15 @@ const REPORT_ASSET_GROUP_ORDER: ErfAssetGroup[] = [
   "Other",
 ];
 
+const REPORT_PRINT_PREPARATION_TIMEOUT_MS = 5000;
+const signedAssetPreviewUrlCache = new Map<string, string>();
+const pendingSignedAssetPreviewSettlements = new Set<Promise<void>>();
+
+type SignedAssetPreviewState =
+  | { status: "loading" }
+  | { status: "ready"; url: string }
+  | { status: "unavailable" };
+
 function workspaceAssetCategory(file: ErfAsset) {
   if (file.asset_category === "sg_diagram") return "SG diagram";
   if (file.asset_type === "lightstone_report") return "Lightstone PDF";
@@ -1130,35 +1140,118 @@ function assetTitle(asset: ErfAsset) {
   return typeof title === "string" && title.trim() ? title : asset.original_file_name;
 }
 
+function trackSignedAssetPreviewSettlement(promise: Promise<void>) {
+  pendingSignedAssetPreviewSettlements.add(promise);
+  promise.finally(() => pendingSignedAssetPreviewSettlements.delete(promise));
+}
+
+function waitForSignedAssetPreviewSettlements() {
+  return Promise.allSettled(Array.from(pendingSignedAssetPreviewSettlements)).then(() => undefined);
+}
+
+async function waitForReportPrintPreparation() {
+  await Promise.race([
+    (async () => {
+      await waitForSignedAssetPreviewSettlements();
+      await waitForPrintableReportImages();
+    })(),
+    new Promise<void>((resolve) => window.setTimeout(resolve, REPORT_PRINT_PREPARATION_TIMEOUT_MS)),
+  ]);
+}
+
+function waitForPrintableReportImages() {
+  if (typeof document === "undefined") return Promise.resolve();
+  const root = document.getElementById("easy-erf-report-print-root");
+  if (!root) return Promise.resolve();
+  const images = Array.from(root.querySelectorAll("img"));
+  return Promise.all(
+    images.map(
+      (image) =>
+        new Promise<void>((resolve) => {
+          if (image.complete) {
+            resolve();
+            return;
+          }
+          const done = () => {
+            image.removeEventListener("load", done);
+            image.removeEventListener("error", done);
+            resolve();
+          };
+          image.addEventListener("load", done, { once: true });
+          image.addEventListener("error", done, { once: true });
+        }),
+    ),
+  ).then(() => undefined);
+}
+
 function SignedAssetPreview({ asset }: { asset: ErfAsset }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<SignedAssetPreviewState>(() =>
+    signedAssetPreviewUrlCache.has(asset.id)
+      ? { status: "ready", url: signedAssetPreviewUrlCache.get(asset.id) as string }
+      : { status: "loading" },
+  );
+  const settlePreviewRef = useRef<(() => void) | null>(null);
+
+  const settlePreview = () => {
+    settlePreviewRef.current?.();
+    settlePreviewRef.current = null;
+  };
 
   useEffect(() => {
     let alive = true;
+    let settled = false;
+    const settlement = new Promise<void>((resolve) => {
+      settlePreviewRef.current = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+    });
+    trackSignedAssetPreviewSettlement(settlement);
+    if (!signedAssetPreviewUrlCache.has(asset.id)) setPreviewState({ status: "loading" });
     createErfAssetSignedUrl(asset)
       .then((signedUrl) => {
-        if (alive) setUrl(signedUrl);
+        if (signedUrl) signedAssetPreviewUrlCache.set(asset.id, signedUrl);
+        if (!alive) return;
+        if (signedUrl) setPreviewState({ status: "ready", url: signedUrl });
+        else {
+          setPreviewState({ status: "unavailable" });
+          settlePreview();
+        }
       })
       .catch(() => {
-        if (alive) setUrl(null);
+        if (alive) setPreviewState({ status: "unavailable" });
+        settlePreview();
       });
     return () => {
       alive = false;
+      settlePreview();
     };
   }, [asset]);
 
-  if (!url) {
+  if (previewState.status !== "ready") {
     return (
-      <div className="grid aspect-[4/3] place-items-center rounded-[1.25rem] bg-[#0D1B2A]/10 text-xs font-semibold text-[#0D1B2A]/55">
-        Signed preview unavailable
+      <div className="grid aspect-[4/3] place-items-center rounded-[1.25rem] bg-[#0D1B2A]/10 px-4 text-center text-xs font-semibold text-[#0D1B2A]/55">
+        <span>
+          Signed preview unavailable
+          {previewState.status === "loading" && (
+            <span className="mt-1 block font-normal">Preparing the signed preview URL.</span>
+          )}
+        </span>
       </div>
     );
   }
   return (
     <img
-      src={url}
+      src={previewState.url}
       alt={assetTitle(asset)}
       className="aspect-[4/3] w-full rounded-[1.25rem] object-cover"
+      onLoad={settlePreview}
+      onError={() => {
+        signedAssetPreviewUrlCache.delete(asset.id);
+        setPreviewState({ status: "unavailable" });
+        settlePreview();
+      }}
     />
   );
 }
@@ -1266,6 +1359,7 @@ function StoepAiReportView({
   }));
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
+  const [printReportMounted, setPrintReportMounted] = useState(false);
   useEffect(() => {
     setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
     setSnapshotMessage(null);
@@ -1304,8 +1398,39 @@ function StoepAiReportView({
   };
 
   const handlePrint = () => {
-    if (typeof window !== "undefined") window.print();
+    if (printReportMounted) return;
+    if (typeof window !== "undefined") setPrintReportMounted(true);
   };
+
+  useEffect(() => {
+    if (!printReportMounted || typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+    let timeoutId: number | undefined;
+    let cancelled = false;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      document.body.classList.remove("easy-erf-report-printing");
+      setPrintReportMounted(false);
+    };
+    const printWhenReady = async () => {
+      document.body.classList.add("easy-erf-report-printing");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await document.fonts?.ready.catch(() => undefined);
+      await waitForReportPrintPreparation();
+      if (cancelled) return;
+      window.print();
+      timeoutId = window.setTimeout(cleanup, 1500);
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+    void printWhenReady();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("afterprint", cleanup);
+      window.clearTimeout(timeoutId);
+      document.body.classList.remove("easy-erf-report-printing");
+    };
+  }, [printReportMounted]);
 
   const readinessStroke = (state: string) =>
     state === "confirmed"
@@ -1344,8 +1469,11 @@ function StoepAiReportView({
     }
   };
 
-  return (
-    <div className="report-page space-y-5">
+  const reportDocument = (printOnly = false) => (
+    <div
+      className={cn("report-page space-y-5", printOnly && "report-print-document")}
+      aria-label={printOnly ? "Printable Easy Erf Report" : undefined}
+    >
       {/* HEADER */}
       <section
         id="report-brief"
@@ -2060,6 +2188,18 @@ function StoepAiReportView({
         </div>
       </section>
     </div>
+  );
+
+  return (
+    <>
+      {reportDocument()}
+      {printReportMounted && typeof document !== "undefined"
+        ? createPortal(
+            <div id="easy-erf-report-print-root">{reportDocument(true)}</div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

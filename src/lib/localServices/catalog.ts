@@ -22,6 +22,11 @@ export interface LocalServiceGroup {
   description: string;
 }
 
+export interface LocalProviderAttribution {
+  provider: string;
+  providerUri: string | null;
+}
+
 export interface LocalProvider {
   placeId: string;
   name: string;
@@ -46,6 +51,7 @@ export interface LocalProvider {
   verificationDate: string | null;
   serviceAreas: string[];
   categories: string[];
+  attributions?: LocalProviderAttribution[];
   leadTrackingId: string | null;
 }
 
@@ -274,7 +280,7 @@ export const LOCAL_SERVICE_CATEGORIES: LocalServiceCategory[] = [
     id: "fibre-internet",
     groupId: "connect-property",
     label: "Fibre and internet",
-    searchQuery: "fibre internet service provider installer",
+    searchQuery: "internet service provider",
     appliesTo: states,
     reason: {
       vacant_land:
@@ -451,6 +457,46 @@ export const LOCAL_SERVICE_CATEGORIES: LocalServiceCategory[] = [
     },
   },
 ];
+
+const SERVICE_AREA_CATEGORY_IDS = new Set([
+  "builders-contractors",
+  "electricians",
+  "plumbers",
+  "security-companies",
+  "solar-backup-power",
+  "garden-maintenance",
+  "fibre-internet",
+  "tv-dstv",
+  "water-tanks-pumps-boreholes",
+]);
+
+const SEARCH_QUERY_VARIANTS: Partial<Record<string, string[]>> = {
+  "fibre-internet": [
+    "internet service provider",
+    "fibre internet provider",
+    "wireless internet provider",
+  ],
+  "builders-contractors": [
+    "residential builder",
+    "building contractor",
+    "home renovation contractor",
+  ],
+  electricians: [
+    "registered electrician",
+    "electrical contractor",
+    "solar electrician",
+  ],
+  plumbers: ["registered plumber", "plumbing contractor", "geyser plumber"],
+};
+
+export function localServiceSearchQueries(category: LocalServiceCategory): string[] {
+  const queries = [category.searchQuery, ...(SEARCH_QUERY_VARIANTS[category.id] ?? [])];
+  return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
+}
+
+export function includePureServiceAreaBusinesses(category: LocalServiceCategory): boolean {
+  return SERVICE_AREA_CATEGORY_IDS.has(category.id);
+}
 
 export function inferLocalPropertyState(
   parcel: NormalizedOfficialParcel,

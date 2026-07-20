@@ -109,7 +109,7 @@ describe("Local Property Team server search", () => {
     expect(payload.providers[1].openNow).toBe(true);
     expect(payload.providers[1].source).toBe("google");
     expect(payload.providers.every((item: { isSponsored: boolean }) => !item.isSponsored)).toBe(true);
-    expect(payload.attribution).toBe("Google");
+    expect(payload.attribution).toBe("Google Maps");
     expect(payload.parcelId).toBe("parcel-1");
     expect(payload.confirmedAddress).toBe("8 Harbour Drive, St Francis Bay, Eastern Cape");
 
@@ -119,10 +119,16 @@ describe("Local Property Team server search", () => {
     expect((options?.headers as Record<string, string>)["X-Goog-FieldMask"]).toContain(
       "places.displayName",
     );
+    expect((options?.headers as Record<string, string>)["X-Goog-FieldMask"]).toContain(
+      "places.attributions",
+    );
     const googleBody = JSON.parse(String(options?.body));
     expect(googleBody.pageSize).toBe(10);
-    expect(googleBody.textQuery).toContain("near 8 Harbour Drive, St Francis Bay, Eastern Cape");
+    expect(googleBody.textQuery).toBe("estate agent property sales");
+    expect(googleBody.locationBias.circle.center).toEqual({ latitude: -34.1, longitude: 24.8 });
+    expect(googleBody.locationBias.circle.radius).toBe(15000);
     expect(googleBody.textQuery).not.toContain("Kouga Local Municipality");
+    expect(googleBody.textQuery).not.toContain("8 Harbour Drive");
     expect(googleBody.textQuery).not.toContain("best");
     expect(googleBody.textQuery).not.toContain("trusted");
   });
@@ -232,6 +238,165 @@ describe("Local Property Team server search", () => {
       "two",
       "three",
     ]);
+  });
+
+  it("tries controlled service-area query variants in the intended fibre order", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ places: [place("fibre-one", "Fibre One")] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            places: [
+              place("fibre-one-duplicate", "Fibre One", { formattedAddress: "Fibre One Street" }),
+              place("fibre-two", "Fibre Two"),
+              place("fibre-three", "Fibre Three"),
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-fibre",
+        serviceCategory: "fibre-internet",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay",
+        latitude: -34.1,
+        longitude: 24.8,
+      }),
+    );
+    const payload = await response.json();
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    const thirdBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body));
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(firstBody.textQuery).toBe("internet service provider");
+    expect(secondBody.textQuery).toBe("fibre internet provider");
+    expect(thirdBody.textQuery).toBe("wireless internet provider");
+    expect(firstBody.includePureServiceAreaBusinesses).toBe(true);
+    expect(firstBody.textQuery).not.toContain("8 Harbour Drive");
+    expect(payload.providers.map((item: { placeId: string }) => item.placeId)).toEqual([
+      "fibre-one",
+      "fibre-two",
+      "fibre-three",
+    ]);
+    expect(payload.queriesAttempted).toBe(3);
+    expect(payload.includePureServiceAreaBusinesses).toBe(true);
+  });
+
+  it("keeps the generic internet service provider query inside the three-query cap", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          places: [
+            place("isp-one", "ISP One"),
+            place("isp-two", "ISP Two"),
+            place("isp-three", "ISP Three"),
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-fibre-generic",
+        serviceCategory: "fibre-internet",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay",
+        latitude: -34.1,
+        longitude: 24.8,
+      }),
+    );
+    const payload = await response.json();
+    const googleBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(googleBody.textQuery).toBe("internet service provider");
+    expect(payload.providers[0].placeId).toBe("isp-one");
+    expect(payload.queriesAttempted).toBe(1);
+  });
+
+  it("uses locality context instead of a street-level search when coordinates are absent", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ places: [place("estate-one", "Estate One")] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-no-coordinates",
+        serviceCategory: "estate-agents",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay, Eastern Cape",
+      }),
+    );
+    const payload = await response.json();
+    const googleBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+
+    expect(response.status).toBe(200);
+    expect(googleBody.textQuery).toBe("estate agent property sales near St Francis Bay, Eastern Cape");
+    expect(googleBody.locationBias).toBeUndefined();
+    expect(payload.confirmedAddress).toBe("8 Harbour Drive, St Francis Bay, Eastern Cape");
+  });
+
+  it("normalizes Google Maps third-party attributions without leaking markup", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          places: [
+            place("credited", "Credited Provider", {
+              attributions: [{ provider: "Example Data", providerUri: "https://example.com" }],
+              htmlAttributions: [
+                '<a href="https://photos.example">Photo Partner</a>',
+                '<a href="javascript:alert(1)">Unsafe Partner</a>',
+                '<a href="https://photos.example">Photo Partner</a>',
+              ],
+            }),
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-attribution",
+        serviceCategory: "estate-agents",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay",
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.providers[0].attributions).toEqual([
+      { provider: "Example Data", providerUri: "https://example.com/" },
+      { provider: "Photo Partner", providerUri: "https://photos.example/" },
+      { provider: "Unsafe Partner", providerUri: null },
+    ]);
+    expect(payload.providers[0].attributions).toHaveLength(3);
+    expect(JSON.stringify(payload.providers[0].attributions)).not.toContain("<a");
+    expect(JSON.stringify(payload.providers[0].attributions)).not.toContain("javascript:");
   });
 
   it("enforces normal and wider search radii when Google returns coordinates", async () => {
@@ -403,8 +568,8 @@ describe("Local Property Team server search", () => {
     expect((await timeout.json()).code).toBe("places_timeout");
 
     vi.restoreAllMocks();
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ unexpected: [] }), { status: 200 }),
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ places: { unexpected: [] } }), { status: 200 }),
     );
     const malformed = await handleLocalServicesSearchRequest(
       request({
@@ -414,5 +579,24 @@ describe("Local Property Team server search", () => {
       }),
     );
     expect((await malformed.json()).code).toBe("places_malformed");
+  });
+
+  it("treats an empty Google response object as no results, not an upstream failure", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-empty",
+        serviceCategory: "estate-agents",
+        confirmedAddress: "8 Harbour Drive",
+      }),
+    );
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.providers).toEqual([]);
+    expect(payload.queriesAttempted).toBe(1);
   });
 });

@@ -142,8 +142,21 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   );
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
 
-  it("wires a print action using window.print", () => {
+  it("wires print through an isolated report portal", () => {
     expect(source).toContain("window.print()");
+    expect(source).toContain("easy-erf-report-print-root");
+    expect(source).toContain("createPortal");
+    expect(source).toContain("easy-erf-report-printing");
+    expect(source).toContain("Printable Easy Erf Report");
+    expect(source).toContain("waitForPrintableReportImages");
+    expect(source).toContain("waitForReportPrintPreparation");
+    expect(source).toContain("REPORT_PRINT_PREPARATION_TIMEOUT_MS = 5000");
+    expect(source).toContain("pendingSignedAssetPreviewSettlements");
+    expect(source).toContain("signedAssetPreviewUrlCache");
+    expect(source).toContain("SignedAssetPreviewState");
+    expect(source).toContain('status: "unavailable"');
+    expect(source).toContain("onError");
+    expect(source).toContain("if (printReportMounted) return");
     expect(source).toContain("Print / Save PDF");
   });
 
@@ -183,9 +196,12 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   });
 
   it("prints the decision intelligence sections without heavy interactive chrome", () => {
+    expect(styles).toContain("body.easy-erf-report-printing #root");
+    expect(styles).toContain("#easy-erf-report-print-root");
     expect(styles).toContain(".report-no-print { display: none !important; }");
     expect(styles).toContain(".report-decision-hero");
     expect(styles).toContain("break-inside: avoid");
+    expect(styles).toContain(".report-print-avoid-break");
     expect(styles).toContain('[style*="conic-gradient"]');
   });
 

@@ -23,6 +23,7 @@ import {
   SITE_POTENTIAL_PACK_SIZE,
   SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
+import { buildSitePotentialGenerationEstimate } from "@/lib/sitePotential/generationEstimate";
 import { SITE_POTENTIAL_MAX_ATTEMPTS } from "@/lib/sitePotential/generationJobs";
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
@@ -384,6 +385,9 @@ export function SitePotentialTab({
   const packRequestedCount = packStatus?.requestedCount ?? SITE_POTENTIAL_PACK_SIZE;
   const activePackProjectState = packProgressState(packStatus);
   const packProcessing = shouldPollPackStatus(packStatus);
+  const generationEstimate = buildSitePotentialGenerationEstimate(
+    packStatus ? { ...packStatus, hasRetryableWork: packHasRetryableSlots(packStatus) } : null,
+  );
   const conceptsReady = packStatus
     ? packCompletedCount >= packRequestedCount ||
       packStatus.status === "complete" ||
@@ -1135,6 +1139,17 @@ export function SitePotentialTab({
                               ? "This pack will use your free allowance"
                               : "This pack will use one Site Potential credit"}
             </span>
+            {generationEstimate && generationEstimate.active && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="max-w-[22rem] rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-left text-[11.5px] leading-5 text-[#0D1B2A]/68 shadow-[0_10px_24px_-22px_rgba(13,27,42,0.5)]"
+              >
+                <div className="font-semibold text-[#0D1B2A]">{generationEstimate.label}</div>
+                <div>{generationEstimate.message}</div>
+                <div className="mt-1 text-[#64748B]">{generationEstimate.detail}</div>
+              </div>
+            )}
           </div>
         </div>
         {generationError && <Notice tone="amber">{generationError}</Notice>}
