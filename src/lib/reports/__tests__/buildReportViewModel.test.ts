@@ -149,7 +149,14 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(source).toContain("easy-erf-report-printing");
     expect(source).toContain("Printable Easy Erf Report");
     expect(source).toContain("waitForPrintableReportImages");
+    expect(source).toContain("waitForReportPrintPreparation");
+    expect(source).toContain("REPORT_PRINT_PREPARATION_TIMEOUT_MS = 5000");
+    expect(source).toContain("pendingSignedAssetPreviewSettlements");
     expect(source).toContain("signedAssetPreviewUrlCache");
+    expect(source).toContain("SignedAssetPreviewState");
+    expect(source).toContain('status: "unavailable"');
+    expect(source).toContain("onError");
+    expect(source).toContain("if (printReportMounted) return");
     expect(source).toContain("Print / Save PDF");
   });
 

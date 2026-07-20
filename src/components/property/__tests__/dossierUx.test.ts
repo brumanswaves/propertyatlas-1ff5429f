@@ -857,6 +857,12 @@ describe("Local Property Team MVP guardrails", () => {
     expect(localTeam).toContain("confirmedAddress: marketAddressLabel");
     expect(localTeam).toContain("Open this search in Google Maps");
     expect(localTeam).toContain("Results are sourced from Google");
+    expect(localTeam).toContain("GOOGLE_PLACES_ATTRIBUTION_LOGO");
+    expect(localTeam).toContain("powered-by-google-on-white3.png");
+    expect(localTeam).toContain('alt="Powered by Google"');
+    expect(localTeam).toContain("GooglePlacesAttribution");
+    expect(localTeam).toContain("Google Places third-party attributions");
+    expect(localTeam).toContain("provider.attributions");
     expect(localTeam).not.toContain("places.googleapis.com");
     expect(localTeam).not.toContain("GOOGLE_PLACES_API_KEY");
     expect(serverRoute).toContain("process.env.GOOGLE_PLACES_API_KEY");
@@ -869,6 +875,10 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).toContain("MAX_REQUEST_BYTES");
     expect(serverRoute).toContain("localServiceSearchQueries(category)");
     expect(serverRoute).toContain("MAX_QUERY_VARIANTS = 3");
+    expect(serverRoute).toContain('"places.attributions"');
+    expect(serverRoute).toContain("normalizePlaceAttributions(place)");
+    expect(serverRoute).toContain("localitySearchContext(address)");
+    expect(serverRoute).toContain('return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`');
     expect(serverRoute).toContain("includePureServiceAreaBusinesses");
     expect(serverRoute).toContain("invalid_query");
     expect(serverRoute).toContain("places_not_configured");
@@ -885,6 +895,7 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
     expect(sitePotential).toContain("buildSitePotentialGenerationEstimate");
+    expect(sitePotential).toContain("hasRetryableWork: packHasRetryableSlots(packStatus)");
     expect(sitePotential).toContain('role="status"');
     expect(sitePotential).toContain('aria-live="polite"');
   });

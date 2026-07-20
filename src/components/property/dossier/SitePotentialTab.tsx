@@ -385,7 +385,9 @@ export function SitePotentialTab({
   const packRequestedCount = packStatus?.requestedCount ?? SITE_POTENTIAL_PACK_SIZE;
   const activePackProjectState = packProgressState(packStatus);
   const packProcessing = shouldPollPackStatus(packStatus);
-  const generationEstimate = buildSitePotentialGenerationEstimate(packStatus);
+  const generationEstimate = buildSitePotentialGenerationEstimate(
+    packStatus ? { ...packStatus, hasRetryableWork: packHasRetryableSlots(packStatus) } : null,
+  );
   const conceptsReady = packStatus
     ? packCompletedCount >= packRequestedCount ||
       packStatus.status === "complete" ||

@@ -46,6 +46,7 @@ export interface LocalProvider {
   verificationDate: string | null;
   serviceAreas: string[];
   categories: string[];
+  attributions?: string[];
   leadTrackingId: string | null;
 }
 
@@ -274,7 +275,7 @@ export const LOCAL_SERVICE_CATEGORIES: LocalServiceCategory[] = [
     id: "fibre-internet",
     groupId: "connect-property",
     label: "Fibre and internet",
-    searchQuery: "fibre internet service provider installer",
+    searchQuery: "internet service provider",
     appliesTo: states,
     reason: {
       vacant_land:
@@ -466,9 +467,9 @@ const SERVICE_AREA_CATEGORY_IDS = new Set([
 
 const SEARCH_QUERY_VARIANTS: Partial<Record<string, string[]>> = {
   "fibre-internet": [
+    "internet service provider",
     "fibre internet provider",
     "wireless internet provider",
-    "internet service provider",
   ],
   "builders-contractors": [
     "residential builder",

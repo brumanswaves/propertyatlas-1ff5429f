@@ -27,6 +27,7 @@ const FIELD_MASK = [
   "places.googleMapsUri",
   "places.businessStatus",
   "places.types",
+  "places.attributions",
 ].join(",");
 
 interface SearchRequestBody {
@@ -54,6 +55,8 @@ interface GooglePlace {
   googleMapsUri?: string;
   businessStatus?: string;
   types?: string[];
+  attributions?: unknown;
+  htmlAttributions?: unknown;
 }
 
 export const Route = createFileRoute("/api/local-services/search")({
@@ -383,12 +386,27 @@ function normalizeProvider(input: {
     verificationDate: null,
     serviceAreas: [],
     categories: [categoryId],
+    attributions: normalizePlaceAttributions(place),
     leadTrackingId: null,
   };
 }
 
 function buildServiceQuery(searchQuery: string, address: string, hasCoordinates: boolean) {
-  return hasCoordinates ? searchQuery : `${searchQuery} near ${address}`;
+  return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`;
+}
+
+function localitySearchContext(address: string) {
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return address;
+  const [first, ...rest] = parts;
+  const firstLooksLikeStreetAddress =
+    /\d/.test(first) ||
+    /\b(street|road|drive|avenue|lane|close|way|crescent|harbour)\b/i.test(first);
+  const localityParts = firstLooksLikeStreetAddress ? rest : parts;
+  return localityParts.slice(0, 3).join(", ") || address;
 }
 
 function cleanText(value: unknown, max = 180) {
@@ -432,6 +450,35 @@ function isRelevantPlaceType(types: string[] | undefined) {
     "street_address",
   ]);
   return !types.every((type) => irrelevant.has(type));
+}
+
+function normalizePlaceAttributions(place: GooglePlace): string[] {
+  const raw = [place.attributions, place.htmlAttributions].flatMap((value) =>
+    Array.isArray(value) ? value : value ? [value] : [],
+  );
+  return Array.from(
+    new Set(
+      raw
+        .map((value) => {
+          if (typeof value === "string") return cleanText(stripHtml(value), 260);
+          if (value && typeof value === "object") {
+            const row = value as Record<string, unknown>;
+            return cleanText(
+              [row.provider, row.displayName, row.authorName, row.providerUri]
+                .filter((item) => typeof item === "string" && item.trim())
+                .join(" - "),
+              260,
+            );
+          }
+          return "";
+        })
+        .filter(Boolean),
+    ),
+  );
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, " ");
 }
 
 function json(payload: unknown, status = 200) {

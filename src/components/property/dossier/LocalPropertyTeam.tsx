@@ -93,6 +93,37 @@ function phoneHref(phone: string) {
   return `tel:${phone.replace(/[^+\d]/g, "")}`;
 }
 
+const GOOGLE_PLACES_ATTRIBUTION_LOGO =
+  "https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-white3.png";
+
+function GooglePlacesAttribution({ providers }: { providers: LocalProvider[] }) {
+  const attributions = Array.from(
+    new Set(providers.flatMap((provider) => provider.attributions ?? []).filter(Boolean)),
+  );
+  return (
+    <div className="mt-3 flex flex-col gap-2 text-[11px] text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
+      <div className="inline-flex min-h-6 items-center rounded-md bg-white px-2 py-1">
+        <img
+          src={GOOGLE_PLACES_ATTRIBUTION_LOGO}
+          alt="Powered by Google"
+          width={120}
+          height={14}
+          className="h-[14px] w-[120px] object-contain"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      {attributions.length ? (
+        <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Google Places third-party attributions">
+          {attributions.map((attribution) => (
+            <li key={attribution}>{attribution}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function ProviderCard({
   provider,
   category,
@@ -590,6 +621,7 @@ export function LocalPropertyTeam({
                 Results provided by {currentSearch.attribution ?? "Google"}.{" "}
                 {currentSearch.radiusKm ? `Search radius: ${currentSearch.radiusKm} km.` : null}
               </p>
+              <GooglePlacesAttribution providers={currentSearch.providers.slice(0, 3)} />
             </>
           ) : currentSearch.loaded ? (
             <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">

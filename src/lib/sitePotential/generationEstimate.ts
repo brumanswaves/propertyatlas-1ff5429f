@@ -1,8 +1,11 @@
 import { SITE_POTENTIAL_PACK_SIZE } from "./config";
+import { SITE_POTENTIAL_MAX_ATTEMPTS } from "./generationJobs";
 
 export interface SitePotentialEstimateItem {
   status: string;
   generatedAssetId?: string | null;
+  attemptCount?: number | null;
+  nextAttemptAt?: string | null;
 }
 
 export interface SitePotentialGenerationEstimateInput {
@@ -10,6 +13,7 @@ export interface SitePotentialGenerationEstimateInput {
   requestedCount?: number | null;
   completedCount?: number | null;
   items?: SitePotentialEstimateItem[];
+  hasRetryableWork?: boolean | null;
 }
 
 export interface SitePotentialGenerationEstimate {
@@ -30,7 +34,7 @@ export function buildSitePotentialGenerationEstimate(
     : 0;
   const completedCount = Math.min(
     requestedCount,
-    Math.max(0, Number(input.completedCount ?? itemCompletedCount)),
+    Math.max(0, finiteCount(input.completedCount ?? itemCompletedCount, itemCompletedCount)),
   );
   const remainingCount = Math.max(0, requestedCount - completedCount);
   if (remainingCount === 0 || input.status === "complete") {
@@ -61,6 +65,22 @@ export function buildSitePotentialGenerationEstimate(
     };
   }
   if (input.status === "partial_failed" || input.status === "failed") {
+    const hasRetryableWork =
+      typeof input.hasRetryableWork === "boolean"
+        ? input.hasRetryableWork
+        : hasRetryableEstimateWork(input.items);
+    if (!hasRetryableWork) {
+      return {
+        label: "Estimated time",
+        message:
+          input.status === "partial_failed"
+            ? `Generation stopped with ${completedCount} of ${requestedCount} concepts ready. No completion estimate is available.`
+            : "Generation could not be completed. No completion estimate is available.",
+        detail: "You can review any completed concepts or start another pack when available.",
+        remainingCount,
+        active: false,
+      };
+    }
     return {
       label: "Estimated time",
       message: "A retry is in progress. This can add several minutes.",
@@ -81,6 +101,26 @@ export function buildSitePotentialGenerationEstimate(
 function clampConceptCount(value: number) {
   if (!Number.isFinite(value)) return SITE_POTENTIAL_PACK_SIZE;
   return Math.max(1, Math.min(6, Math.round(value)));
+}
+
+function finiteCount(value: number | null | undefined, fallback: number) {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.round(count) : fallback;
+}
+
+function hasRetryableEstimateWork(items: SitePotentialEstimateItem[] | undefined) {
+  return Boolean(
+    items?.some(
+      (item) =>
+        !item.generatedAssetId &&
+        (item.status === "queued" ||
+          item.status === "generating" ||
+          Boolean(item.nextAttemptAt) ||
+          (item.status === "failed" &&
+            Number.isFinite(Number(item.attemptCount)) &&
+            Number(item.attemptCount) < SITE_POTENTIAL_MAX_ATTEMPTS)),
+    ),
+  );
 }
 
 function estimateRangeForRemaining(remainingCount: number) {

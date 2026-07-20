@@ -119,6 +119,9 @@ describe("Local Property Team server search", () => {
     expect((options?.headers as Record<string, string>)["X-Goog-FieldMask"]).toContain(
       "places.displayName",
     );
+    expect((options?.headers as Record<string, string>)["X-Goog-FieldMask"]).toContain(
+      "places.attributions",
+    );
     const googleBody = JSON.parse(String(options?.body));
     expect(googleBody.pageSize).toBe(10);
     expect(googleBody.textQuery).toBe("estate agent property sales");
@@ -237,7 +240,7 @@ describe("Local Property Team server search", () => {
     ]);
   });
 
-  it("tries controlled service-area query variants until three providers are found", async () => {
+  it("tries controlled service-area query variants in the intended fibre order", async () => {
     process.env.GOOGLE_PLACES_API_KEY = "server-secret";
     const fetchMock = vi.spyOn(globalThis, "fetch");
     fetchMock
@@ -281,7 +284,7 @@ describe("Local Property Team server search", () => {
     const thirdBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body));
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(firstBody.textQuery).toBe("fibre internet service provider installer");
+    expect(firstBody.textQuery).toBe("internet service provider");
     expect(secondBody.textQuery).toBe("fibre internet provider");
     expect(thirdBody.textQuery).toBe("wireless internet provider");
     expect(firstBody.includePureServiceAreaBusinesses).toBe(true);
@@ -293,6 +296,98 @@ describe("Local Property Team server search", () => {
     ]);
     expect(payload.queriesAttempted).toBe(3);
     expect(payload.includePureServiceAreaBusinesses).toBe(true);
+  });
+
+  it("keeps the generic internet service provider query inside the three-query cap", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          places: [
+            place("isp-one", "ISP One"),
+            place("isp-two", "ISP Two"),
+            place("isp-three", "ISP Three"),
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-fibre-generic",
+        serviceCategory: "fibre-internet",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay",
+        latitude: -34.1,
+        longitude: 24.8,
+      }),
+    );
+    const payload = await response.json();
+    const googleBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(googleBody.textQuery).toBe("internet service provider");
+    expect(payload.providers[0].placeId).toBe("isp-one");
+    expect(payload.queriesAttempted).toBe(1);
+  });
+
+  it("uses locality context instead of a street-level search when coordinates are absent", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ places: [place("estate-one", "Estate One")] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-no-coordinates",
+        serviceCategory: "estate-agents",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay, Eastern Cape",
+      }),
+    );
+    const payload = await response.json();
+    const googleBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+
+    expect(response.status).toBe(200);
+    expect(googleBody.textQuery).toBe("estate agent property sales near St Francis Bay, Eastern Cape");
+    expect(googleBody.locationBias).toBeUndefined();
+    expect(payload.confirmedAddress).toBe("8 Harbour Drive, St Francis Bay, Eastern Cape");
+  });
+
+  it("normalizes Google Places third-party attributions without leaking markup", async () => {
+    process.env.GOOGLE_PLACES_API_KEY = "server-secret";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          places: [
+            place("credited", "Credited Provider", {
+              attributions: [{ provider: "Example Data", providerUri: "https://example.com" }],
+              htmlAttributions: ['<a href="https://photos.example">Photo Partner</a>'],
+            }),
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const response = await handleLocalServicesSearchRequest(
+      request({
+        parcelId: "parcel-attribution",
+        serviceCategory: "estate-agents",
+        confirmedAddress: "8 Harbour Drive, St Francis Bay",
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.providers[0].attributions).toContain("Example Data - https://example.com");
+    expect(payload.providers[0].attributions).toContain("Photo Partner");
+    expect(JSON.stringify(payload.providers[0].attributions)).not.toContain("<a");
   });
 
   it("enforces normal and wider search radii when Google returns coordinates", async () => {
