@@ -842,7 +842,8 @@ describe("Local Property Team MVP guardrails", () => {
     expect(localTeam).toContain("Google place result");
     expect(localTeam).toContain("Top local Google results");
     expect(localTeam).toContain("Try wider area");
-    expect(localTeam).toContain("Try another service");
+    expect(localTeam).toContain("No matching Google providers were found in this search area.");
+    expect(localTeam).toContain("Service-area businesses may not always appear near the property pin.");
     expect(localTeam).toContain("Add the property address first");
     expect(localTeam).toContain("Go to Market and update address");
     expect(localTeam).toContain("Change address in Market");
@@ -866,7 +867,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).toContain("radiusKm");
     expect(serverRoute).toContain("Math.min(radiusKm, MAX_RADIUS_KM)");
     expect(serverRoute).toContain("MAX_REQUEST_BYTES");
-    expect(serverRoute).toContain("buildServiceQuery(category.searchQuery, address)");
+    expect(serverRoute).toContain("localServiceSearchQueries(category)");
+    expect(serverRoute).toContain("MAX_QUERY_VARIANTS = 3");
+    expect(serverRoute).toContain("includePureServiceAreaBusinesses");
     expect(serverRoute).toContain("invalid_query");
     expect(serverRoute).toContain("places_not_configured");
     expect(serverRoute).toContain("Live Google provider results are not configured yet.");
@@ -881,6 +884,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).not.toContain('"Google place result"');
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
+    expect(sitePotential).toContain("buildSitePotentialGenerationEstimate");
+    expect(sitePotential).toContain('role="status"');
+    expect(sitePotential).toContain('aria-live="polite"');
   });
 });
 

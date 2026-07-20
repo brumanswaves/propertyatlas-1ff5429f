@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   ArrowRight,
@@ -1105,6 +1106,8 @@ const REPORT_ASSET_GROUP_ORDER: ErfAssetGroup[] = [
   "Other",
 ];
 
+const signedAssetPreviewUrlCache = new Map<string, string>();
+
 function workspaceAssetCategory(file: ErfAsset) {
   if (file.asset_category === "sg_diagram") return "SG diagram";
   if (file.asset_type === "lightstone_report") return "Lightstone PDF";
@@ -1130,13 +1133,41 @@ function assetTitle(asset: ErfAsset) {
   return typeof title === "string" && title.trim() ? title : asset.original_file_name;
 }
 
+function waitForPrintableReportImages() {
+  if (typeof document === "undefined") return Promise.resolve();
+  const root = document.getElementById("easy-erf-report-print-root");
+  if (!root) return Promise.resolve();
+  const images = Array.from(root.querySelectorAll("img"));
+  return Promise.all(
+    images.map(
+      (image) =>
+        new Promise<void>((resolve) => {
+          if (image.complete) {
+            resolve();
+            return;
+          }
+          const done = () => {
+            image.removeEventListener("load", done);
+            image.removeEventListener("error", done);
+            resolve();
+          };
+          image.addEventListener("load", done, { once: true });
+          image.addEventListener("error", done, { once: true });
+        }),
+    ),
+  ).then(() => undefined);
+}
+
 function SignedAssetPreview({ asset }: { asset: ErfAsset }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(
+    () => signedAssetPreviewUrlCache.get(asset.id) ?? null,
+  );
 
   useEffect(() => {
     let alive = true;
     createErfAssetSignedUrl(asset)
       .then((signedUrl) => {
+        if (signedUrl) signedAssetPreviewUrlCache.set(asset.id, signedUrl);
         if (alive) setUrl(signedUrl);
       })
       .catch(() => {
@@ -1266,6 +1297,7 @@ function StoepAiReportView({
   }));
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
+  const [printReportMounted, setPrintReportMounted] = useState(false);
   useEffect(() => {
     setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
     setSnapshotMessage(null);
@@ -1304,8 +1336,38 @@ function StoepAiReportView({
   };
 
   const handlePrint = () => {
-    if (typeof window !== "undefined") window.print();
+    if (typeof window !== "undefined") setPrintReportMounted(true);
   };
+
+  useEffect(() => {
+    if (!printReportMounted || typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+    let timeoutId: number | undefined;
+    let cancelled = false;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      document.body.classList.remove("easy-erf-report-printing");
+      setPrintReportMounted(false);
+    };
+    const printWhenReady = async () => {
+      document.body.classList.add("easy-erf-report-printing");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await document.fonts?.ready.catch(() => undefined);
+      await waitForPrintableReportImages();
+      if (cancelled) return;
+      window.print();
+      timeoutId = window.setTimeout(cleanup, 1500);
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+    void printWhenReady();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("afterprint", cleanup);
+      window.clearTimeout(timeoutId);
+      document.body.classList.remove("easy-erf-report-printing");
+    };
+  }, [printReportMounted]);
 
   const readinessStroke = (state: string) =>
     state === "confirmed"
@@ -1344,8 +1406,11 @@ function StoepAiReportView({
     }
   };
 
-  return (
-    <div className="report-page space-y-5">
+  const reportDocument = (printOnly = false) => (
+    <div
+      className={cn("report-page space-y-5", printOnly && "report-print-document")}
+      aria-label={printOnly ? "Printable Easy Erf Report" : undefined}
+    >
       {/* HEADER */}
       <section
         id="report-brief"
@@ -2060,6 +2125,18 @@ function StoepAiReportView({
         </div>
       </section>
     </div>
+  );
+
+  return (
+    <>
+      {reportDocument()}
+      {printReportMounted && typeof document !== "undefined"
+        ? createPortal(
+            <div id="easy-erf-report-print-root">{reportDocument(true)}</div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

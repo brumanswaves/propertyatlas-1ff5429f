@@ -50,6 +50,9 @@ interface SearchState {
   errorCode: string | null;
   widerArea: boolean;
   attribution: string | null;
+  radiusKm?: number;
+  queriesAttempted?: number;
+  includePureServiceAreaBusinesses?: boolean;
 }
 
 const EMPTY_SEARCH: SearchState = {
@@ -60,6 +63,9 @@ const EMPTY_SEARCH: SearchState = {
   errorCode: null,
   widerArea: false,
   attribution: null,
+  radiusKm: undefined,
+  queriesAttempted: undefined,
+  includePureServiceAreaBusinesses: undefined,
 };
 
 function groupIcon(groupId: LocalServiceGroup["id"]) {
@@ -306,6 +312,9 @@ export function LocalPropertyTeam({
             parcelId?: string;
             categoryId?: string;
             confirmedAddress?: string;
+            radiusKm?: number;
+            queriesAttempted?: number;
+            includePureServiceAreaBusinesses?: boolean;
           }
         | null;
       if (!response.ok || !payload?.success) {
@@ -325,6 +334,10 @@ export function LocalPropertyTeam({
           errorCode: null,
           widerArea,
           attribution: payload.attribution ?? "Google",
+          radiusKm: typeof payload.radiusKm === "number" ? payload.radiusKm : undefined,
+          queriesAttempted:
+            typeof payload.queriesAttempted === "number" ? payload.queriesAttempted : undefined,
+          includePureServiceAreaBusinesses: Boolean(payload.includePureServiceAreaBusinesses),
         },
       }));
     } catch (error) {
@@ -574,7 +587,8 @@ export function LocalPropertyTeam({
                 ))}
               </div>
               <p className="mt-3 text-[11px] font-medium text-[#64748B]">
-                Results provided by {currentSearch.attribution ?? "Google"}.
+                Results provided by {currentSearch.attribution ?? "Google"}.{" "}
+                {currentSearch.radiusKm ? `Search radius: ${currentSearch.radiusKm} km.` : null}
               </p>
             </>
           ) : currentSearch.loaded ? (
@@ -582,13 +596,21 @@ export function LocalPropertyTeam({
               <p>
                 {currentSearch.error
                   ? currentSearch.error
-                  : "No eligible Google results were found for this service near the confirmed property address."}
+                  : "No matching Google providers were found in this search area."}
               </p>
               {!currentSearch.error && (
                 <p className="mt-1 text-xs text-[#0D1B2A]/54">
-                  Try another service or open this search in Google Maps.
+                  Service-area businesses may not always appear near the property pin. Try the wider
+                  area or open this search in Google Maps.
                 </p>
               )}
+              {!currentSearch.error && currentSearch.queriesAttempted ? (
+                <p className="mt-1 text-[11px] text-[#64748B]">
+                  Checked {currentSearch.queriesAttempted} Google search{" "}
+                  {currentSearch.queriesAttempted === 1 ? "variant" : "variants"}
+                  {currentSearch.radiusKm ? ` within ${currentSearch.radiusKm} km` : ""}.
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"

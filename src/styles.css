@@ -223,9 +223,29 @@
 .pa-popup .mapboxgl-popup-tip { display: none; }
 
 /* Property Intelligence Report — print stylesheet */
+#easy-erf-report-print-root { display: none; }
+
 @media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  body.easy-erf-report-printing {
+    background: #ffffff !important;
+  }
+  body.easy-erf-report-printing #root {
+    display: none !important;
+  }
+  body.easy-erf-report-printing #easy-erf-report-print-root {
+    display: block !important;
+    background: #ffffff !important;
+    color: #0D1B2A !important;
+  }
   .report-no-print { display: none !important; }
-  .report-page { background: #ffffff !important; }
+  .report-page {
+    background: #ffffff !important;
+    color: #0D1B2A !important;
+    max-width: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
   .report-page .report-decision-hero {
     background: #ffffff !important;
     color: #0D1B2A !important;
@@ -249,17 +269,11 @@
     border-color: #cbd5e1 !important;
   }
   .report-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
     box-shadow: none !important;
     border-color: #cbd5e1 !important;
+    overflow: visible !important;
   }
-  .report-section article,
-  .report-section details,
-  .report-section li {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+  .report-print-avoid-break,
   .report-change-card {
     break-inside: avoid;
     page-break-inside: avoid;
