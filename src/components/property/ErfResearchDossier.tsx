@@ -1821,27 +1821,34 @@ function StoepAiReportView({
       ? currentSelectedDesignPrintImage.url
       : null;
   const selectedDesignImageFailed = currentSelectedDesignPrintImage?.status === "failed";
+  const reportPresentationProps = {
+    report,
+    decision,
+    investorMode,
+    decisionMode,
+    selectedDesign,
+    selectedDesignImageUrl: selectedDesignImageReady,
+    selectedDesignImageFailed,
+    selectedSiteMode,
+    siteProject,
+    sitePotentialSkipped,
+    fileAssets: fileVault.assets,
+    groupedAssets,
+    chosenScenario,
+    scenarios,
+  } satisfies EasyErfPrintReportProps;
   const ScreenReportComponent =
-    decisionMode === "investor" ? EasyErfInvestorScreenReport : EasyErfStandardScreenReport;
+    decisionMode === "investor"
+      ? ({ children: _children }: { children?: ReactNode }) => (
+          <EasyErfInvestorScreenReport {...reportPresentationProps} onPrint={handlePrint} />
+        )
+      : ({ children: _children }: { children?: ReactNode }) => (
+          <EasyErfStandardScreenReport {...reportPresentationProps} onPrint={handlePrint} />
+        );
 
   const reportDocument = (printOnly = false) =>
     printOnly ? (
-      <EasyErfPrintReport
-        report={report}
-        decision={decision}
-        investorMode={investorMode}
-        decisionMode={decisionMode}
-        selectedDesign={selectedDesign}
-        selectedDesignImageUrl={selectedDesignImageReady}
-        selectedDesignImageFailed={selectedDesignImageFailed}
-        selectedSiteMode={selectedSiteMode}
-        siteProject={siteProject}
-        sitePotentialSkipped={sitePotentialSkipped}
-        fileAssets={fileVault.assets}
-        groupedAssets={groupedAssets}
-        chosenScenario={chosenScenario}
-        scenarios={scenarios}
-      />
+      <EasyErfPrintReport {...reportPresentationProps} />
     ) : (
     <ScreenReportComponent>
       {/* HEADER */}
@@ -2613,32 +2620,103 @@ function StoepAiReportView({
 function EasyErfScreenReportShell({
   children,
   label,
+  kind,
+  onPrint,
 }: {
   children: ReactNode;
   label: string;
+  kind: "standard" | "investor";
+  onPrint: () => void;
 }) {
   return (
-    <div
-      className="report-page easy-erf-screen-report mx-auto max-w-[1040px] space-y-5 rounded-[2rem] bg-[#F8FBFF] p-3 sm:p-5"
-      aria-label={label}
-    >
-      {children}
+    <div className="easy-erf-screen-report mx-auto max-w-[1120px]" aria-label={label}>
+      <div className="report-no-print mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-[#D9E6F2] bg-white px-4 py-3 shadow-sm">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+            {kind === "standard" ? "Standard report" : "Investor report"}
+          </div>
+          <p className="mt-1 text-sm text-[#0D1B2A]/70">
+            On-screen preview uses the same designed report pages as the PDF.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onPrint}
+          className="inline-flex min-h-10 items-center rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142941]"
+        >
+          Print / Save PDF
+        </button>
+      </div>
+      <article
+        className={cn(
+          "report-page easy-erf-print-report easy-erf-screen-document space-y-8 rounded-[2rem] bg-[#EEF4FA] p-3 shadow-[0_28px_90px_-60px_rgba(13,27,42,0.55)] sm:p-5",
+          kind === "standard" ? "easy-erf-standard-screen-report" : "easy-erf-investor-screen-report",
+        )}
+        data-report-kind={kind}
+      >
+        {children}
+      </article>
     </div>
   );
 }
 
-function EasyErfStandardScreenReport({ children }: { children: ReactNode }) {
+type EasyErfScreenReportProps = EasyErfPrintReportProps & {
+  onPrint: () => void;
+};
+
+function EasyErfStandardScreenReport(props: EasyErfScreenReportProps) {
+  const documentSummary = summarizePrintDocuments(props.fileAssets, props.groupedAssets);
+
   return (
-    <EasyErfScreenReportShell label="Easy Erf Standard screen report">
-      {children}
+    <EasyErfScreenReportShell
+      label="Easy Erf Standard screen report"
+      kind="standard"
+      onPrint={props.onPrint}
+    >
+      <StandardSnapshotPage
+        report={props.report}
+        decision={props.decision}
+        documentSummary={documentSummary}
+        hero={props.selectedDesignImageUrl}
+        screen
+      />
+      <StandardFactsPage report={props.report} screen />
+      <StandardMarketStrategyPage
+        report={props.report}
+        decision={props.decision}
+        investorMode={props.investorMode}
+        chosenScenario={props.chosenScenario}
+        scenarios={props.scenarios}
+        screen
+      />
+      <StandardSiteActionPage {...props} documentSummary={documentSummary} screen />
     </EasyErfScreenReportShell>
   );
 }
 
-function EasyErfInvestorScreenReport({ children }: { children: ReactNode }) {
+function EasyErfInvestorScreenReport(props: EasyErfScreenReportProps) {
+  const documentSummary = summarizePrintDocuments(props.fileAssets, props.groupedAssets);
+
   return (
-    <EasyErfScreenReportShell label="Easy Erf Investor screen report">
-      {children}
+    <EasyErfScreenReportShell
+      label="Easy Erf Investor screen report"
+      kind="investor"
+      onPrint={props.onPrint}
+    >
+      <InvestorDealSnapshotPage
+        report={props.report}
+        decision={props.decision}
+        investorMode={props.investorMode}
+        screen
+      />
+      <InvestorAssumptionsEvidencePage
+        report={props.report}
+        investorMode={props.investorMode}
+        documentSummary={documentSummary}
+        chosenScenario={props.chosenScenario}
+        screen
+      />
+      <InvestorConceptActionPage {...props} screen />
     </EasyErfScreenReportShell>
   );
 }
@@ -2726,17 +2804,19 @@ function StandardSnapshotPage({
   decision,
   documentSummary,
   hero,
+  screen = false,
 }: {
   report: ReturnType<typeof buildReportViewModel>;
   decision: ReturnType<typeof buildDecisionIntelligence>;
   documentSummary: PrintDocumentSummary;
   hero: string | null;
+  screen?: boolean;
 }) {
   const topRisks = report.risks.slice(0, 3).map((risk) => risk.title);
   const topActions = report.recommendations.slice(0, 3).map((item) => item.title);
 
   return (
-    <PrintPage page={1} totalPages={4} eyebrow="Property intelligence snapshot" report={report}>
+    <PrintPage page={1} totalPages={4} eyebrow="Property intelligence snapshot" report={report} screen={screen}>
       <section className="print-snapshot-hero">
         <div className="print-snapshot-title">
           <h1>{report.identity.displayName}</h1>
@@ -2773,59 +2853,73 @@ function StandardSnapshotPage({
   );
 }
 
-function StandardFactsPage({ report }: { report: ReturnType<typeof buildReportViewModel> }) {
+function StandardFactsPage({
+  report,
+  screen = false,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  screen?: boolean;
+}) {
   return (
-    <PrintPage page={2} totalPages={4} eyebrow="Facts and planning" report={report}>
+    <PrintPage page={2} totalPages={4} eyebrow="Facts and planning" report={report} screen={screen}>
       <div className="print-two-column">
         <PrintFactTable
           title="Official identity"
           rows={[
-            ["Erf number", report.identity.erfNumber, "Official"],
-            ["Portion", report.identity.portion, "Official"],
-            ["LPI", report.identity.lpi, "Official"],
-            ["Parcel key", report.identity.parcelKey, "Official"],
-            ["Municipality", report.identity.municipality, "Official"],
-            ["Province", report.identity.province, "Official"],
+            printFactRow("Erf number", report.identity.erfNumber, "Official"),
+            printFactRow("Portion", report.identity.portion, "Official"),
+            printFactRow("LPI", report.identity.lpi, "Official"),
+            printFactRow("Parcel key", report.identity.parcelKey, "Official"),
+            printFactRow("Municipality", report.identity.municipality, "Official"),
+            printFactRow("Province", report.identity.province, "Official"),
           ]}
         />
         <PrintFactTable
           title="Address and location"
           rows={[
-            ["Market address", report.identity.marketAddressLine, "User confirmed"],
-            ["Coordinates", formatCoordinates(report.identity.coordinates), "Official"],
-            ["Erf area", formatArea(report.identity.areaM2), "Official"],
+            printFactRow("Market address", report.identity.marketAddressLine, "User confirmed"),
+            printFactRow("Coordinates", formatCoordinates(report.identity.coordinates), "Official"),
+            printFactRow(
+              "Erf area",
+              report.identity.areaM2 != null ? formatArea(report.identity.areaM2) : null,
+              "Official",
+            ),
           ]}
         />
         <PrintFactTable
           title="Ownership and deeds"
           rows={[
-            ["Ownership verified", report.ownership.isVerified ? "Yes" : null, report.ownership.isVerified ? "Verified" : "Missing"],
-            ["Owner name", null, "Missing"],
-            ["Deed number", null, "Missing"],
-            ["Bond information", null, "Missing"],
-            ["Transfer history", null, "Needs review"],
+            printFactRow(
+              "Ownership verified",
+              report.ownership.isVerified ? "Yes" : null,
+              "Verified",
+            ),
+            printFactRow("Owner name", null, "Verified"),
+            printFactRow("Deed number", null, "Verified"),
+            printFactRow("Bond information", null, "Verified"),
+            printFactRow("Transfer history", "Not reviewed", "Needs review"),
           ]}
         />
         <PrintFactTable
           title="Planning and land use"
           rows={[
-            ["Zoning", planningValue(report, "Zoning"), "Missing"],
-            ["Coverage", planningValue(report, "Coverage"), "Missing"],
-            ["FAR", planningValue(report, "FAR"), "Missing"],
-            ["Height limit", planningValue(report, "Height limit"), "Missing"],
-            ["Setbacks", planningValue(report, "Setbacks"), "Missing"],
-            ["Density", planningValue(report, "Density"), "Missing"],
-            ["Permitted uses", planningValue(report, "Permitted uses"), "Missing"],
+            planningFactRow(report, "Zoning"),
+            planningFactRow(report, "Coverage"),
+            planningFactRow(report, "FAR"),
+            planningFactRow(report, "Height limit"),
+            planningFactRow(report, "Setbacks"),
+            planningFactRow(report, "Density"),
+            planningFactRow(report, "Permitted uses"),
           ]}
         />
         <PrintFactTable
           title="Services and environment"
           rows={[
-            ["Water", null, "Needs review"],
-            ["Sewer", null, "Needs review"],
-            ["Electricity", null, "Needs review"],
-            ["Road access", null, "Needs review"],
-            ["Environmental review", null, "Needs review"],
+            printFactRow("Water", "Not reviewed", "Needs review"),
+            printFactRow("Sewer", "Not reviewed", "Needs review"),
+            printFactRow("Electricity", "Not reviewed", "Needs review"),
+            printFactRow("Road access", "Not reviewed", "Needs review"),
+            printFactRow("Environmental review", "Not reviewed", "Needs review"),
           ]}
         />
       </div>
@@ -2839,15 +2933,17 @@ function StandardMarketStrategyPage({
   investorMode,
   chosenScenario,
   scenarios,
+  screen = false,
 }: {
   report: ReturnType<typeof buildReportViewModel>;
   decision: ReturnType<typeof buildDecisionIntelligence>;
   investorMode: InvestorDecisionMode;
   chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
   scenarios: ReturnType<typeof readStrategyScenarios>;
+  screen?: boolean;
 }) {
   return (
-    <PrintPage page={3} totalPages={4} eyebrow="Market, risks and strategy" report={report}>
+    <PrintPage page={3} totalPages={4} eyebrow="Market, risks and strategy" report={report} screen={screen}>
       <section className="print-two-column">
         <PrintPanel title="Market evidence">
           <PrintFactGrid
@@ -2887,9 +2983,17 @@ function StandardMarketStrategyPage({
   );
 }
 
-function StandardSiteActionPage(props: EasyErfPrintReportProps & { documentSummary: PrintDocumentSummary }) {
+function StandardSiteActionPage(
+  props: EasyErfPrintReportProps & { documentSummary: PrintDocumentSummary; screen?: boolean },
+) {
   return (
-    <PrintPage page={4} totalPages={4} eyebrow="Site potential and action plan" report={props.report}>
+    <PrintPage
+      page={4}
+      totalPages={4}
+      eyebrow="Site potential and action plan"
+      report={props.report}
+      screen={props.screen}
+    >
       <section className="print-two-column print-site-strategy-grid">
         <PrintSitePotentialBlock {...props} />
         <PrintPanel title="Chosen strategy">
@@ -2913,13 +3017,15 @@ function InvestorDealSnapshotPage({
   report,
   decision,
   investorMode,
+  screen = false,
 }: {
   report: ReturnType<typeof buildReportViewModel>;
   decision: ReturnType<typeof buildDecisionIntelligence>;
   investorMode: InvestorDecisionMode;
+  screen?: boolean;
 }) {
   return (
-    <PrintPage page={1} totalPages={3} eyebrow="Investor deal snapshot" report={report}>
+    <PrintPage page={1} totalPages={3} eyebrow="Investor deal snapshot" report={report} screen={screen}>
       <section className="print-investor-snapshot">
         <PrintPanel title="Decision status">
           <h1 className="print-decision-status">{investorDecisionLabel(investorMode.readinessStatus)}</h1>
@@ -2952,25 +3058,43 @@ function InvestorAssumptionsEvidencePage({
   investorMode,
   documentSummary,
   chosenScenario,
+  screen = false,
 }: {
   report: ReturnType<typeof buildReportViewModel>;
   investorMode: InvestorDecisionMode;
   documentSummary: PrintDocumentSummary;
   chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
+  screen?: boolean;
 }) {
   return (
-    <PrintPage page={2} totalPages={3} eyebrow="Assumptions and evidence" report={report}>
+    <PrintPage page={2} totalPages={3} eyebrow="Assumptions and evidence" report={report} screen={screen}>
       <section className="print-two-column">
         <PrintFactTable title="Assumptions table" rows={investorAssumptionRows(chosenScenario)} />
         <PrintFactTable
           title="Evidence table"
           rows={[
-            ["Market support", investorMode.marketEvidenceStatus, statusFromValue(investorMode.marketEvidenceStatus)],
-            ["Planning status", "Not yet verified", "Needs review"],
-            ["Ownership status", report.ownership.isVerified ? "Verified" : "Not verified", report.ownership.isVerified ? "Verified" : "Missing"],
-            ["Site Potential status", report.site.selectedDesign ? "Selected concept linked" : "No concept selected", report.site.selectedDesign ? "Document supported" : "Needs review"],
-            ["Documents available", `${documentSummary.totalItems}`, "Document supported"],
-            ["Major missing evidence", investorMode.missingInputs[0] ?? "No major missing evidence generated", investorMode.missingInputs.length ? "Missing" : "Verified"],
+            printFactRow(
+              "Market support",
+              investorMode.marketEvidenceStatus,
+              statusFromValue(investorMode.marketEvidenceStatus),
+            ),
+            printFactRow("Planning status", "Not reviewed", "Needs review"),
+            printFactRow(
+              "Ownership status",
+              report.ownership.isVerified ? "Verified" : null,
+              "Verified",
+            ),
+            printFactRow(
+              "Site Potential status",
+              report.site.selectedDesign ? "Selected concept linked" : "No concept selected",
+              report.site.selectedDesign ? "Document supported" : "Needs review",
+            ),
+            printFactRow("Documents available", `${documentSummary.totalItems}`, "Document supported"),
+            printFactRow(
+              "Major missing evidence",
+              investorMode.missingInputs[0] ?? "No major missing evidence generated",
+              investorMode.missingInputs.length ? "Missing" : "Verified",
+            ),
           ]}
         />
       </section>
@@ -2985,9 +3109,15 @@ function InvestorAssumptionsEvidencePage({
   );
 }
 
-function InvestorConceptActionPage(props: EasyErfPrintReportProps) {
+function InvestorConceptActionPage(props: EasyErfPrintReportProps & { screen?: boolean }) {
   return (
-    <PrintPage page={3} totalPages={3} eyebrow="Concept and investor action plan" report={props.report}>
+    <PrintPage
+      page={3}
+      totalPages={3}
+      eyebrow="Concept and investor action plan"
+      report={props.report}
+      screen={props.screen}
+    >
       <section className="print-two-column print-site-strategy-grid">
         <PrintSitePotentialBlock {...props} />
         <PrintPanel title="Investor checks required">
@@ -3010,6 +3140,12 @@ type PrintStatus =
   | "Missing"
   | "Needs review";
 
+type PrintFactRow = {
+  label: string;
+  value: ReactNode;
+  status: PrintStatus;
+};
+
 type PrintDocumentSummary = {
   paidReports: number;
   officialDocuments: number;
@@ -3024,16 +3160,18 @@ function PrintPage({
   eyebrow,
   report,
   children,
+  screen = false,
 }: {
   page: number;
   totalPages: number;
   eyebrow: string;
   report: ReturnType<typeof buildReportViewModel>;
   children: ReactNode;
+  screen?: boolean;
 }) {
   return (
     <section
-      className="report-print-page"
+      className={cn("report-print-page", screen && "report-screen-page")}
       data-report-page={`${totalPages === 4 ? "standard" : "investor"}-${page}`}
     >
       <header className="print-page-header">
@@ -3099,19 +3237,18 @@ function PrintFactTable({
   rows,
 }: {
   title: string;
-  rows: Array<[string, ReactNode, PrintStatus]>;
+  rows: PrintFactRow[];
 }) {
   return (
     <section className="print-fact-table">
       <h2>{title}</h2>
       <table>
         <tbody>
-          {rows.map(([label, value, fallbackStatus]) => {
-            const status = value ? fallbackStatus : "Missing";
+          {rows.map(({ label, value, status }) => {
             return (
               <tr key={label}>
                 <th>{label}</th>
-                <td>{value || "Not yet verified"}</td>
+                <td>{value}</td>
                 <td>
                   <span className={cn("print-status", printStatusClass(status))}>{status}</span>
                 </td>
@@ -3330,33 +3467,99 @@ function investorKpiRows(investorMode: InvestorDecisionMode) {
   ];
 }
 
+function printFactRow(
+  label: string,
+  value: ReactNode,
+  statusWhenPresent: PrintStatus,
+  options?: { missingDisplay?: ReactNode; missingStatus?: PrintStatus },
+): PrintFactRow {
+  const normalized = normalizePrintFactValue(value);
+  return {
+    label,
+    value: normalized ?? options?.missingDisplay ?? "Not yet verified",
+    status: normalized ? statusWhenPresent : options?.missingStatus ?? "Missing",
+  };
+}
+
+function planningFactRow(
+  report: ReturnType<typeof buildReportViewModel>,
+  label: string,
+): PrintFactRow {
+  const field = findPlanningField(report, label);
+  const status = field?.badge === "official" ? "Official" : "Missing";
+  return printFactRow(label, field?.value ?? null, status);
+}
+
+function normalizePrintFactValue(value: ReactNode): ReactNode | null {
+  if (value === null || value === undefined || value === false) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const sentinel = trimmed.toLowerCase();
+    if (
+      sentinel === "not yet verified" ||
+      sentinel === "not verified" ||
+      sentinel === "not provided"
+    ) {
+      return null;
+    }
+    return trimmed;
+  }
+  return value;
+}
+
 function investorAssumptionRows(
   scenario: ReturnType<typeof getChosenStrategyScenario>,
-): Array<[string, ReactNode, PrintStatus]> {
+): PrintFactRow[] {
   const input = scenario?.inputs ?? {};
   return [
-    ["Acquisition or land cost", assumptionValue(input, ["landCost", "purchasePrice"]), "User confirmed"],
-    ["Build cost", assumptionValue(input, ["buildCost", "renovationBudget"]), "User confirmed"],
-    ["Professional fees", assumptionValue(input, ["professionalFees"]), "User confirmed"],
-    ["Planning fees", assumptionValue(input, ["planningFees"]), "User confirmed"],
-    ["Contingency", assumptionValue(input, ["contingency"]), "User confirmed"],
-    ["Holding cost", assumptionValue(input, ["monthlyHoldingCost"]), "User confirmed"],
-    ["Development period", assumptionValue(input, ["developmentDurationMonths", "holdingMonths"]), "User confirmed"],
-    ["Selling cost", assumptionValue(input, ["sellingCosts"]), "User confirmed"],
-    ["Expected exit value", assumptionValue(input, ["expectedSaleValue", "expectedResalePrice", "futureValue"]), "User confirmed"],
+    printFactRow(
+      "Acquisition or land cost",
+      assumptionValue(input, ["landCost", "purchasePrice"]),
+      "User confirmed",
+    ),
+    printFactRow("Build cost", assumptionValue(input, ["buildCost", "renovationBudget"]), "User confirmed"),
+    printFactRow("Professional fees", assumptionValue(input, ["professionalFees"]), "User confirmed"),
+    printFactRow(
+      "Municipal planning fees",
+      assumptionValue(input, ["municipalPlanningFees"]),
+      "User confirmed",
+    ),
+    printFactRow("Contingency percent", assumptionValue(input, ["contingencyPercent"], "%"), "User confirmed"),
+    printFactRow("Holding cost", assumptionValue(input, ["monthlyHoldingCost"]), "User confirmed"),
+    printFactRow(
+      "Development period",
+      assumptionValue(input, ["developmentDurationMonths", "holdingMonths"], " months"),
+      "User confirmed",
+    ),
+    printFactRow("Exit selling costs", assumptionValue(input, ["exitSellingCosts"]), "User confirmed"),
+    printFactRow(
+      "Expected exit value",
+      assumptionValue(input, ["expectedSaleValue", "expectedResalePrice", "futureValue"]),
+      "User confirmed",
+    ),
   ];
 }
 
-function assumptionValue(inputs: Record<string, unknown>, keys: string[]) {
+function assumptionValue(inputs: Record<string, unknown>, keys: string[], suffix = "") {
   for (const key of keys) {
     const value = inputs[key];
-    if (value !== undefined && value !== null && String(value).trim()) return `${String(value)} (User assumption)`;
+    if (value !== undefined && value !== null && String(value).trim()) {
+      const text = String(value).trim();
+      const decorated =
+        suffix && !text.endsWith(suffix.trim()) && !text.endsWith(suffix) ? `${text}${suffix}` : text;
+      return `${decorated} (User assumption)`;
+    }
   }
   return null;
 }
 
-function planningValue(report: ReturnType<typeof buildReportViewModel>, label: string) {
-  return report.planning.find((field) => field.label.toLowerCase() === label.toLowerCase())?.value ?? null;
+function findPlanningField(report: ReturnType<typeof buildReportViewModel>, label: string) {
+  const normalizedLabel = label.toLowerCase();
+  return report.planning.find((field) => {
+    const fieldLabel = field.label.toLowerCase();
+    return fieldLabel === normalizedLabel || fieldLabel.startsWith(`${normalizedLabel} `);
+  });
 }
 
 function formatArea(value: number | null | undefined) {
@@ -3441,13 +3644,19 @@ const PRINT_ASSUMPTION_FIELDS: Record<string, Array<[string, string]>> = {
     ["Land cost", "landCost"],
     ["Build cost", "buildCost"],
     ["Professional fees", "professionalFees"],
+    ["Municipal planning fees", "municipalPlanningFees"],
+    ["Contingency percent", "contingencyPercent"],
     ["Development duration", "developmentDurationMonths"],
     ["Monthly holding cost", "monthlyHoldingCost"],
+    ["Exit selling costs", "exitSellingCosts"],
     ["Expected sale value", "expectedSaleValue"],
   ],
   development_rent: [
     ["Land cost", "landCost"],
     ["Build cost", "buildCost"],
+    ["Professional fees", "professionalFees"],
+    ["Municipal planning fees", "municipalPlanningFees"],
+    ["Contingency percent", "contingencyPercent"],
     ["Development duration", "developmentDurationMonths"],
     ["Expected monthly rent", "expectedMonthlyRent"],
     ["Operating expenses", "operatingExpenses"],
@@ -3517,6 +3726,16 @@ function PrintStrategyAssumptions({ scenario }: { scenario: ErfStrategyScenario 
     </dl>
   );
 }
+
+// Exposed only so report tests can render these exact presentation helpers.
+// eslint-disable-next-line react-refresh/only-export-components
+export const __REPORT_PRESENTATION_TESTS = {
+  PrintFactTable,
+  PrintStrategyAssumptions,
+  formatArea,
+  investorAssumptionRows,
+  printFactRow,
+};
 
 function PrintList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   const visibleItems = items.filter(Boolean);

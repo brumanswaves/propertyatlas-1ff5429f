@@ -247,6 +247,32 @@
   page-break-after: auto;
 }
 
+.easy-erf-screen-document {
+  color: #0D1B2A;
+}
+
+.easy-erf-screen-document .report-screen-page {
+  background: #ffffff;
+  border: 1px solid #D9E6F2;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px -46px rgba(13, 27, 42, 0.72);
+  break-after: auto;
+  margin-inline: auto;
+  max-width: 960px;
+  min-height: auto;
+  overflow: hidden;
+  padding: 18px;
+  page-break-after: auto;
+}
+
+.easy-erf-screen-document .report-screen-page + .report-screen-page {
+  margin-top: 28px;
+}
+
+.easy-erf-screen-document .print-page-footer {
+  border-radius: 0 0 10px 10px;
+}
+
 .report-print-cover {
   min-height: 268mm;
   display: flex;

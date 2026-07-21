@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   buildReportViewModel,
   REPORT_SECTIONS,
@@ -9,6 +11,7 @@ import {
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
+import { __REPORT_PRESENTATION_TESTS } from "@/components/property/ErfResearchDossier";
 
 function baseParcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -132,6 +135,89 @@ describe("buildReportViewModel", () => {
     expect(ids).toContain("report-ownership");
     expect(ids).toContain("report-recommendations");
     for (const id of ids) expect(id.startsWith("report-")).toBe(true);
+  });
+});
+
+describe("Easy Erf report presentation rendering", () => {
+  const {
+    PrintFactTable,
+    PrintStrategyAssumptions,
+    formatArea,
+    investorAssumptionRows,
+    printFactRow,
+  } = __REPORT_PRESENTATION_TESTS;
+
+  it("renders explicit factual statuses for missing and populated area and zoning rows", () => {
+    const html = renderToStaticMarkup(
+      createElement(PrintFactTable, {
+        title: "Rendered status proof",
+        rows: [
+          printFactRow("Missing erf area", null, "Official"),
+          printFactRow("Verified erf area", formatArea(1570), "Official"),
+          printFactRow("Missing zoning", null, "Official"),
+          printFactRow("Populated zoning", "Single Residential", "Official"),
+        ],
+      }),
+    );
+
+    expect(html).toMatch(/Missing erf area[\s\S]*Not yet verified[\s\S]*Missing/);
+    expect(html).toMatch(/Verified erf area[\s\S]*1(?:,|&nbsp;|\s)570 m2[\s\S]*Official/);
+    expect(html).toMatch(/Missing zoning[\s\S]*Not yet verified[\s\S]*Missing/);
+    expect(html).toMatch(/Populated zoning[\s\S]*Single Residential[\s\S]*Official/);
+    expect(html).not.toContain(
+      '<td>Not yet verified</td><td><span class="print-status print-status-good">Official</span>',
+    );
+  });
+
+  it("renders saved development assumptions from the real Strategy keys", () => {
+    const scenario = {
+      strategy: "development_sell",
+      inputs: {
+        landCost: "1175000",
+        buildCost: "3500000",
+        professionalFees: "250000",
+        municipalPlanningFees: "120000",
+        contingencyPercent: "10",
+        developmentDurationMonths: "14",
+        monthlyHoldingCost: "18000",
+        exitSellingCosts: "150000",
+        expectedSaleValue: "6200000",
+      },
+    };
+
+    const standardHtml = renderToStaticMarkup(
+      createElement(PrintStrategyAssumptions, { scenario: scenario as never }),
+    );
+    const investorHtml = renderToStaticMarkup(
+      createElement(PrintFactTable, {
+        title: "Investor assumptions",
+        rows: investorAssumptionRows(scenario as never),
+      }),
+    );
+    const combined = `${standardHtml}${investorHtml}`;
+
+    expect(combined).toContain("Municipal planning fees");
+    expect(combined).toContain("120000 (User assumption)");
+    expect(combined).toContain("Contingency percent");
+    expect(combined).toContain("10% (User assumption)");
+    expect(combined).toContain("Exit selling costs");
+    expect(combined).toContain("150000 (User assumption)");
+    expect(combined).not.toMatch(/Municipal planning fees[\s\S]*Not yet verified/);
+    expect(combined).not.toMatch(/Contingency percent[\s\S]*Not yet verified/);
+    expect(combined).not.toMatch(/Exit selling costs[\s\S]*Not yet verified/);
+  });
+
+  it("renders missing development assumptions as not yet verified and missing", () => {
+    const html = renderToStaticMarkup(
+      createElement(PrintFactTable, {
+        title: "Missing investor assumptions",
+        rows: investorAssumptionRows({ strategy: "development_sell", inputs: {} } as never),
+      }),
+    );
+
+    expect(html).toMatch(/Municipal planning fees[\s\S]*Not yet verified[\s\S]*Missing/);
+    expect(html).toMatch(/Contingency percent[\s\S]*Not yet verified[\s\S]*Missing/);
+    expect(html).toMatch(/Exit selling costs[\s\S]*Not yet verified[\s\S]*Missing/);
   });
 });
 
