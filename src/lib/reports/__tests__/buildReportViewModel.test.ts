@@ -226,6 +226,20 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(styles).toContain('[style*="conic-gradient"]');
   });
 
+  it("prints corrected cover facts, Strategy assumptions and selected Site Potential images", () => {
+    expect(source).toContain('label="Location"');
+    expect(source).toContain('label="Erf area"');
+    expect(source).toContain("PrintStrategyAssumptions");
+    expect(source).toContain("(User assumption)");
+    expect(source).toContain("Calculated outputs");
+    expect(source).toContain("selectedDesignImageUrl");
+    expect(source).toContain("Selected Site Potential image could not be loaded for this PDF.");
+    expect(source).toContain("trackSignedAssetPreviewSettlement(settlement.then(() => undefined))");
+    expect(styles).toContain(".report-print-site-image");
+    expect(styles).toContain("object-fit: contain");
+    expect(styles).toContain(".report-print-image-placeholder");
+  });
+
   it("renders section anchor targets that match REPORT_SECTIONS", () => {
     for (const s of REPORT_SECTIONS) {
       expect(source).toContain(`id="${s.anchorId}"`);

@@ -288,6 +288,31 @@
   margin-top: 10px;
 }
 
+.report-print-site-image {
+  display: block;
+  width: 100%;
+  max-height: 126mm;
+  object-fit: contain;
+  border: 1px solid #D9E6F2;
+  border-radius: 14px;
+  background: #F8FBFF;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-image-placeholder {
+  margin-top: 14px;
+  border: 1px dashed #CBD5E1;
+  border-radius: 14px;
+  background: #F8FBFF;
+  color: #64748B;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* Property Intelligence Report — print stylesheet */
 @media print {
   @page { size: A4 portrait; margin: 12mm; }

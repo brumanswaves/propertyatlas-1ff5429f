@@ -74,7 +74,12 @@ describe("saved property user_data patching", () => {
     expect(migration).toContain("ON CONFLICT (user_id, parcel_id) DO NOTHING");
     expect(migration).toContain("FOR UPDATE");
     expect(migration).toContain("v_merged := v_existing || v_patch");
-    expect(migration).toContain("v_patch := v_patch - 'strategyWorkspace'");
+    expect(migration).toContain("v_next_strategy := jsonb_set");
+    expect(migration).toContain("'{activeStrategy}'");
+    expect(migration).toContain("'{chosenScenarioId}'");
+    expect(migration).toContain("jsonb_array_elements(v_current_strategy -> 'scenarios')");
+    expect(migration).toContain("jsonb_array_elements(v_incoming_strategy -> 'scenarios')");
+    expect(migration).not.toContain("v_patch := v_patch - 'strategyWorkspace'");
     expect(migration).toContain("GRANT EXECUTE");
   });
 });

@@ -53,6 +53,7 @@ import {
   saveStrategyScenario,
   strategyWorkspaceFromUserData,
   writeStrategyWorkspace,
+  type ErfStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
   createErfAssetSignedUrl,
@@ -1418,6 +1419,11 @@ function StoepAiReportView({
   );
   const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
   const selectedDesign = siteProject.selectedDesign;
+  const [selectedDesignPrintImage, setSelectedDesignPrintImage] = useState<{
+    assetId: string;
+    status: "loading" | "ready" | "failed";
+    url: string | null;
+  } | null>(null);
   const groupedAssets = groupErfAssets(fileVault.assets);
   const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const sitePotentialSkipped =
@@ -1471,6 +1477,56 @@ function StoepAiReportView({
       alive = false;
     };
   }, [parcel.id, user]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!selectedDesign) {
+      setSelectedDesignPrintImage(null);
+      return () => {
+        alive = false;
+      };
+    }
+
+    if (signedAssetPreviewUrlCache.has(selectedDesign.id)) {
+      setSelectedDesignPrintImage({
+        assetId: selectedDesign.id,
+        status: "ready",
+        url: signedAssetPreviewUrlCache.get(selectedDesign.id) as string,
+      });
+      return () => {
+        alive = false;
+      };
+    }
+
+    setSelectedDesignPrintImage({
+      assetId: selectedDesign.id,
+      status: "loading",
+      url: null,
+    });
+    const settlement = createErfAssetSignedUrl(selectedDesign)
+      .then((signedUrl) => {
+        if (signedUrl) signedAssetPreviewUrlCache.set(selectedDesign.id, signedUrl);
+        if (!alive) return;
+        setSelectedDesignPrintImage({
+          assetId: selectedDesign.id,
+          status: signedUrl ? "ready" : "failed",
+          url: signedUrl,
+        });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setSelectedDesignPrintImage({
+          assetId: selectedDesign.id,
+          status: "failed",
+          url: null,
+        });
+      });
+    trackSignedAssetPreviewSettlement(settlement.then(() => undefined));
+
+    return () => {
+      alive = false;
+    };
+  }, [selectedDesign]);
 
   const report = buildReportViewModel({
     parcel,
@@ -1675,6 +1731,14 @@ function StoepAiReportView({
     }
   };
 
+  const currentSelectedDesignPrintImage =
+    selectedDesignPrintImage?.assetId === selectedDesign?.id ? selectedDesignPrintImage : null;
+  const selectedDesignImageReady =
+    currentSelectedDesignPrintImage?.status === "ready"
+      ? currentSelectedDesignPrintImage.url
+      : null;
+  const selectedDesignImageFailed = currentSelectedDesignPrintImage?.status === "failed";
+
   const reportDocument = (printOnly = false) =>
     printOnly ? (
       <EasyErfPrintReport
@@ -1683,6 +1747,8 @@ function StoepAiReportView({
         investorMode={investorMode}
         decisionMode={decisionMode}
         selectedDesign={selectedDesign}
+        selectedDesignImageUrl={selectedDesignImageReady}
+        selectedDesignImageFailed={selectedDesignImageFailed}
         selectedSiteMode={selectedSiteMode}
         siteProject={siteProject}
         sitePotentialSkipped={sitePotentialSkipped}
@@ -2476,6 +2542,8 @@ function EasyErfPrintReport({
   investorMode,
   decisionMode,
   selectedDesign,
+  selectedDesignImageUrl,
+  selectedDesignImageFailed,
   selectedSiteMode,
   siteProject,
   sitePotentialSkipped,
@@ -2489,6 +2557,8 @@ function EasyErfPrintReport({
   investorMode: InvestorDecisionMode;
   decisionMode: ReportDecisionMode;
   selectedDesign: ErfAsset | null;
+  selectedDesignImageUrl: string | null;
+  selectedDesignImageFailed: boolean;
   selectedSiteMode: string | null | undefined;
   siteProject: ReturnType<typeof useSitePotentialProject>;
   sitePotentialSkipped: boolean;
@@ -2514,7 +2584,11 @@ function EasyErfPrintReport({
         <p className="mt-2 text-lg font-semibold text-[#0D1B2A]">{report.identity.displayName}</p>
         <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
           <PrintFact label="Municipality" value={report.identity.municipality} />
-          <PrintFact label="Area" value={report.identity.marketAddressLine ?? report.identity.officialLine} />
+          <PrintFact label="Location" value={report.identity.marketAddressLine ?? report.identity.officialLine} />
+          <PrintFact
+            label="Erf area"
+            value={report.identity.areaM2 != null ? `${report.identity.areaM2.toLocaleString()} m²` : null}
+          />
           <PrintFact label="Report date" value={new Date(report.generatedAt).toLocaleDateString()} />
           <PrintFact label="Evidence confidence" value={`${decision.confidencePercent}%`} />
           <PrintFact label="Chosen Strategy" value={report.strategy.chosen?.label ?? "Not chosen"} />
@@ -2578,13 +2652,20 @@ function EasyErfPrintReport({
         </p>
         <PrintPageHeading title="Chosen Strategy" />
         {chosenScenario ? (
-          <dl className="print-table">
-            <PrintFact label="Scenario" value={chosenScenario.label} />
-            <PrintFact label="Saved scenarios" value={`${scenarios.length}`} />
-            {chosenScenario.summary.slice(0, 6).map((item) => (
-              <PrintFact key={item.label} label={item.label} value={item.value} />
-            ))}
-          </dl>
+          <>
+            <dl className="print-table">
+              <PrintFact label="Scenario" value={chosenScenario.label} />
+              <PrintFact label="Saved scenarios" value={`${scenarios.length}`} />
+            </dl>
+            <PrintPageHeading title="Key Strategy assumptions" />
+            <PrintStrategyAssumptions scenario={chosenScenario} />
+            <PrintPageHeading title="Calculated outputs" />
+            <dl className="print-table">
+              {chosenScenario.summary.slice(0, 6).map((item) => (
+                <PrintFact key={item.label} label={item.label} value={item.value} />
+              ))}
+            </dl>
+          </>
         ) : (
           <p className="print-paragraph">No chosen Strategy Lab scenario has been saved yet.</p>
         )}
@@ -2609,6 +2690,24 @@ function EasyErfPrintReport({
               ? "Site Potential has been skipped for this report."
               : "No Site Potential concept has been selected yet."}
         </p>
+        {selectedDesign && selectedDesignImageUrl ? (
+          <figure className="report-print-avoid-break mt-4">
+            <img
+              src={selectedDesignImageUrl}
+              alt={`Selected Site Potential concept: ${selectedDesign.original_file_name}`}
+              className="report-print-site-image"
+            />
+            <figcaption className="mt-2 text-xs text-[#64748B]">
+              Selected Site Potential image. Stored source asset: {selectedDesign.original_file_name}.
+            </figcaption>
+          </figure>
+        ) : selectedDesign ? (
+          <p className="report-print-image-placeholder">
+            {selectedDesignImageFailed
+              ? "Selected Site Potential image could not be loaded for this PDF."
+              : "Selected Site Potential image is still loading for this PDF."}
+          </p>
+        ) : null}
         <p className="print-paragraph">
           {siteProject.project?.design_brief || "No Site Potential design brief is saved yet."}
         </p>
@@ -2666,6 +2765,104 @@ function PrintFact({ label, value }: { label: string; value: ReactNode }) {
       <dt>{label}</dt>
       <dd>{value || "Not yet verified"}</dd>
     </div>
+  );
+}
+
+const PRINT_ASSUMPTION_FIELDS: Record<string, Array<[string, string]>> = {
+  buy_hold: [
+    ["Purchase price", "purchasePrice"],
+    ["Monthly rent", "monthlyRent"],
+    ["Vacancy", "vacancyPercent"],
+    ["Interest rate", "interestRate"],
+    ["Monthly rates", "monthlyRates"],
+    ["Monthly levies", "monthlyLevies"],
+  ],
+  flip: [
+    ["Purchase price", "purchasePrice"],
+    ["Renovation budget", "renovationBudget"],
+    ["Holding months", "holdingMonths"],
+    ["Monthly holding cost", "monthlyHoldingCost"],
+    ["Expected resale price", "expectedResalePrice"],
+    ["Selling costs", "sellingCosts"],
+  ],
+  development_sell: [
+    ["Land cost", "landCost"],
+    ["Build cost", "buildCost"],
+    ["Professional fees", "professionalFees"],
+    ["Development duration", "developmentDurationMonths"],
+    ["Monthly holding cost", "monthlyHoldingCost"],
+    ["Expected sale value", "expectedSaleValue"],
+  ],
+  development_rent: [
+    ["Land cost", "landCost"],
+    ["Build cost", "buildCost"],
+    ["Development duration", "developmentDurationMonths"],
+    ["Expected monthly rent", "expectedMonthlyRent"],
+    ["Operating expenses", "operatingExpenses"],
+    ["Monthly holding cost", "monthlyHoldingCost"],
+  ],
+  str_airbnb: [
+    ["Average daily rate", "averageDailyRate"],
+    ["Occupancy", "occupancyPercent"],
+    ["Nights per month", "nightsPerMonth"],
+    ["Platform fee", "platformFeePercent"],
+    ["Cleaning cost", "cleaningCost"],
+    ["Furnishing setup cost", "furnishingSetupCost"],
+  ],
+  brrrr: [
+    ["Purchase price", "purchasePrice"],
+    ["Renovation budget", "renovationBudget"],
+    ["All-in cost", "allInCost"],
+    ["After-repair value", "afterRepairValue"],
+    ["Refinance LTV", "refinanceLtv"],
+    ["Monthly rent", "monthlyRent"],
+  ],
+  bond: [
+    ["Loan amount", "loanAmount"],
+    ["Interest rate", "interestRate"],
+    ["Term years", "termYears"],
+    ["Monthly rent", "monthlyRent"],
+    ["Monthly NOI", "monthlyNoi"],
+    ["Monthly bond payment", "monthlyBondPayment"],
+  ],
+  land_bank: [
+    ["Purchase price", "purchasePrice"],
+    ["Holding months", "holdingMonths"],
+    ["Monthly holding cost", "monthlyHoldingCost"],
+    ["Monthly rates", "monthlyRates"],
+    ["Monthly levies", "monthlyLevies"],
+    ["Future value target", "futureValue"],
+  ],
+  custom: [
+    ["Purchase price", "purchasePrice"],
+    ["Cash required", "deposit"],
+    ["Monthly rent", "monthlyRent"],
+    ["Bond payment", "monthlyBondPayment"],
+    ["Custom upside", "customUpside"],
+    ["Custom notes", "customNotes"],
+  ],
+};
+
+function PrintStrategyAssumptions({ scenario }: { scenario: ErfStrategyScenario }) {
+  const fields = PRINT_ASSUMPTION_FIELDS[scenario.strategy] ?? PRINT_ASSUMPTION_FIELDS.custom;
+  const rows = fields
+    .map(([label, key]) => [label, String(scenario.inputs[key] ?? "").trim()] as const)
+    .filter(([, value]) => value.length > 0);
+
+  if (!rows.length) {
+    return (
+      <p className="print-paragraph">
+        No user-entered assumptions were saved for this chosen scenario yet.
+      </p>
+    );
+  }
+
+  return (
+    <dl className="print-table">
+      {rows.slice(0, 8).map(([label, value]) => (
+        <PrintFact key={label} label={label} value={`${value} (User assumption)`} />
+      ))}
+    </dl>
   );
 }
 

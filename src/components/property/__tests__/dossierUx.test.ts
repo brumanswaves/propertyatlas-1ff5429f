@@ -987,6 +987,7 @@ describe("Investor Decision Mode guardrails", () => {
 
   it("keeps Strategy drafts durable and separate from the chosen report scenario", () => {
     const strategyLab = read("src/components/property/strategy/StrategyLab.tsx");
+    const cloudQueue = read("src/lib/workbench/strategyCloudSaveQueue.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
 
@@ -997,8 +998,10 @@ describe("Investor Decision Mode guardrails", () => {
     expect(strategyLab).toContain("Autosaved draft separate from chosen report scenario");
     expect(strategyLab).toContain("persistStrategyWorkspaceToCloud");
     expect(strategyLab).toContain("patchSavedPropertyUserData");
-    expect(strategyLab).toContain("setTimeout");
-    expect(strategyLab).toContain("750");
+    expect(strategyLab).toContain("createStrategyCloudSaveQueue");
+    expect(cloudQueue).toContain("debounceMs = 750");
+    expect(cloudQueue).toContain("workspace.parcelId === parcelId");
+    expect(cloudQueue).toContain("dispose()");
     expect(strategyLab).toContain("Saving draft");
     expect(strategyLab).toContain("Draft saved at");
     expect(strategyLab).toContain("Save failed");

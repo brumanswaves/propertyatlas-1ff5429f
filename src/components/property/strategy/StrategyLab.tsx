@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,6 +29,10 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { supabase } from "@/integrations/supabase/client";
 import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
+import {
+  createStrategyCloudSaveQueue,
+  type StrategyCloudSaveQueue,
+} from "@/lib/workbench/strategyCloudSaveQueue";
 
 type StrategyType =
   | "buy_hold"
@@ -299,6 +303,7 @@ export function StrategyLab({
   onOpenReport?: () => void;
 }) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const initialWorkspace = readStrategyWorkspace(parcelId);
   const [active, setActive] = useState<StrategyType>(() =>
     STRATEGY_OPTIONS.some((option) => option.id === initialWorkspace.activeStrategy)
@@ -315,13 +320,11 @@ export function StrategyLab({
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
     readSitePotentialStrategyDraft(parcelId),
   );
-  const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(user ? "loading" : "offline");
+  const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(userId ? "loading" : "offline");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const defaultPriceRef = useRef(defaultPrice);
-  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cloudSaveInFlightRef = useRef(false);
-  const pendingCloudWorkspaceRef = useRef<ErfStrategyWorkspace | null>(null);
+  const cloudSaveQueueRef = useRef<StrategyCloudSaveQueue | null>(null);
   const latestWorkspaceRef = useRef(initialWorkspace);
   defaultPriceRef.current = defaultPrice;
 
@@ -339,15 +342,54 @@ export function StrategyLab({
     setShowChosenState(Boolean(chosen));
     setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
     latestWorkspaceRef.current = workspace;
-    pendingCloudWorkspaceRef.current = null;
     setSaveError(null);
     setLastSavedAt(null);
-    setSaveStatus(user ? "loading" : "offline");
-  }, [parcelId]);
+    setSaveStatus(userId ? "loading" : "offline");
+  }, [parcelId, userId]);
+
+  useEffect(() => {
+    const queue = createStrategyCloudSaveQueue({
+      parcelId,
+      userId,
+      persist: (workspace) => persistStrategyWorkspaceToCloud(parcelId, workspace),
+    });
+    cloudSaveQueueRef.current = queue;
+    const unsubscribe = queue.subscribe((snapshot) => {
+      setSaveStatus(snapshot.status);
+      setLastSavedAt(snapshot.lastSavedAt);
+      setSaveError(snapshot.error);
+    });
+
+    return () => {
+      unsubscribe();
+      void queue.flush();
+      queue.dispose();
+      if (cloudSaveQueueRef.current === queue) cloudSaveQueueRef.current = null;
+    };
+  }, [parcelId, userId]);
+
+  const queueCloudSave = useCallback(
+    (workspace: ErfStrategyWorkspace, immediate = false) => {
+      latestWorkspaceRef.current = workspace;
+      if (!userId) {
+        setSaveStatus("offline");
+        return;
+      }
+      cloudSaveQueueRef.current?.schedule(workspace);
+      if (immediate) {
+        void cloudSaveQueueRef.current?.flush();
+      }
+    },
+    [userId],
+  );
+
+  const flushStrategySave = useCallback(() => {
+    void cloudSaveQueueRef.current?.flush();
+  }, []);
 
   useEffect(() => {
     let alive = true;
-    if (!user) {
+    if (!userId) {
       setSaveStatus("offline");
       return () => {
         alive = false;
@@ -358,7 +400,7 @@ export function StrategyLab({
     supabase
       .from("saved_properties")
       .select("user_data")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("parcel_id", parcelId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -396,85 +438,8 @@ export function StrategyLab({
 
     return () => {
       alive = false;
-      flushStrategySave();
     };
-  }, [parcelId, user]);
-
-  useEffect(
-    () => () => {
-      clearCloudSaveTimer();
-      flushStrategySave();
-    },
-    [parcelId, user],
-  );
-
-  function clearCloudSaveTimer() {
-    if (cloudSaveTimerRef.current) {
-      clearTimeout(cloudSaveTimerRef.current);
-      cloudSaveTimerRef.current = null;
-    }
-  }
-
-  async function runCloudSave(workspace: ErfStrategyWorkspace) {
-    if (!user) {
-      setSaveStatus("offline");
-      return;
-    }
-    if (cloudSaveInFlightRef.current) {
-      pendingCloudWorkspaceRef.current = workspace;
-      setSaveStatus("saving");
-      return;
-    }
-
-    cloudSaveInFlightRef.current = true;
-    pendingCloudWorkspaceRef.current = null;
-    setSaveStatus("saving");
-    setSaveError(null);
-    try {
-      await persistStrategyWorkspaceToCloud(parcelId, workspace);
-      setLastSavedAt(new Date().toISOString());
-      const pending = pendingCloudWorkspaceRef.current;
-      cloudSaveInFlightRef.current = false;
-      if (pending && pending !== workspace) {
-        pendingCloudWorkspaceRef.current = null;
-        await runCloudSave(pending);
-        return;
-      }
-      setSaveStatus("saved");
-    } catch (error) {
-      cloudSaveInFlightRef.current = false;
-      pendingCloudWorkspaceRef.current = workspace;
-      setSaveError(error instanceof Error ? error.message : "Cloud save failed");
-      setSaveStatus("failed");
-      console.warn("[Easy Erf] Strategy workspace cloud save failed", error);
-    }
-  }
-
-  function queueCloudSave(workspace: ErfStrategyWorkspace, immediate = false) {
-    latestWorkspaceRef.current = workspace;
-    if (!user) {
-      setSaveStatus("offline");
-      return;
-    }
-    pendingCloudWorkspaceRef.current = workspace;
-    setSaveStatus("saving");
-    if (immediate) {
-      clearCloudSaveTimer();
-      void runCloudSave(workspace);
-      return;
-    }
-    clearCloudSaveTimer();
-    cloudSaveTimerRef.current = setTimeout(() => {
-      const pending = pendingCloudWorkspaceRef.current;
-      if (pending) void runCloudSave(pending);
-    }, 750);
-  }
-
-  function flushStrategySave() {
-    const pending = pendingCloudWorkspaceRef.current ?? latestWorkspaceRef.current;
-    if (!pending) return;
-    queueCloudSave(pending, true);
-  }
+  }, [parcelId, queueCloudSave, userId]);
 
   function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
     const workspace = saveStrategyDraft(parcelId, {
