@@ -313,6 +313,245 @@
   page-break-inside: avoid;
 }
 
+.print-page-header,
+.print-page-footer,
+.print-snapshot-hero,
+.print-kpi-strip,
+.print-three-column,
+.print-two-column,
+.print-investor-snapshot,
+.print-investor-kpi-grid,
+.print-site-strategy-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.print-page-header {
+  grid-template-columns: 120px 1fr;
+  align-items: start;
+  border-bottom: 2px solid #0D1B2A;
+  padding-bottom: 8px;
+  text-align: right;
+  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.print-logo {
+  width: 98px;
+  height: auto;
+  justify-self: start;
+}
+
+.print-page-header span,
+.print-muted {
+  color: #64748B;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.print-page-body {
+  padding: 10px 0;
+}
+
+.print-page-footer {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-top: auto;
+  background: #0D1B2A;
+  color: #ffffff;
+  font-size: 8.5px;
+  line-height: 1.35;
+  padding: 7px 10px;
+}
+
+.print-snapshot-hero {
+  grid-template-columns: 0.42fr 0.58fr;
+  border: 1px solid #D9E6F2;
+  min-height: 52mm;
+}
+
+.print-snapshot-title {
+  background: #0D1B2A;
+  color: #ffffff;
+  padding: 14px;
+}
+
+.print-snapshot-title h1 {
+  font-size: 28px;
+  line-height: 1;
+  margin: 0 0 10px;
+}
+
+.print-snapshot-title p {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 5px 0;
+}
+
+.print-hero-image,
+.print-hero-fallback {
+  height: 52mm;
+  width: 100%;
+  object-fit: cover;
+}
+
+.print-hero-fallback {
+  align-items: center;
+  background: #F7FBFF;
+  color: #64748B;
+  display: flex;
+  font-size: 12px;
+  justify-content: center;
+  text-align: center;
+}
+
+.print-kpi-strip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.print-kpi,
+.print-panel,
+.print-fact-table,
+.print-risk-table,
+.print-action-table {
+  border: 1px solid #D9E6F2;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.print-kpi span,
+.print-fact-grid dt,
+.print-fact-table th {
+  color: #64748B;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.print-kpi strong {
+  color: #0D1B2A;
+  display: block;
+  font-size: 17px;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.print-kpi small {
+  color: #0D1B2A;
+  display: block;
+  font-size: 9px;
+  margin-top: 4px;
+}
+
+.print-three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.print-two-column,
+.print-investor-snapshot {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.print-investor-kpi-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.print-panel h2,
+.print-fact-table h2,
+.print-risk-table h2,
+.print-action-table h2 {
+  color: #0D1B2A;
+  font-size: 13px;
+  font-weight: 850;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.print-panel p {
+  color: #334155;
+  font-size: 10.5px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.print-fact-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.print-fact-grid div {
+  border-top: 1px solid #E2E8F0;
+  padding-top: 6px;
+}
+
+.print-fact-grid dd {
+  color: #0D1B2A;
+  font-size: 11px;
+  font-weight: 750;
+  margin: 2px 0 0;
+}
+
+.print-fact-table table,
+.print-risk-table table,
+.print-action-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.print-fact-table th,
+.print-fact-table td,
+.print-risk-table th,
+.print-risk-table td,
+.print-action-table th,
+.print-action-table td {
+  border-top: 1px solid #E2E8F0;
+  color: #0D1B2A;
+  font-size: 9.5px;
+  line-height: 1.35;
+  padding: 5px 4px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+}
+
+.print-status-good { color: #166534; background: #DCFCE7; }
+.print-status-user { color: #075985; background: #E0F2FE; }
+.print-status-review { color: #92400E; background: #FEF3C7; }
+.print-status-missing { color: #991B1B; background: #FEE2E2; }
+
+.print-compact-list {
+  color: #0D1B2A;
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.print-warning {
+  border-left: 3px solid #FF6A00;
+  color: #92400E !important;
+  margin-top: 8px !important;
+  padding-left: 8px;
+}
+
+.print-decision-status {
+  color: #FF6A00;
+  font-size: 20px;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
 /* Property Intelligence Report — print stylesheet */
 @media print {
   @page { size: A4 portrait; margin: 12mm; }

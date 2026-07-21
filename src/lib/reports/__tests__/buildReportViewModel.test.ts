@@ -145,6 +145,10 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     resolve(__dirname, "../reportPrintLifecycle.ts"),
     "utf8",
   );
+  const printPresentationSource = source.slice(
+    source.indexOf("function EasyErfPrintReport"),
+    source.indexOf("function PrintPageHeading"),
+  );
 
   it("wires print through a dedicated iframe document", () => {
     expect(source).toContain("createReportPrintFrame");
@@ -169,6 +173,9 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(source).toContain("createReportPrintLifecycleController");
     expect(source).toContain("REPORT_PRINT_FOCUS_MIN_HOLD_MS = 30_000");
     expect(source).toContain("lifecycle?.markPrintStarted()");
+    expect(source).toContain(
+      'For a clean Easy Erf PDF, turn off "Headers and footers" in Chrome\\\'s print options.',
+    );
     expect(source).not.toContain("setTimeout(() => cleanup(), 600)");
     expect(lifecycleSource).toContain('frameWindow.addEventListener("afterprint"');
     expect(lifecycleSource).toContain('frameWindow.matchMedia?.("print")');
@@ -226,9 +233,73 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(styles).toContain('[style*="conic-gradient"]');
   });
 
+  it("uses separate approved Standard and Investor screen and print components", () => {
+    expect(source).toContain("function EasyErfStandardScreenReport");
+    expect(source).toContain("function EasyErfInvestorScreenReport");
+    expect(source).toContain("function EasyErfStandardPrintReport");
+    expect(source).toContain("function EasyErfInvestorPrintReport");
+    expect(source).toContain('data-report-kind="standard"');
+    expect(source).toContain('data-report-kind="investor"');
+    expect(printPresentationSource).toContain('data-report-page={`${totalPages === 4 ? "standard" : "investor"}-${page}`}');
+    expect(printPresentationSource).toContain("<StandardSnapshotPage");
+    expect(printPresentationSource).toContain("<StandardFactsPage");
+    expect(printPresentationSource).toContain("<StandardMarketStrategyPage");
+    expect(printPresentationSource).toContain("<StandardSiteActionPage");
+    expect(printPresentationSource).toContain("<InvestorDealSnapshotPage");
+    expect(printPresentationSource).toContain("<InvestorAssumptionsEvidencePage");
+    expect(printPresentationSource).toContain("<InvestorConceptActionPage");
+  });
+
+  it("locks the approved print page architecture and key fields", () => {
+    expect(printPresentationSource).toContain('eyebrow="Property intelligence snapshot"');
+    expect(printPresentationSource).toContain('eyebrow="Facts and planning"');
+    expect(printPresentationSource).toContain('eyebrow="Market, risks and strategy"');
+    expect(printPresentationSource).toContain('eyebrow="Site potential and action plan"');
+    expect(printPresentationSource).toContain('eyebrow="Investor deal snapshot"');
+    expect(printPresentationSource).toContain('eyebrow="Assumptions and evidence"');
+    expect(printPresentationSource).toContain('eyebrow="Concept and investor action plan"');
+    expect(printPresentationSource).toContain("Evidence confidence");
+    expect(printPresentationSource).toContain("Overall risk");
+    expect(printPresentationSource).toContain("Erf size");
+    expect(printPresentationSource).toContain("Market evidence");
+    expect(printPresentationSource).toContain("Documents on file");
+    expect(printPresentationSource).toContain("Total project cost");
+    expect(printPresentationSource).toContain("Expected exit value");
+    expect(printPresentationSource).toContain("Return on cost");
+    expect(printPresentationSource).toContain("Break-even");
+    expect(printPresentationSource).toContain("Evidence readiness");
+  });
+
+  it("keeps print output free of raw app chrome and file inventory details", () => {
+    expect(printPresentationSource).not.toContain("AskEasyErfSection");
+    expect(printPresentationSource).not.toContain("ReportChangeTrackingSection");
+    expect(printPresentationSource).not.toContain("Stable asset ID");
+    expect(printPresentationSource).not.toContain("original_file_name");
+    expect(printPresentationSource).not.toContain("formatAssetSize");
+    expect(printPresentationSource).not.toContain("formatAssetDate");
+    expect(printPresentationSource).not.toContain("Living report");
+    expect(printPresentationSource).not.toContain("AI extraction is not enabled");
+    expect(printPresentationSource).not.toContain("report-change");
+    expect(printPresentationSource).toContain("summarizePrintDocuments");
+    expect(printPresentationSource).toContain("Paid reports");
+    expect(printPresentationSource).toContain("Official/source documents");
+    expect(printPresentationSource).toContain("User-uploaded documents");
+    expect(printPresentationSource).toContain("Concept images");
+    expect(printPresentationSource).toContain("Total items");
+  });
+
+  it("prints honest missing-input states instead of fake financial outputs", () => {
+    expect(printPresentationSource).toContain("Not calculated");
+    expect(printPresentationSource).toContain("Required assumptions are missing");
+    expect(printPresentationSource).toContain("safeStrategyOutputRows");
+    expect(printPresentationSource).toContain("row.state === \"available\"");
+    expect(printPresentationSource).not.toContain("-100%");
+    expect(printPresentationSource).not.toContain("zero margin");
+  });
+
   it("prints corrected cover facts, Strategy assumptions and selected Site Potential images", () => {
-    expect(source).toContain('label="Location"');
-    expect(source).toContain('label="Erf area"');
+    expect(printPresentationSource).toContain("Market address");
+    expect(printPresentationSource).toContain("Erf area");
     expect(source).toContain("PrintStrategyAssumptions");
     expect(source).toContain("(User assumption)");
     expect(source).toContain("Calculated outputs");
@@ -245,10 +316,13 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     );
     expect(source).toContain("signedAssetPreviewUrlCache.delete(selectedDesign.id)");
     expect(source).not.toContain('url: signedAssetPreviewUrlCache.get(selectedDesign.id) as string');
-    expect(source).toContain("selectedDesign && selectedDesignImageUrl ? (");
+    expect(source).toContain("props.selectedDesign && props.selectedDesignImageUrl ? (");
     expect(styles).toContain(".report-print-site-image");
     expect(styles).toContain("object-fit: contain");
     expect(styles).toContain(".report-print-image-placeholder");
+    expect(printPresentationSource).toContain("Selected Site Potential image could not be loaded for this PDF.");
+    expect(printPresentationSource).toContain("Development brief");
+    expect(printPresentationSource).toContain("Concept image for illustration only");
   });
 
   it("renders section anchor targets that match REPORT_SECTIONS", () => {

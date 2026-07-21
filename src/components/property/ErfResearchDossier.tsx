@@ -1164,6 +1164,89 @@ const REPORT_PRINT_IFRAME_CSS = `
     page-break-inside: avoid;
   }
   .report-no-print { display: none !important; }
+  .print-page-header,
+  .print-page-footer,
+  .print-snapshot-hero,
+  .print-kpi-strip,
+  .print-three-column,
+  .print-two-column,
+  .print-investor-snapshot,
+  .print-investor-kpi-grid {
+    display: grid;
+    gap: 10px;
+  }
+  .print-page-header {
+    grid-template-columns: 120px 1fr;
+    align-items: start;
+    border-bottom: 2px solid #0D1B2A;
+    padding-bottom: 8px;
+    text-align: right;
+    text-transform: uppercase;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+  .print-logo { width: 98px; height: auto; justify-self: start; }
+  .print-page-header span,
+  .print-muted { color: #64748B; font-size: 10px; line-height: 1.45; }
+  .print-page-body { padding: 10px 0; }
+  .print-page-footer {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    margin-top: auto;
+    background: #0D1B2A;
+    color: #ffffff;
+    font-size: 8.5px;
+    line-height: 1.35;
+    padding: 7px 10px;
+  }
+  .print-snapshot-hero { grid-template-columns: 0.42fr 0.58fr; border: 1px solid #D9E6F2; min-height: 52mm; }
+  .print-snapshot-title { background: #0D1B2A; color: #ffffff; padding: 14px; }
+  .print-snapshot-title h1 { font-size: 28px; line-height: 1; margin: 0 0 10px; }
+  .print-snapshot-title p { font-size: 12px; font-weight: 700; margin: 5px 0; }
+  .print-hero-image,
+  .print-hero-fallback { height: 52mm; width: 100%; object-fit: cover; }
+  .print-hero-fallback { align-items: center; background: #F7FBFF; color: #64748B; display: flex; font-size: 12px; justify-content: center; text-align: center; }
+  .print-kpi-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .print-kpi,
+  .print-panel,
+  .print-fact-table,
+  .print-risk-table,
+  .print-action-table { border: 1px solid #D9E6F2; background: #ffffff; padding: 10px; }
+  .print-kpi span,
+  .print-fact-grid dt,
+  .print-fact-table th { color: #64748B; font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .print-kpi strong { color: #0D1B2A; display: block; font-size: 17px; line-height: 1.1; margin-top: 6px; }
+  .print-kpi small { color: #0D1B2A; display: block; font-size: 9px; margin-top: 4px; }
+  .print-three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .print-two-column,
+  .print-investor-snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .print-investor-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .print-panel h2,
+  .print-fact-table h2,
+  .print-risk-table h2,
+  .print-action-table h2 { color: #0D1B2A; font-size: 13px; font-weight: 850; margin: 0 0 8px; text-transform: uppercase; }
+  .print-panel p { color: #334155; font-size: 10.5px; line-height: 1.55; margin: 0; }
+  .print-fact-grid { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .print-fact-grid div { border-top: 1px solid #E2E8F0; padding-top: 6px; }
+  .print-fact-grid dd { color: #0D1B2A; font-size: 11px; font-weight: 750; margin: 2px 0 0; }
+  .print-fact-table table,
+  .print-risk-table table,
+  .print-action-table table { border-collapse: collapse; width: 100%; }
+  .print-fact-table th,
+  .print-fact-table td,
+  .print-risk-table th,
+  .print-risk-table td,
+  .print-action-table th,
+  .print-action-table td { border-top: 1px solid #E2E8F0; color: #0D1B2A; font-size: 9.5px; line-height: 1.35; padding: 5px 4px; text-align: left; vertical-align: top; }
+  .print-status { border-radius: 999px; display: inline-block; font-size: 8px; font-weight: 800; padding: 2px 5px; }
+  .print-status-good { color: #166534; background: #DCFCE7; }
+  .print-status-user { color: #075985; background: #E0F2FE; }
+  .print-status-review { color: #92400E; background: #FEF3C7; }
+  .print-status-missing { color: #991B1B; background: #FEE2E2; }
+  .print-compact-list { color: #0D1B2A; font-size: 10px; line-height: 1.5; margin: 0; padding-left: 16px; }
+  .print-warning { border-left: 3px solid #FF6A00; color: #92400E !important; margin-top: 8px !important; padding-left: 8px; }
+  .print-decision-status { color: #FF6A00; font-size: 20px; margin: 0 0 8px; text-transform: uppercase; }
   img { max-width: 100%; }
 `;
 const signedAssetPreviewUrlCache = new Map<string, string>();
@@ -1635,6 +1718,7 @@ function StoepAiReportView({
     ) {
       return;
     }
+    toast.info('For a clean Easy Erf PDF, turn off "Headers and footers" in Chrome\'s print options.');
     printInProgressRef.current = true;
     const iframe = createReportPrintFrame();
     printStylesReadyRef.current = prepareReportPrintFrame(iframe);
@@ -1737,6 +1821,8 @@ function StoepAiReportView({
       ? currentSelectedDesignPrintImage.url
       : null;
   const selectedDesignImageFailed = currentSelectedDesignPrintImage?.status === "failed";
+  const ScreenReportComponent =
+    decisionMode === "investor" ? EasyErfInvestorScreenReport : EasyErfStandardScreenReport;
 
   const reportDocument = (printOnly = false) =>
     printOnly ? (
@@ -1757,7 +1843,7 @@ function StoepAiReportView({
         scenarios={scenarios}
       />
     ) : (
-    <EasyErfScreenReport>
+    <ScreenReportComponent>
       {/* HEADER */}
       <section
         id="report-brief"
@@ -2508,7 +2594,7 @@ function StoepAiReportView({
           </button>
         </div>
       </section>
-    </EasyErfScreenReport>
+    </ScreenReportComponent>
   );
 
   return (
@@ -2524,33 +2610,48 @@ function StoepAiReportView({
   );
 }
 
-function EasyErfScreenReport({ children }: { children: ReactNode }) {
+function EasyErfScreenReportShell({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
   return (
     <div
       className="report-page easy-erf-screen-report mx-auto max-w-[1040px] space-y-5 rounded-[2rem] bg-[#F8FBFF] p-3 sm:p-5"
-      aria-label="Easy Erf screen report"
+      aria-label={label}
     >
       {children}
     </div>
   );
 }
 
-function EasyErfPrintReport({
-  report,
-  decision,
-  investorMode,
-  decisionMode,
-  selectedDesign,
-  selectedDesignImageUrl,
-  selectedDesignImageFailed,
-  selectedSiteMode,
-  siteProject,
-  sitePotentialSkipped,
-  fileAssets,
-  groupedAssets,
-  chosenScenario,
-  scenarios,
-}: {
+function EasyErfStandardScreenReport({ children }: { children: ReactNode }) {
+  return (
+    <EasyErfScreenReportShell label="Easy Erf Standard screen report">
+      {children}
+    </EasyErfScreenReportShell>
+  );
+}
+
+function EasyErfInvestorScreenReport({ children }: { children: ReactNode }) {
+  return (
+    <EasyErfScreenReportShell label="Easy Erf Investor screen report">
+      {children}
+    </EasyErfScreenReportShell>
+  );
+}
+
+function EasyErfPrintReport(props: EasyErfPrintReportProps) {
+  return props.decisionMode === "investor" ? (
+    <EasyErfInvestorPrintReport {...props} />
+  ) : (
+    <EasyErfStandardPrintReport {...props} />
+  );
+}
+
+type EasyErfPrintReportProps = {
   report: ReturnType<typeof buildReportViewModel>;
   decision: ReturnType<typeof buildDecisionIntelligence>;
   investorMode: InvestorDecisionMode;
@@ -2565,193 +2666,745 @@ function EasyErfPrintReport({
   groupedAssets: Record<ErfAssetGroup, ErfAsset[]>;
   chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
   scenarios: ReturnType<typeof readStrategyScenarios>;
-}) {
-  const riskTitles = report.risks.slice(0, 3).map((risk) => risk.title);
-  const actionTitles = report.recommendations.slice(0, 3).map((item) => item.title);
-  const planningFields = report.planning.slice(0, 6);
-  const documentGroups = REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length);
+};
+
+function EasyErfStandardPrintReport(props: EasyErfPrintReportProps) {
+  const documentSummary = summarizePrintDocuments(props.fileAssets, props.groupedAssets);
 
   return (
-    <article className="report-print-document easy-erf-print-report" aria-label="Printable Easy Erf Report">
-      <section className="report-print-page report-print-cover">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-          Easy Erf
-        </div>
-        <h1 className="mt-3 text-3xl font-semibold text-[#0D1B2A]">
-          {decisionMode === "investor" ? "Investor Decision Mode" : "Standard Easy Erf Report"}
-        </h1>
-        <p className="mt-2 text-lg font-semibold text-[#0D1B2A]">{report.identity.displayName}</p>
-        <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
-          <PrintFact label="Municipality" value={report.identity.municipality} />
-          <PrintFact label="Location" value={report.identity.marketAddressLine ?? report.identity.officialLine} />
-          <PrintFact
-            label="Erf area"
-            value={report.identity.areaM2 != null ? `${report.identity.areaM2.toLocaleString()} m²` : null}
-          />
-          <PrintFact label="Report date" value={new Date(report.generatedAt).toLocaleDateString()} />
-          <PrintFact label="Evidence confidence" value={`${decision.confidencePercent}%`} />
-          <PrintFact label="Chosen Strategy" value={report.strategy.chosen?.label ?? "Not chosen"} />
-          <PrintFact label="Evidence items" value={`${report.market.evidenceCount} market item${report.market.evidenceCount === 1 ? "" : "s"}`} />
-        </dl>
-        <div className="mt-6 grid grid-cols-2 gap-5">
-          <PrintList title="Three key risks" items={riskTitles} empty="No top risks recorded yet." />
-          <PrintList title="Three immediate actions" items={actionTitles} empty="No immediate actions generated yet." />
-        </div>
-        <p className="mt-6 border-t border-[#D9E6F2] pt-3 text-xs leading-5 text-[#64748B]">
-          This is a living Easy Erf report built from saved evidence, official parcel fields where
-          available, user assumptions and uploaded files. It is not legal, valuation, municipal
-          planning, financial or investment advice.
-        </p>
-      </section>
-
-      <section className="report-print-page">
-        <PrintPageHeading title="Property identity" />
-        <dl className="print-table">
-          <PrintFact label="Erf number" value={report.identity.erfNumber} />
-          <PrintFact label="Portion" value={report.identity.portion} />
-          <PrintFact label="LPI" value={report.identity.lpi} />
-          <PrintFact label="Parcel key" value={report.identity.parcelKey} />
-          <PrintFact label="Municipality" value={report.identity.municipality} />
-          <PrintFact label="Province" value={report.identity.province} />
-          <PrintFact
-            label="Coordinates"
-            value={
-              report.identity.coordinates
-                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
-                : null
-            }
-          />
-          <PrintFact
-            label="Erf size"
-            value={report.identity.areaM2 != null ? `${report.identity.areaM2.toLocaleString()} m2` : null}
-          />
-        </dl>
-        <PrintPageHeading title="Ownership and deeds" />
-        <p className="print-paragraph">{report.ownership.message}</p>
-        <PrintPageHeading title="Planning and land use" />
-        <dl className="print-table">
-          {planningFields.map((field) => (
-            <PrintFact key={field.label} label={field.label} value={field.value} />
-          ))}
-        </dl>
-        <PrintPageHeading title="Constraints and missing evidence" />
-        <PrintList
-          title="Still needed"
-          items={decision.stillNeeded}
-          empty="No structured missing-evidence items were generated."
-        />
-      </section>
-
-      <section className="report-print-page">
-        <PrintPageHeading title="Market evidence" />
-        <p className="print-paragraph">
-          {report.market.canShowIndicativeValue
-            ? `Included comps: ${report.market.includedCount}. Median asking price R ${report.market.summary.medianAskingPrice?.toLocaleString("en-ZA")}.`
-            : "Evidence is currently too thin to responsibly calculate an indicative value."}
-        </p>
-        <PrintPageHeading title="Chosen Strategy" />
-        {chosenScenario ? (
-          <>
-            <dl className="print-table">
-              <PrintFact label="Scenario" value={chosenScenario.label} />
-              <PrintFact label="Saved scenarios" value={`${scenarios.length}`} />
-            </dl>
-            <PrintPageHeading title="Key Strategy assumptions" />
-            <PrintStrategyAssumptions scenario={chosenScenario} />
-            <PrintPageHeading title="Calculated outputs" />
-            <dl className="print-table">
-              {chosenScenario.summary.slice(0, 6).map((item) => (
-                <PrintFact key={item.label} label={item.label} value={item.value} />
-              ))}
-            </dl>
-          </>
-        ) : (
-          <p className="print-paragraph">No chosen Strategy Lab scenario has been saved yet.</p>
-        )}
-        {decisionMode === "investor" && (
-          <>
-            <PrintPageHeading title="Investor Numbers" />
-            <dl className="print-table">
-              {investorMode.numberRows.map((row) => (
-                <PrintFact key={row.label} label={row.label} value={row.value} />
-              ))}
-            </dl>
-          </>
-        )}
-      </section>
-
-      <section className="report-print-page">
-        <PrintPageHeading title="Site Potential" />
-        <p className="print-paragraph">
-          {selectedDesign
-            ? `Selected concept: ${selectedDesign.original_file_name}. Mode: ${sitePotentialReportModeLabel(selectedSiteMode)}.`
-            : sitePotentialSkipped
-              ? "Site Potential has been skipped for this report."
-              : "No Site Potential concept has been selected yet."}
-        </p>
-        {selectedDesign && selectedDesignImageUrl ? (
-          <figure className="report-print-avoid-break mt-4">
-            <img
-              src={selectedDesignImageUrl}
-              alt={`Selected Site Potential concept: ${selectedDesign.original_file_name}`}
-              className="report-print-site-image"
-            />
-            <figcaption className="mt-2 text-xs text-[#64748B]">
-              Selected Site Potential image. Stored source asset: {selectedDesign.original_file_name}.
-            </figcaption>
-          </figure>
-        ) : selectedDesign ? (
-          <p className="report-print-image-placeholder">
-            {selectedDesignImageFailed
-              ? "Selected Site Potential image could not be loaded for this PDF."
-              : "Selected Site Potential image is still loading for this PDF."}
-          </p>
-        ) : null}
-        <p className="print-paragraph">
-          {siteProject.project?.design_brief || "No Site Potential design brief is saved yet."}
-        </p>
-        <PrintPageHeading title="Evidence and documents" />
-        {fileAssets.length ? (
-          <div className="space-y-3">
-            {documentGroups.map((group) => (
-              <PrintList
-                key={group}
-                title={group}
-                items={groupedAssets[group].map(
-                  (file) =>
-                    `${workspaceAssetCategory(file)}: ${file.original_file_name} (${formatAssetSize(file.size_bytes)})`,
-                )}
-                empty="No files in this group."
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="print-paragraph">No uploaded files or source documents are stored for this erf yet.</p>
-        )}
-      </section>
-
-      <section className="report-print-page">
-        <PrintPageHeading title="Recommendations" />
-        <PrintList
-          title="Ordered next actions"
-          items={report.recommendations.map((item) => `${item.order}. ${item.title} - ${item.detail}`)}
-          empty="No outstanding recommendations. Continue keeping evidence fresh."
-        />
-        <PrintPageHeading title="Outstanding evidence" />
-        <PrintList
-          title="Open gaps"
-          items={decision.stillNeeded}
-          empty="No outstanding evidence gaps were generated from the current structured state."
-        />
-        <PrintPageHeading title="Disclaimers" />
-        <p className="print-paragraph">
-          Easy Erf does not provide legal, valuation, municipal-planning, financial or investment
-          advice. Verify official source records, paid reports, zoning, title deed, rates and
-          professional assumptions before making a decision.
-        </p>
-      </section>
+    <article
+      className="report-print-document easy-erf-print-report easy-erf-standard-print-report"
+      aria-label="Printable Standard Easy Erf Report"
+      data-report-kind="standard"
+    >
+      <StandardSnapshotPage
+        report={props.report}
+        decision={props.decision}
+        documentSummary={documentSummary}
+        hero={props.selectedDesignImageUrl}
+      />
+      <StandardFactsPage report={props.report} />
+      <StandardMarketStrategyPage
+        report={props.report}
+        decision={props.decision}
+        investorMode={props.investorMode}
+        chosenScenario={props.chosenScenario}
+        scenarios={props.scenarios}
+      />
+      <StandardSiteActionPage {...props} documentSummary={documentSummary} />
     </article>
   );
+}
+
+function EasyErfInvestorPrintReport(props: EasyErfPrintReportProps) {
+  const documentSummary = summarizePrintDocuments(props.fileAssets, props.groupedAssets);
+
+  return (
+    <article
+      className="report-print-document easy-erf-print-report easy-erf-investor-print-report"
+      aria-label="Printable Investor Easy Erf Report"
+      data-report-kind="investor"
+    >
+      <InvestorDealSnapshotPage
+        report={props.report}
+        decision={props.decision}
+        investorMode={props.investorMode}
+      />
+      <InvestorAssumptionsEvidencePage
+        report={props.report}
+        investorMode={props.investorMode}
+        documentSummary={documentSummary}
+        chosenScenario={props.chosenScenario}
+      />
+      <InvestorConceptActionPage {...props} />
+    </article>
+  );
+}
+
+function StandardSnapshotPage({
+  report,
+  decision,
+  documentSummary,
+  hero,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  decision: ReturnType<typeof buildDecisionIntelligence>;
+  documentSummary: PrintDocumentSummary;
+  hero: string | null;
+}) {
+  const topRisks = report.risks.slice(0, 3).map((risk) => risk.title);
+  const topActions = report.recommendations.slice(0, 3).map((item) => item.title);
+
+  return (
+    <PrintPage page={1} totalPages={4} eyebrow="Property intelligence snapshot" report={report}>
+      <section className="print-snapshot-hero">
+        <div className="print-snapshot-title">
+          <h1>{report.identity.displayName}</h1>
+          <p>{report.identity.municipality ?? "Municipality not verified"}</p>
+          <p>{report.identity.province ?? "Province not verified"}</p>
+          <p className="print-muted">LPI: {report.identity.lpi ?? "Not yet verified"}</p>
+        </div>
+        {hero ? (
+          <img src={hero} alt="Selected property visual context" className="print-hero-image" />
+        ) : (
+          <div className="print-hero-fallback">No confirmed property image is saved yet.</div>
+        )}
+      </section>
+      <section className="print-kpi-strip" aria-label="Standard report KPI strip">
+        <PrintKpi label="Evidence confidence" value={`${decision.confidencePercent}%`} detail={confidenceTone(decision.confidencePercent)} />
+        <PrintKpi label="Overall risk" value={decisionVerdictLabel(decision.verdict)} detail="Evidence based" />
+        <PrintKpi label="Erf size" value={formatArea(report.identity.areaM2)} detail={report.identity.areaM2 ? "Official source" : "Not verified"} />
+        <PrintKpi label="Market evidence" value={`${report.market.includedCount}`} detail="Comparables" />
+        <PrintKpi label="Chosen strategy" value={report.strategy.chosen?.label ?? "Not chosen"} detail="User selected" />
+        <PrintKpi label="Documents on file" value={`${documentSummary.totalItems}`} detail="Items" />
+      </section>
+      <section className="print-three-column">
+        <PrintPanel title="Easy Erf conclusion">
+          <p>{decision.summary}</p>
+        </PrintPanel>
+        <PrintPanel title="Top 3 risks">
+          <PrintCompactList items={topRisks} empty="No top risks recorded yet." />
+        </PrintPanel>
+        <PrintPanel title="Top 3 next actions">
+          <PrintCompactList items={topActions} empty="No immediate actions generated yet." numbered />
+        </PrintPanel>
+      </section>
+    </PrintPage>
+  );
+}
+
+function StandardFactsPage({ report }: { report: ReturnType<typeof buildReportViewModel> }) {
+  return (
+    <PrintPage page={2} totalPages={4} eyebrow="Facts and planning" report={report}>
+      <div className="print-two-column">
+        <PrintFactTable
+          title="Official identity"
+          rows={[
+            ["Erf number", report.identity.erfNumber, "Official"],
+            ["Portion", report.identity.portion, "Official"],
+            ["LPI", report.identity.lpi, "Official"],
+            ["Parcel key", report.identity.parcelKey, "Official"],
+            ["Municipality", report.identity.municipality, "Official"],
+            ["Province", report.identity.province, "Official"],
+          ]}
+        />
+        <PrintFactTable
+          title="Address and location"
+          rows={[
+            ["Market address", report.identity.marketAddressLine, "User confirmed"],
+            ["Coordinates", formatCoordinates(report.identity.coordinates), "Official"],
+            ["Erf area", formatArea(report.identity.areaM2), "Official"],
+          ]}
+        />
+        <PrintFactTable
+          title="Ownership and deeds"
+          rows={[
+            ["Ownership verified", report.ownership.isVerified ? "Yes" : null, report.ownership.isVerified ? "Verified" : "Missing"],
+            ["Owner name", null, "Missing"],
+            ["Deed number", null, "Missing"],
+            ["Bond information", null, "Missing"],
+            ["Transfer history", null, "Needs review"],
+          ]}
+        />
+        <PrintFactTable
+          title="Planning and land use"
+          rows={[
+            ["Zoning", planningValue(report, "Zoning"), "Missing"],
+            ["Coverage", planningValue(report, "Coverage"), "Missing"],
+            ["FAR", planningValue(report, "FAR"), "Missing"],
+            ["Height limit", planningValue(report, "Height limit"), "Missing"],
+            ["Setbacks", planningValue(report, "Setbacks"), "Missing"],
+            ["Density", planningValue(report, "Density"), "Missing"],
+            ["Permitted uses", planningValue(report, "Permitted uses"), "Missing"],
+          ]}
+        />
+        <PrintFactTable
+          title="Services and environment"
+          rows={[
+            ["Water", null, "Needs review"],
+            ["Sewer", null, "Needs review"],
+            ["Electricity", null, "Needs review"],
+            ["Road access", null, "Needs review"],
+            ["Environmental review", null, "Needs review"],
+          ]}
+        />
+      </div>
+    </PrintPage>
+  );
+}
+
+function StandardMarketStrategyPage({
+  report,
+  decision,
+  investorMode,
+  chosenScenario,
+  scenarios,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  decision: ReturnType<typeof buildDecisionIntelligence>;
+  investorMode: InvestorDecisionMode;
+  chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
+  scenarios: ReturnType<typeof readStrategyScenarios>;
+}) {
+  return (
+    <PrintPage page={3} totalPages={4} eyebrow="Market, risks and strategy" report={report}>
+      <section className="print-two-column">
+        <PrintPanel title="Market evidence">
+          <PrintFactGrid
+            rows={[
+              ["Saved comparable count", `${report.market.includedCount}`],
+              ["Subject listing status", report.market.subjectListing ? "Saved for this erf" : "No subject listing saved"],
+              [
+                "Supported price range",
+                report.market.canShowIndicativeValue
+                  ? `Median asking R ${report.market.summary.medianAskingPrice?.toLocaleString("en-ZA")}`
+                  : "Not calculated",
+              ],
+            ]}
+          />
+          {!report.market.canShowIndicativeValue && (
+            <p className="print-warning">Required assumptions are missing. No valuation is fabricated.</p>
+          )}
+        </PrintPanel>
+        <PrintPanel title="Chosen strategy">
+          <PrintFactGrid
+            rows={[
+              ["Scenario", chosenScenario?.label ?? "Not chosen"],
+              ["Saved scenarios", `${scenarios.length}`],
+            ]}
+          />
+          {chosenScenario ? <PrintStrategyAssumptions scenario={chosenScenario} /> : null}
+        </PrintPanel>
+      </section>
+      <PrintRiskTable risks={report.risks} />
+      <PrintPanel title="Calculated outputs">
+        <PrintFactGrid rows={safeStrategyOutputRows(chosenScenario, investorMode)} />
+      </PrintPanel>
+      <PrintPanel title="Known gaps">
+        <PrintCompactList items={decision.stillNeeded.slice(0, 6)} empty="No major missing evidence generated." />
+      </PrintPanel>
+    </PrintPage>
+  );
+}
+
+function StandardSiteActionPage(props: EasyErfPrintReportProps & { documentSummary: PrintDocumentSummary }) {
+  return (
+    <PrintPage page={4} totalPages={4} eyebrow="Site potential and action plan" report={props.report}>
+      <section className="print-two-column print-site-strategy-grid">
+        <PrintSitePotentialBlock {...props} />
+        <PrintPanel title="Chosen strategy">
+          <PrintFactGrid
+            rows={[
+              ["Strategy", props.chosenScenario?.label ?? "Not chosen"],
+              ["Project mode", sitePotentialReportModeLabel(props.selectedSiteMode)],
+              ["Strategy outputs", props.chosenScenario ? "See calculated output rows" : "Not calculated"],
+            ]}
+          />
+          <PrintFactGrid rows={safeStrategyOutputRows(props.chosenScenario, props.investorMode).slice(0, 4)} />
+        </PrintPanel>
+      </section>
+      <PrintActionTable recommendations={props.report.recommendations} />
+      <PrintDocumentCountPanel summary={props.documentSummary} />
+    </PrintPage>
+  );
+}
+
+function InvestorDealSnapshotPage({
+  report,
+  decision,
+  investorMode,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  decision: ReturnType<typeof buildDecisionIntelligence>;
+  investorMode: InvestorDecisionMode;
+}) {
+  return (
+    <PrintPage page={1} totalPages={3} eyebrow="Investor deal snapshot" report={report}>
+      <section className="print-investor-snapshot">
+        <PrintPanel title="Decision status">
+          <h1 className="print-decision-status">{investorDecisionLabel(investorMode.readinessStatus)}</h1>
+          <p>{investorMode.readinessExplanation}</p>
+        </PrintPanel>
+        <section className="print-investor-kpi-grid" aria-label="Investor KPI grid">
+          {investorKpiRows(investorMode).map((row) => (
+            <PrintKpi key={row.label} label={row.label} value={row.value} detail={row.detail} />
+          ))}
+          <PrintKpi label="Evidence readiness" value={`${decision.confidencePercent}%`} detail={confidenceTone(decision.confidencePercent)} />
+        </section>
+      </section>
+      <section className="print-two-column">
+        <PrintPanel title="Key drivers">
+          <PrintCompactList items={investorMode.supportingEvidence.slice(0, 5)} empty="No key drivers are confirmed yet." />
+        </PrintPanel>
+        <PrintPanel title="Key risks">
+          <PrintCompactList items={investorMode.downsideRisks.slice(0, 5)} empty="No investor risks generated yet." />
+        </PrintPanel>
+      </section>
+      <PrintPanel title="Next investor action">
+        <p>{investorMode.primaryAction.label}. {investorMode.primaryAction.body}</p>
+      </PrintPanel>
+    </PrintPage>
+  );
+}
+
+function InvestorAssumptionsEvidencePage({
+  report,
+  investorMode,
+  documentSummary,
+  chosenScenario,
+}: {
+  report: ReturnType<typeof buildReportViewModel>;
+  investorMode: InvestorDecisionMode;
+  documentSummary: PrintDocumentSummary;
+  chosenScenario: ReturnType<typeof getChosenStrategyScenario>;
+}) {
+  return (
+    <PrintPage page={2} totalPages={3} eyebrow="Assumptions and evidence" report={report}>
+      <section className="print-two-column">
+        <PrintFactTable title="Assumptions table" rows={investorAssumptionRows(chosenScenario)} />
+        <PrintFactTable
+          title="Evidence table"
+          rows={[
+            ["Market support", investorMode.marketEvidenceStatus, statusFromValue(investorMode.marketEvidenceStatus)],
+            ["Planning status", "Not yet verified", "Needs review"],
+            ["Ownership status", report.ownership.isVerified ? "Verified" : "Not verified", report.ownership.isVerified ? "Verified" : "Missing"],
+            ["Site Potential status", report.site.selectedDesign ? "Selected concept linked" : "No concept selected", report.site.selectedDesign ? "Document supported" : "Needs review"],
+            ["Documents available", `${documentSummary.totalItems}`, "Document supported"],
+            ["Major missing evidence", investorMode.missingInputs[0] ?? "No major missing evidence generated", investorMode.missingInputs.length ? "Missing" : "Verified"],
+          ]}
+        />
+      </section>
+      <PrintPanel title="Sensitivity">
+        <p>
+          {investorMode.missingInputs.length
+            ? "Not calculated. Required assumptions are missing."
+            : "Base, downside and upside sensitivity can be reviewed once key assumptions are evidence-supported."}
+        </p>
+      </PrintPanel>
+    </PrintPage>
+  );
+}
+
+function InvestorConceptActionPage(props: EasyErfPrintReportProps) {
+  return (
+    <PrintPage page={3} totalPages={3} eyebrow="Concept and investor action plan" report={props.report}>
+      <section className="print-two-column print-site-strategy-grid">
+        <PrintSitePotentialBlock {...props} />
+        <PrintPanel title="Investor checks required">
+          <PrintCompactList
+            items={props.investorMode.nextActions.map((action) => `${action.label}: ${action.body}`).slice(0, 6)}
+            empty="No investor-specific actions generated yet."
+          />
+        </PrintPanel>
+      </section>
+      <PrintRiskTable risks={props.report.risks} />
+    </PrintPage>
+  );
+}
+
+type PrintStatus =
+  | "Official"
+  | "Verified"
+  | "User confirmed"
+  | "Document supported"
+  | "Missing"
+  | "Needs review";
+
+type PrintDocumentSummary = {
+  paidReports: number;
+  officialDocuments: number;
+  userDocuments: number;
+  conceptImages: number;
+  totalItems: number;
+};
+
+function PrintPage({
+  page,
+  totalPages,
+  eyebrow,
+  report,
+  children,
+}: {
+  page: number;
+  totalPages: number;
+  eyebrow: string;
+  report: ReturnType<typeof buildReportViewModel>;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="report-print-page"
+      data-report-page={`${totalPages === 4 ? "standard" : "investor"}-${page}`}
+    >
+      <header className="print-page-header">
+        <img
+          src="/easy-erf/logos/easy-erf-nav-logo-transparent.png"
+          alt="Easy Erf"
+          className="print-logo"
+        />
+        <div>
+          <div>{eyebrow}</div>
+          <span>Report date: {new Date(report.generatedAt).toLocaleDateString("en-ZA")}</span>
+        </div>
+      </header>
+      <main className="print-page-body">{children}</main>
+      <footer className="print-page-footer">
+        <span>
+          This report is for information only and does not constitute legal, planning, engineering,
+          valuation, financial or investment advice. Verify all information with relevant
+          professionals.
+        </span>
+        <strong>
+          Page {page} of {totalPages}
+        </strong>
+      </footer>
+    </section>
+  );
+}
+
+function PrintPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="print-panel">
+      <h2>{title}</h2>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function PrintKpi({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
+  return (
+    <article className="print-kpi">
+      <span>{label}</span>
+      <strong>{value || "Not calculated"}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
+function PrintFactGrid({ rows }: { rows: Array<[string, ReactNode]> }) {
+  return (
+    <dl className="print-fact-grid">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value || "Not calculated"}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function PrintFactTable({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<[string, ReactNode, PrintStatus]>;
+}) {
+  return (
+    <section className="print-fact-table">
+      <h2>{title}</h2>
+      <table>
+        <tbody>
+          {rows.map(([label, value, fallbackStatus]) => {
+            const status = value ? fallbackStatus : "Missing";
+            return (
+              <tr key={label}>
+                <th>{label}</th>
+                <td>{value || "Not yet verified"}</td>
+                <td>
+                  <span className={cn("print-status", printStatusClass(status))}>{status}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function PrintCompactList({
+  items,
+  empty,
+  numbered,
+}: {
+  items: string[];
+  empty: string;
+  numbered?: boolean;
+}) {
+  const visible = items.filter(Boolean).slice(0, 6);
+  const List = numbered ? "ol" : "ul";
+  return visible.length ? (
+    <List className="print-compact-list">
+      {visible.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </List>
+  ) : (
+    <p className="print-muted">{empty}</p>
+  );
+}
+
+function PrintRiskTable({ risks }: { risks: ReturnType<typeof buildReportViewModel>["risks"] }) {
+  const visible = risks.slice(0, 5);
+  return (
+    <section className="print-risk-table">
+      <h2>Risk register</h2>
+      {visible.length ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th>Risk</th>
+              <th>Why it matters</th>
+              <th>Required verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((risk) => (
+              <tr key={risk.id}>
+                <td>{risk.severity}</td>
+                <td>{risk.title}</td>
+                <td>{risk.why}</td>
+                <td>{risk.nextAction}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="print-muted">No material risks are recorded in the current evidence.</p>
+      )}
+    </section>
+  );
+}
+
+function PrintActionTable({
+  recommendations,
+}: {
+  recommendations: ReturnType<typeof buildReportViewModel>["recommendations"];
+}) {
+  const actions = recommendations.slice(0, 6);
+  return (
+    <section className="print-action-table">
+      <h2>Recommended action plan</h2>
+      {actions.length ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Action</th>
+              <th>Why this matters</th>
+              <th>Who should verify</th>
+              <th>Urgency</th>
+            </tr>
+          </thead>
+          <tbody>
+            {actions.map((item) => (
+              <tr key={item.id}>
+                <td>{item.order}</td>
+                <td>{item.title}</td>
+                <td>{item.detail}</td>
+                <td>{professionalForAction(item.actionTab)}</td>
+                <td>{item.order <= 3 ? "High" : "Medium"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="print-muted">No outstanding recommendations. Continue keeping evidence fresh.</p>
+      )}
+    </section>
+  );
+}
+
+function PrintSitePotentialBlock(props: EasyErfPrintReportProps) {
+  const conceptTitle = siteConceptTitle(props.selectedDesign);
+
+  return (
+    <PrintPanel title="Site Potential">
+      {props.selectedDesign && props.selectedDesignImageUrl ? (
+        <figure className="report-print-avoid-break">
+          <img
+            src={props.selectedDesignImageUrl}
+            alt="Selected Site Potential concept"
+            className="report-print-site-image"
+          />
+          <figcaption>{conceptTitle}</figcaption>
+        </figure>
+      ) : props.selectedDesign ? (
+        <p className="report-print-image-placeholder">
+          {props.selectedDesignImageFailed
+            ? "Selected Site Potential image could not be loaded for this PDF."
+            : "Selected Site Potential image is still loading for this PDF."}
+        </p>
+      ) : (
+        <p className="print-muted">
+          {props.sitePotentialSkipped
+            ? "Site Potential has been skipped for this report."
+            : "No Site Potential concept has been selected yet."}
+        </p>
+      )}
+      <PrintFactGrid
+        rows={[
+          ["Concept title", conceptTitle],
+          ["Project mode", sitePotentialReportModeLabel(props.selectedSiteMode)],
+          ["Architectural style", props.siteProject.project?.selected_style || "Not specified"],
+          ["Development brief", props.siteProject.project?.design_brief || "No design brief saved yet"],
+        ]}
+      />
+      <p className="print-muted">Concept image for illustration only. Not approved or verified.</p>
+    </PrintPanel>
+  );
+}
+
+function PrintDocumentCountPanel({ summary }: { summary: PrintDocumentSummary }) {
+  return (
+    <PrintPanel title="Documents on file">
+      <PrintFactGrid
+        rows={[
+          ["Paid reports", summary.paidReports],
+          ["Official/source documents", summary.officialDocuments],
+          ["User-uploaded documents", summary.userDocuments],
+          ["Concept images", summary.conceptImages],
+          ["Total items", summary.totalItems],
+        ]}
+      />
+    </PrintPanel>
+  );
+}
+
+function summarizePrintDocuments(
+  fileAssets: ErfAsset[],
+  groupedAssets: Record<ErfAssetGroup, ErfAsset[]>,
+): PrintDocumentSummary {
+  const paidReports = groupedAssets["Paid reports"].length;
+  const officialDocuments = groupedAssets["Official and source documents"].length;
+  const conceptImages = groupedAssets["Generated concepts"].length;
+  const userDocuments = Math.max(0, fileAssets.length - paidReports - officialDocuments - conceptImages);
+  return {
+    paidReports,
+    officialDocuments,
+    userDocuments,
+    conceptImages,
+    totalItems: fileAssets.length,
+  };
+}
+
+function safeStrategyOutputRows(
+  scenario: ReturnType<typeof getChosenStrategyScenario>,
+  investorMode: InvestorDecisionMode,
+): Array<[string, ReactNode]> {
+  const rows = investorMode.numberRows
+    .filter((row) => row.provenance === "Deterministic calculation" || row.provenance === "Saved scenario summary")
+    .slice(0, 6)
+    .map((row) => [
+      row.label,
+      row.state === "available" ? `${row.value} (Calculated output)` : "Not calculated",
+    ] as [string, ReactNode]);
+
+  if (rows.length) return rows;
+  if (!scenario) return [["Strategy calculations", "Not calculated"]];
+  return scenario.summary.slice(0, 6).map((item) => [item.label, `${item.value} (Calculated output)`]);
+}
+
+function investorKpiRows(investorMode: InvestorDecisionMode) {
+  const rowFor = (label: string) => {
+    const row = investorMode.numberRows.find((item) => item.label.toLowerCase().includes(label.toLowerCase()));
+    if (!row) return { label, value: "Not calculated", detail: "Required assumptions are missing" };
+    return {
+      label: row.label,
+      value: row.state === "available" ? row.value : "Not calculated",
+      detail: row.state === "available" ? row.provenance : "Required assumptions are missing",
+    };
+  };
+  return [
+    rowFor("Land cost"),
+    rowFor("Total project cost"),
+    rowFor("Expected exit value"),
+    rowFor("Projected profit"),
+    rowFor("Margin"),
+    rowFor("Return on cost"),
+    rowFor("Break-even"),
+    rowFor("Holding period"),
+  ];
+}
+
+function investorAssumptionRows(
+  scenario: ReturnType<typeof getChosenStrategyScenario>,
+): Array<[string, ReactNode, PrintStatus]> {
+  const input = scenario?.inputs ?? {};
+  return [
+    ["Acquisition or land cost", assumptionValue(input, ["landCost", "purchasePrice"]), "User confirmed"],
+    ["Build cost", assumptionValue(input, ["buildCost", "renovationBudget"]), "User confirmed"],
+    ["Professional fees", assumptionValue(input, ["professionalFees"]), "User confirmed"],
+    ["Planning fees", assumptionValue(input, ["planningFees"]), "User confirmed"],
+    ["Contingency", assumptionValue(input, ["contingency"]), "User confirmed"],
+    ["Holding cost", assumptionValue(input, ["monthlyHoldingCost"]), "User confirmed"],
+    ["Development period", assumptionValue(input, ["developmentDurationMonths", "holdingMonths"]), "User confirmed"],
+    ["Selling cost", assumptionValue(input, ["sellingCosts"]), "User confirmed"],
+    ["Expected exit value", assumptionValue(input, ["expectedSaleValue", "expectedResalePrice", "futureValue"]), "User confirmed"],
+  ];
+}
+
+function assumptionValue(inputs: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = inputs[key];
+    if (value !== undefined && value !== null && String(value).trim()) return `${String(value)} (User assumption)`;
+  }
+  return null;
+}
+
+function planningValue(report: ReturnType<typeof buildReportViewModel>, label: string) {
+  return report.planning.find((field) => field.label.toLowerCase() === label.toLowerCase())?.value ?? null;
+}
+
+function formatArea(value: number | null | undefined) {
+  return value != null ? `${value.toLocaleString("en-ZA")} m2` : "Not yet verified";
+}
+
+function formatCoordinates(value: ReturnType<typeof buildReportViewModel>["identity"]["coordinates"]) {
+  return value ? `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}` : null;
+}
+
+function confidenceTone(value: number) {
+  if (value >= 70) return "High";
+  if (value >= 40) return "Medium";
+  return "Low";
+}
+
+function printStatusClass(status: PrintStatus) {
+  if (status === "Official" || status === "Verified" || status === "Document supported") return "print-status-good";
+  if (status === "User confirmed") return "print-status-user";
+  if (status === "Needs review") return "print-status-review";
+  return "print-status-missing";
+}
+
+function statusFromValue(value: string): PrintStatus {
+  return value.toLowerCase().includes("insufficient") || value.toLowerCase().includes("missing")
+    ? "Needs review"
+    : "Document supported";
+}
+
+function siteConceptTitle(asset: ErfAsset | null) {
+  const title = asset?.metadata?.title;
+  return typeof title === "string" && title.trim() ? title : "Selected Site Potential concept";
+}
+
+function investorDecisionLabel(status: InvestorDecisionMode["readinessStatus"]) {
+  if (status === "Ready for preliminary evaluation") return "Proceed";
+  if (status === "More evidence required") return "Conditional";
+  if (status === "Material contradiction requires review") return "Do not proceed";
+  return "Insufficient information";
+}
+
+function professionalForAction(tab?: string) {
+  if (tab === "research") return "Conveyancer / municipal source";
+  if (tab === "reports") return "Conveyancer / report provider";
+  if (tab === "listings") return "Agent / market researcher";
+  if (tab === "site-potential") return "Architect / planner";
+  if (tab === "calculators") return "QS / finance professional";
+  return "Relevant professional";
 }
 
 function PrintPageHeading({ title }: { title: string }) {
