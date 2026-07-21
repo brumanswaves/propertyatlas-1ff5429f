@@ -1,1 +1,1 @@
-No code changes. Read-only status reported above. Awaiting instruction — likely need to push `f05312ab` to the Lovable git mirror (or confirm the correct SHA) before the Preview can advance past `b8c37739`.
+Read-only. No changes. Awaiting successful GitHub → Lovable mirror sync before rebuild.
