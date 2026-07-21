@@ -1092,10 +1092,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      patch_saved_property_user_data: {
-        Args: { p_parcel_id: string; p_user_data_patch: Json }
-        Returns: Json
-      }
       recover_stale_site_potential_jobs: {
         Args: { p_max_attempts?: number; p_now?: string }
         Returns: {
