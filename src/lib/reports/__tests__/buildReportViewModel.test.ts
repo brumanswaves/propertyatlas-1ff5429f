@@ -237,6 +237,15 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(source).toContain("selectedDesignImageUrl");
     expect(source).toContain("Selected Site Potential image could not be loaded for this PDF.");
     expect(source).toContain("trackSignedAssetPreviewSettlement(settlement.then(() => undefined))");
+    expect(source).toContain(
+      "const cachedSignedUrl = signedAssetPreviewUrlCache.get(selectedDesign.id) ?? null;",
+    );
+    expect(source).toContain(
+      "cachedSignedUrl ? Promise.resolve(cachedSignedUrl) : createErfAssetSignedUrl(selectedDesign)",
+    );
+    expect(source).toContain("signedAssetPreviewUrlCache.delete(selectedDesign.id)");
+    expect(source).not.toContain('url: signedAssetPreviewUrlCache.get(selectedDesign.id) as string');
+    expect(source).toContain("selectedDesign && selectedDesignImageUrl ? (");
     expect(styles).toContain(".report-print-site-image");
     expect(styles).toContain("object-fit: contain");
     expect(styles).toContain(".report-print-image-placeholder");

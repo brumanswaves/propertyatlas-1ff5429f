@@ -1492,25 +1492,18 @@ function StoepAiReportView({
       };
     }
 
-    if (signedAssetPreviewUrlCache.has(selectedDesign.id)) {
-      setSelectedDesignPrintImage({
-        assetId: selectedDesign.id,
-        status: "ready",
-        url: signedAssetPreviewUrlCache.get(selectedDesign.id) as string,
-      });
-      return () => {
-        alive = false;
-      };
-    }
-
+    const cachedSignedUrl = signedAssetPreviewUrlCache.get(selectedDesign.id) ?? null;
     setSelectedDesignPrintImage({
       assetId: selectedDesign.id,
       status: "loading",
       url: null,
     });
-    const settlement = preloadPrintableImageUrl(() => createErfAssetSignedUrl(selectedDesign))
+    const settlement = preloadPrintableImageUrl(() =>
+      cachedSignedUrl ? Promise.resolve(cachedSignedUrl) : createErfAssetSignedUrl(selectedDesign),
+    )
       .then((result) => {
         if (result.status === "ready") signedAssetPreviewUrlCache.set(selectedDesign.id, result.url);
+        else signedAssetPreviewUrlCache.delete(selectedDesign.id);
         if (!alive) return;
         setSelectedDesignPrintImage({
           assetId: selectedDesign.id,
@@ -1519,6 +1512,7 @@ function StoepAiReportView({
         });
       })
       .catch(() => {
+        signedAssetPreviewUrlCache.delete(selectedDesign.id);
         if (!alive) return;
         setSelectedDesignPrintImage({
           assetId: selectedDesign.id,

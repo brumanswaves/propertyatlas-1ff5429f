@@ -25,6 +25,16 @@ function createControlledImage() {
   return image;
 }
 
+function renderSelectedSitePotentialPrintMarkup(
+  readiness: Awaited<ReturnType<typeof preloadPrintableImageUrl>>,
+) {
+  if (readiness.status === "ready") {
+    return `<img class="report-print-site-image" src="${readiness.url}" alt="Selected Site Potential concept" />`;
+  }
+
+  return "<p>Selected Site Potential image could not be loaded for this PDF.</p>";
+}
+
 describe("print image readiness", () => {
   it("marks a signed Site Potential image ready only after the image loads", async () => {
     const image = createControlledImage();
@@ -53,6 +63,30 @@ describe("print image readiness", () => {
     image.onerror?.(new Event("error"));
 
     await expect(readiness).resolves.toEqual({ status: "failed", url: null });
+  });
+
+  it("does not treat a cached signed URL as printable until the image load settles", async () => {
+    const image = createControlledImage();
+    const readiness = preloadPrintableImageUrl(
+      () => Promise.resolve("https://example.com/cached-but-broken.png"),
+      () => image,
+    );
+    let settled = false;
+    readiness.then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    expect(image.src).toBe("https://example.com/cached-but-broken.png");
+    expect(settled).toBe(false);
+    image.onerror?.(new Event("error"));
+
+    const result = await readiness;
+    expect(result).toEqual({ status: "failed", url: null });
+    const printMarkup = renderSelectedSitePotentialPrintMarkup(result);
+    expect(printMarkup).toContain("Selected Site Potential image could not be loaded for this PDF.");
+    expect(printMarkup).not.toContain("<img");
+    expect(settled).toBe(true);
   });
 
   it("marks the image failed when signed URL creation fails", async () => {
