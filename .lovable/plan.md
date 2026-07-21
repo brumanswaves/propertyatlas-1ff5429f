@@ -1,10 +1,12 @@
-No code changes proposed. This turn is a read-only status check.
+## Plan: Rebuild Preview
 
-Findings:
-- GitHub `main` HEAD: `0df22ab` (PR #1 "search-address-erf-flow" merged, plus `5c97c5c` merge of Dean cleanup).
-- Preview HEAD: `0df22ab` — in sync with `origin/main`.
-- `32249ff` "Rebuild search into address and erf flows" is included (ancestor of HEAD).
-- Published site is still on `babb042`; 4 newer commits are unpublished. Requires **Publish → Update** to deploy.
-- `src/components/map/SearchBar.tsx` implements the two-lane chooser (`SearchLane = "address" | "erf"`, `lane` starts `null`) with Google address autocomplete and structured erf fields.
+The Preview is currently on branch `fix-report-print-and-site-potential-runtime` at HEAD `7523657`, already built successfully in the previous turn. "Create preview" will trigger a fresh Preview build against the same commit.
 
-Next step (only if you want it): click **Publish → Update** to roll the preview commit `0df22ab` to the live site. I will not publish without an explicit instruction.
+### Steps
+1. Run the Preview build against current HEAD `7523657587e3d4513f8767db889f17082e8bb2be`.
+2. Report: build result (success/failure), duration, Preview URL, HEAD commit.
+
+### Constraints
+- No code edits.
+- No branch switch, no merge.
+- Production (`erfstoep.lovable.app`) untouched — no publish.
