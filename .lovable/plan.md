@@ -1,12 +1,19 @@
-## Plan: Rebuild Preview
+## Plan: Preview PR #36
 
-The Preview is currently on branch `fix-report-print-and-site-potential-runtime` at HEAD `7523657`, already built successfully in the previous turn. "Create preview" will trigger a fresh Preview build against the same commit.
+Build Lovable Preview from the connected GitHub branch `strategy-persistence-report-redesign`.
+
+Required approved application commit:
+
+`f05312ab524298daf227783622b65a938d7b1e7b`
 
 ### Steps
-1. Run the Preview build against current HEAD `7523657587e3d4513f8767db889f17082e8bb2be`.
-2. Report: build result (success/failure), duration, Preview URL, HEAD commit.
+1. Synchronize the connected GitHub branch into Lovable's mirror.
+2. Confirm the synchronized Preview HEAD includes `f05312ab524298daf227783622b65a938d7b1e7b`.
+3. Build Preview only.
+4. Report the selected branch, Preview HEAD, build result and Preview URL.
 
 ### Constraints
-- No code edits.
-- No branch switch, no merge.
-- Production (`erfstoep.lovable.app`) untouched — no publish.
+- Do not edit application code.
+- Do not merge PR #36.
+- Do not publish Production.
+- Production (`easyerf.lovable.app`) must remain untouched.
