@@ -108,6 +108,10 @@ import {
   type ReportDecisionMode,
 } from "@/lib/reports/reportDecisionMode";
 import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
+import {
+  preloadPrintableImageUrl,
+  waitForRenderSettlement,
+} from "@/lib/reports/printImageReadiness";
 import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 
 interface Props {
@@ -1208,6 +1212,7 @@ async function waitForReportPrintPreparation(root: ParentNode | null | undefined
   await Promise.race([
     (async () => {
       await waitForSignedAssetPreviewSettlements();
+      await waitForRenderSettlement();
       await waitForPrintableReportImages(root);
     })(),
     new Promise<void>((resolve) => window.setTimeout(resolve, REPORT_PRINT_PREPARATION_TIMEOUT_MS)),
@@ -1503,14 +1508,14 @@ function StoepAiReportView({
       status: "loading",
       url: null,
     });
-    const settlement = createErfAssetSignedUrl(selectedDesign)
-      .then((signedUrl) => {
-        if (signedUrl) signedAssetPreviewUrlCache.set(selectedDesign.id, signedUrl);
+    const settlement = preloadPrintableImageUrl(() => createErfAssetSignedUrl(selectedDesign))
+      .then((result) => {
+        if (result.status === "ready") signedAssetPreviewUrlCache.set(selectedDesign.id, result.url);
         if (!alive) return;
         setSelectedDesignPrintImage({
           assetId: selectedDesign.id,
-          status: signedUrl ? "ready" : "failed",
-          url: signedUrl,
+          status: result.status,
+          url: result.url,
         });
       })
       .catch(() => {

@@ -23,6 +23,7 @@ interface StrategyCloudSaveQueueOptions {
   userId: string | null;
   debounceMs?: number;
   now?: () => string;
+  canPersist?: () => boolean | Promise<boolean>;
   persist: (workspace: ErfStrategyWorkspace) => Promise<void>;
 }
 
@@ -39,6 +40,7 @@ export function createStrategyCloudSaveQueue({
   userId,
   debounceMs = 750,
   now = () => new Date().toISOString(),
+  canPersist = () => true,
   persist,
 }: StrategyCloudSaveQueueOptions): StrategyCloudSaveQueue {
   let disposed = false;
@@ -85,6 +87,13 @@ export function createStrategyCloudSaveQueue({
     if (pendingWorkspace === workspaceToSave) pendingWorkspace = null;
     emit({ status: "saving", error: null });
     try {
+      const allowed = await canPersist();
+      if (!allowed) {
+        inFlight = false;
+        if (!isSameParcel(parcelId, pendingWorkspace)) pendingWorkspace = workspaceToSave;
+        emit({ status: "offline", error: null });
+        return;
+      }
       await persist(workspaceToSave);
       inFlight = false;
       const pending = pendingWorkspace;

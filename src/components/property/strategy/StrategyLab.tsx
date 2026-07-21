@@ -293,6 +293,13 @@ async function persistStrategyWorkspaceToCloud(
   });
 }
 
+async function activeSupabaseUserMatches(expectedUserId: string | null) {
+  if (!expectedUserId) return false;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) return false;
+  return data.user?.id === expectedUserId;
+}
+
 export function StrategyLab({
   parcelId,
   defaultPrice,
@@ -351,6 +358,7 @@ export function StrategyLab({
     const queue = createStrategyCloudSaveQueue({
       parcelId,
       userId,
+      canPersist: () => activeSupabaseUserMatches(userId),
       persist: (workspace) => persistStrategyWorkspaceToCloud(parcelId, workspace),
     });
     cloudSaveQueueRef.current = queue;

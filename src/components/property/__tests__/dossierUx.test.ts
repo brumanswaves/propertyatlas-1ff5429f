@@ -998,6 +998,9 @@ describe("Investor Decision Mode guardrails", () => {
     expect(strategyLab).toContain("Autosaved draft separate from chosen report scenario");
     expect(strategyLab).toContain("persistStrategyWorkspaceToCloud");
     expect(strategyLab).toContain("patchSavedPropertyUserData");
+    expect(strategyLab).toContain("activeSupabaseUserMatches");
+    expect(strategyLab).toContain("supabase.auth.getUser()");
+    expect(strategyLab).toContain("canPersist: () => activeSupabaseUserMatches(userId)");
     expect(strategyLab).toContain("createStrategyCloudSaveQueue");
     expect(cloudQueue).toContain("debounceMs = 750");
     expect(cloudQueue).toContain("workspace.parcelId === parcelId");

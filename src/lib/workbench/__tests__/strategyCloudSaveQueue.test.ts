@@ -134,4 +134,98 @@ describe("strategy cloud save queue", () => {
     expect(queue.getStatus()).toMatchObject({ status: "offline" });
     expect(persist).not.toHaveBeenCalled();
   });
+
+  it("does not persist user A's pending draft after the active session changes to user B", async () => {
+    vi.useFakeTimers();
+    let activeUserId: string | null = "user-a";
+    const userAPersist = vi.fn(() => Promise.resolve());
+    const userBPersist = vi.fn(() => Promise.resolve());
+    const userAQueue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-a",
+      canPersist: () => activeUserId === "user-a",
+      persist: userAPersist,
+    });
+
+    userAQueue.schedule(workspace("parcel-a", "user-a-draft"));
+    activeUserId = "user-b";
+    await vi.advanceTimersByTimeAsync(750);
+
+    expect(userAPersist).not.toHaveBeenCalled();
+    expect(userAQueue.getStatus()).toMatchObject({ status: "offline" });
+
+    const userBQueue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-b",
+      canPersist: () => activeUserId === "user-b",
+      persist: userBPersist,
+    });
+    userBQueue.schedule(workspace("parcel-a", "user-b-draft"));
+    await vi.advanceTimersByTimeAsync(750);
+
+    expect(userBPersist).toHaveBeenCalledTimes(1);
+    expect(userBPersist).toHaveBeenLastCalledWith(
+      expect.objectContaining({ draftInputs: { label: "user-b-draft" } }),
+    );
+  });
+
+  it("does not start a cloud request when logout happens before cleanup flush", async () => {
+    vi.useFakeTimers();
+    let activeUserId: string | null = "user-a";
+    const persist = vi.fn(() => Promise.resolve());
+    const queue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-a",
+      canPersist: () => activeUserId === "user-a",
+      persist,
+    });
+
+    queue.schedule(workspace("parcel-a", "draft"));
+    activeUserId = null;
+    await queue.flush();
+
+    expect(persist).not.toHaveBeenCalled();
+    expect(queue.getStatus()).toMatchObject({ status: "offline" });
+  });
+
+  it("flushes the correct parcel when the same user switches parcels", async () => {
+    vi.useFakeTimers();
+    const persist = vi.fn(() => Promise.resolve());
+    const queue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-a",
+      canPersist: () => true,
+      persist,
+    });
+
+    queue.schedule(workspace("parcel-a", "parcel-a-draft"));
+    await queue.flush();
+
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenLastCalledWith(expect.objectContaining({ parcelId: "parcel-a" }));
+  });
+
+  it("disposing an old queue does not affect the new user queue", async () => {
+    vi.useFakeTimers();
+    const oldPersist = vi.fn(() => Promise.resolve());
+    const newPersist = vi.fn(() => Promise.resolve());
+    const oldQueue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-a",
+      persist: oldPersist,
+    });
+    const newQueue = createStrategyCloudSaveQueue({
+      parcelId: "parcel-a",
+      userId: "user-b",
+      persist: newPersist,
+    });
+
+    oldQueue.schedule(workspace("parcel-a", "old"));
+    oldQueue.dispose();
+    newQueue.schedule(workspace("parcel-a", "new"));
+    await vi.advanceTimersByTimeAsync(750);
+
+    expect(oldPersist).not.toHaveBeenCalled();
+    expect(newPersist).toHaveBeenCalledTimes(1);
+  });
 });

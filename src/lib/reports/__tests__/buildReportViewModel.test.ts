@@ -232,6 +232,8 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(source).toContain("PrintStrategyAssumptions");
     expect(source).toContain("(User assumption)");
     expect(source).toContain("Calculated outputs");
+    expect(source).toContain("preloadPrintableImageUrl");
+    expect(source).toContain("waitForRenderSettlement");
     expect(source).toContain("selectedDesignImageUrl");
     expect(source).toContain("Selected Site Potential image could not be loaded for this PDF.");
     expect(source).toContain("trackSignedAssetPreviewSettlement(settlement.then(() => undefined))");
