@@ -140,12 +140,34 @@ describe("buildReportViewModel", () => {
 
 describe("Easy Erf report presentation rendering", () => {
   const {
+    DecisionLensSelector,
     PrintFactTable,
     PrintStrategyAssumptions,
     formatArea,
     investorAssumptionRows,
     printFactRow,
   } = __REPORT_PRESENTATION_TESTS;
+
+  it("renders the persistent Standard and Investor selector with current print mode copy", () => {
+    const standardHtml = renderToStaticMarkup(
+      createElement(DecisionLensSelector, { mode: "standard", onChange: () => undefined }),
+    );
+    const investorHtml = renderToStaticMarkup(
+      createElement(DecisionLensSelector, { mode: "investor", onChange: () => undefined }),
+    );
+
+    expect(standardHtml).toContain("Standard report");
+    expect(standardHtml).toContain("Investor report");
+    expect(standardHtml).toContain(
+      "Clear property facts, planning readiness, risks and recommended next actions.",
+    );
+    expect(standardHtml).toContain(
+      "Deal assumptions, financial readiness, evidence gaps and investment risks.",
+    );
+    expect(standardHtml).toContain("Currently viewing and printing: Standard report");
+    expect(standardHtml).toContain("Selected");
+    expect(investorHtml).toContain("Currently viewing and printing: Investor report");
+  });
 
   it("renders explicit factual statuses for missing and populated area and zoning rows", () => {
     const html = renderToStaticMarkup(
@@ -234,6 +256,14 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   const printPresentationSource = source.slice(
     source.indexOf("function EasyErfPrintReport"),
     source.indexOf("function PrintPageHeading"),
+  );
+  const standardScreenSource = source.slice(
+    source.indexOf("function EasyErfStandardScreenReport"),
+    source.indexOf("function EasyErfInvestorScreenReport"),
+  );
+  const investorScreenSource = source.slice(
+    source.indexOf("function EasyErfInvestorScreenReport"),
+    source.indexOf("function ScreenPanel"),
   );
 
   it("wires print through a dedicated iframe document", () => {
@@ -336,7 +366,38 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(printPresentationSource).toContain("<InvestorConceptActionPage");
   });
 
+  it("keeps screen reports continuous and separate from compact print pages", () => {
+    expect(source).toContain("<DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />");
+    expect(standardScreenSource).toContain("Property intelligence snapshot");
+    expect(standardScreenSource).toContain("Property facts and planning");
+    expect(standardScreenSource).toContain("Market and strategy");
+    expect(standardScreenSource).toContain("Site Potential");
+    expect(investorScreenSource).toContain("Deal snapshot");
+    expect(investorScreenSource).toContain("Missing-input state");
+    expect(investorScreenSource).toContain("Assumptions and evidence");
+    expect(investorScreenSource).toContain("Investor actions");
+    expect(standardScreenSource).not.toContain("<PrintPage");
+    expect(investorScreenSource).not.toContain("<PrintPage");
+    expect(standardScreenSource).not.toContain("report-print-page");
+    expect(investorScreenSource).not.toContain("report-print-page");
+    expect(standardScreenSource).not.toContain("print-page-footer");
+    expect(investorScreenSource).not.toContain("print-page-footer");
+    expect(standardScreenSource).not.toContain("Page {page} of {totalPages}");
+    expect(investorScreenSource).not.toContain("Page {page} of {totalPages}");
+  });
+
   it("locks the approved print page architecture and key fields", () => {
+    const standardPrintSource = printPresentationSource.slice(
+      printPresentationSource.indexOf("function EasyErfStandardPrintReport"),
+      printPresentationSource.indexOf("function EasyErfInvestorPrintReport"),
+    );
+    const investorPrintSource = printPresentationSource.slice(
+      printPresentationSource.indexOf("function EasyErfInvestorPrintReport"),
+      printPresentationSource.indexOf("function StandardSnapshotPage"),
+    );
+
+    expect((standardPrintSource.match(/<Standard[A-Za-z]+Page/g) ?? []).length).toBe(4);
+    expect((investorPrintSource.match(/<Investor[A-Za-z]+Page/g) ?? []).length).toBe(3);
     expect(printPresentationSource).toContain('eyebrow="Property intelligence snapshot"');
     expect(printPresentationSource).toContain('eyebrow="Facts and planning"');
     expect(printPresentationSource).toContain('eyebrow="Market, risks and strategy"');

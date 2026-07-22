@@ -1850,7 +1850,9 @@ function StoepAiReportView({
     printOnly ? (
       <EasyErfPrintReport {...reportPresentationProps} />
     ) : (
-    <ScreenReportComponent>
+    <>
+      <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+      <ScreenReportComponent>
       {/* HEADER */}
       <section
         id="report-brief"
@@ -2601,7 +2603,8 @@ function StoepAiReportView({
           </button>
         </div>
       </section>
-    </ScreenReportComponent>
+      </ScreenReportComponent>
+    </>
   );
 
   return (
@@ -2649,7 +2652,7 @@ function EasyErfScreenReportShell({
       </div>
       <article
         className={cn(
-          "report-page easy-erf-print-report easy-erf-screen-document space-y-8 rounded-[2rem] bg-[#EEF4FA] p-3 shadow-[0_28px_90px_-60px_rgba(13,27,42,0.55)] sm:p-5",
+          "report-page easy-erf-screen-document space-y-6 rounded-[2rem] bg-[#EEF4FA] p-3 shadow-[0_28px_90px_-60px_rgba(13,27,42,0.55)] sm:p-5",
           kind === "standard" ? "easy-erf-standard-screen-report" : "easy-erf-investor-screen-report",
         )}
         data-report-kind={kind}
@@ -2666,6 +2669,8 @@ type EasyErfScreenReportProps = EasyErfPrintReportProps & {
 
 function EasyErfStandardScreenReport(props: EasyErfScreenReportProps) {
   const documentSummary = summarizePrintDocuments(props.fileAssets, props.groupedAssets);
+  const topRisks = props.report.risks.slice(0, 3).map((risk) => risk.title);
+  const topActions = props.report.recommendations.slice(0, 3).map((item) => item.title);
 
   return (
     <EasyErfScreenReportShell
@@ -2673,23 +2678,103 @@ function EasyErfStandardScreenReport(props: EasyErfScreenReportProps) {
       kind="standard"
       onPrint={props.onPrint}
     >
-      <StandardSnapshotPage
-        report={props.report}
-        decision={props.decision}
-        documentSummary={documentSummary}
-        hero={props.selectedDesignImageUrl}
-        screen
+      <section className="screen-report-hero">
+        <div className="screen-report-hero-copy">
+          <div className="screen-report-eyebrow">Property intelligence snapshot</div>
+          <h1>{props.report.identity.displayName}</h1>
+          <p>{props.report.identity.municipality ?? "Municipality not verified"}</p>
+          <p>{props.report.identity.province ?? "Province not verified"}</p>
+          <p className="text-sm text-white/60">LPI: {props.report.identity.lpi ?? "Not yet verified"}</p>
+        </div>
+        {props.selectedDesignImageUrl ? (
+          <img
+            src={props.selectedDesignImageUrl}
+            alt="Selected property visual context"
+            className="screen-report-hero-image"
+          />
+        ) : (
+          <div className="screen-report-hero-fallback">No confirmed property image is saved yet.</div>
+        )}
+      </section>
+
+      <ScreenKpiGrid
+        rows={[
+          ["Evidence confidence", `${props.decision.confidencePercent}%`, confidenceTone(props.decision.confidencePercent)],
+          ["Overall risk", decisionVerdictLabel(props.decision.verdict), "Evidence based"],
+          [
+            "Erf size",
+            props.report.identity.areaM2 != null ? formatArea(props.report.identity.areaM2) : "Not yet verified",
+            props.report.identity.areaM2 != null ? "Official source" : "Missing",
+          ],
+          ["Market evidence", `${props.report.market.includedCount}`, "Comparables"],
+          ["Chosen strategy", props.report.strategy.chosen?.label ?? "Not chosen", "User selected"],
+          ["Documents on file", `${documentSummary.totalItems}`, "Items"],
+        ]}
       />
-      <StandardFactsPage report={props.report} screen />
-      <StandardMarketStrategyPage
-        report={props.report}
-        decision={props.decision}
-        investorMode={props.investorMode}
-        chosenScenario={props.chosenScenario}
-        scenarios={props.scenarios}
-        screen
-      />
-      <StandardSiteActionPage {...props} documentSummary={documentSummary} screen />
+
+      <section className="screen-report-grid screen-report-grid-three">
+        <ScreenPanel title="Easy Erf conclusion">
+          <p>{props.decision.summary}</p>
+        </ScreenPanel>
+        <ScreenPanel title="Top 3 risks">
+          <ScreenList items={topRisks} empty="No top risks recorded yet." />
+        </ScreenPanel>
+        <ScreenPanel title="Top 3 actions">
+          <ScreenList items={topActions} empty="No immediate actions generated yet." numbered />
+        </ScreenPanel>
+      </section>
+
+      <section className="screen-report-grid">
+        <ScreenPanel title="Property facts and planning">
+          <ScreenStatusRows
+            rows={[
+              printFactRow("Erf number", props.report.identity.erfNumber, "Official"),
+              printFactRow(
+                "Erf area",
+                props.report.identity.areaM2 != null ? formatArea(props.report.identity.areaM2) : null,
+                "Official",
+              ),
+              planningFactRow(props.report, "Zoning"),
+              planningFactRow(props.report, "Coverage"),
+              planningFactRow(props.report, "FAR"),
+              printFactRow("Market address", props.report.identity.marketAddressLine, "User confirmed"),
+            ]}
+          />
+        </ScreenPanel>
+        <ScreenPanel title="Market and strategy">
+          <ScreenKpiGrid
+            compact
+            rows={[
+              ["Saved comparables", `${props.report.market.includedCount}`, "Included in evidence"],
+              [
+                "Subject listing",
+                props.report.market.subjectListing ? "Saved for this erf" : "Not saved",
+                props.report.market.subjectListing ? "User confirmed" : "Missing",
+              ],
+              ["Chosen strategy", props.chosenScenario?.label ?? "Not chosen", "Strategy Lab"],
+              ["Saved scenarios", `${props.scenarios.length}`, "Workspace"],
+            ]}
+          />
+          {props.chosenScenario ? (
+            <ScreenAssumptionList scenario={props.chosenScenario} />
+          ) : (
+            <p className="mt-4 text-sm text-[#64748B]">No Strategy Lab assumptions are saved yet.</p>
+          )}
+          <ScreenKpiGrid compact rows={safeStrategyOutputRows(props.chosenScenario, props.investorMode).slice(0, 4).map(([label, value]) => [label, value, "Calculated output"])} />
+        </ScreenPanel>
+      </section>
+
+      <section className="screen-report-grid">
+        <ScreenPanel title="Site Potential">
+          <ScreenSitePotentialBlock {...props} />
+        </ScreenPanel>
+        <ScreenPanel title="Recommended action plan">
+          <ScreenList
+            items={props.report.recommendations.slice(0, 6).map((item) => `${item.order}. ${item.title}`)}
+            empty="No outstanding recommendations. Continue keeping evidence fresh."
+          />
+        </ScreenPanel>
+      </section>
     </EasyErfScreenReportShell>
   );
 }
@@ -2703,21 +2788,205 @@ function EasyErfInvestorScreenReport(props: EasyErfScreenReportProps) {
       kind="investor"
       onPrint={props.onPrint}
     >
-      <InvestorDealSnapshotPage
-        report={props.report}
-        decision={props.decision}
-        investorMode={props.investorMode}
-        screen
-      />
-      <InvestorAssumptionsEvidencePage
-        report={props.report}
-        investorMode={props.investorMode}
-        documentSummary={documentSummary}
-        chosenScenario={props.chosenScenario}
-        screen
-      />
-      <InvestorConceptActionPage {...props} screen />
+      <section className="screen-investor-hero">
+        <ScreenPanel title="Deal snapshot" dark>
+          <div className="screen-report-eyebrow text-[#FFB86B]">Decision status</div>
+          <h1 className="mt-3 text-4xl font-semibold text-[#FFB86B]">
+            {investorDecisionLabel(props.investorMode.readinessStatus)}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-white/74">{props.investorMode.readinessExplanation}</p>
+        </ScreenPanel>
+        <ScreenKpiGrid rows={investorKpiRows(props.investorMode).map((row) => [row.label, row.value, row.detail])} />
+      </section>
+
+      <ScreenPanel title="Missing-input state">
+        <p className="text-base leading-7 text-[#334155]">
+          {props.investorMode.missingInputs.length
+            ? "Not calculated. Required assumptions are missing."
+            : "Key investor outputs are available from saved Strategy Lab assumptions."}
+        </p>
+      </ScreenPanel>
+
+      <section className="screen-report-grid">
+        <ScreenPanel title="Assumptions and evidence">
+          <ScreenStatusRows rows={investorAssumptionRows(props.chosenScenario)} />
+          <div className="mt-5">
+            <ScreenStatusRows
+              rows={[
+                printFactRow(
+                  "Market support",
+                  props.investorMode.marketEvidenceStatus,
+                  statusFromValue(props.investorMode.marketEvidenceStatus),
+                ),
+                printFactRow("Planning readiness", "Not reviewed", "Needs review"),
+                printFactRow(
+                  "Ownership readiness",
+                  props.report.ownership.isVerified ? "Verified" : null,
+                  "Verified",
+                ),
+                printFactRow("Documents available", `${documentSummary.totalItems}`, "Document supported"),
+              ]}
+            />
+          </div>
+        </ScreenPanel>
+        <ScreenPanel title="Key risks">
+          <ScreenList
+            items={props.investorMode.downsideRisks.slice(0, 6)}
+            empty="No investor risks generated yet."
+          />
+        </ScreenPanel>
+      </section>
+
+      <section className="screen-report-grid">
+        <ScreenPanel title="Site Potential">
+          <ScreenSitePotentialBlock {...props} />
+        </ScreenPanel>
+        <ScreenPanel title="Investor actions">
+          <ScreenList
+            items={props.investorMode.nextActions.map((action) => `${action.label}: ${action.body}`).slice(0, 6)}
+            empty="No investor-specific actions generated yet."
+          />
+        </ScreenPanel>
+      </section>
     </EasyErfScreenReportShell>
+  );
+}
+
+function ScreenPanel({
+  title,
+  children,
+  dark = false,
+}: {
+  title: string;
+  children: ReactNode;
+  dark?: boolean;
+}) {
+  return (
+    <section className={cn("screen-report-panel", dark && "screen-report-panel-dark")}>
+      <h2>{title}</h2>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function ScreenKpiGrid({
+  rows,
+  compact = false,
+}: {
+  rows: Array<[string, ReactNode, ReactNode]>;
+  compact?: boolean;
+}) {
+  return (
+    <section className={cn("screen-kpi-grid", compact && "screen-kpi-grid-compact")}>
+      {rows.map(([label, value, detail]) => (
+        <article key={label} className="screen-kpi-card">
+          <span>{label}</span>
+          <strong>{value || "Not calculated"}</strong>
+          <small>{detail}</small>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function ScreenStatusRows({ rows }: { rows: PrintFactRow[] }) {
+  return (
+    <div className="screen-status-rows">
+      {rows.map((row) => (
+        <div key={row.label} className="screen-status-row">
+          <span>{row.label}</span>
+          <strong>{row.value}</strong>
+          <em className={cn("print-status", printStatusClass(row.status))}>{row.status}</em>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScreenList({
+  items,
+  empty,
+  numbered,
+}: {
+  items: string[];
+  empty: string;
+  numbered?: boolean;
+}) {
+  const visible = items.filter(Boolean).slice(0, 6);
+  const List = numbered ? "ol" : "ul";
+  return visible.length ? (
+    <List className="screen-report-list">
+      {visible.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </List>
+  ) : (
+    <p className="text-sm leading-6 text-[#64748B]">{empty}</p>
+  );
+}
+
+function ScreenAssumptionList({ scenario }: { scenario: ErfStrategyScenario }) {
+  const fields = PRINT_ASSUMPTION_FIELDS[scenario.strategy] ?? PRINT_ASSUMPTION_FIELDS.custom;
+  const rows = fields
+    .map(([label, key]) => [label, String(scenario.inputs[key] ?? "").trim()] as const)
+    .filter(([, value]) => value.length > 0)
+    .slice(0, 8);
+
+  if (!rows.length) {
+    return <p className="mt-4 text-sm text-[#64748B]">No user-entered assumptions were saved yet.</p>;
+  }
+
+  return (
+    <dl className="screen-assumption-grid">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value} (User assumption)</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ScreenSitePotentialBlock(props: EasyErfPrintReportProps) {
+  const conceptTitle = siteConceptTitle(props.selectedDesign);
+
+  return (
+    <div className="space-y-4">
+      {props.selectedDesign && props.selectedDesignImageUrl ? (
+        <figure>
+          <img
+            src={props.selectedDesignImageUrl}
+            alt="Selected Site Potential concept"
+            className="screen-site-image"
+          />
+          <figcaption className="mt-2 text-sm font-semibold text-[#0D1B2A]">{conceptTitle}</figcaption>
+        </figure>
+      ) : props.selectedDesign ? (
+        <p className="report-print-image-placeholder">
+          {props.selectedDesignImageFailed
+            ? "Selected Site Potential image could not be loaded for this PDF."
+            : "Selected Site Potential image is still loading for this PDF."}
+        </p>
+      ) : (
+        <p className="text-sm leading-6 text-[#64748B]">
+          {props.sitePotentialSkipped
+            ? "Site Potential has been skipped for this report."
+            : "No Site Potential concept has been selected yet."}
+        </p>
+      )}
+      <ScreenStatusRows
+        rows={[
+          printFactRow("Concept title", conceptTitle, "Document supported"),
+          printFactRow("Project mode", sitePotentialReportModeLabel(props.selectedSiteMode), "User confirmed"),
+          printFactRow("Architectural style", props.siteProject.project?.selected_style, "User confirmed"),
+          printFactRow("Development brief", props.siteProject.project?.design_brief, "User confirmed"),
+        ]}
+      />
+      <p className="text-sm leading-6 text-[#64748B]">
+        Concept image for illustration only. Not approved or verified.
+      </p>
+    </div>
   );
 }
 
@@ -3730,6 +3999,7 @@ function PrintStrategyAssumptions({ scenario }: { scenario: ErfStrategyScenario 
 // Exposed only so report tests can render these exact presentation helpers.
 // eslint-disable-next-line react-refresh/only-export-components
 export const __REPORT_PRESENTATION_TESTS = {
+  DecisionLensSelector,
   PrintFactTable,
   PrintStrategyAssumptions,
   formatArea,
@@ -3765,36 +4035,30 @@ function DecisionLensSelector({
   const options: Array<{
     id: ReportDecisionMode;
     title: string;
-    eyebrow: string;
     body: string;
-    points: string[];
   }> = [
     {
       id: "standard",
-      eyebrow: "General decision document",
-      title: "Standard Easy Erf Report",
-      body: "Best for a clean property file: identity, evidence, risks, next steps and documents.",
-      points: ["Evidence readiness", "Known gaps", "Source-backed next actions"],
+      title: "Standard report",
+      body: "Clear property facts, planning readiness, risks and recommended next actions.",
     },
     {
       id: "investor",
-      eyebrow: "Numbers-first lens",
-      title: "Investor Decision Mode",
-      body: "Best when a chosen Strategy Lab scenario should lead the decision conversation.",
-      points: ["Chosen strategy", "Investor numbers", "Assumption and downside view"],
+      title: "Investor report",
+      body: "Deal assumptions, financial readiness, evidence gaps and investment risks.",
     },
   ];
 
   const current = options.find((option) => option.id === mode) ?? options[0];
 
   return (
-    <section className="report-no-print mt-5">
+    <section className="report-no-print mb-5 rounded-[1.75rem] border border-[#D9E6F2] bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
             Choose your report view
           </div>
-          <p className="mt-1 text-sm text-white/62">
+          <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">
             Currently viewing and printing: {current.title}
           </p>
         </div>
@@ -3817,10 +4081,10 @@ function DecisionLensSelector({
               <span
                 className={cn(
                   "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
-                  mode === option.id ? "bg-[#FF6A00] text-white" : "bg-white text-[#B24A00]",
+                  mode === option.id ? "bg-[#FF6A00] text-white" : "bg-[#FFF7ED] text-[#B24A00]",
                 )}
               >
-                {option.eyebrow}
+                {option.id === "standard" ? "Standard report" : "Investor report"}
               </span>
               {mode === option.id && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6A00] px-2 py-0.5 text-[10px] font-bold text-white">
@@ -3837,16 +4101,6 @@ function DecisionLensSelector({
               )}
             >
               {option.body}
-            </span>
-            <span className="mt-3 grid gap-1 text-xs">
-              {option.points.map((point) => (
-                <span
-                  key={point}
-                  className={cn(mode === option.id ? "text-white/62" : "text-[#64748B]")}
-                >
-                  {point}
-                </span>
-              ))}
             </span>
           </button>
         ))}

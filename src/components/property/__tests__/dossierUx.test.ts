@@ -954,10 +954,14 @@ describe("Investor Decision Mode guardrails", () => {
     const styles = read("src/styles.css");
 
     expect(dossier).toContain("DecisionLensSelector");
-    expect(dossier).toContain("Standard Easy Erf Report");
-    expect(dossier).toContain("Investor Decision Mode");
-    expect(dossier).toContain("General decision document");
-    expect(dossier).toContain("Numbers-first lens");
+    expect(dossier).toContain("Standard report");
+    expect(dossier).toContain("Investor report");
+    expect(dossier).toContain(
+      "Clear property facts, planning readiness, risks and recommended next actions.",
+    );
+    expect(dossier).toContain(
+      "Deal assumptions, financial readiness, evidence gaps and investment risks.",
+    );
     expect(dossier).toContain("Choose your report view");
     expect(dossier).toContain("Currently viewing and printing");
     expect(dossier).not.toContain("Developer</button>");
