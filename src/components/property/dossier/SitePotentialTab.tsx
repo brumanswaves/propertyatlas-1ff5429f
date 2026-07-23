@@ -26,6 +26,13 @@ import {
 } from "@/lib/sitePotential/generationProgress";
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
+  loadParcelBetaStatus,
+  SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE,
+  SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
+  type AllowanceStatusLifecycle,
+  type BetaCreditUiStatus,
+} from "@/lib/sitePotential/betaStatusRequest";
+import {
   buildSelectedDesignDeletionPatch,
   useSitePotentialProject,
   type SitePotentialProjectPatch,
@@ -110,28 +117,7 @@ const GENERATION_UI_ENABLED =
   import.meta.env.VITE_SITE_POTENTIAL_BETA_UI === "true";
 const BETA_UI_ENABLED = import.meta.env.VITE_SITE_POTENTIAL_BETA_UI === "true";
 
-interface BetaCreditUiStatus {
-  enabled: boolean;
-  creditsRemaining: number;
-  betaCreditsRemaining?: number;
-  purchasedCredits?: number;
-  freeEligible?: boolean;
-  canGenerate?: boolean;
-  nextEntitlementSource?: string | null;
-  free?: {
-    used24Hours: number;
-    used7Days: number;
-    used30Days: number;
-    remaining24Hours: number;
-    remaining7Days: number;
-    remaining30Days: number;
-    sameParcelEligible: boolean;
-  };
-  openRequestStatus?: string | null;
-}
-
 type ConceptPreviewState = "checking" | "available" | "unavailable";
-type AllowanceStatusLifecycle = "loading" | "ready" | "error";
 
 interface SitePotentialPackStatusItem {
   id: string;
@@ -656,41 +642,31 @@ export function SitePotentialTab({
 
     const isCurrentRequest = () => requestId === betaStatusRequestIdRef.current && !signal?.aborted;
 
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (!isCurrentRequest()) return;
-      const token = data.session?.access_token;
-      if (!token) {
-        setBetaStatus({ enabled: true, creditsRemaining: 0, openRequestStatus: null });
-        setBetaStatusLifecycle("ready");
-        return;
-      }
-      const params = new URLSearchParams({ parcelId: parcel.id });
-      const response = await fetch(`/api/site-potential/beta-status?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal,
-      });
-      if (!isCurrentRequest()) return;
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Could not check Site Potential allowance.");
-      }
-      setBetaStatus({
-        enabled: Boolean(payload.enabled),
-        creditsRemaining: Number(payload.creditsRemaining ?? 0),
-        betaCreditsRemaining: Number(payload.betaCreditsRemaining ?? payload.creditsRemaining ?? 0),
-        purchasedCredits: Number(payload.purchasedCredits ?? 0),
-        freeEligible: Boolean(payload.freeEligible),
-        canGenerate: Boolean(payload.canGenerate),
-        nextEntitlementSource: payload.nextEntitlementSource ?? null,
-        free: payload.free ?? undefined,
-        openRequestStatus: payload.openRequestStatus ?? null,
-      });
+    const result = await loadParcelBetaStatus({
+      parcelId: parcel.id,
+      signal,
+      getSession: () => supabase.auth.getSession(),
+      fetchImpl: fetch,
+      isCurrentRequest,
+    });
+
+    if (result.kind === "stale") return;
+    if (result.kind === "ready") {
+      setBetaStatus(result.status);
       setBetaStatusLifecycle("ready");
-    } catch (error) {
-      if (signal?.aborted || !isCurrentRequest()) return;
+      return;
+    }
+
+    if (result.kind === "signed_out") {
       setBetaStatus(null);
-      setBetaStatusError("Could not check Site Potential allowance.");
+      setBetaStatusError(result.message);
+      setBetaStatusLifecycle("error");
+      return;
+    }
+
+    if (result.kind === "error") {
+      setBetaStatus(null);
+      setBetaStatusError(result.message);
       setBetaStatusLifecycle("error");
     }
   }, [parcel.id]);
