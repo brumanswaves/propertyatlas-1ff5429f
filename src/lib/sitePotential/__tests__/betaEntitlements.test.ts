@@ -1,14 +1,52 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   betaIdempotencyPrefix,
   isBetaAdminAllowed,
   isSitePotentialBetaGenerationReady,
   isSitePotentialBetaEnabled,
 } from "../betaEntitlements";
+import {
+  loadParcelBetaStatus,
+  SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
+  type BetaCreditUiStatus,
+} from "../betaStatusRequest";
 
 function read(path: string) {
   return readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
+
+function betaPayload(parcelId: string, creditsRemaining: number) {
+  return {
+    success: true,
+    enabled: true,
+    creditsRemaining,
+    betaCreditsRemaining: creditsRemaining,
+    purchasedCredits: 0,
+    freeEligible: true,
+    canGenerate: true,
+    nextEntitlementSource: "free_allowance",
+    free: {
+      used24Hours: 0,
+      used7Days: 0,
+      used30Days: 0,
+      remaining24Hours: creditsRemaining,
+      remaining7Days: creditsRemaining,
+      remaining30Days: creditsRemaining,
+      sameParcelEligible: true,
+    },
+    openRequestStatus: parcelId,
+  };
 }
 
 describe("Site Potential private beta entitlements", () => {
@@ -166,13 +204,26 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Three site-grounded concepts");
     expect(tab).toContain("Generate 3 free concepts");
     expect(tab).toContain("Use 1 credit for 3 concepts");
-    expect(tab).toContain("Free allowance used");
+    expect(tab).toContain("No purchased or beta/test credits are available.");
     expect(tab).toContain("Purchased credits");
+    expect(tab).toContain("Daily packs");
+    expect(tab).toContain("Weekly packs");
+    expect(tab).toContain("Monthly packs");
+    expect(tab).toContain("This erf");
+    expect(tab).toContain("Beta/test credits");
+    expect(tab).toContain("generationUnavailableReason");
+    expect(tab).toContain(
+      "Free allowance already used for this erf during the current 30-day window.",
+    );
+    expect(tab).not.toContain("purchasedCreditsRemaining + betaCreditsRemaining");
     expect(tab).not.toContain("Buy more Site Potential credits");
     expect(tab).not.toContain("Checkout connection pending");
     expect(tab).toContain("Select for Easy Erf Report");
     expect(tab).toContain("createErfAssetSignedUrl");
     expect(tab).toContain("<img");
+    expect(tab).toContain("Preview unavailable. The stored concept image could not be loaded.");
+    expect(tab).toContain("Retry display");
+    expect(tab).toContain("setImageUrl(null);");
     expect(tab).not.toContain("Use selected concept in Strategy");
     expect(tab).not.toContain("onOpenStrategy");
     expect(tab).toContain("/api/site-potential/beta-redeem");
@@ -188,6 +239,126 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("poller.stop()");
     expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
     expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
+  });
+
+  it("keeps Site Potential allowance status parcel-safe before showing eligibility", () => {
+    const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const request = read("src/lib/sitePotential/betaStatusRequest.ts");
+
+    expect(request).toContain('export type AllowanceStatusLifecycle = "loading" | "ready" | "error"');
+    expect(tab).toContain('BETA_UI_ENABLED ? "loading" : "ready"');
+    expect(tab).toContain("const betaStatusRequestIdRef = useRef(0)");
+    expect(tab).toContain("setBetaStatus(null)");
+    expect(tab).toContain("setBetaStatusError(null)");
+    expect(tab).toContain('setBetaStatusLifecycle("loading")');
+    expect(tab).toContain("const isCurrentRequest = () =>");
+    expect(tab).toContain("requestId === betaStatusRequestIdRef.current");
+    expect(tab).toContain("!signal?.aborted");
+    expect(tab).toContain("new AbortController()");
+    expect(tab).toContain("return () => controller.abort()");
+    expect(tab).toContain('setBetaStatusLifecycle("ready")');
+    expect(tab).toContain('setBetaStatusLifecycle("error")');
+    expect(tab).toContain("Checking allowance…");
+    expect(tab).toContain("Checking…");
+    expect(tab).toContain("Could not check Site Potential allowance.");
+    expect(tab).toContain("Retry allowance check");
+    expect(tab).toContain("onClick={() => void refreshBetaStatus()}");
+    expect(tab).toContain('betaStatusLifecycle === "ready" && !generationEntitled');
+    expect(tab).toContain('betaStatusLifecycle === "ready" && !betaStatus?.enabled');
+    expect(tab).not.toContain('BETA_UI_ENABLED && !betaStatus?.enabled\n                    ? "Site Potential generation is disabled in this environment"');
+    expect(tab).not.toContain('BETA_UI_ENABLED && !generationEntitled\n                      ? "Free allowance used. Purchase credits');
+
+    expect(request).toContain("const payload = await response.json().catch(() => null)");
+    expect(request).toContain('if (!isCurrentRequest()) return { kind: "stale" }');
+    expect(request).toContain("SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE");
+    expect(request).toContain("Sign in to check Site Potential allowance.");
+
+    const retryButtonIndex = tab.indexOf("Retry allowance check");
+    const redeemIndex = tab.indexOf("/api/site-potential/beta-redeem", retryButtonIndex);
+    const packCreateIndex = tab.indexOf("/api/site-potential/generate", retryButtonIndex);
+    expect(retryButtonIndex).toBeGreaterThan(-1);
+    expect(redeemIndex).toBe(-1);
+    expect(packCreateIndex).toBe(-1);
+  });
+
+  it("ignores a stale previous-parcel beta-status response after the current parcel succeeds", async () => {
+    let currentRequestId = 0;
+    let state: { parcelId: string; status: BetaCreditUiStatus } | null = null;
+    const parcelAJson = deferred<unknown>();
+    const parcelBJson = deferred<unknown>();
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("parcelId=parcel-a")) {
+        return {
+          ok: true,
+          json: () => parcelAJson.promise,
+        } as Response;
+      }
+      if (url.includes("parcelId=parcel-b")) {
+        return {
+          ok: true,
+          json: () => parcelBJson.promise,
+        } as Response;
+      }
+      throw new Error(`Unexpected beta-status URL: ${url}`);
+    });
+    const getSession = vi.fn(async () => ({
+      data: { session: { access_token: "session-token" } },
+    }));
+
+    async function startRequest(parcelId: string) {
+      const requestId = ++currentRequestId;
+      const result = await loadParcelBetaStatus({
+        parcelId,
+        getSession,
+        fetchImpl,
+        isCurrentRequest: () => requestId === currentRequestId,
+      });
+      if (result.kind === "ready") {
+        state = { parcelId, status: result.status };
+      }
+      return result;
+    }
+
+    const parcelARequest = startRequest("parcel-a");
+    await vi.waitUntil(() => fetchImpl.mock.calls.length === 1);
+
+    const parcelBRequest = startRequest("parcel-b");
+    await vi.waitUntil(() => fetchImpl.mock.calls.length === 2);
+
+    parcelBJson.resolve(betaPayload("parcel-b", 6));
+    await expect(parcelBRequest).resolves.toMatchObject({
+      kind: "ready",
+      status: { creditsRemaining: 6, openRequestStatus: "parcel-b" },
+    });
+    expect(state).toMatchObject({
+      parcelId: "parcel-b",
+      status: { creditsRemaining: 6, openRequestStatus: "parcel-b" },
+    });
+
+    parcelAJson.resolve(betaPayload("parcel-a", 1));
+    await expect(parcelARequest).resolves.toEqual({ kind: "stale" });
+    expect(state).toMatchObject({
+      parcelId: "parcel-b",
+      status: { creditsRemaining: 6, openRequestStatus: "parcel-b" },
+    });
+  });
+
+  it("keeps signed-out beta status unavailable instead of returning an eligible erf status", async () => {
+    const fetchImpl = vi.fn();
+    const result = await loadParcelBetaStatus({
+      parcelId: "parcel-a",
+      getSession: async () => ({ data: { session: null } }),
+      fetchImpl,
+      isCurrentRequest: () => true,
+    });
+
+    expect(result).toEqual({
+      kind: "signed_out",
+      message: SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result).not.toHaveProperty("status");
   });
 
   it("adds free rolling limits and an immutable purchased-credit ledger for three-image packs", () => {

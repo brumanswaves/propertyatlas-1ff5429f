@@ -358,6 +358,30 @@ describe("Site Potential production-blocker repair", () => {
     expect(generation).toContain('form.append("quality", openAiImageQualityFromEnv())');
   });
 
+  it("uses canonical Erf File Vault paths for Site Potential reference downloads", () => {
+    const worker = read("src/lib/sitePotential/generationSupabaseWorker.ts");
+
+    expect(worker).toContain("erfAssetStoragePathCandidates");
+    expect(worker).toContain("for (const storagePath of erfAssetStoragePathCandidates");
+    expect(worker).toContain(".download(storagePath)");
+  });
+
+  it("adds an idempotent guarded migration for legacy encoded Erf File Vault paths", () => {
+    const migration = read(
+      "supabase/migrations/20260723090000_normalize_erf_asset_storage_paths.sql",
+    );
+
+    expect(migration).toContain("asset.storage_path ~ '^[^/]+/[^/]*%3[Aa][^/]*/'");
+    expect(migration).toContain("replace(replace(candidate.parts[2], '%3A', ':'), '%3a', ':')");
+    expect(migration).toContain("FROM storage.objects AS object");
+    expect(migration).toContain("object.bucket_id = normalized.storage_bucket");
+    expect(migration).toContain("object.name = normalized.normalized_path");
+    expect(migration).toContain("updated_at = now()");
+    expect(migration).toContain("RAISE NOTICE 'normalize_erf_asset_storage_paths updated % erf_assets rows'");
+    expect(migration).not.toContain("storage.objects SET");
+    expect(migration).not.toContain("DELETE FROM storage.objects");
+  });
+
   it("records generated-design provenance and source asset IDs", () => {
     expect(
       buildGeneratedDesignMetadata({
