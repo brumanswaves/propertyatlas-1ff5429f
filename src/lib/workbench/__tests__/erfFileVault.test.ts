@@ -42,7 +42,7 @@ describe("erfFileVault", () => {
         assetId: "asset-1",
         fileName: "Lightstone Report #1!!.pdf",
       }),
-    ).toBe("user-1/csg%3Alpi%3AC03400140000102100000/paid_report/asset-1/Lightstone-Report-1.pdf");
+    ).toBe("user-1/csg:lpi:C03400140000102100000/paid_report/asset-1/Lightstone-Report-1.pdf");
   });
 
   it("validates category-aware file limits and MIME types", () => {

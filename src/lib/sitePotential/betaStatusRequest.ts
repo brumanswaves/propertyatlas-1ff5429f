@@ -1,0 +1,97 @@
+export type AllowanceStatusLifecycle = "loading" | "ready" | "error";
+
+export interface BetaCreditUiStatus {
+  enabled: boolean;
+  creditsRemaining: number;
+  betaCreditsRemaining?: number;
+  purchasedCredits?: number;
+  freeEligible?: boolean;
+  canGenerate?: boolean;
+  nextEntitlementSource?: string | null;
+  free?: {
+    used24Hours: number;
+    used7Days: number;
+    used30Days: number;
+    remaining24Hours: number;
+    remaining7Days: number;
+    remaining30Days: number;
+    sameParcelEligible: boolean;
+  };
+  openRequestStatus?: string | null;
+}
+
+export type BetaStatusRequestResult =
+  | { kind: "ready"; status: BetaCreditUiStatus }
+  | { kind: "signed_out"; message: string }
+  | { kind: "error"; message: string }
+  | { kind: "stale" };
+
+interface LoadParcelBetaStatusOptions {
+  parcelId: string;
+  signal?: AbortSignal;
+  getSession: () => Promise<{ data: { session: { access_token?: string | null } | null } }>;
+  fetchImpl: typeof fetch;
+  isCurrentRequest: () => boolean;
+}
+
+export const SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE =
+  "Sign in to check Site Potential allowance.";
+
+export const SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE =
+  "Could not check Site Potential allowance.";
+
+export async function loadParcelBetaStatus({
+  parcelId,
+  signal,
+  getSession,
+  fetchImpl,
+  isCurrentRequest,
+}: LoadParcelBetaStatusOptions): Promise<BetaStatusRequestResult> {
+  try {
+    const { data } = await getSession();
+    if (!isCurrentRequest()) return { kind: "stale" };
+
+    const token = data.session?.access_token;
+    if (!token) {
+      return {
+        kind: "signed_out",
+        message: SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
+      };
+    }
+
+    const params = new URLSearchParams({ parcelId });
+    const response = await fetchImpl(`/api/site-potential/beta-status?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!isCurrentRequest()) return { kind: "stale" };
+
+    const payload = await response.json().catch(() => null);
+    if (!isCurrentRequest()) return { kind: "stale" };
+
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.error || SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE);
+    }
+
+    return {
+      kind: "ready",
+      status: {
+        enabled: Boolean(payload.enabled),
+        creditsRemaining: Number(payload.creditsRemaining ?? 0),
+        betaCreditsRemaining: Number(payload.betaCreditsRemaining ?? payload.creditsRemaining ?? 0),
+        purchasedCredits: Number(payload.purchasedCredits ?? 0),
+        freeEligible: Boolean(payload.freeEligible),
+        canGenerate: Boolean(payload.canGenerate),
+        nextEntitlementSource: payload.nextEntitlementSource ?? null,
+        free: payload.free ?? undefined,
+        openRequestStatus: payload.openRequestStatus ?? null,
+      },
+    };
+  } catch (error) {
+    if (signal?.aborted || !isCurrentRequest()) return { kind: "stale" };
+    return {
+      kind: "error",
+      message: SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE,
+    };
+  }
+}
