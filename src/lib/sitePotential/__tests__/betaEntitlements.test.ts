@@ -166,7 +166,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Three site-grounded concepts");
     expect(tab).toContain("Generate 3 free concepts");
     expect(tab).toContain("Use 1 credit for 3 concepts");
-    expect(tab).toContain("Free allowance used");
+    expect(tab).toContain("Allowance unavailable");
     expect(tab).toContain("Purchased credits");
     expect(tab).not.toContain("Buy more Site Potential credits");
     expect(tab).not.toContain("Checkout connection pending");
