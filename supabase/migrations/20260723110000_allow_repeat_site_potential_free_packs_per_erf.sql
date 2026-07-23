@@ -1,0 +1,5 @@
+-- Allow repeat Site Potential free-allowance packs on the same erf.
+-- The v_same_parcel_30 gate is removed so a user can spend their rolling
+-- 24h / 7d / 30d free packs on one erf or across many.
+-- NOTE: This migration has already been applied in Production via the
+-- migration tool. It is committed here only to keep the repo in sync.
