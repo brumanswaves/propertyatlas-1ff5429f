@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 import { parseMarketAddressIntelligence } from "../addressIntelligence";
 import type { PropertyIdentityOverride } from "../propertyIdentity";
 import type {
@@ -273,8 +274,9 @@ export function useSavedMarketEvidence(parcelId: string) {
 
   const canSave = true;
 
-  async function persistUserData(nextUserData: Record<string, unknown>) {
-    if (!user || !savedPropertyExists) {
+  async function persistUserData(patch: Record<string, unknown>) {
+    const nextUserData = { ...userData, ...patch };
+    if (!user) {
       writeLocalUserData(parcelId, nextUserData);
       applyUserData(parcelId, nextUserData, {
         setUserData,
@@ -288,30 +290,28 @@ export function useSavedMarketEvidence(parcelId: string) {
       toast.message("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
       return true;
     }
-    const { error } = await supabase
-      .from("saved_properties")
-      .update({ user_data: nextUserData as Record<string, unknown> as never })
-      .eq("user_id", user.id)
-      .eq("parcel_id", parcelId);
-    if (error) {
-      toast.error(error.message);
+    try {
+      const mergedUserData = await patchSavedPropertyUserData(parcelId, patch);
+      setSavedPropertyExists(true);
+      writeLocalUserData(parcelId, mergedUserData);
+      applyUserData(parcelId, mergedUserData, {
+        setUserData,
+        setEvidence,
+        setCandidates,
+        setDismissedCandidateIds,
+        setPropertyIdentity,
+        setMarketAddressIntelligence,
+      });
+      dispatchMarketEvidenceUpdated(parcelId, mergedUserData);
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Market evidence could not be saved");
       return false;
     }
-    writeLocalUserData(parcelId, nextUserData);
-    applyUserData(parcelId, nextUserData, {
-      setUserData,
-      setEvidence,
-      setCandidates,
-      setDismissedCandidateIds,
-      setPropertyIdentity,
-      setMarketAddressIntelligence,
-    });
-    dispatchMarketEvidenceUpdated(parcelId, nextUserData);
-    return true;
   }
 
   async function persist(next: SavedMarketEvidence[]) {
-    const ok = await persistUserData({ ...userData, savedMarketEvidence: next });
+    const ok = await persistUserData({ savedMarketEvidence: next });
     if (ok) {
       setEvidence(next);
     }
@@ -319,7 +319,7 @@ export function useSavedMarketEvidence(parcelId: string) {
   }
 
   async function persistCandidates(next: ListingCandidate[]) {
-    const ok = await persistUserData({ ...userData, marketEvidenceCandidates: next });
+    const ok = await persistUserData({ marketEvidenceCandidates: next });
     if (ok) {
       setCandidates(next);
       toast.success("Listing candidate imported");
@@ -328,7 +328,7 @@ export function useSavedMarketEvidence(parcelId: string) {
   }
 
   async function persistDismissed(next: string[]) {
-    const ok = await persistUserData({ ...userData, dismissedMarketEvidenceCandidateIds: next });
+    const ok = await persistUserData({ dismissedMarketEvidenceCandidateIds: next });
     if (ok) {
       setDismissedCandidateIds(next);
     }
@@ -393,12 +393,12 @@ export function useSavedMarketEvidence(parcelId: string) {
       marketSuburb: nextIdentity.marketSuburb?.trim() || null,
       note: nextIdentity.note?.trim() || null,
     };
-    const ok = await persistUserData({ ...userData, propertyIdentity: next });
+    const ok = await persistUserData({ propertyIdentity: next });
     if (ok) toast.success("Property identity saved");
   }
 
   async function saveMarketAddressIntelligence(next: MarketAddressIntelligence) {
-    const ok = await persistUserData({ ...userData, marketAddressIntelligence: next });
+    const ok = await persistUserData({ marketAddressIntelligence: next });
     if (ok) toast.success("Market address updated");
     return ok;
   }

@@ -568,14 +568,14 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Listings & Comps");
     expect(dossier).toContain("<StrategyLab");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
-    expect(strategyLab).toContain("Choose a strategy, adjust the assumptions");
+    expect(strategyLab).toContain("Every input autosaves as a draft for this erf");
     expect(strategyLab).toContain("Buy and hold rental");
     expect(strategyLab).toContain("Development to rent");
     expect(strategyLab).toContain("STR / Airbnb");
     expect(strategyLab).toContain("Land bank / hold vacant land");
     expect(strategyLab).toContain("Scenario chosen");
     expect(strategyLab).toContain("Choose another scenario");
-    expect(strategyLab).toContain("Save as chosen scenario");
+    expect(strategyLab).toContain("Use this scenario in report");
     expect(strategyLab).toContain("Continue to Easy Erf Report");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
