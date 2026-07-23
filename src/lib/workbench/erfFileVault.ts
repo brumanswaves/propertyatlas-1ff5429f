@@ -155,6 +155,34 @@ export function safeFileName(fileName: string) {
   return cleaned || "easy-erf-file";
 }
 
+export function safeErfAssetPathSegment(value: string) {
+  const cleaned = value
+    .normalize("NFKC")
+    .split("")
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code > 31 && code !== 127;
+    })
+    .join("")
+    .replace(/[\\/]+/g, "-")
+    .trim()
+    .slice(0, 180);
+  return cleaned || "unknown-parcel";
+}
+
+export function canonicalErfAssetStoragePath(storagePath: string) {
+  const parts = storagePath.split("/");
+  if (parts.length < 2) return storagePath;
+  const parcelSegment = parts[1].replace(/%3A/gi, ":");
+  if (parcelSegment === parts[1]) return storagePath;
+  return [parts[0], parcelSegment, ...parts.slice(2)].join("/");
+}
+
+export function erfAssetStoragePathCandidates(storagePath: string) {
+  const canonical = canonicalErfAssetStoragePath(storagePath);
+  return canonical === storagePath ? [storagePath] : [canonical, storagePath];
+}
+
 export function buildErfAssetStoragePath(input: {
   userId: string;
   parcelId: string;
@@ -164,7 +192,7 @@ export function buildErfAssetStoragePath(input: {
 }) {
   return [
     input.userId,
-    encodeURIComponent(input.parcelId),
+    safeErfAssetPathSegment(input.parcelId),
     input.category,
     input.assetId,
     safeFileName(input.fileName),
@@ -343,17 +371,25 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
 }
 
 export async function createErfAssetSignedUrl(asset: ErfAsset) {
-  const { data, error } = await supabase.storage
-    .from(asset.storage_bucket || ERF_FILE_BUCKET)
-    .createSignedUrl(asset.storage_path, ERF_FILE_SIGNED_URL_TTL_SECONDS);
-  if (error || !data?.signedUrl) throw new Error(error?.message || "Could not open file.");
-  return data.signedUrl;
+  let lastError: unknown = null;
+  for (const storagePath of erfAssetStoragePathCandidates(asset.storage_path)) {
+    const { data, error } = await supabase.storage
+      .from(asset.storage_bucket || ERF_FILE_BUCKET)
+      .createSignedUrl(storagePath, ERF_FILE_SIGNED_URL_TTL_SECONDS);
+    if (data?.signedUrl) return data.signedUrl;
+    lastError = error;
+  }
+  const message =
+    lastError && typeof lastError === "object" && "message" in lastError
+      ? String((lastError as { message?: unknown }).message)
+      : "Could not open file.";
+  throw new Error(message);
 }
 
 export async function deleteErfAsset(asset: ErfAsset) {
   const { error: removeError } = await supabase.storage
     .from(asset.storage_bucket || ERF_FILE_BUCKET)
-    .remove([asset.storage_path]);
+    .remove(erfAssetStoragePathCandidates(asset.storage_path));
   if (removeError) throw new Error(removeError.message);
   const { error: deleteError } = await supabase
     .from("erf_assets")

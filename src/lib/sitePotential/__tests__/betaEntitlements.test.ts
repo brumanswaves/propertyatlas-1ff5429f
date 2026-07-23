@@ -168,11 +168,24 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Use 1 credit for 3 concepts");
     expect(tab).toContain("Free allowance used");
     expect(tab).toContain("Purchased credits");
+    expect(tab).toContain("Daily packs");
+    expect(tab).toContain("Weekly packs");
+    expect(tab).toContain("Monthly packs");
+    expect(tab).toContain("This erf");
+    expect(tab).toContain("Beta/test credits");
+    expect(tab).toContain("generationUnavailableReason");
+    expect(tab).toContain(
+      "Free allowance already used for this erf during the current 30-day window.",
+    );
+    expect(tab).not.toContain("purchasedCreditsRemaining + betaCreditsRemaining");
     expect(tab).not.toContain("Buy more Site Potential credits");
     expect(tab).not.toContain("Checkout connection pending");
     expect(tab).toContain("Select for Easy Erf Report");
     expect(tab).toContain("createErfAssetSignedUrl");
     expect(tab).toContain("<img");
+    expect(tab).toContain("Preview unavailable. The stored concept image could not be loaded.");
+    expect(tab).toContain("Retry display");
+    expect(tab).toContain("setImageUrl(null);");
     expect(tab).not.toContain("Use selected concept in Strategy");
     expect(tab).not.toContain("onOpenStrategy");
     expect(tab).toContain("/api/site-potential/beta-redeem");

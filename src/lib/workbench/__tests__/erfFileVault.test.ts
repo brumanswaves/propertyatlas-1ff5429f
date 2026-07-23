@@ -1,13 +1,21 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   assetGroupForCategory,
   buildErfAssetStoragePath,
+  canonicalErfAssetStoragePath,
+  erfAssetStoragePathCandidates,
   groupErfAssets,
   localAttachmentMigrationFingerprint,
   safeFileName,
+  safeErfAssetPathSegment,
   validateErfAssetFile,
   type ErfAsset,
 } from "../erfFileVault";
+
+function read(path: string) {
+  return readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+}
 
 function asset(partial: Partial<ErfAsset>): ErfAsset {
   return {
@@ -42,7 +50,62 @@ describe("erfFileVault", () => {
         assetId: "asset-1",
         fileName: "Lightstone Report #1!!.pdf",
       }),
-    ).toBe("user-1/csg%3Alpi%3AC03400140000102100000/paid_report/asset-1/Lightstone-Report-1.pdf");
+    ).toBe("user-1/csg:lpi:C03400140000102100000/paid_report/asset-1/Lightstone-Report-1.pdf");
+  });
+
+  it("prevents parcel path segments from creating extra storage levels", () => {
+    expect(safeErfAssetPathSegment("csg:lpi:C034/001\\400")).toBe("csg:lpi:C034-001-400");
+    expect(
+      buildErfAssetStoragePath({
+        userId: "user-1",
+        parcelId: "../csg:lpi:C034\\001/400",
+        category: "site_photo",
+        assetId: "asset-1",
+        fileName: "photo.png",
+      }).split("/"),
+    ).toEqual(["user-1", "..-csg:lpi:C034-001-400", "site_photo", "asset-1", "photo.png"]);
+  });
+
+  it("normalizes only legacy encoded parcel colons", () => {
+    expect(
+      canonicalErfAssetStoragePath(
+        "user-1/csg%3Alpi%3Ac03400140000157000000/generated_design/asset-1/concept%20one.png",
+      ),
+    ).toBe(
+      "user-1/csg:lpi:c03400140000157000000/generated_design/asset-1/concept%20one.png",
+    );
+    expect(
+      canonicalErfAssetStoragePath(
+        "user-1/csg%3alpi%3ac03400140000157000000/paid_report/asset-1/report.pdf",
+      ),
+    ).toBe("user-1/csg:lpi:c03400140000157000000/paid_report/asset-1/report.pdf");
+    expect(
+      canonicalErfAssetStoragePath("user-1/parcel%2Fnot-decoded/site_photo/asset-1/photo.png"),
+    ).toBe("user-1/parcel%2Fnot-decoded/site_photo/asset-1/photo.png");
+  });
+
+  it("tries canonical storage paths before legacy stored paths", () => {
+    expect(
+      erfAssetStoragePathCandidates(
+        "user-1/csg%3Alpi%3Ac03400140000157000000/sg_diagram/asset-1/diagram.pdf",
+      ),
+    ).toEqual([
+      "user-1/csg:lpi:c03400140000157000000/sg_diagram/asset-1/diagram.pdf",
+      "user-1/csg%3Alpi%3Ac03400140000157000000/sg_diagram/asset-1/diagram.pdf",
+    ]);
+    expect(
+      erfAssetStoragePathCandidates(
+        "user-1/csg:lpi:c03400140000157000000/sg_diagram/asset-1/diagram.pdf",
+      ),
+    ).toEqual(["user-1/csg:lpi:c03400140000157000000/sg_diagram/asset-1/diagram.pdf"]);
+  });
+
+  it("uses canonical path candidates for signing and deletion", () => {
+    const source = read("src/lib/workbench/erfFileVault.ts");
+
+    expect(source).toContain("createSignedUrl(storagePath, ERF_FILE_SIGNED_URL_TTL_SECONDS)");
+    expect(source).toContain("for (const storagePath of erfAssetStoragePathCandidates");
+    expect(source).toContain(".remove(erfAssetStoragePathCandidates(asset.storage_path))");
   });
 
   it("validates category-aware file limits and MIME types", () => {

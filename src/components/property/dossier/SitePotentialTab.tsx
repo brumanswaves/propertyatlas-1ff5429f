@@ -17,11 +17,8 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
-  SITE_POTENTIAL_CREDIT_PACKS,
-  SITE_POTENTIAL_CURRENCY,
   SITE_POTENTIAL_DISCLAIMER,
   SITE_POTENTIAL_PACK_SIZE,
-  SITE_POTENTIAL_PRICE_CENTS,
 } from "@/lib/sitePotential/config";
 import {
   buildSitePotentialRuntimeProgress,
@@ -133,6 +130,8 @@ interface BetaCreditUiStatus {
   openRequestStatus?: string | null;
 }
 
+type ConceptPreviewState = "checking" | "available" | "unavailable";
+
 interface SitePotentialPackStatusItem {
   id: string;
   optionIndex: number;
@@ -164,14 +163,6 @@ interface SitePotentialPackStatusPayload {
   failureCode?: string | null;
   failureMessage?: string | null;
   items: SitePotentialPackStatusItem[];
-}
-
-function formatPrice() {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: SITE_POTENTIAL_CURRENCY,
-    maximumFractionDigits: 0,
-  }).format(SITE_POTENTIAL_PRICE_CENTS / 100);
 }
 
 function formatFileSize(bytes: number) {
@@ -307,6 +298,43 @@ function packStatusMessage(status: SitePotentialPackStatusPayload | null) {
   }
   if (status.status === "failed") return "Generation could not be completed.";
   return `${completed} of ${status.requestedCount} concepts complete.`;
+}
+
+function packDisplayMessage(input: {
+  packStatus: SitePotentialPackStatusPayload | null;
+  activePackMessage: string | null;
+  requestedCount: number;
+  displayableCount: number;
+  inaccessibleCount: number;
+  checkingCount: number;
+}) {
+  if (!input.packStatus) return input.activePackMessage;
+  const appearsComplete =
+    input.packStatus.status === "complete" || input.packStatus.completedCount >= input.requestedCount;
+  if (!appearsComplete) return input.activePackMessage;
+  if (input.inaccessibleCount > 0) {
+    return `${input.packStatus.completedCount} concept records exist, but ${input.inaccessibleCount} image${
+      input.inaccessibleCount === 1 ? "" : "s"
+    } cannot be accessed. Retry display or refresh the Erf File Vault.`;
+  }
+  if (input.displayableCount < input.requestedCount || input.checkingCount > 0) {
+    return `${input.packStatus.completedCount} concept records exist. Easy Erf is checking whether the saved images can be displayed.`;
+  }
+  return input.activePackMessage;
+}
+
+function generationUnavailableReason(status: BetaCreditUiStatus | null) {
+  if (!status?.enabled) return "Site Potential generation is disabled in this environment.";
+  if (status.free && status.free.sameParcelEligible === false) {
+    return "Free allowance already used for this erf during the current 30-day window.";
+  }
+  if (status.free && status.free.remaining24Hours <= 0) return "Daily free allowance used.";
+  if (status.free && status.free.remaining7Days <= 0) return "Weekly free allowance used.";
+  if (status.free && status.free.remaining30Days <= 0) return "Monthly free allowance used.";
+  if ((status.purchasedCredits ?? 0) <= 0 && (status.betaCreditsRemaining ?? 0) <= 0) {
+    return "No purchased or beta/test credits are available.";
+  }
+  return "Generation is unavailable for this erf right now.";
 }
 
 function generatedConceptsEmptyMessage(
@@ -511,6 +539,9 @@ export function SitePotentialTab({
   const [lastPackStatusCheckedAt, setLastPackStatusCheckedAt] = useState<Date | null>(null);
   const [refreshingPackStatus, setRefreshingPackStatus] = useState(false);
   const [retryingPack, setRetryingPack] = useState(false);
+  const [conceptPreviewState, setConceptPreviewState] = useState<Record<string, ConceptPreviewState>>(
+    {},
+  );
   const lastPackProgressSignatureRef = useRef<string | null>(null);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
@@ -569,6 +600,23 @@ export function SitePotentialTab({
       project?.generation_status === "concepts_ready" ||
       project?.generation_status === "design_selected";
   const activePackMessage = packStatusMessage(packStatus);
+  const displayableGeneratedCount = generatedDesigns.filter(
+    (asset) => conceptPreviewState[asset.id] === "available",
+  ).length;
+  const inaccessibleGeneratedCount = generatedDesigns.filter(
+    (asset) => conceptPreviewState[asset.id] === "unavailable",
+  ).length;
+  const checkingGeneratedCount = generatedDesigns.filter(
+    (asset) => !conceptPreviewState[asset.id] || conceptPreviewState[asset.id] === "checking",
+  ).length;
+  const activePackDisplayMessage = packDisplayMessage({
+    packStatus,
+    activePackMessage,
+    requestedCount: packRequestedCount,
+    displayableCount: displayableGeneratedCount,
+    inaccessibleCount: inaccessibleGeneratedCount,
+    checkingCount: checkingGeneratedCount,
+  });
   const betaCreditsRemaining =
     betaStatus?.betaCreditsRemaining ?? betaStatus?.creditsRemaining ?? 0;
   const purchasedCreditsRemaining = betaStatus?.purchasedCredits ?? 0;
@@ -609,6 +657,15 @@ export function SitePotentialTab({
       });
     }
   }, [parcel.id]);
+
+  const updateConceptPreviewState = useCallback(
+    (assetId: string, state: ConceptPreviewState) =>
+      setConceptPreviewState((previous) => ({
+        ...previous,
+        [assetId]: state,
+      })),
+    [],
+  );
 
   useEffect(() => {
     refreshVaultRef.current = refreshVault;
@@ -1090,13 +1147,36 @@ export function SitePotentialTab({
             {BETA_UI_ENABLED && (
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#0D1B2A]/8 pt-2 text-[11px]">
                 <div>
-                  <div className="font-semibold text-[#0D1B2A]">Free this month</div>
+                  <div className="font-semibold text-[#0D1B2A]">Monthly packs</div>
                   <div>{freeAllowance ? freeAllowance.remaining30Days : "–"} packs left</div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Purchased credits</div>
-                  <div>{purchasedCreditsRemaining + betaCreditsRemaining} available</div>
+                  <div>{purchasedCreditsRemaining} available</div>
                 </div>
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">Daily packs</div>
+                  <div>{freeAllowance ? freeAllowance.remaining24Hours : "–"} remaining</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">Weekly packs</div>
+                  <div>{freeAllowance ? freeAllowance.remaining7Days : "–"} remaining</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">This erf</div>
+                  <div>
+                    {freeAllowance?.sameParcelEligible === false ? "Not eligible" : "Eligible"}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0D1B2A]">Beta/test credits</div>
+                  <div>{betaCreditsRemaining} available</div>
+                </div>
+                {!generationEntitled && (
+                  <div className="col-span-2 rounded-xl bg-[#FFF7ED] px-3 py-2 text-[#92400E]">
+                    {generationUnavailableReason(betaStatus)}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1318,7 +1398,7 @@ export function SitePotentialTab({
                 ? betaStatus?.nextEntitlementSource === "free_allowance"
                   ? "Free pack"
                   : "1 credit"
-                : formatPrice()}
+                : "Concept pack"}
             </div>
             <button
               type="button"
@@ -1363,7 +1443,7 @@ export function SitePotentialTab({
                         : !project?.id
                           ? "Choose a site state first"
                           : activePackMessage
-                            ? activePackMessage
+                            ? activePackDisplayMessage
                             : betaStatus?.nextEntitlementSource === "free_allowance"
                               ? "This pack will use your free allowance"
                               : "This pack will use one Site Potential credit"}
@@ -1394,12 +1474,16 @@ export function SitePotentialTab({
         {packStatus && (
           <Notice
             tone={
-              packStatus.status === "complete" || packCompletedCount >= packRequestedCount
+              inaccessibleGeneratedCount > 0 ||
+              (packStatus.status === "complete" &&
+                displayableGeneratedCount < packRequestedCount)
+                ? "amber"
+                : packStatus.status === "complete" || packCompletedCount >= packRequestedCount
                 ? "green"
                 : "amber"
             }
           >
-            {activePackMessage}
+            {activePackDisplayMessage}
           </Notice>
         )}
         {generatedDesigns.length ? (
@@ -1412,6 +1496,7 @@ export function SitePotentialTab({
                 onOpen={() => void vault.open(asset)}
                 onRemove={() => void removeGeneratedDesign(asset)}
                 onSelect={() => void selectDesign(asset)}
+                onPreviewChange={updateConceptPreviewState}
               />
             ))}
           </div>
@@ -1672,15 +1757,18 @@ function AssetCard({
   onOpen,
   onRemove,
   onSelect,
+  onPreviewChange,
 }: {
   asset: ErfAsset;
   selected: boolean;
   onOpen: () => void;
   onRemove: () => void;
   onSelect: () => void;
+  onPreviewChange: (assetId: string, state: ConceptPreviewState) => void;
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -1691,12 +1779,22 @@ function AssetCard({
         if (active) setImageUrl(url);
       })
       .catch(() => {
-        if (active) setImageError(true);
+        if (active) {
+          setImageUrl(null);
+          setImageError(true);
+          onPreviewChange(asset.id, "unavailable");
+        }
       });
     return () => {
       active = false;
     };
-  }, [asset]);
+  }, [asset, onPreviewChange, retryNonce]);
+
+  function handleImageError() {
+    setImageUrl(null);
+    setImageError(true);
+    onPreviewChange(asset.id, "unavailable");
+  }
 
   return (
     <article
@@ -1705,32 +1803,47 @@ function AssetCard({
         selected ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/15" : "border-[#EADFC9]",
       )}
     >
-      <button
-        type="button"
-        onClick={onOpen}
+      <div
         className="group relative block aspect-[3/2] w-full overflow-hidden bg-[#0D1B2A]/5 text-left"
-        aria-label={`Open ${assetTitle(asset)}`}
       >
-        {imageUrl ? (
+        {imageError ? (
+          <div className="grid h-full place-items-center p-5 text-center text-xs font-semibold text-[#0D1B2A]/55">
+            <div>
+              <div>Preview unavailable. The stored concept image could not be loaded.</div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPreviewChange(asset.id, "checking");
+                  setRetryNonce((value) => value + 1);
+                }}
+                className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-[#0D1B2A] shadow-sm"
+              >
+                Retry display
+              </button>
+            </div>
+          </div>
+        ) : imageUrl ? (
           <img
             src={imageUrl}
             alt={assetTitle(asset)}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.015]"
-            onError={() => setImageError(true)}
+            onLoad={() => onPreviewChange(asset.id, "available")}
+            onError={handleImageError}
           />
-        ) : imageError ? (
-          <div className="grid h-full place-items-center p-5 text-center text-xs font-semibold text-[#0D1B2A]/55">
-            Preview unavailable. Open the stored concept directly.
-          </div>
         ) : (
           <div className="grid h-full place-items-center text-[#0D1B2A]/50">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         )}
-        <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] shadow-sm backdrop-blur">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] shadow-sm backdrop-blur"
+        >
           View larger
-        </span>
-      </button>
+        </button>
+      </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>

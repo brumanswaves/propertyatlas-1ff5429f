@@ -23,6 +23,7 @@ import { createServiceRoleSupabaseClient } from "./serverAuth";
 import {
   ERF_FILE_BUCKET,
   buildErfAssetStoragePath,
+  erfAssetStoragePathCandidates,
   safeFileName,
 } from "@/lib/workbench/erfFileVault";
 import type { SitePotentialProject } from "./types";
@@ -244,10 +245,17 @@ export function createSupabaseGenerationStore(
       return data === true;
     },
     async downloadReferenceAsset(asset) {
-      const { data, error } = await serviceSupabase.storage
-        .from(asset.storage_bucket || ERF_FILE_BUCKET)
-        .download(String(asset.storage_path));
-      if (error || !data) {
+      let data: Blob | null = null;
+      for (const storagePath of erfAssetStoragePathCandidates(String(asset.storage_path))) {
+        const result = await serviceSupabase.storage
+          .from(asset.storage_bucket || ERF_FILE_BUCKET)
+          .download(storagePath);
+        if (result.data) {
+          data = result.data;
+          break;
+        }
+      }
+      if (!data) {
         throw new Error("Could not retrieve permitted source photograph from the Erf File Vault.");
       }
       return {
