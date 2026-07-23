@@ -7,69 +7,136 @@ import {
   type SitePotentialFreePackRow,
 } from "../betaServer";
 
-function row(iso: string): SitePotentialFreePackRow {
+const NOW = new Date("2026-07-23T12:00:00.000Z");
+
+function row(iso: string, _parcelId?: string): SitePotentialFreePackRow {
   return { created_at: iso };
 }
 
-const NOW = new Date("2026-07-23T12:00:00.000Z");
+function hoursAgo(hours: number) {
+  return new Date(NOW.getTime() - hours * 60 * 60 * 1000).toISOString();
+}
+
+function daysAgo(days: number) {
+  return new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
 
 describe("Site Potential free allowance", () => {
-  it("counts rolling 24h, 7d, and 30d usage", () => {
+  it("counts rolling 24h, 7d, and 30d usage across same and different parcels", () => {
     const rows = [
-      row("2026-07-23T10:00:00.000Z"), // within 24h
-      row("2026-07-20T10:00:00.000Z"), // within 7d
-      row("2026-07-05T10:00:00.000Z"), // within 30d
+      row(hoursAgo(2), "erf-A"),
+      row(daysAgo(3), "erf-A"),
+      row(daysAgo(3), "erf-B"),
+      row(daysAgo(20), "erf-C"),
     ];
     expect(calculateSitePotentialFreePackUsage(rows, NOW)).toEqual({
       used24Hours: 1,
-      used7Days: 2,
-      used30Days: 3,
+      used7Days: 3,
+      used30Days: 4,
     });
   });
 
-  it("allows repeat use on the same erf when rolling limits still have room", () => {
-    const sameErf = [row("2026-07-05T00:00:00.000Z")];
-    const free = buildSitePotentialFreeAllowance({ rows: sameErf, now: NOW });
-    expect(free.remaining24Hours).toBe(1);
-    expect(free.remaining7Days).toBe(3);
-    expect(free.remaining30Days).toBe(5);
+  it("ignores rows older than 30 days", () => {
+    const rows = [row(daysAgo(45), "erf-old"), row(daysAgo(3), "erf-A")];
+    expect(calculateSitePotentialFreePackUsage(rows, NOW)).toEqual({
+      used24Hours: 0,
+      used7Days: 1,
+      used30Days: 1,
+    });
+  });
+
+  it("allows a second pack on the same erf after 25 hours", () => {
+    const rows = [row(hoursAgo(25), "erf-A")];
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
+    );
+    expect(free).toEqual({
+      used24Hours: 0,
+      used7Days: 1,
+      used30Days: 1,
+      remaining24Hours: 1,
+      remaining7Days: 2,
+      remaining30Days: 5,
+    });
     expect(isSitePotentialFreeEligible(free)).toBe(true);
   });
 
-  it("denies free eligibility when the daily limit is used", () => {
-    const free = buildSitePotentialFreeAllowance({
-      rows: [row("2026-07-23T09:00:00.000Z")],
-      now: NOW,
-    });
-    expect(free.remaining24Hours).toBe(0);
-    expect(isSitePotentialFreeEligible(free)).toBe(false);
+  it("allows three packs within seven days", () => {
+    const rows = [
+      row(hoursAgo(25), "erf-A"),
+      row(daysAgo(3), "erf-A"),
+    ];
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
+    );
+    expect(free.remaining7Days).toBe(1);
+    expect(isSitePotentialFreeEligible(free)).toBe(true);
   });
 
-  it("denies free eligibility when the weekly limit is used", () => {
+  it("blocks a fourth pack inside the same seven-day window", () => {
     const rows = [
-      row("2026-07-22T12:00:00.000Z"),
-      row("2026-07-21T12:00:00.000Z"),
-      row("2026-07-20T12:00:00.000Z"),
+      row(hoursAgo(25), "erf-A"),
+      row(daysAgo(2), "erf-A"),
+      row(daysAgo(4), "erf-A"),
     ];
-    const free = buildSitePotentialFreeAllowance({ rows, now: NOW });
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
+    );
     expect(free.remaining7Days).toBe(0);
     expect(isSitePotentialFreeEligible(free)).toBe(false);
   });
 
-  it("denies free eligibility when the monthly limit is used", () => {
-    const rows = Array.from({ length: 6 }, (_, i) =>
-      row(new Date(NOW.getTime() - (i + 8) * 24 * 60 * 60 * 1000).toISOString()),
+  it("allows six packs across 30 days on the same erf", () => {
+    const rows = [
+      row(hoursAgo(25), "erf-A"),
+      row(daysAgo(8), "erf-A"),
+      row(daysAgo(12), "erf-A"),
+      row(daysAgo(16), "erf-A"),
+      row(daysAgo(20), "erf-A"),
+    ];
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
     );
-    const free = buildSitePotentialFreeAllowance({ rows, now: NOW });
+    expect(free.used30Days).toBe(5);
+    expect(free.remaining30Days).toBe(1);
+    expect(isSitePotentialFreeEligible(free)).toBe(true);
+  });
+
+  it("blocks the seventh pack inside a 30 day window", () => {
+    const rows = [
+      row(hoursAgo(25), "erf-A"),
+      row(daysAgo(8), "erf-A"),
+      row(daysAgo(12), "erf-A"),
+      row(daysAgo(16), "erf-A"),
+      row(daysAgo(20), "erf-A"),
+      row(daysAgo(25), "erf-A"),
+    ];
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
+    );
+    expect(free.used30Days).toBe(6);
     expect(free.remaining30Days).toBe(0);
     expect(isSitePotentialFreeEligible(free)).toBe(false);
   });
 
-  it("picks free_allowance before beta or purchased credits", () => {
-    const free = buildSitePotentialFreeAllowance({ rows: [], now: NOW });
+  it("counts cross-parcel usage against the same rolling limits", () => {
+    const rows = [
+      row(hoursAgo(25), "erf-A"),
+      row(daysAgo(2), "erf-B"),
+      row(daysAgo(4), "erf-C"),
+    ];
+    const free = buildSitePotentialFreeAllowance(
+      calculateSitePotentialFreePackUsage(rows, NOW),
+    );
+    expect(free.used7Days).toBe(3);
+    expect(free.remaining7Days).toBe(0);
+    expect(isSitePotentialFreeEligible(free)).toBe(false);
+  });
+
+  it("picks free_allowance before beta or purchased credits when eligible", () => {
     expect(
       chooseSitePotentialEntitlementSource({
-        free,
+        freeEligible: true,
         betaCreditsRemaining: 5,
         purchasedCredits: 5,
       }),
@@ -77,27 +144,23 @@ describe("Site Potential free allowance", () => {
   });
 
   it("falls back to beta_credit then site_potential_credit", () => {
-    const used = buildSitePotentialFreeAllowance({
-      rows: [row("2026-07-23T09:00:00.000Z")],
-      now: NOW,
-    });
     expect(
       chooseSitePotentialEntitlementSource({
-        free: used,
+        freeEligible: false,
         betaCreditsRemaining: 1,
         purchasedCredits: 0,
       }),
     ).toBe("beta_credit");
     expect(
       chooseSitePotentialEntitlementSource({
-        free: used,
+        freeEligible: false,
         betaCreditsRemaining: 0,
         purchasedCredits: 1,
       }),
     ).toBe("site_potential_credit");
     expect(
       chooseSitePotentialEntitlementSource({
-        free: used,
+        freeEligible: false,
         betaCreditsRemaining: 0,
         purchasedCredits: 0,
       }),
