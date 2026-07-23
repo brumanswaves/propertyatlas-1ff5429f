@@ -312,9 +312,6 @@ function packDisplayMessage(input: {
 
 function generationUnavailableReason(status: BetaCreditUiStatus | null) {
   if (!status?.enabled) return "Site Potential generation is disabled in this environment.";
-  if (status.free && status.free.sameParcelEligible === false) {
-    return "Free allowance already used for this erf during the current 30-day window.";
-  }
   if (status.free && status.free.remaining24Hours <= 0) return "Daily free allowance used.";
   if (status.free && status.free.remaining7Days <= 0) return "Weekly free allowance used.";
   if (status.free && status.free.remaining30Days <= 0) return "Monthly free allowance used.";
