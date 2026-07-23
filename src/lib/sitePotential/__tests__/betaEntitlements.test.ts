@@ -285,7 +285,7 @@ describe("Site Potential private beta entitlements", () => {
       .filter((line) => !line.trim().startsWith("--"))
       .join("\n");
     expect(executable).not.toContain("v_same_parcel_30");
-    expect(executable).not.toMatch(/parcel_id\s*=\s*p_parcel_id/);
-    expect(executable).not.toContain("v_same_parcel_30 < 1");
+    expect(executable).not.toContain("COUNT(*) FILTER (WHERE parcel_id = p_parcel_id)");
+    expect(migration).toContain("v_used_24 < 1 AND v_used_7 < 3 AND v_used_30 < 6");
   });
 });
