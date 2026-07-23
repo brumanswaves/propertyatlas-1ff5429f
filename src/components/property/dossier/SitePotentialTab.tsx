@@ -1164,7 +1164,10 @@ export function SitePotentialTab({
           </div>
           <div className="min-w-[250px] rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-[12px] text-[#0D1B2A]/72">
             <div className="font-semibold text-[#0D1B2A]">Three site-grounded concepts</div>
-            <div className="mt-1">1 property / day · 3 / week · 6 / month free</div>
+            <div className="mt-1">1 / day · 3 / week · 6 / month free</div>
+            <div className="mt-1 text-[11px] text-[#0D1B2A]/60">
+              You may use your available packs on the same erf or across different properties.
+            </div>
             {BETA_UI_ENABLED && (
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#0D1B2A]/8 pt-2 text-[11px]">
                 <div>
@@ -1194,15 +1197,13 @@ export function SitePotentialTab({
                   </div>
                 </div>
                 <div>
-                  <div className="font-semibold text-[#0D1B2A]">This erf</div>
+                  <div className="font-semibold text-[#0D1B2A]">Repeat use on this erf</div>
                   <div>
                     {betaStatusLifecycle === "loading"
                       ? "Checking…"
                       : betaStatusLifecycle === "error"
                         ? "Unavailable"
-                        : freeAllowance?.sameParcelEligible === false
-                          ? "Not eligible"
-                          : "Eligible"}
+                        : "Allowed"}
                   </div>
                 </div>
                 <div>
