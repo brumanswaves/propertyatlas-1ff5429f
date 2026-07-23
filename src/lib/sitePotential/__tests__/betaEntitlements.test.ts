@@ -43,7 +43,6 @@ function betaPayload(parcelId: string, creditsRemaining: number) {
       remaining24Hours: creditsRemaining,
       remaining7Days: creditsRemaining,
       remaining30Days: creditsRemaining,
-      sameParcelEligible: true,
     },
     openRequestStatus: parcelId,
   };
@@ -209,12 +208,16 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Daily packs");
     expect(tab).toContain("Weekly packs");
     expect(tab).toContain("Monthly packs");
-    expect(tab).toContain("This erf");
+    expect(tab).toContain("Repeat use on this erf");
     expect(tab).toContain("Beta/test credits");
     expect(tab).toContain("generationUnavailableReason");
+    expect(tab).toContain("1 / day · 3 / week · 6 / month free");
     expect(tab).toContain(
-      "Free allowance already used for this erf during the current 30-day window.",
+      "You may use your available packs on the same erf or across different properties.",
     );
+    expect(tab).not.toContain("Free allowance already used for this erf");
+    expect(tab).not.toContain("This erf: Not eligible");
+    expect(tab).not.toContain("one free pack for the same parcel");
     expect(tab).not.toContain("purchasedCreditsRemaining + betaCreditsRemaining");
     expect(tab).not.toContain("Buy more Site Potential credits");
     expect(tab).not.toContain("Checkout connection pending");
@@ -368,7 +371,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(config).toContain("rolling24Hours: 1");
     expect(config).toContain("rolling7Days: 3");
     expect(config).toContain("rolling30Days: 6");
-    expect(config).toContain("sameParcelRolling30Days: 1");
+    expect(config).not.toContain("sameParcelRolling30Days");
     expect(config).toContain("{ credits: 5, priceCents: 49_900");
     expect(config).toContain("{ credits: 10, priceCents: 89_900");
     expect(config).toContain("{ credits: 25, priceCents: 199_900");
@@ -379,12 +382,22 @@ describe("Site Potential private beta entitlements", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.site_potential_credit_ledger");
     expect(migration).toContain("idempotency_key text NOT NULL UNIQUE");
     expect(migration).toContain("v_used_24 < 1 AND v_used_7 < 3 AND v_used_30 < 6");
-    expect(migration).toContain("v_same_parcel_30 < 1");
+    expect(migration).not.toContain("item.option_index = 1");
+    expect(migration).not.toContain("primary_item.option_index = 1");
+  });
+
+  it("adds a SQL function repair that removes same-parcel free-pack enforcement", () => {
+    const migration = read(
+      "supabase/migrations/20260723110000_allow_repeat_site_potential_free_packs_per_erf.sql",
+    );
+
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.redeem_site_potential_pack_v2");
+    expect(migration).toContain("v_used_24 < 1 AND v_used_7 < 3 AND v_used_30 < 6");
+    expect(migration).not.toContain("v_same_parcel_30");
+    expect(migration).not.toContain("COUNT(*) FILTER (WHERE parcel_id = p_parcel_id)");
     expect(migration).toContain("requested_count, completed_count");
     expect(migration).toContain("'packSize', 3");
     expect(migration).toContain("'reserved', -1");
-    expect(migration).toContain("'restored', 1");
-    expect(migration).toContain("Pack did not complete all three concepts");
     expect(migration).not.toContain("item.option_index = 1");
     expect(migration).not.toContain("primary_item.option_index = 1");
   });
