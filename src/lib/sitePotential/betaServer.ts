@@ -254,7 +254,7 @@ export async function readSitePotentialAccessStatus(input: {
     .eq("entitlement_status", "paid")
     .gte("created_at", since30);
   if (packError) throw new Error(packError.message);
-  const rows = (freePacks ?? []) as SitePotentialFreePackRow[];
+  const rows = (freePacks ?? []) as unknown as SitePotentialFreePackRow[];
   const free = buildSitePotentialFreeAllowance({ rows, now });
 
   const { data: wallet, error: walletError } = await db
