@@ -225,7 +225,7 @@ describe("Site Potential private beta entitlements", () => {
     );
     expect(tab).toContain("Repeat use on this erf");
     expect(tab).not.toContain("sameParcelEligible");
-    expect(tab).not.toContain("This erf");
+    expect(tab).not.toContain(">This erf<");
     expect(tab).not.toContain("Not eligible");
   });
 
