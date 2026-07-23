@@ -193,31 +193,29 @@ export interface SitePotentialFreeAllowance {
 
 export function calculateSitePotentialFreePackUsage(
   rows: SitePotentialFreePackRow[],
-  now: Date,
+  now = new Date(),
 ) {
-  const since24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const used24Hours = rows.filter((row) => String(row.created_at) >= since24).length;
-  const used7Days = rows.filter((row) => String(row.created_at) >= since7).length;
-  const used30Days = rows.length;
-  return { used24Hours, used7Days, used30Days };
+  const since24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const recentRows = rows.filter((row) => String(row.created_at) >= since30);
+  return {
+    used24Hours: recentRows.filter((row) => String(row.created_at) >= since24).length,
+    used7Days: recentRows.filter((row) => String(row.created_at) >= since7).length,
+    used30Days: recentRows.length,
+  };
 }
 
 export function buildSitePotentialFreeAllowance(input: {
-  rows: SitePotentialFreePackRow[];
-  now: Date;
+  used24Hours: number;
+  used7Days: number;
+  used30Days: number;
 }): SitePotentialFreeAllowance {
-  const { used24Hours, used7Days, used30Days } = calculateSitePotentialFreePackUsage(
-    input.rows,
-    input.now,
-  );
   return {
-    used24Hours,
-    used7Days,
-    used30Days,
-    remaining24Hours: Math.max(0, 1 - used24Hours),
-    remaining7Days: Math.max(0, 3 - used7Days),
-    remaining30Days: Math.max(0, 6 - used30Days),
+    ...input,
+    remaining24Hours: Math.max(0, 1 - input.used24Hours),
+    remaining7Days: Math.max(0, 3 - input.used7Days),
+    remaining30Days: Math.max(0, 6 - input.used30Days),
   };
 }
 
@@ -226,11 +224,11 @@ export function isSitePotentialFreeEligible(free: SitePotentialFreeAllowance) {
 }
 
 export function chooseSitePotentialEntitlementSource(input: {
-  free: SitePotentialFreeAllowance;
+  freeEligible: boolean;
   betaCreditsRemaining: number;
   purchasedCredits: number;
-}): "free_allowance" | "beta_credit" | "site_potential_credit" | null {
-  if (isSitePotentialFreeEligible(input.free)) return "free_allowance";
+}) {
+  if (input.freeEligible) return "free_allowance";
   if (input.betaCreditsRemaining > 0) return "beta_credit";
   if (input.purchasedCredits > 0) return "site_potential_credit";
   return null;
@@ -254,8 +252,10 @@ export async function readSitePotentialAccessStatus(input: {
     .eq("entitlement_status", "paid")
     .gte("created_at", since30);
   if (packError) throw new Error(packError.message);
-  const rows = (freePacks ?? []) as unknown as SitePotentialFreePackRow[];
-  const free = buildSitePotentialFreeAllowance({ rows, now });
+  const freeUsage = calculateSitePotentialFreePackUsage(
+    (freePacks ?? []).map((row) => ({ created_at: String(row.created_at ?? "") })),
+    now,
+  );
 
   const { data: wallet, error: walletError } = await db
     .from("site_potential_credit_wallets")
@@ -265,13 +265,14 @@ export async function readSitePotentialAccessStatus(input: {
   if (walletError) throw new Error(walletError.message);
 
   const beta = await readBetaCreditStatus(input);
+  const free = buildSitePotentialFreeAllowance(freeUsage);
+  const freeEligible = isSitePotentialFreeEligible(free);
   const purchasedCredits = Number(wallet?.balance ?? 0);
   const nextEntitlementSource = chooseSitePotentialEntitlementSource({
-    free,
+    freeEligible,
     betaCreditsRemaining: beta.creditsRemaining,
     purchasedCredits,
   });
-  const freeEligible = isSitePotentialFreeEligible(free);
   return {
     ...beta,
     betaCreditsRemaining: beta.creditsRemaining,
