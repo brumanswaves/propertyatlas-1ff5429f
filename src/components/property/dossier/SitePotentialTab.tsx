@@ -131,6 +131,7 @@ interface BetaCreditUiStatus {
 }
 
 type ConceptPreviewState = "checking" | "available" | "unavailable";
+type AllowanceStatusLifecycle = "loading" | "ready" | "error";
 
 interface SitePotentialPackStatusItem {
   id: string;
@@ -337,6 +338,12 @@ function generationUnavailableReason(status: BetaCreditUiStatus | null) {
   return "Generation is unavailable for this erf right now.";
 }
 
+function allowanceDisplayValue(value: number | undefined, lifecycle: AllowanceStatusLifecycle) {
+  if (lifecycle === "loading") return "Checking…";
+  if (lifecycle === "error") return "Unavailable";
+  return `${value ?? 0} remaining`;
+}
+
 function generatedConceptsEmptyMessage(
   packStatus: SitePotentialPackStatusPayload | null,
   progress: SitePotentialRuntimeProgress | null,
@@ -534,6 +541,10 @@ export function SitePotentialTab({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [migrationAttempted, setMigrationAttempted] = useState(false);
   const [betaStatus, setBetaStatus] = useState<BetaCreditUiStatus | null>(null);
+  const [betaStatusLifecycle, setBetaStatusLifecycle] = useState<AllowanceStatusLifecycle>(
+    BETA_UI_ENABLED ? "loading" : "ready",
+  );
+  const [betaStatusError, setBetaStatusError] = useState<string | null>(null);
   const [activeDesignPackId, setActiveDesignPackId] = useState<string | null>(null);
   const [packStatus, setPackStatus] = useState<SitePotentialPackStatusPayload | null>(null);
   const [lastPackStatusCheckedAt, setLastPackStatusCheckedAt] = useState<Date | null>(null);
@@ -542,6 +553,7 @@ export function SitePotentialTab({
   const [conceptPreviewState, setConceptPreviewState] = useState<Record<string, ConceptPreviewState>>(
     {},
   );
+  const betaStatusRequestIdRef = useRef(0);
   const lastPackProgressSignatureRef = useRef<string | null>(null);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
@@ -622,7 +634,11 @@ export function SitePotentialTab({
   const purchasedCreditsRemaining = betaStatus?.purchasedCredits ?? 0;
   const freeAllowance = betaStatus?.free;
   const generationEntitled =
-    BETA_UI_ENABLED && Boolean(betaStatus?.enabled && betaStatus?.canGenerate);
+    BETA_UI_ENABLED &&
+    betaStatusLifecycle === "ready" &&
+    Boolean(betaStatus?.enabled && betaStatus?.canGenerate);
+  const allowanceChecking = BETA_UI_ENABLED && betaStatusLifecycle === "loading";
+  const allowanceUnavailable = BETA_UI_ENABLED && betaStatusLifecycle === "error";
 
   const identityLine = useMemo(() => {
     const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "This erf";
@@ -630,20 +646,35 @@ export function SitePotentialTab({
     return area ? `${erf} - ${area}` : erf;
   }, [parcel]);
 
-  const refreshBetaStatus = useCallback(async () => {
+  const refreshBetaStatus = useCallback(async (signal?: AbortSignal) => {
     if (!BETA_UI_ENABLED) return;
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      setBetaStatus({ enabled: true, creditsRemaining: 0, openRequestStatus: null });
-      return;
-    }
-    const params = new URLSearchParams({ parcelId: parcel.id });
-    const response = await fetch(`/api/site-potential/beta-status?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const payload = await response.json().catch(() => null);
-    if (response.ok && payload?.success) {
+    const requestId = betaStatusRequestIdRef.current + 1;
+    betaStatusRequestIdRef.current = requestId;
+    setBetaStatus(null);
+    setBetaStatusError(null);
+    setBetaStatusLifecycle("loading");
+
+    const isCurrentRequest = () => requestId === betaStatusRequestIdRef.current && !signal?.aborted;
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!isCurrentRequest()) return;
+      const token = data.session?.access_token;
+      if (!token) {
+        setBetaStatus({ enabled: true, creditsRemaining: 0, openRequestStatus: null });
+        setBetaStatusLifecycle("ready");
+        return;
+      }
+      const params = new URLSearchParams({ parcelId: parcel.id });
+      const response = await fetch(`/api/site-potential/beta-status?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      });
+      if (!isCurrentRequest()) return;
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Could not check Site Potential allowance.");
+      }
       setBetaStatus({
         enabled: Boolean(payload.enabled),
         creditsRemaining: Number(payload.creditsRemaining ?? 0),
@@ -655,6 +686,12 @@ export function SitePotentialTab({
         free: payload.free ?? undefined,
         openRequestStatus: payload.openRequestStatus ?? null,
       });
+      setBetaStatusLifecycle("ready");
+    } catch (error) {
+      if (signal?.aborted || !isCurrentRequest()) return;
+      setBetaStatus(null);
+      setBetaStatusError("Could not check Site Potential allowance.");
+      setBetaStatusLifecycle("error");
     }
   }, [parcel.id]);
 
@@ -785,7 +822,10 @@ export function SitePotentialTab({
   }, [migrationAttempted, vault]);
 
   useEffect(() => {
-    void refreshBetaStatus();
+    if (!BETA_UI_ENABLED) return undefined;
+    const controller = new AbortController();
+    void refreshBetaStatus(controller.signal);
+    return () => controller.abort();
   }, [refreshBetaStatus]);
 
   useEffect(() => {
@@ -1044,7 +1084,13 @@ export function SitePotentialTab({
     try {
       if (BETA_UI_ENABLED) {
         if (!generationEntitled) {
-          toast.error("Free allowance used and no purchased Site Potential credits are available.");
+          toast.error(
+            allowanceChecking
+              ? "Checking Site Potential allowance. Please wait."
+              : allowanceUnavailable
+                ? "Could not check Site Potential allowance."
+                : generationUnavailableReason(betaStatus),
+          );
           return;
         }
         await generateWithEntitlement();
@@ -1116,7 +1162,9 @@ export function SitePotentialTab({
       return packStatus?.status === "queued" ? "3 concepts queued" : "Generating 3 concepts";
     }
     if (BETA_UI_ENABLED) {
-      if (!generationEntitled) return "Free allowance used";
+      if (allowanceChecking) return "Checking allowance…";
+      if (allowanceUnavailable) return "Allowance unavailable";
+      if (!generationEntitled) return generationUnavailableReason(betaStatus);
       if (conceptsReady) return "Generate another 3 concepts";
       if (betaStatus?.nextEntitlementSource === "free_allowance") return "Generate 3 free concepts";
       return "Use 1 credit for 3 concepts";
@@ -1148,31 +1196,68 @@ export function SitePotentialTab({
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#0D1B2A]/8 pt-2 text-[11px]">
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Monthly packs</div>
-                  <div>{freeAllowance ? freeAllowance.remaining30Days : "–"} packs left</div>
+                  <div>
+                    {allowanceDisplayValue(freeAllowance?.remaining30Days, betaStatusLifecycle)}
+                  </div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Purchased credits</div>
-                  <div>{purchasedCreditsRemaining} available</div>
+                  <div>
+                    {betaStatusLifecycle === "ready"
+                      ? `${purchasedCreditsRemaining} available`
+                      : "Unavailable"}
+                  </div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Daily packs</div>
-                  <div>{freeAllowance ? freeAllowance.remaining24Hours : "–"} remaining</div>
+                  <div>
+                    {allowanceDisplayValue(freeAllowance?.remaining24Hours, betaStatusLifecycle)}
+                  </div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Weekly packs</div>
-                  <div>{freeAllowance ? freeAllowance.remaining7Days : "–"} remaining</div>
+                  <div>
+                    {allowanceDisplayValue(freeAllowance?.remaining7Days, betaStatusLifecycle)}
+                  </div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">This erf</div>
                   <div>
-                    {freeAllowance?.sameParcelEligible === false ? "Not eligible" : "Eligible"}
+                    {betaStatusLifecycle === "loading"
+                      ? "Checking…"
+                      : betaStatusLifecycle === "error"
+                        ? "Unavailable"
+                        : freeAllowance?.sameParcelEligible === false
+                          ? "Not eligible"
+                          : "Eligible"}
                   </div>
                 </div>
                 <div>
                   <div className="font-semibold text-[#0D1B2A]">Beta/test credits</div>
-                  <div>{betaCreditsRemaining} available</div>
+                  <div>
+                    {betaStatusLifecycle === "ready"
+                      ? `${betaCreditsRemaining} available`
+                      : "Unavailable"}
+                  </div>
                 </div>
-                {!generationEntitled && (
+                {allowanceChecking && (
+                  <div className="col-span-2 rounded-xl bg-[#F7FBFF] px-3 py-2 text-[#0D1B2A]/70">
+                    Checking allowance…
+                  </div>
+                )}
+                {allowanceUnavailable && (
+                  <div className="col-span-2 rounded-xl bg-[#FEF2F2] px-3 py-2 text-[#991B1B]">
+                    <div>{betaStatusError || "Could not check Site Potential allowance."}</div>
+                    <button
+                      type="button"
+                      onClick={() => void refreshBetaStatus()}
+                      className="mt-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#991B1B]"
+                    >
+                      Retry allowance check
+                    </button>
+                  </div>
+                )}
+                {betaStatusLifecycle === "ready" && !generationEntitled && (
                   <div className="col-span-2 rounded-xl bg-[#FFF7ED] px-3 py-2 text-[#92400E]">
                     {generationUnavailableReason(betaStatus)}
                   </div>
@@ -1434,10 +1519,14 @@ export function SitePotentialTab({
                 ? "Needs a permitted property photo"
                 : needsRights
                   ? "Needs image-rights confirmation"
-                  : BETA_UI_ENABLED && !betaStatus?.enabled
+                  : allowanceChecking
+                    ? "Checking allowance…"
+                    : allowanceUnavailable
+                      ? "Could not check Site Potential allowance."
+                      : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !betaStatus?.enabled
                     ? "Site Potential generation is disabled in this environment"
-                    : BETA_UI_ENABLED && !generationEntitled
-                      ? "Free allowance used. Purchase credits to create another 3-concept pack."
+                    : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !generationEntitled
+                      ? generationUnavailableReason(betaStatus)
                       : !GENERATION_UI_ENABLED
                         ? "Concept generation is unavailable until secure entitlement is configured"
                         : !project?.id

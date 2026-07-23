@@ -166,7 +166,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Three site-grounded concepts");
     expect(tab).toContain("Generate 3 free concepts");
     expect(tab).toContain("Use 1 credit for 3 concepts");
-    expect(tab).toContain("Free allowance used");
+    expect(tab).toContain("No purchased or beta/test credits are available.");
     expect(tab).toContain("Purchased credits");
     expect(tab).toContain("Daily packs");
     expect(tab).toContain("Weekly packs");
@@ -201,6 +201,40 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("poller.stop()");
     expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
     expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
+  });
+
+  it("keeps Site Potential allowance status parcel-safe before showing eligibility", () => {
+    const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+
+    expect(tab).toContain('type AllowanceStatusLifecycle = "loading" | "ready" | "error"');
+    expect(tab).toContain('BETA_UI_ENABLED ? "loading" : "ready"');
+    expect(tab).toContain("const betaStatusRequestIdRef = useRef(0)");
+    expect(tab).toContain("setBetaStatus(null)");
+    expect(tab).toContain("setBetaStatusError(null)");
+    expect(tab).toContain('setBetaStatusLifecycle("loading")');
+    expect(tab).toContain("const isCurrentRequest = () =>");
+    expect(tab).toContain("requestId === betaStatusRequestIdRef.current");
+    expect(tab).toContain("!signal?.aborted");
+    expect(tab).toContain("new AbortController()");
+    expect(tab).toContain("return () => controller.abort()");
+    expect(tab).toContain('setBetaStatusLifecycle("ready")');
+    expect(tab).toContain('setBetaStatusLifecycle("error")');
+    expect(tab).toContain("Checking allowance…");
+    expect(tab).toContain("Checking…");
+    expect(tab).toContain("Could not check Site Potential allowance.");
+    expect(tab).toContain("Retry allowance check");
+    expect(tab).toContain("onClick={() => void refreshBetaStatus()}");
+    expect(tab).toContain('betaStatusLifecycle === "ready" && !generationEntitled');
+    expect(tab).toContain('betaStatusLifecycle === "ready" && !betaStatus?.enabled');
+    expect(tab).not.toContain('BETA_UI_ENABLED && !betaStatus?.enabled\n                    ? "Site Potential generation is disabled in this environment"');
+    expect(tab).not.toContain('BETA_UI_ENABLED && !generationEntitled\n                      ? "Free allowance used. Purchase credits');
+
+    const retryButtonIndex = tab.indexOf("Retry allowance check");
+    const redeemIndex = tab.indexOf("/api/site-potential/beta-redeem", retryButtonIndex);
+    const packCreateIndex = tab.indexOf("/api/site-potential/generate", retryButtonIndex);
+    expect(retryButtonIndex).toBeGreaterThan(-1);
+    expect(redeemIndex).toBe(-1);
+    expect(packCreateIndex).toBe(-1);
   });
 
   it("adds free rolling limits and an immutable purchased-credit ledger for three-image packs", () => {
