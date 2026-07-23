@@ -178,6 +178,64 @@ export async function readBetaCreditStatus(input: {
   };
 }
 
+export interface SitePotentialFreePackRow {
+  created_at: string;
+}
+
+export interface SitePotentialFreeAllowance {
+  used24Hours: number;
+  used7Days: number;
+  used30Days: number;
+  remaining24Hours: number;
+  remaining7Days: number;
+  remaining30Days: number;
+}
+
+export function calculateSitePotentialFreePackUsage(
+  rows: SitePotentialFreePackRow[],
+  now: Date,
+) {
+  const since24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const used24Hours = rows.filter((row) => String(row.created_at) >= since24).length;
+  const used7Days = rows.filter((row) => String(row.created_at) >= since7).length;
+  const used30Days = rows.length;
+  return { used24Hours, used7Days, used30Days };
+}
+
+export function buildSitePotentialFreeAllowance(input: {
+  rows: SitePotentialFreePackRow[];
+  now: Date;
+}): SitePotentialFreeAllowance {
+  const { used24Hours, used7Days, used30Days } = calculateSitePotentialFreePackUsage(
+    input.rows,
+    input.now,
+  );
+  return {
+    used24Hours,
+    used7Days,
+    used30Days,
+    remaining24Hours: Math.max(0, 1 - used24Hours),
+    remaining7Days: Math.max(0, 3 - used7Days),
+    remaining30Days: Math.max(0, 6 - used30Days),
+  };
+}
+
+export function isSitePotentialFreeEligible(free: SitePotentialFreeAllowance) {
+  return free.remaining24Hours > 0 && free.remaining7Days > 0 && free.remaining30Days > 0;
+}
+
+export function chooseSitePotentialEntitlementSource(input: {
+  free: SitePotentialFreeAllowance;
+  betaCreditsRemaining: number;
+  purchasedCredits: number;
+}): "free_allowance" | "beta_credit" | "site_potential_credit" | null {
+  if (isSitePotentialFreeEligible(input.free)) return "free_allowance";
+  if (input.betaCreditsRemaining > 0) return "beta_credit";
+  if (input.purchasedCredits > 0) return "site_potential_credit";
+  return null;
+}
+
 export async function readSitePotentialAccessStatus(input: {
   serviceSupabase: ServiceSupabase;
   userId: string;
@@ -187,24 +245,17 @@ export async function readSitePotentialAccessStatus(input: {
   const db = loose(input.serviceSupabase);
   const now = input.now ?? new Date();
   const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const since24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
   const { data: freePacks, error: packError } = await db
     .from("erf_design_packs")
-    .select("parcel_id,created_at")
+    .select("created_at")
     .eq("user_id", input.userId)
     .eq("payment_provider", "free_allowance")
     .eq("entitlement_status", "paid")
     .gte("created_at", since30);
   if (packError) throw new Error(packError.message);
-  const rows = freePacks ?? [];
-  const used24Hours = rows.filter((row) => String(row.created_at) >= since24).length;
-  const used7Days = rows.filter((row) => String(row.created_at) >= since7).length;
-  const used30Days = rows.length;
-  const sameParcelUsed30Days = input.parcelId
-    ? rows.filter((row) => String(row.parcel_id) === input.parcelId).length
-    : 0;
+  const rows = (freePacks ?? []) as unknown as SitePotentialFreePackRow[];
+  const free = buildSitePotentialFreeAllowance({ rows, now });
 
   const { data: wallet, error: walletError } = await db
     .from("site_potential_credit_wallets")
@@ -214,35 +265,21 @@ export async function readSitePotentialAccessStatus(input: {
   if (walletError) throw new Error(walletError.message);
 
   const beta = await readBetaCreditStatus(input);
-  const free = {
-    used24Hours,
-    used7Days,
-    used30Days,
-    remaining24Hours: Math.max(0, 1 - used24Hours),
-    remaining7Days: Math.max(0, 3 - used7Days),
-    remaining30Days: Math.max(0, 6 - used30Days),
-    sameParcelEligible: !input.parcelId || sameParcelUsed30Days < 1,
-  };
-  const freeEligible =
-    free.remaining24Hours > 0 &&
-    free.remaining7Days > 0 &&
-    free.remaining30Days > 0 &&
-    free.sameParcelEligible;
   const purchasedCredits = Number(wallet?.balance ?? 0);
+  const nextEntitlementSource = chooseSitePotentialEntitlementSource({
+    free,
+    betaCreditsRemaining: beta.creditsRemaining,
+    purchasedCredits,
+  });
+  const freeEligible = isSitePotentialFreeEligible(free);
   return {
     ...beta,
     betaCreditsRemaining: beta.creditsRemaining,
     purchasedCredits,
     free,
     freeEligible,
-    canGenerate: freeEligible || beta.creditsRemaining > 0 || purchasedCredits > 0,
-    nextEntitlementSource: freeEligible
-      ? "free_allowance"
-      : beta.creditsRemaining > 0
-        ? "beta_credit"
-        : purchasedCredits > 0
-          ? "site_potential_credit"
-          : null,
+    canGenerate: nextEntitlementSource !== null,
+    nextEntitlementSource,
   };
 }
 
