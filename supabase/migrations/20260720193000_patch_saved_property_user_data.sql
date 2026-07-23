@@ -189,5 +189,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.patch_saved_property_user_data(text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.patch_saved_property_user_data(text, jsonb) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.patch_saved_property_user_data(text, jsonb) TO authenticated;

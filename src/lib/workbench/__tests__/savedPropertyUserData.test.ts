@@ -80,6 +80,13 @@ describe("saved property user_data patching", () => {
     expect(migration).toContain("jsonb_array_elements(v_current_strategy -> 'scenarios')");
     expect(migration).toContain("jsonb_array_elements(v_incoming_strategy -> 'scenarios')");
     expect(migration).not.toContain("v_patch := v_patch - 'strategyWorkspace'");
-    expect(migration).toContain("GRANT EXECUTE");
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.patch_saved_property_user_data(text, jsonb) FROM PUBLIC, anon, service_role;",
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.patch_saved_property_user_data(text, jsonb) TO authenticated;",
+    );
+    expect(migration).not.toContain("TO anon");
+    expect(migration).not.toContain("TO service_role");
   });
 });
