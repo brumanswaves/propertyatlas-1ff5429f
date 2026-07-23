@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/lib/auth/useAuth";
 import {
   calculateAcquisition,
   calculateBond,
@@ -14,11 +15,24 @@ import {
 } from "@/lib/research/calculators";
 import { cn } from "@/lib/utils";
 import {
+  createEmptyStrategyWorkspace,
+  mergeStrategyWorkspaces,
   getChosenStrategyScenario,
+  readStrategyWorkspace,
   readStrategyScenarios,
+  saveStrategyDraft,
   saveStrategyScenario,
+  strategyWorkspaceFromUserData,
+  writeStrategyWorkspace,
+  type ErfStrategyWorkspace,
   type ErfStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
+import { supabase } from "@/integrations/supabase/client";
+import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
+import {
+  createStrategyCloudSaveQueue,
+  type StrategyCloudSaveQueue,
+} from "@/lib/workbench/strategyCloudSaveQueue";
 
 type StrategyType =
   | "buy_hold"
@@ -47,6 +61,16 @@ interface SitePotentialStrategyDraft {
   buildableSqm?: string;
   notes?: string[];
 }
+
+type StrategySaveStatus =
+  | "idle"
+  | "loading"
+  | "saving"
+  | "saved"
+  | "failed"
+  | "offline"
+  | "cloud-restored"
+  | "migrated";
 
 const STRATEGY_OPTIONS: StrategyOption[] = [
   {
@@ -202,6 +226,36 @@ function formatPercent(value: number) {
   return `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`;
 }
 
+function formatSaveTime(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function saveStatusCopy(status: StrategySaveStatus, lastSavedAt: string | null) {
+  switch (status) {
+    case "loading":
+      return "Loading saved Strategy";
+    case "saving":
+      return "Saving draft";
+    case "saved":
+      return formatSaveTime(lastSavedAt)
+        ? `Draft saved at ${formatSaveTime(lastSavedAt)}`
+        : "Draft saved";
+    case "failed":
+      return "Save failed";
+    case "offline":
+      return "Offline draft saved in this browser";
+    case "cloud-restored":
+      return "Cloud draft restored";
+    case "migrated":
+      return "Local draft moved to your account";
+    default:
+      return "Draft saved";
+  }
+}
+
 function optionFor(id: StrategyType) {
   return STRATEGY_OPTIONS.find((option) => option.id === id) ?? STRATEGY_OPTIONS[0];
 }
@@ -224,6 +278,28 @@ function readSitePotentialStrategyDraft(parcelId: string): SitePotentialStrategy
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function persistStrategyWorkspaceToCloud(
+  parcelId: string,
+  workspace: ErfStrategyWorkspace,
+) {
+  await patchSavedPropertyUserData(parcelId, {
+    normalizedParcelId: parcelId,
+    strategyWorkspace: workspace,
+    strategyWorkspaceUpdatedAt: workspace.draftUpdatedAt ?? new Date().toISOString(),
+  });
+}
+
+async function activeSupabaseUserMatches(expectedUserId: string | null) {
+  if (!expectedUserId) return false;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) return false;
+  return data.user?.id === expectedUserId;
+}
+
 export function StrategyLab({
   parcelId,
   defaultPrice,
@@ -233,28 +309,162 @@ export function StrategyLab({
   defaultPrice: number;
   onOpenReport?: () => void;
 }) {
-  const [active, setActive] = useState<StrategyType>("buy_hold");
-  const [values, setValues] = useState(() => strategyDefaults(defaultPrice));
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const initialWorkspace = readStrategyWorkspace(parcelId);
+  const [active, setActive] = useState<StrategyType>(() =>
+    STRATEGY_OPTIONS.some((option) => option.id === initialWorkspace.activeStrategy)
+      ? (initialWorkspace.activeStrategy as StrategyType)
+      : "buy_hold",
+  );
+  const [values, setValues] = useState(() => ({
+    ...strategyDefaults(defaultPrice),
+    ...initialWorkspace.draftInputs,
+  }));
   const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
   const [chosenScenario, setChosenScenario] = useState(() => getChosenStrategyScenario(parcelId));
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
     readSitePotentialStrategyDraft(parcelId),
   );
+  const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(userId ? "loading" : "offline");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const defaultPriceRef = useRef(defaultPrice);
+  const cloudSaveQueueRef = useRef<StrategyCloudSaveQueue | null>(null);
+  const latestWorkspaceRef = useRef(initialWorkspace);
+  defaultPriceRef.current = defaultPrice;
 
   useEffect(() => {
+    const workspace = readStrategyWorkspace(parcelId);
     const chosen = getChosenStrategyScenario(parcelId);
-    setSavedScenarios(readStrategyScenarios(parcelId));
+    setSavedScenarios(workspace.scenarios);
     setChosenScenario(chosen);
-    setActive(selectedStrategyId(chosen));
-    setValues({ ...strategyDefaults(defaultPrice), ...(chosen?.inputs ?? {}) });
+    setActive(
+      STRATEGY_OPTIONS.some((option) => option.id === workspace.activeStrategy)
+        ? (workspace.activeStrategy as StrategyType)
+        : selectedStrategyId(chosen),
+    );
+    setValues({ ...strategyDefaults(defaultPriceRef.current), ...workspace.draftInputs });
     setShowChosenState(Boolean(chosen));
     setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
-  }, [defaultPrice, parcelId]);
+    latestWorkspaceRef.current = workspace;
+    setSaveError(null);
+    setLastSavedAt(null);
+    setSaveStatus(userId ? "loading" : "offline");
+  }, [parcelId, userId]);
+
+  useEffect(() => {
+    const queue = createStrategyCloudSaveQueue({
+      parcelId,
+      userId,
+      canPersist: () => activeSupabaseUserMatches(userId),
+      persist: (workspace) => persistStrategyWorkspaceToCloud(parcelId, workspace),
+    });
+    cloudSaveQueueRef.current = queue;
+    const unsubscribe = queue.subscribe((snapshot) => {
+      setSaveStatus(snapshot.status);
+      setLastSavedAt(snapshot.lastSavedAt);
+      setSaveError(snapshot.error);
+    });
+
+    return () => {
+      unsubscribe();
+      void queue.flush();
+      queue.dispose();
+      if (cloudSaveQueueRef.current === queue) cloudSaveQueueRef.current = null;
+    };
+  }, [parcelId, userId]);
+
+  const queueCloudSave = useCallback(
+    (workspace: ErfStrategyWorkspace, immediate = false) => {
+      latestWorkspaceRef.current = workspace;
+      if (!userId) {
+        setSaveStatus("offline");
+        return;
+      }
+      cloudSaveQueueRef.current?.schedule(workspace);
+      if (immediate) {
+        void cloudSaveQueueRef.current?.flush();
+      }
+    },
+    [userId],
+  );
+
+  const flushStrategySave = useCallback(() => {
+    void cloudSaveQueueRef.current?.flush();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    if (!userId) {
+      setSaveStatus("offline");
+      return () => {
+        alive = false;
+      };
+    }
+
+    setSaveStatus("loading");
+    supabase
+      .from("saved_properties")
+      .select("user_data")
+      .eq("user_id", userId)
+      .eq("parcel_id", parcelId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) {
+          console.warn("[Easy Erf] Strategy workspace cloud load failed", error.message);
+          setSaveStatus("failed");
+          setSaveError(error.message);
+          return;
+        }
+        const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
+        const local = readStrategyWorkspace(parcelId);
+        const merged = writeStrategyWorkspace(parcelId, mergeStrategyWorkspaces(parcelId, local, remote));
+        const chosen = getChosenStrategyScenario(parcelId);
+        setSavedScenarios(merged.scenarios);
+        setChosenScenario(chosen);
+        setActive(
+          STRATEGY_OPTIONS.some((option) => option.id === merged.activeStrategy)
+            ? (merged.activeStrategy as StrategyType)
+            : selectedStrategyId(chosen),
+        );
+        setValues({ ...strategyDefaults(defaultPriceRef.current), ...merged.draftInputs });
+        setShowChosenState(Boolean(chosen));
+        latestWorkspaceRef.current = merged;
+        const cloudMissing = !remote && Boolean(local.draftUpdatedAt || local.scenarios.length);
+        const localHadNewer =
+          JSON.stringify(merged) !== JSON.stringify(remote ?? createEmptyStrategyWorkspace(parcelId));
+        if (cloudMissing || localHadNewer) {
+          queueCloudSave(merged, true);
+          setSaveStatus(cloudMissing ? "migrated" : "saving");
+        } else {
+          setSaveStatus("cloud-restored");
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [parcelId, queueCloudSave, userId]);
+
+  function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
+    const workspace = saveStrategyDraft(parcelId, {
+      activeStrategy: nextActive,
+      draftInputs: nextValues,
+    });
+    queueCloudSave(workspace, immediate);
+    return workspace;
+  }
 
   const n = (key: string) => toNumber(values[key]);
-  const setValue = (key: string, value: string) =>
-    setValues((current) => ({ ...current, [key]: value }));
+  const setValue = (key: string, value: string) => {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    persistDraft(active, next);
+    setShowChosenState(false);
+  };
 
   const loanAmount =
     n("loanAmount") || Math.max(0, n("purchasePrice") * (1 - n("depositPercent") / 100));
@@ -468,11 +678,14 @@ export function StrategyLab({
 
   function chooseStrategy(id: StrategyType) {
     setActive(id);
+    persistDraft(id, values);
     setShowChosenState(false);
   }
 
   function reset() {
-    setValues(strategyDefaults(defaultPrice));
+    const next = strategyDefaults(defaultPrice);
+    setValues(next);
+    persistDraft(active, next);
     setShowChosenState(false);
   }
 
@@ -487,26 +700,34 @@ export function StrategyLab({
         ? `Selected design asset: ${sitePotentialDraft.selectedDesignAssetId}`
         : null,
     ].filter((note): note is string => Boolean(note));
-    setActive("development_sell");
-    setValues((current) => ({
-      ...current,
-      customNotes: [current.customNotes, ...notes].filter(Boolean).join("\n"),
-    }));
+    const nextActive = "development_sell";
+    setActive(nextActive);
+    const next = {
+      ...values,
+      customNotes: [values.customNotes, ...notes].filter(Boolean).join("\n"),
+    };
+    setValues(next);
+    persistDraft(nextActive, next, true);
     setShowChosenState(false);
     toast.success("Site Potential draft applied. Review the numbers before saving.");
   }
 
-  function saveScenario() {
+  function saveScenario(asNew = false) {
     const option = optionFor(active);
-    const { scenario, scenarios } = saveStrategyScenario(parcelId, {
-      label: `${option.label} scenario`,
-      strategy: active,
-      inputs: values,
-      summary: summary.map(([label, value]) => ({ label, value })),
-    });
+    const { scenario, scenarios, workspace } = saveStrategyScenario(
+      parcelId,
+      {
+        label: `${option.label} scenario`,
+        strategy: active,
+        inputs: values,
+        summary: summary.map(([label, value]) => ({ label, value })),
+      },
+      { asNew },
+    );
     setSavedScenarios(scenarios);
     setChosenScenario(scenario);
     setShowChosenState(true);
+    queueCloudSave(workspace, true);
     toast.success("Scenario chosen for this erf.");
   }
 
@@ -524,9 +745,12 @@ export function StrategyLab({
               Choose a strategy for this erf
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-              Choose a strategy, adjust the assumptions, and save the scenario that should feed the
-              Easy Erf Report.
+              Every input autosaves as a draft for this erf. Save a scenario only when you want that
+              version to feed the Easy Erf Report.
             </p>
+            <div className="mt-3 inline-flex rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A]/70">
+              Autosaved draft separate from chosen report scenario
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -538,11 +762,18 @@ export function StrategyLab({
             </button>
             <button
               type="button"
-              onClick={saveScenario}
+              onClick={() => saveScenario()}
               className="rounded-full bg-[#FF6A00] px-4 py-2 text-[11px] font-semibold text-white hover:bg-[#ff7d1f]"
             >
               <Save className="mr-1 inline h-3.5 w-3.5" />
-              Save scenario
+              Use this scenario in report
+            </button>
+            <button
+              type="button"
+              onClick={() => saveScenario(true)}
+              className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-2 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fbf8f1]"
+            >
+              Save as a new scenario
             </button>
           </div>
         </div>
@@ -604,22 +835,51 @@ export function StrategyLab({
         </section>
       )}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {STRATEGY_OPTIONS.map((option) => (
           <button
             key={option.id}
             type="button"
             onClick={() => chooseStrategy(option.id)}
             className={cn(
-              "rounded-[1.25rem] border p-4 text-left transition",
+              "group rounded-[1.5rem] border p-5 text-left transition",
               active === option.id
-                ? "border-[#FF6A00]/60 bg-[#fff8ec] shadow-[0_18px_40px_-32px_rgba(255,106,0,0.55)]"
-                : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/35",
+                ? "border-[#FF6A00]/70 bg-[#0D1B2A] text-white shadow-[0_24px_60px_-38px_rgba(13,27,42,0.8)]"
+                : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/35 hover:shadow-[0_18px_45px_-38px_rgba(13,27,42,0.4)]",
             )}
           >
-            <div className="text-sm font-semibold text-[#0D1B2A]">{option.label}</div>
-            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">{option.description}</p>
-            <div className="mt-3 grid gap-1 text-[11px] text-[#0D1B2A]/60">
+            <div
+              className={cn(
+                "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]",
+                active === option.id ? "bg-[#FF6A00] text-white" : "bg-[#FFF7ED] text-[#B24A00]",
+              )}
+            >
+              {active === option.id ? "Drafting" : "Strategy option"}
+            </div>
+            <div
+              className={cn(
+                "mt-4 text-base font-semibold",
+                active === option.id ? "text-white" : "text-[#0D1B2A]",
+              )}
+            >
+              {option.label}
+            </div>
+            <p
+              className={cn(
+                "mt-2 text-sm leading-6",
+                active === option.id ? "text-white/72" : "text-[#0D1B2A]/64",
+              )}
+            >
+              {option.description}
+            </p>
+            <div
+              className={cn(
+                "mt-4 grid gap-2 rounded-2xl border px-3 py-2 text-[11px]",
+                active === option.id
+                  ? "border-white/10 bg-white/[0.06] text-white/70"
+                  : "border-[#D9E6F2] bg-[#F7FBFF] text-[#0D1B2A]/60",
+              )}
+            >
               <span>Best for: {option.bestFor}</span>
               <span>Key output: {option.keyOutput}</span>
             </div>
@@ -634,12 +894,44 @@ export function StrategyLab({
               Assumptions
             </div>
             <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">{activeOption.label}</h4>
+            <div
+              className={cn(
+                "mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold",
+                saveStatus === "failed"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : saveStatus === "saved" ||
+                      saveStatus === "cloud-restored" ||
+                      saveStatus === "migrated"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-[#D9E6F2] bg-white text-[#0D1B2A]/68",
+              )}
+            >
+              {saveStatusCopy(saveStatus, lastSavedAt)}
+              {saveStatus === "failed" && (
+                <button
+                  type="button"
+                  onClick={flushStrategySave}
+                  className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+            {saveError && saveStatus === "failed" && (
+              <p className="mt-1 text-xs text-red-700">Cloud save failed. Your browser draft is still kept locally.</p>
+            )}
             <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/62">
               Adjust these assumptions before relying on the result.
             </p>
           </div>
           {fieldGroupsFor(active).map((group) => (
-            <FieldGroup key={group.title} group={group} values={values} setValue={setValue} />
+            <FieldGroup
+              key={group.title}
+              group={group}
+              values={values}
+              setValue={setValue}
+              onBlur={flushStrategySave}
+            />
           ))}
         </div>
 
@@ -669,10 +961,10 @@ export function StrategyLab({
             </ul>
             <button
               type="button"
-              onClick={saveScenario}
+              onClick={() => saveScenario()}
               className="mt-4 w-full rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
             >
-              Save as chosen scenario
+              Use this scenario in report
             </button>
           </section>
         </div>
@@ -680,8 +972,8 @@ export function StrategyLab({
 
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
         {savedScenarios.length > 0
-          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} will feed the Easy Erf Report. The chosen scenario is used first.`
-          : "Save a scenario to move Strategy progress. Estimates remain based on your assumptions."}
+          ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} on file. Only the chosen scenario feeds the Easy Erf Report.`
+          : "Your draft is autosaved, but the Easy Erf Report waits for you to save a chosen scenario."}
         {savedScenarios.length > 0 && (
           <button
             type="button"
@@ -919,10 +1211,12 @@ function FieldGroup({
   group,
   values,
   setValue,
+  onBlur,
 }: {
   group: FieldGroupModel;
   values: Record<string, string>;
   setValue: (key: string, value: string) => void;
+  onBlur: () => void;
 }) {
   return (
     <section className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
@@ -938,6 +1232,7 @@ function FieldGroup({
               inputMode="decimal"
               value={values[key] ?? ""}
               onChange={(event) => setValue(key, event.target.value)}
+              onBlur={onBlur}
               placeholder="0"
               className="mt-1 w-full rounded-lg border border-[#D9E6F2] bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none focus:border-[#FF6A00]/60"
             />
