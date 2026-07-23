@@ -279,8 +279,13 @@ describe("Site Potential private beta entitlements", () => {
     const migration = read(
       "supabase/migrations/20260723110000_allow_repeat_site_potential_free_packs_per_erf.sql",
     );
-    expect(migration).not.toContain("v_same_parcel_30");
-    expect(migration).not.toMatch(/parcel_id\s*=\s*p_parcel_id[^\n]*\n[^\n]*INTO/);
-    expect(migration).not.toContain("v_same_parcel_30 < 1");
+    // Strip SQL comments before asserting on executable content.
+    const executable = migration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(executable).not.toContain("v_same_parcel_30");
+    expect(executable).not.toMatch(/parcel_id\s*=\s*p_parcel_id/);
+    expect(executable).not.toContain("v_same_parcel_30 < 1");
   });
 });
