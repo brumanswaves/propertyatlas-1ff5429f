@@ -15,7 +15,6 @@ export interface BetaCreditUiStatus {
     remaining24Hours: number;
     remaining7Days: number;
     remaining30Days: number;
-    sameParcelEligible: boolean;
   };
   openRequestStatus?: string | null;
 }

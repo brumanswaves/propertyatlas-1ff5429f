@@ -11,7 +11,6 @@ export const SITE_POTENTIAL_FREE_LIMITS = {
   rolling24Hours: 1,
   rolling7Days: 3,
   rolling30Days: 6,
-  sameParcelRolling30Days: 1,
 } as const;
 
 export const SITE_POTENTIAL_CREDIT_PACKS = [
