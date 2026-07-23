@@ -197,7 +197,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(config).toContain("rolling24Hours: 1");
     expect(config).toContain("rolling7Days: 3");
     expect(config).toContain("rolling30Days: 6");
-    expect(config).toContain("sameParcelRolling30Days: 1");
+    expect(config).not.toContain("sameParcelRolling30Days");
     expect(config).toContain("{ credits: 5, priceCents: 49_900");
     expect(config).toContain("{ credits: 10, priceCents: 89_900");
     expect(config).toContain("{ credits: 25, priceCents: 199_900");
@@ -208,7 +208,6 @@ describe("Site Potential private beta entitlements", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.site_potential_credit_ledger");
     expect(migration).toContain("idempotency_key text NOT NULL UNIQUE");
     expect(migration).toContain("v_used_24 < 1 AND v_used_7 < 3 AND v_used_30 < 6");
-    expect(migration).toContain("v_same_parcel_30 < 1");
     expect(migration).toContain("requested_count, completed_count");
     expect(migration).toContain("'packSize', 3");
     expect(migration).toContain("'reserved', -1");
@@ -216,6 +215,18 @@ describe("Site Potential private beta entitlements", () => {
     expect(migration).toContain("Pack did not complete all three concepts");
     expect(migration).not.toContain("item.option_index = 1");
     expect(migration).not.toContain("primary_item.option_index = 1");
+  });
+
+  it("advertises repeat-erf allowance in the Site Potential tab", () => {
+    const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+    expect(tab).toContain("1 / day · 3 / week · 6 / month free");
+    expect(tab).toContain(
+      "You may use your available packs on the same erf or across different properties.",
+    );
+    expect(tab).toContain("Repeat use on this erf");
+    expect(tab).not.toContain("sameParcelEligible");
+    expect(tab).not.toContain("This erf");
+    expect(tab).not.toContain("Not eligible");
   });
 
   it("adds a provider-neutral authenticated pack status endpoint", () => {
