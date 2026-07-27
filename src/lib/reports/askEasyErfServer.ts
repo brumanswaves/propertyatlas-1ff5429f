@@ -9,6 +9,8 @@ import {
   validateAskEasyErfSelectedEvidencePayload,
 } from "./askEasyErf";
 import { ApiRequestError, authenticateApiRequest } from "@/lib/sitePotential/serverAuth";
+import { resolveAskEasyErfAnswerReferences } from "../../../supabase/functions/_shared/askEasyErfContract";
+
 
 export type AskEasyErfErrorCode =
   | "INVALID_REQUEST"
