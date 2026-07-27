@@ -325,7 +325,8 @@ function formatMapCoordinate(value: number | undefined): string {
 
 /** Single rendering rule for erf area: never show a fabricated 0 m². */
 function formatAreaM2(value: unknown): string {
-  return formatAreaM2WithUnit(value) ?? AREA_UNAVAILABLE_LABEL;
+  const numeric = typeof value === "number" ? value : Number(value);
+  return formatAreaM2WithUnit(Number.isFinite(numeric) ? numeric : null) ?? AREA_UNAVAILABLE_LABEL;
 }
 
 function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | null): string | null {
