@@ -212,6 +212,7 @@ export const ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS = {
   maxSourceFragments: 6,
   maxTotalCharacters: 5_500,
 } as const;
+export const ASK_EASY_ERF_MAX_QUESTION_CHARACTERS = 1_000;
 const SOURCE_TYPES: AskEasyErfEvidenceSourceType[] = [
   "official",
   "uploaded",
@@ -231,14 +232,19 @@ const BROAD_QUESTION_PATTERNS = [
   /\bsummarise\b/i,
   /\bsummarize\b/i,
   /\bwhat should i know\b/i,
+  /\bevidence (?:is )?still needed\b/i,
+  /\bimprove confidence\b/i,
+  /\bdue diligence\b/i,
   /\bbiggest risks?\b/i,
   /\brisks?\b/i,
   /\boverview\b/i,
   /\bdecision\b/i,
+  /\bverdict\b/i,
   /\bfirst read\b/i,
 ];
 const BROAD_FALLBACK_DOMAINS: EvidenceDomain[] = [
   "identity",
+  "address",
   "ownership",
   "deeds",
   "planning",
@@ -285,13 +291,17 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
       /\bbuild(?:ing)?\b/i,
       /\bunits?\b/i,
       /\bcoverage\b/i,
-      /\bfar\b/i,
+      /\bFAR\b/,
+      /\bfloor[- ]area ratio\b/i,
+      /\bplanning FAR\b/,
+      /\bdevelopment FAR\b/,
       /\bheight\b/i,
       /\bsetbacks?\b/i,
       /\bbuilding line\b/i,
       /\bdensity\b/i,
       /\bpermitted use\b/i,
       /\bplanning rights?\b/i,
+      /\btown planner\b/i,
     ],
   },
   {
@@ -317,6 +327,8 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
       /\breturn\b/i,
       /\byield\b/i,
       /\bbuild cost\b/i,
+      /\bcosts?\b/i,
+      /\bmissing costs?\b/i,
       /\bpurchase price\b/i,
       /\bresale\b/i,
       /\brent\b/i,
@@ -331,6 +343,7 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
       /\brender\b/i,
       /\bdevelopment concept\b/i,
       /\bsite potential\b/i,
+      /\bdevelopment potential\b/i,
       /\blayout\b/i,
     ],
   },
@@ -349,6 +362,39 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
   {
     domains: ["notes"],
     patterns: [/\bnotes?\b/i, /\bquestions?\b/i, /\bconcerns?\b/i, /\bpros?\b/i, /\bcons?\b/i],
+  },
+];
+
+const ASK_EASY_ERF_META_INTENTS: Array<{
+  domains: EvidenceDomain[];
+  patterns: RegExp[];
+}> = [
+  {
+    domains: ["ownership", "deeds", "planning", "market", "strategy", "documents"],
+    patterns: [
+      /\bverify\b/i,
+      /\bevaluating an offer\b/i,
+      /\bmaking an offer\b/i,
+      /\bbefore (?:i )?make an offer\b/i,
+      /\boffer\b/i,
+      /\bdue diligence\b/i,
+    ],
+  },
+  {
+    domains: ["planning"],
+    patterns: [/\btown planner\b/i, /\bplanning information\b/i, /\bplanning .*missing\b/i],
+  },
+  {
+    domains: ["planning", "site"],
+    patterns: [/\bdevelopment potential\b/i, /\bwhat does easy erf know about development potential\b/i],
+  },
+  {
+    domains: ["strategy"],
+    patterns: [/\bmissing costs?\b/i, /\bwhich costs\b/i, /\bcosts? .*missing\b/i],
+  },
+  {
+    domains: ["strategy", "market"],
+    patterns: [/\bexit assumption\b/i, /\binvestment case\b/i],
   },
 ];
 
@@ -487,38 +533,53 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
     maxSourceFragments: limits.maxSourceFragments,
     maxTotalCharacters: limits.maxTotalCharacters,
   });
+  const packSourcesById = new Map(
+    input.pack.sources
+      .filter((source) => source.parcelId === input.pack.parcelId)
+      .map((source) => [source.id, source]),
+  );
+  const selectedSourceIds = new Set(selected.sources.map((source) => source.id));
+  for (const claim of selected.claims) {
+    if (claim.parcelId !== input.pack.parcelId || claim.status === "missing") continue;
+    claim.sourceIds.forEach((id) => selectedSourceIds.add(id));
+  }
+  for (const contradiction of selected.contradictions) {
+    if (contradiction.parcelId !== input.pack.parcelId) continue;
+    contradiction.sourceIds.forEach((id) => selectedSourceIds.add(id));
+  }
+  const sources: AskEasyErfSelectedEvidenceSource[] = [];
   const sourceRefById = new Map<string, string>();
-  let sources = selected.sources
-    .filter((source) => source.parcelId === input.pack.parcelId)
-    .slice(0, MAX_SELECTED_SOURCES)
-    .map((source, index): AskEasyErfSelectedEvidenceSource => {
-      const ref = `S${index + 1}`;
-      sourceRefById.set(source.id, ref);
-      return {
-        ref,
-        sourceId: cleanText(source.id, 160),
-        parcelId: cleanText(source.parcelId, 160),
-        kind: source.kind,
-        label: cleanText(source.label, 180),
-        sourceType: sourceTypeForEvidenceSource(source),
-        authorityType: source.authorityType,
-        sourceQuality: source.sourceQuality,
-        status: source.status,
-        fileName: source.fileName ? cleanText(source.fileName, 220) : null,
-        sourcePortal: source.sourcePortal ? cleanText(source.sourcePortal, 120) : null,
-        locators: source.locators.map(sanitizeLocator).slice(0, 4),
-        fragments: source.fragments.map((fragment) => cleanText(fragment, 500)).slice(0, 3),
-      };
-    });
-  if (
-    sources.length === 0 &&
-    (selected.claims.length > 0 || selected.contradictions.length > 0 || selected.gaps.length > 0)
-  ) {
-    const ref = "S1";
-    sourceRefById.set(`${input.pack.parcelId}:selected-evidence-gaps`, ref);
-    sources = [fallbackMissingEvidenceSource(input.pack.parcelId, ref)];
+  for (const sourceId of Array.from(selectedSourceIds).sort((a, b) => a.localeCompare(b))) {
+    const source = packSourcesById.get(sourceId);
+    if (!source || sources.length >= MAX_SELECTED_SOURCES) continue;
+    const ref = `S${sources.length + 1}`;
+    sourceRefById.set(source.id, ref);
+    const selectedSource = selected.sources.find((item) => item.id === source.id);
+    sources.push(sourceToSelectedEvidenceSource(source, ref, selectedSource?.fragments ?? []));
   }
 
+  const selectedClaims = selected.claims
+    .filter((claim) => claim.parcelId === input.pack.parcelId)
+    .slice(0, limits.maxClaims)
+    .map((claim) => sanitizeSelectedClaim(claim, sourceRefById))
+    .filter((claim) => claim.status === "missing" || claim.sourceRefs.length > 0);
+  const selectedContradictions = selected.contradictions
+    .filter((item) => item.parcelId === input.pack.parcelId)
+    .slice(0, 5)
+    .map((item) => ({
+      id: cleanText(item.id, 160),
+      parcelId: cleanText(item.parcelId, 160),
+      title: cleanText(item.title, 180),
+      severity: item.severity,
+      explanation: cleanText(item.explanation, 600),
+      claimIds: item.claimIds.map((id) => cleanText(id, 160)).slice(0, 8),
+      sourceRefs: item.sourceIds
+        .map((id) => sourceRefById.get(id))
+        .filter((ref): ref is string => Boolean(ref)),
+      displayedValues: item.displayedValues.map((value) => cleanText(value, 220)).slice(0, 6),
+      nextAction: cleanText(item.nextAction, 300),
+    }))
+    .filter((item) => item.sourceRefs.length > 0);
   const payload: AskEasyErfSelectedEvidencePayload = {
     schemaVersion: 1,
     kind: SELECTED_EVIDENCE_KIND,
@@ -529,27 +590,15 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
     limits,
     truncated: selected.truncated,
     selectedText: cleanText(selected.text, limits.maxTotalCharacters),
-    sources,
-    claims: selected.claims
-      .filter((claim) => claim.parcelId === input.pack.parcelId)
-      .slice(0, limits.maxClaims)
-      .map((claim) => sanitizeSelectedClaim(claim, sourceRefById)),
-    contradictions: selected.contradictions
-      .filter((item) => item.parcelId === input.pack.parcelId)
-      .slice(0, 5)
-      .map((item) => ({
-        id: cleanText(item.id, 160),
-        parcelId: cleanText(item.parcelId, 160),
-        title: cleanText(item.title, 180),
-        severity: item.severity,
-        explanation: cleanText(item.explanation, 600),
-        claimIds: item.claimIds.map((id) => cleanText(id, 160)).slice(0, 8),
-        sourceRefs: item.sourceIds
-          .map((id) => sourceRefById.get(id))
-          .filter((ref): ref is string => Boolean(ref)),
-        displayedValues: item.displayedValues.map((value) => cleanText(value, 220)).slice(0, 6),
-        nextAction: cleanText(item.nextAction, 300),
-      })),
+    sources:
+      sources.length === 0 &&
+      selectedClaims.length === 0 &&
+      selectedContradictions.length === 0 &&
+      selected.gaps.length > 0
+        ? [fallbackMissingEvidenceSource(input.pack.parcelId, "S1")]
+        : sources,
+    claims: selectedClaims,
+    contradictions: selectedContradictions,
     gaps: selected.gaps
       .filter((gap) => gap.parcelId === input.pack.parcelId)
       .slice(0, 8)
@@ -584,11 +633,19 @@ export function inferAskEasyErfEvidenceDomains(question: string): EvidenceDomain
       domains.push(domain);
     }
   }
+  for (const group of ASK_EASY_ERF_META_INTENTS) {
+    if (!group.patterns.some((pattern) => pattern.test(normalized))) continue;
+    for (const domain of group.domains) {
+      if (seen.has(domain)) continue;
+      seen.add(domain);
+      domains.push(domain);
+    }
+  }
   return domains;
 }
 
 export function normalizeAskEasyErfQuestion(value: string): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, 1000);
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function isBroadAskEasyErfQuestion(question: string) {
@@ -626,7 +683,7 @@ function fallbackMissingEvidenceSource(
     sourceId: `${parcelId}:selected-evidence-gaps`,
     parcelId,
     kind: "system_state",
-    label: "Easy Erf selected evidence gaps",
+    label: "Easy Erf system-generated missing-information state",
     sourceType: "missing",
     authorityType: "system",
     sourceQuality: "unavailable",
@@ -635,6 +692,28 @@ function fallbackMissingEvidenceSource(
     sourcePortal: "Easy Erf",
     locators: [],
     fragments: [],
+  };
+}
+
+function sourceToSelectedEvidenceSource(
+  source: PropertyEvidencePack["sources"][number],
+  ref: string,
+  fragments: string[],
+): AskEasyErfSelectedEvidenceSource {
+  return {
+    ref,
+    sourceId: cleanText(source.id, 160),
+    parcelId: cleanText(source.parcelId, 160),
+    kind: source.kind,
+    label: cleanText(source.label, 180),
+    sourceType: sourceTypeForEvidenceSource(source),
+    authorityType: source.authorityType,
+    sourceQuality: source.sourceQuality,
+    status: source.status,
+    fileName: source.fileName ? cleanText(source.fileName, 220) : null,
+    sourcePortal: source.sourcePortal ? cleanText(source.sourcePortal, 120) : null,
+    locators: source.locators.map(sanitizeLocator).slice(0, 4),
+    fragments: fragments.map((fragment) => cleanText(fragment, 500)).slice(0, 3),
   };
 }
 
@@ -650,7 +729,7 @@ export function suggestedAskEasyErfQuestions(
       "Which costs are still missing?",
       "What should I verify before making an offer?",
       "How strong is the market support for the exit assumption?",
-    ]).slice(0, 5);
+    ]);
   }
   const questions: string[] = [];
   if (!payload.ownership.isVerified) questions.push("Why is ownership still unverified?");
@@ -667,7 +746,7 @@ export function suggestedAskEasyErfQuestions(
   }
   questions.push("What should I ask a town planner?");
   questions.push(`Why is the current verdict "${verdictLabel(payload.decision.verdict)}"?`);
-  return unique(questions).slice(0, 5);
+  return unique(questions);
 }
 
 export function hasEnoughAskEasyErfEvidence(payload: AskEasyErfEvidencePayload): boolean {
@@ -744,7 +823,12 @@ export function validateAskEasyErfSelectedEvidencePayload(
   const parcelId = requireText(raw.parcelId, 160);
   const generatedAt = requireText(raw.generatedAt, 80);
   const evidenceFingerprint = requireText(raw.evidenceFingerprint, 180);
-  if (typeof raw.question !== "string" || raw.question.length > 1000) return null;
+  if (
+    typeof raw.question !== "string" ||
+    raw.question.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS
+  ) {
+    return null;
+  }
   const question = normalizeAskEasyErfQuestion(raw.question);
   const limits = validateSelectedLimits(raw.limits);
   if (
@@ -800,6 +884,12 @@ export function validateAskEasyErfSelectedEvidencePayload(
   if (hasDuplicates(gaps.map((gap) => gap.id))) return null;
   const totalFragments = sources.reduce((sum, source) => sum + source.fragments.length, 0);
   if (totalFragments > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments) return null;
+  if (claims.some((claim) => claim.status !== "missing" && claim.sourceRefs.length === 0)) {
+    return null;
+  }
+  if (contradictions.some((item) => item.sourceRefs.length === 0)) return null;
+  if (claims.some((claim) => hasDuplicates(claim.sourceRefs))) return null;
+  if (contradictions.some((item) => hasDuplicates(item.sourceRefs))) return null;
   if (claims.some((claim) => claim.sourceRefs.some((ref) => !validRefs.has(ref)))) return null;
   if (contradictions.some((item) => item.sourceRefs.some((ref) => !validRefs.has(ref)))) {
     return null;
@@ -815,6 +905,12 @@ export function validateAskEasyErfSelectedEvidencePayload(
         !referencedRefs.has(source.ref) &&
         source.sourceType !== "missing",
     )
+  ) {
+    return null;
+  }
+  if (
+    (claims.some((claim) => claim.status !== "missing") || contradictions.length > 0) &&
+    sources.some((source) => isSyntheticMissingEvidenceSource(source))
   ) {
     return null;
   }
@@ -1920,6 +2016,14 @@ function hasConsecutiveSourceRefs(sources: AskEasyErfSelectedEvidenceSource[]) {
 
 function hasDuplicates(values: string[]) {
   return new Set(values).size !== values.length;
+}
+
+function isSyntheticMissingEvidenceSource(source: AskEasyErfSelectedEvidenceSource) {
+  return (
+    source.kind === "system_state" &&
+    source.sourceType === "missing" &&
+    source.sourceId.endsWith(":selected-evidence-gaps")
+  );
 }
 
 function sourceTypeForEvidenceSource(source: {

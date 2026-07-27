@@ -1,4 +1,5 @@
 import {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   hasEnoughAskEasyErfSelectedEvidence,
   normalizeAskEasyErfQuestion,
   validateAskEasyErfAnswer,
@@ -74,10 +75,21 @@ export async function handleAskEasyErfRequest(
 
   const body = parsed.body;
   const parcelId = typeof body.parcelId === "string" ? body.parcelId.trim() : "";
-  const question = typeof body.question === "string" ? normalizeAskEasyErfQuestion(body.question) : "";
+  const rawQuestion = typeof body.question === "string" ? body.question : "";
+  if (rawQuestion.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS) {
+    return json(
+      {
+        success: false,
+        code: "INVALID_REQUEST",
+        error: "Questions must be 1,000 characters or fewer.",
+      },
+      400,
+    );
+  }
+  const question = normalizeAskEasyErfQuestion(rawQuestion);
   const evidence = validateAskEasyErfSelectedEvidencePayload(body.evidence);
 
-  if (!parcelId || !question || question.length > 1000 || !evidence) {
+  if (!parcelId || !question || !evidence) {
     return json(
       {
         success: false,

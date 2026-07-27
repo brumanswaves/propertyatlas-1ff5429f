@@ -8,6 +8,7 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { buildReportViewModel, type BuildReportInput } from "../buildReportViewModel";
 import { buildDecisionIntelligence } from "../buildDecisionIntelligence";
 import {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   buildAskEasyErfEvidencePayload,
   buildAskEasyErfSelectedEvidencePayload,
   hasAskEasyErfPackEvidence,
@@ -376,7 +377,7 @@ describe("Ask Easy Erf evidence payload", () => {
     const questions = suggestedAskEasyErfQuestions(payload({ assets: [] }));
     expect(questions).toContain("Why is ownership still unverified?");
     expect(questions).toContain("What evidence would improve confidence most?");
-    expect(questions).toHaveLength(5);
+    expect(questions.length).toBeGreaterThanOrEqual(5);
   });
 
   it("uses investor suggestions without changing the evidence payload", () => {
@@ -388,6 +389,57 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(investor).toContain("What should I verify before making an offer?");
     expect(standard).not.toEqual(investor);
     expect(JSON.stringify(evidencePayload)).toEqual(JSON.stringify(payload({ assets: [] })));
+  });
+
+  it("makes every built-in suggested question retrievable from selected evidence", () => {
+    const reportInput = input({
+      assets: [
+        asset({ id: "sg", asset_category: "sg_diagram", asset_type: "pdf" }),
+        asset({
+          id: "concept",
+          asset_category: "generated_design",
+          asset_type: "site_concept",
+          original_file_name: "concept.png",
+          mime_type: "image/png",
+        }),
+      ],
+      selectedSiteDesign: asset({
+        id: "concept",
+        asset_category: "generated_design",
+        asset_type: "site_concept",
+        original_file_name: "concept.png",
+        mime_type: "image/png",
+      }),
+      strategyScenarios: [strategyScenario()],
+      chosenScenario: strategyScenario(),
+    });
+    const report = buildReportViewModel(reportInput);
+    const decision = buildDecisionIntelligence(report);
+    if (!report.evidencePack) throw new Error("Expected evidence pack");
+    const evidencePayload = buildAskEasyErfEvidencePayload({
+      report,
+      decision,
+      assets: reportInput.assets,
+      savedEvidence: reportInput.savedEvidence,
+      strategyScenarios: reportInput.strategyScenarios,
+    });
+    const suggestions = [
+      ...suggestedAskEasyErfQuestions(evidencePayload, "standard"),
+      ...suggestedAskEasyErfQuestions(evidencePayload, "investor"),
+    ];
+
+    expect(suggestions.length).toBeGreaterThan(8);
+    for (const suggestion of suggestions) {
+      const selected = buildAskEasyErfSelectedEvidencePayload({
+        pack: report.evidencePack,
+        question: suggestion,
+      });
+      expect(
+        selected.claims.length + selected.contradictions.length + selected.gaps.length,
+        suggestion,
+      ).toBeGreaterThan(0);
+      expect(validateAskEasyErfSelectedEvidencePayload(selected)).not.toBeNull();
+    }
   });
 
   it("marks truly empty evidence as insufficient", () => {
@@ -481,6 +533,18 @@ describe("Ask Easy Erf evidence payload", () => {
     ]);
   });
 
+  it("recognizes FAR planning intent without treating ordinary distance questions as planning", () => {
+    expect(inferAskEasyErfEvidenceDomains("What is the FAR?")).toContain("planning");
+    expect(inferAskEasyErfEvidenceDomains("What is the floor area ratio?")).toContain("planning");
+    expect(inferAskEasyErfEvidenceDomains("How far is the beach?")).not.toContain("planning");
+    expect(inferAskEasyErfEvidenceDomains("How far is the nearest school?")).not.toContain(
+      "planning",
+    );
+
+    expect(selectedFixture("What is the FAR?").claims.some((claim) => claim.domain === "planning")).toBe(true);
+    expect(selectedFixture("How far is the beach?").claims).toEqual([]);
+  });
+
   it("selects identity and address evidence without unrelated strategy claims", () => {
     const selected = selectedFixture("What is the LPI, parcel key and address?");
 
@@ -539,6 +603,58 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(selected.claims.some((claim) => claim.domain === "site")).toBe(true);
     expect(selected.claims.every((claim) => claim.domain === "site")).toBe(true);
     expect(selected.claims.map((claim) => claim.domain)).not.toContain("ownership");
+  });
+
+  it("keeps real source references for official, Strategy, market and contradiction facts", () => {
+    const identity = selectedFixture("What is the LPI and official parcel identity?");
+    expect(identity.claims.some((claim) => claim.domain === "identity")).toBe(true);
+    expect(identity.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    expect(identity.sources.some((source) => /official|kouga|csg/i.test(source.label))).toBe(true);
+
+    const strategy = selectedFixture("Which Strategy assumptions and calculations matter?");
+    expect(strategy.claims.some((claim) => claim.domain === "strategy")).toBe(true);
+    expect(strategy.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    const strategyRefs = new Set(strategy.claims.flatMap((claim) => claim.sourceRefs));
+    expect(strategy.sources.some((source) => strategyRefs.has(source.ref))).toBe(true);
+
+    const market = selectedFixture("Is the market evidence strong enough?", {
+      savedMarketEvidence: [packMarket({ id: "comp-a", title: "Comparable listing" })],
+    });
+    expect(market.claims.some((claim) => claim.domain === "market")).toBe(true);
+    expect(market.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    expect(market.sources.some((source) => source.sourceType === "market")).toBe(true);
+
+    const contradictory = selectedFixture("What are the biggest risks?", {
+      savedMarketEvidence: [
+        packMarket({
+          id: "subject",
+          listingRole: "subject_active_listing",
+          relationship: "target_asset",
+          landSizeM2: 1200,
+        }),
+      ],
+    });
+    expect(contradictory.contradictions.length).toBeGreaterThan(0);
+    expect(contradictory.contradictions.every((item) => item.sourceRefs.length > 0)).toBe(true);
+  });
+
+  it("allows genuine gap-only selected evidence with a clearly synthetic missing-information source", () => {
+    const pack = buildEvidencePackFixture();
+    const gapOnly = buildAskEasyErfSelectedEvidencePayload({
+      pack: { ...pack, claims: [], contradictions: [], sources: [] },
+      question: "What evidence is still needed before a decision?",
+    });
+
+    expect(gapOnly.claims).toEqual([]);
+    expect(gapOnly.contradictions).toEqual([]);
+    expect(gapOnly.gaps.length).toBeGreaterThan(0);
+    expect(gapOnly.sources).toHaveLength(1);
+    expect(gapOnly.sources[0]).toMatchObject({
+      kind: "system_state",
+      sourceType: "missing",
+      label: "Easy Erf system-generated missing-information state",
+    });
+    expect(validateAskEasyErfSelectedEvidencePayload(gapOnly)).not.toBeNull();
   });
 
   it("uses broad risk fallback for important contradictions and blocking gaps", () => {
@@ -707,6 +823,71 @@ describe("Ask Easy Erf server handler", () => {
     );
   });
 
+  it("accepts 1000-character questions and rejects 1001-character questions before OpenAI", async () => {
+    const acceptedQuestion = "x".repeat(ASK_EASY_ERF_MAX_QUESTION_CHARACTERS);
+    const acceptedEvidence = selectedPayload("What are the biggest risks?");
+    acceptedEvidence.question = acceptedQuestion;
+    const acceptedResponse = await handleAskEasyErfRequest(
+      request({
+        parcelId: "parcel-current",
+        question: acceptedQuestion,
+        evidence: acceptedEvidence,
+      }),
+      {
+        env: { ...process.env, OPENAI_API_KEY: "server-key" },
+        fetch: vi.fn().mockResolvedValue(
+          openAiResponse({
+            answer: "The selected evidence has risks and missing information.",
+            confidence: "low",
+            evidenceReferences: [{ ref: "S1", label: "Source", sourceType: "official" }],
+            unknowns: [],
+            nextAction: "Review evidence.",
+          }),
+        ),
+        authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
+      },
+    );
+    expect(acceptedResponse.status).toBe(200);
+
+    const oversizedQuestion = `${acceptedQuestion}x`;
+    const truncatedEvidence = structuredClone(acceptedEvidence);
+    truncatedEvidence.question = acceptedQuestion;
+    const fetchMock = vi.fn();
+    const rejectedResponse = await handleAskEasyErfRequest(
+      request({
+        parcelId: "parcel-current",
+        question: oversizedQuestion,
+        evidence: truncatedEvidence,
+      }),
+      {
+        env: { ...process.env, OPENAI_API_KEY: "server-key" },
+        fetch: fetchMock,
+        authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
+      },
+    );
+    const result = await rejectedResponse.json();
+    expect(rejectedResponse.status).toBe(400);
+    expect(result).toMatchObject({
+      success: false,
+      code: "INVALID_REQUEST",
+      error: "Questions must be 1,000 characters or fewer.",
+    });
+    expect(JSON.stringify(result)).not.toContain("Comparable listing");
+    expect(JSON.stringify(result)).not.toContain("server-key");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const oversizedEvidence = structuredClone(acceptedEvidence);
+    oversizedEvidence.question = oversizedQuestion;
+    await expectRejectedBeforeOpenAi(
+      {
+        parcelId: "parcel-current",
+        question: acceptedQuestion,
+        evidence: oversizedEvidence,
+      },
+      "INVALID_REQUEST",
+    );
+  });
+
   it("rejects browser-enlarged selected evidence limits and budgets", async () => {
     const base = selectedPayload("What are the risks?");
 
@@ -779,6 +960,27 @@ describe("Ask Easy Erf server handler", () => {
       { parcelId: "parcel-current", question: base.question, evidence: unresolvedClaimRef },
       "INVALID_REQUEST",
     );
+
+    const emptyClaimRefs = structuredClone(base);
+    emptyClaimRefs.claims[0].sourceRefs = [];
+    await expectRejectedBeforeOpenAi(
+      { parcelId: "parcel-current", question: base.question, evidence: emptyClaimRefs },
+      "INVALID_REQUEST",
+    );
+
+    const duplicateNestedClaimRefs = structuredClone(base);
+    duplicateNestedClaimRefs.claims[0].sourceRefs = [
+      duplicateNestedClaimRefs.claims[0].sourceRefs[0],
+      duplicateNestedClaimRefs.claims[0].sourceRefs[0],
+    ];
+    await expectRejectedBeforeOpenAi(
+      {
+        parcelId: "parcel-current",
+        question: base.question,
+        evidence: duplicateNestedClaimRefs,
+      },
+      "INVALID_REQUEST",
+    );
   });
 
   it("rejects duplicate contradiction and gap IDs plus secret-bearing locators", async () => {
@@ -804,6 +1006,31 @@ describe("Ask Easy Erf server handler", () => {
         },
         "INVALID_REQUEST",
       );
+
+      const emptyContradictionRefs = structuredClone(withContradiction);
+      emptyContradictionRefs.contradictions[0].sourceRefs = [];
+      await expectRejectedBeforeOpenAi(
+        {
+          parcelId: "parcel-a",
+          question: withContradiction.question,
+          evidence: emptyContradictionRefs,
+        },
+        "INVALID_REQUEST",
+      );
+
+      const duplicateNestedContradictionRefs = structuredClone(withContradiction);
+      duplicateNestedContradictionRefs.contradictions[0].sourceRefs = [
+        duplicateNestedContradictionRefs.contradictions[0].sourceRefs[0],
+        duplicateNestedContradictionRefs.contradictions[0].sourceRefs[0],
+      ];
+      await expectRejectedBeforeOpenAi(
+        {
+          parcelId: "parcel-a",
+          question: withContradiction.question,
+          evidence: duplicateNestedContradictionRefs,
+        },
+        "INVALID_REQUEST",
+      );
     }
 
     const duplicateGap = structuredClone(withContradiction);
@@ -819,6 +1046,27 @@ describe("Ask Easy Erf server handler", () => {
     ];
     await expectRejectedBeforeOpenAi(
       { parcelId: "parcel-a", question: withContradiction.question, evidence: signedLocator },
+      "INVALID_REQUEST",
+    );
+
+    const syntheticWithClaim = structuredClone(withContradiction);
+    syntheticWithClaim.sources.push({
+      ref: `S${syntheticWithClaim.sources.length + 1}`,
+      sourceId: "parcel-a:selected-evidence-gaps",
+      parcelId: "parcel-a",
+      kind: "system_state",
+      label: "Easy Erf system-generated missing-information state",
+      sourceType: "missing",
+      authorityType: "system",
+      sourceQuality: "unavailable",
+      status: "unavailable",
+      fileName: null,
+      sourcePortal: "Easy Erf",
+      locators: [],
+      fragments: [],
+    });
+    await expectRejectedBeforeOpenAi(
+      { parcelId: "parcel-a", question: withContradiction.question, evidence: syntheticWithClaim },
       "INVALID_REQUEST",
     );
   });

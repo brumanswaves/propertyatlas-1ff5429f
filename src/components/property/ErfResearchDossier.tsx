@@ -74,6 +74,7 @@ import {
   type EvidenceTimelineItem,
 } from "@/lib/reports/buildDecisionIntelligence";
 import {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   buildAskEasyErfEvidencePayload,
   buildAskEasyErfSelectedEvidencePayload,
   hasAskEasyErfPackEvidence,
@@ -2929,6 +2930,11 @@ function AskEasyErfSection({
     event?.preventDefault();
     const trimmed = question.trim();
     if (!trimmed || loading) return;
+    if (question.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS) {
+      setAnswer(null);
+      setError("Questions must be 1,000 characters or fewer.");
+      return;
+    }
     if (!hasCanonicalPackEvidence) {
       setAnswer(null);
       setError("More saved evidence is required before Ask Easy Erf can answer this property question.");
@@ -3102,6 +3108,7 @@ function AskEasyErfSection({
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
+            maxLength={ASK_EASY_ERF_MAX_QUESTION_CHARACTERS}
             onKeyDown={(event) => {
               if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                 event.preventDefault();
