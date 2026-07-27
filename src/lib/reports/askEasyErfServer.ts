@@ -357,41 +357,19 @@ function validateAnswerAgainstSelectedEvidence(
 ): AskEasyErfAnswer | null {
   const answer = validateAskEasyErfAnswer(value);
   if (!answer) return null;
-  const sourcesByRef = new Map(evidence.sources.map((source) => [source.ref, source]));
-  const resolved: AskEasyErfEvidenceReference[] = [];
-  for (const reference of answer.evidenceReferences) {
-    if (!reference.ref) return null;
-    const source = sourcesByRef.get(reference.ref);
-    if (!source) return null;
-    if (reference.sourceId && reference.sourceId !== source.sourceId) return null;
-    resolved.push({
-      ref: source.ref,
-      sourceId: source.sourceId,
-      label: source.label,
-      sourceType: source.sourceType,
-      authorityType: source.authorityType,
-      status: source.status,
-      locator: firstLocatorLabel(source),
-    });
-  }
-  if (!resolved.length) return null;
+  // Shared runtime-neutral resolver: rejects fabricated S-references and
+  // requires at least one resolvable reference.
+  const resolved = resolveAskEasyErfAnswerReferences(
+    { ...answer, evidenceReferences: answer.evidenceReferences },
+    evidence.sources,
+  );
+  if (!resolved) return null;
   return {
     ...answer,
-    evidenceReferences: resolved,
+    evidenceReferences: resolved as AskEasyErfEvidenceReference[],
   };
-
 }
 
-function firstLocatorLabel(source: AskEasyErfSelectedEvidencePayload["sources"][number]) {
-  const locator = source.locators[0];
-  if (!locator) return source.fileName ?? source.sourcePortal ?? null;
-  if (locator.pageLabel) return locator.pageLabel;
-  if (locator.pageNumber) return `Page ${locator.pageNumber}`;
-  if (locator.fieldPath) return locator.fieldPath;
-  if (locator.metadataKey) return locator.metadataKey;
-  if (locator.assetId) return locator.assetId;
-  return source.fileName ?? source.sourcePortal ?? null;
-}
 
 function timeoutSignal(ms: number) {
   const controller = new AbortController();
