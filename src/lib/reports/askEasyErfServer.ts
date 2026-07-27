@@ -47,11 +47,18 @@ export interface AskEasyErfServerDeps {
   env?: NodeJS.ProcessEnv;
   fetch?: typeof fetch;
   authenticate?: (request: Request) => Promise<unknown>;
+  requestId?: () => string;
 }
 
 const MAX_REQUEST_BYTES = 32_000;
-const OPENAI_TIMEOUT_MS = 20_000;
-const DEFAULT_MODEL = "gpt-4.1-mini";
+/** Route -> Edge Function budget; the function itself caps the OpenAI call. */
+const EDGE_FUNCTION_TIMEOUT_MS = 50_000;
+export const ASK_EASY_ERF_FUNCTION_NAME = "ask-easy-erf-openai";
+
+function defaultRequestId() {
+  return `ask-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
 
 export async function handleAskEasyErfRequest(
   request: Request,
