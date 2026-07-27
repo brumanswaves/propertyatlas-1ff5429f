@@ -8,7 +8,11 @@
 //
 // OPENAI_API_KEY and SUPABASE_SERVICE_ROLE_KEY never leave this function.
 import {
+  ERF_EXTRACTION_LOCK_TTL_MS,
   ERF_EXTRACTION_MAX_FILE_BYTES,
+  ERF_EXTRACTION_MAX_REQUEST_BYTES,
+  ERF_EXTRACTION_MISMATCH_MESSAGE,
+  ERF_EXTRACTION_UNVERIFIED_MESSAGE,
   ERF_EXTRACTION_MODEL_DEFAULT,
   ERF_EXTRACTION_OPENAI_URL,
   ERF_EXTRACTION_TIMEOUT_MS,
@@ -16,10 +20,14 @@ import {
   erfExtractionResponseFormat,
   erfExtractionSystemPrompt,
   isSupportedExtractionMimeType,
+  matchDocumentIdentity,
   normalizeExtractionResult,
+  parseCanonicalLpi,
+  type ErfExpectedIdentity,
   type ErfExtractionFailureCode,
   type ErfExtractionMetadataPatch,
   type ErfExtractionStatus,
+  type ErfIdentityMatchStatus,
 } from "../_shared/erfExtractionContract.ts";
 
 declare const Deno: { env: { get(key: string): string | undefined } };
@@ -80,6 +88,7 @@ interface AssetRow {
   mime_type: string;
   size_bytes: number;
   metadata: Record<string, unknown> | null;
+  updated_at: string;
 }
 
 async function loadAsset(assetId: string): Promise<AssetRow | null> {
@@ -94,20 +103,135 @@ async function loadAsset(assetId: string): Promise<AssetRow | null> {
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
 
-async function patchAssetMetadata(asset: AssetRow, patch: ErfExtractionMetadataPatch) {
+/**
+ * Writes a metadata patch and reports whether the write actually landed.
+ * A silent failure here would let the caller pretend success, so every call
+ * site must check the boolean.
+ */
+async function patchAssetMetadata(asset: AssetRow, patch: Partial<ErfExtractionMetadataPatch>) {
   const key = serviceKey();
-  if (!key) return;
+  if (!key) return false;
   const metadata = { ...(asset.metadata ?? {}), ...patch };
-  await fetch(`${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}`, {
-    method: "PATCH",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({ metadata }),
-  });
+  try {
+    const response = await fetch(`${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ metadata, updated_at: new Date().toISOString() }),
+    });
+    if (response.ok) asset.metadata = metadata;
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Atomic claim: PATCH only succeeds when `updated_at` still equals the value we
+ * read, so two concurrent requests can never both take the processing lock and
+ * call OpenAI. No migration required.
+ */
+async function claimProcessingLock(asset: AssetRow, requestId: string) {
+  const key = serviceKey();
+  if (!key) return false;
+  const startedAt = new Date().toISOString();
+  const metadata = {
+    ...(asset.metadata ?? {}),
+    extractionStatus: "processing",
+    extractionRequestId: requestId,
+    extractionStartedAt: startedAt,
+    extractionVersion: ERF_EXTRACTION_VERSION,
+    extractionError: null,
+  };
+  try {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}&updated_at=eq.${encodeURIComponent(
+        asset.updated_at,
+      )}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ metadata, updated_at: startedAt }),
+      },
+    );
+    if (!response.ok) return false;
+    const rows = (await response.json().catch(() => null)) as AssetRow[] | null;
+    if (!Array.isArray(rows) || rows.length !== 1) return false;
+    asset.metadata = metadata;
+    asset.updated_at = startedAt;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function metadataString(metadata: Record<string, unknown> | null, key: string) {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function lockIsFresh(metadata: Record<string, unknown> | null) {
+  if (metadataString(metadata, "extractionStatus") !== "processing") return false;
+  const startedAt = metadataString(metadata, "extractionStartedAt");
+  if (!startedAt) return false;
+  const started = Date.parse(startedAt);
+  return Number.isFinite(started) && Date.now() - started < ERF_EXTRACTION_LOCK_TTL_MS;
+}
+
+/**
+ * Builds the expected parcel identity entirely server-side: the canonical LPI
+ * from the parcel id plus whatever the owner's saved_properties row already
+ * knows. Nothing about identity is accepted from the browser.
+ */
+async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentity> {
+  const expected: ErfExpectedIdentity = {
+    parcelId: asset.parcel_id,
+    lpiCode: parseCanonicalLpi(asset.parcel_id),
+  };
+  const key = serviceKey();
+  if (!key) return expected;
+  try {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/saved_properties?user_id=eq.${encodeURIComponent(
+        asset.user_id,
+      )}&parcel_id=eq.${encodeURIComponent(asset.parcel_id)}&select=user_data&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (!response.ok) return expected;
+    const rows = (await response.json().catch(() => null)) as Array<{ user_data?: unknown }> | null;
+    const userData = (rows?.[0]?.user_data ?? null) as Record<string, unknown> | null;
+    const parcel = (userData?.parcel ?? userData?.officialParcel ?? userData) as Record<string, unknown> | null;
+    if (!parcel || typeof parcel !== "object") return expected;
+    const pick = (...keys: string[]) => {
+      for (const k of keys) {
+        const value = parcel[k];
+        if (typeof value === "string" && value.trim()) return value;
+        if (typeof value === "number") return String(value);
+      }
+      return null;
+    };
+    return {
+      ...expected,
+      lpiCode: expected.lpiCode ?? pick("lpi", "lpiCode"),
+      erfNumber: pick("erfNumber", "erf"),
+      portionNumber: pick("portion", "portionNumber"),
+      municipality: pick("municipality"),
+      province: pick("province"),
+      town: pick("town", "suburb"),
+      streetAddress: pick("streetAddress", "address"),
+    };
+  } catch {
+    return expected;
+  }
 }
 
 async function downloadAsset(asset: AssetRow): Promise<Uint8Array | null> {
@@ -166,10 +290,28 @@ Deno.serve(async (request: Request) => {
   }
   log("auth_ok", requestId, { caller: isInternalCaller ? "internal" : "user" });
 
-  const body = (await request.json().catch(() => null)) as { assetId?: unknown; force?: unknown } | null;
+  const declaredLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > ERF_EXTRACTION_MAX_REQUEST_BYTES) {
+    return fail("REQUEST_TOO_LARGE", "That request was too large.", 413);
+  }
+  const rawBody = await request.text().catch(() => "");
+  if (rawBody.length > ERF_EXTRACTION_MAX_REQUEST_BYTES) {
+    return fail("REQUEST_TOO_LARGE", "That request was too large.", 413);
+  }
+  let body: { assetId?: unknown; expectedParcelId?: unknown; retry?: unknown } | null = null;
+  try {
+    body = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    body = null;
+  }
   const assetId = typeof body?.assetId === "string" ? body.assetId.trim() : "";
+  const expectedParcelId = typeof body?.expectedParcelId === "string" ? body.expectedParcelId.trim() : "";
+  const retryRequested = body?.retry === true;
   if (!/^[0-9a-f-]{36}$/i.test(assetId)) {
     return fail("INVALID_REQUEST", "A valid assetId is required.", 400);
+  }
+  if (!expectedParcelId || expectedParcelId.length > 200) {
+    return fail("INVALID_REQUEST", "A valid expectedParcelId is required.", 400);
   }
 
   if (!serviceKey() || !supabaseUrl()) {
@@ -183,26 +325,81 @@ Deno.serve(async (request: Request) => {
     return fail("FORBIDDEN", "That file does not belong to this account.", 403);
   }
 
+  // Parcel binding: refuse before any download or model call.
+  if (expectedParcelId !== asset.parcel_id) {
+    log("parcel_binding_rejected", requestId);
+    return fail("PARCEL_MISMATCH", "That document does not belong to the selected erf.", 409);
+  }
+
   const finish = async (
     status: ErfExtractionStatus,
     patch: Partial<ErfExtractionMetadataPatch>,
     responseBody: Record<string, unknown>,
     httpStatus: number,
   ) => {
-    await patchAssetMetadata(asset, {
+    const written = await patchAssetMetadata(asset, {
       extractionStatus: status,
       extractionModel: null,
       extractionVersion: ERF_EXTRACTION_VERSION,
       extractedAt: new Date().toISOString(),
       extractionError: null,
       extractionWarning: null,
+      extractionRequestId: requestId,
       ...patch,
     });
+    if (!written) {
+      return fail("SERVER_UNAVAILABLE", "The extraction result could not be saved.", 503);
+    }
     return json({ requestId, assetId: asset.id, extractionStatus: status, ...responseBody }, httpStatus);
   };
 
+  const currentStatus = metadataString(asset.metadata, "extractionStatus");
+  const currentIdentity = metadataString(asset.metadata, "identityMatchStatus");
+  const currentVersion = Number(asset.metadata?.extractionVersion ?? 0);
+
+  if (lockIsFresh(asset.metadata)) {
+    log("already_processing", requestId);
+    return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
+  }
+
+  const isCurrentReady =
+    currentStatus === "ready" && currentIdentity === "matched" && currentVersion === ERF_EXTRACTION_VERSION;
+  if (isCurrentReady && !(retryRequested && isInternalCaller)) {
+    log("idempotent_ready", requestId);
+    return json(
+      {
+        requestId,
+        assetId: asset.id,
+        success: true,
+        extractionStatus: "ready",
+        identityMatchStatus: "matched",
+        claimCount: Array.isArray(asset.metadata?.extractedClaims)
+          ? (asset.metadata!.extractedClaims as unknown[]).length
+          : 0,
+        documentType: metadataString(asset.metadata, "extractedDocumentType"),
+        warning: null,
+        reused: true,
+      },
+      200,
+    );
+  }
+
+  const mimeType = (asset.mime_type || "").split(";")[0].trim().toLowerCase();
+  if (asset.asset_category === "paid_report" && mimeType !== "application/pdf") {
+    log("paid_report_not_pdf", requestId);
+    return finish(
+      "unsupported",
+      { extractionError: "A paid report must be uploaded as a PDF to be read." },
+      {
+        success: false,
+        code: "UNSUPPORTED_FILE_TYPE",
+        error: "A paid report must be uploaded as a PDF to be read.",
+      },
+      200,
+    );
+  }
   if (!isSupportedExtractionMimeType(asset.mime_type)) {
-    log("unsupported_type", requestId, { mimeType: asset.mime_type });
+    log("unsupported_type", requestId);
     return finish(
       "unsupported",
       { extractionError: "This file type cannot be read automatically." },
@@ -222,14 +419,13 @@ Deno.serve(async (request: Request) => {
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
   if (!apiKey) return fail("OPENAI_NOT_CONFIGURED", "Document reading is not configured yet.", 503);
 
-  await patchAssetMetadata(asset, {
-    extractionStatus: "processing",
-    extractionModel: null,
-    extractionVersion: ERF_EXTRACTION_VERSION,
-    extractedAt: null,
-    extractionError: null,
-    extractionWarning: null,
-  });
+  const locked = await claimProcessingLock(asset, requestId);
+  if (!locked) {
+    log("lock_contended", requestId);
+    return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
+  }
+
+  const expectedIdentity = await loadExpectedIdentity(asset);
 
   const bytes = await downloadAsset(asset);
   if (!bytes || bytes.byteLength === 0) {
@@ -242,7 +438,7 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const mime = (asset.mime_type || "application/pdf").split(";")[0].trim().toLowerCase();
+  const mime = mimeType || "application/pdf";
   const dataUrl = `data:${mime};base64,${toBase64(bytes)}`;
   const content =
     mime === "application/pdf"
@@ -339,11 +535,49 @@ Deno.serve(async (request: Request) => {
       );
     }
 
+    const identity = matchDocumentIdentity(expectedIdentity, result.identity);
+    const identityMatchStatus: ErfIdentityMatchStatus = identity.status;
+
+    if (identityMatchStatus !== "matched") {
+      // Quarantine: no extracted text, no claims, no document facts retained.
+      const message =
+        identityMatchStatus === "mismatch" ? ERF_EXTRACTION_MISMATCH_MESSAGE : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
+      log("identity_rejected", requestId, { identityMatchStatus });
+      return finish(
+        "failed",
+        {
+          extractionModel: model,
+          extractionError: message,
+          identityMatchStatus,
+          identityMatchReason: identity.reason,
+          extractedIdentity: result.identity,
+          extractedText: "",
+          extractedClaims: [],
+          extractedDocumentType: null,
+          extractedProvider: null,
+          extractedDocumentDate: null,
+          extractionSummary: null,
+          pageCount: null,
+        },
+        {
+          success: false,
+          code: identityMatchStatus === "mismatch" ? "IDENTITY_MISMATCH" : "IDENTITY_UNVERIFIED",
+          error: message,
+          identityMatchStatus,
+          identityMatchReason: identity.reason,
+        },
+        200,
+      );
+    }
+
     const status: ErfExtractionStatus = result.claims.length > 0 ? "ready" : "partial";
     log("extraction_ready", requestId, { status, claimCount: result.claims.length });
     return finish(
       status,
       {
+        identityMatchStatus,
+        identityMatchReason: identity.reason,
+        extractedIdentity: result.identity,
         extractionModel: model,
         extractionWarning: result.warning,
         extractedText: result.extractedText,
@@ -356,6 +590,7 @@ Deno.serve(async (request: Request) => {
       },
       {
         success: true,
+        identityMatchStatus,
         claimCount: result.claims.length,
         documentType: result.documentType,
         pageCount: result.pageCount,
