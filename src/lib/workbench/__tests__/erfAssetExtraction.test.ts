@@ -128,16 +128,38 @@ describe("erf asset extraction client", () => {
     expect(erfAssetExtractionStatus({ metadata: {} })).toBe("not_started");
     expect(erfAssetExtractionLabel({ metadata: {} })).toBe("Not read yet");
     expect(
-      erfAssetExtractionLabel({ metadata: { extractionStatus: "ready", extractedClaims: [validClaim, validClaim] } }),
-    ).toBe("Read — 2 extracted values");
+      erfAssetExtractionLabel({
+        metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractedClaims: [validClaim] },
+      }),
+    ).toBe("Report searchable");
+    expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "mismatch" } })).toBe("Wrong property report");
+    expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "unverified" } })).toBe(
+      "Report could not be matched to this erf",
+    );
+    expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "processing" } })).toBe("Extracting report...");
     expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "failed", extractionError: "Timed out." } })).toBe(
       "Timed out.",
     );
   });
 
+  it("never calls the network without an expected parcel id", async () => {
+    const fetchImpl = vi.fn();
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "  " },
+      { fetchImpl, accessToken: "user-token" },
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ success: false, code: "INVALID_REQUEST" });
+  });
+
   it("never calls the network when there is no session", async () => {
     const fetchImpl = vi.fn();
-    const result = await extractErfAsset("6a8a1f2c-0000-4000-8000-000000000000", { fetchImpl });
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+      { fetchImpl },
+    );
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(result).toMatchObject({ success: false, code: "AUTH_REQUIRED" });
   });
@@ -146,15 +168,22 @@ describe("erf asset extraction client", () => {
     const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
       new Response(JSON.stringify({ success: true, extractionStatus: "ready", claimCount: 7 }), { status: 200 }),
     );
-    const result = await extractErfAsset("6a8a1f2c-0000-4000-8000-000000000000", {
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      accessToken: "user-token",
-      functionsUrl: "https://example.test/functions/v1/extract-erf-asset",
-      apiKey: "publishable",
-    });
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+      {
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        accessToken: "user-token",
+        functionsUrl: "https://example.test/functions/v1/extract-erf-asset",
+        apiKey: "publishable",
+      },
+    );
     const init = fetchImpl.mock.calls[0][1] as unknown as RequestInit;
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer user-token");
-    expect(JSON.parse(String(init.body))).toEqual({ assetId: "6a8a1f2c-0000-4000-8000-000000000000" });
+    expect(JSON.parse(String(init.body))).toEqual({
+      assetId: "6a8a1f2c-0000-4000-8000-000000000000",
+      expectedParcelId: "csg:lpi:C03400140000157000000",
+    });
     expect(result).toMatchObject({ success: true, claimCount: 7 });
   });
 
@@ -164,10 +193,11 @@ describe("erf asset extraction client", () => {
         status: 200,
       }),
     );
-    const result = await extractErfAsset("6a8a1f2c-0000-4000-8000-000000000000", {
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      accessToken: "user-token",
-    });
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+      { fetchImpl: fetchImpl as unknown as typeof fetch, accessToken: "user-token" },
+    );
     expect(result).toMatchObject({ success: false, code: "TIMEOUT", error: "Reading this document timed out." });
   });
 });
