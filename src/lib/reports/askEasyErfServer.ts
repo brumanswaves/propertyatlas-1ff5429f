@@ -19,8 +19,10 @@ export type AskEasyErfErrorCode =
   | "OPENAI_NOT_CONFIGURED"
   | "RATE_LIMITED"
   | "TIMEOUT"
+  | "UPSTREAM_REQUEST_REJECTED"
   | "SERVER_UNAVAILABLE"
   | "MALFORMED_MODEL_RESPONSE";
+
 
 export interface AskEasyErfSuccess {
   success: true;
@@ -263,11 +265,27 @@ async function askOpenAI(input: {
     } | null;
 
     if (!response.ok) {
+      console.error(
+        "[ask-easy-erf] OpenAI request failed",
+        JSON.stringify({
+          status: response.status,
+          errorType: payload?.error?.type ?? null,
+          errorCode: payload?.error?.code ?? null,
+          errorMessage: payload?.error?.message ?? null,
+        }),
+      );
       if (response.status === 429) {
         return {
           success: false,
           code: "RATE_LIMITED",
           error: "Ask Easy Erf is temporarily rate limited. Try again shortly.",
+        };
+      }
+      if (response.status >= 400 && response.status < 500) {
+        return {
+          success: false,
+          code: "UPSTREAM_REQUEST_REJECTED",
+          error: "Ask Easy Erf could not process this question. Please report this if it repeats.",
         };
       }
       return {
@@ -276,6 +294,7 @@ async function askOpenAI(input: {
         error: "Ask Easy Erf is temporarily unavailable.",
       };
     }
+
 
     const content = payload?.choices?.[0]?.message?.content;
     const parsed =
