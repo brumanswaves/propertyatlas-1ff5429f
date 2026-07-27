@@ -144,28 +144,36 @@ export async function handleAskEasyErfRequest(
   }
 
   const env = deps.env ?? process.env;
-  const apiKey = env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
+  const supabaseUrl = env.SUPABASE_URL?.trim();
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const requestId = (deps.requestId ?? defaultRequestId)();
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error(
+      "[ask-easy-erf] edge function not configured",
+      JSON.stringify({ requestId, hasUrl: Boolean(supabaseUrl), hasKey: Boolean(serviceRoleKey) }),
+    );
     return json(
       {
         success: false,
         code: "OPENAI_NOT_CONFIGURED",
-        error: "Ask Easy Erf is not configured yet.",
+        error: messageForCode("OPENAI_NOT_CONFIGURED", requestId),
       },
       503,
     );
   }
 
-  const result = await askOpenAI({
+  const result = await askViaEdgeFunction({
     question,
     evidence,
-    apiKey,
-    model: env.OPENAI_ASK_EASY_ERF_MODEL || env.OPENAI_TEXT_MODEL || DEFAULT_MODEL,
+    functionUrl: `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/${ASK_EASY_ERF_FUNCTION_NAME}`,
+    serviceRoleKey,
+    requestId,
     fetchImpl: deps.fetch ?? fetch,
   });
   if (!result.success) return json(result, statusForCode(result.code));
   return json(result, 200);
 }
+
 
 function nestedEvidenceMatchesParcel(
   evidence: AskEasyErfSelectedEvidencePayload,
