@@ -223,6 +223,134 @@ const SOURCE_TYPES: AskEasyErfEvidenceSourceType[] = [
 ];
 
 const SELECTED_EVIDENCE_KIND = "ask_easy_erf_selected_property_evidence";
+const MAX_SELECTED_SOURCES =
+  ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims +
+  ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments +
+  1;
+const BROAD_QUESTION_PATTERNS = [
+  /\bsummarise\b/i,
+  /\bsummarize\b/i,
+  /\bwhat should i know\b/i,
+  /\bbiggest risks?\b/i,
+  /\brisks?\b/i,
+  /\boverview\b/i,
+  /\bdecision\b/i,
+  /\bfirst read\b/i,
+];
+const BROAD_FALLBACK_DOMAINS: EvidenceDomain[] = [
+  "identity",
+  "ownership",
+  "deeds",
+  "planning",
+  "market",
+  "strategy",
+  "site",
+  "documents",
+  "notes",
+];
+const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
+  domains: EvidenceDomain[];
+  patterns: RegExp[];
+}> = [
+  {
+    domains: ["identity", "address"],
+    patterns: [
+      /\berf\b/i,
+      /\bportion\b/i,
+      /\blpi\b/i,
+      /\bparcel\b/i,
+      /\bproperty identity\b/i,
+      /\bcoordinates?\b/i,
+      /\baddress\b/i,
+    ],
+  },
+  {
+    domains: ["ownership", "deeds"],
+    patterns: [
+      /\bowner\b/i,
+      /\bowns\b/i,
+      /\bownership\b/i,
+      /\btitle deeds?\b/i,
+      /\bdeeds?\b/i,
+      /\bbond\b/i,
+      /\bservitudes?\b/i,
+      /\beasements?\b/i,
+      /\btransfer\b/i,
+    ],
+  },
+  {
+    domains: ["planning"],
+    patterns: [
+      /\bzoning\b/i,
+      /\bbuild(?:ing)?\b/i,
+      /\bunits?\b/i,
+      /\bcoverage\b/i,
+      /\bfar\b/i,
+      /\bheight\b/i,
+      /\bsetbacks?\b/i,
+      /\bbuilding line\b/i,
+      /\bdensity\b/i,
+      /\bpermitted use\b/i,
+      /\bplanning rights?\b/i,
+    ],
+  },
+  {
+    domains: ["market"],
+    patterns: [
+      /\bprice\b/i,
+      /\basking price\b/i,
+      /\blistings?\b/i,
+      /\bcomparables?\b/i,
+      /\bcomps?\b/i,
+      /\bmarket\b/i,
+      /\bvalue\b/i,
+      /\bsold\b/i,
+      /\bsale price\b/i,
+    ],
+  },
+  {
+    domains: ["strategy"],
+    patterns: [
+      /\bstrategy\b/i,
+      /\bscenario\b/i,
+      /\bprofit\b/i,
+      /\breturn\b/i,
+      /\byield\b/i,
+      /\bbuild cost\b/i,
+      /\bpurchase price\b/i,
+      /\bresale\b/i,
+      /\brent\b/i,
+      /\bassumptions?\b/i,
+    ],
+  },
+  {
+    domains: ["site"],
+    patterns: [
+      /\bconcept\b/i,
+      /\bdesign\b/i,
+      /\brender\b/i,
+      /\bdevelopment concept\b/i,
+      /\bsite potential\b/i,
+      /\blayout\b/i,
+    ],
+  },
+  {
+    domains: ["documents"],
+    patterns: [
+      /\bdocuments?\b/i,
+      /\breports?\b/i,
+      /\bpdf\b/i,
+      /\bupload(?:ed)?\b/i,
+      /\bextraction\b/i,
+      /\bsg diagram\b/i,
+      /\btitle deed\b/i,
+    ],
+  },
+  {
+    domains: ["notes"],
+    patterns: [/\bnotes?\b/i, /\bquestions?\b/i, /\bconcerns?\b/i, /\bpros?\b/i, /\bcons?\b/i],
+  },
+];
 
 export function buildAskEasyErfEvidencePayload(
   input: BuildAskEasyErfPayloadInput,
@@ -341,21 +469,28 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
   now?: Date;
   limits?: Partial<typeof ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS>;
 }): AskEasyErfSelectedEvidencePayload {
-  const question = cleanText(input.question, 1000);
+  const question = normalizeAskEasyErfQuestion(input.question);
   const limits = {
     ...ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS,
     ...input.limits,
   };
+  const inferredDomains = inferAskEasyErfEvidenceDomains(question);
+  const isBroadQuestion = isBroadAskEasyErfQuestion(question);
+  const domains = inferredDomains.length ? inferredDomains : isBroadQuestion ? BROAD_FALLBACK_DOMAINS : [];
+  if (!domains.length) {
+    return emptySelectedEvidencePayload(input.pack, question, input.now);
+  }
   const selected = selectPropertyEvidence(input.pack, {
     question,
+    domains,
     maxClaims: limits.maxClaims,
     maxSourceFragments: limits.maxSourceFragments,
     maxTotalCharacters: limits.maxTotalCharacters,
   });
   const sourceRefById = new Map<string, string>();
-  const sources = selected.sources
+  let sources = selected.sources
     .filter((source) => source.parcelId === input.pack.parcelId)
-    .slice(0, limits.maxSourceFragments + limits.maxClaims)
+    .slice(0, MAX_SELECTED_SOURCES)
     .map((source, index): AskEasyErfSelectedEvidenceSource => {
       const ref = `S${index + 1}`;
       sourceRefById.set(source.id, ref);
@@ -375,6 +510,14 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
         fragments: source.fragments.map((fragment) => cleanText(fragment, 500)).slice(0, 3),
       };
     });
+  if (
+    sources.length === 0 &&
+    (selected.claims.length > 0 || selected.contradictions.length > 0 || selected.gaps.length > 0)
+  ) {
+    const ref = "S1";
+    sourceRefById.set(`${input.pack.parcelId}:selected-evidence-gaps`, ref);
+    sources = [fallbackMissingEvidenceSource(input.pack.parcelId, ref)];
+  }
 
   const payload: AskEasyErfSelectedEvidencePayload = {
     schemaVersion: 1,
@@ -429,6 +572,72 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
   return valid;
 }
 
+export function inferAskEasyErfEvidenceDomains(question: string): EvidenceDomain[] {
+  const normalized = normalizeAskEasyErfQuestion(question);
+  const domains: EvidenceDomain[] = [];
+  const seen = new Set<EvidenceDomain>();
+  for (const group of ASK_EASY_ERF_DOMAIN_KEYWORDS) {
+    if (!group.patterns.some((pattern) => pattern.test(normalized))) continue;
+    for (const domain of group.domains) {
+      if (seen.has(domain)) continue;
+      seen.add(domain);
+      domains.push(domain);
+    }
+  }
+  return domains;
+}
+
+export function normalizeAskEasyErfQuestion(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 1000);
+}
+
+function isBroadAskEasyErfQuestion(question: string) {
+  return BROAD_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
+}
+
+function emptySelectedEvidencePayload(
+  pack: PropertyEvidencePack,
+  question: string,
+  now?: Date,
+): AskEasyErfSelectedEvidencePayload {
+  return {
+    schemaVersion: 1,
+    kind: SELECTED_EVIDENCE_KIND,
+    parcelId: pack.parcelId,
+    generatedAt: (now ?? new Date()).toISOString(),
+    evidenceFingerprint: pack.fingerprint,
+    question,
+    limits: ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS,
+    truncated: false,
+    selectedText: "No relevant evidence selected for this question.",
+    sources: [],
+    claims: [],
+    contradictions: [],
+    gaps: [],
+  };
+}
+
+function fallbackMissingEvidenceSource(
+  parcelId: string,
+  ref: string,
+): AskEasyErfSelectedEvidenceSource {
+  return {
+    ref,
+    sourceId: `${parcelId}:selected-evidence-gaps`,
+    parcelId,
+    kind: "system_state",
+    label: "Easy Erf selected evidence gaps",
+    sourceType: "missing",
+    authorityType: "system",
+    sourceQuality: "unavailable",
+    status: "unavailable",
+    fileName: null,
+    sourcePortal: "Easy Erf",
+    locators: [],
+    fragments: [],
+  };
+}
+
 export function suggestedAskEasyErfQuestions(
   payload: AskEasyErfEvidencePayload,
   mode: ReportDecisionMode = "standard",
@@ -470,8 +679,18 @@ export function hasEnoughAskEasyErfSelectedEvidence(
 ): boolean {
   return (
     payload.parcelId.length > 0 &&
-    payload.sources.length > 0 &&
     (payload.claims.length > 0 || payload.contradictions.length > 0 || payload.gaps.length > 0)
+  );
+}
+
+export function hasAskEasyErfPackEvidence(
+  pack: PropertyEvidencePack | null | undefined,
+  parcelId: string,
+): boolean {
+  return Boolean(
+    pack &&
+      pack.parcelId === parcelId &&
+      (pack.claims.length > 0 || pack.contradictions.length > 0 || pack.gaps.length > 0),
   );
 }
 
@@ -525,9 +744,24 @@ export function validateAskEasyErfSelectedEvidencePayload(
   const parcelId = requireText(raw.parcelId, 160);
   const generatedAt = requireText(raw.generatedAt, 80);
   const evidenceFingerprint = requireText(raw.evidenceFingerprint, 180);
-  const question = requireText(raw.question, 1000);
+  if (typeof raw.question !== "string" || raw.question.length > 1000) return null;
+  const question = normalizeAskEasyErfQuestion(raw.question);
   const limits = validateSelectedLimits(raw.limits);
-  const sources = validateArray(raw.sources, validateSelectedSource, 24);
+  if (
+    !arrayWithin(raw.sources, MAX_SELECTED_SOURCES) ||
+    !arrayWithin(raw.claims, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims) ||
+    !arrayWithin(raw.contradictions, 5) ||
+    !arrayWithin(raw.gaps, 8)
+  ) {
+    return null;
+  }
+  if (
+    typeof raw.selectedText !== "string" ||
+    raw.selectedText.length > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxTotalCharacters
+  ) {
+    return null;
+  }
+  const sources = validateArray(raw.sources, validateSelectedSource, MAX_SELECTED_SOURCES);
   const claims = validateArray(raw.claims, validateSelectedClaim, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims);
   const contradictions = validateArray(raw.contradictions, validateSelectedContradiction, 5);
   const gaps = validateArray(raw.gaps, validateSelectedGap, 8);
@@ -558,8 +792,30 @@ export function validateAskEasyErfSelectedEvidencePayload(
     return null;
   }
   const validRefs = new Set(sources.map((source) => source.ref));
+  if (!hasConsecutiveSourceRefs(sources)) return null;
+  if (hasDuplicates(sources.map((source) => source.ref))) return null;
+  if (hasDuplicates(sources.map((source) => source.sourceId))) return null;
+  if (hasDuplicates(claims.map((claim) => claim.id))) return null;
+  if (hasDuplicates(contradictions.map((item) => item.id))) return null;
+  if (hasDuplicates(gaps.map((gap) => gap.id))) return null;
+  const totalFragments = sources.reduce((sum, source) => sum + source.fragments.length, 0);
+  if (totalFragments > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments) return null;
   if (claims.some((claim) => claim.sourceRefs.some((ref) => !validRefs.has(ref)))) return null;
   if (contradictions.some((item) => item.sourceRefs.some((ref) => !validRefs.has(ref)))) {
+    return null;
+  }
+  const referencedRefs = new Set([
+    ...claims.flatMap((claim) => claim.sourceRefs),
+    ...contradictions.flatMap((item) => item.sourceRefs),
+  ]);
+  if (
+    sources.some(
+      (source) =>
+        source.fragments.length === 0 &&
+        !referencedRefs.has(source.ref) &&
+        source.sourceType !== "missing",
+    )
+  ) {
     return null;
   }
   return {
@@ -1244,6 +1500,10 @@ function validateArray<T>(
   return output;
 }
 
+function arrayWithin(value: unknown, max: number) {
+  return Array.isArray(value) && value.length <= max;
+}
+
 function validateSelectedLimits(value: unknown): AskEasyErfSelectedEvidencePayload["limits"] | null {
   const raw = asRecord(value);
   if (!raw) return null;
@@ -1251,6 +1511,13 @@ function validateSelectedLimits(value: unknown): AskEasyErfSelectedEvidencePaylo
   const maxSourceFragments = wholeNumber(raw.maxSourceFragments, 1, 16);
   const maxTotalCharacters = wholeNumber(raw.maxTotalCharacters, 1_000, 12_000);
   if (maxClaims == null || maxSourceFragments == null || maxTotalCharacters == null) return null;
+  if (
+    maxClaims !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims ||
+    maxSourceFragments !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments ||
+    maxTotalCharacters !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxTotalCharacters
+  ) {
+    return null;
+  }
   return { maxClaims, maxSourceFragments, maxTotalCharacters };
 }
 
@@ -1304,8 +1571,14 @@ function validateSelectedSource(value: unknown): AskEasyErfSelectedEvidenceSourc
     "unavailable",
     "excluded",
   ] as const);
+  if (
+    Array.isArray(raw.fragments) &&
+    raw.fragments.length > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments
+  ) {
+    return null;
+  }
   const locators = validateArray(raw.locators, validateLocator, 4);
-  const fragments = validateStringArray(raw.fragments, 3, 500);
+  const fragments = validateStringArray(raw.fragments, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments, 500);
   if (
     !ref ||
     !/^S\d+$/.test(ref) ||
@@ -1458,6 +1731,7 @@ function validateSelectedGap(value: unknown): AskEasyErfSelectedEvidencePayload[
 function validateLocator(value: unknown): EvidenceLocator | null {
   const raw = asRecord(value);
   if (!raw) return null;
+  if (typeof raw.sourceUrl === "string" && !safePublicLocatorUrl(raw.sourceUrl)) return null;
   return sanitizeLocator(raw);
 }
 
@@ -1638,6 +1912,14 @@ function safePublicLocatorUrl(value: string) {
   if (!/^https?:\/\//i.test(trimmed)) return undefined;
   if (/storage\/v1\/object\/sign|token=|signature=|x-amz-|signed/i.test(trimmed)) return undefined;
   return trimmed;
+}
+
+function hasConsecutiveSourceRefs(sources: AskEasyErfSelectedEvidenceSource[]) {
+  return sources.every((source, index) => source.ref === `S${index + 1}`);
+}
+
+function hasDuplicates(values: string[]) {
+  return new Set(values).size !== values.length;
 }
 
 function sourceTypeForEvidenceSource(source: {

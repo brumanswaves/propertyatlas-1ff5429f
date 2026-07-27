@@ -76,7 +76,7 @@ import {
 import {
   buildAskEasyErfEvidencePayload,
   buildAskEasyErfSelectedEvidencePayload,
-  hasEnoughAskEasyErfEvidence,
+  hasAskEasyErfPackEvidence,
   hasEnoughAskEasyErfSelectedEvidence,
   suggestedAskEasyErfQuestions,
   type AskEasyErfAnswer,
@@ -1464,7 +1464,7 @@ function StoepAiReportView({
   const updateDecisionMode = (mode: ReportDecisionMode) => {
     setDecisionMode(writeReportDecisionMode(parcel.id, mode));
   };
-  const askEvidencePayload = useMemo(
+  const askSuggestionPayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
         report,
@@ -1902,7 +1902,7 @@ function StoepAiReportView({
       />
 
       <AskEasyErfSection
-        payload={askEvidencePayload}
+        suggestionPayload={askSuggestionPayload}
         evidencePack={report.evidencePack ?? null}
         decisionMode={decisionMode}
         onSelectView={onSelectView}
@@ -2879,12 +2879,12 @@ function formatSnapshotDate(value?: string | null) {
 }
 
 function AskEasyErfSection({
-  payload,
+  suggestionPayload,
   evidencePack,
   decisionMode,
   onSelectView,
 }: {
-  payload: AskEasyErfEvidencePayload;
+  suggestionPayload: AskEasyErfEvidencePayload;
   evidencePack: PropertyEvidencePack | null;
   decisionMode?: ReportDecisionMode;
   onSelectView?: (view: DossierView) => void;
@@ -2894,24 +2894,27 @@ function AskEasyErfSection({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const currentParcelIdRef = useRef(payload.parcelId);
+  const currentParcelIdRef = useRef(suggestionPayload.parcelId);
   const currentFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
   const requestGenerationRef = useRef(0);
-  const renderedParcelIdRef = useRef(payload.parcelId);
+  const renderedParcelIdRef = useRef(suggestionPayload.parcelId);
   const renderedFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
   const evidenceFingerprint = evidencePack?.fingerprint ?? "";
   if (
-    renderedParcelIdRef.current !== payload.parcelId ||
+    renderedParcelIdRef.current !== suggestionPayload.parcelId ||
     renderedFingerprintRef.current !== evidenceFingerprint
   ) {
-    renderedParcelIdRef.current = payload.parcelId;
+    renderedParcelIdRef.current = suggestionPayload.parcelId;
     renderedFingerprintRef.current = evidenceFingerprint;
     requestGenerationRef.current += 1;
   }
-  currentParcelIdRef.current = payload.parcelId;
+  currentParcelIdRef.current = suggestionPayload.parcelId;
   currentFingerprintRef.current = evidenceFingerprint;
-  const suggestions = suggestedAskEasyErfQuestions(payload, decisionMode);
-  const hasEvidence = Boolean(evidencePack) && hasEnoughAskEasyErfEvidence(payload);
+  const suggestions = suggestedAskEasyErfQuestions(suggestionPayload, decisionMode);
+  const hasCanonicalPackEvidence = hasAskEasyErfPackEvidence(
+    evidencePack,
+    suggestionPayload.parcelId,
+  );
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -2920,13 +2923,13 @@ function AskEasyErfSection({
     setAnswer(null);
     setError(null);
     setLoading(false);
-  }, [payload.parcelId, evidenceFingerprint]);
+  }, [suggestionPayload.parcelId, evidenceFingerprint]);
 
   const askQuestion = async (event?: FormEvent) => {
     event?.preventDefault();
     const trimmed = question.trim();
     if (!trimmed || loading) return;
-    if (!hasEvidence) {
+    if (!hasCanonicalPackEvidence) {
       setAnswer(null);
       setError("More saved evidence is required before Ask Easy Erf can answer this property question.");
       return;
@@ -2936,7 +2939,7 @@ function AskEasyErfSection({
     setError(null);
     const controller = new AbortController();
     abortRef.current = controller;
-    const requestParcelId = payload.parcelId;
+    const requestParcelId = suggestionPayload.parcelId;
     const requestFingerprint = evidenceFingerprint;
     const requestGeneration = requestGenerationRef.current;
     const isCurrentRequest = () =>
@@ -2975,7 +2978,7 @@ function AskEasyErfSection({
         },
         signal: controller.signal,
         body: JSON.stringify({
-          parcelId: payload.parcelId,
+          parcelId: suggestionPayload.parcelId,
           question: trimmed,
           evidence: selectedEvidence,
         }),
@@ -3029,11 +3032,11 @@ function AskEasyErfSection({
           </p>
         </div>
         <span className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1 text-xs font-semibold text-[#0D1B2A]/70">
-          Parcel scoped: {payload.parcelId}
+          Parcel scoped: {suggestionPayload.parcelId}
         </span>
       </div>
 
-      {!hasEvidence && (
+      {!hasCanonicalPackEvidence && (
         <div className="mt-5 rounded-[1.25rem] border border-[#F59E0B]/35 bg-[#fffbeb] p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B45309]" />
@@ -3113,10 +3116,10 @@ function AskEasyErfSection({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="submit"
-            disabled={!question.trim() || loading || !hasEvidence}
+            disabled={!question.trim() || loading || !hasCanonicalPackEvidence}
             className={cn(
               "inline-flex min-h-10 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-              !question.trim() || loading || !hasEvidence
+              !question.trim() || loading || !hasCanonicalPackEvidence
                 ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                 : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
             )}

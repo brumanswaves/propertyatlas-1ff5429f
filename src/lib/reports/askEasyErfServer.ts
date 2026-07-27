@@ -1,5 +1,6 @@
 import {
   hasEnoughAskEasyErfSelectedEvidence,
+  normalizeAskEasyErfQuestion,
   validateAskEasyErfAnswer,
   type AskEasyErfAnswer,
   type AskEasyErfEvidenceReference,
@@ -12,6 +13,7 @@ export type AskEasyErfErrorCode =
   | "INVALID_REQUEST"
   | "AUTH_REQUIRED"
   | "STALE_PARCEL"
+  | "EVIDENCE_QUESTION_MISMATCH"
   | "INSUFFICIENT_EVIDENCE"
   | "OPENAI_NOT_CONFIGURED"
   | "RATE_LIMITED"
@@ -72,7 +74,7 @@ export async function handleAskEasyErfRequest(
 
   const body = parsed.body;
   const parcelId = typeof body.parcelId === "string" ? body.parcelId.trim() : "";
-  const question = typeof body.question === "string" ? body.question.trim() : "";
+  const question = typeof body.question === "string" ? normalizeAskEasyErfQuestion(body.question) : "";
   const evidence = validateAskEasyErfSelectedEvidencePayload(body.evidence);
 
   if (!parcelId || !question || question.length > 1000 || !evidence) {
@@ -83,6 +85,16 @@ export async function handleAskEasyErfRequest(
         error: "Ask Easy Erf needs a question and a valid property evidence payload.",
       },
       400,
+    );
+  }
+  if (question !== evidence.question) {
+    return json(
+      {
+        success: false,
+        code: "EVIDENCE_QUESTION_MISMATCH",
+        error: "The selected evidence does not match the submitted question. Ask again.",
+      },
+      409,
     );
   }
   if (evidence.parcelId !== parcelId) {
@@ -428,6 +440,7 @@ function statusForCode(code: AskEasyErfErrorCode) {
     case "AUTH_REQUIRED":
       return 401;
     case "STALE_PARCEL":
+    case "EVIDENCE_QUESTION_MISMATCH":
       return 409;
     case "INSUFFICIENT_EVIDENCE":
     case "INVALID_REQUEST":
