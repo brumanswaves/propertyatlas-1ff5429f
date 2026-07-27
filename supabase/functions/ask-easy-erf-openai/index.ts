@@ -65,9 +65,14 @@ Deno.serve(async (request: Request) => {
     return fail("INVALID_REQUEST", "Method not allowed.", 405, requestId);
   }
 
-  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  // Accept a dedicated shared secret first (stable across Supabase key-format
+  // migrations), with the service-role key kept as a fallback caller identity.
+  const accepted = [
+    Deno.env.get("ASK_EASY_ERF_FN_SECRET") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  ].filter((value) => value.length > 0);
   const presented = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!expected || !presented || !safeEqual(presented, expected)) {
+  if (!accepted.length || !presented || !accepted.some((value) => safeEqual(presented, value))) {
     log("auth_rejected", requestId);
     return fail("AUTH_REQUIRED", "Unauthorized.", 401, requestId);
   }
