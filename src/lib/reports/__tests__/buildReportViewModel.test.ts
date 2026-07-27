@@ -225,11 +225,11 @@ describe("buildReportViewModel", () => {
     );
 
     const planningLabels = vm.planning.map((field) => field.label).join(" | ");
-    expect(vm.planning.find((field) => field.label === "Erf size (mÂ²)")?.value).toBe("987");
-    expect(planningLabels).not.toContain("mÃ‚Â²");
-    expect(planningLabels).not.toContain("Ã‚");
-    expect(planningLabels).not.toContain("Ã¢");
-    expect(planningLabels).not.toContain("ï¿½");
+    expect(vm.planning.find((field) => field.label === "Erf size (m²)")?.value).toBe("987");
+    expect(planningLabels).not.toContain("\u00c2");
+    expect(planningLabels).not.toContain("\u00c3");
+    expect(planningLabels).not.toContain("\ufffd");
+    expect(planningLabels).not.toContain("\u00ef\u00bf\u00bd");
     expect(vm.market.evidenceCount).toBe(3);
     expect(vm.documents.assetCount).toBe(1);
     expect(vm.strategy.chosen?.id).toBe("scenario-1");

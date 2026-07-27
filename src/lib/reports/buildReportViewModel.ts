@@ -361,7 +361,7 @@ function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOff
   return [
     field("zoning", "Zoning"),
     {
-      label: "Erf size (mÂ²)",
+      label: "Erf size (m²)",
       value: area ? displayClaimValue(area) : parcelAreaM2(parcel)?.toLocaleString() ?? null,
       badge: area ? badgeForClaim(area) : parcelAreaM2(parcel) != null ? "official" : "missing",
     },
