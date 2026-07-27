@@ -83,13 +83,8 @@ function defaultApiKey() {
   );
 }
 
-/** True when this asset is a document Easy Erf should try to read. */
-export function isExtractableErfAsset(asset: {
-  asset_category: string;
-  mime_type: string;
-}) {
-  return EXTRACTABLE_CATEGORIES.has(asset.asset_category) && isSupportedExtractionMimeType(asset.mime_type);
-}
+
+
 
 /**
  * Requests server-side extraction for one vault asset. Resolves with the
