@@ -75,12 +75,15 @@ import {
 } from "@/lib/reports/buildDecisionIntelligence";
 import {
   buildAskEasyErfEvidencePayload,
+  buildAskEasyErfSelectedEvidencePayload,
   hasEnoughAskEasyErfEvidence,
+  hasEnoughAskEasyErfSelectedEvidence,
   suggestedAskEasyErfQuestions,
   type AskEasyErfAnswer,
   type AskEasyErfEvidencePayload,
   type AskEasyErfEvidenceSourceType,
 } from "@/lib/reports/askEasyErf";
+import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import {
   loadReportPropertyNotes,
   type PropertyNotes,
@@ -1900,6 +1903,7 @@ function StoepAiReportView({
 
       <AskEasyErfSection
         payload={askEvidencePayload}
+        evidencePack={report.evidencePack ?? null}
         decisionMode={decisionMode}
         onSelectView={onSelectView}
       />
@@ -2876,10 +2880,12 @@ function formatSnapshotDate(value?: string | null) {
 
 function AskEasyErfSection({
   payload,
+  evidencePack,
   decisionMode,
   onSelectView,
 }: {
   payload: AskEasyErfEvidencePayload;
+  evidencePack: PropertyEvidencePack | null;
   decisionMode?: ReportDecisionMode;
   onSelectView?: (view: DossierView) => void;
 }) {
@@ -2889,15 +2895,23 @@ function AskEasyErfSection({
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const currentParcelIdRef = useRef(payload.parcelId);
+  const currentFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
   const requestGenerationRef = useRef(0);
   const renderedParcelIdRef = useRef(payload.parcelId);
-  if (renderedParcelIdRef.current !== payload.parcelId) {
+  const renderedFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
+  const evidenceFingerprint = evidencePack?.fingerprint ?? "";
+  if (
+    renderedParcelIdRef.current !== payload.parcelId ||
+    renderedFingerprintRef.current !== evidenceFingerprint
+  ) {
     renderedParcelIdRef.current = payload.parcelId;
+    renderedFingerprintRef.current = evidenceFingerprint;
     requestGenerationRef.current += 1;
   }
   currentParcelIdRef.current = payload.parcelId;
+  currentFingerprintRef.current = evidenceFingerprint;
   const suggestions = suggestedAskEasyErfQuestions(payload, decisionMode);
-  const hasEvidence = hasEnoughAskEasyErfEvidence(payload);
+  const hasEvidence = Boolean(evidencePack) && hasEnoughAskEasyErfEvidence(payload);
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -2906,7 +2920,7 @@ function AskEasyErfSection({
     setAnswer(null);
     setError(null);
     setLoading(false);
-  }, [payload.parcelId]);
+  }, [payload.parcelId, evidenceFingerprint]);
 
   const askQuestion = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -2923,9 +2937,11 @@ function AskEasyErfSection({
     const controller = new AbortController();
     abortRef.current = controller;
     const requestParcelId = payload.parcelId;
+    const requestFingerprint = evidenceFingerprint;
     const requestGeneration = requestGenerationRef.current;
     const isCurrentRequest = () =>
       currentParcelIdRef.current === requestParcelId &&
+      currentFingerprintRef.current === requestFingerprint &&
       requestGenerationRef.current === requestGeneration;
     const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
@@ -2935,6 +2951,20 @@ function AskEasyErfSection({
       if (!token) {
         setAnswer(null);
         setError("Sign in is required before Ask Easy Erf can answer.");
+        return;
+      }
+      if (!evidencePack || evidencePack.parcelId !== requestParcelId) {
+        setAnswer(null);
+        setError("The selected property evidence changed. Ask again from the current report.");
+        return;
+      }
+      const selectedEvidence = buildAskEasyErfSelectedEvidencePayload({
+        pack: evidencePack,
+        question: trimmed,
+      });
+      if (!hasEnoughAskEasyErfSelectedEvidence(selectedEvidence)) {
+        setAnswer(null);
+        setError("No relevant saved evidence was found for that question yet.");
         return;
       }
       const response = await fetch("/api/reports/ask-easy-erf", {
@@ -2947,7 +2977,7 @@ function AskEasyErfSection({
         body: JSON.stringify({
           parcelId: payload.parcelId,
           question: trimmed,
-          evidence: payload,
+          evidence: selectedEvidence,
         }),
       });
       const result = (await response.json().catch(() => null)) as AskEasyErfApiResponse | null;
@@ -3011,9 +3041,9 @@ function AskEasyErfSection({
               <p className="text-sm font-semibold text-[#0D1B2A]">
                 More saved evidence is required first.
               </p>
-              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
                 Ask Easy Erf will not fabricate a fallback answer. Add official source reviews,
-                market evidence, uploaded documents, or strategy assumptions before asking.
+                market evidence, uploaded documents, notes, or strategy assumptions before asking.
               </p>
               <div className="report-no-print mt-3 flex flex-wrap gap-2">
                 <button
@@ -3162,15 +3192,17 @@ function AskEasyErfAnswerCard({ answer }: { answer: AskEasyErfAnswer }) {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748B]">
-            Evidence references
+          Evidence references
           </h4>
           <div className="mt-2 flex flex-wrap gap-2">
             {answer.evidenceReferences.map((reference) => (
               <span
-                key={`${reference.sourceType}-${reference.label}`}
+                key={`${reference.ref ?? reference.sourceType}-${reference.label}`}
                 className="rounded-full border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-1 text-xs font-semibold text-[#0D1B2A]"
               >
+                {reference.ref ? `[${reference.ref}] ` : ""}
                 {sourceTypeLabel(reference.sourceType)} - {reference.label}
+                {reference.locator ? ` (${reference.locator})` : ""}
               </span>
             ))}
           </div>
