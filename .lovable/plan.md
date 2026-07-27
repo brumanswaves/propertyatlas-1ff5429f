@@ -1,33 +1,38 @@
-# Diagnosis: Ask Easy Erf "temporarily unavailable" on live
+## Verification results (commit 671af4d6, read-only)
 
-## Exact failing layer
-Server-side OpenAI call inside `askOpenAI()` in `src/lib/reports/askEasyErfServer.ts`. Everything upstream (route, auth, evidence build, validation) succeeds.
+**1. Unauthenticated POST `{}`**
+- Status: `401`
+- Body: `{"success":false,"code":"AUTH_REQUIRED","error":"Unauthorized.","requestId":"af472ecb-…"}`
+- Correct: the function is deployed, boots, and rejects unauthenticated callers with the app-level contract (not a proxy error).
 
-## Exact error/status
-- Live route returns **HTTP 502** with `{"success":false,"code":"SERVER_UNAVAILABLE","error":"Ask Easy Erf is temporarily unavailable."}` — the exact string the user sees.
-- Cause: the request to `https://api.openai.com/v1/chat/completions` comes back non-OK and non-429, so the handler collapses it into `SERVER_UNAVAILABLE`. Most probable upstream status is **400 invalid_request_error** — the response schema sets `strict: true` while using `minItems: 1` on `evidenceReferences` (line 333 of `askEasyErfServer.ts`). `minItems`/`maxItems` are not permitted keywords in OpenAI Structured Outputs strict mode; OpenAI rejects the whole request with "Invalid schema for response_format".
+**2. Authenticated server-to-server POST (synthetic fixture)**
+- Payload: `parcelId: fixture-parcel`, question `Who owns this property?`, one `S1` source of type `missing`, zero claims/contradictions, one ownership gap. No real data used.
+- Sent with `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY` (and a retry adding `apikey`).
+- Status: `401` in both attempts, ~0.14s. OpenAI was never reached.
 
-## Evidence
-1. **Route is deployed and reachable.** `POST https://easyerf.lovable.app/api/reports/ask-easy-erf` → `401 {"code":"AUTH_REQUIRED"}`; `OPTIONS` → `204`. Route is registered in `src/routeTree.gen.ts` (id `/api/reports/ask-easy-erf`). No import crash, no route-generation issue, no Cloudflare/TanStack incompatibility.
-2. **Route executes and returns JSON — it does not crash.** Published worker logs for the user's actual attempts:
-   - `17:52:14 POST /api/reports/ask-easy-erf → 502` (x2)
-   - `17:53:08 POST /api/reports/ask-easy-erf → 502` (x2)
-   A crash/unhandled throw would surface as the HTML 500 error page from `src/server.ts`, not 502.
-3. **Auth succeeded.** A failed `authenticateApiRequest` returns 401 (as our anonymous probe did). The live attempts returned 502, which is only reachable after auth, JSON parse, parcel match, and evidence sufficiency checks pass.
-4. **Env values present to the deployed runtime.** `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`: present (auth path executed and returned a normal 401/2xx rather than the 500 "Supabase server environment is not configured"). `OPENAI_API_KEY`: present in project secrets, and confirmed reachable by the runtime because a missing key short-circuits to **503 `OPENAI_NOT_CONFIGURED`**, not 502.
-5. **Client-side payload build did not throw.** A throw from `buildAskEasyErfSelectedEvidencePayload` is caught at `ErfResearchDossier.tsx:3001-3008` and would produce the same message *without any network request*. The 502 log entries prove the request reached the server, so the ownership-gap path built a valid payload (the `fallbackMissingEvidenceSource` "S1" branch covers the ownership-gap-only state).
-6. **Not a size/validation failure.** Over-32KB bodies return **413**, schema failures return **400**, parcel mismatch **409**, thin evidence **400**. Observed status is 502.
-7. **OpenAI was reached.** 502 is emitted only from `askOpenAI` — either non-OK upstream or a thrown fetch. `MALFORMED_MODEL_RESPONSE` (also 502) carries a different message ("returned an invalid answer"), so the observed message pins it to `SERVER_UNAVAILABLE`, i.e. the upstream HTTP response was non-OK.
-8. **No upstream detail is recorded** because `askOpenAI` discards `payload.error.message` and never logs it — this is why the worker log shows only the status. That blind spot is itself part of the defect.
+**3. Safe JSON response**
+- `success`: **false** (`AUTH_REQUIRED`)
+- Owner invention: n/a — no model answer produced
+- Evidence ref resolution to `S1`: n/a
+- Response time: 0.140s / 0.150s
 
-## Minimal repair required
-1. Remove `minItems: 1` from the `evidenceReferences` array in `answerResponseFormat()` (keep `strict: true`), and enforce "at least one reference" in `validateAnswerAgainstSelectedEvidence` instead — it already resolves refs and can reject an empty list.
-2. Add server-side `console.error` of the upstream `response.status` and `payload.error.type/code/message` (no key, no prompt content) before returning `SERVER_UNAVAILABLE`, so any residual upstream failure is observable in worker logs.
-3. Optionally distinguish upstream 4xx from 5xx in `AskEasyErfErrorCode` so a schema/model rejection is not reported to users as a transient outage.
+**4. Edge Function logs (fixture request IDs)**
+- `stage: auth_rejected` for `fixture-verify-671af4d6` and `fixture-verify-671af4d6-b`
+- `booted (time: 18ms)` on each invocation
+- No `openai_request_start`, no OpenAI status, no reference count — execution stops at the auth gate.
 
-## What is required
-- **Code change: yes** (the two edits above, in `src/lib/reports/askEasyErfServer.ts` only).
-- **Secret configuration: no.** `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` are all present and bound to the deployed runtime.
-- **Republish: yes.** The fix is in server code compiled into the worker, so production must be republished after the change.
+**Root cause of test 2 failing:** the service-role value available in this sandbox environment (legacy `eyJ…` JWT) is not byte-identical to the `SUPABASE_SERVICE_ROLE_KEY` the deployed function reads at runtime, so `safeEqual` fails. This is an out-of-band test-caller mismatch, not necessarily a defect in the production path — the published TanStack route reads its own `SUPABASE_SERVICE_ROLE_KEY` from the worker environment, which may or may not match the function's injected value. That remains unproven.
 
-No files were edited, no commits, no deploys, no secret changes.
+**5. Publish status of 671af4d6**
+- `https://easyerf.lovable.app/` responds `200`, but the served commit cannot be identified from public output. There is no evidence in this session that 671af4d6 was published; it is present in the working tree/preview only. Not published by me.
+
+## Precise next action
+
+Prove the shared-secret path end to end rather than guessing:
+
+1. Add an explicit shared secret for this hop (for example `ASK_EASY_ERF_FN_SECRET`) via `generate_secret`, so both the published worker and the Edge Function compare one value that is not tied to Supabase's key-format migration.
+2. Change the Edge Function's auth check to accept that secret (keeping service-role acceptance as a fallback if desired), and make `askEasyErfServer.ts` send it.
+3. Redeploy the Edge Function, re-run the fixture probe, and confirm logs show `openai_request_start` → `openai_response status 200` → `answer_ready referenceCount 1`.
+4. Only then publish and re-test on `easyerf.lovable.app`.
+
+No code, secrets, deployments, or publishes were changed in this verification.

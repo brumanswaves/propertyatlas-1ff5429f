@@ -154,12 +154,13 @@ export async function handleAskEasyErfRequest(
 
   const env = deps.env ?? process.env;
   const supabaseUrl = env.SUPABASE_URL?.trim();
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const callerSecret =
+    env.ASK_EASY_ERF_FN_SECRET?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const requestId = (deps.requestId ?? defaultRequestId)();
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !callerSecret) {
     console.error(
       "[ask-easy-erf] edge function not configured",
-      JSON.stringify({ requestId, hasUrl: Boolean(supabaseUrl), hasKey: Boolean(serviceRoleKey) }),
+      JSON.stringify({ requestId, hasUrl: Boolean(supabaseUrl), hasKey: Boolean(callerSecret) }),
     );
     return json(
       {
@@ -175,7 +176,7 @@ export async function handleAskEasyErfRequest(
     question,
     evidence,
     functionUrl: `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/${ASK_EASY_ERF_FUNCTION_NAME}`,
-    serviceRoleKey,
+    serviceRoleKey: callerSecret,
     requestId,
     fetchImpl: deps.fetch ?? fetch,
   });

@@ -747,7 +747,7 @@ describe("Ask Easy Erf server handler", () => {
         evidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", ASK_EASY_ERF_FN_SECRET: "fn-secret", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -764,7 +764,7 @@ describe("Ask Easy Erf server handler", () => {
     expect(String(url)).toBe("https://proj.supabase.co/functions/v1/ask-easy-erf-openai");
     expect(String(url)).not.toContain("api.openai.com");
     const headers = options?.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer server-key");
+    expect(headers.Authorization).toBe("Bearer fn-secret");
     const body = JSON.parse(String(options?.body));
     expect(body.question).toBe("Is ownership verified?");
     expect(body.evidence.parcelId).toBe("parcel-current");
