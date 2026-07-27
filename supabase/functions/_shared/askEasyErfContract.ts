@@ -41,7 +41,7 @@ export interface AskEasyErfContractSource {
   sourceType: AskEasyErfContractSourceType;
   authorityType?: string;
   status?: string;
-  locators?: Array<Record<string, unknown>>;
+  locators?: readonly unknown[];
   fileName?: string | null;
   sourcePortal?: string | null;
 }
