@@ -89,8 +89,13 @@ describe("erf extraction contract", () => {
     });
     expect(result?.claims).toHaveLength(1);
     expect(result?.pageCount).toBe(4);
-    expect(normalizeExtractionResult({ extractedText: "", claims: [] })).toBeNull();
+    // An empty-but-valid payload is reported as "no readable text", not malformed.
+    expect(normalizeExtractionResult({ extractedText: "", claims: [] })).toMatchObject({
+      extractedText: "",
+      claims: [],
+    });
     expect(normalizeExtractionResult(null)).toBeNull();
+    expect(normalizeExtractionResult("nope")).toBeNull();
   });
 
   it("declares a strict json schema and a no-inference prompt", () => {

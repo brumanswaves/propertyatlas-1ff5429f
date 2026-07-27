@@ -216,7 +216,8 @@ export function normalizeExtractionResult(raw: unknown): ErfExtractionResult | n
     claims.push(claim);
     if (claims.length >= ERF_EXTRACTION_MAX_CLAIMS) break;
   }
-  if (!extractedText && claims.length === 0) return null;
+  // An empty-but-valid result is NOT malformed: the caller reports it as
+  // "no readable text" so the user gets an accurate reason.
 
   const pageCount = toNumeric(item.pageCount);
   return {
