@@ -84,6 +84,7 @@ import {
   type AskEasyErfEvidencePayload,
   type AskEasyErfEvidenceSourceType,
 } from "@/lib/reports/askEasyErf";
+import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
 import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import {
   loadReportPropertyNotes,
@@ -2629,10 +2630,6 @@ function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string
   );
 }
 
-type AskEasyErfApiResponse =
-  | { success: true; answer: AskEasyErfAnswer }
-  | { success: false; code: string; error: string };
-
 function ReportChangeTrackingSection({
   comparison,
   snapshots,
@@ -2976,27 +2973,20 @@ function AskEasyErfSection({
         setError("No relevant saved evidence was found for that question yet.");
         return;
       }
-      const response = await fetch("/api/reports/ask-easy-erf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      const result = await askEasyErfViaEdgeFunction({
+        parcelId: suggestionPayload.parcelId,
+        question: trimmed,
+        evidence: selectedEvidence,
+        accessToken: token,
         signal: controller.signal,
-        body: JSON.stringify({
-          parcelId: suggestionPayload.parcelId,
-          question: trimmed,
-          evidence: selectedEvidence,
-        }),
       });
-      const result = (await response.json().catch(() => null)) as AskEasyErfApiResponse | null;
       if (!isCurrentRequest()) return;
-      if (response.ok && result?.success) {
+      if (result.success) {
         setAnswer(result.answer);
         setError(null);
       } else {
         setAnswer(null);
-        setError(result && !result.success ? result.error : "Ask Easy Erf could not answer right now.");
+        setError(result.error);
       }
     } catch (requestError) {
       if (!isCurrentRequest()) return;

@@ -1,13 +1,13 @@
 import {
-  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
-  hasEnoughAskEasyErfSelectedEvidence,
-  normalizeAskEasyErfQuestion,
   validateAskEasyErfAnswer,
   type AskEasyErfAnswer,
   type AskEasyErfEvidenceReference,
   type AskEasyErfSelectedEvidencePayload,
-  validateAskEasyErfSelectedEvidencePayload,
 } from "./askEasyErf";
+import {
+  ASK_EASY_ERF_MAX_REQUEST_BYTES,
+  validateAskEasyErfRequestPayload,
+} from "../../../supabase/functions/_shared/askEasyErfSelectedEvidence";
 import { ApiRequestError, authenticateApiRequest } from "@/lib/sitePotential/serverAuth";
 import { resolveAskEasyErfAnswerReferences } from "../../../supabase/functions/_shared/askEasyErfContract";
 
@@ -52,7 +52,7 @@ export interface AskEasyErfServerDeps {
   requestId?: () => string;
 }
 
-const MAX_REQUEST_BYTES = 32_000;
+const MAX_REQUEST_BYTES = ASK_EASY_ERF_MAX_REQUEST_BYTES;
 /** Route -> Edge Function budget; the function itself caps the OpenAI call. */
 const EDGE_FUNCTION_TIMEOUT_MS = 50_000;
 export const ASK_EASY_ERF_FUNCTION_NAME = "ask-easy-erf-openai";
@@ -84,73 +84,14 @@ export async function handleAskEasyErfRequest(
   const parsed = await parseRequestBody(request);
   if (!parsed.ok) return json(parsed.payload, parsed.status);
 
-  const body = parsed.body;
-  const parcelId = typeof body.parcelId === "string" ? body.parcelId.trim() : "";
-  const rawQuestion = typeof body.question === "string" ? body.question : "";
-  if (rawQuestion.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS) {
+  const validated = validateAskEasyErfRequestPayload(parsed.body);
+  if (!validated.ok) {
     return json(
-      {
-        success: false,
-        code: "INVALID_REQUEST",
-        error: "Questions must be 1,000 characters or fewer.",
-      },
-      400,
+      { success: false, code: validated.code, error: validated.error },
+      validated.status,
     );
   }
-  const question = normalizeAskEasyErfQuestion(rawQuestion);
-  const evidence = validateAskEasyErfSelectedEvidencePayload(body.evidence);
-
-  if (!parcelId || !question || !evidence) {
-    return json(
-      {
-        success: false,
-        code: "INVALID_REQUEST",
-        error: "Ask Easy Erf needs a question and a valid property evidence payload.",
-      },
-      400,
-    );
-  }
-  if (question !== evidence.question) {
-    return json(
-      {
-        success: false,
-        code: "EVIDENCE_QUESTION_MISMATCH",
-        error: "The selected evidence does not match the submitted question. Ask again.",
-      },
-      409,
-    );
-  }
-  if (evidence.parcelId !== parcelId) {
-    return json(
-      {
-        success: false,
-        code: "STALE_PARCEL",
-        error: "The selected property changed. Reopen the report and ask again.",
-      },
-      409,
-    );
-  }
-  if (!nestedEvidenceMatchesParcel(evidence, parcelId)) {
-    return json(
-      {
-        success: false,
-        code: "INVALID_REQUEST",
-        error: "Ask Easy Erf received evidence that does not match the selected property.",
-      },
-      400,
-    );
-  }
-  if (!hasEnoughAskEasyErfSelectedEvidence(evidence)) {
-    return json(
-      {
-        success: false,
-        code: "INSUFFICIENT_EVIDENCE",
-        error:
-          "More saved evidence is required before Ask Easy Erf can answer this property question.",
-      },
-      400,
-    );
-  }
+  const { parcelId, question, evidence } = validated;
 
   const env = deps.env ?? process.env;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -173,6 +114,7 @@ export async function handleAskEasyErfRequest(
   }
 
   const result = await askViaEdgeFunction({
+    parcelId,
     question,
     evidence,
     functionUrl: `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/${ASK_EASY_ERF_FUNCTION_NAME}`,
@@ -185,18 +127,6 @@ export async function handleAskEasyErfRequest(
 }
 
 
-function nestedEvidenceMatchesParcel(
-  evidence: AskEasyErfSelectedEvidencePayload,
-  parcelId: string,
-) {
-  return (
-    evidence.parcelId === parcelId &&
-    evidence.sources.every((source) => source.parcelId === parcelId) &&
-    evidence.claims.every((claim) => claim.parcelId === parcelId) &&
-    evidence.contradictions.every((item) => item.parcelId === parcelId) &&
-    evidence.gaps.every((gap) => gap.parcelId === parcelId)
-  );
-}
 
 async function parseRequestBody(
   request: Request,
@@ -245,6 +175,7 @@ async function parseRequestBody(
 }
 
 async function askViaEdgeFunction(input: {
+  parcelId: string;
   question: string;
   evidence: AskEasyErfSelectedEvidencePayload;
   functionUrl: string;
@@ -263,6 +194,7 @@ async function askViaEdgeFunction(input: {
       },
       signal,
       body: JSON.stringify({
+        parcelId: input.parcelId,
         question: input.question,
         evidence: input.evidence,
       }),

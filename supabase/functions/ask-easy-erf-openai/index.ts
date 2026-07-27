@@ -1,8 +1,13 @@
-// Ask Easy Erf OpenAI execution, moved off the published TanStack worker runtime.
+// Ask Easy Erf OpenAI execution.
 //
-// Trust model: this function is only callable server-to-server. The caller must
-// present the project service-role key as a bearer token. The browser never
-// receives that key, and OPENAI_API_KEY never leaves this function.
+// Trust model:
+// - Normal live path: the BROWSER calls this function directly with the
+//   signed-in user's Supabase access token. The token is verified against
+//   Supabase Auth here; no user id is ever trusted from the request body.
+// - Internal fixture path: a server-to-server caller may present
+//   ASK_EASY_ERF_FN_SECRET (or the service-role key). This never weakens user
+//   authentication and is not used by the browser.
+// OPENAI_API_KEY never leaves this function.
 import {
   ASK_EASY_ERF_MODEL,
   ASK_EASY_ERF_OPENAI_TIMEOUT_MS,
@@ -13,18 +18,25 @@ import {
   validateAskEasyErfContractAnswer,
   type AskEasyErfContractSource,
 } from "../_shared/askEasyErfContract.ts";
+import {
+  ASK_EASY_ERF_MAX_REQUEST_BYTES,
+  validateAskEasyErfRequestPayload,
+} from "../_shared/askEasyErfSelectedEvidence.ts";
 
 declare const Deno: { env: { get(key: string): string | undefined } };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 type FailureCode =
   | "AUTH_REQUIRED"
   | "INVALID_REQUEST"
+  | "STALE_PARCEL"
+  | "EVIDENCE_QUESTION_MISMATCH"
+  | "INSUFFICIENT_EVIDENCE"
   | "OPENAI_NOT_CONFIGURED"
   | "RATE_LIMITED"
   | "TIMEOUT"
@@ -40,7 +52,7 @@ function json(payload: unknown, status: number) {
 }
 
 function fail(code: FailureCode, error: string, status: number, requestId: string) {
-  return json({ success: false, code, error, requestId }, status);
+  return json({ success: false, code, error: `${error} (ref ${requestId})`, requestId }, status);
 }
 
 function safeEqual(a: string, b: string) {
@@ -55,6 +67,27 @@ function log(stage: string, requestId: string, extra: Record<string, unknown> = 
   console.log(JSON.stringify({ fn: "ask-easy-erf-openai", stage, requestId, ...extra }));
 }
 
+/** Verifies a Supabase user access token against Supabase Auth. */
+async function verifyUserToken(token: string): Promise<{ userId: string } | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  const anonKey =
+    Deno.env.get("SUPABASE_ANON_KEY")?.trim() ||
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() ||
+    "";
+  if (!supabaseUrl || !anonKey) return null;
+  try {
+    const response = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+    });
+    if (!response.ok) return null;
+    const user = (await response.json().catch(() => null)) as { id?: unknown } | null;
+    if (!user || typeof user.id !== "string" || !user.id) return null;
+    return { userId: user.id };
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
 
@@ -65,33 +98,58 @@ Deno.serve(async (request: Request) => {
     return fail("INVALID_REQUEST", "Method not allowed.", 405, requestId);
   }
 
-  // Accept a dedicated shared secret first (stable across Supabase key-format
-  // migrations), with the service-role key kept as a fallback caller identity.
-  const accepted = [
+  const presented = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!presented) {
+    log("auth_rejected", requestId, { reason: "missing_bearer" });
+    return fail("AUTH_REQUIRED", "Sign in is required.", 401, requestId);
+  }
+
+  // Internal server-to-server fixture identity (never used by the browser).
+  const internalSecrets = [
     Deno.env.get("ASK_EASY_ERF_FN_SECRET") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   ].filter((value) => value.length > 0);
-  const presented = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!accepted.length || !presented || !accepted.some((value) => safeEqual(presented, value))) {
-    log("auth_rejected", requestId);
-    return fail("AUTH_REQUIRED", "Unauthorized.", 401, requestId);
+  const isInternalCaller = internalSecrets.some((value) => safeEqual(presented, value));
+
+  if (!isInternalCaller) {
+    const user = await verifyUserToken(presented);
+    if (!user) {
+      log("auth_rejected", requestId, { reason: "invalid_user_token" });
+      return fail("AUTH_REQUIRED", "Sign in is required.", 401, requestId);
+    }
+    log("auth_ok", requestId, { caller: "user" });
+  } else {
+    log("auth_ok", requestId, { caller: "internal" });
   }
 
-  let body: { question?: unknown; evidence?: unknown };
+  let text: string;
   try {
-    body = await request.json();
+    text = await request.text();
+  } catch {
+    return fail("INVALID_REQUEST", "Request body could not be read.", 400, requestId);
+  }
+  if (text.length > ASK_EASY_ERF_MAX_REQUEST_BYTES) {
+    log("request_too_large", requestId);
+    return fail("INVALID_REQUEST", "Ask Easy Erf request is too large.", 413, requestId);
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
   } catch {
     log("invalid_json", requestId);
     return fail("INVALID_REQUEST", "Request body must be valid JSON.", 400, requestId);
   }
 
-  const question = typeof body.question === "string" ? body.question.trim() : "";
-  const evidence = body.evidence as { sources?: unknown } | null | undefined;
-  const sources = Array.isArray(evidence?.sources)
-    ? (evidence?.sources as AskEasyErfContractSource[])
-    : null;
-  if (!question || !evidence || !sources || !sources.length) {
-    log("invalid_payload", requestId);
+  const validated = validateAskEasyErfRequestPayload(body);
+  if (!validated.ok) {
+    log("invalid_payload", requestId, { code: validated.code });
+    return fail(validated.code, validated.error, validated.status, requestId);
+  }
+  const { question, evidence } = validated;
+  const sources = evidence.sources as unknown as AskEasyErfContractSource[];
+  if (!sources.length) {
+    log("invalid_payload", requestId, { code: "NO_SOURCES" });
     return fail("INVALID_REQUEST", "Ask Easy Erf payload is invalid.", 400, requestId);
   }
 
@@ -161,12 +219,7 @@ Deno.serve(async (request: Request) => {
           requestId,
         );
       }
-      return fail(
-        "SERVER_UNAVAILABLE",
-        "Ask Easy Erf is temporarily unavailable.",
-        502,
-        requestId,
-      );
+      return fail("SERVER_UNAVAILABLE", "Ask Easy Erf is temporarily unavailable.", 502, requestId);
     }
 
     const content = payload?.choices?.[0]?.message?.content;
