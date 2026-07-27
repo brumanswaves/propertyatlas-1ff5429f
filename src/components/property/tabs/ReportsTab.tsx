@@ -24,6 +24,8 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import {
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
+  erfAssetIdentityMatchReason,
+  erfAssetIdentityMatchStatus,
   extractErfAsset,
 } from "@/lib/workbench/erfAssetExtraction";
 import { toast } from "sonner";
@@ -138,10 +140,10 @@ export function ReportsTab({
    * Sends one uploaded report to the server-side reader so its contents become
    * quotable, searchable evidence instead of an opaque stored file.
    */
-  async function readDocument(asset: ErfAsset) {
+  async function readDocument(asset: ErfAsset, retry = false) {
     setReadingAssetId(asset.id);
     try {
-      const outcome = await extractErfAsset(asset.id);
+      const outcome = await extractErfAsset(asset.id, { expectedParcelId: parcelId, retry });
       if (outcome.success) {
         if (outcome.claimCount > 0) {
           toast.success(`Read ${outcome.claimCount} values from ${asset.original_file_name}.`);
@@ -242,7 +244,7 @@ export function ReportsTab({
                     (paidReportForProvider(reportVault.assets, reportProviderForCatalogId(r.id)!)?.id ??
                       null)
                   }
-                  onRead={(asset) => void readDocument(asset)}
+                  onRead={(asset, retry) => void readDocument(asset, retry)}
 
                 />
               )}
@@ -322,7 +324,7 @@ function PaidReportUploadArea({
   onUpload: (provider: PaidReportProvider, file: File | null | undefined) => void;
   onRemove: (provider: PaidReportProvider) => void;
   reading?: boolean;
-  onRead: (asset: ErfAsset) => void;
+  onRead: (asset: ErfAsset, retry?: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const label = providerLabel(provider);
@@ -368,22 +370,46 @@ function PaidReportUploadArea({
               {formatUploadedAt(attachment.created_at)}
             </div>
             <div className="mt-0.5 text-emerald-900/70">
-              {reading ? "Reading document…" : erfAssetExtractionLabel(attachment)}
+              {reading ? "Extracting report..." : erfAssetExtractionLabel(attachment)}
             </div>
+            {!reading && erfAssetIdentityMatchStatus(attachment) === "mismatch" && (
+              <div className="mt-0.5 font-medium text-[#9A3A1A]">
+                {erfAssetIdentityMatchReason(attachment) ??
+                  "Document identity does not match the selected parcel."}{" "}
+                Replace it with the correct report for this erf.
+              </div>
+            )}
+            {!reading && erfAssetIdentityMatchStatus(attachment) === "unverified" && (
+              <div className="mt-0.5 font-medium text-[#9A3A1A]">
+                The document does not identify the selected parcel clearly enough to use its
+                contents as evidence.
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             disabled={reading}
-            onClick={() => onRead(attachment)}
+            onClick={() =>
+              onRead(
+                attachment,
+                erfAssetExtractionStatus(attachment) === "failed" ||
+                  erfAssetExtractionStatus(attachment) === "partial" ||
+                  erfAssetIdentityMatchStatus(attachment) === "unverified",
+              )
+            }
             className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full border border-emerald-700/20 bg-white px-3 py-1.5 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-100 disabled:opacity-60"
           >
             {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanText className="h-3.5 w-3.5" />}
             {reading
-              ? "Reading"
-              : erfAssetExtractionStatus(attachment) === "ready"
-                ? "Read again"
-                : "Read document"}
+              ? "Extracting"
+              : erfAssetIdentityMatchStatus(attachment) === "mismatch"
+                ? "Wrong property report"
+                : erfAssetExtractionStatus(attachment) === "failed"
+                  ? "Retry extraction"
+                  : erfAssetExtractionStatus(attachment) === "ready"
+                    ? "Report searchable"
+                    : "Read document"}
           </button>
           <button
             type="button"
