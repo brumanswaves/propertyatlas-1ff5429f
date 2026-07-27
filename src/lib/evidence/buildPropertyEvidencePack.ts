@@ -10,8 +10,11 @@ import {
   erfAssetExtractedClaims,
   erfAssetExtractionError,
   erfAssetExtractionStatus,
+  erfAssetHasSearchableExtraction,
+  erfAssetIdentityMatchReason,
+  erfAssetIdentityMatchStatus,
   isExtractableErfAsset,
-} from "@/lib/workbench/erfAssetExtraction";
+} from "./extractionMetadata";
 import type {
   BuildPropertyEvidencePackInput,
   EvidenceClaim,
@@ -234,7 +237,10 @@ function addOfficialParcelEvidence(
   }
 
   const raw = parcel.rawProperties ?? {};
-  const resolvedArea = isOfficialParcel ? resolveParcelArea(raw) : null;
+  const verifiedExtent = selectVerifiedRegisteredExtent(input.assets ?? [], parcel.id);
+  const resolvedArea = isOfficialParcel || verifiedExtent
+    ? resolveParcelArea(raw, { verifiedExtent })
+    : null;
   if (resolvedArea) {
     addClaim(pack, {
       id: claimId("identity", "areaM2", resolvedArea.sourceKey),
@@ -248,7 +254,9 @@ function addOfficialParcelEvidence(
       nature: "fact",
       status: "supported",
       confidence: resolvedArea.confidence,
-      confidenceReason: resolvedArea.approximate
+      confidenceReason: resolvedArea.sourceKind === "verified_extent"
+        ? "Registered extent read from an identity-matched uploaded deed, SG diagram or paid report."
+        : resolvedArea.approximate
         ? (resolvedArea.warning ?? SHAPE_AREA_WARNING)
         : resolvedArea.sourceKind === "csg_geom_area"
           ? "Registered ground area published directly by the official CSG parcel record (GEOM_AREA, square metres)."
@@ -578,6 +586,7 @@ function addAssetEvidence(
       notes: extractionNote(asset),
     });
     addExtractedDocumentClaims(pack, asset, sourceId);
+    addDocumentIdentityWarnings(pack, asset, sourceId);
     if (selectedSiteDesign?.id === asset.id) {
       addClaim(pack, {
         id: `claim-site-selected-${asset.id}`,
@@ -610,7 +619,8 @@ function addAssetEvidence(
  * added first they can never overwrite an official value.
  */
 function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId: string) {
-  if (erfAssetExtractionStatus(asset) !== "ready") return;
+  // Identity gate: only an identity-matched, ready extraction may become evidence.
+  if (!erfAssetHasSearchableExtraction(asset)) return;
   const extracted = erfAssetExtractedClaims(asset);
   for (const [index, item] of extracted.entries()) {
     if (!item || typeof item.key !== "string" || !item.key) continue;
@@ -629,11 +639,10 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       value: numeric ?? value,
       normalizedValue: numeric ?? normalizeValue(value),
       unit: item.unit ?? null,
-      nature: "observation",
+      nature: "fact",
       status: "supported",
-      confidence: item.confidence === "high" ? "medium" : "low",
-      confidenceReason:
-        "Read from an uploaded document by Easy Erf. Document-derived, not an official record — check the quoted page.",
+      confidence: "medium",
+      confidenceReason: EXTRACTED_FACT_CONFIDENCE_REASON,
       sourceIds: [sourceId],
       locators: [
         {
@@ -649,6 +658,55 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       excluded: false,
     });
   }
+}
+
+/**
+ * A document that describes a different property is a high-severity problem,
+ * not silent noise: it gets an explicit contradiction and gap so the user is
+ * told to replace it.
+ */
+function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceId: string) {
+  const identity = erfAssetIdentityMatchStatus(asset);
+  if (identity !== "mismatch" && identity !== "unverified") return;
+  const reason = erfAssetIdentityMatchReason(asset);
+  if (identity === "mismatch") {
+    addContradiction(pack, {
+      id: `document-property-mismatch-${asset.id}`,
+      title: "Uploaded document describes a different property",
+      severity: "high",
+      explanation: `${asset.original_file_name} does not match this erf, so none of its contents are used as evidence.`,
+      claimIds: [`claim-document-${asset.id}`],
+      sourceIds: [sourceId],
+      displayedValues: [asset.original_file_name, reason ?? "Document identity does not match the selected parcel."],
+      nextAction: "Remove this file and upload the correct report for this erf.",
+      targetTab: "reports",
+    });
+    pack.gaps.push({
+      id: `document-wrong-property-${asset.id}`,
+      parcelId: asset.parcel_id,
+      domain: "documents",
+      importance: "high",
+      title: "Wrong property report uploaded",
+      explanation: `${asset.original_file_name} is a report for a different property, so it adds no evidence for this erf.`,
+      basis: reason ?? "identityMatchStatus=mismatch",
+      nextAction: "Upload the correct report for this erf.",
+      targetTab: "reports",
+      blocking: false,
+    });
+    return;
+  }
+  pack.gaps.push({
+    id: `document-identity-unverified-${asset.id}`,
+    parcelId: asset.parcel_id,
+    domain: "documents",
+    importance: "medium",
+    title: "Report could not be matched to this erf",
+    explanation: `${asset.original_file_name} does not identify this erf clearly enough for its contents to be used as evidence.`,
+    basis: reason ?? "identityMatchStatus=unverified",
+    nextAction: "Upload a report that clearly states this erf's identity.",
+    targetTab: "reports",
+    blocking: false,
+  });
 }
 
 function addNotesEvidence(pack: MutablePack, input: BuildPropertyEvidencePackInput) {
@@ -1091,15 +1149,23 @@ function addGaps(
     gap("ownership-not-verified", "ownership", "high", "Ownership not verified", "No structured ownership claim exists for this erf.", "Uploaded reports alone do not verify ownership without extracted ownership text.", "Upload or review title deed, WinDeed or Lightstone ownership evidence.", "reports", true);
   }
   const unreadDocuments = assets.filter(
-    (asset) => isExtractableErfAsset(asset) && !["ready", "partial"].includes(erfAssetExtractionStatus(asset)),
+    (asset) =>
+      isExtractableErfAsset(asset) &&
+      erfAssetIdentityMatchStatus(asset) == null &&
+      !["ready", "partial"].includes(erfAssetExtractionStatus(asset)),
   );
   if (unreadDocuments.length) {
     const failed = unreadDocuments.filter((asset) => erfAssetExtractionStatus(asset) === "failed");
+    const extracting = unreadDocuments.filter((asset) => erfAssetExtractionStatus(asset) === "processing");
     gap(
       "documents-not-read",
       "documents",
       "high",
-      failed.length ? "A document could not be read" : "Uploaded documents have not been read yet",
+      failed.length
+        ? "A document could not be read"
+        : extracting.length
+          ? "A document is still being extracted"
+          : "Uploaded documents have not been read yet",
       failed.length
         ? `Easy Erf could not read ${failed.length} uploaded document${failed.length === 1 ? "" : "s"}, so their contents are not in the evidence pack.`
         : `${unreadDocuments.length} uploaded document${unreadDocuments.length === 1 ? " is" : "s are"} stored but not yet read, so their contents cannot be quoted or searched.`,
@@ -1116,8 +1182,31 @@ function addGaps(
   if (!assets.some((asset) => asset.asset_category === "sg_diagram")) {
     gap("sg-diagram-missing", "documents", "medium", "SG diagram missing", "No SG diagram is attached for this erf.", "No sg_diagram asset found.", "Upload or fetch the SG diagram.", "research");
   }
-  for (const asset of assets.filter((asset) => criticalDocument(asset) && extractionStatus(asset) !== "ready")) {
-    gap(`document-extraction-missing-${asset.id}`, "documents", "medium", "Critical document has no extracted text", `${asset.original_file_name} is stored but has no ready machine-readable extracted text.`, `extractionStatus=${extractionStatus(asset) ?? "missing"}`, "Open or extract the document before relying on it.", "reports");
+  for (const asset of assets.filter((doc) => criticalDocument(doc) && !erfAssetHasSearchableExtraction(doc))) {
+    const identity = erfAssetIdentityMatchStatus(asset);
+    // Never say "no report was uploaded" — the file exists; say exactly why it is unusable.
+    const state =
+      identity === "mismatch"
+        ? { title: "Uploaded document is for the wrong property", detail: "describes a different property, so nothing in it can be quoted for this erf", action: "Upload the correct report for this erf." }
+        : identity === "unverified"
+          ? { title: "Uploaded document could not be matched to this erf", detail: "does not identify this erf clearly enough to be used as evidence", action: "Upload a report that states this erf's identity." }
+          : erfAssetExtractionStatus(asset) === "failed"
+            ? { title: "Uploaded document could not be read", detail: erfAssetExtractionError(asset) ?? "could not be read", action: "Retry extraction in Reports." }
+            : erfAssetExtractionStatus(asset) === "processing"
+              ? { title: "Uploaded document is still being extracted", detail: "is being extracted right now", action: "Wait for extraction to finish." }
+              : erfAssetExtractionStatus(asset) === "partial"
+                ? { title: "Uploaded document is searchable but has no structured values", detail: "was read but no structured values were found", action: "Check the document manually or upload a clearer copy." }
+                : { title: "Uploaded document has not been extracted yet", detail: "is uploaded but has not been read yet", action: "Read the document in Reports." };
+    gap(
+      `document-extraction-missing-${asset.id}`,
+      "documents",
+      "medium",
+      state.title,
+      `${asset.original_file_name} ${state.detail}.`,
+      `extractionStatus=${erfAssetExtractionStatus(asset)}; identityMatchStatus=${identity ?? "none"}`,
+      state.action,
+      "reports",
+    );
   }
   if (!input.marketAddressIntelligence?.userConfirmedAddress) {
     gap("confirmed-market-address-missing", "address", "medium", "Confirmed market address missing", "No user-confirmed working market address is saved.", "marketAddressIntelligence.userConfirmedAddress is missing.", "Confirm a market address in Market.", "listings");
@@ -1359,6 +1448,37 @@ function slug(value: string) {
   return normalizeText(value).replace(/\s+/g, "-") || "value";
 }
 
+export const EXTRACTED_FACT_CONFIDENCE_REASON =
+  "Fact explicitly stated in an identity-matched uploaded report; verify against the issuing source for legal reliance.";
+
+/** Categories whose extracted registered extent may outrank the map area. */
+const REGISTERED_EXTENT_CATEGORIES = ["paid_report", "title_deed", "sg_diagram", "official_document"];
+
+/**
+ * Highest-precedence area input: an explicit `areaM2` claim, with a quote and
+ * page, read from an identity-matched deed / SG diagram / paid report.
+ * A mismatched or unverified document can never reach this selector.
+ */
+function selectVerifiedRegisteredExtent(assets: ErfAsset[], parcelId: string) {
+  for (const asset of assets) {
+    if (asset.parcel_id !== parcelId) continue;
+    if (!REGISTERED_EXTENT_CATEGORIES.includes(asset.asset_category)) continue;
+    if (!erfAssetHasSearchableExtraction(asset)) continue;
+    for (const claim of erfAssetExtractedClaims(asset)) {
+      if (!claim || claim.domain !== "identity" || claim.key !== "areaM2") continue;
+      if (typeof claim.quote !== "string" || !claim.quote.trim()) continue;
+      if (typeof claim.page !== "number" || !Number.isFinite(claim.page)) continue;
+      const numeric =
+        typeof claim.numericValue === "number" && Number.isFinite(claim.numericValue)
+          ? claim.numericValue
+          : Number(String(claim.value ?? "").replace(/[^0-9.]/g, ""));
+      if (!Number.isFinite(numeric) || numeric <= 0) continue;
+      return { areaM2: numeric, sourceKey: `asset:${asset.id}#page${claim.page}` };
+    }
+  }
+  return null;
+}
+
 function claimId(domain: EvidenceDomain, key: string, path: string) {
   return `claim-${domain}-${key}-${slug(path)}`;
 }
@@ -1406,7 +1526,7 @@ function metadataNumber(value: unknown) {
 }
 
 function extractedFragments(asset: ErfAsset) {
-  if (extractionStatus(asset) !== "ready") return [];
+  if (!erfAssetHasSearchableExtraction(asset)) return [];
   const text = asset.metadata.extractedText ?? asset.metadata.extracted_text;
   if (typeof text !== "string" || !text.trim()) return [];
   return splitFragments(text).map(limitFragment);
