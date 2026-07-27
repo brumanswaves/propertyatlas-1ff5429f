@@ -5,7 +5,11 @@ import type {
   ErfStrategyWorkspace,
   ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import type {
+  ErfAsset,
+  ErfAssetCategory,
+  ErfAssetStatus,
+} from "@/lib/workbench/erfFileVault";
 import type {
   MarketAddressIntelligence,
   SavedMarketEvidence,
@@ -97,6 +101,28 @@ export interface EvidenceSourceReference {
   updatedAt?: string | null;
   locators: EvidenceLocator[];
   fragments: string[];
+  asset?: EvidenceAssetMetadata;
+  strategy?: EvidenceStrategyMetadata;
+}
+
+export interface EvidenceAssetMetadata {
+  category: ErfAssetCategory;
+  assetType: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksumSha256: string | null;
+  storageStatus: ErfAssetStatus;
+  extractionStatus: string | null;
+  extractionWarning: string | null;
+  pageCount: number | null;
+  selectedSiteConcept: boolean;
+  conceptName: string | null;
+  conceptRationale: string | null;
+}
+
+export interface EvidenceStrategyMetadata {
+  scenarioIds: string[];
+  chosenScenarioId: string | null;
 }
 
 export type EvidenceClaimNature =

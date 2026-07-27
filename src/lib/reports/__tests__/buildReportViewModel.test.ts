@@ -9,6 +9,7 @@ import {
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 function baseParcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -41,6 +42,29 @@ function baseInput(overrides: Partial<BuildReportInput> = {}): BuildReportInput 
     selectedSiteDesign: null,
     siteBrief: null,
     now: new Date("2026-07-16T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+function reportAsset(overrides: Partial<ErfAsset> = {}): ErfAsset {
+  return {
+    id: "asset-1",
+    user_id: "user-1",
+    parcel_id: "parcel:erf-224",
+    asset_category: "sg_diagram",
+    asset_type: "survey_pdf",
+    source_label: "Survey document",
+    storage_bucket: "erf-files",
+    storage_path: "user-1/parcel:erf-224/sg_diagram/asset-1/document-123.pdf",
+    original_file_name: "document-123.pdf",
+    mime_type: "application/pdf",
+    size_bytes: 12345,
+    checksum_sha256: "sha256-asset",
+    status: "ready",
+    metadata: {},
+    local_migration_fingerprint: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -200,11 +224,138 @@ describe("buildReportViewModel", () => {
       }),
     );
 
+    const planningLabels = vm.planning.map((field) => field.label).join(" | ");
     expect(vm.planning.find((field) => field.label === "Erf size (mÂ²)")?.value).toBe("987");
+    expect(planningLabels).not.toContain("mÃ‚Â²");
+    expect(planningLabels).not.toContain("Ã‚");
+    expect(planningLabels).not.toContain("Ã¢");
+    expect(planningLabels).not.toContain("ï¿½");
     expect(vm.market.evidenceCount).toBe(3);
     expect(vm.documents.assetCount).toBe(1);
     expect(vm.strategy.chosen?.id).toBe("scenario-1");
     expect(vm.site.selectedDesign?.id).toBe("design-1");
+  });
+
+  it("keeps report Strategy chosen scenario parcel-scoped", () => {
+    const validScenario = {
+      id: "scenario-current",
+      parcelId: "parcel:erf-224",
+      label: "Current parcel scenario",
+      strategy: "development_sell",
+      inputs: { landCost: "1000000" },
+      summary: [{ label: "Profit", value: "R 100" }],
+      selected: true,
+      savedAt: "2026-01-01T00:00:00Z",
+    };
+    const foreignScenario = {
+      ...validScenario,
+      id: "scenario-foreign",
+      parcelId: "parcel:other",
+      label: "Foreign parcel scenario",
+    };
+
+    const vm = buildReportViewModel(
+      baseInput({
+        workspaceState: {
+          ...createEmptyErfWorkspaceState(),
+          chosenScenarioId: validScenario.id,
+        },
+        strategyScenarios: [validScenario],
+        chosenScenario: foreignScenario,
+      }),
+    );
+
+    expect(vm.strategy.chosen?.id).toBe(validScenario.id);
+    expect(vm.strategy.chosen?.parcelId).toBe("parcel:erf-224");
+    expect(vm.strategy.chosen?.id).not.toBe(foreignScenario.id);
+  });
+
+  it("rejects a cross-parcel chosen scenario instead of leaking it through valid Strategy claims", () => {
+    const validScenario = {
+      id: "scenario-valid",
+      parcelId: "parcel:erf-224",
+      label: "Valid but not chosen",
+      strategy: "development_sell",
+      inputs: { landCost: "1000000" },
+      summary: [{ label: "Profit", value: "R 100" }],
+      selected: false,
+      savedAt: "2026-01-01T00:00:00Z",
+    };
+    const foreignScenario = {
+      ...validScenario,
+      id: "scenario-foreign",
+      parcelId: "parcel:other",
+      label: "Foreign chosen scenario",
+      selected: true,
+    };
+
+    const vm = buildReportViewModel(
+      baseInput({
+        strategyScenarios: [validScenario],
+        chosenScenario: foreignScenario,
+      }),
+    );
+
+    expect(vm.strategy.chosen).toBeNull();
+    expect(vm.strategy.scenarioCount).toBe(1);
+  });
+
+  it("keeps scenario IDs containing input or summary separators intact", () => {
+    const trickyScenario = {
+      id: "deal-input-keeper-summary-final",
+      parcelId: "parcel:erf-224",
+      label: "Tricky ID scenario",
+      strategy: "development_sell",
+      inputs: { landCost: "1000000" },
+      summary: [{ label: "Profit", value: "R 100" }],
+      selected: true,
+      savedAt: "2026-01-01T00:00:00Z",
+    };
+
+    const vm = buildReportViewModel(
+      baseInput({
+        workspaceState: {
+          ...createEmptyErfWorkspaceState(),
+          chosenScenarioId: trickyScenario.id,
+        },
+        strategyScenarios: [trickyScenario],
+        chosenScenario: trickyScenario,
+      }),
+    );
+
+    expect(vm.strategy.chosen?.id).toBe("deal-input-keeper-summary-final");
+    expect(vm.strategy.scenarioCount).toBe(1);
+  });
+
+  it("derives document counts from structured asset metadata categories", () => {
+    const vm = buildReportViewModel(
+      baseInput({
+        assets: [
+          reportAsset({
+            id: "4f47dd8a-bd52-4f20-b455-e3563b147ba0",
+            asset_category: "sg_diagram",
+            source_label: "Survey document",
+            original_file_name: "document-123.pdf",
+          }),
+          reportAsset({
+            id: "paid-1",
+            asset_category: "paid_report",
+            source_label: "Lightstone report",
+            original_file_name: "lightstone.pdf",
+          }),
+          reportAsset({
+            id: "deed-1",
+            asset_category: "title_deed",
+            source_label: "Title deed",
+            original_file_name: "deed.pdf",
+          }),
+        ],
+      }),
+    );
+
+    expect(vm.documents.assetCount).toBe(3);
+    expect(vm.documents.sgDiagramCount).toBe(1);
+    expect(vm.documents.uploadedReportCount).toBe(1);
   });
 
   it("attaches the concept-only disclaimer whenever a Site Potential design is selected", () => {

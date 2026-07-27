@@ -331,6 +331,125 @@ describe("buildPropertyEvidencePack", () => {
     expect(pack.sources.filter((source) => source.kind === "uploaded_document")).toHaveLength(6);
   });
 
+  it("stores structured File Vault asset metadata without volatile URLs", () => {
+    const sgDiagram = asset({
+      id: "4f47dd8a-bd52-4f20-b455-e3563b147ba0",
+      asset_category: "sg_diagram",
+      asset_type: "survey_pdf",
+      source_label: "Survey document",
+      original_file_name: "document-123.pdf",
+      mime_type: "application/pdf",
+      size_bytes: 98765,
+      checksum_sha256: "sha256-sg",
+      metadata: {
+        extractionStatus: "ready",
+        extractionWarning: "Low OCR confidence on page 2",
+        extractedText: "Survey document text.",
+        pageCount: 3,
+        signedUrl: "https://signed.example/sg",
+      },
+    });
+    const paidReport = asset({
+      id: "paid-report-random",
+      asset_category: "paid_report",
+      source_label: "Ownership document",
+      original_file_name: "ownership.pdf",
+      checksum_sha256: "sha256-paid",
+      metadata: { extraction_status: "processing", extraction_warning: "Pending extraction" },
+    });
+    const titleDeed = asset({
+      id: "title-deed-random",
+      asset_category: "title_deed",
+      source_label: "Paid-looking deed",
+      original_file_name: "paid-report-looking-name.pdf",
+    });
+    const selectedDesign = asset({
+      id: "selected-design-random",
+      asset_category: "generated_design",
+      asset_type: "site_concept",
+      source_label: "Concept",
+      original_file_name: "concept.png",
+      mime_type: "image/png",
+      metadata: {
+        conceptName: "Courtyard duplex",
+        conceptRationale: "Uses northern light.",
+        downloadUrl: "https://download.example/concept",
+      },
+    });
+
+    const pack = build({
+      assets: [sgDiagram, paidReport, titleDeed, selectedDesign],
+      selectedSiteDesign: selectedDesign,
+      workspaceState: workspace({
+        sitePotential: {
+          ...createEmptyErfWorkspaceState().sitePotential,
+          selectedDesignAssetId: selectedDesign.id,
+        },
+      }),
+    });
+
+    const sgSource = pack.sources.find((source) => source.assetId === sgDiagram.id);
+    const paidSource = pack.sources.find((source) => source.assetId === paidReport.id);
+    const deedSource = pack.sources.find((source) => source.assetId === titleDeed.id);
+    const designSource = pack.sources.find((source) => source.assetId === selectedDesign.id);
+
+    expect(sgSource?.asset).toMatchObject({
+      category: "sg_diagram",
+      assetType: "survey_pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 98765,
+      checksumSha256: "sha256-sg",
+      storageStatus: "ready",
+      extractionStatus: "ready",
+      extractionWarning: "Low OCR confidence on page 2",
+      pageCount: 3,
+      selectedSiteConcept: false,
+    });
+    expect(paidSource?.asset?.category).toBe("paid_report");
+    expect(deedSource?.asset?.category).toBe("title_deed");
+    expect(deedSource?.asset?.category).not.toBe("paid_report");
+    expect(paidSource?.asset).toMatchObject({
+      extractionStatus: "processing",
+      extractionWarning: "Pending extraction",
+      pageCount: null,
+    });
+    expect(designSource?.asset).toMatchObject({
+      category: "generated_design",
+      selectedSiteConcept: true,
+      conceptName: "Courtyard duplex",
+      conceptRationale: "Uses northern light.",
+    });
+    expect(JSON.stringify(pack)).not.toContain("signed.example");
+    expect(JSON.stringify(pack)).not.toContain("download.example");
+
+    const report = buildReportViewModel({
+      parcel: parcel(),
+      workspaceState: workspace(),
+      savedEvidence: [],
+      marketAddress: null,
+      assets: [sgDiagram, paidReport, titleDeed, selectedDesign],
+      chosenScenario: null,
+      strategyScenarios: [],
+      selectedSiteDesign: selectedDesign,
+      now: NOW,
+    });
+    expect(report.documents.assetCount).toBe(4);
+    expect(report.documents.sgDiagramCount).toBe(1);
+    expect(report.documents.uploadedReportCount).toBe(1);
+  });
+
+  it("keeps asset fingerprints stable when File Vault order changes", () => {
+    const firstAssets = [
+      asset({ id: "asset-a", asset_category: "sg_diagram", checksum_sha256: "a" }),
+      asset({ id: "asset-b", asset_category: "paid_report", checksum_sha256: "b" }),
+      asset({ id: "asset-c", asset_category: "title_deed", checksum_sha256: "c" }),
+    ];
+    const first = build({ assets: firstAssets });
+    const second = build({ assets: [...firstAssets].reverse() });
+
+    expect(first.fingerprint).toBe(second.fingerprint);
+  });
+
   it("detects evidence contradictions without treating missing information as conflict", () => {
     const pack = build({
       parcel: parcel({

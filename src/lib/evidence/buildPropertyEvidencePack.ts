@@ -542,6 +542,7 @@ function addAssetEvidence(
       updatedAt: asset.updated_at,
       locators: [{ assetId: asset.id, metadataKey: "metadata" }],
       fragments,
+      asset: assetMetadata(asset, selectedSiteDesign?.id === asset.id),
     });
     addClaim(pack, {
       id: `claim-document-${asset.id}`,
@@ -663,6 +664,10 @@ function addStrategyEvidence(
     updatedAt: newestDate([workspace.draftUpdatedAt, workspace.chosenScenarioUpdatedAt]),
     locators: [{ fieldPath: "strategyWorkspace" }],
     fragments: [],
+    strategy: {
+      scenarioIds: scenarios.map((scenario) => scenario.id).sort(),
+      chosenScenarioId: chosenScenario?.id ?? null,
+    },
   });
   if (workspace.draftUpdatedAt) {
     addClaim(pack, {
@@ -1268,6 +1273,34 @@ function extractionStatus(asset: ErfAsset) {
 function extractionNote(asset: ErfAsset) {
   const warning = asset.metadata.extractionWarning ?? asset.metadata.extraction_warning;
   return typeof warning === "string" ? warning : null;
+}
+
+function assetMetadata(asset: ErfAsset, selectedSiteConcept: boolean) {
+  return {
+    category: asset.asset_category,
+    assetType: asset.asset_type,
+    mimeType: asset.mime_type,
+    sizeBytes: asset.size_bytes,
+    checksumSha256: asset.checksum_sha256,
+    storageStatus: asset.status,
+    extractionStatus: extractionStatus(asset),
+    extractionWarning: extractionNote(asset),
+    pageCount: metadataNumber(asset.metadata.pageCount ?? asset.metadata.page_count),
+    selectedSiteConcept,
+    conceptName: metadataString(asset.metadata.conceptName),
+    conceptRationale: metadataString(asset.metadata.conceptRationale ?? asset.metadata.rationale),
+  };
+}
+
+function metadataString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function metadataNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function extractedFragments(asset: ErfAsset) {

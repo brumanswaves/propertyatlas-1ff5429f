@@ -37,6 +37,37 @@ describe("selectPropertyEvidence", () => {
     expect(result.gaps.map((gap) => gap.id)).toContain("ownership-not-verified");
   });
 
+  it("returns compact asset metadata without raw File Vault metadata or signed URLs", () => {
+    const result = selectPropertyEvidence(
+      buildEvidencePackFixture({
+        assets: [
+          evidenceAsset({
+            id: "doc-compact",
+            asset_category: "paid_report",
+            original_file_name: "lightstone.pdf",
+            metadata: {
+              extractionStatus: "processing",
+              extractionWarning: "Pending OCR",
+              signedUrl: "https://signed.example/doc",
+              extractedText: "Should not be returned while processing",
+            },
+          }),
+        ],
+      }),
+      { question: "paid report document", domains: ["documents", "deeds"] },
+    );
+
+    const source = result.sources.find((item) => item.assetId === "doc-compact");
+    expect(source?.asset).toMatchObject({
+      category: "paid_report",
+      mimeType: "application/pdf",
+      extractionStatus: "processing",
+      extractionWarning: "Pending OCR",
+    });
+    expect(JSON.stringify(source)).not.toContain("signed.example");
+    expect(JSON.stringify(source)).not.toContain("extractedText");
+  });
+
   it("retrieves planning claims and missing controls", () => {
     const result = selectPropertyEvidence(buildEvidencePackFixture(), {
       question: "What zoning and FAR evidence do we have?",

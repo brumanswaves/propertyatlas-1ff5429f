@@ -62,6 +62,17 @@ describe("evidenceFingerprint", () => {
     );
   });
 
+  it("includes material structured asset metadata in the pack fingerprint", () => {
+    const first = buildEvidencePackFixture({
+      assets: [evidenceAsset({ id: "asset-a", checksum_sha256: "sha256-a" })],
+    });
+    const second = buildEvidencePackFixture({
+      assets: [evidenceAsset({ id: "asset-a", checksum_sha256: "sha256-b" })],
+    });
+
+    expect(first.fingerprint).not.toBe(second.fingerprint);
+  });
+
   it("does not change when market evidence input order changes", () => {
     const evidence = [
       evidenceMarket({ id: "market-a", askingPrice: 1_100_000 }),

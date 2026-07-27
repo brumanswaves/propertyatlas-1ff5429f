@@ -497,18 +497,22 @@ function buildStrategyFromPack(
   chosen: ErfStrategyScenario | null,
   scenarios: ErfStrategyScenario[],
 ): StrategyView {
-  const supportedStrategyClaims = pack.claims.filter(
-    (claim) => claim.domain === "strategy" && claim.status === "supported" && claim.userConfirmed && !claim.excluded,
+  const strategySource = pack.sources.find((source) => source.id === "strategy-workspace");
+  const scenarioIds = new Set(strategySource?.strategy?.scenarioIds ?? []);
+  const chosenScenarioId = strategySource?.strategy?.chosenScenarioId ?? null;
+  const inputScenarios = scenarios ?? [];
+  const parcelScenarios = inputScenarios.filter(
+    (scenario) => scenario.parcelId === pack.parcelId && scenarioIds.has(scenario.id),
   );
-  const scenarioIds = new Set(
-    pack.claims
-      .filter((claim) => claim.domain === "strategy" && claim.id.startsWith("claim-strategy-"))
-      .map((claim) => claim.id.replace(/^claim-strategy-/, "").split("-input-")[0].split("-summary-")[0]),
-  );
+  const selected = parcelScenarios.find((scenario) => scenario.id === chosenScenarioId) ?? null;
+  const rawChosenIsPackSelected =
+    chosen?.parcelId === pack.parcelId &&
+    chosen.id === chosenScenarioId &&
+    scenarioIds.has(chosen.id);
   return {
-    chosen: supportedStrategyClaims.length ? chosen : null,
-    scenarioCount: scenarioIds.size || scenarios.length,
-    hasSaved: scenarios.length > 0 || pack.sources.some((source) => source.id === "strategy-workspace" && source.status === "ready"),
+    chosen: selected ?? (rawChosenIsPackSelected ? chosen : null),
+    scenarioCount: scenarioIds.size,
+    hasSaved: scenarioIds.size > 0 || strategySource?.status === "ready",
   };
 }
 
@@ -544,6 +548,7 @@ function buildDocumentsFromPack(
   savedEvidence: SavedMarketEvidence[],
 ): DocumentsView {
   const assetSources = pack.sources.filter((source) => source.kind === "uploaded_document" || source.kind === "uploaded_image");
+  const assets = assetSources.flatMap((source) => (source.asset ? [source.asset] : []));
   const supportedDomains = new Set(
     pack.domains
       .filter((domain) => domain.state === "supported" || domain.state === "partial")
@@ -554,10 +559,10 @@ function buildDocumentsFromPack(
   );
   const filled = buckets.filter(Boolean).length;
   return {
-    assetCount: assetSources.length,
+    assetCount: assets.length,
     savedEvidenceCount: pack.sources.filter((source) => source.kind === "market_listing").length || savedEvidence.length,
-    sgDiagramCount: assetSources.filter((source) => /sg diagram/i.test(source.label) || source.assetId?.includes("sg")).length,
-    uploadedReportCount: assetSources.filter((source) => source.authorityType === "paid_provider").length,
+    sgDiagramCount: assets.filter((asset) => asset.category === "sg_diagram").length,
+    uploadedReportCount: assets.filter((asset) => asset.category === "paid_report").length,
     completenessPercent: Math.round((filled / buckets.length) * 100) || buildDocuments([], workspaceState, savedEvidence).completenessPercent,
   };
 }
