@@ -362,9 +362,18 @@ function validateAnswerAgainstSelectedEvidence(
   // Shared runtime-neutral resolver: rejects fabricated S-references and
   // requires at least one resolvable reference.
   const resolved = resolveAskEasyErfAnswerReferences(
-    { ...answer, evidenceReferences: answer.evidenceReferences },
+    {
+      ...answer,
+      evidenceReferences: answer.evidenceReferences.map((reference) => ({
+        ref: reference.ref ?? "",
+        label: reference.label ?? "",
+        sourceType: reference.sourceType,
+        sourceId: reference.sourceId ?? null,
+      })),
+    },
     evidence.sources,
   );
+
   if (!resolved) return null;
   return {
     ...answer,
