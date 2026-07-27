@@ -3,6 +3,11 @@ import type {
   ReportViewModel,
   RiskItem,
 } from "./buildReportViewModel";
+import type {
+  EvidenceClaim,
+  EvidenceTimelineEvent,
+  PropertyEvidencePack,
+} from "@/lib/evidence/propertyEvidenceTypes";
 
 export type DecisionVerdict =
   | "proceed"
@@ -79,10 +84,14 @@ export function buildDecisionIntelligence(report: ReportViewModel): DecisionInte
   }));
 
   const confidencePercent = calculateConfidence(confidenceCategories, report.risks);
-  const contradictions = buildContradictions(report);
+  const contradictions = report.evidencePack
+    ? buildContradictionsFromPack(report.evidencePack)
+    : buildContradictions(report);
   const verdict = determineVerdict(report, confidencePercent, contradictions);
-  const known = buildKnown(report);
-  const stillNeeded = buildStillNeeded(report, confidenceCategories);
+  const known = report.evidencePack ? buildKnownFromPack(report.evidencePack) : buildKnown(report);
+  const stillNeeded = report.evidencePack
+    ? buildStillNeededFromPack(report.evidencePack)
+    : buildStillNeeded(report, confidenceCategories);
   const immediateActions = report.recommendations.slice(0, 5).map((item) => ({
     label: item.title,
     tab: item.actionTab,
@@ -99,7 +108,7 @@ export function buildDecisionIntelligence(report: ReportViewModel): DecisionInte
     contradictions,
     immediateActions,
     matrix: buildDecisionMatrix(report, verdict),
-    timeline: buildTimeline(report),
+    timeline: report.evidencePack ? buildTimelineFromPack(report.evidencePack) : buildTimeline(report),
   };
 }
 
@@ -190,6 +199,28 @@ function buildKnown(report: ReportViewModel): string[] {
   return Array.from(known).slice(0, 10);
 }
 
+function buildKnownFromPack(pack: PropertyEvidencePack): string[] {
+  const preferred = [
+    "erfNumber",
+    "lpi",
+    "parcelKey",
+    "areaM2",
+    "zoning",
+    "confirmedAddress",
+    "askingPrice",
+    "chosenScenario",
+    "selectedConcept",
+  ];
+  const claims = pack.claims
+    .filter((claim) => claim.parcelId === pack.parcelId && claim.status === "supported" && !claim.excluded)
+    .sort((a, b) => {
+      const aIndex = preferred.indexOf(a.key);
+      const bIndex = preferred.indexOf(b.key);
+      return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex) || a.id.localeCompare(b.id);
+    });
+  return claims.slice(0, 10).map((claim) => `${claim.label}: ${displayEvidenceValue(claim)}`);
+}
+
 function buildStillNeeded(
   report: ReportViewModel,
   categories: ConfidenceCategory[],
@@ -228,6 +259,25 @@ function buildStillNeeded(
   }
 
   return Array.from(needed).slice(0, 8);
+}
+
+function buildStillNeededFromPack(pack: PropertyEvidencePack): string[] {
+  return pack.gaps
+    .slice()
+    .sort((a, b) => importanceRank(b.importance) - importanceRank(a.importance) || a.id.localeCompare(b.id))
+    .slice(0, 8)
+    .map((gap) => gap.nextAction);
+}
+
+function buildContradictionsFromPack(pack: PropertyEvidencePack): ContradictionItem[] {
+  return pack.contradictions.map((item) => ({
+    id: item.id,
+    title: item.title,
+    severity: item.severity,
+    explanation: item.explanation,
+    evidence: item.displayedValues,
+    nextAction: item.nextAction,
+  }));
 }
 
 function buildContradictions(report: ReportViewModel): ContradictionItem[] {
@@ -379,6 +429,38 @@ function buildTimeline(report: ReportViewModel): EvidenceTimelineItem[] {
       (a, b) =>
         new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
     );
+}
+
+function buildTimelineFromPack(pack: PropertyEvidencePack): EvidenceTimelineItem[] {
+  return pack.timeline
+    .map((item) => ({
+      id: item.id,
+      occurredAt: item.occurredAt,
+      label: item.label,
+      detail: item.detail,
+      source: timelineSource(item),
+    }))
+    .sort(
+      (a, b) =>
+        new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() ||
+        a.id.localeCompare(b.id),
+    );
+}
+
+function timelineSource(item: EvidenceTimelineEvent): EvidenceTimelineItem["source"] {
+  if (item.domain === "market") return "market";
+  if (item.domain === "documents" && item.id === "evidence-pack-built") return "report";
+  if (item.sourceIds.some((id) => id.includes("official") || id.includes("research-source"))) return "official";
+  return "workspace";
+}
+
+function displayEvidenceValue(claim: EvidenceClaim): string {
+  const value = claim.value == null || claim.value === "" ? "Missing" : String(claim.value);
+  return claim.unit ? `${value} ${claim.unit}` : value;
+}
+
+function importanceRank(value: "low" | "medium" | "high") {
+  return value === "high" ? 3 : value === "medium" ? 2 : 1;
 }
 
 function verdictLabel(verdict: DecisionVerdict): string {

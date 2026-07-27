@@ -254,7 +254,7 @@ describe("buildInvestorDecisionMode", () => {
     });
 
     expect(result.chosenStrategyStatus).toContain("No parcel-matched strategy");
-    expect(result.readinessStatus).toBe("Strategy assumptions incomplete");
+    expect(result.readinessStatus).toBe("Material contradiction requires review");
   });
 
   it("prefers raw inputs and deterministic calculators over formatted summary rows", () => {

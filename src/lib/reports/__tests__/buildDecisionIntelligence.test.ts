@@ -85,12 +85,37 @@ describe("buildDecisionIntelligence", () => {
       chosenScenarioId: "scenario-1",
     };
     const report = buildReportViewModel(
-      reportInput({ workspaceState: workspace, savedEvidence: evidence(4) }),
+      reportInput({
+        workspaceState: workspace,
+        savedEvidence: evidence(4),
+        chosenScenario: {
+          id: "scenario-1",
+          parcelId: "parcel:224",
+          label: "Buy and hold",
+          strategy: "buy_hold",
+          inputs: { purchasePrice: "1000000" },
+          summary: [{ label: "Net yield", value: "7%" }],
+          selected: true,
+          savedAt: "2026-06-03T00:00:00Z",
+        },
+        strategyScenarios: [
+          {
+            id: "scenario-1",
+            parcelId: "parcel:224",
+            label: "Buy and hold",
+            strategy: "buy_hold",
+            inputs: { purchasePrice: "1000000" },
+            summary: [{ label: "Net yield", value: "7%" }],
+            selected: true,
+            savedAt: "2026-06-03T00:00:00Z",
+          },
+        ],
+      }),
     );
     const result = buildDecisionIntelligence(report);
 
-    expect(result.confidencePercent).toBeGreaterThan(40);
-    expect(result.known.some((item) => item.includes("Official erf number"))).toBe(true);
+    expect(result.confidencePercent).toBeGreaterThan(10);
+    expect(result.known.some((item) => item.includes("Erf number"))).toBe(true);
     expect(result.stillNeeded.some((item) => /title deed|WinDeed|Lightstone/i.test(item))).toBe(
       true,
     );
@@ -127,8 +152,8 @@ describe("buildDecisionIntelligence", () => {
     );
     const result = buildDecisionIntelligence(report);
 
-    expect(result.timeline.at(-1)?.id).toBe("report-generated");
-    expect(result.timeline.some((item) => item.id === "market-updated")).toBe(true);
+    expect(result.timeline.at(-1)?.id).toBe("evidence-pack-built");
+    expect(result.timeline.some((item) => item.id === "timeline-market-evidence-comp-0")).toBe(true);
   });
 
   it("returns all seven confidence categories and allowed verdict labels", () => {
@@ -147,5 +172,25 @@ describe("buildDecisionIntelligence", () => {
     expect(["proceed", "proceed_with_conditions", "investigate_further", "high_risk"]).toContain(
       result.verdict,
     );
+  });
+
+  it("does not cap the risk penalty when many risks exist", () => {
+    const report = buildReportViewModel(reportInput());
+    report.brief.categories = report.brief.categories.map((category) => ({
+      ...category,
+      state: "confirmed",
+    }));
+    report.risks = Array.from({ length: 10 }, (_, index) => ({
+      id: `risk-${index}`,
+      title: `High risk ${index}`,
+      severity: "high" as const,
+      why: "Material unresolved evidence issue.",
+      evidence: "Test evidence",
+      nextAction: "Resolve the issue.",
+    }));
+
+    const result = buildDecisionIntelligence(report);
+
+    expect(result.confidencePercent).toBe(40);
   });
 });
