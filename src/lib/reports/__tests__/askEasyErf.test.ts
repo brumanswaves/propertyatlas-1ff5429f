@@ -764,7 +764,7 @@ describe("Ask Easy Erf server handler", () => {
     expect(String(url)).toBe("https://proj.supabase.co/functions/v1/ask-easy-erf-openai");
     expect(String(url)).not.toContain("api.openai.com");
     const headers = options?.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer server-key");
+    expect(headers.Authorization).toBe("Bearer fn-secret");
     const body = JSON.parse(String(options?.body));
     expect(body.question).toBe("Is ownership verified?");
     expect(body.evidence.parcelId).toBe("parcel-current");
