@@ -349,7 +349,7 @@ function answerResponseFormat() {
           confidence: { type: "string", enum: ["high", "medium", "low"] },
           evidenceReferences: {
             type: "array",
-            minItems: 1,
+
             items: {
               type: "object",
               additionalProperties: false,
@@ -434,10 +434,12 @@ function validateAnswerAgainstSelectedEvidence(
       locator: firstLocatorLabel(source),
     });
   }
+  if (!resolved.length) return null;
   return {
     ...answer,
     evidenceReferences: resolved,
   };
+
 }
 
 function firstLocatorLabel(source: AskEasyErfSelectedEvidencePayload["sources"][number]) {
@@ -482,6 +484,9 @@ function statusForCode(code: AskEasyErfErrorCode) {
       return 429;
     case "TIMEOUT":
       return 504;
+    case "UPSTREAM_REQUEST_REJECTED":
+      return 502;
+
     case "MALFORMED_MODEL_RESPONSE":
     case "SERVER_UNAVAILABLE":
       return 502;
