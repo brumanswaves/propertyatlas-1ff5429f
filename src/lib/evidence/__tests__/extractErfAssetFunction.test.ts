@@ -61,7 +61,23 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
     assetRow = { ...assetRow, metadata: body.metadata, updated_at: body.updated_at };
     return Promise.resolve(jsonResponse([assetRow]));
   }
-  if (url.includes("/rest/v1/saved_properties")) return Promise.resolve(jsonResponse([]));
+  if (url.includes("/rest/v1/saved_properties")) {
+    return Promise.resolve(
+      jsonResponse([
+        {
+          user_data: {
+            parcel: {
+              erfNumber: "1570",
+              portion: "0",
+              municipality: "Kouga Local Municipality",
+              province: "Eastern Cape",
+              town: "St Francis Bay",
+            },
+          },
+        },
+      ]),
+    );
+  }
   if (url.includes("/storage/v1/object/")) {
     downloadCalls += 1;
     return Promise.resolve(new Response(new Uint8Array([1, 2, 3])));

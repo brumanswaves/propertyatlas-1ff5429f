@@ -30,7 +30,10 @@ import {
   type ErfIdentityMatchStatus,
 } from "../_shared/erfExtractionContract.ts";
 
-declare const Deno: { env: { get(key: string): string | undefined } };
+declare const Deno: {
+  env: { get(key: string): string | undefined };
+  serve(handler: (request: Request) => Promise<Response> | Response): unknown;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
