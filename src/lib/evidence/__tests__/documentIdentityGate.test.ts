@@ -58,7 +58,7 @@ function pack(assets = [] as ReturnType<typeof evidenceAsset>[]) {
     workspaceState: evidenceWorkspace(),
     strategyWorkspace: createEmptyStrategyWorkspace(ERF_1570_PARCEL_ID),
     assets,
-    marketEvidence: [],
+    savedMarketEvidence: [],
     now: EVIDENCE_TEST_NOW,
   });
 }
