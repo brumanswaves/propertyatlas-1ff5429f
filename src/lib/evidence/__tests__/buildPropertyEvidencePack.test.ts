@@ -285,11 +285,11 @@ describe("buildPropertyEvidencePack", () => {
       status: "supported",
       confidence: "high",
     });
-    expect(pack.claims.find((claim) => claim.id === "claim-address-addr-1")).toMatchObject({
+    expect(pack.claims.find((claim) => claim.id === "claim-address-addr-1-marketAddress")).toMatchObject({
       nature: "observation",
       userConfirmed: true,
     });
-    expect(pack.claims.find((claim) => claim.id === "claim-address-addr-2")).toMatchObject({
+    expect(pack.claims.find((claim) => claim.id === "claim-address-addr-2-marketAddress")).toMatchObject({
       nature: "observation",
       confidence: "low",
       sourceIds: ["address-addr-2"],
@@ -496,5 +496,91 @@ describe("buildPropertyEvidencePack", () => {
     expect(report.risks.map((risk) => risk.id)).toContain("identity-not-user-reviewed");
     expect(decision.stillNeeded).toContain("Review the official identity in Sources.");
     expect(decision.timeline.map((event) => event.id)).toContain("evidence-pack-built");
+  });
+
+  it("keeps CSG and Kouga parcels as official evidence with reliance caveats", () => {
+    for (const source of ["csg", "kouga"] as const) {
+      const pack = build({ parcel: parcel({ source }) });
+      const parcelSource = pack.sources.find((item) => item.id === "official-parcel-record");
+      const erfClaim = pack.claims.find((claim) => claim.key === "erfNumber");
+
+      expect(parcelSource).toMatchObject({ kind: "official_parcel", authorityType: "official" });
+      expect(erfClaim).toMatchObject({ nature: "fact", status: "supported", confidence: "high" });
+      expect(erfClaim?.confidenceReason).toMatch(/Confirm legal reliance/i);
+    }
+  });
+
+  it("does not promote manual parcel identity or raw planning aliases to official facts", () => {
+    const pack = build({
+      parcel: parcel({
+        source: "manual",
+        sourceLabel: "Manual parcel",
+        rawProperties: {
+          SHAPE_Area: 900,
+          ZONING: "Residential 1",
+        },
+      }),
+      workspaceState: workspace({ identityStatus: "checked" }),
+    });
+
+    expect(pack.sources.find((item) => item.id === "manual-parcel-record")).toMatchObject({
+      kind: "user_confirmation",
+      authorityType: "user_supplied",
+    });
+    expect(pack.sources.some((item) => item.id === "official-parcel-record")).toBe(false);
+    expect(pack.claims.find((claim) => claim.key === "erfNumber")).toMatchObject({
+      nature: "observation",
+      confidence: "unverified",
+    });
+    expect(pack.claims.find((claim) => claim.key === "zoning")).toBeUndefined();
+    expect(pack.claims.find((claim) => claim.key === "identityReview")).toMatchObject({
+      userConfirmed: true,
+      confidence: "medium",
+    });
+    expect(pack.claims.find((claim) => claim.key === "identityReview")?.confidenceReason).toMatch(
+      /does not convert it into an official record/i,
+    );
+  });
+
+  it("does not treat selectedAddressId alone as confirmed address evidence", () => {
+    const selectedOnly = address({
+      userConfirmedAddress: undefined,
+      selectedAddressId: "addr-1",
+    });
+    const pack = build({ marketAddressIntelligence: selectedOnly });
+    const selectedClaim = pack.claims.find((claim) => claim.id === "claim-address-addr-1-marketAddress");
+
+    expect(selectedClaim).toMatchObject({
+      status: "not_reviewed",
+      userConfirmed: false,
+    });
+    expect(pack.sources.find((source) => source.id === "address-addr-1")).toMatchObject({
+      kind: "system_state",
+      status: "not_opened",
+    });
+  });
+
+  it("includes a confirmed address outside candidates once with component claims", () => {
+    const confirmed = {
+      ...address().userConfirmedAddress!,
+      id: "addr-confirmed-outside",
+      formattedAddress: "1 Confirmed Road, St Francis Bay",
+      municipality: "Kouga Local Municipality",
+      province: "Eastern Cape",
+    };
+    const pack = build({
+      marketAddressIntelligence: address({
+        selectedAddressId: "addr-1",
+        userConfirmedAddress: confirmed,
+      }),
+    });
+    const confirmedClaims = pack.claims.filter((claim) => claim.sourceIds.includes("address-addr-confirmed-outside"));
+
+    expect(pack.sources.filter((source) => source.id === "address-addr-confirmed-outside")).toHaveLength(1);
+    expect(confirmedClaims.map((claim) => claim.key)).toEqual(
+      expect.arrayContaining(["marketAddress", "municipality", "province", "coordinates"]),
+    );
+    expect(confirmedClaims.every((claim) => claim.userConfirmed && claim.status === "supported")).toBe(true);
+    expect(pack.claims.filter((claim) => claim.id === "claim-address-addr-confirmed-outside-marketAddress")).toHaveLength(1);
   });
 });

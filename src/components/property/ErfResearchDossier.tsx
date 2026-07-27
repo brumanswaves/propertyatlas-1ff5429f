@@ -82,6 +82,10 @@ import {
   type AskEasyErfEvidenceSourceType,
 } from "@/lib/reports/askEasyErf";
 import {
+  loadReportPropertyNotes,
+  type PropertyNotes,
+} from "@/lib/workbench/propertyNotes";
+import {
   buildReportSnapshot,
   clearReportSnapshots,
   compareReportSnapshots,
@@ -1383,6 +1387,7 @@ function StoepAiReportView({
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: DossierView) => void;
 }) {
+  const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
@@ -1400,6 +1405,27 @@ function StoepAiReportView({
     selectedSiteMode === "skipped" ||
     workspaceState.sitePotential.skipped ||
     workspaceState.sitePotential.progressState === "skipped";
+  const notesRequestRef = useRef(0);
+  const [reportNotes, setReportNotes] = useState<PropertyNotes | null>(null);
+
+  useEffect(() => {
+    notesRequestRef.current += 1;
+    const requestId = notesRequestRef.current;
+    const userId = user?.id ?? null;
+    const parcelId = parcel.id;
+    setReportNotes(null);
+    void loadReportPropertyNotes(
+      parcelId,
+      userId,
+      () => notesRequestRef.current === requestId && parcel.id === parcelId && (user?.id ?? null) === userId,
+    ).then((result) => {
+      if (notesRequestRef.current !== requestId) return;
+      if (result.status === "loaded") setReportNotes(result.notes);
+    });
+    return () => {
+      notesRequestRef.current += 1;
+    };
+  }, [parcel.id, user?.id]);
 
   const report = buildReportViewModel({
     parcel,
@@ -1410,6 +1436,7 @@ function StoepAiReportView({
     chosenScenario,
     strategyScenarios: scenarios,
     selectedSiteDesign: selectedDesign,
+    propertyNotes: reportNotes,
     strategyWorkspace,
     sitePotentialProject: siteProject.project ?? null,
     siteBrief: siteProject.project?.design_brief ?? null,

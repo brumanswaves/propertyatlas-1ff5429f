@@ -114,7 +114,7 @@ describe("buildDecisionIntelligence", () => {
     );
     const result = buildDecisionIntelligence(report);
 
-    expect(result.confidencePercent).toBeGreaterThan(20);
+    expect(result.confidencePercent).toBeGreaterThan(10);
     expect(result.known.some((item) => item.includes("Erf number"))).toBe(true);
     expect(result.stillNeeded.some((item) => /title deed|WinDeed|Lightstone/i.test(item))).toBe(
       true,
@@ -172,5 +172,25 @@ describe("buildDecisionIntelligence", () => {
     expect(["proceed", "proceed_with_conditions", "investigate_further", "high_risk"]).toContain(
       result.verdict,
     );
+  });
+
+  it("does not cap the risk penalty when many risks exist", () => {
+    const report = buildReportViewModel(reportInput());
+    report.brief.categories = report.brief.categories.map((category) => ({
+      ...category,
+      state: "confirmed",
+    }));
+    report.risks = Array.from({ length: 10 }, (_, index) => ({
+      id: `risk-${index}`,
+      title: `High risk ${index}`,
+      severity: "high" as const,
+      why: "Material unresolved evidence issue.",
+      evidence: "Test evidence",
+      nextAction: "Resolve the issue.",
+    }));
+
+    const result = buildDecisionIntelligence(report);
+
+    expect(result.confidencePercent).toBe(40);
   });
 });

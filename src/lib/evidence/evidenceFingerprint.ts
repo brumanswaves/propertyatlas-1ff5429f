@@ -1,6 +1,14 @@
 import type { PropertyEvidencePack } from "./propertyEvidenceTypes";
 
 const VOLATILE_KEYS = new Set(["builtAt", "signedUrl", "signed_url", "downloadUrl", "download_url"]);
+const SET_LIKE_ARRAY_KEYS = new Set([
+  "sourceIds",
+  "claimIds",
+  "assetIds",
+  "generatedDesignAssetIds",
+  "reviewedSourceIds",
+  "openedSourceIds",
+]);
 
 export function evidenceFingerprint(input: unknown): string {
   const stable = stableStringify(stripVolatile(input));
@@ -27,15 +35,19 @@ export function fingerprintPropertyEvidencePack(pack: Omit<PropertyEvidencePack,
   });
 }
 
-function stripVolatile(value: unknown): unknown {
+function stripVolatile(value: unknown, keyHint?: string): unknown {
   if (Array.isArray(value)) {
-    return value.map(stripVolatile);
+    const normalized = value.map((item) => stripVolatile(item));
+    if (keyHint && SET_LIKE_ARRAY_KEYS.has(keyHint)) {
+      return normalized.slice().sort((a, b) => stableStringify(a).localeCompare(stableStringify(b)));
+    }
+    return normalized;
   }
   if (!value || typeof value !== "object") return value;
   const next: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
     if (VOLATILE_KEYS.has(key)) continue;
-    next[key] = stripVolatile(item);
+    next[key] = stripVolatile(item, key);
   }
   return next;
 }

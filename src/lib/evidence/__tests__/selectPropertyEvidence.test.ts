@@ -117,4 +117,86 @@ describe("selectPropertyEvidence", () => {
     );
     expect(result.claims.every((claim) => claim.parcelId === "parcel-a")).toBe(true);
   });
+
+  it("treats maxSourceFragments as a total limit across all selected sources", () => {
+    const result = selectPropertyEvidence(
+      buildEvidencePackFixture({
+        assets: [
+          evidenceAsset({ id: "doc-a", metadata: { extractionStatus: "ready", extractedText: "Planning fragment A" } }),
+          evidenceAsset({ id: "doc-b", metadata: { extractionStatus: "ready", extractedText: "Planning fragment B" } }),
+          evidenceAsset({ id: "doc-c", metadata: { extractionStatus: "ready", extractedText: "Planning fragment C" } }),
+        ],
+      }),
+      {
+        question: "planning fragment document evidence",
+        domains: ["documents"],
+        maxSourceFragments: 2,
+        maxTotalCharacters: 2_000,
+      },
+    );
+    const fragmentCount = result.sources.reduce((sum, source) => sum + source.fragments.length, 0);
+
+    expect(fragmentCount).toBeLessThanOrEqual(2);
+  });
+
+  it("returns structured sources only when their fragments are rendered", () => {
+    const result = selectPropertyEvidence(buildEvidencePackFixture(), {
+      question: "SG diagram document text",
+      domains: ["documents"],
+      maxSourceFragments: 1,
+      maxTotalCharacters: 1_200,
+    });
+
+    for (const source of result.sources) {
+      for (const fragment of source.fragments) {
+        expect(result.text).toContain(fragment);
+      }
+    }
+  });
+
+  it("excludes unrelated gaps from a focused question", () => {
+    const result = selectPropertyEvidence(buildEvidencePackFixture(), {
+      question: "zoning and planning controls",
+      domains: ["planning"],
+      maxTotalCharacters: 2_000,
+    });
+
+    expect(result.gaps.every((gap) => gap.domain === "planning" || /planning|zoning/i.test(`${gap.title} ${gap.explanation}`))).toBe(true);
+    expect(result.gaps.map((gap) => gap.id)).not.toContain("ownership-not-verified");
+  });
+
+  it("pulls sources that support a relevant contradiction", () => {
+    const result = selectPropertyEvidence(
+      buildEvidencePackFixture({
+        savedMarketEvidence: [
+          evidenceMarket({
+            id: "subject",
+            listingRole: "subject_active_listing",
+            relationship: "target_asset",
+            landSizeM2: 1200,
+          }),
+        ],
+      }),
+      {
+        question: "subject listing land size mismatch",
+        domains: ["market", "identity"],
+        maxSourceFragments: 4,
+        maxTotalCharacters: 2_000,
+      },
+    );
+
+    expect(result.contradictions.map((item) => item.id)).toContain("subject-land-size-mismatch-subject");
+    expect(result.sources.map((source) => source.id)).toEqual(
+      expect.arrayContaining(["official-parcel-record", "market-subject"]),
+    );
+  });
+
+  it("returns a deterministic blank-question fallback", () => {
+    const first = selectPropertyEvidence(buildEvidencePackFixture(), { maxClaims: 4, maxSourceFragments: 2 });
+    const second = selectPropertyEvidence(buildEvidencePackFixture(), { maxClaims: 4, maxSourceFragments: 2 });
+
+    expect(first.text).toBe(second.text);
+    expect(first.gaps.map((gap) => gap.id)).toEqual(second.gaps.map((gap) => gap.id));
+    expect(first.contradictions.map((item) => item.id)).toEqual(second.contradictions.map((item) => item.id));
+  });
 });

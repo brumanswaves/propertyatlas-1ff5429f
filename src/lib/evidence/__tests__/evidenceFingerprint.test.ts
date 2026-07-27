@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evidenceFingerprint } from "../evidenceFingerprint";
 import {
   buildEvidencePackFixture,
+  evidenceAsset,
   evidenceMarket,
   evidenceScenario,
 } from "./propertyEvidenceTestUtils";
@@ -47,6 +48,43 @@ describe("evidenceFingerprint", () => {
   it("normalizes irrelevant object-key ordering", () => {
     expect(evidenceFingerprint({ b: 2, a: { y: 2, x: 1 } })).toBe(
       evidenceFingerprint({ a: { x: 1, y: 2 }, b: 2 }),
+    );
+  });
+
+  it("does not change when asset input order changes", () => {
+    const assets = [
+      evidenceAsset({ id: "asset-a", original_file_name: "a.pdf" }),
+      evidenceAsset({ id: "asset-b", original_file_name: "b.pdf" }),
+    ];
+
+    expect(buildEvidencePackFixture({ assets }).fingerprint).toBe(
+      buildEvidencePackFixture({ assets: assets.slice().reverse() }).fingerprint,
+    );
+  });
+
+  it("does not change when market evidence input order changes", () => {
+    const evidence = [
+      evidenceMarket({ id: "market-a", askingPrice: 1_100_000 }),
+      evidenceMarket({ id: "market-b", askingPrice: 1_200_000 }),
+    ];
+
+    expect(buildEvidencePackFixture({ savedMarketEvidence: evidence }).fingerprint).toBe(
+      buildEvidencePackFixture({ savedMarketEvidence: evidence.slice().reverse() }).fingerprint,
+    );
+  });
+
+  it("does not change when strategy scenario input order changes", () => {
+    const chosen = evidenceScenario({ id: "scenario-a", inputs: { landCost: "1200000" } });
+    const other = evidenceScenario({ id: "scenario-b", inputs: { landCost: "1300000" }, selected: false });
+
+    expect(buildEvidencePackFixture({ chosenScenario: chosen, strategyScenarios: [chosen, other] }).fingerprint).toBe(
+      buildEvidencePackFixture({ chosenScenario: chosen, strategyScenarios: [other, chosen] }).fingerprint,
+    );
+  });
+
+  it("canonicalizes source ID ordering", () => {
+    expect(evidenceFingerprint({ sourceIds: ["b", "a"], value: 1 })).toBe(
+      evidenceFingerprint({ sourceIds: ["a", "b"], value: 1 }),
     );
   });
 });

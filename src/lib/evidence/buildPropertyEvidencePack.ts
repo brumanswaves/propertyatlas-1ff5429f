@@ -48,6 +48,7 @@ const PLANNING_KEYS: Array<[string, string, string[]]> = [
 const FRAGMENT_LIMIT = 1_200;
 const AREA_MISMATCH_PERCENT = 10;
 const AREA_MISMATCH_M2 = 20;
+const OFFICIAL_PARCEL_SOURCES = new Set(["csg", "kouga", "kouga-sg"]);
 
 interface MutablePack {
   parcelId: string;
@@ -164,13 +165,17 @@ function addOfficialParcelEvidence(
   systemSourceId: string,
 ) {
   const { parcel } = input;
+  const isOfficialParcel = isOfficialParcelSource(
+    parcel.source ?? parcel.knownFields[0]?.source ?? parcel.sourceLabel,
+  );
+  const parcelSourceId = isOfficialParcel ? "official-parcel-record" : "manual-parcel-record";
   const sourceId = addSource(pack, {
-    id: "official-parcel-record",
+    id: parcelSourceId,
     parcelId: parcel.id,
-    kind: "official_parcel",
-    label: parcel.sourceLabel || "Official parcel record",
-    authorityType: "official",
-    sourceQuality: "direct",
+    kind: isOfficialParcel ? "official_parcel" : "user_confirmation",
+    label: parcel.sourceLabel || (isOfficialParcel ? "Official parcel record" : "Manual parcel record"),
+    authorityType: isOfficialParcel ? "official" : "user_supplied",
+    sourceQuality: isOfficialParcel ? "direct" : "reference",
     status: "ready",
     capturedAt: input.workspaceState.updatedAt,
     updatedAt: input.workspaceState.updatedAt,
@@ -178,7 +183,7 @@ function addOfficialParcelEvidence(
     fragments: [],
   });
 
-  const official = (key: string, label: string, value: unknown, fieldPath: string, domain: EvidenceDomain = "identity", unit?: string) => {
+  const parcelClaim = (key: string, label: string, value: unknown, fieldPath: string, domain: EvidenceDomain = "identity", unit?: string) => {
     if (value == null || String(value).trim() === "") return;
     addClaim(pack, {
       id: claimId(domain, key, fieldPath),
@@ -189,10 +194,12 @@ function addOfficialParcelEvidence(
       value: typeof value === "number" ? value : String(value),
       normalizedValue: normalizeValue(value),
       unit: unit ?? null,
-      nature: "fact",
+      nature: isOfficialParcel ? "fact" : "observation",
       status: "supported",
-      confidence: "high",
-      confidenceReason: "Supplied by the normalized official parcel record. Confirm legal reliance with the source authority.",
+      confidence: isOfficialParcel ? "high" : "unverified",
+      confidenceReason: isOfficialParcel
+        ? "Supplied by the normalized official parcel record. Confirm legal reliance with the source authority."
+        : "User-supplied parcel identity. It is not an official cadastral record until checked against CSG or municipal sources.",
       sourceIds: [sourceId],
       locators: [{ fieldPath }],
       observedAt: input.workspaceState.updatedAt,
@@ -202,16 +209,16 @@ function addOfficialParcelEvidence(
     });
   };
 
-  official("erfNumber", "Erf number", parcel.erfNumber, "parcel.erfNumber");
-  official("portion", "Portion", parcel.portion, "parcel.portion");
-  official("lpi", "LPI", parcel.lpi, "parcel.lpi");
-  official("parcelKey", "Parcel key", parcel.parcelKey, "parcel.parcelKey");
-  official("municipality", "Municipality", parcel.municipality, "parcel.municipality");
-  official("province", "Province", parcel.province, "parcel.province");
-  official("suburbOrArea", "Suburb or area", parcel.suburbOrArea, "parcel.suburbOrArea");
-  official("town", "Town", parcel.town, "parcel.town");
+  parcelClaim("erfNumber", "Erf number", parcel.erfNumber, "parcel.erfNumber");
+  parcelClaim("portion", "Portion", parcel.portion, "parcel.portion");
+  parcelClaim("lpi", "LPI", parcel.lpi, "parcel.lpi");
+  parcelClaim("parcelKey", "Parcel key", parcel.parcelKey, "parcel.parcelKey");
+  parcelClaim("municipality", "Municipality", parcel.municipality, "parcel.municipality");
+  parcelClaim("province", "Province", parcel.province, "parcel.province");
+  parcelClaim("suburbOrArea", "Suburb or area", parcel.suburbOrArea, "parcel.suburbOrArea");
+  parcelClaim("town", "Town", parcel.town, "parcel.town");
   if (parcel.coordinates) {
-    official(
+    parcelClaim(
       "coordinates",
       "Coordinates",
       `${parcel.coordinates.lat},${parcel.coordinates.lng}`,
@@ -221,7 +228,7 @@ function addOfficialParcelEvidence(
   }
 
   const raw = parcel.rawProperties ?? {};
-  const areaCandidates = candidates(raw, AREA_KEYS);
+  const areaCandidates = isOfficialParcel ? candidates(raw, AREA_KEYS) : [];
   for (const candidate of areaCandidates) {
     addClaim(pack, {
       id: claimId("identity", "areaM2", candidate.path),
@@ -244,7 +251,7 @@ function addOfficialParcelEvidence(
       excluded: false,
     });
   }
-  const zoningCandidates = candidates(raw, ZONING_KEYS);
+  const zoningCandidates = isOfficialParcel ? candidates(raw, ZONING_KEYS) : [];
   for (const candidate of zoningCandidates) {
     addClaim(pack, {
       id: claimId("planning", "zoning", candidate.path),
@@ -266,7 +273,7 @@ function addOfficialParcelEvidence(
       excluded: false,
     });
   }
-  for (const [key, label, keys] of PLANNING_KEYS) {
+  for (const [key, label, keys] of isOfficialParcel ? PLANNING_KEYS : []) {
     for (const candidate of candidates(raw, keys)) {
       addClaim(pack, {
         id: claimId("planning", key, candidate.path),
@@ -302,7 +309,9 @@ function addOfficialParcelEvidence(
       nature: "observation",
       status: "supported",
       confidence: "medium",
-      confidenceReason: "The user marked the official parcel identity as checked. This is workflow confirmation, not legal certification.",
+      confidenceReason: isOfficialParcel
+        ? "The user marked the official parcel identity as checked. This is workflow confirmation, not legal certification."
+        : "The user reviewed a manually supplied parcel identity. This does not convert it into an official record.",
       sourceIds: [systemSourceId],
       locators: [{ fieldPath: "workspaceState.identityStatus" }],
       observedAt: input.workspaceState.updatedAt,
@@ -360,45 +369,99 @@ function addResearchSources(pack: MutablePack, input: BuildPropertyEvidencePackI
 function addAddressEvidence(pack: MutablePack, input: BuildPropertyEvidencePackInput) {
   const intelligence = input.marketAddressIntelligence;
   if (!intelligence) return;
+  const confirmedId = intelligence.userConfirmedAddress?.id ?? null;
+  const seen = new Set<string>();
   for (const candidate of intelligence.candidates) {
-    const confirmed = intelligence.userConfirmedAddress?.id === candidate.id || intelligence.selectedAddressId === candidate.id;
-    const sourceId = addSource(pack, {
-      id: `address-${candidate.id}`,
-      parcelId: input.parcel.id,
-      kind: confirmed ? "user_confirmation" : "system_state",
-      label: confirmed ? "User-confirmed market address" : "Address candidate",
-      authorityType: confirmed ? "user_supplied" : "market",
-      sourceQuality: "reference",
-      status: confirmed ? "reviewed" : "not_opened",
-      capturedAt: candidate.createdAt,
-      updatedAt: candidate.updatedAt ?? candidate.createdAt,
-      locators: [{ fieldPath: `marketAddressIntelligence.candidates.${candidate.id}` }],
-      fragments: [candidate.reason].filter(Boolean).map(limitFragment),
-    });
-    addClaim(pack, {
-      id: `claim-address-${candidate.id}`,
-      parcelId: input.parcel.id,
-      domain: "address",
-      key: "marketAddress",
-      label: confirmed ? "Confirmed market address" : "Address candidate",
-      value: candidate.formattedAddress,
-      normalizedValue: normalizeValue(candidate.formattedAddress),
-      nature: "observation",
-      status: confirmed ? "supported" : "not_reviewed",
-      confidence: confirmed ? "medium" : candidate.confidence,
-      confidenceReason:
-        candidate.source === "google_reverse_geocode"
-          ? "Google reverse geocoding is address context only and is not official cadastral identity."
-          : candidate.reason,
-      sourceIds: [sourceId],
-      locators: [{ fieldPath: `marketAddressIntelligence.candidates.${candidate.id}` }],
-      observedAt: candidate.createdAt,
-      updatedAt: candidate.updatedAt ?? candidate.createdAt,
-      userConfirmed: confirmed,
-      excluded: false,
-      notes: candidate.reason,
-    });
+    seen.add(candidate.id);
+    addAddressCandidateEvidence(
+      pack,
+      input.parcel.id,
+      candidate,
+      confirmedId === candidate.id,
+      `marketAddressIntelligence.candidates.${candidate.id}`,
+    );
   }
+  if (intelligence.userConfirmedAddress && !seen.has(intelligence.userConfirmedAddress.id)) {
+    addAddressCandidateEvidence(
+      pack,
+      input.parcel.id,
+      intelligence.userConfirmedAddress,
+      true,
+      "marketAddressIntelligence.userConfirmedAddress",
+    );
+  }
+}
+
+function addAddressCandidateEvidence(
+  pack: MutablePack,
+  parcelId: string,
+  candidate: NonNullable<BuildPropertyEvidencePackInput["marketAddressIntelligence"]>["candidates"][number],
+  confirmed: boolean,
+  fieldPath: string,
+) {
+  const sourceId = addSource(pack, {
+    id: `address-${candidate.id}`,
+    parcelId,
+    kind: confirmed ? "user_confirmation" : "system_state",
+    label: confirmed ? "Confirmed market address" : "Address candidate",
+    authorityType: confirmed ? "user_supplied" : "market",
+    sourceQuality: "reference",
+    status: confirmed ? "reviewed" : "not_opened",
+    capturedAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt ?? candidate.createdAt,
+    locators: [{ fieldPath }],
+    fragments: [candidate.reason].filter(Boolean).map(limitFragment),
+  });
+  const reason =
+    candidate.source === "google_reverse_geocode"
+      ? "Google reverse geocoding is address context only and is not official cadastral identity."
+      : candidate.reason;
+  const status = confirmed ? "supported" : "not_reviewed";
+  const confidence = confirmed ? "medium" : candidate.confidence;
+  addAddressClaim(pack, parcelId, candidate.id, "marketAddress", confirmed ? "Confirmed market address" : "Address candidate", candidate.formattedAddress, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+  addAddressClaim(pack, parcelId, candidate.id, "municipality", "Market address municipality", candidate.municipality ?? null, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+  addAddressClaim(pack, parcelId, candidate.id, "province", "Market address province", candidate.province ?? null, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+  if (candidate.lat != null && candidate.lng != null) {
+    addAddressClaim(pack, parcelId, candidate.id, "coordinates", "Market address coordinates", `${candidate.lat},${candidate.lng}`, fieldPath, sourceId, status, confidence, reason, candidate.createdAt, candidate.updatedAt, confirmed);
+  }
+}
+
+function addAddressClaim(
+  pack: MutablePack,
+  parcelId: string,
+  addressId: string,
+  key: string,
+  label: string,
+  value: unknown,
+  fieldPath: string,
+  sourceId: string,
+  status: EvidenceClaim["status"],
+  confidence: EvidenceClaim["confidence"],
+  confidenceReason: string,
+  createdAt: string,
+  updatedAt: string | null | undefined,
+  userConfirmed: boolean,
+) {
+  if (value == null || String(value).trim() === "") return;
+  addClaim(pack, {
+    id: `claim-address-${addressId}-${key}`,
+    parcelId,
+    domain: "address",
+    key,
+    label,
+    value: typeof value === "number" ? value : String(value),
+    normalizedValue: normalizeValue(value),
+    nature: "observation",
+    status,
+    confidence,
+    confidenceReason,
+    sourceIds: [sourceId],
+    locators: [{ fieldPath }],
+    observedAt: createdAt,
+    updatedAt: updatedAt ?? createdAt,
+    userConfirmed,
+    excluded: false,
+  });
 }
 
 function addMarketEvidence(pack: MutablePack, evidence: SavedMarketEvidence[]) {
@@ -821,13 +884,38 @@ function addContradictions(
   input: BuildPropertyEvidencePackInput,
   evidence: SavedMarketEvidence[],
 ) {
-  const confirmedAddress = input.marketAddressIntelligence?.userConfirmedAddress ??
-    input.marketAddressIntelligence?.candidates.find((candidate) => candidate.id === input.marketAddressIntelligence?.selectedAddressId);
+  const confirmedAddress = input.marketAddressIntelligence?.userConfirmedAddress ?? null;
   if (confirmedAddress?.municipality && input.parcel.municipality && normalizeText(confirmedAddress.municipality) !== normalizeText(input.parcel.municipality)) {
-    addContradiction(pack, "market-address-municipality-mismatch", "Confirmed market-address municipality differs from official municipality", "high", "The user-confirmed market address and official parcel municipality disagree.", [`Market address: ${confirmedAddress.municipality}`, `Official parcel: ${input.parcel.municipality}`], "Reconfirm the Market address and official parcel identity.", "listings");
+    const officialClaim = findClaim(pack, "identity", "municipality");
+    const addressClaim = findClaim(pack, "address", "municipality", `claim-address-${confirmedAddress.id}-municipality`);
+    addContradiction(pack, {
+      id: "market-address-municipality-mismatch",
+      title: "Confirmed market-address municipality differs from parcel municipality",
+      severity: "high",
+      explanation: "The user-confirmed market address and parcel municipality disagree.",
+      claimIds: compact([officialClaim?.id, addressClaim?.id]),
+      sourceIds: unique(compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])])),
+      displayedValues: [`Market address: ${confirmedAddress.municipality}`, `Parcel: ${input.parcel.municipality}`],
+      nextAction: "Reconfirm the Market address and parcel identity.",
+      targetTab: "listings",
+    });
+    markClaimsConflicting(pack, compact([officialClaim?.id, addressClaim?.id]));
   }
   if (confirmedAddress?.province && input.parcel.province && normalizeText(confirmedAddress.province) !== normalizeText(input.parcel.province)) {
-    addContradiction(pack, "market-address-province-mismatch", "Confirmed market-address province differs from official province", "high", "The user-confirmed market address and official parcel province disagree.", [`Market address: ${confirmedAddress.province}`, `Official parcel: ${input.parcel.province}`], "Reconfirm the Market address and official parcel identity.", "listings");
+    const officialClaim = findClaim(pack, "identity", "province");
+    const addressClaim = findClaim(pack, "address", "province", `claim-address-${confirmedAddress.id}-province`);
+    addContradiction(pack, {
+      id: "market-address-province-mismatch",
+      title: "Confirmed market-address province differs from parcel province",
+      severity: "high",
+      explanation: "The user-confirmed market address and parcel province disagree.",
+      claimIds: compact([officialClaim?.id, addressClaim?.id]),
+      sourceIds: unique(compact([...(officialClaim?.sourceIds ?? []), ...(addressClaim?.sourceIds ?? [])])),
+      displayedValues: [`Market address: ${confirmedAddress.province}`, `Parcel: ${input.parcel.province}`],
+      nextAction: "Reconfirm the Market address and parcel identity.",
+      targetTab: "listings",
+    });
+    markClaimsConflicting(pack, compact([officialClaim?.id, addressClaim?.id]));
   }
   addAliasConflict(pack, "identity", "areaM2", "official-area-alias-conflict", "Official area aliases disagree", "Verify the registered erf area against the SG diagram.");
   addAliasConflict(pack, "planning", "zoning", "official-zoning-alias-conflict", "Official zoning aliases disagree", "Verify zoning against municipal planning records.");
@@ -835,14 +923,41 @@ function addContradictions(
   const officialArea = firstClaimNumber(pack.claims, "identity", "areaM2", true);
   const subjectListings = evidence.filter((item) => item.listingRole === "subject_active_listing");
   if (subjectListings.length > 1) {
-    addContradiction(pack, "multiple-subject-active-listings", "More than one active subject listing is saved", "medium", "Multiple listings are marked as the active listing for this erf.", subjectListings.map((item) => item.title), "Keep one active subject listing and convert others to comparable evidence.", "listings");
+    const listingClaims = subjectListings
+      .map((item) => findClaim(pack, "market", "listingRole", `claim-market-${item.id}-listingRole`))
+      .filter((claim): claim is EvidenceClaim => Boolean(claim));
+    addContradiction(pack, {
+      id: "multiple-subject-active-listings",
+      title: "More than one active subject listing is saved",
+      severity: "medium",
+      explanation: "Multiple listings are marked as the active listing for this erf.",
+      claimIds: listingClaims.map((claim) => claim.id),
+      sourceIds: unique(listingClaims.flatMap((claim) => claim.sourceIds)),
+      displayedValues: subjectListings.map((item) => `${item.title}: ${item.listingRole ?? "unknown role"}`),
+      nextAction: "Keep one active subject listing and convert others to comparable evidence.",
+      targetTab: "listings",
+    });
+    markClaimsConflicting(pack, listingClaims.map((claim) => claim.id));
   }
   for (const listing of subjectListings) {
     if (!officialArea || !listing.landSizeM2) continue;
     const diff = Math.abs(officialArea - listing.landSizeM2);
     const pct = (diff / officialArea) * 100;
     if (pct > AREA_MISMATCH_PERCENT && diff > AREA_MISMATCH_M2) {
-      addContradiction(pack, `subject-land-size-mismatch-${listing.id}`, "Subject listing land size differs from official erf area", "medium", `Difference is ${pct.toFixed(1)}% and ${Math.round(diff)} m2, above the ${AREA_MISMATCH_PERCENT}% and ${AREA_MISMATCH_M2} m2 threshold.`, [`Official area: ${officialArea} m2`, `Listing land size: ${listing.landSizeM2} m2`], "Check the listing against the SG diagram and official parcel record.", "listings");
+      const areaClaim = findClaim(pack, "identity", "areaM2");
+      const listingClaim = findClaim(pack, "market", "landSizeM2", `claim-market-${listing.id}-landSizeM2`);
+      addContradiction(pack, {
+        id: `subject-land-size-mismatch-${listing.id}`,
+        title: "Subject listing land size differs from official erf area",
+        severity: "medium",
+        explanation: `Difference is ${pct.toFixed(1)}% and ${Math.round(diff)} m2, above the ${AREA_MISMATCH_PERCENT}% and ${AREA_MISMATCH_M2} m2 threshold.`,
+        claimIds: compact([areaClaim?.id, listingClaim?.id]),
+        sourceIds: unique(compact([...(areaClaim?.sourceIds ?? []), ...(listingClaim?.sourceIds ?? [])])),
+        displayedValues: [`Official area: ${officialArea} m2`, `Listing land size: ${listing.landSizeM2} m2`],
+        nextAction: "Check the listing against the SG diagram and parcel record.",
+        targetTab: "listings",
+      });
+      markClaimsConflicting(pack, compact([areaClaim?.id, listingClaim?.id]));
     }
   }
   const sourceIds = new Set(pack.sources.map((source) => source.id));
@@ -988,12 +1103,20 @@ function buildDomainSummaries(pack: MutablePack): EvidenceDomainSummary[] {
 function addSource(pack: MutablePack, source: EvidenceSourceReference): string {
   const existing = pack.sources.find((item) => item.id === source.id);
   if (existing) return existing.id;
-  pack.sources.push({ ...source, fragments: source.fragments.map(limitFragment) });
+  pack.sources.push({
+    ...source,
+    locators: sortLocators(source.locators),
+    fragments: source.fragments.map(limitFragment),
+  });
   return source.id;
 }
 
 function addClaim(pack: MutablePack, claim: EvidenceClaim) {
-  pack.claims.push(claim);
+  pack.claims.push({
+    ...claim,
+    sourceIds: unique(claim.sourceIds).sort(),
+    locators: sortLocators(claim.locators),
+  });
 }
 
 function addTimelineEvent(pack: MutablePack, event: EvidenceTimelineEvent) {
@@ -1001,8 +1124,17 @@ function addTimelineEvent(pack: MutablePack, event: EvidenceTimelineEvent) {
   pack.timeline.push(event);
 }
 
-function addContradiction(pack: MutablePack, id: string, title: string, severity: "low" | "medium" | "high", explanation: string, displayedValues: string[], nextAction: string, targetTab: string) {
-  pack.contradictions.push({ id, parcelId: pack.parcelId, title, severity, explanation, claimIds: [], sourceIds: [], displayedValues, nextAction, targetTab });
+function addContradiction(
+  pack: MutablePack,
+  contradiction: Omit<EvidenceContradiction, "parcelId">,
+) {
+  pack.contradictions.push({
+    ...contradiction,
+    parcelId: pack.parcelId,
+    claimIds: unique(contradiction.claimIds),
+    sourceIds: unique(contradiction.sourceIds),
+    displayedValues: unique(contradiction.displayedValues),
+  });
 }
 
 function addAliasConflict(pack: MutablePack, domain: EvidenceDomain, key: string, id: string, title: string, nextAction: string) {
@@ -1022,6 +1154,21 @@ function addAliasConflict(pack: MutablePack, domain: EvidenceDomain, key: string
     targetTab: "research",
   });
   for (const claim of claims) claim.status = "conflicting";
+}
+
+function findClaim(pack: MutablePack, domain: EvidenceDomain, key: string, id?: string) {
+  if (id) {
+    const exact = pack.claims.find((claim) => claim.id === id);
+    if (exact) return exact;
+  }
+  return pack.claims.find((claim) => claim.domain === domain && claim.key === key && !claim.excluded) ?? null;
+}
+
+function markClaimsConflicting(pack: MutablePack, claimIds: string[]) {
+  const ids = new Set(claimIds);
+  for (const claim of pack.claims) {
+    if (ids.has(claim.id)) claim.status = "conflicting";
+  }
 }
 
 function marketClaim(pack: MutablePack, item: SavedMarketEvidence, base: Partial<EvidenceClaim>, key: string, label: string, value: unknown, unit?: string) {
@@ -1173,4 +1320,20 @@ function domainExplanation(domain: EvidenceDomain, state: EvidenceDomainState, s
   if (state === "conflicting") return `${domain} contains conflicting visible evidence.`;
   if (state === "missing") return `${domain} is missing required evidence.`;
   return `${domain} has not been reviewed yet.`;
+}
+
+function isOfficialParcelSource(source: string | null | undefined) {
+  return Boolean(source && OFFICIAL_PARCEL_SOURCES.has(source.toLowerCase()));
+}
+
+function compact<T>(values: Array<T | null | undefined>): T[] {
+  return values.filter((value): value is T => value != null);
+}
+
+function unique<T>(values: T[]): T[] {
+  return Array.from(new Set(values));
+}
+
+function sortLocators(locators: EvidenceLocator[]) {
+  return locators.slice().sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 }

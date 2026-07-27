@@ -119,12 +119,11 @@ function calculateConfidence(
   const categoryAverage =
     categories.reduce((sum, category) => sum + category.score, 0) /
     Math.max(categories.length, 1);
-  const rawRiskPenalty = risks.reduce(
+  const riskPenalty = risks.reduce(
     (sum, risk) => sum + RISK_WEIGHT[risk.severity],
     0,
   );
-  const riskPenalty = Math.min(rawRiskPenalty / 4, 18);
-  return clamp(Math.round(categoryAverage - riskPenalty), 0, 100);
+  return clamp(Math.round(categoryAverage - riskPenalty / 4), 0, 100);
 }
 
 function determineVerdict(

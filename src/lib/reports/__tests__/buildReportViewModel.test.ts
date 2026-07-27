@@ -104,6 +104,109 @@ describe("buildReportViewModel", () => {
     expect(vm.identity.addressAndOfficialMismatch).toBe(true);
   });
 
+  it("does not treat a selected address candidate as confirmed report identity", () => {
+    const vm = buildReportViewModel(
+      baseInput({
+        marketAddress: {
+          selectedAddressId: "addr-1",
+          candidates: [
+            {
+              id: "addr-1",
+              formattedAddress: "Selected only address",
+              municipality: "Kouga",
+              source: "google_reverse_geocode",
+              confidence: "medium",
+              reason: "reverse geocode",
+              createdAt: "2026-01-01T00:00:00Z",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(vm.identity.marketAddressLine).toBeNull();
+    expect(vm.evidencePack?.claims.find((claim) => claim.id === "claim-address-addr-1-marketAddress")).toMatchObject({
+      status: "not_reviewed",
+      userConfirmed: false,
+    });
+  });
+
+  it("uses canonical pack values for planning labels, market, documents, strategy and site", () => {
+    const savedEvidence = buildEvidence(3);
+    const chosenScenario = {
+      id: "scenario-1",
+      parcelId: "parcel:erf-224",
+      label: "Development to sell",
+      strategy: "development_sell",
+      inputs: { landCost: "1000000" },
+      summary: [{ label: "Profit", value: "R 10" }],
+      selected: true,
+      savedAt: "2026-01-01T00:00:00Z",
+    };
+    const vm = buildReportViewModel(
+      baseInput({
+        workspaceState: {
+          ...createEmptyErfWorkspaceState(),
+          chosenScenarioId: "scenario-1",
+          sitePotential: {
+            ...createEmptyErfWorkspaceState().sitePotential,
+            selectedDesignAssetId: "design-1",
+            conceptCount: 1,
+          },
+        },
+        savedEvidence,
+        chosenScenario,
+        strategyScenarios: [chosenScenario],
+        assets: [
+          {
+            id: "design-1",
+            user_id: "user-1",
+            parcel_id: "parcel:erf-224",
+            asset_category: "generated_design",
+            asset_type: "image",
+            source_label: "Concept",
+            storage_bucket: "erf-files",
+            storage_path: "concept.png",
+            original_file_name: "concept.png",
+            mime_type: "image/png",
+            size_bytes: 10,
+            checksum_sha256: null,
+            status: "ready",
+            metadata: {},
+            local_migration_fingerprint: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        selectedSiteDesign: {
+          id: "design-1",
+          user_id: "user-1",
+          parcel_id: "parcel:erf-224",
+          asset_category: "generated_design",
+          asset_type: "image",
+          source_label: "Concept",
+          storage_bucket: "erf-files",
+          storage_path: "concept.png",
+          original_file_name: "concept.png",
+          mime_type: "image/png",
+          size_bytes: 10,
+          checksum_sha256: null,
+          status: "ready",
+          metadata: {},
+          local_migration_fingerprint: null,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+      }),
+    );
+
+    expect(vm.planning.find((field) => field.label === "Erf size (mÂ²)")?.value).toBe("987");
+    expect(vm.market.evidenceCount).toBe(3);
+    expect(vm.documents.assetCount).toBe(1);
+    expect(vm.strategy.chosen?.id).toBe("scenario-1");
+    expect(vm.site.selectedDesign?.id).toBe("design-1");
+  });
+
   it("attaches the concept-only disclaimer whenever a Site Potential design is selected", () => {
     const vm = buildReportViewModel(
       baseInput({

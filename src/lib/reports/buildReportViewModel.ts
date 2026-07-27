@@ -265,6 +265,42 @@ function buildIdentity(
   };
 }
 
+function buildIdentityFromPack(
+  pack: PropertyEvidencePack,
+  parcel: NormalizedOfficialParcel,
+): PropertyIdentityDisplay {
+  const identityClaim = (key: string) => firstSupportedOrObservedClaim(pack, "identity", key);
+  const addressClaim = (key: string) => supportedClaim(pack, "address", key);
+  const erfNumber = identityClaim("erfNumber")?.value ?? parcel.erfNumber ?? null;
+  const portion = identityClaim("portion")?.value ?? parcel.portion ?? null;
+  const municipality = stringOrNull(identityClaim("municipality")?.value ?? parcel.municipality);
+  const province = stringOrNull(identityClaim("province")?.value ?? parcel.province);
+  const marketAddressLine = stringOrNull(addressClaim("marketAddress")?.value);
+  const officialParts: string[] = [];
+  if (erfNumber != null) officialParts.push(`Erf ${erfNumber}`);
+  if (portion != null && String(portion) !== "0") officialParts.push(`Portion ${portion}`);
+  if (municipality) officialParts.push(municipality);
+  if (province) officialParts.push(province);
+  const areaClaim = firstSupportedOrObservedClaim(pack, "identity", "areaM2");
+  return {
+    displayName: marketAddressLine ?? parcelDisplayName(parcel, null),
+    officialLine: officialParts.length ? officialParts.join(" / ") : null,
+    marketAddressLine,
+    addressAndOfficialMismatch: pack.contradictions.some(
+      (item) => item.id === "market-address-municipality-mismatch" || item.id === "market-address-province-mismatch",
+    ),
+    municipality,
+    province,
+    erfNumber: erfNumber != null ? String(erfNumber) : null,
+    portion: portion != null ? String(portion) : null,
+    lpi: stringOrNull(identityClaim("lpi")?.value ?? parcel.lpi),
+    parcelKey: stringOrNull(identityClaim("parcelKey")?.value ?? parcel.parcelKey),
+    sourceLabel: parcel.sourceLabel ?? null,
+    coordinates: parcel.coordinates ?? null,
+    areaM2: numberOrNull(areaClaim?.normalizedValue ?? areaClaim?.value) ?? parcelAreaM2(parcel),
+  };
+}
+
 function normalize(v: string) {
   return v.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -379,6 +415,34 @@ function buildMarket(evidence: SavedMarketEvidence[]): MarketView {
   };
 }
 
+function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfAsset[]): OwnershipView {
+  const uploaded = pack.sources.filter(
+    (source) =>
+      source.kind === "uploaded_document" &&
+      (source.authorityType === "paid_provider" || /lightstone|windeed|title deed/i.test(source.label)),
+  );
+  return {
+    hasUploadedReport: uploaded.length > 0,
+    uploadedReportNames: uploaded.map((source) => source.fileName ?? source.label),
+    isVerified: false,
+    message: uploaded.length
+      ? "Ownership is not verified by Easy Erf. Uploaded reports are stored for reference; open them to check owner details yourself."
+      : `Ownership is not verified. ${
+          pack.domains.find((domain) => domain.domain === "ownership")?.nextAction ??
+          "Purchase a Lightstone or WinDeed report, or open a title deed, to confirm ownership."
+        }`,
+  };
+}
+
+function buildMarketFromPack(pack: PropertyEvidencePack, fallbackEvidence: SavedMarketEvidence[]): MarketView {
+  const marketIds = new Set(
+    pack.sources
+      .filter((source) => source.kind === "market_listing")
+      .map((source) => source.id.replace(/^market-/, "")),
+  );
+  return buildMarket(fallbackEvidence.filter((item) => marketIds.has(item.id)));
+}
+
 function confRank(c: SavedMarketEvidence["confidence"]) {
   return c === "high" ? 3 : c === "medium" ? 2 : c === "low" ? 1 : 0;
 }
@@ -400,6 +464,23 @@ function buildSite(
   };
 }
 
+function buildSiteFromPack(
+  pack: PropertyEvidencePack,
+  workspaceState: ErfWorkspaceState,
+  selectedDesign: ErfAsset | null,
+  siteBrief?: string | null,
+): SiteView {
+  const selectedClaim = firstSupportedOrObservedClaim(pack, "site", "selectedSitePotentialConcept");
+  const countClaim = firstSupportedOrObservedClaim(pack, "site", "sitePotentialConceptCount");
+  return {
+    ...buildSite(workspaceState, selectedClaim || !selectedDesign?.parcel_id ? selectedDesign : null, siteBrief),
+    conceptCount: numberOrNull(countClaim?.normalizedValue ?? countClaim?.value) ?? workspaceState.sitePotential.conceptCount,
+    hasBrief:
+      Boolean(siteBrief && siteBrief.trim().length > 0) ||
+      pack.sources.some((source) => source.id.startsWith("site-project-") && source.fragments.length > 0),
+  };
+}
+
 function buildStrategy(
   chosen: ErfStrategyScenario | null,
   scenarios: ErfStrategyScenario[],
@@ -408,6 +489,26 @@ function buildStrategy(
     chosen,
     scenarioCount: scenarios.length,
     hasSaved: scenarios.length > 0,
+  };
+}
+
+function buildStrategyFromPack(
+  pack: PropertyEvidencePack,
+  chosen: ErfStrategyScenario | null,
+  scenarios: ErfStrategyScenario[],
+): StrategyView {
+  const supportedStrategyClaims = pack.claims.filter(
+    (claim) => claim.domain === "strategy" && claim.status === "supported" && claim.userConfirmed && !claim.excluded,
+  );
+  const scenarioIds = new Set(
+    pack.claims
+      .filter((claim) => claim.domain === "strategy" && claim.id.startsWith("claim-strategy-"))
+      .map((claim) => claim.id.replace(/^claim-strategy-/, "").split("-input-")[0].split("-summary-")[0]),
+  );
+  return {
+    chosen: supportedStrategyClaims.length ? chosen : null,
+    scenarioCount: scenarioIds.size || scenarios.length,
+    hasSaved: scenarios.length > 0 || pack.sources.some((source) => source.id === "strategy-workspace" && source.status === "ready"),
   };
 }
 
@@ -434,6 +535,30 @@ function buildDocuments(
     sgDiagramCount: sg,
     uploadedReportCount: paid,
     completenessPercent: Math.round((filled / buckets.length) * 100),
+  };
+}
+
+function buildDocumentsFromPack(
+  pack: PropertyEvidencePack,
+  workspaceState: ErfWorkspaceState,
+  savedEvidence: SavedMarketEvidence[],
+): DocumentsView {
+  const assetSources = pack.sources.filter((source) => source.kind === "uploaded_document" || source.kind === "uploaded_image");
+  const supportedDomains = new Set(
+    pack.domains
+      .filter((domain) => domain.state === "supported" || domain.state === "partial")
+      .map((domain) => domain.domain),
+  );
+  const buckets = ["identity", "documents", "market", "strategy", "site", "deeds"].map((domain) =>
+    supportedDomains.has(domain as EvidenceDomain),
+  );
+  const filled = buckets.filter(Boolean).length;
+  return {
+    assetCount: assetSources.length,
+    savedEvidenceCount: pack.sources.filter((source) => source.kind === "market_listing").length || savedEvidence.length,
+    sgDiagramCount: assetSources.filter((source) => /sg diagram/i.test(source.label) || source.assetId?.includes("sg")).length,
+    uploadedReportCount: assetSources.filter((source) => source.authorityType === "paid_provider").length,
+    completenessPercent: Math.round((filled / buckets.length) * 100) || buildDocuments([], workspaceState, savedEvidence).completenessPercent,
   };
 }
 
@@ -781,14 +906,13 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
       siteBrief: input.siteBrief,
       now: input.now,
     });
-  const marketAddr = pickConfirmedAddress(input.marketAddress);
-  const identity = buildIdentity(input.parcel, marketAddr);
-  const ownership = buildOwnership(input.assets);
+  const identity = buildIdentityFromPack(evidencePack, input.parcel);
+  const ownership = buildOwnershipFromPack(evidencePack, input.assets);
   const planning = buildPlanningFromPack(evidencePack, input.parcel);
-  const market = buildMarket(input.savedEvidence);
-  const site = buildSite(input.workspaceState, input.selectedSiteDesign, input.siteBrief);
-  const strategy = buildStrategy(input.chosenScenario, input.strategyScenarios);
-  const documents = buildDocuments(input.assets, input.workspaceState, input.savedEvidence);
+  const market = buildMarketFromPack(evidencePack, input.savedEvidence);
+  const site = buildSiteFromPack(evidencePack, input.workspaceState, input.selectedSiteDesign, input.siteBrief);
+  const strategy = buildStrategyFromPack(evidencePack, input.chosenScenario, input.strategyScenarios);
+  const documents = buildDocumentsFromPack(evidencePack, input.workspaceState, input.savedEvidence);
   const categories = buildReadinessCategories(input, market, documents, ownership, evidencePack);
   const risks = buildRisks(input, market, ownership, identity, evidencePack);
   const recommendations = buildRecommendations(risks);
@@ -818,10 +942,31 @@ function supportedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key:
   return pack.claims.find((claim) => claim.domain === domain && claim.key === key && claim.status === "supported" && !claim.excluded) ?? null;
 }
 
+function firstSupportedOrObservedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key: string): EvidenceClaim | null {
+  return pack.claims.find(
+    (claim) =>
+      claim.domain === domain &&
+      claim.key === key &&
+      !claim.excluded &&
+      (claim.status === "supported" || claim.status === "conflicting" || claim.status === "not_reviewed"),
+  ) ?? null;
+}
+
 function displayClaimValue(claim: EvidenceClaim | null): string | null {
   if (!claim || claim.value == null || claim.value === "") return null;
   const value = typeof claim.value === "number" ? claim.value.toLocaleString() : String(claim.value);
   return claim.unit ? `${value}` : value;
+}
+
+function stringOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function badgeForClaim(claim: EvidenceClaim): EvidenceBadge {

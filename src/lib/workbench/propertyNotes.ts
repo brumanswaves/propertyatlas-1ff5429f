@@ -64,7 +64,38 @@ export async function loadPropertyNotes(
     .eq("parcel_id", parcelId)
     .maybeSingle();
   if (error) throw error;
+  const rowParcelId =
+    data && typeof data === "object"
+      ? nullableString((data as Record<string, unknown>).parcel_id ?? (data as Record<string, unknown>).parcelId)
+      : "";
+  if (rowParcelId && rowParcelId !== parcelId) return null;
   return data ? normalizePropertyNotes(parcelId, data) : null;
+}
+
+export type ReportPropertyNotesLoadResult =
+  | { status: "signed_out"; notes: null }
+  | { status: "loaded"; notes: PropertyNotes | null }
+  | { status: "stale"; notes: null }
+  | { status: "failed"; notes: null; error: unknown };
+
+export async function loadReportPropertyNotes(
+  parcelId: string,
+  userId: string | null | undefined,
+  isCurrentRequest: () => boolean,
+  client = supabase,
+): Promise<ReportPropertyNotesLoadResult> {
+  if (!userId) return { status: "signed_out", notes: null };
+  try {
+    const notes = await loadPropertyNotes(parcelId, userId, client);
+    if (!isCurrentRequest()) return { status: "stale", notes: null };
+    return {
+      status: "loaded",
+      notes: notes?.parcelId === parcelId ? notes : null,
+    };
+  } catch (error) {
+    if (!isCurrentRequest()) return { status: "stale", notes: null };
+    return { status: "failed", notes: null, error };
+  }
 }
 
 export function propertyNotesToRow(
