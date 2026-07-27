@@ -60,6 +60,12 @@ export async function askEasyErfViaEdgeFunction(input: {
   const url = deps.functionsUrl ?? defaultFunctionsUrl();
   const apiKey = deps.apiKey ?? defaultApiKey();
 
+  // Signed-out users never reach the network.
+  if (!input.accessToken) {
+    return { success: false, error: "Sign in to use Ask Easy Erf." };
+  }
+
+
   const response = await fetchImpl(url, {
     method: "POST",
     headers: {
