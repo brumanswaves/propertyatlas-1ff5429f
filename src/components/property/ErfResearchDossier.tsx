@@ -74,13 +74,17 @@ import {
   type EvidenceTimelineItem,
 } from "@/lib/reports/buildDecisionIntelligence";
 import {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   buildAskEasyErfEvidencePayload,
-  hasEnoughAskEasyErfEvidence,
+  buildAskEasyErfSelectedEvidencePayload,
+  hasAskEasyErfPackEvidence,
+  hasEnoughAskEasyErfSelectedEvidence,
   suggestedAskEasyErfQuestions,
   type AskEasyErfAnswer,
   type AskEasyErfEvidencePayload,
   type AskEasyErfEvidenceSourceType,
 } from "@/lib/reports/askEasyErf";
+import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import {
   loadReportPropertyNotes,
   type PropertyNotes,
@@ -1461,7 +1465,7 @@ function StoepAiReportView({
   const updateDecisionMode = (mode: ReportDecisionMode) => {
     setDecisionMode(writeReportDecisionMode(parcel.id, mode));
   };
-  const askEvidencePayload = useMemo(
+  const askSuggestionPayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
         report,
@@ -1899,7 +1903,8 @@ function StoepAiReportView({
       />
 
       <AskEasyErfSection
-        payload={askEvidencePayload}
+        suggestionPayload={askSuggestionPayload}
+        evidencePack={report.evidencePack ?? null}
         decisionMode={decisionMode}
         onSelectView={onSelectView}
       />
@@ -2875,11 +2880,13 @@ function formatSnapshotDate(value?: string | null) {
 }
 
 function AskEasyErfSection({
-  payload,
+  suggestionPayload,
+  evidencePack,
   decisionMode,
   onSelectView,
 }: {
-  payload: AskEasyErfEvidencePayload;
+  suggestionPayload: AskEasyErfEvidencePayload;
+  evidencePack: PropertyEvidencePack | null;
   decisionMode?: ReportDecisionMode;
   onSelectView?: (view: DossierView) => void;
 }) {
@@ -2888,16 +2895,27 @@ function AskEasyErfSection({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const currentParcelIdRef = useRef(payload.parcelId);
+  const currentParcelIdRef = useRef(suggestionPayload.parcelId);
+  const currentFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
   const requestGenerationRef = useRef(0);
-  const renderedParcelIdRef = useRef(payload.parcelId);
-  if (renderedParcelIdRef.current !== payload.parcelId) {
-    renderedParcelIdRef.current = payload.parcelId;
+  const renderedParcelIdRef = useRef(suggestionPayload.parcelId);
+  const renderedFingerprintRef = useRef(evidencePack?.fingerprint ?? "");
+  const evidenceFingerprint = evidencePack?.fingerprint ?? "";
+  if (
+    renderedParcelIdRef.current !== suggestionPayload.parcelId ||
+    renderedFingerprintRef.current !== evidenceFingerprint
+  ) {
+    renderedParcelIdRef.current = suggestionPayload.parcelId;
+    renderedFingerprintRef.current = evidenceFingerprint;
     requestGenerationRef.current += 1;
   }
-  currentParcelIdRef.current = payload.parcelId;
-  const suggestions = suggestedAskEasyErfQuestions(payload, decisionMode);
-  const hasEvidence = hasEnoughAskEasyErfEvidence(payload);
+  currentParcelIdRef.current = suggestionPayload.parcelId;
+  currentFingerprintRef.current = evidenceFingerprint;
+  const suggestions = suggestedAskEasyErfQuestions(suggestionPayload, decisionMode);
+  const hasCanonicalPackEvidence = hasAskEasyErfPackEvidence(
+    evidencePack,
+    suggestionPayload.parcelId,
+  );
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -2906,13 +2924,18 @@ function AskEasyErfSection({
     setAnswer(null);
     setError(null);
     setLoading(false);
-  }, [payload.parcelId]);
+  }, [suggestionPayload.parcelId, evidenceFingerprint]);
 
   const askQuestion = async (event?: FormEvent) => {
     event?.preventDefault();
     const trimmed = question.trim();
     if (!trimmed || loading) return;
-    if (!hasEvidence) {
+    if (question.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS) {
+      setAnswer(null);
+      setError("Questions must be 1,000 characters or fewer.");
+      return;
+    }
+    if (!hasCanonicalPackEvidence) {
       setAnswer(null);
       setError("More saved evidence is required before Ask Easy Erf can answer this property question.");
       return;
@@ -2922,10 +2945,12 @@ function AskEasyErfSection({
     setError(null);
     const controller = new AbortController();
     abortRef.current = controller;
-    const requestParcelId = payload.parcelId;
+    const requestParcelId = suggestionPayload.parcelId;
+    const requestFingerprint = evidenceFingerprint;
     const requestGeneration = requestGenerationRef.current;
     const isCurrentRequest = () =>
       currentParcelIdRef.current === requestParcelId &&
+      currentFingerprintRef.current === requestFingerprint &&
       requestGenerationRef.current === requestGeneration;
     const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
@@ -2937,6 +2962,20 @@ function AskEasyErfSection({
         setError("Sign in is required before Ask Easy Erf can answer.");
         return;
       }
+      if (!evidencePack || evidencePack.parcelId !== requestParcelId) {
+        setAnswer(null);
+        setError("The selected property evidence changed. Ask again from the current report.");
+        return;
+      }
+      const selectedEvidence = buildAskEasyErfSelectedEvidencePayload({
+        pack: evidencePack,
+        question: trimmed,
+      });
+      if (!hasEnoughAskEasyErfSelectedEvidence(selectedEvidence)) {
+        setAnswer(null);
+        setError("No relevant saved evidence was found for that question yet.");
+        return;
+      }
       const response = await fetch("/api/reports/ask-easy-erf", {
         method: "POST",
         headers: {
@@ -2945,9 +2984,9 @@ function AskEasyErfSection({
         },
         signal: controller.signal,
         body: JSON.stringify({
-          parcelId: payload.parcelId,
+          parcelId: suggestionPayload.parcelId,
           question: trimmed,
-          evidence: payload,
+          evidence: selectedEvidence,
         }),
       });
       const result = (await response.json().catch(() => null)) as AskEasyErfApiResponse | null;
@@ -2999,11 +3038,11 @@ function AskEasyErfSection({
           </p>
         </div>
         <span className="rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1 text-xs font-semibold text-[#0D1B2A]/70">
-          Parcel scoped: {payload.parcelId}
+          Parcel scoped: {suggestionPayload.parcelId}
         </span>
       </div>
 
-      {!hasEvidence && (
+      {!hasCanonicalPackEvidence && (
         <div className="mt-5 rounded-[1.25rem] border border-[#F59E0B]/35 bg-[#fffbeb] p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B45309]" />
@@ -3011,9 +3050,9 @@ function AskEasyErfSection({
               <p className="text-sm font-semibold text-[#0D1B2A]">
                 More saved evidence is required first.
               </p>
-              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
                 Ask Easy Erf will not fabricate a fallback answer. Add official source reviews,
-                market evidence, uploaded documents, or strategy assumptions before asking.
+                market evidence, uploaded documents, notes, or strategy assumptions before asking.
               </p>
               <div className="report-no-print mt-3 flex flex-wrap gap-2">
                 <button
@@ -3069,6 +3108,7 @@ function AskEasyErfSection({
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
+            maxLength={ASK_EASY_ERF_MAX_QUESTION_CHARACTERS}
             onKeyDown={(event) => {
               if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                 event.preventDefault();
@@ -3083,10 +3123,10 @@ function AskEasyErfSection({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="submit"
-            disabled={!question.trim() || loading || !hasEvidence}
+            disabled={!question.trim() || loading || !hasCanonicalPackEvidence}
             className={cn(
               "inline-flex min-h-10 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-              !question.trim() || loading || !hasEvidence
+              !question.trim() || loading || !hasCanonicalPackEvidence
                 ? "cursor-not-allowed bg-[#0D1B2A]/10 text-[#0D1B2A]/40"
                 : "bg-[#FF6A00] text-white hover:bg-[#ff7a1a]",
             )}
@@ -3162,15 +3202,17 @@ function AskEasyErfAnswerCard({ answer }: { answer: AskEasyErfAnswer }) {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748B]">
-            Evidence references
+          Evidence references
           </h4>
           <div className="mt-2 flex flex-wrap gap-2">
             {answer.evidenceReferences.map((reference) => (
               <span
-                key={`${reference.sourceType}-${reference.label}`}
+                key={`${reference.ref ?? reference.sourceType}-${reference.label}`}
                 className="rounded-full border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-1 text-xs font-semibold text-[#0D1B2A]"
               >
+                {reference.ref ? `[${reference.ref}] ` : ""}
                 {sourceTypeLabel(reference.sourceType)} - {reference.label}
+                {reference.locator ? ` (${reference.locator})` : ""}
               </span>
             ))}
           </div>
