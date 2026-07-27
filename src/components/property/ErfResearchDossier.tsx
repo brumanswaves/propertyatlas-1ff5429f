@@ -48,6 +48,7 @@ import {
   getChosenStrategyScenario,
   readErfWorkspaceState,
   readStrategyScenarios,
+  readStrategyWorkspace,
   saveStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import {
@@ -1385,6 +1386,7 @@ function StoepAiReportView({
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
   const workspaceState = readErfWorkspaceState(parcel.id);
+  const strategyWorkspace = readStrategyWorkspace(parcel.id);
   const scenarios = readStrategyScenarios(parcel.id);
   const chosenScenario = getChosenStrategyScenario(parcel.id);
   const generatedDesigns = fileVault.assets.filter(
@@ -1408,6 +1410,8 @@ function StoepAiReportView({
     chosenScenario,
     strategyScenarios: scenarios,
     selectedSiteDesign: selectedDesign,
+    strategyWorkspace,
+    sitePotentialProject: siteProject.project ?? null,
     siteBrief: siteProject.project?.design_brief ?? null,
   });
   const decision = buildDecisionIntelligence(report);

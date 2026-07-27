@@ -6,20 +6,19 @@ import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface NoteRow {
-  personal: string | null;
-  pros: string | null;
-  cons: string | null;
-  questions: string | null;
-  agent_contact: string | null;
-  municipality: string | null;
-  renovation: string | null;
-  checklist: Record<string, boolean>;
-}
+import {
+  EMPTY_PROPERTY_NOTES,
+  loadPropertyNotes,
+  normalizePropertyNotes,
+  propertyNotesToRow,
+  type PropertyNotes,
+} from "@/lib/workbench/propertyNotes";
 
 const FIELDS: {
-  key: keyof Omit<NoteRow, "checklist">;
+  key: keyof Pick<
+    PropertyNotes,
+    "personal" | "pros" | "cons" | "questions" | "agentContact" | "municipality" | "renovation"
+  >;
   label: string;
   placeholder: string;
   rows?: number;
@@ -37,7 +36,7 @@ const FIELDS: {
     label: "Questions to verify",
     placeholder: "What you need to confirm before deciding",
   },
-  { key: "agent_contact", label: "Agent contact", placeholder: "Name, agency, phone, email" },
+  { key: "agentContact", label: "Agent contact", placeholder: "Name, agency, phone, email" },
   {
     key: "municipality",
     label: "Municipality notes",
@@ -45,27 +44,6 @@ const FIELDS: {
   },
   { key: "renovation", label: "Renovation notes", placeholder: "Scope, quotes, contractors" },
 ];
-
-const EMPTY: NoteRow = {
-  personal: "",
-  pros: "",
-  cons: "",
-  questions: "",
-  agent_contact: "",
-  municipality: "",
-  renovation: "",
-  checklist: {},
-};
-
-function normalizeChecklist(value: unknown): Record<string, boolean> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
-    ),
-  );
-}
 
 export function NotesTab({
   parcelId,
@@ -75,24 +53,38 @@ export function NotesTab({
   showSourceBadge?: boolean;
 }) {
   const { user } = useAuth();
-  const [row, setRow] = useState<NoteRow>(EMPTY);
+  const [row, setRow] = useState<PropertyNotes>(() => ({
+    ...EMPTY_PROPERTY_NOTES,
+    parcelId,
+  }));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+    setLoaded(false);
+    setRow({ ...EMPTY_PROPERTY_NOTES, parcelId });
     if (!user) {
       setLoaded(true);
-      return;
+      return () => {
+        alive = false;
+      };
     }
-    supabase
-      .from("property_notes")
-      .select("*")
-      .eq("parcel_id", parcelId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setRow({ ...EMPTY, ...data, checklist: normalizeChecklist(data.checklist) });
-        setLoaded(true);
+    loadPropertyNotes(parcelId, user.id)
+      .then((data) => {
+        if (!alive) return;
+        setRow(data ?? normalizePropertyNotes(parcelId, null));
+      })
+      .catch((error) => {
+        if (!alive) return;
+        toast.error(error instanceof Error ? error.message : "Could not load notes");
+      })
+      .finally(() => {
+        if (alive) setLoaded(true);
       });
+    return () => {
+      alive = false;
+    };
   }, [user, parcelId]);
 
   async function save() {
@@ -102,11 +94,7 @@ export function NotesTab({
     }
     setSaving(true);
     const { error } = await supabase.from("property_notes").upsert(
-      {
-        user_id: user.id,
-        parcel_id: parcelId,
-        ...row,
-      },
+      propertyNotesToRow(user.id, row),
       { onConflict: "user_id,parcel_id" },
     );
     setSaving(false);
