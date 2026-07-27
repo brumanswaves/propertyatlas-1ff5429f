@@ -747,7 +747,7 @@ describe("Ask Easy Erf server handler", () => {
         evidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", ASK_EASY_ERF_FN_SECRET: "fn-secret", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
