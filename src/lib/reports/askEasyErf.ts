@@ -25,6 +25,30 @@ import type {
   EvidenceStatus,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
+import {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
+  ASK_EASY_ERF_SELECTED_EVIDENCE_KIND,
+  ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS,
+  hasEnoughAskEasyErfSelectedEvidence,
+  normalizeAskEasyErfQuestion,
+  validateAskEasyErfSelectedEvidencePayload,
+  type AskEasyErfSelectedEvidenceClaim,
+  type AskEasyErfSelectedEvidencePayload,
+  type AskEasyErfSelectedEvidenceSource,
+} from "../../../supabase/functions/_shared/askEasyErfSelectedEvidence";
+
+export {
+  ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
+  ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS,
+  hasEnoughAskEasyErfSelectedEvidence,
+  normalizeAskEasyErfQuestion,
+  validateAskEasyErfSelectedEvidencePayload,
+};
+export type {
+  AskEasyErfSelectedEvidenceClaim,
+  AskEasyErfSelectedEvidencePayload,
+  AskEasyErfSelectedEvidenceSource,
+};
 
 export type AskEasyErfEvidenceSourceType =
   | "official"
@@ -113,80 +137,6 @@ export interface AskEasyErfEvidencePayload {
   missingInformation: string[];
 }
 
-export interface AskEasyErfSelectedEvidenceSource {
-  ref: string;
-  sourceId: string;
-  parcelId: string;
-  kind: EvidenceSourceKind;
-  label: string;
-  sourceType: AskEasyErfEvidenceSourceType;
-  authorityType: EvidenceAuthorityType;
-  sourceQuality: EvidenceSourceQuality;
-  status: EvidenceSourceStatus;
-  fileName: string | null;
-  sourcePortal: string | null;
-  locators: EvidenceLocator[];
-  fragments: string[];
-}
-
-export interface AskEasyErfSelectedEvidenceClaim {
-  id: string;
-  parcelId: string;
-  domain: EvidenceDomain;
-  key: string;
-  label: string;
-  value: string | number | boolean | null;
-  unit: string | null;
-  nature: EvidenceClaim["nature"];
-  status: EvidenceStatus;
-  confidence: EvidenceConfidence;
-  confidenceReason: string;
-  sourceRefs: string[];
-  locators: EvidenceLocator[];
-  userConfirmed: boolean;
-  warning: string | null;
-}
-
-export interface AskEasyErfSelectedEvidencePayload {
-  schemaVersion: 1;
-  kind: "ask_easy_erf_selected_property_evidence";
-  parcelId: string;
-  generatedAt: string;
-  evidenceFingerprint: string;
-  question: string;
-  limits: {
-    maxClaims: number;
-    maxSourceFragments: number;
-    maxTotalCharacters: number;
-  };
-  truncated: boolean;
-  selectedText: string;
-  sources: AskEasyErfSelectedEvidenceSource[];
-  claims: AskEasyErfSelectedEvidenceClaim[];
-  contradictions: Array<{
-    id: string;
-    parcelId: string;
-    title: string;
-    severity: EvidenceContradiction["severity"];
-    explanation: string;
-    claimIds: string[];
-    sourceRefs: string[];
-    displayedValues: string[];
-    nextAction: string;
-  }>;
-  gaps: Array<{
-    id: string;
-    parcelId: string;
-    domain: EvidenceDomain;
-    importance: EvidenceGap["importance"];
-    title: string;
-    explanation: string;
-    basis: string;
-    nextAction: string;
-    blocking: boolean;
-  }>;
-}
-
 export interface BuildAskEasyErfPayloadInput {
   report: ReportViewModel;
   decision: DecisionIntelligence;
@@ -207,12 +157,6 @@ const MAX_CONFIDENCE_CATEGORIES = 8;
 const MAX_IMPORTED_LISTING_ITEMS = 2;
 const MAX_RECORD_KEYS = 4;
 const MAX_SCENARIO_SUMMARY_ITEMS = 3;
-export const ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS = {
-  maxClaims: 12,
-  maxSourceFragments: 6,
-  maxTotalCharacters: 5_500,
-} as const;
-export const ASK_EASY_ERF_MAX_QUESTION_CHARACTERS = 1_000;
 const SOURCE_TYPES: AskEasyErfEvidenceSourceType[] = [
   "official",
   "uploaded",
@@ -223,7 +167,7 @@ const SOURCE_TYPES: AskEasyErfEvidenceSourceType[] = [
   "missing",
 ];
 
-const SELECTED_EVIDENCE_KIND = "ask_easy_erf_selected_property_evidence";
+const SELECTED_EVIDENCE_KIND = ASK_EASY_ERF_SELECTED_EVIDENCE_KIND;
 const MAX_SELECTED_SOURCES =
   ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims +
   ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments +
@@ -644,10 +588,6 @@ export function inferAskEasyErfEvidenceDomains(question: string): EvidenceDomain
   return domains;
 }
 
-export function normalizeAskEasyErfQuestion(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
 function isBroadAskEasyErfQuestion(question: string) {
   return BROAD_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
 }
@@ -753,15 +693,6 @@ export function hasEnoughAskEasyErfEvidence(payload: AskEasyErfEvidencePayload):
   return askEasyErfEvidenceWeight(payload) >= 2;
 }
 
-export function hasEnoughAskEasyErfSelectedEvidence(
-  payload: AskEasyErfSelectedEvidencePayload,
-): boolean {
-  return (
-    payload.parcelId.length > 0 &&
-    (payload.claims.length > 0 || payload.contradictions.length > 0 || payload.gaps.length > 0)
-  );
-}
-
 export function hasAskEasyErfPackEvidence(
   pack: PropertyEvidencePack | null | undefined,
   parcelId: string,
@@ -810,124 +741,6 @@ export function validateAskEasyErfAnswer(value: unknown): AskEasyErfAnswer | nul
       .map((item) => cleanText(item, 500))
       .slice(0, 8),
     nextAction: raw.nextAction ? cleanText(raw.nextAction, 500) : null,
-  };
-}
-
-export function validateAskEasyErfSelectedEvidencePayload(
-  value: unknown,
-): AskEasyErfSelectedEvidencePayload | null {
-  const raw = asRecord(value);
-  if (!raw) return null;
-  const schemaVersion = raw.schemaVersion === 1 ? 1 : null;
-  const kind = raw.kind === SELECTED_EVIDENCE_KIND ? SELECTED_EVIDENCE_KIND : null;
-  const parcelId = requireText(raw.parcelId, 160);
-  const generatedAt = requireText(raw.generatedAt, 80);
-  const evidenceFingerprint = requireText(raw.evidenceFingerprint, 180);
-  if (
-    typeof raw.question !== "string" ||
-    raw.question.length > ASK_EASY_ERF_MAX_QUESTION_CHARACTERS
-  ) {
-    return null;
-  }
-  const question = normalizeAskEasyErfQuestion(raw.question);
-  const limits = validateSelectedLimits(raw.limits);
-  if (
-    !arrayWithin(raw.sources, MAX_SELECTED_SOURCES) ||
-    !arrayWithin(raw.claims, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims) ||
-    !arrayWithin(raw.contradictions, 5) ||
-    !arrayWithin(raw.gaps, 8)
-  ) {
-    return null;
-  }
-  if (
-    typeof raw.selectedText !== "string" ||
-    raw.selectedText.length > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxTotalCharacters
-  ) {
-    return null;
-  }
-  const sources = validateArray(raw.sources, validateSelectedSource, MAX_SELECTED_SOURCES);
-  const claims = validateArray(raw.claims, validateSelectedClaim, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims);
-  const contradictions = validateArray(raw.contradictions, validateSelectedContradiction, 5);
-  const gaps = validateArray(raw.gaps, validateSelectedGap, 8);
-  const selectedText = requireText(raw.selectedText, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxTotalCharacters);
-  if (
-    !schemaVersion ||
-    !kind ||
-    !parcelId ||
-    !generatedAt ||
-    !evidenceFingerprint ||
-    !question ||
-    !limits ||
-    !sources ||
-    !claims ||
-    !contradictions ||
-    !gaps ||
-    !selectedText ||
-    typeof raw.truncated !== "boolean"
-  ) {
-    return null;
-  }
-  if (
-    !sources.every((source) => source.parcelId === parcelId) ||
-    !claims.every((claim) => claim.parcelId === parcelId) ||
-    !contradictions.every((item) => item.parcelId === parcelId) ||
-    !gaps.every((gap) => gap.parcelId === parcelId)
-  ) {
-    return null;
-  }
-  const validRefs = new Set(sources.map((source) => source.ref));
-  if (!hasConsecutiveSourceRefs(sources)) return null;
-  if (hasDuplicates(sources.map((source) => source.ref))) return null;
-  if (hasDuplicates(sources.map((source) => source.sourceId))) return null;
-  if (hasDuplicates(claims.map((claim) => claim.id))) return null;
-  if (hasDuplicates(contradictions.map((item) => item.id))) return null;
-  if (hasDuplicates(gaps.map((gap) => gap.id))) return null;
-  const totalFragments = sources.reduce((sum, source) => sum + source.fragments.length, 0);
-  if (totalFragments > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments) return null;
-  if (claims.some((claim) => claim.status !== "missing" && claim.sourceRefs.length === 0)) {
-    return null;
-  }
-  if (contradictions.some((item) => item.sourceRefs.length === 0)) return null;
-  if (claims.some((claim) => hasDuplicates(claim.sourceRefs))) return null;
-  if (contradictions.some((item) => hasDuplicates(item.sourceRefs))) return null;
-  if (claims.some((claim) => claim.sourceRefs.some((ref) => !validRefs.has(ref)))) return null;
-  if (contradictions.some((item) => item.sourceRefs.some((ref) => !validRefs.has(ref)))) {
-    return null;
-  }
-  const referencedRefs = new Set([
-    ...claims.flatMap((claim) => claim.sourceRefs),
-    ...contradictions.flatMap((item) => item.sourceRefs),
-  ]);
-  if (
-    sources.some(
-      (source) =>
-        source.fragments.length === 0 &&
-        !referencedRefs.has(source.ref) &&
-        source.sourceType !== "missing",
-    )
-  ) {
-    return null;
-  }
-  if (
-    (claims.some((claim) => claim.status !== "missing") || contradictions.length > 0) &&
-    sources.some((source) => isSyntheticMissingEvidenceSource(source))
-  ) {
-    return null;
-  }
-  return {
-    schemaVersion,
-    kind,
-    parcelId,
-    generatedAt,
-    evidenceFingerprint,
-    question,
-    limits,
-    truncated: raw.truncated,
-    selectedText,
-    sources,
-    claims,
-    contradictions,
-    gaps,
   };
 }
 
@@ -1600,229 +1413,10 @@ function arrayWithin(value: unknown, max: number) {
   return Array.isArray(value) && value.length <= max;
 }
 
-function validateSelectedLimits(value: unknown): AskEasyErfSelectedEvidencePayload["limits"] | null {
-  const raw = asRecord(value);
-  if (!raw) return null;
-  const maxClaims = wholeNumber(raw.maxClaims, 1, 24);
-  const maxSourceFragments = wholeNumber(raw.maxSourceFragments, 1, 16);
-  const maxTotalCharacters = wholeNumber(raw.maxTotalCharacters, 1_000, 12_000);
-  if (maxClaims == null || maxSourceFragments == null || maxTotalCharacters == null) return null;
-  if (
-    maxClaims !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxClaims ||
-    maxSourceFragments !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments ||
-    maxTotalCharacters !== ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxTotalCharacters
-  ) {
-    return null;
-  }
-  return { maxClaims, maxSourceFragments, maxTotalCharacters };
-}
 
-function validateSelectedSource(value: unknown): AskEasyErfSelectedEvidenceSource | null {
-  const raw = asRecord(value);
-  if (!raw) return null;
-  const ref = requireText(raw.ref, 20);
-  const sourceId = requireText(raw.sourceId, 160);
-  const parcelId = requireText(raw.parcelId, 160);
-  const kind = enumValue(raw.kind, [
-    "official_parcel",
-    "official_portal",
-    "municipal_portal",
-    "uploaded_document",
-    "uploaded_image",
-    "market_listing",
-    "user_note",
-    "user_confirmation",
-    "strategy_workspace",
-    "deterministic_calculator",
-    "site_potential",
-    "system_state",
-  ] as const);
-  const label = requireText(raw.label, 180);
-  const sourceType = enumValue(raw.sourceType, SOURCE_TYPES);
-  const authorityType = enumValue(raw.authorityType, [
-    "official",
-    "municipal",
-    "paid_provider",
-    "user_supplied",
-    "market",
-    "calculation",
-    "ai_generated",
-    "system",
-  ] as const);
-  const sourceQuality = enumValue(raw.sourceQuality, [
-    "direct",
-    "strong",
-    "reference",
-    "untrusted_content",
-    "generated_search",
-    "unavailable",
-  ] as const);
-  const status = enumValue(raw.status, [
-    "not_opened",
-    "opened",
-    "reviewed",
-    "uploaded",
-    "ready",
-    "failed",
-    "unavailable",
-    "excluded",
-  ] as const);
-  if (
-    Array.isArray(raw.fragments) &&
-    raw.fragments.length > ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments
-  ) {
-    return null;
-  }
-  const locators = validateArray(raw.locators, validateLocator, 4);
-  const fragments = validateStringArray(raw.fragments, ASK_EASY_ERF_SELECTED_EVIDENCE_LIMITS.maxSourceFragments, 500);
-  if (
-    !ref ||
-    !/^S\d+$/.test(ref) ||
-    !sourceId ||
-    !parcelId ||
-    !kind ||
-    !label ||
-    !sourceType ||
-    !authorityType ||
-    !sourceQuality ||
-    !status ||
-    !locators ||
-    !fragments
-  ) {
-    return null;
-  }
-  return {
-    ref,
-    sourceId,
-    parcelId,
-    kind,
-    label,
-    sourceType,
-    authorityType,
-    sourceQuality,
-    status,
-    fileName: nullableText(raw.fileName, 220),
-    sourcePortal: nullableText(raw.sourcePortal, 120),
-    locators,
-    fragments,
-  };
-}
 
-function validateSelectedClaim(rawValue: unknown): AskEasyErfSelectedEvidenceClaim | null {
-  const raw = asRecord(rawValue);
-  if (!raw) return null;
-  const id = requireText(raw.id, 160);
-  const parcelId = requireText(raw.parcelId, 160);
-  const domain = enumValue(raw.domain, [
-    "identity",
-    "address",
-    "ownership",
-    "deeds",
-    "planning",
-    "valuation",
-    "transfers",
-    "market",
-    "environment",
-    "infrastructure",
-    "site",
-    "strategy",
-    "documents",
-    "notes",
-  ] as const);
-  const key = requireText(raw.key, 120);
-  const label = requireText(raw.label, 180);
-  const nature = enumValue(raw.nature, ["fact", "observation", "assumption", "calculation", "interpretation", "unknown"] as const);
-  const status = enumValue(raw.status, ["supported", "partial", "conflicting", "missing", "excluded", "not_reviewed"] as const);
-  const confidence = enumValue(raw.confidence, ["high", "medium", "low", "unverified"] as const);
-  const sourceRefs = validateStringArray(raw.sourceRefs, 8, 20);
-  const locators = validateArray(raw.locators, validateLocator, 4);
-  if (
-    !id ||
-    !parcelId ||
-    !domain ||
-    !key ||
-    !label ||
-    !nature ||
-    !status ||
-    !confidence ||
-    !sourceRefs ||
-    !locators ||
-    typeof raw.userConfirmed !== "boolean"
-  ) {
-    return null;
-  }
-  const valueType = typeof raw.value;
-  const claimValue =
-    raw.value == null || valueType === "string" || valueType === "number" || valueType === "boolean"
-      ? (raw.value as string | number | boolean | null)
-      : undefined;
-  if (claimValue === undefined) return null;
-  return {
-    id,
-    parcelId,
-    domain,
-    key,
-    label,
-    value: typeof claimValue === "string" ? cleanText(claimValue, 500) : claimValue,
-    unit: nullableText(raw.unit, 60),
-    nature,
-    status,
-    confidence,
-    confidenceReason: requireText(raw.confidenceReason, 500) ?? "Evidence confidence not stated.",
-    sourceRefs,
-    locators,
-    userConfirmed: raw.userConfirmed,
-    warning: nullableText(raw.warning, 400),
-  };
-}
 
-function validateSelectedContradiction(
-  value: unknown,
-): AskEasyErfSelectedEvidencePayload["contradictions"][number] | null {
-  const raw = asRecord(value);
-  if (!raw) return null;
-  const id = requireText(raw.id, 160);
-  const parcelId = requireText(raw.parcelId, 160);
-  const title = requireText(raw.title, 180);
-  const severity = enumValue(raw.severity, ["low", "medium", "high"] as const);
-  const explanation = requireText(raw.explanation, 600);
-  const claimIds = validateStringArray(raw.claimIds, 8, 160);
-  const sourceRefs = validateStringArray(raw.sourceRefs, 8, 20);
-  const displayedValues = validateStringArray(raw.displayedValues, 6, 220);
-  const nextAction = requireText(raw.nextAction, 300);
-  if (!id || !parcelId || !title || !severity || !explanation || !claimIds || !sourceRefs || !displayedValues || !nextAction) return null;
-  return { id, parcelId, title, severity, explanation, claimIds, sourceRefs, displayedValues, nextAction };
-}
 
-function validateSelectedGap(value: unknown): AskEasyErfSelectedEvidencePayload["gaps"][number] | null {
-  const raw = asRecord(value);
-  if (!raw) return null;
-  const id = requireText(raw.id, 160);
-  const parcelId = requireText(raw.parcelId, 160);
-  const domain = enumValue(raw.domain, [
-    "identity",
-    "address",
-    "ownership",
-    "deeds",
-    "planning",
-    "valuation",
-    "transfers",
-    "market",
-    "environment",
-    "infrastructure",
-    "site",
-    "strategy",
-    "documents",
-    "notes",
-  ] as const);
-  const importance = enumValue(raw.importance, ["low", "medium", "high"] as const);
-  const title = requireText(raw.title, 180);
-  const explanation = requireText(raw.explanation, 500);
-  const basis = requireText(raw.basis, 300);
-  const nextAction = requireText(raw.nextAction, 300);
-  if (!id || !parcelId || !domain || !importance || !title || !explanation || !basis || !nextAction || typeof raw.blocking !== "boolean") return null;
-  return { id, parcelId, domain, importance, title, explanation, basis, nextAction, blocking: raw.blocking };
-}
 
 function validateLocator(value: unknown): EvidenceLocator | null {
   const raw = asRecord(value);
@@ -2010,21 +1604,11 @@ function safePublicLocatorUrl(value: string) {
   return trimmed;
 }
 
-function hasConsecutiveSourceRefs(sources: AskEasyErfSelectedEvidenceSource[]) {
-  return sources.every((source, index) => source.ref === `S${index + 1}`);
-}
 
 function hasDuplicates(values: string[]) {
   return new Set(values).size !== values.length;
 }
 
-function isSyntheticMissingEvidenceSource(source: AskEasyErfSelectedEvidenceSource) {
-  return (
-    source.kind === "system_state" &&
-    source.sourceType === "missing" &&
-    source.sourceId.endsWith(":selected-evidence-gaps")
-  );
-}
 
 function sourceTypeForEvidenceSource(source: {
   authorityType: EvidenceAuthorityType;
