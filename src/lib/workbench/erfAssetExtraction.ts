@@ -7,33 +7,58 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
-  isSupportedExtractionMimeType,
-  type ErfExtractedClaim,
   type ErfExtractionStatus,
+  type ErfIdentityMatchStatus,
 } from "../../../supabase/functions/_shared/erfExtractionContract";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import {
+  erfAssetExtractedClaims,
+  erfAssetExtractionError,
+  erfAssetExtractionLabel,
+  erfAssetExtractionStatus,
+  erfAssetHasSearchableExtraction,
+  erfAssetIdentityMatchReason,
+  erfAssetIdentityMatchStatus,
+  isExtractableErfAsset,
+} from "@/lib/evidence/extractionMetadata";
+
+// Re-exported so UI code keeps one import site while the runtime-neutral
+// readers live in the evidence layer.
+export {
+  erfAssetExtractedClaims,
+  erfAssetExtractionError,
+  erfAssetExtractionLabel,
+  erfAssetExtractionStatus,
+  erfAssetHasSearchableExtraction,
+  erfAssetIdentityMatchReason,
+  erfAssetIdentityMatchStatus,
+  isExtractableErfAsset,
+};
 
 export const EXTRACT_ERF_ASSET_FUNCTION_NAME = "extract-erf-asset";
-
-/** Categories whose contents are worth reading into evidence. */
-const EXTRACTABLE_CATEGORIES = new Set([
-  "official_document",
-  "sg_diagram",
-  "paid_report",
-  "title_deed",
-  "zoning_document",
-  "topography",
-]);
 
 export type ExtractErfAssetResult =
   | {
       success: true;
       extractionStatus: ErfExtractionStatus;
+      identityMatchStatus: ErfIdentityMatchStatus | null;
       claimCount: number;
       documentType: string | null;
       warning: string | null;
     }
-  | { success: false; code: string | null; error: string; extractionStatus: ErfExtractionStatus | null };
+  | {
+      success: false;
+      code: string | null;
+      error: string;
+      extractionStatus: ErfExtractionStatus | null;
+      identityMatchStatus?: ErfIdentityMatchStatus | null;
+    };
+
+export interface ExtractErfAssetOptions {
+  /** Must equal the asset's parcel_id; the server re-checks it. */
+  expectedParcelId: string;
+  /** Only allowed for failed / partial / unverified assets. */
+  retry?: boolean;
+}
 
 export interface ExtractErfAssetDeps {
   fetchImpl?: typeof fetch;
@@ -58,60 +83,8 @@ function defaultApiKey() {
   );
 }
 
-/** True when this asset is a document Easy Erf should try to read. */
-export function isExtractableErfAsset(asset: {
-  asset_category: string;
-  mime_type: string;
-}) {
-  return EXTRACTABLE_CATEGORIES.has(asset.asset_category) && isSupportedExtractionMimeType(asset.mime_type);
-}
 
-export function erfAssetExtractionStatus(asset: Pick<ErfAsset, "metadata">): ErfExtractionStatus {
-  const value = asset.metadata?.extractionStatus ?? asset.metadata?.extraction_status;
-  const known: ErfExtractionStatus[] = [
-    "not_started",
-    "queued",
-    "processing",
-    "ready",
-    "partial",
-    "unsupported",
-    "failed",
-  ];
-  return typeof value === "string" && (known as string[]).includes(value)
-    ? (value as ErfExtractionStatus)
-    : "not_started";
-}
 
-export function erfAssetExtractedClaims(asset: Pick<ErfAsset, "metadata">): ErfExtractedClaim[] {
-  const raw = asset.metadata?.extractedClaims ?? asset.metadata?.extracted_claims;
-  return Array.isArray(raw) ? (raw as ErfExtractedClaim[]) : [];
-}
-
-export function erfAssetExtractionError(asset: Pick<ErfAsset, "metadata">): string | null {
-  const value = asset.metadata?.extractionError ?? asset.metadata?.extraction_error;
-  return typeof value === "string" && value.trim() ? value : null;
-}
-
-/** Human label for the extraction state, used across Sources and Reports. */
-export function erfAssetExtractionLabel(asset: Pick<ErfAsset, "metadata">) {
-  const status = erfAssetExtractionStatus(asset);
-  switch (status) {
-    case "ready":
-      return `Read — ${erfAssetExtractedClaims(asset).length} extracted values`;
-    case "partial":
-      return "Read — no structured values found";
-    case "processing":
-      return "Reading document…";
-    case "queued":
-      return "Queued for reading";
-    case "unsupported":
-      return "Cannot be read automatically";
-    case "failed":
-      return erfAssetExtractionError(asset) ?? "Reading failed";
-    default:
-      return "Not read yet";
-  }
-}
 
 /**
  * Requests server-side extraction for one vault asset. Resolves with the
@@ -120,8 +93,18 @@ export function erfAssetExtractionLabel(asset: Pick<ErfAsset, "metadata">) {
  */
 export async function extractErfAsset(
   assetId: string,
+  options: ExtractErfAssetOptions,
   deps: ExtractErfAssetDeps = {},
 ): Promise<ExtractErfAssetResult> {
+  const expectedParcelId = String(options?.expectedParcelId ?? "").trim();
+  if (!expectedParcelId) {
+    return {
+      success: false,
+      code: "INVALID_REQUEST",
+      error: "The active erf could not be identified for this document.",
+      extractionStatus: null,
+    };
+  }
   const fetchImpl = deps.fetchImpl ?? fetch;
   const url = deps.functionsUrl ?? defaultFunctionsUrl();
   const apiKey = deps.apiKey ?? defaultApiKey();
@@ -144,7 +127,11 @@ export async function extractErfAsset(
         Authorization: `Bearer ${accessToken}`,
         apikey: apiKey,
       },
-      body: JSON.stringify({ assetId }),
+      body: JSON.stringify({
+        assetId,
+        expectedParcelId,
+        ...(options.retry ? { retry: true } : {}),
+      }),
     });
   } catch {
     return {
@@ -163,6 +150,8 @@ export async function extractErfAsset(
     documentType?: string | null;
     warning?: string | null;
     extractionStatus?: ErfExtractionStatus;
+    identityMatchStatus?: ErfIdentityMatchStatus | null;
+    identityMatchReason?: string | null;
   } | null;
 
   if (!response.ok || !payload || payload.success !== true) {
@@ -174,6 +163,7 @@ export async function extractErfAsset(
           ? payload.error
           : "This document could not be read right now.",
       extractionStatus: payload?.extractionStatus ?? null,
+      identityMatchStatus: payload?.identityMatchStatus ?? null,
     };
   }
 
@@ -183,5 +173,6 @@ export async function extractErfAsset(
     claimCount: typeof payload.claimCount === "number" ? payload.claimCount : 0,
     documentType: payload.documentType ?? null,
     warning: payload.warning ?? null,
+    identityMatchStatus: payload.identityMatchStatus ?? null,
   };
 }

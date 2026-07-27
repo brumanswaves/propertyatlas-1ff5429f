@@ -73,6 +73,7 @@ function asset(overrides: Partial<ErfAsset> = {}): ErfAsset {
     status: "ready",
     metadata: {
       extractionStatus: "ready",
+      identityMatchStatus: "matched",
       extractedText: "SG diagram shows erf 1021 boundary and survey information.",
       pageNumber: 2,
       signedUrl: "https://signed.example/volatile",

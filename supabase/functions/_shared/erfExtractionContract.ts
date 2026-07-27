@@ -18,8 +18,8 @@ export const ERF_EXTRACTION_TIMEOUT_MS = 120_000;
 
 /** Hard caps so a huge report can never blow up the row, the pack or a prompt. */
 export const ERF_EXTRACTION_MAX_FILE_BYTES = 25 * 1024 * 1024;
-export const ERF_EXTRACTION_MAX_TEXT_CHARS = 120_000;
-export const ERF_EXTRACTION_MAX_QUOTE_CHARS = 400;
+export const ERF_EXTRACTION_MAX_TEXT_CHARS = 40_000;
+export const ERF_EXTRACTION_MAX_QUOTE_CHARS = 300;
 export const ERF_EXTRACTION_MAX_CLAIMS = 60;
 
 export const ERF_EXTRACTION_SUPPORTED_MIME_TYPES = [
@@ -53,6 +53,12 @@ export type ErfExtractionFailureCode =
   | "UPSTREAM_REQUEST_REJECTED"
   | "MALFORMED_MODEL_RESPONSE"
   | "NO_READABLE_TEXT"
+  | "PARCEL_MISMATCH"
+  | "IDENTITY_MISMATCH"
+  | "IDENTITY_UNVERIFIED"
+  | "ALREADY_PROCESSING"
+  | "ALREADY_READY"
+  | "REQUEST_TOO_LARGE"
   | "SERVER_UNAVAILABLE";
 
 /** Domains an extracted claim may target. Deliberately narrow. */
@@ -103,6 +109,7 @@ export interface ErfExtractedClaim {
 }
 
 export interface ErfExtractionResult {
+  identity: ErfExtractedIdentity;
   documentType: string | null;
   provider: string | null;
   documentDate: string | null;
@@ -128,9 +135,20 @@ export interface ErfExtractionMetadataPatch {
   extractedDocumentDate?: string | null;
   extractionSummary?: string | null;
   pageCount?: number | null;
+  identityMatchStatus?: ErfIdentityMatchStatus | null;
+  identityMatchReason?: string | null;
+  extractedIdentity?: ErfExtractedIdentity | null;
+  extractionRequestId?: string | null;
+  extractionStartedAt?: string | null;
 }
 
-export const ERF_EXTRACTION_VERSION = 1;
+export const ERF_EXTRACTION_VERSION = 2;
+
+/** Largest accepted request body, checked before JSON parsing. */
+export const ERF_EXTRACTION_MAX_REQUEST_BYTES = 4_096;
+
+/** How long a processing lock is honoured before it is treated as stale. */
+export const ERF_EXTRACTION_LOCK_TTL_MS = 5 * 60_000;
 
 export function isSupportedExtractionMimeType(mimeType: string | null | undefined) {
   const value = (mimeType ?? "").toLowerCase().split(";")[0].trim();
@@ -221,6 +239,7 @@ export function normalizeExtractionResult(raw: unknown): ErfExtractionResult | n
 
   const pageCount = toNumeric(item.pageCount);
   return {
+    identity: normalizeExtractedIdentity(item.identity),
     documentType: sanitizeLine(item.documentType, 120) || null,
     provider: sanitizeLine(item.provider, 120) || null,
     documentDate: sanitizeLine(item.documentDate, 40) || null,
@@ -244,6 +263,7 @@ export function erfExtractionSystemPrompt() {
     "5. Reproduce owner names, deed numbers and amounts exactly as printed, including spelling.",
     "6. extractedText must be the readable text of the document in reading order, no commentary added.",
     "7. Use the allowed domain and key vocabulary only. Drop anything that does not fit it.",
+    "8. Fill the identity object with the property identifiers literally printed in the document (erf number, portion, LPI code, SG code, street address, suburb or town, municipality, province). Use null for anything not printed. Never infer identity from context.",
     "",
     "Allowed domain -> keys:",
     ...ERF_EXTRACTION_DOMAINS.map((domain) => `- ${domain}: ${ERF_EXTRACTION_KEYS[domain].join(", ")}`),
@@ -263,6 +283,7 @@ export function erfExtractionResponseFormat() {
         type: "object",
         additionalProperties: false,
         required: [
+          "identity",
           "documentType",
           "provider",
           "documentDate",
@@ -273,6 +294,14 @@ export function erfExtractionResponseFormat() {
           "warning",
         ],
         properties: {
+          identity: {
+            type: "object",
+            additionalProperties: false,
+            required: [...ERF_EXTRACTION_IDENTITY_FIELDS],
+            properties: Object.fromEntries(
+              ERF_EXTRACTION_IDENTITY_FIELDS.map((field) => [field, { type: ["string", "null"] }]),
+            ),
+          },
           documentType: { type: ["string", "null"] },
           provider: { type: ["string", "null"] },
           documentDate: { type: ["string", "null"] },
@@ -302,5 +331,170 @@ export function erfExtractionResponseFormat() {
         },
       },
     },
+  };
+}
+
+
+/** Identity fields the model must report so the document can be bound to a parcel. */
+export const ERF_EXTRACTION_IDENTITY_FIELDS = [
+  "erfNumber",
+  "portionNumber",
+  "lpiCode",
+  "sgCode",
+  "streetAddress",
+  "suburbOrTown",
+  "municipality",
+  "province",
+] as const;
+
+export type ErfExtractedIdentity = {
+  [K in (typeof ERF_EXTRACTION_IDENTITY_FIELDS)[number]]: string | null;
+};
+
+/** Server-derived expectation for the parcel the document must describe. */
+export interface ErfExpectedIdentity {
+  parcelId: string;
+  lpiCode?: string | null;
+  erfNumber?: string | number | null;
+  portionNumber?: string | number | null;
+  municipality?: string | null;
+  province?: string | null;
+  town?: string | null;
+  streetAddress?: string | null;
+}
+
+export type ErfIdentityMatchStatus = "matched" | "mismatch" | "unverified";
+
+export interface ErfIdentityMatchResult {
+  status: ErfIdentityMatchStatus;
+  reason: string;
+}
+
+export const ERF_EXTRACTION_MISMATCH_MESSAGE = "Document identity does not match the selected parcel.";
+export const ERF_EXTRACTION_UNVERIFIED_MESSAGE =
+  "The document does not identify the selected parcel clearly enough to use its contents as evidence.";
+
+export function normalizeExtractedIdentity(raw: unknown): ErfExtractedIdentity {
+  const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const out = {} as ErfExtractedIdentity;
+  for (const field of ERF_EXTRACTION_IDENTITY_FIELDS) {
+    out[field] = sanitizeLine(item[field], 160) || null;
+  }
+  return out;
+}
+
+/** Canonical LPI encoded in a parcel id of the form `csg:lpi:<LPI>`. */
+export function parseCanonicalLpi(parcelId: string | null | undefined): string | null {
+  const match = /^csg:lpi:([A-Za-z0-9]+)$/.exec(String(parcelId ?? "").trim());
+  return match ? match[1].toUpperCase() : null;
+}
+
+function normCode(value: unknown): string | null {
+  const text = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return text || null;
+}
+
+function normNumber(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  const match = /\d+/.exec(text.replace(/\s/g, ""));
+  if (match) return String(Number(match[0]));
+  const fallback = text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return fallback || null;
+}
+
+function normPortion(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  if (/^(remainder|rem|re|none|n\/a)$/i.test(text)) return "0";
+  return normNumber(text);
+}
+
+function normPlace(value: unknown): string | null {
+  const text = String(value ?? "")
+    .toLowerCase()
+    .replace(/\b(local|district)?\s*municipality\b/g, " ")
+    .replace(/\bprovince\b/g, " ")
+    .replace(/[^a-z0-9]+/g, "");
+  return text || null;
+}
+
+function placeAgrees(a: string, b: string) {
+  return a === b || a.includes(b) || b.includes(a);
+}
+
+/**
+ * Deterministic document-to-parcel identity gate.
+ *
+ * matched   — a strong positive identifier agrees and nothing strong conflicts.
+ * mismatch  — any strong conflict (different LPI, erf/portion, or place).
+ * unverified— the document does not state enough identity to decide safely.
+ */
+export function matchDocumentIdentity(
+  expected: ErfExpectedIdentity,
+  document: ErfExtractedIdentity,
+): ErfIdentityMatchResult {
+  const conflicts: string[] = [];
+  const positives: string[] = [];
+
+  const expectedLpi = normCode(expected.lpiCode) ?? parseCanonicalLpi(expected.parcelId);
+  const documentLpi = normCode(document.lpiCode);
+  let lpiMatch = false;
+  if (expectedLpi && documentLpi) {
+    if (expectedLpi === documentLpi) {
+      lpiMatch = true;
+      positives.push("LPI code matches");
+    } else {
+      conflicts.push("the document LPI code is for a different parcel");
+    }
+  }
+
+  const expectedErf = normNumber(expected.erfNumber);
+  const documentErf = normNumber(document.erfNumber);
+  let erfMatch = false;
+  if (expectedErf && documentErf) {
+    if (expectedErf === documentErf) {
+      erfMatch = true;
+      positives.push("erf number matches");
+    } else {
+      conflicts.push(`the document states erf ${documentErf}, not erf ${expectedErf}`);
+    }
+  }
+
+  let portionOk = true;
+  if (erfMatch) {
+    const expectedPortion = normPortion(expected.portionNumber) ?? "0";
+    const documentPortion = normPortion(document.portionNumber) ?? "0";
+    if (expectedPortion !== documentPortion) {
+      portionOk = false;
+      conflicts.push("the document describes a different portion");
+    }
+  }
+
+  let placeMatch = false;
+  for (const [label, expectedValue, documentValue] of [
+    ["municipality", expected.municipality, document.municipality],
+    ["province", expected.province, document.province],
+    ["town", expected.town, document.suburbOrTown],
+  ] as const) {
+    const a = normPlace(expectedValue);
+    const b = normPlace(documentValue);
+    if (!a || !b) continue;
+    if (placeAgrees(a, b)) {
+      placeMatch = true;
+      positives.push(`${label} matches`);
+    } else {
+      conflicts.push(`the document ${label} is different`);
+    }
+  }
+
+  if (conflicts.length) {
+    return { status: "mismatch", reason: `Identity conflict: ${conflicts[0]}.` };
+  }
+  if (lpiMatch || (erfMatch && portionOk && placeMatch)) {
+    return { status: "matched", reason: `Identity confirmed: ${positives.join(", ")}.` };
+  }
+  return {
+    status: "unverified",
+    reason: "The document does not state enough matching identity fields to bind it to this parcel.",
   };
 }
