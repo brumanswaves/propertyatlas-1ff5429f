@@ -86,7 +86,7 @@ describe("PropertyEvidencePack contradictions", () => {
 
     const contradiction = pack.contradictions.find((item) => item.id === "subject-land-size-mismatch-subject");
     expect(contradiction).toMatchObject({
-      claimIds: expect.arrayContaining(["claim-identity-areaM2-rawproperties-shape-area", "claim-market-subject-landSizeM2"]),
+      claimIds: expect.arrayContaining(["claim-identity-areaM2-area-m2", "claim-market-subject-landSizeM2"]),
       sourceIds: expect.arrayContaining(["official-parcel-record", "market-subject"]),
       targetTab: "listings",
     });

@@ -621,9 +621,11 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Enhance this erf file");
     expect(reportsTab).toContain("{label} report upload");
     expect(reportsTab).toContain('provider === "lightstone" ? "Lightstone" : "WinDeed"');
-    expect(reportsTab).toContain(
-      "Stored in the cloud Erf File Vault for reference. Extraction and AI summary are not",
-    );
+    // Uploaded reports are now read server-side, so the tab must state the real
+    // extraction state instead of claiming extraction is unavailable.
+    expect(reportsTab).toContain("erfAssetExtractionLabel(attachment)");
+    expect(reportsTab).toContain("Read document");
+    expect(reportsTab).not.toContain("Extraction and AI summary are not");
     expect(reportsTab).toContain("Replace PDF");
     expect(reportsTab).toContain("Remove");
     expect(reportsTab).toContain("useErfFileVault");

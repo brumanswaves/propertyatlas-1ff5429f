@@ -1,3 +1,4 @@
+import { AREA_UNAVAILABLE_LABEL, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import type {
   ReadinessCategory,
   ReportViewModel,
@@ -178,7 +179,8 @@ function buildKnown(report: ReportViewModel): string[] {
   if (identity.erfNumber) known.add(`Official erf number: ${identity.erfNumber}`);
   if (identity.lpi) known.add(`Official LPI: ${identity.lpi}`);
   if (identity.areaM2 != null) {
-    known.add(`Mapped erf area: ${identity.areaM2.toLocaleString()} m²`);
+    const areaLabel = formatAreaM2WithUnit(identity.areaM2);
+    if (areaLabel) known.add(`Mapped erf area: ${areaLabel}`);
   }
   if (identity.marketAddressLine) {
     known.add(`Confirmed Market address: ${identity.marketAddressLine}`);
@@ -304,7 +306,7 @@ function buildContradictions(report: ReportViewModel): ContradictionItem[] {
   if (
     report.identity.areaM2 != null &&
     areaPlanning &&
-    Number(areaPlanning.replace(/,/g, "")) !== report.identity.areaM2
+    Number(areaPlanning.replace(/,/g, "")) !== Math.round(report.identity.areaM2)
   ) {
     items.push({
       id: "area-mismatch",
@@ -313,7 +315,7 @@ function buildContradictions(report: ReportViewModel): ContradictionItem[] {
       explanation:
         "The parcel identity area and planning area do not match. Confirm the area using the SG diagram or official survey record.",
       evidence: [
-        `Parcel identity: ${report.identity.areaM2.toLocaleString()} m²`,
+        `Parcel identity: ${formatAreaM2WithUnit(report.identity.areaM2) ?? AREA_UNAVAILABLE_LABEL}`,
         `Planning field: ${areaPlanning} m²`,
       ],
       nextAction: "Open the SG diagram and verify the registered area.",

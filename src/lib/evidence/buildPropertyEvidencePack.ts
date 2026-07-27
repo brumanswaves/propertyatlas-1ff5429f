@@ -5,6 +5,13 @@ import {
   type ErfStrategyScenario,
 } from "@/lib/workbench/erfWorkspaceState";
 import { fingerprintPropertyEvidencePack } from "./evidenceFingerprint";
+import { resolveParcelArea, SHAPE_AREA_WARNING, statedAreaAliases } from "./parcelArea";
+import {
+  erfAssetExtractedClaims,
+  erfAssetExtractionError,
+  erfAssetExtractionStatus,
+  isExtractableErfAsset,
+} from "@/lib/workbench/erfAssetExtraction";
 import type {
   BuildPropertyEvidencePackInput,
   EvidenceClaim,
@@ -36,7 +43,6 @@ const ALL_DOMAINS: EvidenceDomain[] = [
   "notes",
 ];
 
-const AREA_KEYS = ["SHAPE_Area", "AREA", "AREA_M2", "area", "shape_area", "AREAM2"];
 const ZONING_KEYS = ["ZONING", "Zoning", "ZONE", "ZONE_NAME", "ZONING_DESCRIPTION", "LU_DESC"];
 const PLANNING_KEYS: Array<[string, string, string[]]> = [
   ["coverage", "Coverage %", ["COVERAGE", "Coverage", "coverage"]],
@@ -228,23 +234,27 @@ function addOfficialParcelEvidence(
   }
 
   const raw = parcel.rawProperties ?? {};
-  const areaCandidates = isOfficialParcel ? candidates(raw, AREA_KEYS) : [];
-  for (const candidate of areaCandidates) {
+  const resolvedArea = isOfficialParcel ? resolveParcelArea(raw) : null;
+  if (resolvedArea) {
     addClaim(pack, {
-      id: claimId("identity", "areaM2", candidate.path),
+      id: claimId("identity", "areaM2", resolvedArea.sourceKey),
       parcelId: parcel.id,
       domain: "identity",
       key: "areaM2",
       label: "Erf area",
-      value: claimScalar(candidate.value),
-      normalizedValue: numeric(candidate.value),
+      value: resolvedArea.areaM2,
+      normalizedValue: resolvedArea.areaM2,
       unit: "m2",
       nature: "fact",
       status: "supported",
-      confidence: "high",
-      confidenceReason: "Area alias supplied by official parcel raw properties.",
+      confidence: resolvedArea.confidence,
+      confidenceReason: resolvedArea.approximate
+        ? (resolvedArea.warning ?? SHAPE_AREA_WARNING)
+        : resolvedArea.sourceKind === "csg_geom_area"
+          ? "Registered ground area published directly by the official CSG parcel record (GEOM_AREA, square metres)."
+          : "Explicit square-metre area supplied by the official parcel record.",
       sourceIds: [sourceId],
-      locators: [{ fieldPath: candidate.path }],
+      locators: [{ fieldPath: `parcel.rawProperties.${resolvedArea.sourceKey}` }],
       observedAt: input.workspaceState.updatedAt,
       updatedAt: input.workspaceState.updatedAt,
       userConfirmed: false,
@@ -567,6 +577,7 @@ function addAssetEvidence(
       excluded: false,
       notes: extractionNote(asset),
     });
+    addExtractedDocumentClaims(pack, asset, sourceId);
     if (selectedSiteDesign?.id === asset.id) {
       addClaim(pack, {
         id: `claim-site-selected-${asset.id}`,
@@ -588,6 +599,55 @@ function addAssetEvidence(
         excluded: false,
       });
     }
+  }
+}
+
+/**
+ * Turns server-extracted document values into real, auditable evidence claims.
+ *
+ * These are document-derived observations, never official truth: each one keeps
+ * its verbatim quote and page locator, and because official parcel claims are
+ * added first they can never overwrite an official value.
+ */
+function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId: string) {
+  if (erfAssetExtractionStatus(asset) !== "ready") return;
+  const extracted = erfAssetExtractedClaims(asset);
+  for (const [index, item] of extracted.entries()) {
+    if (!item || typeof item.key !== "string" || !item.key) continue;
+    const value = typeof item.value === "string" ? item.value.trim() : "";
+    if (!value) continue;
+    const domain = (item.domain ?? "documents") as EvidenceDomain;
+    const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
+      ? item.numericValue
+      : null;
+    addClaim(pack, {
+      id: `claim-extracted-${asset.id}-${index}-${slug(`${domain}-${item.key}`)}`,
+      parcelId: asset.parcel_id,
+      domain,
+      key: item.key,
+      label: item.label || item.key,
+      value: numeric ?? value,
+      normalizedValue: numeric ?? normalizeValue(value),
+      unit: item.unit ?? null,
+      nature: "observation",
+      status: "supported",
+      confidence: item.confidence === "high" ? "medium" : "low",
+      confidenceReason:
+        "Read from an uploaded document by Easy Erf. Document-derived, not an official record — check the quoted page.",
+      sourceIds: [sourceId],
+      locators: [
+        {
+          assetId: asset.id,
+          pageNumber: item.page ?? undefined,
+          excerpt: typeof item.quote === "string" ? item.quote : undefined,
+          metadataKey: "extractedClaims",
+        },
+      ],
+      observedAt: asset.updated_at,
+      updatedAt: asset.updated_at,
+      userConfirmed: false,
+      excluded: false,
+    });
   }
 }
 
@@ -922,7 +982,29 @@ function addContradictions(
     });
     markClaimsConflicting(pack, compact([officialClaim?.id, addressClaim?.id]));
   }
-  addAliasConflict(pack, "identity", "areaM2", "official-area-alias-conflict", "Official area aliases disagree", "Verify the registered erf area against the SG diagram.");
+  // Canonical precedence resolves to a single area claim; surface disagreement
+  // between *stated* official aliases without letting a lesser alias win.
+  const areaAliases = statedAreaAliases(input.parcel.rawProperties as Record<string, unknown> | null | undefined);
+  if (areaAliases.length > 1) {
+    const min = Math.min(...areaAliases.map((a) => a.value));
+    const max = Math.max(...areaAliases.map((a) => a.value));
+    if (max - min > 1 && (max - min) / max > 0.01) {
+      const canonicalClaim = findClaim(pack, "identity", "areaM2");
+      addContradiction(pack, {
+        id: "official-area-alias-conflict",
+        title: "Official area aliases disagree",
+        severity: "medium",
+        explanation:
+          "More than one official square-metre area attribute is present and they do not agree. Easy Erf uses the highest-precedence value (CSG GEOM_AREA where available).",
+        claimIds: compact([canonicalClaim?.id]),
+        sourceIds: unique(compact([...(canonicalClaim?.sourceIds ?? [])])),
+        displayedValues: areaAliases.map((a) => `${a.key}: ${a.value}`),
+        nextAction: "Verify the registered erf area against the SG diagram.",
+        targetTab: "sources",
+      });
+      markClaimsConflicting(pack, compact([canonicalClaim?.id]));
+    }
+  }
   addAliasConflict(pack, "planning", "zoning", "official-zoning-alias-conflict", "Official zoning aliases disagree", "Verify zoning against municipal planning records.");
 
   const officialArea = firstClaimNumber(pack.claims, "identity", "areaM2", true);
@@ -1007,6 +1089,26 @@ function addGaps(
   }
   if (!pack.claims.some((claim) => claim.domain === "ownership" && claim.status === "supported")) {
     gap("ownership-not-verified", "ownership", "high", "Ownership not verified", "No structured ownership claim exists for this erf.", "Uploaded reports alone do not verify ownership without extracted ownership text.", "Upload or review title deed, WinDeed or Lightstone ownership evidence.", "reports", true);
+  }
+  const unreadDocuments = assets.filter(
+    (asset) => isExtractableErfAsset(asset) && !["ready", "partial"].includes(erfAssetExtractionStatus(asset)),
+  );
+  if (unreadDocuments.length) {
+    const failed = unreadDocuments.filter((asset) => erfAssetExtractionStatus(asset) === "failed");
+    gap(
+      "documents-not-read",
+      "documents",
+      "high",
+      failed.length ? "A document could not be read" : "Uploaded documents have not been read yet",
+      failed.length
+        ? `Easy Erf could not read ${failed.length} uploaded document${failed.length === 1 ? "" : "s"}, so their contents are not in the evidence pack.`
+        : `${unreadDocuments.length} uploaded document${unreadDocuments.length === 1 ? " is" : "s are"} stored but not yet read, so their contents cannot be quoted or searched.`,
+      failed.length
+        ? (failed.map((asset) => erfAssetExtractionError(asset)).find(Boolean) ?? "Extraction failed.")
+        : unreadDocuments.map((asset) => asset.original_file_name).slice(0, 5).join(", "),
+      failed.length ? "Retry reading the document in Reports." : "Read these documents so their values become searchable evidence.",
+      "reports",
+    );
   }
   if (!assets.some((asset) => asset.asset_category === "paid_report" || asset.asset_category === "title_deed")) {
     gap("no-title-deed-or-paid-report", "deeds", "medium", "No title deed or paid ownership report", "No ownership/deeds document is attached.", "No paid_report or title_deed asset found.", "Add Lightstone, WinDeed or title deed documents.", "reports");

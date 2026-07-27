@@ -6,6 +6,8 @@ import {
   ExternalLink,
   FileText,
   Lock,
+  Loader2,
+  ScanText,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -19,6 +21,11 @@ import type { SgDocumentResult } from "@/lib/research/sgDocument";
 import { CSG_OFFICIAL_URL } from "@/lib/external-urls";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import {
+  erfAssetExtractionLabel,
+  erfAssetExtractionStatus,
+  extractErfAsset,
+} from "@/lib/workbench/erfAssetExtraction";
 import { toast } from "sonner";
 
 type InterestKind = "notify" | "save";
@@ -37,6 +44,7 @@ export function ReportsTab({
   const reportVault = useErfFileVault(parcelId, ["paid_report"]);
   const [interests, setInterests] = useState<Record<string, InterestKind>>({});
   const [uploadErrors, setUploadErrors] = useState<Partial<Record<PaidReportProvider, string>>>({});
+  const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const reportCatalog = REPORT_CATALOG.filter((report) => report.id !== "sg_diagram");
 
   useEffect(() => {
@@ -122,7 +130,31 @@ export function ReportsTab({
       return;
     }
     setUploadErrors((current) => ({ ...current, [provider]: undefined }));
-    toast.success(`${providerLabel(provider)} PDF uploaded for reference.`);
+    toast.success(`${providerLabel(provider)} PDF uploaded. Reading it now.`);
+    await readDocument(result.asset);
+  }
+
+  /**
+   * Sends one uploaded report to the server-side reader so its contents become
+   * quotable, searchable evidence instead of an opaque stored file.
+   */
+  async function readDocument(asset: ErfAsset) {
+    setReadingAssetId(asset.id);
+    try {
+      const outcome = await extractErfAsset(asset.id);
+      if (outcome.success) {
+        if (outcome.claimCount > 0) {
+          toast.success(`Read ${outcome.claimCount} values from ${asset.original_file_name}.`);
+        } else {
+          toast.warning(`No structured values were found in ${asset.original_file_name}.`);
+        }
+      } else {
+        toast.error(outcome.error);
+      }
+    } finally {
+      setReadingAssetId(null);
+      await reportVault.refresh();
+    }
   }
 
   async function removePaidReport(provider: PaidReportProvider) {
@@ -205,6 +237,13 @@ export function ReportsTab({
                   uploading={Boolean(reportVault.uploadState)}
                   onUpload={uploadPaidReport}
                   onRemove={removePaidReport}
+                  reading={
+                    readingAssetId ===
+                    (paidReportForProvider(reportVault.assets, reportProviderForCatalogId(r.id)!)?.id ??
+                      null)
+                  }
+                  onRead={(asset) => void readDocument(asset)}
+
                 />
               )}
             </article>
@@ -273,6 +312,8 @@ function PaidReportUploadArea({
   uploading,
   onUpload,
   onRemove,
+  reading,
+  onRead,
 }: {
   provider: PaidReportProvider;
   attachment: ErfAsset | null;
@@ -280,6 +321,8 @@ function PaidReportUploadArea({
   uploading?: boolean;
   onUpload: (provider: PaidReportProvider, file: File | null | undefined) => void;
   onRemove: (provider: PaidReportProvider) => void;
+  reading?: boolean;
+  onRead: (asset: ErfAsset) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const label = providerLabel(provider);
@@ -325,10 +368,23 @@ function PaidReportUploadArea({
               {formatUploadedAt(attachment.created_at)}
             </div>
             <div className="mt-0.5 text-emerald-900/70">
-              Stored in the cloud Erf File Vault for reference. Extraction and AI summary are not
-              enabled yet.
+              {reading ? "Reading document…" : erfAssetExtractionLabel(attachment)}
             </div>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            disabled={reading}
+            onClick={() => onRead(attachment)}
+            className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full border border-emerald-700/20 bg-white px-3 py-1.5 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-100 disabled:opacity-60"
+          >
+            {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanText className="h-3.5 w-3.5" />}
+            {reading
+              ? "Reading"
+              : erfAssetExtractionStatus(attachment) === "ready"
+                ? "Read again"
+                : "Read document"}
+          </button>
           <button
             type="button"
             onClick={() => void onRemove(provider)}
@@ -337,6 +393,7 @@ function PaidReportUploadArea({
             <Trash2 className="h-3.5 w-3.5" />
             Remove
           </button>
+          </div>
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-[#0D1B2A]/58">
