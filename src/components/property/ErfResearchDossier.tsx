@@ -1,3 +1,4 @@
+import { formatAreaM2Value, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -1663,8 +1664,8 @@ function StoepAiReportView({
               {report.identity.officialLine && (
                 <span>{report.identity.officialLine}</span>
               )}
-              {report.identity.areaM2 != null && (
-                <span>· {report.identity.areaM2.toLocaleString()} m²</span>
+              {formatAreaM2WithUnit(report.identity.areaM2) && (
+                <span>· {formatAreaM2WithUnit(report.identity.areaM2)}</span>
               )}
               {report.identity.lpi && <span>· LPI {report.identity.lpi}</span>}
             </div>
@@ -1944,7 +1945,7 @@ function StoepAiReportView({
           <IdRow label="Province" value={report.identity.province} badge="official" />
           <IdRow
             label="Erf size (m²)"
-            value={report.identity.areaM2 != null ? report.identity.areaM2.toLocaleString() : null}
+            value={formatAreaM2Value(report.identity.areaM2)}
             badge="official"
           />
           <IdRow

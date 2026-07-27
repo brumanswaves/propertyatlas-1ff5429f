@@ -1,3 +1,4 @@
+import { canonicalAreaM2, formatAreaM2Value } from "@/lib/evidence/parcelArea";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type {
   ErfWorkspaceState,
@@ -217,14 +218,8 @@ function parcelDisplayName(parcel: NormalizedOfficialParcel, marketAddr: Address
 }
 
 function parcelAreaM2(parcel: NormalizedOfficialParcel): number | null {
-  const raw = parcel.rawProperties ?? {};
-  const candidates = ["SHAPE_Area", "AREA", "AREA_M2", "area", "shape_area", "AREAM2"];
-  for (const key of candidates) {
-    const value = (raw as Record<string, unknown>)[key];
-    const n = typeof value === "number" ? value : Number(value);
-    if (Number.isFinite(n) && n > 0) return Math.round(n);
-  }
-  return null;
+  // Canonical resolver — shared with the Property Evidence Pack so the two never drift.
+  return canonicalAreaM2(parcel.rawProperties as Record<string, unknown> | null | undefined);
 }
 
 function buildIdentity(
@@ -336,8 +331,8 @@ function buildPlanning(parcel: NormalizedOfficialParcel): PlanningField[] {
     },
     {
       label: "Erf size (m²)",
-      value: areaM2 != null ? areaM2.toLocaleString() : null,
-      badge: areaM2 != null ? "official" : "missing",
+      value: formatAreaM2Value(areaM2),
+      badge: formatAreaM2Value(areaM2) != null ? "official" : "missing",
     },
     { label: "Coverage %", value: null, badge: "missing" },
     { label: "FAR", value: null, badge: "missing" },
@@ -362,8 +357,13 @@ function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOff
     field("zoning", "Zoning"),
     {
       label: "Erf size (m²)",
-      value: area ? displayClaimValue(area) : parcelAreaM2(parcel)?.toLocaleString() ?? null,
-      badge: area ? badgeForClaim(area) : parcelAreaM2(parcel) != null ? "official" : "missing",
+      value: formatAreaM2Value(numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel)),
+      badge:
+        formatAreaM2Value(numberOrNull(area?.normalizedValue ?? area?.value) ?? parcelAreaM2(parcel)) != null
+          ? area
+            ? badgeForClaim(area)
+            : "official"
+          : "missing",
     },
     field("coverage", "Coverage %"),
     field("far", "FAR"),

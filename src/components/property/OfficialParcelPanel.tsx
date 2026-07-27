@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { AREA_UNAVAILABLE_LABEL, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
@@ -322,10 +323,10 @@ function formatMapCoordinate(value: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "Not available";
 }
 
+/** Single rendering rule for erf area: never show a fabricated 0 m². */
 function formatAreaM2(value: unknown): string {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n <= 0) return "Area not available";
-  return `${Math.round(n).toLocaleString()} m²`;
+  const numeric = typeof value === "number" ? value : Number(value);
+  return formatAreaM2WithUnit(Number.isFinite(numeric) ? numeric : null) ?? AREA_UNAVAILABLE_LABEL;
 }
 
 function googleMapsCoordinateUrl(coordinates?: { lng: number; lat: number } | null): string | null {
