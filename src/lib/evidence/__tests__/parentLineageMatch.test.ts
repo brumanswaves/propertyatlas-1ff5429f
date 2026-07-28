@@ -153,7 +153,7 @@ describe("parent-lineage claim policy", () => {
       [
         claim({
           domain: "planning",
-          key: "servitude",
+          key: "servitudes",
           label: "Servitude",
           value: "3 m municipal servitude along the northern boundary",
           quote: "3m municipal servitude along the northern boundary",
@@ -173,7 +173,7 @@ describe("parent-lineage claim policy", () => {
       [
         claim({
           domain: "deeds",
-          key: "servitude",
+          key: "servitudes",
           label: "Servitude",
           value: "2 m sewer servitude affecting Erf 1570",
           quote: "SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570",
@@ -184,7 +184,7 @@ describe("parent-lineage claim policy", () => {
     );
     const servitude = out[0];
     expect(servitude.domain).toBe("deeds");
-    expect(servitude.key).toBe("servitude");
+    expect(servitude.key).toBe("servitudes");
     expect(servitude.scope).toBe("subject");
     expect(servitude.page).toBe(2);
     expect(servitude.quote).toBe("SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570");
@@ -196,7 +196,7 @@ describe("parent-lineage claim policy", () => {
       [
         claim({
           domain: "planning",
-          key: "buildingLine",
+          key: "buildingLines",
           label: "Building line",
           value: "3 m building line",
           quote: "3 m BUILDING LINE ERF 1570",
@@ -205,7 +205,7 @@ describe("parent-lineage claim policy", () => {
       policyContext,
     );
     expect(out[0].domain).toBe("planning");
-    expect(out[0].key).toBe("buildingLine");
+    expect(out[0].key).toBe("buildingLines");
     expect(out[0].scope).toBe("subject");
   });
 
@@ -214,14 +214,14 @@ describe("parent-lineage claim policy", () => {
       [
         claim({
           domain: "planning",
-          key: "servitude",
+          key: "servitudes",
           label: "Servitude",
           value: "Servitude over Erven 1560 to 1580",
           quote: "SERVITUDE OVER ERVEN 1560 TO 1580",
         }),
         claim({
           domain: "planning",
-          key: "buildingLine",
+          key: "buildingLines",
           label: "Building line",
           value: "Building line noted on subdivision of Erf 1496 into Erven 1568, 1569, 1570, 1571",
           quote: "SUBDIVISION OF ERF 1496 INTO ERVEN 1568, 1569, 1570, 1571",
@@ -257,16 +257,16 @@ describe("parent-lineage claim policy", () => {
       [
         claim({ domain: "ownership", key: "registeredOwner", label: "Owner", value: "J A Smith" }),
         claim({ domain: "valuation", key: "municipalValue", label: "Value", value: "R1 200 000", numericValue: 1200000 }),
-        claim({ domain: "transfers", key: "lastTransferPrice", label: "Price", value: "R900 000", numericValue: 900000 }),
+        claim({ domain: "transfers", key: "lastSalePrice", label: "Price", value: "R900 000", numericValue: 900000 }),
         claim({ domain: "planning", key: "zoning", label: "Zoning", value: "Residential 1, affecting Erf 1570" }),
         claim({ domain: "planning", key: "far", label: "FAR", value: "0.6 for Erf 1570" }),
         claim({ domain: "planning", key: "coverage", label: "Coverage", value: "50% Erf 1570" }),
-        claim({ domain: "planning", key: "density", label: "Density", value: "1 unit Erf 1570" }),
+        claim({ domain: "planning", key: "densityUnits", label: "Density", value: "1 unit Erf 1570" }),
         claim({ domain: "planning", key: "landUse", label: "Land use", value: "Dwelling, Erf 1570" }),
       ],
       policyContext,
     );
-    for (const key of ["registeredOwner", "municipalValue", "lastTransferPrice", "zoning", "far", "coverage", "density", "landUse"]) {
+    for (const key of ["registeredOwner", "municipalValue", "lastSalePrice", "zoning", "far", "coverage", "densityUnits", "landUse"]) {
       expect(out.some((item) => item.key === key)).toBe(false);
     }
     expect(out.some((item) => item.domain === "ownership" || item.domain === "valuation" || item.domain === "transfers")).toBe(
@@ -325,7 +325,7 @@ describe("evidence pack with a parent General Plan", () => {
       claim({ domain: "identity", key: "erfNumber", label: "Erf number", value: "1496", quote: "ERF 1496" }),
       claim({
         domain: "deeds",
-        key: "servitude",
+        key: "servitudes",
         label: "Servitude",
         value: "2 m sewer servitude affecting Erf 1570",
         quote: "SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570",
@@ -333,7 +333,7 @@ describe("evidence pack with a parent General Plan", () => {
       }),
       claim({
         domain: "planning",
-        key: "servitude",
+        key: "servitudes",
         label: "Servitude",
         value: "3 m municipal servitude along the northern boundary",
         quote: "3m MUNICIPAL SERVITUDE NORTHERN BOUNDARY",
@@ -366,7 +366,7 @@ describe("evidence pack with a parent General Plan", () => {
   });
 
   it("6b. the Erf 1570 servitude stays a supported deeds claim sourced from the parent plan", () => {
-    const servitude = built.claims.find((item) => item.domain === "deeds" && item.key === "servitude");
+    const servitude = built.claims.find((item) => item.domain === "deeds" && item.key === "servitudes");
     expect(servitude?.status).toBe("supported");
     expect(servitude?.confidenceReason).toMatch(/parent plan|GP12252/i);
     expect(servitude?.confidenceReason).toMatch(/surveyor|conveyancer/i);
@@ -390,7 +390,7 @@ describe("Ask Easy Erf parent-plan context", () => {
           [
             claim({
               domain: "deeds",
-              key: "servitude",
+              key: "servitudes",
               label: "Servitude",
               value: "2 m sewer servitude affecting Erf 1570",
               quote: "SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570",
