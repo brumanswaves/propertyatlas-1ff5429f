@@ -441,7 +441,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const isCurrentReady =
-    currentStatus === "ready" && currentIdentity === "matched" && currentVersion === ERF_EXTRACTION_VERSION;
+    currentStatus === "ready" &&
+    (currentIdentity === "matched" || currentIdentity === "parent_lineage_match") &&
+    currentVersion === ERF_EXTRACTION_VERSION;
   if (isCurrentReady && !(retryRequested && isInternalCaller)) {
     log("idempotent_ready", requestId);
     return json(
