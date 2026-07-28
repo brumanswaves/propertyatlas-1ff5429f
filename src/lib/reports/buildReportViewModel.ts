@@ -105,6 +105,11 @@ export interface PropertyIdentityDisplay {
   coordinates: { lng: number; lat: number } | null;
   areaM2: number | null;
   /**
+   * Registered/deed extent read off a document. Kept distinct from the
+   * official cadastral area so one can never silently replace the other.
+   */
+  registeredExtent: { value: string; numericM2: number | null; sourceIds: string[] } | null;
+  /**
    * Cadastral identifiers read off an uploaded Surveyor-General diagram
    * (diagram number, general plan, parent lineage, stated extent). Empty when
    * no diagram has been read, so nothing is ever implied.
@@ -112,12 +117,31 @@ export interface PropertyIdentityDisplay {
   cadastral: Array<{ label: string; value: string; badge: EvidenceBadge }>;
 }
 
+export interface OwnershipDetail {
+  label: string;
+  value: string;
+  sourceIds: string[];
+  pageNumbers: number[];
+}
+
+export type OwnershipEvidenceState =
+  | "supported"
+  | "uploaded_not_searchable"
+  | "wrong_property"
+  | "missing";
+
 export interface OwnershipView {
   hasUploadedReport: boolean;
   uploadedReportNames: string[];
-  isVerified: false; // always false in Phase 1 — never fabricate ownership
+  isVerified: false; // Easy Erf never certifies ownership.
+  /** Supported owner/share values read from an identity-matched document. */
+  owners: OwnershipDetail[];
+  /** Title deed values when a deed document supports them. */
+  titleDeed: OwnershipDetail[];
+  state: OwnershipEvidenceState;
   message: string;
 }
+
 
 export interface PlanningField {
   label: string;
