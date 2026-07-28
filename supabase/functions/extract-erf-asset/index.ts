@@ -294,11 +294,10 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
           : parsed.parentErfNumber;
       if (!parentErfNumber) continue;
       const generalPlanReference =
-        typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
+        (typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
           ? fromLineage.generalPlanReference
-          : extractGeneralPlanReference(
-              typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null,
-            );
+          : parsed.generalPlanReference) ??
+        extractGeneralPlanReference(typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null);
       return {
         parentErfNumber,
         generalPlanReference,
