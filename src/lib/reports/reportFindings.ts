@@ -11,6 +11,8 @@ import type {
   EvidenceConfidence,
   EvidenceContradiction,
   EvidenceDomain,
+  EvidenceDomainState,
+
   EvidenceGap,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
