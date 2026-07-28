@@ -369,8 +369,12 @@ function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOff
     field("far", "FAR"),
     field("height", "Height limit"),
     field("setbacks", "Setbacks"),
+    // Printed on an SG diagram when present; missing until a document states it.
+    field("buildingLines", "Building lines"),
+    field("noBuildArea", "No-build / reserve"),
     { label: "Density", value: null, badge: "missing" },
     field("permittedUses", "Permitted uses"),
+
   ];
 }
 
