@@ -15,7 +15,10 @@ import {
   evidenceWorkspace,
 } from "./propertyEvidenceTestUtils";
 import { createEmptyStrategyWorkspace } from "@/lib/workbench/erfWorkspaceState";
-import { buildAskEasyErfContext } from "@/lib/reports/askEasyErf";
+import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
+import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
+import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
+import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 
 const PARCEL_ID = "csg:lpi:C03400140000157000000";
 
@@ -380,34 +383,48 @@ describe("evidence pack with a parent General Plan", () => {
 });
 
 describe("Ask Easy Erf parent-plan context", () => {
-  it("11./12. labels the parent plan as context, keeps the Erf 1570 exception, and resolves file name and pages", () => {
-    const context = buildAskEasyErfContext({
+  it("11./12. labels the parent plan as context, keeps the Erf 1570 exception, and resolves the file name", () => {
+    const assets = [
+      sgAsset(
+        applyParentLineageClaimPolicy(
+          [
+            claim({
+              domain: "deeds",
+              key: "servitude",
+              label: "Servitude",
+              value: "2 m sewer servitude affecting Erf 1570",
+              quote: "SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570",
+            }),
+          ],
+          policyContext,
+        ),
+      ),
+    ];
+    const report = buildReportViewModel({
       parcel: evidenceParcel({
         id: PARCEL_ID,
         erfNumber: 1570,
         lpi: "C03400140000157000000",
         rawProperties: { GEOM_AREA: 618.7 },
       }),
-      workspaceState: evidenceWorkspace(),
-      assets: [
-        sgAsset(
-          applyParentLineageClaimPolicy(
-            [
-              claim({
-                domain: "deeds",
-                key: "servitude",
-                label: "Servitude",
-                value: "2 m sewer servitude affecting Erf 1570",
-                quote: "SEWER SERVITUDE 2m WIDE AFFECTING ERF 1570",
-              }),
-            ],
-            policyContext,
-          ),
-        ),
-      ],
-    } as never);
-    const serialized = JSON.stringify(context);
-    expect(serialized).toContain("PARENT GENERAL PLAN — CONTEXT ONLY");
+      workspaceState: createEmptyErfWorkspaceState(),
+      savedEvidence: [],
+      assets,
+      chosenScenario: null,
+      strategyScenarios: [],
+      selectedSiteDesign: null,
+      siteBrief: null,
+      now: EVIDENCE_TEST_NOW,
+    });
+    const payload = buildAskEasyErfEvidencePayload({
+      report,
+      decision: buildDecisionIntelligence(report),
+      assets,
+      savedEvidence: [],
+      strategyScenarios: [],
+    });
+    const serialized = JSON.stringify(payload);
+    expect(serialized).toContain("PARENT GENERAL PLAN");
     expect(serialized).toMatch(/explicitly names this erf/i);
     expect(serialized).toContain("GP12252-sheet-1.tif");
   });
