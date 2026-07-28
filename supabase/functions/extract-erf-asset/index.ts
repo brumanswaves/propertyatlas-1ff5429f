@@ -250,6 +250,64 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
   }
 }
 
+/**
+ * Cadastral lineage already proven for THIS parcel by an identity-matched
+ * document on the same erf (e.g. a deeds report stating
+ * `Erf 1570 [PTN OF 1496-GP12252]`).
+ *
+ * Without such a record a general plan of another erf stays a plain mismatch,
+ * so parent-plan acceptance can never be reached by the uploaded plan alone.
+ */
+async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLineage | null> {
+  const key = serviceKey();
+  if (!key) return null;
+  try {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/erf_assets?user_id=eq.${encodeURIComponent(
+        asset.user_id,
+      )}&parcel_id=eq.${encodeURIComponent(
+        asset.parcel_id,
+      )}&select=id,source_label,original_file_name,asset_category,metadata&limit=50`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (!response.ok) return null;
+    const rows = (await response.json().catch(() => null)) as Array<{
+      id: string;
+      source_label: string | null;
+      original_file_name: string | null;
+      metadata?: Record<string, unknown> | null;
+    }> | null;
+    for (const row of rows ?? []) {
+      if (row.id === asset.id) continue;
+      const metadata = row.metadata ?? {};
+      if (metadata.identityMatchStatus !== "matched") continue;
+      const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
+      const fromLineage = raw && typeof raw === "object" ? raw : null;
+      const parentErfNumber =
+        typeof fromLineage?.parentErfNumber === "string" && fromLineage.parentErfNumber
+          ? fromLineage.parentErfNumber
+          : null;
+      if (!parentErfNumber) continue;
+      const generalPlanReference =
+        typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
+          ? fromLineage.generalPlanReference
+          : extractGeneralPlanReference(
+              typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null,
+            );
+      return {
+        parentErfNumber,
+        generalPlanReference,
+        sourceLabel: row.source_label || row.original_file_name || "an identity-matched document on this erf",
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+
+
 async function downloadAsset(asset: AssetRow): Promise<Uint8Array | null> {
   const key = serviceKey();
   if (!key) return null;
