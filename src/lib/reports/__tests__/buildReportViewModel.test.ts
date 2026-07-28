@@ -384,7 +384,8 @@ describe("buildReportViewModel", () => {
     expect(ids).toContain("report-brief");
     expect(ids).toContain("report-identity");
     expect(ids).toContain("report-ownership");
-    expect(ids).toContain("report-recommendations");
+    expect(ids).toContain("report-sg-evidence");
+    expect(ids).toContain("report-documents");
     for (const id of ids) expect(id.startsWith("report-")).toBe(true);
   });
 });
