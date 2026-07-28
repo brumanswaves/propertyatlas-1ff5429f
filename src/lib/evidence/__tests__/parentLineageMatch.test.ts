@@ -2,7 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
   applyParentLineageClaimPolicy,
   matchDocumentIdentity,
+  type ErfExtractedIdentity,
 } from "../../../../supabase/functions/_shared/erfExtractionContract";
+
+function docIdentity(partial: Partial<ErfExtractedIdentity>): ErfExtractedIdentity {
+  return {
+    erfNumber: null,
+    portionNumber: null,
+    lpiCode: null,
+    sgCode: null,
+    streetAddress: null,
+    suburbOrTown: null,
+    municipality: null,
+    province: null,
+    ...partial,
+  };
+}
 
 const expected = {
   parcelId: "csg:lpi:C03400140000157000000",
@@ -20,7 +35,7 @@ describe("parent General Plan lineage matching", () => {
   it("matches when the plan states the proven parent erf and general plan reference", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "1496", town: "HUMANSDORP", sgCode: "GP12252" },
+      docIdentity({ erfNumber: "1496", suburbOrTown: "HUMANSDORP", sgCode: "GP12252" }),
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
@@ -36,7 +51,7 @@ describe("parent General Plan lineage matching", () => {
   it("still rejects an unrelated erf's general plan as a mismatch", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "2210", town: "HUMANSDORP", sgCode: "GP99999" },
+      docIdentity({ erfNumber: "2210", suburbOrTown: "HUMANSDORP", sgCode: "GP99999" }),
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
@@ -51,7 +66,7 @@ describe("parent General Plan lineage matching", () => {
   it("rejects a parent plan when no matched document has proven the lineage", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "1496", town: "HUMANSDORP", sgCode: "GP12252" },
+      docIdentity({ erfNumber: "1496", suburbOrTown: "HUMANSDORP", sgCode: "GP12252" }),
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
@@ -92,8 +107,11 @@ describe("parent General Plan lineage matching", () => {
       { subjectErfNumber: "1570", parentErfNumber: "1496", generalPlanReference: "GP12252" },
     );
     expect(claims.some((claim) => claim.domain === "identity" && claim.key === "areaM2")).toBe(false);
-    const servitude = claims.find((claim) => claim.key === "servitude");
+    const extent = claims.find((claim) => claim.key === "parentPlanExtent");
+    expect(extent?.scope).toBe("parent_plan");
+    const servitude = claims.find((claim) => claim.key === "contextualPlanAnnotation");
     expect(servitude?.scope).toBe("parent_plan");
-    expect(servitude?.label).toMatch(/parent|general plan/i);
+    expect(servitude?.interpretation).toBe(true);
+    expect(servitude?.label).toMatch(/parent|plan/i);
   });
 });
