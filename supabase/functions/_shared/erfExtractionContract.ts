@@ -261,7 +261,7 @@ export interface ErfExtractionMetadataPatch {
   extractionStartedAt?: string | null;
 }
 
-export const ERF_EXTRACTION_VERSION = 3;
+export const ERF_EXTRACTION_VERSION = 4;
 
 /** Largest accepted request body, checked before JSON parsing. */
 export const ERF_EXTRACTION_MAX_REQUEST_BYTES = 4_096;
@@ -701,6 +701,39 @@ function placeAgrees(a: string, b: string) {
   return a === b || a.includes(b) || b.includes(a);
 }
 
+/**
+ * Provinces that were superseded in 1994, mapped to the present-day provinces
+ * carved out of them. A Surveyor-General sheet approved before 1994 states the
+ * historical name, so "Cape of Good Hope" versus "Eastern Cape" is an era
+ * difference, not evidence of a different property. Such a pair is therefore
+ * neither a conflict nor a corroboration.
+ */
+const HISTORICAL_PROVINCES: ReadonlyArray<{ historical: readonly string[]; current: readonly string[] }> = [
+  {
+    historical: ["capeofgoodhope", "capeprovince", "kaapdiegoeiehoop", "kaapprovinsie"],
+    current: ["easterncape", "westerncape", "northerncape", "northwest", "noordwes"],
+  },
+  {
+    historical: ["transvaal"],
+    current: ["gauteng", "limpopo", "northerntransvaal", "mpumalanga", "northwest", "noordwes"],
+  },
+  { historical: ["natal"], current: ["kwazulunatal", "kwazulu"] },
+  { historical: ["orangefreestate", "oranjevrystaat"], current: ["freestate", "vrystaat"] },
+];
+
+/** True when one province name is the pre-1994 predecessor of the other. */
+export function isSupersededProvincePair(a: string | null, b: string | null) {
+  if (!a || !b) return false;
+  for (const group of HISTORICAL_PROVINCES) {
+    const aHist = group.historical.includes(a);
+    const bHist = group.historical.includes(b);
+    if (aHist && group.current.includes(b)) return true;
+    if (bHist && group.current.includes(a)) return true;
+    if (aHist && bHist) return true;
+  }
+  return false;
+}
+
 /** Recognises a General Plan / subdivision sheet from its own wording. */
 export function looksLikeGeneralPlanDocument(
   documentType: string | null | undefined,
@@ -712,9 +745,16 @@ export function looksLikeGeneralPlanDocument(
   return /general\s*plan\b|\bg\.?\s?p\.?\s?no\b|subdivision of erf|sub-?divisional diagram/.test(head);
 }
 
-/** First `GP<number>` reference stated anywhere in the supplied text. */
+/**
+ * First general-plan reference stated anywhere in the supplied text, in either
+ * the abbreviated (`GP 12252`) or the printed title-block form
+ * (`GENERAL PLAN No. 12252`).
+ */
 export function extractGeneralPlanReference(value: unknown): string | null {
-  const match = /\bG\.?\s*P\.?\s*(?:NO\.?)?\s*-?\s*(\d{2,})/i.exec(String(value ?? ""));
+  const text = String(value ?? "");
+  const spelled = /\bgeneral\s*plan\s*(?:no\.?|nr\.?|number)?\s*[-:]?\s*(\d{2,})/i.exec(text);
+  if (spelled) return `GP${Number(spelled[1])}`;
+  const match = /\bG\.?\s*P\.?\s*(?:NO\.?)?\s*-?\s*(\d{2,})/i.exec(text);
   return match ? `GP${Number(match[1])}` : null;
 }
 
@@ -796,6 +836,10 @@ export function matchDocumentIdentity(
     if (placeAgrees(a, b)) {
       placeMatch = true;
       positives.push(`${label} matches`);
+    } else if (hard && isSupersededProvincePair(a, b)) {
+      // Pre-1994 province name on a historical survey sheet. Neither a
+      // conflict nor corroboration: the era differs, not the property.
+      continue;
     } else if (hard) {
       // Province is coarse and stable, so a disagreement is decisive.
       conflicts.push({ code: "place", message: `the document ${label} is different` });
@@ -911,19 +955,21 @@ export function isClaimExplicitlyTiedToSubjectErf(
   for (const raw of candidates) {
     const text = raw.replace(/[\u00a0]/g, " ").replace(/\s+/g, " ");
     if (NON_SPECIFIC_LIST_CONTEXT.test(text)) continue;
-    const pattern = /\b(erf|erven|stand|stands|portion|portions|ptn)\s*(?:nos?\.?\s*)?([0-9][0-9\s,&/–—-]*[0-9]|[0-9])/gi;
+    // Only the first integer immediately following a singular identifier is
+    // read as the parcel number. Anything after it (dimensions, extents,
+    // building lines) is separate text and must never be absorbed here.
+    const pattern = /\b(erf|erven|stand|stands|portion|portions|ptn)\s*(?:nos?\.?\s*)?(\d+)/gi;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
       const keyword = match[1].toLowerCase();
-      const enumeration = match[2];
+      const erfNumber = match[2];
       // A plural keyword always describes a group, never this erf alone.
       if (keyword === "erven" || keyword === "stands" || keyword === "portions") continue;
-      // A range or comma/ampersand list is a group reference, not this erf.
-      if (/[,&/–—-]/.test(enumeration)) continue;
-      // "Erf 1570 to 1580" — a range written with a word.
-      const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 12);
-      if (/^\s*(?:to|-|–|—|and|&)\s*\d/i.test(tail)) continue;
-      if (normNumber(enumeration) === subject) return true;
+      // What immediately follows decides whether this is a group reference:
+      // "1560-1580", "1569, 1570", "1569 & 1570", "1560 to 1580" all are.
+      const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 16);
+      if (/^\s*(?:[,&/]|-|–|—|\bto\b|\band\b|\ben\b)\s*\d/i.test(tail)) continue;
+      if (normNumber(erfNumber) === subject) return true;
     }
   }
   return false;

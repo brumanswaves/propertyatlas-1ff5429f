@@ -23,6 +23,7 @@ import {
   extractGeneralPlanReference,
   isSgDiagramCategory,
   isSupportedExtractionMimeType,
+  looksLikeGeneralPlanDocument,
   matchDocumentIdentity,
   normalizeExtractionResult,
   parseCanonicalLpi,
@@ -671,17 +672,46 @@ Deno.serve(async (request: Request) => {
       );
     }
 
+    // Each source is searched on its own: concatenating them lets a phrase in
+    // one field capture the number printed in the next.
+    const documentGeneralPlanReference =
+      extractGeneralPlanReference(result.extractedText) ??
+      extractGeneralPlanReference(result.summary) ??
+      extractGeneralPlanReference(result.documentType) ??
+      extractGeneralPlanReference(result.identity.sgCode);
+
+    // Pre-quarantine diagnostics: shape and identity signals only. Never text,
+    // quotes, images, base64, tokens, keys or ownership details.
+    log("identity_inputs", requestId, {
+      assetId: asset.id,
+      normalizedPageCount: normalizedPages?.length ?? 0,
+      normalizedPageSizes: (normalizedPages ?? []).map((page) => ({
+        page: page.pageNumber,
+        width: page.width,
+        height: page.height,
+        bytes: Math.round((page.base64.length * 3) / 4),
+      })),
+      documentTypePresent: Boolean(result.documentType),
+      extractedTextChars: result.extractedText.length,
+      claimCount: result.claims.length,
+      documentErfNumber: result.identity.erfNumber ?? null,
+      documentSgCode: result.identity.sgCode ?? null,
+      looksLikeGeneralPlan: looksLikeGeneralPlanDocument(result.documentType, result.extractedText),
+      documentGeneralPlanReference,
+      knownParentErfPresent: Boolean(knownLineage?.parentErfNumber),
+      knownGeneralPlanReferencePresent: Boolean(knownLineage?.generalPlanReference),
+    });
+
     const identity = matchDocumentIdentity(expectedIdentity, result.identity, {
       assetCategory: asset.asset_category,
       documentType: result.documentType,
       documentText: result.extractedText,
-      documentGeneralPlanReference: extractGeneralPlanReference(
-        `${result.documentType ?? ""} ${result.identity.sgCode ?? ""} ${result.extractedText.slice(0, 4_000)}`,
-      ),
+      documentGeneralPlanReference,
       knownLineage,
     });
     const identityMatchStatus: ErfIdentityMatchStatus = identity.status;
     const isParentLineage = identityMatchStatus === "parent_lineage_match";
+
 
     if (identityMatchStatus !== "matched" && !isParentLineage) {
       // Quarantine: no extracted text, no claims, no document facts retained.

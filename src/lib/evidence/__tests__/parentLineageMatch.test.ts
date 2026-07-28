@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   applyParentLineageClaimPolicy,
+  extractGeneralPlanReference,
   isClaimExplicitlyTiedToSubjectErf,
+  isSupersededProvincePair,
   matchDocumentIdentity,
   normalizeExtractedClaim,
   type ErfExtractedClaim,
@@ -428,5 +430,89 @@ describe("Ask Easy Erf parent-plan context", () => {
     expect(serialized).toContain("PARENT GENERAL PLAN");
     expect(serialized).toMatch(/explicitly naming this erf/i);
     expect(serialized).toContain("GP12252-sheet-1.tif");
+  });
+});
+
+describe("historical province naming on pre-1994 survey sheets", () => {
+  const sheet = (province: string) =>
+    matchDocumentIdentity(expected, docIdentity({ erfNumber: "1496", suburbOrTown: "SEA VISTA", province }), {
+      assetCategory: "sg_diagram",
+      documentType: "GENERAL PLAN",
+      documentText: "GENERAL PLAN No.12252 of SUBDIVISIONS OF ERF 1496 SEA VISTA.",
+      documentGeneralPlanReference: "GP12252",
+      knownLineage,
+    });
+
+  it("accepts 'Cape of Good Hope' on a General Plan of the proven parent erf", () => {
+    expect(sheet("Cape of Good Hope").status).toBe("parent_lineage_match");
+  });
+
+  it("still rejects a genuinely different present-day province", () => {
+    expect(sheet("Gauteng").status).toBe("mismatch");
+    // A present-day province mismatch blocks the parent-lineage acceptance
+    // path entirely, so the document falls back to the plain erf conflict.
+    expect(sheet("Gauteng").reason).toMatch(/erf 1496, not erf 1570/);
+  });
+
+  it("treats a superseded province as neither conflict nor corroboration", () => {
+    expect(isSupersededProvincePair("capeofgoodhope", "easterncape")).toBe(true);
+    expect(isSupersededProvincePair("transvaal", "gauteng")).toBe(true);
+    expect(isSupersededProvincePair("natal", "kwazulunatal")).toBe(true);
+    expect(isSupersededProvincePair("easterncape", "gauteng")).toBe(false);
+    expect(isSupersededProvincePair("capeofgoodhope", "gauteng")).toBe(false);
+  });
+
+  it("does not let an old province name alone confirm an identity match", () => {
+    const result = matchDocumentIdentity(
+      expected,
+      docIdentity({ erfNumber: "1570", province: "Cape of Good Hope" }),
+      { assetCategory: "sg_diagram" },
+    );
+    expect(result.status).toBe("unverified");
+  });
+});
+
+describe("general plan reference parsing", () => {
+  it("reads the printed title-block form", () => {
+    expect(extractGeneralPlanReference("GENERAL PLAN No.12252.")).toBe("GP12252");
+    expect(extractGeneralPlanReference("General Plan 12252 of subdivisions")).toBe("GP12252");
+  });
+
+  it("still reads the abbreviated form", () => {
+    expect(extractGeneralPlanReference("PTN OF 1496-GP12252")).toBe("GP12252");
+    expect(extractGeneralPlanReference("G.P. No. 12252")).toBe("GP12252");
+  });
+
+  it("returns null when no plan number is printed", () => {
+    expect(extractGeneralPlanReference("GENERAL PLAN")).toBeNull();
+    expect(extractGeneralPlanReference("S.G. No. 5473 - 88")).toBeNull();
+  });
+});
+
+describe("subject-erf token parser", () => {
+  const tied = (text: string) =>
+    isClaimExplicitlyTiedToSubjectErf({ quote: text, label: "annotation", value: text }, "1570");
+
+  it.each([
+    "SERVITUDE AFFECTING ERF 1570",
+    "ERF 1570: 3 m BUILDING LINE",
+    "ERF 1570 3 m BUILDING LINE",
+    "ERF 1570\n3 m BUILDING LINE",
+    "ERF 1570 619 m², BUILDING LINE 3 m",
+  ])("keeps subject scope for %s", (text) => {
+    expect(tied(text)).toBe(true);
+  });
+
+  it.each([
+    "ERVEN 1569 AND 1570",
+    "ERF 1569 & 1570",
+    "ERF 1569, 1570",
+    "ERF 1560 TO 1580",
+    "ERF 1560-1580",
+    "ADJOINING ERF 1570",
+    "LEGEND: ERF 1570",
+    "SUBDIVISION OF ERF 1496 INTO ERVEN 1569, 1570 AND 1571",
+  ])("refuses subject scope for %s", (text) => {
+    expect(tied(text)).toBe(false);
   });
 });

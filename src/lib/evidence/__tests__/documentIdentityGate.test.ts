@@ -268,7 +268,7 @@ describe("extraction limits and metadata helpers", () => {
   });
 
   it("bumps the extraction version so old rows are reprocessed", () => {
-    expect(ERF_EXTRACTION_VERSION).toBe(3);
+    expect(ERF_EXTRACTION_VERSION).toBe(4);
   });
 
   it("only treats matched + ready assets as searchable", () => {
