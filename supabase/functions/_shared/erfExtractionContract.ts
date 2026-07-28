@@ -710,7 +710,7 @@ function placeAgrees(a: string, b: string) {
  */
 const HISTORICAL_PROVINCES: ReadonlyArray<{ historical: readonly string[]; current: readonly string[] }> = [
   {
-    historical: ["capeofgoodhope", "capeprovince", "kaapdiegoeiehoop", "kaapprovinsie", "cape"],
+    historical: ["capeofgoodhope", "capeprovince", "kaapdiegoeiehoop", "kaapprovinsie"],
     current: ["easterncape", "westerncape", "northerncape", "northwest", "noordwes"],
   },
   {
