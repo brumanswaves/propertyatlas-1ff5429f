@@ -471,24 +471,78 @@ function buildMarket(evidence: SavedMarketEvidence[]): MarketView {
   };
 }
 
+/** Owner/deed keys that may be surfaced. Identity numbers are never extracted. */
+const OWNERSHIP_DISPLAY_KEYS = ["registeredOwner", "ownerType", "ownershipShare", "coOwners"];
+const DEED_DISPLAY_KEYS = ["titleDeedNumber", "registrationDate", "conditionsOfTitle"];
+
+function ownershipDetails(pack: PropertyEvidencePack, domain: EvidenceDomain, keys: string[]): OwnershipDetail[] {
+  return pack.claims
+    .filter(
+      (claim) =>
+        claim.domain === domain &&
+        keys.includes(claim.key) &&
+        claim.status === "supported" &&
+        !claim.excluded,
+    )
+    .map((claim) => ({
+      label: claim.label,
+      value: redactPersonalIdentifiers(String(claim.value ?? "")),
+      sourceIds: claim.sourceIds,
+      pageNumbers: claim.locators
+        .map((locator) => locator.pageNumber)
+        .filter((page): page is number => typeof page === "number"),
+    }))
+    .filter((detail) => detail.value.length > 0);
+}
+
+function buildRegisteredExtent(pack: PropertyEvidencePack): PropertyIdentityDisplay["registeredExtent"] {
+  const claim = deedExtentClaim(pack);
+  if (!claim) return null;
+  return {
+    value: String(claim.value ?? ""),
+    numericM2: claimNumericValue(claim),
+    sourceIds: claim.sourceIds,
+  };
+}
+
 function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfAsset[]): OwnershipView {
   const uploaded = pack.sources.filter(
     (source) =>
       source.kind === "uploaded_document" &&
       (source.authorityType === "paid_provider" || /lightstone|windeed|title deed/i.test(source.label)),
   );
+  const owners = ownershipDetails(pack, "ownership", OWNERSHIP_DISPLAY_KEYS);
+  const titleDeed = ownershipDetails(pack, "deeds", DEED_DISPLAY_KEYS);
+  const wrongProperty = pack.contradictions.some((item) => item.id.startsWith("document-property-mismatch-"));
+  const state: OwnershipEvidenceState = owners.length
+    ? "supported"
+    : wrongProperty
+      ? "wrong_property"
+      : uploaded.length
+        ? "uploaded_not_searchable"
+        : "missing";
+  const message =
+    state === "supported"
+      ? "Owner details below were read from a document matched to this erf. Easy Erf does not certify ownership — a conveyancer must confirm it before any legal reliance."
+      : state === "wrong_property"
+        ? "An uploaded ownership report describes a different property, so none of its contents are used. Upload the correct report for this erf."
+        : state === "uploaded_not_searchable"
+          ? "An ownership report is stored for this erf, but no ownership value has been read and matched to it yet, so ownership remains unestablished."
+          : `Ownership has not been established for this erf. ${
+              pack.domains.find((domain) => domain.domain === "ownership")?.nextAction ??
+              "Add a title deed, WinDeed or Lightstone report to establish ownership."
+            }`;
   return {
     hasUploadedReport: uploaded.length > 0,
     uploadedReportNames: uploaded.map((source) => source.fileName ?? source.label),
     isVerified: false,
-    message: uploaded.length
-      ? "Ownership is not verified by Easy Erf. Uploaded reports are stored for reference; open them to check owner details yourself."
-      : `Ownership is not verified. ${
-          pack.domains.find((domain) => domain.domain === "ownership")?.nextAction ??
-          "Purchase a Lightstone or WinDeed report, or open a title deed, to confirm ownership."
-        }`,
+    owners,
+    titleDeed,
+    state,
+    message,
   };
 }
+
 
 function buildMarketFromPack(pack: PropertyEvidencePack, fallbackEvidence: SavedMarketEvidence[]): MarketView {
   const marketIds = new Set(
