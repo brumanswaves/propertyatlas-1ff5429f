@@ -66,6 +66,12 @@ import { StrategyLab } from "./strategy/StrategyLab";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
+  FindingCard,
+  ReportActionPlan,
+  ReportAreaReconciliation,
+  ReportFindingsBlock,
+} from "@/components/property/dossier/ReportFindingsSection";
+import {
   AssetExtractionStatusChip,
   EvidenceBadgeChip,
   IdRow,
@@ -1766,6 +1772,16 @@ function StoepAiReportView({
             municipality. Recheck identity before using downstream data.
           </p>
         )}
+
+        <ReportAreaReconciliation
+          identity={report.identity}
+          officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
+          discrepancy={
+            reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null
+          }
+          actions={reportDoc.actions}
+          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        />
       </section>
 
       {/* OWNERSHIP */}
@@ -1774,14 +1790,43 @@ function StoepAiReportView({
         onOpenReports={() => onSelectView?.("reports")}
       />
 
+      {/* SG / LINEAGE EVIDENCE */}
+      <ReportFindingsBlock
+        anchorId="report-sg-evidence"
+        eyebrow="SG Diagrams & Lineage"
+        title="Surveyor-General evidence read for this erf"
+        intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
+        findings={reportDoc.findings.filter((f) =>
+          ["finding-sg-parent-lineage", "finding-registered-extent", "finding-servitudes-sg"].includes(
+            f.id,
+          ),
+        )}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
+      />
 
+      {/* BUILDINGS, PLANS & COMPLIANCE */}
+      <ReportFindingsBlock
+        anchorId="report-buildings"
+        eyebrow="Buildings, Plans & Compliance"
+        title="Approved plans and structure compliance"
+        intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
+        findings={reportDoc.findings.filter((f) => f.category === "buildings")}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
+      />
 
       {/* PLANNING */}
       <section
         id="report-planning"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <ReportSectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
+        <ReportSectionTitle
+          eyebrow="Zoning, Planning & Buildability"
+          title="Only municipally supported controls are shown"
+        />
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {report.planning.map((field) => (
             <div
@@ -1800,7 +1845,22 @@ function StoepAiReportView({
             </div>
           ))}
         </dl>
+        {reportDoc.findings.filter((f) => f.category === "planning").length > 0 && (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {reportDoc.findings
+              .filter((f) => f.category === "planning")
+              .map((finding) => (
+                <FindingCard
+                  key={finding.id}
+                  finding={finding}
+                  actions={reportDoc.actions}
+                  onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+                />
+              ))}
+          </div>
+        )}
       </section>
+
 
       {/* DECISION INTELLIGENCE */}
       <section
@@ -2112,7 +2172,19 @@ function StoepAiReportView({
             ))}
           </ul>
         )}
+
+        <div className="mt-5 border-t border-[#0D1B2A]/10 pt-4">
+          <ReportSectionTitle
+            eyebrow="Due diligence plan"
+            title="Open actions ranked by priority"
+          />
+          <ReportActionPlan
+            actions={reportDoc.actions.filter((action) => action.status !== "completed")}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+          />
+        </div>
       </section>
+
 
       {/* SITE POTENTIAL — retains existing selected concept card */}
       <section
