@@ -221,7 +221,7 @@ describe("extract-erf-asset concurrency and idempotency", () => {
       metadata: {
         extractionStatus: "ready",
         identityMatchStatus: "matched",
-        extractionVersion: 3,
+        extractionVersion: ERF_EXTRACTION_VERSION,
         extractedClaims: [{ key: "registeredOwner" }],
       },
     });
@@ -234,7 +234,7 @@ describe("extract-erf-asset concurrency and idempotency", () => {
 
   it("ignores a browser retry flag on a current matched ready asset", async () => {
     assetRow = baseAsset({
-      metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractionVersion: 3 },
+      metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractionVersion: ERF_EXTRACTION_VERSION },
     });
     await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID, retry: true });
     expect(openAiCalls).toBe(0);
