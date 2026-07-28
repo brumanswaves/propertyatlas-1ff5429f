@@ -1510,6 +1510,30 @@ function StoepAiReportView({
     [decisionMode, report],
   );
 
+  const marketSection = useMemo(
+    () =>
+      buildMarketSectionModel({
+        market: report.market,
+        pack: report.evidencePack ?? null,
+        officialAreaM2: report.identity.areaM2 ?? null,
+      }),
+    [report],
+  );
+  const strategySection = useMemo(
+    () => buildStrategySectionModel({ chosen: chosenScenario, scenarioCount: scenarios.length }),
+    [chosenScenario, scenarios.length],
+  );
+  const appendixRows = useMemo(
+    () =>
+      buildEvidenceAppendixRows({
+        assets: fileVault.assets,
+        pack: report.evidencePack ?? null,
+      }),
+    [fileVault.assets, report.evidencePack],
+  );
+
+
+
   const askSuggestionPayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
