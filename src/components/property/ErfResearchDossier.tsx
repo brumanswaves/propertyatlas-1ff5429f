@@ -66,6 +66,12 @@ import { StrategyLab } from "./strategy/StrategyLab";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
+  FindingCard,
+  ReportActionPlan,
+  ReportAreaReconciliation,
+  ReportFindingsBlock,
+} from "@/components/property/dossier/ReportFindingsSection";
+import {
   AssetExtractionStatusChip,
   EvidenceBadgeChip,
   IdRow,
