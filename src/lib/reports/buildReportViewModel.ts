@@ -287,6 +287,7 @@ function buildIdentity(
     sourceLabel: parcel.sourceLabel ?? null,
     coordinates: parcel.coordinates ?? null,
     areaM2: parcelAreaM2(parcel),
+    registeredExtent: null,
     cadastral: [],
   };
 }
@@ -339,6 +340,7 @@ function buildIdentityFromPack(
     sourceLabel: parcel.sourceLabel ?? null,
     coordinates: parcel.coordinates ?? null,
     areaM2: numberOrNull(areaClaim?.normalizedValue ?? areaClaim?.value) ?? parcelAreaM2(parcel),
+    registeredExtent: buildRegisteredExtent(pack),
     cadastral,
   };
 }
@@ -353,6 +355,9 @@ function buildOwnership(assets: ErfAsset[]): OwnershipView {
     hasUploadedReport: uploaded.length > 0,
     uploadedReportNames: uploaded.map((a) => a.original_file_name),
     isVerified: false,
+    owners: [],
+    titleDeed: [],
+    state: uploaded.length ? "uploaded_not_searchable" : "missing",
     message: uploaded.length
       ? "Ownership is not verified by Easy Erf. Uploaded reports are stored for reference; open them to check owner details yourself."
       : "Ownership, bonds and transfer history are not verified. Purchase a Lightstone or WinDeed report, or open a title deed, to confirm ownership.",

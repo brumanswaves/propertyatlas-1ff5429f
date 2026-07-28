@@ -970,6 +970,7 @@ function validateIdentity(value: unknown): ReportViewModel["identity"] | null {
     sourceLabel: nullableText(raw.sourceLabel, 160),
     coordinates,
     areaM2,
+    registeredExtent: null,
     cadastral: (Array.isArray(raw.cadastral) ? raw.cadastral : [])
       .slice(0, MAX_ITEMS)
       .flatMap((entry) => {
@@ -994,6 +995,9 @@ function validateOwnership(value: unknown): ReportViewModel["ownership"] | null 
     hasUploadedReport: raw.hasUploadedReport,
     uploadedReportNames,
     isVerified: false,
+    owners: [],
+    titleDeed: [],
+    state: raw.hasUploadedReport ? "uploaded_not_searchable" : "missing",
     message,
   };
 }
