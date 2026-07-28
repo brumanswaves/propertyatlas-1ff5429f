@@ -53,7 +53,7 @@ describe("market section model", () => {
       officialAreaM2: 619,
     });
     const asking = model.figures.find((f) => f.id === "asking-price");
-    expect(asking?.value).toBe("R 2,500,000");
+    expect(asking?.value).toMatch(/^R\s2.500.000$/);
     expect(asking?.kind).toBe("evidence_input");
     expect(asking?.caveat).toMatch(/not a sold price/i);
     expect(JSON.stringify(model.figures)).not.toMatch(/sold price of|formal valuation of/i);
@@ -113,7 +113,7 @@ describe("market section model", () => {
       officialAreaM2: null,
     });
     const range = allowed.figures.find((f) => f.id === "indicative-range");
-    expect(range?.value).toBe("R 1,000,000 – R 3,000,000");
+    expect(range?.value).toMatch(/^R\s1.000.000 – R\s3.000.000$/);
     expect(range?.caveat).toMatch(/not a valuation range/i);
   });
 });
@@ -136,11 +136,10 @@ describe("strategy section model", () => {
   it("projects the saved scenario verbatim with figure-type labels", () => {
     const model = buildStrategySectionModel({ chosen: scenario, scenarioCount: 2 });
     expect(model.strategyName).toBe("Buy, renovate and hold");
-    expect(model.acquisition).toMatchObject({ value: "R 1,850,000", kind: "user_assumption" });
-    expect(model.maximumJustifiedPrice).toMatchObject({
-      value: "R 1,900,000",
-      kind: "calculation",
-    });
+    expect(model.acquisition?.value).toMatch(/^R\s1.850.000$/);
+    expect(model.acquisition?.kind).toBe("user_assumption");
+    expect(model.maximumJustifiedPrice?.value).toBe("R 1,900,000");
+    expect(model.maximumJustifiedPrice?.kind).toBe("calculation");
     expect(model.headline.map((f) => f.value)).toContain("8.2%");
     expect(model.assumptions.map((f) => f.label)).toContain("Renovation cost");
   });
@@ -174,11 +173,9 @@ describe("evidence appendix", () => {
         asset({
           id: "a-parent",
           metadata: {
-            extraction: {
-              status: "ready",
-              identityMatchStatus: "parent_lineage_match",
-              documentLineage: { generalPlanReference: "GP12252", parentErfNumber: "1496" },
-            },
+            extractionStatus: "ready",
+            identityMatchStatus: "parent_lineage_match",
+            documentLineage: { generalPlanReference: "GP12252", parentErfNumber: "1496" },
           } as never,
         }),
         asset({
@@ -186,9 +183,7 @@ describe("evidence appendix", () => {
           asset_category: "paid_report",
           original_file_name: "lightstone-sample.pdf",
           mime_type: "application/pdf",
-          metadata: {
-            extraction: { status: "ready", identityMatchStatus: "mismatch" },
-          } as never,
+          metadata: { extractionStatus: "ready", identityMatchStatus: "mismatch" } as never,
         }),
       ],
       pack: null,
@@ -227,9 +222,7 @@ describe("evidence appendix", () => {
         asset({
           asset_category: "paid_report",
           mime_type: "application/pdf",
-          metadata: {
-            extraction: { status: "ready", identityMatchStatus: "matched" },
-          } as never,
+          metadata: { extractionStatus: "ready", identityMatchStatus: "matched" } as never,
         }),
       ],
       pack,

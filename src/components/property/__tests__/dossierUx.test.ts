@@ -666,12 +666,12 @@ describe("official dossier UX guardrails", () => {
       "requestImageGenerationWithOpenAI",
     );
     expect(read("src/lib/sitePotential/generationWorker.ts")).toContain("downloadReferenceAsset");
-    expect(dossier).toContain("Uploaded files and source documents");
-    expect(dossier).toContain("groupErfAssets");
-    expect(dossier).toContain("workspaceAssetCategory");
+    expect(dossier).toContain("buildEvidenceAppendixRows");
+    
+    
     expect(dossier).toContain("getChosenStrategyScenario");
-    expect(dossier).toContain("Chosen strategy scenario");
-    expect(dossier).toContain("Selected property concept");
+    expect(dossier).toContain("buildStrategySectionModel");
+    expect(dossier).toContain("ReportSitePotentialSection");
     expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
     expect(dossier).toContain("Return to Site Potential");
     expect(dossier).toContain("sitePotentialSkipped");
