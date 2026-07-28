@@ -672,9 +672,13 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    const documentGeneralPlanReference = extractGeneralPlanReference(
-      `${result.documentType ?? ""} ${result.summary ?? ""} ${result.identity.sgCode ?? ""} ${result.extractedText}`,
-    );
+    // Each source is searched on its own: concatenating them lets a phrase in
+    // one field capture the number printed in the next.
+    const documentGeneralPlanReference =
+      extractGeneralPlanReference(result.extractedText) ??
+      extractGeneralPlanReference(result.summary) ??
+      extractGeneralPlanReference(result.documentType) ??
+      extractGeneralPlanReference(result.identity.sgCode);
 
     // Pre-quarantine diagnostics: shape and identity signals only. Never text,
     // quotes, images, base64, tokens, keys or ownership details.
