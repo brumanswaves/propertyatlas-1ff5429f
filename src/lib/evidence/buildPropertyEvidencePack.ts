@@ -7,7 +7,9 @@ import {
 import { fingerprintPropertyEvidencePack } from "./evidenceFingerprint";
 import { resolveParcelArea, SHAPE_AREA_WARNING, statedAreaAliases } from "./parcelArea";
 import {
+  erfAssetDocumentLineage,
   erfAssetExtractedClaims,
+  erfAssetIsParentLineageMatch,
   erfAssetExtractionError,
   erfAssetExtractionStatus,
   erfAssetHasSearchableExtraction,
