@@ -701,6 +701,39 @@ function placeAgrees(a: string, b: string) {
   return a === b || a.includes(b) || b.includes(a);
 }
 
+/**
+ * Provinces that were superseded in 1994, mapped to the present-day provinces
+ * carved out of them. A Surveyor-General sheet approved before 1994 states the
+ * historical name, so "Cape of Good Hope" versus "Eastern Cape" is an era
+ * difference, not evidence of a different property. Such a pair is therefore
+ * neither a conflict nor a corroboration.
+ */
+const HISTORICAL_PROVINCES: ReadonlyArray<{ historical: readonly string[]; current: readonly string[] }> = [
+  {
+    historical: ["capeofgoodhope", "capeprovince", "kaapdiegoeiehoop", "kaapprovinsie", "cape"],
+    current: ["easterncape", "westerncape", "northerncape", "northwest", "noordwes"],
+  },
+  {
+    historical: ["transvaal"],
+    current: ["gauteng", "limpopo", "northerntransvaal", "mpumalanga", "northwest", "noordwes"],
+  },
+  { historical: ["natal"], current: ["kwazulunatal", "kwazulu"] },
+  { historical: ["orangefreestate", "oranjevrystaat"], current: ["freestate", "vrystaat"] },
+];
+
+/** True when one province name is the pre-1994 predecessor of the other. */
+export function isSupersededProvincePair(a: string | null, b: string | null) {
+  if (!a || !b) return false;
+  for (const group of HISTORICAL_PROVINCES) {
+    const aHist = group.historical.includes(a);
+    const bHist = group.historical.includes(b);
+    if (aHist && group.current.includes(b)) return true;
+    if (bHist && group.current.includes(a)) return true;
+    if (aHist && bHist) return true;
+  }
+  return false;
+}
+
 /** Recognises a General Plan / subdivision sheet from its own wording. */
 export function looksLikeGeneralPlanDocument(
   documentType: string | null | undefined,
@@ -712,9 +745,16 @@ export function looksLikeGeneralPlanDocument(
   return /general\s*plan\b|\bg\.?\s?p\.?\s?no\b|subdivision of erf|sub-?divisional diagram/.test(head);
 }
 
-/** First `GP<number>` reference stated anywhere in the supplied text. */
+/**
+ * First general-plan reference stated anywhere in the supplied text, in either
+ * the abbreviated (`GP 12252`) or the printed title-block form
+ * (`GENERAL PLAN No. 12252`).
+ */
 export function extractGeneralPlanReference(value: unknown): string | null {
-  const match = /\bG\.?\s*P\.?\s*(?:NO\.?)?\s*-?\s*(\d{2,})/i.exec(String(value ?? ""));
+  const text = String(value ?? "");
+  const spelled = /\bgeneral\s*plan\s*(?:no\.?|nr\.?|number)?\s*[-:]?\s*(\d{2,})/i.exec(text);
+  if (spelled) return `GP${Number(spelled[1])}`;
+  const match = /\bG\.?\s*P\.?\s*(?:NO\.?)?\s*-?\s*(\d{2,})/i.exec(text);
   return match ? `GP${Number(match[1])}` : null;
 }
 
