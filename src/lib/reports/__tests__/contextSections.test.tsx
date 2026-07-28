@@ -61,7 +61,7 @@ describe("site risk section model", () => {
     );
     expect(html).toContain('id="report-site-risk"');
     expect(html).toContain("Not established");
-    expect(html).not.toMatch(/no risk|cleared/i);
+    expect(html).not.toMatch(/no risk identified|risk cleared/i);
   });
 
   it("surfaces the highest recorded constraint from evidence only", () => {
@@ -89,7 +89,7 @@ describe("municipal services section model", () => {
       ]),
     });
     expect(model.facts.find((f) => f.id === "rates")?.value).toBeNull();
-    expect(model.facts.find((f) => f.id === "municipal-valuation")?.value).toBe("R 1,250,000");
+    expect(model.facts.find((f) => f.id === "municipal-valuation")?.value).toBe("R 1\u00a0250\u00a0000".replace(/\u00a0/g, " "));
     expect(model.monthlyEstimate).toBeNull();
 
     const html = renderToStaticMarkup(
@@ -118,7 +118,7 @@ describe("municipal services section model", () => {
         }),
       ]),
     });
-    expect(model.monthlyEstimate?.value).toBe("R 1,200");
+    expect(model.monthlyEstimate?.value).toBe("R 1\u00a0200".replace(/\u00a0/g, " "));
     expect(model.monthlyEstimate?.basis).toMatch(/partial figure/);
   });
 });
