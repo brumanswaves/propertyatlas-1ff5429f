@@ -621,12 +621,21 @@ function addAssetEvidence(
 function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId: string) {
   // Identity gate: only an identity-matched, ready extraction may become evidence.
   if (!erfAssetHasSearchableExtraction(asset)) return;
+  const parentLineage = erfAssetIsParentLineageMatch(asset);
+  const lineage = parentLineage ? erfAssetDocumentLineage(asset) : null;
+  const planLabel = lineage?.generalPlanReference
+    ? `General Plan ${lineage.generalPlanReference}`
+    : lineage?.parentErfNumber
+      ? `the General Plan of parent Erf ${lineage.parentErfNumber}`
+      : "a parent General Plan";
   const extracted = erfAssetExtractedClaims(asset);
   for (const [index, item] of extracted.entries()) {
     if (!item || typeof item.key !== "string" || !item.key) continue;
     const value = typeof item.value === "string" ? item.value.trim() : "";
     if (!value) continue;
     const domain = (item.domain ?? "documents") as EvidenceDomain;
+    // A parent-plan value is never an established fact about this erf.
+    const parentScoped = parentLineage || item.scope === "parent_plan";
     const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
       ? item.numericValue
       : null;
@@ -641,12 +650,13 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       unit: item.unit ?? null,
       // A value the model read off a drawing (rather than printed text) is
       // never presented as an established fact.
-      nature: item.interpretation === true ? "interpretation" : "fact",
-      status: item.interpretation === true ? "not_reviewed" : "supported",
-      confidence: item.interpretation === true ? "unverified" : "medium",
+      nature: parentScoped || item.interpretation === true ? "interpretation" : "fact",
+      status: parentScoped || item.interpretation === true ? "not_reviewed" : "supported",
+      confidence: parentScoped || item.interpretation === true ? "unverified" : "medium",
 
-      confidenceReason:
-        item.interpretation === true
+      confidenceReason: parentScoped
+        ? `Read from ${planLabel}, which covers this erf's parent property and many other erven. It is contextual cadastral evidence for this erf, not a confirmed value for it.`
+        : item.interpretation === true
           ? "Read from the drawing rather than printed text. A surveyor or conveyancer must confirm it."
           : EXTRACTED_FACT_CONFIDENCE_REASON,
 
@@ -663,6 +673,9 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       updatedAt: asset.updated_at,
       userConfirmed: false,
       excluded: false,
+      notes: parentScoped
+        ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
+        : undefined,
     });
   }
 }
