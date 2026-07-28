@@ -23,6 +23,7 @@ import {
   extractGeneralPlanReference,
   isSgDiagramCategory,
   isSupportedExtractionMimeType,
+  looksLikeGeneralPlanDocument,
   matchDocumentIdentity,
   normalizeExtractionResult,
   parseCanonicalLpi,
