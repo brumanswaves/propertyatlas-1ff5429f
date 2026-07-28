@@ -2172,7 +2172,19 @@ function StoepAiReportView({
             ))}
           </ul>
         )}
+
+        <div className="mt-5 border-t border-[#0D1B2A]/10 pt-4">
+          <ReportSectionTitle
+            eyebrow="Due diligence plan"
+            title="Open actions ranked by priority"
+          />
+          <ReportActionPlan
+            actions={reportDoc.actions.filter((action) => action.status !== "completed")}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+          />
+        </div>
       </section>
+
 
       {/* SITE POTENTIAL — retains existing selected concept card */}
       <section
