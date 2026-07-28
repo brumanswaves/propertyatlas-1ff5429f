@@ -871,7 +871,10 @@ function extractedDocumentText(
         lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : ""
       }${lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : ""}, from which this erf was created. ` +
       `It covers several erven. Nothing in it is confirmed for this erf on its own, and it never states this erf's extent. ` +
-      `Describe anything from it as parent-plan context to confirm with a land surveyor or conveyancer.\n\n`;
+      `Describe anything from it as parent-plan context to confirm with a land surveyor or conveyancer. ` +
+      `The only exception: an annotation whose own printed text explicitly names this erf may be reported as stated for this erf — ` +
+      `say that it is printed on the parent General Plan, cite the file name and page, and note that its legal effect must still be confirmed.\n\n`;
+
     return cleanText(banner + extracted, max);
   }
   return cleanText(extracted, max);
