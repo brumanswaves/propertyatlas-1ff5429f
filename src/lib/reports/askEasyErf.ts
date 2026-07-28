@@ -861,8 +861,20 @@ function extractedDocumentText(
   const extracted = metadataString(asset.metadata, "extractedText");
   const extractionStatus = metadataString(asset.metadata, "extractionStatus");
   const max = Math.min(MAX_EXTRACTED_TEXT_PER_ASSET, Math.max(0, remainingExtractedText));
-  if (extracted && extractionStatus === "ready" && max > 0) return cleanText(extracted, max);
-  return undefined;
+  if (!extracted || extractionStatus !== "ready" || max <= 0) return undefined;
+  // A parent General Plan is context for several erven, so the model must
+  // never quote it as a confirmed value for this erf.
+  if (metadataString(asset.metadata, "identityMatchStatus") === "parent_lineage_match") {
+    const lineage = asset.metadata?.documentLineage as { parentErfNumber?: string; generalPlanReference?: string } | null | undefined;
+    const banner =
+      `PARENT GENERAL PLAN — CONTEXT ONLY. This document is the General Plan${
+        lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : ""
+      }${lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : ""}, from which this erf was created. ` +
+      `It covers several erven. Nothing in it is confirmed for this erf on its own, and it never states this erf's extent. ` +
+      `Describe anything from it as parent-plan context to confirm with a land surveyor or conveyancer.\n\n`;
+    return cleanText(banner + extracted, max);
+  }
+  return cleanText(extracted, max);
 }
 
 function assetRelevanceRank(asset: ErfAsset, selectedDesignId: string | null) {

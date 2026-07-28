@@ -7,7 +7,9 @@ import {
 import { fingerprintPropertyEvidencePack } from "./evidenceFingerprint";
 import { resolveParcelArea, SHAPE_AREA_WARNING, statedAreaAliases } from "./parcelArea";
 import {
+  erfAssetDocumentLineage,
   erfAssetExtractedClaims,
+  erfAssetIsParentLineageMatch,
   erfAssetExtractionError,
   erfAssetExtractionStatus,
   erfAssetHasSearchableExtraction,
@@ -621,12 +623,21 @@ function addAssetEvidence(
 function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId: string) {
   // Identity gate: only an identity-matched, ready extraction may become evidence.
   if (!erfAssetHasSearchableExtraction(asset)) return;
+  const parentLineage = erfAssetIsParentLineageMatch(asset);
+  const lineage = parentLineage ? erfAssetDocumentLineage(asset) : null;
+  const planLabel = lineage?.generalPlanReference
+    ? `General Plan ${lineage.generalPlanReference}`
+    : lineage?.parentErfNumber
+      ? `the General Plan of parent Erf ${lineage.parentErfNumber}`
+      : "a parent General Plan";
   const extracted = erfAssetExtractedClaims(asset);
   for (const [index, item] of extracted.entries()) {
     if (!item || typeof item.key !== "string" || !item.key) continue;
     const value = typeof item.value === "string" ? item.value.trim() : "";
     if (!value) continue;
     const domain = (item.domain ?? "documents") as EvidenceDomain;
+    // A parent-plan value is never an established fact about this erf.
+    const parentScoped = parentLineage || item.scope === "parent_plan";
     const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
       ? item.numericValue
       : null;
@@ -641,12 +652,13 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       unit: item.unit ?? null,
       // A value the model read off a drawing (rather than printed text) is
       // never presented as an established fact.
-      nature: item.interpretation === true ? "interpretation" : "fact",
-      status: item.interpretation === true ? "not_reviewed" : "supported",
-      confidence: item.interpretation === true ? "unverified" : "medium",
+      nature: parentScoped || item.interpretation === true ? "interpretation" : "fact",
+      status: parentScoped || item.interpretation === true ? "not_reviewed" : "supported",
+      confidence: parentScoped || item.interpretation === true ? "unverified" : "medium",
 
-      confidenceReason:
-        item.interpretation === true
+      confidenceReason: parentScoped
+        ? `Read from ${planLabel}, which covers this erf's parent property and many other erven. It is contextual cadastral evidence for this erf, not a confirmed value for it.`
+        : item.interpretation === true
           ? "Read from the drawing rather than printed text. A surveyor or conveyancer must confirm it."
           : EXTRACTED_FACT_CONFIDENCE_REASON,
 
@@ -663,6 +675,9 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       updatedAt: asset.updated_at,
       userConfirmed: false,
       excluded: false,
+      notes: parentScoped
+        ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
+        : undefined,
     });
   }
 }
@@ -674,8 +689,28 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
  */
 function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceId: string) {
   const identity = erfAssetIdentityMatchStatus(asset);
-  if (identity !== "mismatch" && identity !== "unverified") return;
   const reason = erfAssetIdentityMatchReason(asset);
+  if (identity === "parent_lineage_match") {
+    // Accepted, but never as a diagram of this erf: it stays a labelled
+    // context source with an explicit "confirm applicability" next action.
+    const lineage = erfAssetDocumentLineage(asset);
+    const plan = lineage?.generalPlanReference ? `General Plan ${lineage.generalPlanReference}` : "General Plan";
+    const parent = lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : "";
+    pack.gaps.push({
+      id: `document-parent-lineage-${asset.id}`,
+      parcelId: asset.parcel_id,
+      domain: "documents",
+      importance: "low",
+      title: `${plan}${parent} — parent-plan context only`,
+      explanation: `${asset.original_file_name} is the ${plan}${parent}, from which this erf was created. It covers several erven, so nothing on it is confirmed for this erf on its own, and it never sets this erf's extent.`,
+      basis: reason ?? "identityMatchStatus=parent_lineage_match",
+      nextAction: "Upload the SG diagram of this erf, or confirm any relevant plan note with a land surveyor or conveyancer.",
+      targetTab: "sources",
+      blocking: false,
+    });
+    return;
+  }
+  if (identity !== "mismatch" && identity !== "unverified") return;
   if (identity === "mismatch") {
     addContradiction(pack, {
       id: `document-property-mismatch-${asset.id}`,
@@ -1471,8 +1506,12 @@ function selectVerifiedRegisteredExtent(assets: ErfAsset[], parcelId: string) {
     if (asset.parcel_id !== parcelId) continue;
     if (!REGISTERED_EXTENT_CATEGORIES.includes(asset.asset_category)) continue;
     if (!erfAssetHasSearchableExtraction(asset)) continue;
+    // A parent General Plan states the PARENT's extent; it may never set this
+    // erf's area, so the whole asset is excluded from this selector.
+    if (erfAssetIsParentLineageMatch(asset)) continue;
     for (const claim of erfAssetExtractedClaims(asset)) {
       if (!claim || claim.domain !== "identity" || claim.key !== "areaM2") continue;
+      if (claim.scope === "parent_plan") continue;
       if (typeof claim.quote !== "string" || !claim.quote.trim()) continue;
       if (typeof claim.page !== "number" || !Number.isFinite(claim.page)) continue;
       const numeric =

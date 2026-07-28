@@ -17,17 +17,22 @@ import {
   ERF_EXTRACTION_OPENAI_URL,
   ERF_EXTRACTION_TIMEOUT_MS,
   ERF_EXTRACTION_VERSION,
+  applyParentLineageClaimPolicy,
   erfExtractionResponseFormat,
   erfExtractionSystemPrompt,
+  extractGeneralPlanReference,
+  isSgDiagramCategory,
   isSupportedExtractionMimeType,
   matchDocumentIdentity,
   normalizeExtractionResult,
   parseCanonicalLpi,
+  parseLegalPortionToken,
   type ErfExpectedIdentity,
   type ErfExtractionFailureCode,
   type ErfExtractionMetadataPatch,
   type ErfExtractionStatus,
   type ErfIdentityMatchStatus,
+  type ErfKnownParcelLineage,
 } from "../_shared/erfExtractionContract.ts";
 import {
   ERF_NORMALIZED_IMAGE_MIME,
@@ -245,6 +250,68 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
   }
 }
 
+/**
+ * Cadastral lineage already proven for THIS parcel by an identity-matched
+ * document on the same erf (e.g. a deeds report stating
+ * `Erf 1570 [PTN OF 1496-GP12252]`).
+ *
+ * Without such a record a general plan of another erf stays a plain mismatch,
+ * so parent-plan acceptance can never be reached by the uploaded plan alone.
+ */
+async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLineage | null> {
+  const key = serviceKey();
+  if (!key) return null;
+  try {
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/erf_assets?user_id=eq.${encodeURIComponent(
+        asset.user_id,
+      )}&parcel_id=eq.${encodeURIComponent(
+        asset.parcel_id,
+      )}&select=id,source_label,original_file_name,asset_category,metadata&limit=50`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+    if (!response.ok) return null;
+    const rows = (await response.json().catch(() => null)) as Array<{
+      id: string;
+      source_label: string | null;
+      original_file_name: string | null;
+      metadata?: Record<string, unknown> | null;
+    }> | null;
+    for (const row of rows ?? []) {
+      if (row.id === asset.id) continue;
+      const metadata = row.metadata ?? {};
+      if (metadata.identityMatchStatus !== "matched") continue;
+      const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
+      const fromLineage = raw && typeof raw === "object" ? raw : null;
+      // Fall back to the legal-description token the matched document stated.
+      const identityRaw = metadata.extractedIdentity as Record<string, unknown> | null | undefined;
+      const parsed = parseLegalPortionToken(
+        identityRaw && typeof identityRaw === "object" ? identityRaw.portionNumber : null,
+      );
+      const parentErfNumber =
+        typeof fromLineage?.parentErfNumber === "string" && fromLineage.parentErfNumber
+          ? fromLineage.parentErfNumber
+          : parsed.parentErfNumber;
+      if (!parentErfNumber) continue;
+      const generalPlanReference =
+        (typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
+          ? fromLineage.generalPlanReference
+          : parsed.generalPlanReference) ??
+        extractGeneralPlanReference(typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null);
+      return {
+        parentErfNumber,
+        generalPlanReference,
+        sourceLabel: row.source_label || row.original_file_name || "an identity-matched document on this erf",
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+
+
 async function downloadAsset(asset: AssetRow): Promise<Uint8Array | null> {
   const key = serviceKey();
   if (!key) return null;
@@ -374,7 +441,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const isCurrentReady =
-    currentStatus === "ready" && currentIdentity === "matched" && currentVersion === ERF_EXTRACTION_VERSION;
+    currentStatus === "ready" &&
+    (currentIdentity === "matched" || currentIdentity === "parent_lineage_match") &&
+    currentVersion === ERF_EXTRACTION_VERSION;
   if (isCurrentReady && !(retryRequested && isInternalCaller)) {
     log("idempotent_ready", requestId);
     return json(
@@ -383,7 +452,7 @@ Deno.serve(async (request: Request) => {
         assetId: asset.id,
         success: true,
         extractionStatus: "ready",
-        identityMatchStatus: "matched",
+        identityMatchStatus: currentIdentity,
         claimCount: Array.isArray(asset.metadata?.extractedClaims)
           ? (asset.metadata!.extractedClaims as unknown[]).length
           : 0,
@@ -437,6 +506,11 @@ Deno.serve(async (request: Request) => {
   }
 
   const expectedIdentity = await loadExpectedIdentity(asset);
+  // Only SG diagrams can ever be accepted as parent-plan context, so the
+  // lineage lookup is skipped entirely for every other category.
+  const knownLineage = isSgDiagramCategory(asset.asset_category)
+    ? await loadKnownParcelLineage(asset)
+    : null;
 
   const bytes = await downloadAsset(asset);
   if (!bytes || bytes.byteLength === 0) {
@@ -597,10 +671,19 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    const identity = matchDocumentIdentity(expectedIdentity, result.identity);
+    const identity = matchDocumentIdentity(expectedIdentity, result.identity, {
+      assetCategory: asset.asset_category,
+      documentType: result.documentType,
+      documentText: result.extractedText,
+      documentGeneralPlanReference: extractGeneralPlanReference(
+        `${result.documentType ?? ""} ${result.identity.sgCode ?? ""} ${result.extractedText.slice(0, 4_000)}`,
+      ),
+      knownLineage,
+    });
     const identityMatchStatus: ErfIdentityMatchStatus = identity.status;
+    const isParentLineage = identityMatchStatus === "parent_lineage_match";
 
-    if (identityMatchStatus !== "matched") {
+    if (identityMatchStatus !== "matched" && !isParentLineage) {
       // Quarantine: no extracted text, no claims, no document facts retained.
       const message =
         identityMatchStatus === "mismatch" ? ERF_EXTRACTION_MISMATCH_MESSAGE : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
@@ -634,10 +717,22 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    const status: ErfExtractionStatus = result.claims.length > 0 ? "ready" : "partial";
+    // A parent General Plan may only speak as context: its extent can never
+    // become this erf's area and its notes are demoted to items to confirm.
+    const claims = isParentLineage
+      ? applyParentLineageClaimPolicy(result.claims, {
+          subjectErfNumber: expectedIdentity.erfNumber ?? null,
+          parentErfNumber: identity.lineage?.parentErfNumber ?? null,
+          generalPlanReference: identity.lineage?.generalPlanReference ?? null,
+        })
+      : result.claims;
+
+    const status: ErfExtractionStatus = claims.length > 0 ? "ready" : "partial";
     const combinedWarning =
-      [normalizationWarning, result.warning].filter((entry) => Boolean(entry)).join(" ") || null;
-    log("extraction_ready", requestId, { status, claimCount: result.claims.length });
+      [normalizationWarning, result.warning, isParentLineage ? identity.reason : null]
+        .filter((entry) => Boolean(entry))
+        .join(" ") || null;
+    log("extraction_ready", requestId, { status, claimCount: claims.length, identityMatchStatus });
     return finish(
       status,
       {
@@ -652,7 +747,7 @@ Deno.serve(async (request: Request) => {
         normalizedExtractionMimeType: normalizedMime,
         extractionWarning: combinedWarning,
         extractedText: result.extractedText,
-        extractedClaims: result.claims,
+        extractedClaims: claims,
         extractedDocumentType: result.documentType,
         extractedProvider: result.provider,
         extractedDocumentDate: result.documentDate,
@@ -662,7 +757,7 @@ Deno.serve(async (request: Request) => {
       {
         success: true,
         identityMatchStatus,
-        claimCount: result.claims.length,
+        claimCount: claims.length,
         documentType: result.documentType,
         pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
         warning: combinedWarning,

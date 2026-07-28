@@ -52,7 +52,31 @@ export function erfAssetExtractionStatus(asset: MetadataBearer): ErfExtractionSt
 
 export function erfAssetIdentityMatchStatus(asset: MetadataBearer): ErfIdentityMatchStatus | null {
   const value = meta(asset).identityMatchStatus ?? meta(asset).identity_match_status;
-  return value === "matched" || value === "mismatch" || value === "unverified" ? value : null;
+  return value === "matched" || value === "mismatch" || value === "unverified" || value === "parent_lineage_match"
+    ? value
+    : null;
+}
+
+/** True when the asset is a parent General Plan accepted as contextual evidence. */
+export function erfAssetIsParentLineageMatch(asset: MetadataBearer) {
+  return erfAssetIdentityMatchStatus(asset) === "parent_lineage_match";
+}
+
+/** Parent erf / general-plan provenance recorded by the identity gate. */
+export function erfAssetDocumentLineage(asset: MetadataBearer): {
+  parentErfNumber: string | null;
+  generalPlanReference: string | null;
+  lineage: string | null;
+} | null {
+  const value = meta(asset).documentLineage ?? meta(asset).document_lineage;
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const text = (key: string) => (typeof raw[key] === "string" && raw[key] ? (raw[key] as string) : null);
+  return {
+    parentErfNumber: text("parentErfNumber"),
+    generalPlanReference: text("generalPlanReference"),
+    lineage: text("lineage"),
+  };
 }
 
 export function erfAssetIdentityMatchReason(asset: MetadataBearer): string | null {
@@ -81,11 +105,17 @@ export function erfAssetExtractionError(asset: MetadataBearer): string | null {
 }
 
 /**
- * The single gate every evidence consumer must use: only an identity-matched,
- * ready extraction may contribute searchable claims or text.
+ * The single gate every evidence consumer must use: only an identity-matched
+ * (or parent-lineage-matched), ready extraction may contribute searchable
+ * claims or text. Parent-lineage claims are separately scoped so they can
+ * never become a fact about the subject erf.
  */
 export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
-  return erfAssetExtractionStatus(asset) === "ready" && erfAssetIdentityMatchStatus(asset) === "matched";
+  const identity = erfAssetIdentityMatchStatus(asset);
+  return (
+    erfAssetExtractionStatus(asset) === "ready" &&
+    (identity === "matched" || identity === "parent_lineage_match")
+  );
 }
 
 /**
@@ -99,6 +129,12 @@ export function erfAssetExtractionLabel(asset: MetadataBearer, variant: "report"
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
   if (identity === "unverified") return `${Noun} could not be matched to this erf`;
+  if (identity === "parent_lineage_match") {
+    const lineage = erfAssetDocumentLineage(asset);
+    const parent = lineage?.parentErfNumber ? ` (parent Erf ${lineage.parentErfNumber})` : "";
+    const plan = lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : "";
+    return `Parent General Plan${plan} matched${parent} — context only`;
+  }
   const status = erfAssetExtractionStatus(asset);
   switch (status) {
     case "ready":
