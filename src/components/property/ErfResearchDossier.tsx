@@ -1694,6 +1694,184 @@ function StoepAiReportView({
         }
       />
 
+
+      <ReportChangeTrackingSection
+        comparison={snapshotComparison}
+        snapshots={reportSnapshots}
+        message={snapshotMessage}
+        clearRequested={clearSnapshotsRequested}
+        onSave={handleSaveReportSnapshot}
+        onRequestClear={() => setClearSnapshotsRequested(true)}
+        onCancelClear={() => setClearSnapshotsRequested(false)}
+        onConfirmClear={handleClearReportSnapshots}
+      />
+
+      {/* STICKY REPORT NAV */}
+      <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
+        <ul className="flex min-w-max gap-1 text-xs">
+          {REPORT_SECTIONS.map((s) => (
+            <li key={s.id}>
+              <a
+                href={`#${s.anchorId}`}
+                className="inline-flex items-center rounded-full px-3 py-1.5 font-semibold text-[#0D1B2A]/75 hover:bg-[#F7FBFF] hover:text-[#0D1B2A]"
+              >
+                {s.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* IDENTITY */}
+      <section
+        id="report-identity"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Property Identity"
+          title="Official identifiers and confirmed address"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
+          <IdRow label="Portion" value={report.identity.portion} badge="official" />
+          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
+          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
+          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
+          <IdRow label="Province" value={report.identity.province} badge="official" />
+          <IdRow
+            label="Erf size (m²)"
+            value={formatAreaM2Value(report.identity.areaM2)}
+            badge="official"
+          />
+          <IdRow
+            label="Coordinates"
+            value={
+              report.identity.coordinates
+                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
+                : null
+            }
+            badge="official"
+          />
+          <IdRow
+            label="Market address (user-confirmed)"
+            value={report.identity.marketAddressLine}
+            badge="user_confirmed"
+          />
+          {report.identity.cadastral.map((row) => (
+            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
+          ))}
+        </dl>
+
+        {report.identity.addressAndOfficialMismatch && (
+          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
+            Possible mismatch: the saved market address municipality differs from the official parcel
+            municipality. Recheck identity before using downstream data.
+          </p>
+        )}
+      </section>
+
+      {/* OWNERSHIP */}
+      <section
+        id="report-ownership"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Ownership & Deeds"
+          title={
+            report.ownership.owners.length || report.ownership.titleDeed.length
+              ? "Read from a matched document — not certified by Easy Erf"
+              : "Not verified by Easy Erf"
+          }
+        />
+        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{report.ownership.message}</p>
+        {report.ownership.hasUploadedReport && (
+          <ul className="mt-3 space-y-1 text-xs text-[#0D1B2A]/70">
+            {report.ownership.uploadedReportNames.map((n) => (
+              <li key={n}>· {n} (uploaded)</li>
+            ))}
+          </ul>
+        )}
+
+        {(report.ownership.owners.length > 0 || report.ownership.titleDeed.length > 0) && (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {report.ownership.owners.length > 0 && (
+              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Registered ownership
+                </div>
+                <dl className="mt-3 space-y-3">
+                  {report.ownership.owners.map((detail) => (
+                    <OwnershipDetailRow key={`owner-${detail.label}`} detail={detail} />
+                  ))}
+                </dl>
+              </div>
+            )}
+            {report.ownership.titleDeed.length > 0 && (
+              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Title deed
+                </div>
+                <dl className="mt-3 space-y-3">
+                  {report.ownership.titleDeed.map((detail) => (
+                    <OwnershipDetailRow key={`deed-${detail.label}`} detail={detail} />
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p className="mt-3 text-xs leading-5 text-[#64748B]">
+          Easy Erf does not certify ownership. Owner identity numbers, registration numbers, phone
+          numbers and email addresses are never extracted or displayed.
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {report.ownership.owners.length === 0 && (
+            <EvidenceBadgeChip badge="missing" label="Owner name" />
+          )}
+          {report.ownership.titleDeed.length === 0 && (
+            <EvidenceBadgeChip badge="missing" label="Deed number" />
+          )}
+          <EvidenceBadgeChip badge="missing" label="Bond info" />
+          <EvidenceBadgeChip badge="missing" label="Transfer history" />
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelectView?.("reports")}
+          className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+        >
+          Open Reports tab <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </section>
+
+
+      {/* PLANNING */}
+      <section
+        id="report-planning"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          {report.planning.map((field) => (
+            <div
+              key={field.label}
+              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
+            >
+              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                {field.label}
+              </dt>
+              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
+                {field.value ?? (
+                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
+                )}
+              </dd>
+              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
+            </div>
+          ))}
+        </dl>
+      </section>
+
       {/* DECISION INTELLIGENCE */}
       <section
         id="report-brief"
@@ -1906,183 +2084,6 @@ function StoepAiReportView({
         </div>
         )}
 
-      </section>
-
-      <ReportChangeTrackingSection
-        comparison={snapshotComparison}
-        snapshots={reportSnapshots}
-        message={snapshotMessage}
-        clearRequested={clearSnapshotsRequested}
-        onSave={handleSaveReportSnapshot}
-        onRequestClear={() => setClearSnapshotsRequested(true)}
-        onCancelClear={() => setClearSnapshotsRequested(false)}
-        onConfirmClear={handleClearReportSnapshots}
-      />
-
-      {/* STICKY REPORT NAV */}
-      <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
-        <ul className="flex min-w-max gap-1 text-xs">
-          {REPORT_SECTIONS.map((s) => (
-            <li key={s.id}>
-              <a
-                href={`#${s.anchorId}`}
-                className="inline-flex items-center rounded-full px-3 py-1.5 font-semibold text-[#0D1B2A]/75 hover:bg-[#F7FBFF] hover:text-[#0D1B2A]"
-              >
-                {s.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* IDENTITY */}
-      <section
-        id="report-identity"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Property Identity"
-          title="Official identifiers and confirmed address"
-        />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
-          <IdRow label="Portion" value={report.identity.portion} badge="official" />
-          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
-          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
-          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
-          <IdRow label="Province" value={report.identity.province} badge="official" />
-          <IdRow
-            label="Erf size (m²)"
-            value={formatAreaM2Value(report.identity.areaM2)}
-            badge="official"
-          />
-          <IdRow
-            label="Coordinates"
-            value={
-              report.identity.coordinates
-                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
-                : null
-            }
-            badge="official"
-          />
-          <IdRow
-            label="Market address (user-confirmed)"
-            value={report.identity.marketAddressLine}
-            badge="user_confirmed"
-          />
-          {report.identity.cadastral.map((row) => (
-            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
-          ))}
-        </dl>
-
-        {report.identity.addressAndOfficialMismatch && (
-          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
-            Possible mismatch: the saved market address municipality differs from the official parcel
-            municipality. Recheck identity before using downstream data.
-          </p>
-        )}
-      </section>
-
-      {/* OWNERSHIP */}
-      <section
-        id="report-ownership"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Ownership & Deeds"
-          title={
-            report.ownership.owners.length || report.ownership.titleDeed.length
-              ? "Read from a matched document — not certified by Easy Erf"
-              : "Not verified by Easy Erf"
-          }
-        />
-        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{report.ownership.message}</p>
-        {report.ownership.hasUploadedReport && (
-          <ul className="mt-3 space-y-1 text-xs text-[#0D1B2A]/70">
-            {report.ownership.uploadedReportNames.map((n) => (
-              <li key={n}>· {n} (uploaded)</li>
-            ))}
-          </ul>
-        )}
-
-        {(report.ownership.owners.length > 0 || report.ownership.titleDeed.length > 0) && (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {report.ownership.owners.length > 0 && (
-              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  Registered ownership
-                </div>
-                <dl className="mt-3 space-y-3">
-                  {report.ownership.owners.map((detail) => (
-                    <OwnershipDetailRow key={`owner-${detail.label}`} detail={detail} />
-                  ))}
-                </dl>
-              </div>
-            )}
-            {report.ownership.titleDeed.length > 0 && (
-              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  Title deed
-                </div>
-                <dl className="mt-3 space-y-3">
-                  {report.ownership.titleDeed.map((detail) => (
-                    <OwnershipDetailRow key={`deed-${detail.label}`} detail={detail} />
-                  ))}
-                </dl>
-              </div>
-            )}
-          </div>
-        )}
-
-        <p className="mt-3 text-xs leading-5 text-[#64748B]">
-          Easy Erf does not certify ownership. Owner identity numbers, registration numbers, phone
-          numbers and email addresses are never extracted or displayed.
-        </p>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {report.ownership.owners.length === 0 && (
-            <EvidenceBadgeChip badge="missing" label="Owner name" />
-          )}
-          {report.ownership.titleDeed.length === 0 && (
-            <EvidenceBadgeChip badge="missing" label="Deed number" />
-          )}
-          <EvidenceBadgeChip badge="missing" label="Bond info" />
-          <EvidenceBadgeChip badge="missing" label="Transfer history" />
-        </div>
-        <button
-          type="button"
-          onClick={() => onSelectView?.("reports")}
-          className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
-        >
-          Open Reports tab <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      </section>
-
-
-      {/* PLANNING */}
-      <section
-        id="report-planning"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle eyebrow="Land & Planning" title="Zoning, size and building controls" />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          {report.planning.map((field) => (
-            <div
-              key={field.label}
-              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
-            >
-              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                {field.label}
-              </dt>
-              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
-                {field.value ?? (
-                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
-                )}
-              </dd>
-              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
-            </div>
-          ))}
-        </dl>
       </section>
 
       {/* MARKET */}
