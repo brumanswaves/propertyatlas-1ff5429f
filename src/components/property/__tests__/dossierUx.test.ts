@@ -683,9 +683,7 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(dossier).toContain("savedStatus");
     expect(dossier).toContain("Open original");
-    expect(dossier).toContain(
-      "Each file shows whether Easy Erf actually read it and",
-    );
+    expect(dossier).toContain("whether Easy Erf actually read the");
     expect(dossier).not.toContain("Easy Erf AI extraction and PDF analysis");
 
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
