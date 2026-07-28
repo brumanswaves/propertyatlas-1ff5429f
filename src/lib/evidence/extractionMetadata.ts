@@ -52,7 +52,31 @@ export function erfAssetExtractionStatus(asset: MetadataBearer): ErfExtractionSt
 
 export function erfAssetIdentityMatchStatus(asset: MetadataBearer): ErfIdentityMatchStatus | null {
   const value = meta(asset).identityMatchStatus ?? meta(asset).identity_match_status;
-  return value === "matched" || value === "mismatch" || value === "unverified" ? value : null;
+  return value === "matched" || value === "mismatch" || value === "unverified" || value === "parent_lineage_match"
+    ? value
+    : null;
+}
+
+/** True when the asset is a parent General Plan accepted as contextual evidence. */
+export function erfAssetIsParentLineageMatch(asset: MetadataBearer) {
+  return erfAssetIdentityMatchStatus(asset) === "parent_lineage_match";
+}
+
+/** Parent erf / general-plan provenance recorded by the identity gate. */
+export function erfAssetDocumentLineage(asset: MetadataBearer): {
+  parentErfNumber: string | null;
+  generalPlanReference: string | null;
+  lineage: string | null;
+} | null {
+  const value = meta(asset).documentLineage ?? meta(asset).document_lineage;
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const text = (key: string) => (typeof raw[key] === "string" && raw[key] ? (raw[key] as string) : null);
+  return {
+    parentErfNumber: text("parentErfNumber"),
+    generalPlanReference: text("generalPlanReference"),
+    lineage: text("lineage"),
+  };
 }
 
 export function erfAssetIdentityMatchReason(asset: MetadataBearer): string | null {

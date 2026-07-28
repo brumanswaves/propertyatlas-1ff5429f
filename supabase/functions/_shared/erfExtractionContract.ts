@@ -156,6 +156,9 @@ export const ERF_EXTRACTION_KEYS: Record<ErfExtractionDomain, readonly string[]>
     "adjoiningErven",
     "diagramAnnotations",
     "documentStatus",
+    // Parent-lineage context. Never a fact about the subject erf.
+    "parentPlanExtent",
+    "contextualPlanAnnotation",
   ],
 };
 
@@ -184,6 +187,9 @@ export function isSgDiagramCategory(assetCategory: string | null | undefined) {
 
 export type ErfExtractionUnit = "m2" | "ZAR" | "percent" | "m" | "ratio" | "date" | null;
 
+/** Which property an extracted claim describes. */
+export type ErfClaimScope = "subject" | "parent_plan";
+
 export interface ErfExtractedClaim {
   domain: ErfExtractionDomain;
   key: string;
@@ -203,7 +209,15 @@ export interface ErfExtractedClaim {
    * printed on it. Interpretation never becomes a supported fact.
    */
   interpretation: boolean;
-
+  /**
+   * Which property the claim actually describes.
+   *
+   * `subject`     — the active erf (the default, and the only scope that may
+   *                 ever contribute a parcel fact such as extent).
+   * `parent_plan` — read off a parent General Plan / subdivision diagram that
+   *                 covers the active erf's parent. Contextual only.
+   */
+  scope: ErfClaimScope;
 }
 
 export interface ErfExtractionResult {
@@ -321,7 +335,9 @@ export function normalizeExtractedClaim(raw: unknown): ErfExtractedClaim | null 
   const numericValue = unit === "date" ? null : toNumeric(item.numericValue ?? value);
   const interpretation = item.interpretation === true;
 
-  return { domain, key, label, value, numericValue, unit, page, quote, confidence, interpretation };
+  const scope: ErfClaimScope = item.scope === "parent_plan" ? "parent_plan" : "subject";
+
+  return { domain, key, label, value, numericValue, unit, page, quote, confidence, interpretation, scope };
 }
 
 /**
@@ -522,13 +538,40 @@ export interface ErfExpectedIdentity {
   streetAddress?: string | null;
 }
 
-export type ErfIdentityMatchStatus = "matched" | "mismatch" | "unverified";
+/**
+ * Cadastral lineage already established for the ACTIVE parcel by an
+ * identity-matched document (e.g. a deeds report stating
+ * `Erf 1570 [PTN OF 1496-GP12252]`).
+ *
+ * This is the only thing that may unlock parent-plan acceptance: without it a
+ * general plan of another erf stays a plain mismatch.
+ */
+export interface ErfKnownParcelLineage {
+  parentErfNumber: string | null;
+  generalPlanReference: string | null;
+  /** Where the lineage came from, for the user-facing reason string. */
+  sourceLabel?: string | null;
+}
+
+export type ErfIdentityMatchStatus = "matched" | "parent_lineage_match" | "mismatch" | "unverified";
 
 export interface ErfIdentityMatchResult {
   status: ErfIdentityMatchStatus;
   reason: string;
   /** Parsed subject portion plus retained parent/general-plan provenance. */
   lineage?: ErfLegalPortionToken;
+}
+
+/** Extra signals the identity gate may use, all optional and server-supplied. */
+export interface ErfIdentityMatchOptions {
+  assetCategory?: string | null;
+  documentType?: string | null;
+  /** Readable document text, used only to recognise a General Plan sheet. */
+  documentText?: string | null;
+  /** General-plan reference the document itself states, when known. */
+  documentGeneralPlanReference?: string | null;
+  /** Lineage already proven for the active parcel. */
+  knownLineage?: ErfKnownParcelLineage | null;
 }
 
 
@@ -658,18 +701,38 @@ function placeAgrees(a: string, b: string) {
   return a === b || a.includes(b) || b.includes(a);
 }
 
+/** Recognises a General Plan / subdivision sheet from its own wording. */
+export function looksLikeGeneralPlanDocument(
+  documentType: string | null | undefined,
+  documentText: string | null | undefined,
+) {
+  const type = String(documentType ?? "").toLowerCase();
+  if (/general\s*plan|subdivision|sub-?divisional|layout\s*plan/.test(type)) return true;
+  const head = String(documentText ?? "").slice(0, 4_000).toLowerCase();
+  return /general\s*plan\b|\bg\.?\s?p\.?\s?no\b|subdivision of erf|sub-?divisional diagram/.test(head);
+}
+
+/** First `GP<number>` reference stated anywhere in the supplied text. */
+export function extractGeneralPlanReference(value: unknown): string | null {
+  const match = /\bG\.?\s*P\.?\s*(?:NO\.?)?\s*-?\s*(\d{2,})/i.exec(String(value ?? ""));
+  return match ? `GP${Number(match[1])}` : null;
+}
+
 /**
  * Deterministic document-to-parcel identity gate.
  *
- * matched   — a strong positive identifier agrees and nothing strong conflicts.
- * mismatch  — any strong conflict (different LPI, erf/portion, or place).
- * unverified— the document does not state enough identity to decide safely.
+ * matched              — a strong positive identifier agrees and nothing strong conflicts.
+ * parent_lineage_match — an SG General Plan of this erf's proven parent erf.
+ *                        Contextual cadastral evidence only, never a parcel fact.
+ * mismatch             — any strong conflict (different LPI, erf/portion, or place).
+ * unverified           — the document does not state enough identity to decide safely.
  */
 export function matchDocumentIdentity(
   expected: ErfExpectedIdentity,
   document: ErfExtractedIdentity,
+  options: ErfIdentityMatchOptions = {},
 ): ErfIdentityMatchResult {
-  const conflicts: string[] = [];
+  const conflicts: Array<{ code: "lpi" | "erf" | "portion" | "place"; message: string }> = [];
   const positives: string[] = [];
 
   const expectedLpi = normCode(expected.lpiCode) ?? parseCanonicalLpi(expected.parcelId);
@@ -680,7 +743,7 @@ export function matchDocumentIdentity(
       lpiMatch = true;
       positives.push("LPI code matches");
     } else {
-      conflicts.push("the document LPI code is for a different parcel");
+      conflicts.push({ code: "lpi", message: "the document LPI code is for a different parcel" });
     }
   }
 
@@ -692,7 +755,10 @@ export function matchDocumentIdentity(
       erfMatch = true;
       positives.push("erf number matches");
     } else {
-      conflicts.push(`the document states erf ${documentErf}, not erf ${expectedErf}`);
+      conflicts.push({
+        code: "erf",
+        message: `the document states erf ${documentErf}, not erf ${expectedErf}`,
+      });
     }
   }
 
@@ -711,9 +777,10 @@ export function matchDocumentIdentity(
     const expectedPortion = normPortion(expected.portionNumber) ?? "0";
     if (expectedPortion !== documentToken.subjectPortion) {
       portionOk = false;
-      conflicts.push(
-        `the document describes portion ${documentToken.subjectPortion}, not portion ${expectedPortion}`,
-      );
+      conflicts.push({
+        code: "portion",
+        message: `the document describes portion ${documentToken.subjectPortion}, not portion ${expectedPortion}`,
+      });
     }
   }
 
@@ -731,15 +798,40 @@ export function matchDocumentIdentity(
       positives.push(`${label} matches`);
     } else if (hard) {
       // Province is coarse and stable, so a disagreement is decisive.
-      conflicts.push(`the document ${label} is different`);
+      conflicts.push({ code: "place", message: `the document ${label} is different` });
     }
     // Municipality and suburb names are aliased and re-demarcated frequently
     // (e.g. "ST FRANCIS BAY MUN" vs "Kouga Local Municipality"), so a
     // disagreement there simply fails to corroborate rather than conflicting.
   }
 
+  // Parent General Plan acceptance. Deliberately narrow: SG diagrams only,
+  // the sheet must read as a general plan, the ONLY conflict may be the erf
+  // number, and that number must be this parcel's already-proven parent erf.
+  const parent = evaluateParentLineageMatch({
+    conflicts,
+    documentErf,
+    documentGeneralPlan:
+      options.documentGeneralPlanReference ??
+      documentToken.generalPlanReference ??
+      extractGeneralPlanReference(document.sgCode),
+    options,
+  });
+  if (parent) {
+    return {
+      status: "parent_lineage_match",
+      reason: parent.reason,
+      lineage: {
+        subjectPortion: null,
+        parentErfNumber: parent.parentErfNumber,
+        generalPlanReference: parent.generalPlanReference,
+        lineage: parent.lineageLabel,
+      },
+    };
+  }
+
   if (conflicts.length) {
-    return { status: "mismatch", reason: `Identity conflict: ${conflicts[0]}.`, lineage };
+    return { status: "mismatch", reason: `Identity conflict: ${conflicts[0].message}.`, lineage };
   }
   if (lpiMatch || (erfMatch && portionOk && placeMatch)) {
     return { status: "matched", reason: `Identity confirmed: ${positives.join(", ")}.`, lineage };
@@ -749,5 +841,126 @@ export function matchDocumentIdentity(
     reason: "The document does not state enough matching identity fields to bind it to this parcel.",
     lineage,
   };
+}
+
+function evaluateParentLineageMatch(input: {
+  conflicts: Array<{ code: string; message: string }>;
+  documentErf: string | null;
+  documentGeneralPlan: string | null;
+  options: ErfIdentityMatchOptions;
+}): { reason: string; parentErfNumber: string; generalPlanReference: string | null; lineageLabel: string } | null {
+  const { conflicts, documentErf, documentGeneralPlan, options } = input;
+  if (!isSgDiagramCategory(options.assetCategory)) return null;
+
+  // Only the erf-number conflict may be forgiven, and only that one.
+  if (conflicts.length !== 1 || conflicts[0].code !== "erf") return null;
+  if (!documentErf) return null;
+
+  const known = options.knownLineage ?? null;
+  const knownParent = known?.parentErfNumber ? normNumber(known.parentErfNumber) : null;
+  if (!knownParent || knownParent !== documentErf) return null;
+
+  const knownGp = known?.generalPlanReference ? normCode(known.generalPlanReference) : null;
+  const docGp = documentGeneralPlan ? normCode(documentGeneralPlan) : null;
+  // Where both state a general plan they must agree; a silent sheet is allowed.
+  if (knownGp && docGp && knownGp !== docGp) return null;
+
+  if (!looksLikeGeneralPlanDocument(options.documentType, options.documentText)) return null;
+
+  const gpLabel = documentGeneralPlan ?? known?.generalPlanReference ?? null;
+  const lineageLabel = gpLabel
+    ? `General Plan ${gpLabel} of parent Erf ${documentErf}`
+    : `General Plan of parent Erf ${documentErf}`;
+  const via = known?.sourceLabel ? ` (lineage confirmed by ${known.sourceLabel})` : "";
+  return {
+    reason: `Parent lineage confirmed: this is the ${lineageLabel}, from which this erf was created${via}. It is contextual cadastral evidence only, not a diagram of this erf.`,
+    parentErfNumber: documentErf,
+    generalPlanReference: gpLabel,
+    lineageLabel,
+  };
+}
+
+/**
+ * Restricts what a parent General Plan may assert about the ACTIVE erf.
+ *
+ * Everything it produces is marked `scope: "parent_plan"`, the parent's extent
+ * can never reach the subject's area, and any deeds/planning note that does not
+ * literally name the subject erf is demoted to a contextual annotation the user
+ * must confirm.
+ */
+export function applyParentLineageClaimPolicy(
+  claims: ErfExtractedClaim[],
+  context: { subjectErfNumber?: string | number | null; parentErfNumber?: string | null; generalPlanReference?: string | null },
+): ErfExtractedClaim[] {
+  const subjectErf = normNumber(context.subjectErfNumber);
+  const planLabel = context.generalPlanReference
+    ? `Parent plan ${context.generalPlanReference}`
+    : context.parentErfNumber
+      ? `Parent Erf ${context.parentErfNumber} plan`
+      : "Parent plan";
+  const subjectPattern = subjectErf
+    ? new RegExp(`\\b(?:erf|erven|stand|portion|ptn)\\s*(?:no\\.?\\s*)?${subjectErf}\\b`, "i")
+    : null;
+
+  const out: ErfExtractedClaim[] = [];
+  for (const claim of claims) {
+    const namesSubject = Boolean(
+      subjectPattern && (subjectPattern.test(claim.quote) || subjectPattern.test(claim.value)),
+    );
+    const relabel = (label: string) => `${planLabel}: ${label}`;
+
+    if (claim.domain === "identity") {
+      // The parent's own identifiers must never masquerade as the subject's.
+      if (claim.key === "lpiCode") continue;
+      if (claim.key === "areaM2" || claim.key === "registeredExtent") {
+        out.push({
+          ...claim,
+          domain: "documents",
+          key: "parentPlanExtent",
+          label: relabel("extent stated on the plan"),
+          scope: "parent_plan",
+        });
+        continue;
+      }
+      if (claim.key === "erfNumber") {
+        out.push({ ...claim, key: "parentErfNumber", label: relabel("parent erf number"), scope: "parent_plan" });
+        continue;
+      }
+      if (claim.key === "portionNumber") {
+        out.push({
+          ...claim,
+          key: "parentPortionNumber",
+          label: relabel("parent portion number"),
+          scope: "parent_plan",
+        });
+        continue;
+      }
+      out.push({ ...claim, label: relabel(claim.label), scope: "parent_plan" });
+      continue;
+    }
+
+    if (claim.domain === "documents") {
+      out.push({ ...claim, label: relabel(claim.label), scope: "parent_plan" });
+      continue;
+    }
+
+    if (namesSubject) {
+      // Explicitly about this erf: keep the claim, but still flag its origin.
+      out.push({ ...claim, label: `${planLabel} (states this erf): ${claim.label}`, scope: "parent_plan" });
+      continue;
+    }
+
+    // Everything else on a parent plan is context to confirm, never a fact.
+    out.push({
+      ...claim,
+      domain: "documents",
+      key: "contextualPlanAnnotation",
+      label: relabel(claim.label),
+      interpretation: true,
+      confidence: "low",
+      scope: "parent_plan",
+    });
+  }
+  return out;
 }
 
