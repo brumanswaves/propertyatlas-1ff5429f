@@ -1469,6 +1469,17 @@ function StoepAiReportView({
   const updateDecisionMode = (mode: ReportDecisionMode) => {
     setDecisionMode(writeReportDecisionMode(parcel.id, mode));
   };
+  const reportDoc = useMemo(
+    () =>
+      composeEasyErfReport({
+        report,
+        pack: report.evidencePack ?? undefined,
+        perspective: decisionMode === "investor" ? "investor" : "home_buyer",
+        decisionMode,
+      }),
+    [decisionMode, report],
+  );
+
   const askSuggestionPayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
