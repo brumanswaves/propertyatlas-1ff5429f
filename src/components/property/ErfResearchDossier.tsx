@@ -3417,6 +3417,28 @@ function EvidenceTimelineRow({ item }: { item: EvidenceTimelineItem }) {
   );
 }
 
+/**
+ * One supported ownership/deed value. Every rendered value keeps the source
+ * ids and page locators it was read from, so nothing appears unattributed.
+ */
+function OwnershipDetailRow({ detail }: { detail: OwnershipDetail }) {
+  return (
+    <div>
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+        {detail.label}
+      </dt>
+      <dd className="mt-1 text-sm font-semibold text-[#0D1B2A]">{detail.value}</dd>
+      <p className="mt-1 text-[10px] leading-4 text-[#94A3B8]">
+        Source: {detail.sourceIds.length ? detail.sourceIds.join(", ") : "unattributed"}
+        {detail.pageNumbers.length
+          ? ` · page ${detail.pageNumbers.join(", ")}`
+          : " · page not recorded"}
+      </p>
+    </div>
+  );
+}
+
+
 function IdRow({
   label,
   value,
