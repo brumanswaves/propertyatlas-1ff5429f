@@ -23,7 +23,7 @@ describe("reportFindings", () => {
   });
 
   it("keeps ownership unestablished when no ownership document supports it", () => {
-    const ownership = findings.find((finding) => finding.category === "ownership");
+    const ownership = findings.find((finding) => finding.id.includes("ownership"));
     expect(ownership).toBeDefined();
     expect(isPositiveFindingStatus(ownership!.status)).toBe(false);
   });
