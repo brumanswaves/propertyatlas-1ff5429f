@@ -104,6 +104,12 @@ export interface PropertyIdentityDisplay {
   sourceLabel: string | null;
   coordinates: { lng: number; lat: number } | null;
   areaM2: number | null;
+  /**
+   * Cadastral identifiers read off an uploaded Surveyor-General diagram
+   * (diagram number, general plan, parent lineage, stated extent). Empty when
+   * no diagram has been read, so nothing is ever implied.
+   */
+  cadastral: Array<{ label: string; value: string; badge: EvidenceBadge }>;
 }
 
 export interface OwnershipView {
@@ -257,8 +263,18 @@ function buildIdentity(
     sourceLabel: parcel.sourceLabel ?? null,
     coordinates: parcel.coordinates ?? null,
     areaM2: parcelAreaM2(parcel),
+    cadastral: [],
   };
 }
+
+/** Cadastral identity rows an SG diagram can supply, in reading order. */
+const SG_IDENTITY_ROWS: Array<{ key: string; label: string }> = [
+  { key: "diagramNumber", label: "SG diagram number" },
+  { key: "generalPlanNumber", label: "General plan" },
+  { key: "parentErfNumber", label: "Parent erf" },
+  { key: "parentPortionNumber", label: "Parent portion" },
+  { key: "registeredExtent", label: "Registered extent (as stated)" },
+];
 
 function buildIdentityFromPack(
   pack: PropertyEvidencePack,
@@ -277,6 +293,12 @@ function buildIdentityFromPack(
   if (municipality) officialParts.push(municipality);
   if (province) officialParts.push(province);
   const areaClaim = firstSupportedOrObservedClaim(pack, "identity", "areaM2");
+  // Cadastral lineage only ever comes from a document that was actually read.
+  const cadastral = SG_IDENTITY_ROWS.flatMap(({ key, label }) => {
+    const claim = firstSupportedOrObservedClaim(pack, "identity", key);
+    const value = stringOrNull(claim?.value);
+    return claim && value ? [{ label, value, badge: badgeForClaim(claim) }] : [];
+  });
   return {
     displayName: marketAddressLine ?? parcelDisplayName(parcel, null),
     officialLine: officialParts.length ? officialParts.join(" / ") : null,
@@ -293,6 +315,7 @@ function buildIdentityFromPack(
     sourceLabel: parcel.sourceLabel ?? null,
     coordinates: parcel.coordinates ?? null,
     areaM2: numberOrNull(areaClaim?.normalizedValue ?? areaClaim?.value) ?? parcelAreaM2(parcel),
+    cadastral,
   };
 }
 
