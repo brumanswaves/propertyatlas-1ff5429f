@@ -1793,7 +1793,11 @@ function StoepAiReportView({
         </ul>
       </nav>
 
-      <ReportGroupHeading letter="A" title="Decision & identity" intro="Who and what this erf officially is, and how the records reconcile." />
+      <ReportGroupHeading
+        letter="A"
+        title="Decision & identity"
+        intro="Who and what this erf officially is, and how the records reconcile."
+      />
 
       {/* IDENTITY */}
       <section
@@ -1885,7 +1889,11 @@ function StoepAiReportView({
         emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
       />
 
-      <ReportGroupHeading letter="B" title="What exists / what can be done" intro="Approved structures, planning controls and explored site potential." />
+      <ReportGroupHeading
+        letter="B"
+        title="What exists / what can be done"
+        intro="Approved structures, planning controls and explored site potential."
+      />
 
       {/* BUILDINGS, PLANS & COMPLIANCE */}
       <ReportFindingsBlock
@@ -1985,7 +1993,11 @@ function StoepAiReportView({
         onOpenStrategy={() => onSelectView?.("calculators")}
       />
 
-      <ReportGroupHeading letter="D" title="Physical & ownership context" intro="Conditions, services, running costs and surroundings supported by evidence." />
+      <ReportGroupHeading
+        letter="D"
+        title="Physical & ownership context"
+        intro="Conditions, services, running costs and surroundings supported by evidence."
+      />
 
       {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
       <ReportContextSection
@@ -2236,7 +2248,11 @@ function StoepAiReportView({
         )}
       </section>
 
-      <ReportGroupHeading letter="E" title="What happens next" intro="Open uncertainties, the due-diligence plan and every source behind this report." />
+      <ReportGroupHeading
+        letter="E"
+        title="What happens next"
+        intro="Open uncertainties, the due-diligence plan and every source behind this report."
+      />
 
       {/* RISK REGISTER */}
       <section

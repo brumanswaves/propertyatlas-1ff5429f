@@ -69,7 +69,8 @@ export function ReportOpening({
               {header.propertyType && <span>· {header.propertyType}</span>}
             </div>
             <p className="mt-2 text-xs text-[#64748B]">
-              Updated {new Date(header.generatedAtLabel).toLocaleString()} — {header.evidenceStatusLabel}.
+              Updated {new Date(header.generatedAtLabel).toLocaleString()} —{" "}
+              {header.evidenceStatusLabel}.
             </p>
           </div>
           {!printOnly && onPrint && (
@@ -156,9 +157,7 @@ export function ReportOpening({
               <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#92400E]">
                 Biggest concern
               </dt>
-              <dd className="mt-1 text-[#0D1B2A]/80">
-                {snapshot.biggestConcern}
-              </dd>
+              <dd className="mt-1 text-[#0D1B2A]/80">{snapshot.biggestConcern}</dd>
             </div>
             <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
               <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
@@ -263,7 +262,9 @@ export function ReportOpening({
         {action ? (
           <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <h4 className="text-xl font-semibold tracking-tight text-[#0D1B2A] sm:text-2xl">{action.title}</h4>
+              <h4 className="text-xl font-semibold tracking-tight text-[#0D1B2A] sm:text-2xl">
+                {action.title}
+              </h4>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/70">{action.reason}</p>
               <p className="mt-1 text-xs text-[#64748B]">{action.completionCriteria}</p>
               {action.professionalType && (
