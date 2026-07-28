@@ -669,10 +669,19 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    const identity = matchDocumentIdentity(expectedIdentity, result.identity);
+    const identity = matchDocumentIdentity(expectedIdentity, result.identity, {
+      assetCategory: asset.asset_category,
+      documentType: result.documentType,
+      documentText: result.extractedText,
+      documentGeneralPlanReference: extractGeneralPlanReference(
+        `${result.documentType ?? ""} ${result.identity.sgCode ?? ""} ${result.extractedText.slice(0, 4_000)}`,
+      ),
+      knownLineage,
+    });
     const identityMatchStatus: ErfIdentityMatchStatus = identity.status;
+    const isParentLineage = identityMatchStatus === "parent_lineage_match";
 
-    if (identityMatchStatus !== "matched") {
+    if (identityMatchStatus !== "matched" && !isParentLineage) {
       // Quarantine: no extracted text, no claims, no document facts retained.
       const message =
         identityMatchStatus === "mismatch" ? ERF_EXTRACTION_MISMATCH_MESSAGE : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
@@ -706,10 +715,22 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    const status: ErfExtractionStatus = result.claims.length > 0 ? "ready" : "partial";
+    // A parent General Plan may only speak as context: its extent can never
+    // become this erf's area and its notes are demoted to items to confirm.
+    const claims = isParentLineage
+      ? applyParentLineageClaimPolicy(result.claims, {
+          subjectErfNumber: expectedIdentity.erfNumber ?? null,
+          parentErfNumber: identity.lineage?.parentErfNumber ?? null,
+          generalPlanReference: identity.lineage?.generalPlanReference ?? null,
+        })
+      : result.claims;
+
+    const status: ErfExtractionStatus = claims.length > 0 ? "ready" : "partial";
     const combinedWarning =
-      [normalizationWarning, result.warning].filter((entry) => Boolean(entry)).join(" ") || null;
-    log("extraction_ready", requestId, { status, claimCount: result.claims.length });
+      [normalizationWarning, result.warning, isParentLineage ? identity.reason : null]
+        .filter((entry) => Boolean(entry))
+        .join(" ") || null;
+    log("extraction_ready", requestId, { status, claimCount: claims.length, identityMatchStatus });
     return finish(
       status,
       {
@@ -724,7 +745,7 @@ Deno.serve(async (request: Request) => {
         normalizedExtractionMimeType: normalizedMime,
         extractionWarning: combinedWarning,
         extractedText: result.extractedText,
-        extractedClaims: result.claims,
+        extractedClaims: claims,
         extractedDocumentType: result.documentType,
         extractedProvider: result.provider,
         extractedDocumentDate: result.documentDate,
@@ -734,7 +755,7 @@ Deno.serve(async (request: Request) => {
       {
         success: true,
         identityMatchStatus,
-        claimCount: result.claims.length,
+        claimCount: claims.length,
         documentType: result.documentType,
         pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
         warning: combinedWarning,
