@@ -66,6 +66,16 @@ import { StrategyLab } from "./strategy/StrategyLab";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
+  ReportEvidenceAppendix,
+  ReportMarketSection,
+  ReportSitePotentialSection,
+  ReportStrategySection,
+} from "@/components/property/dossier/ReportBodySections";
+import { buildMarketSectionModel } from "@/lib/reports/marketSection";
+import { buildStrategySectionModel } from "@/lib/reports/strategySection";
+import { buildEvidenceAppendixRows } from "@/lib/reports/evidenceAppendix";
+
+import {
   FindingCard,
   ReportActionPlan,
   ReportAreaReconciliation,
