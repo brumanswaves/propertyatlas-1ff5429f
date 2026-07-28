@@ -105,11 +105,17 @@ export function erfAssetExtractionError(asset: MetadataBearer): string | null {
 }
 
 /**
- * The single gate every evidence consumer must use: only an identity-matched,
- * ready extraction may contribute searchable claims or text.
+ * The single gate every evidence consumer must use: only an identity-matched
+ * (or parent-lineage-matched), ready extraction may contribute searchable
+ * claims or text. Parent-lineage claims are separately scoped so they can
+ * never become a fact about the subject erf.
  */
 export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
-  return erfAssetExtractionStatus(asset) === "ready" && erfAssetIdentityMatchStatus(asset) === "matched";
+  const identity = erfAssetIdentityMatchStatus(asset);
+  return (
+    erfAssetExtractionStatus(asset) === "ready" &&
+    (identity === "matched" || identity === "parent_lineage_match")
+  );
 }
 
 /**
@@ -123,6 +129,12 @@ export function erfAssetExtractionLabel(asset: MetadataBearer, variant: "report"
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
   if (identity === "unverified") return `${Noun} could not be matched to this erf`;
+  if (identity === "parent_lineage_match") {
+    const lineage = erfAssetDocumentLineage(asset);
+    const parent = lineage?.parentErfNumber ? ` (parent Erf ${lineage.parentErfNumber})` : "";
+    const plan = lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : "";
+    return `Parent General Plan${plan} matched${parent} — context only`;
+  }
   const status = erfAssetExtractionStatus(asset);
   switch (status) {
     case "ready":
