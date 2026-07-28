@@ -97,8 +97,12 @@ export function redactPersonalIdentifiers(value: string): string {
     .replace(/\b\d{13}\b/g, "[redacted]")
     .replace(/\b(?:19|20)\d{2}\s?\/\s?\d{4,7}\s?\/\s?\d{2}\b/g, "[redacted]")
     .replace(/\b(?:id|identity|registration|reg)\.?\s*(?:no\.?|number)?\s*[:#]?\s*[\dA-Z/-]{6,}/gi, "[redacted]")
+    // South African phone numbers, written locally or in +27 form.
+    .replace(/(?:\+27|\b0)\s?\d{2}[\s-]?\d{3}[\s-]?\d{4}\b/g, "[redacted]")
+    .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[redacted]")
     .trim();
 }
+
 
 function liveClaims(pack: PropertyEvidencePack): EvidenceClaim[] {
   return pack.claims.filter((claim) => !claim.excluded && claim.parcelId === pack.parcelId);
