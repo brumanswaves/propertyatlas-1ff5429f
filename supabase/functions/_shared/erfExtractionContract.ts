@@ -81,7 +81,10 @@ export type ErfExtractionDomain = (typeof ERF_EXTRACTION_DOMAINS)[number];
  */
 export const ERF_EXTRACTION_KEYS: Record<ErfExtractionDomain, readonly string[]> = {
   identity: ["erfNumber", "portionNumber", "township", "areaM2", "sgCode", "lpiCode", "municipality", "province"],
-  ownership: ["registeredOwner", "ownerType", "ownerIdOrRegistrationNumber", "ownershipShare", "coOwners"],
+  // Owner identity/registration numbers are deliberately NOT extractable:
+  // they are personal data with no decision value in this product.
+  ownership: ["registeredOwner", "ownerType", "ownershipShare", "coOwners"],
+
   deeds: ["titleDeedNumber", "registrationDate", "conditionsOfTitle", "servitudes", "bondHolder", "bondAmount"],
   planning: ["zoning", "landUse", "coverage", "far", "heightRestriction", "buildingLines", "densityUnits"],
   valuation: ["municipalValue", "valuationDate", "estimatedMarketValue", "ratesAmount"],
@@ -138,6 +141,9 @@ export interface ErfExtractionMetadataPatch {
   identityMatchStatus?: ErfIdentityMatchStatus | null;
   identityMatchReason?: string | null;
   extractedIdentity?: ErfExtractedIdentity | null;
+  /** Parent erf / general-plan provenance retained separately from the subject. */
+  documentLineage?: ErfLegalPortionToken | null;
+
   extractionRequestId?: string | null;
   extractionStartedAt?: string | null;
 }
@@ -368,7 +374,10 @@ export type ErfIdentityMatchStatus = "matched" | "mismatch" | "unverified";
 export interface ErfIdentityMatchResult {
   status: ErfIdentityMatchStatus;
   reason: string;
+  /** Parsed subject portion plus retained parent/general-plan provenance. */
+  lineage?: ErfLegalPortionToken;
 }
+
 
 export const ERF_EXTRACTION_MISMATCH_MESSAGE = "Document identity does not match the selected parcel.";
 export const ERF_EXTRACTION_UNVERIFIED_MESSAGE =
@@ -402,12 +411,86 @@ function normNumber(value: unknown): string | null {
   return fallback || null;
 }
 
-function normPortion(value: unknown): string | null {
-  const text = String(value ?? "").trim();
-  if (!text) return null;
-  if (/^(remainder|rem|re|none|n\/a)$/i.test(text)) return "0";
-  return normNumber(text);
+/**
+ * Parsed South African legal-description token.
+ *
+ * A freehold erf frequently carries parent/general-plan provenance, e.g.
+ * `Erf 1570 [PTN OF 1496-GP12252]`. That bracketed text describes where the
+ * erf came from — it is NOT the subject property's own portion number and must
+ * never be compared as one.
+ */
+export interface ErfLegalPortionToken {
+  /** The subject property's own portion, "0" for freehold, null when unstated. */
+  subjectPortion: string | null;
+  /** Parent erf the subject was subdivided out of, when stated. */
+  parentErfNumber: string | null;
+  /** General plan / SG plan reference such as GP12252, when stated. */
+  generalPlanReference: string | null;
+  /** Raw lineage phrase retained verbatim as provenance. */
+  lineage: string | null;
 }
+
+const EMPTY_LEGAL_TOKEN: ErfLegalPortionToken = {
+  subjectPortion: null,
+  parentErfNumber: null,
+  generalPlanReference: null,
+  lineage: null,
+};
+
+/**
+ * Splits a legal-description token into the subject portion and the
+ * parent/general-plan lineage.
+ *
+ * Recognised shapes:
+ * - ``, `Remainder`, `RE`, `None`      -> freehold, subject portion "0"
+ * - `2`, `Portion 2`, `PTN 2`, `1570/2`-> subject portion "2"
+ * - `PTN OF 1496`, `portion of erf 1496`, `PTN OF 1496-GP12252`
+ *                                       -> lineage only, subject portion null
+ * - `PTN 2 OF 1496`                     -> subject portion "2", parent 1496
+ */
+export function parseLegalPortionToken(value: unknown): ErfLegalPortionToken {
+  const text = String(value ?? "").trim();
+  if (!text) return { ...EMPTY_LEGAL_TOKEN };
+
+  const upper = text.toUpperCase();
+  const out: ErfLegalPortionToken = { ...EMPTY_LEGAL_TOKEN };
+
+  const gp = /\bG\.?\s*P\.?\s*-?\s*(?:NO\.?\s*)?(\d+)/.exec(upper);
+  if (gp) out.generalPlanReference = `GP${gp[1]}`;
+
+  // "... OF [ERF] 1496 ..." — the number after OF is the parent, never the subject.
+  const parent = /\bOF\s+(?:ERF|ERVEN|STAND|PARENT\s+ERF)?\s*(\d+)/.exec(upper);
+  if (parent) out.parentErfNumber = String(Number(parent[1]));
+
+  const isLineage = /\b(PTN|PORTION|PT)\s*(?:\d+\s*)?OF\b/.test(upper) || /\bREMAINDER\s+OF\b/.test(upper);
+  if (isLineage || out.parentErfNumber || out.generalPlanReference) {
+    out.lineage = text.slice(0, 160);
+  }
+
+  if (/^(REMAINDER|REM|RE|NONE|N\/A|FREEHOLD|0)$/.test(upper)) {
+    out.subjectPortion = "0";
+    return out;
+  }
+
+  // Explicit subject portion: "PTN 2 OF 1496", "Portion 2", "1570/2", bare "2".
+  const explicit =
+    /\b(?:PTN|PT|PORTION)\.?\s*(\d+)\b/.exec(upper) ??
+    /^\s*\d+\s*\/\s*(\d+)\s*$/.exec(upper) ??
+    /^\s*(\d+)\s*$/.exec(upper);
+  if (explicit) {
+    out.subjectPortion = String(Number(explicit[1]));
+    return out;
+  }
+
+  // Lineage-only text (e.g. "PTN OF 1496-GP12252"): the subject portion is
+  // simply not stated. Treat it as unspecified, not as the parent's number.
+  return out;
+}
+
+function normPortion(value: unknown): string | null {
+  return parseLegalPortionToken(value).subjectPortion;
+}
+
 
 function normPlace(value: unknown): string | null {
   const text = String(value ?? "")
@@ -460,21 +543,32 @@ export function matchDocumentIdentity(
     }
   }
 
+  // Subject portion. Parent/general-plan lineage (e.g. "PTN OF 1496-GP12252")
+  // is provenance, not the subject's portion, so it never creates a conflict.
+  const documentToken = parseLegalPortionToken(document.portionNumber);
+  const lineage: ErfLegalPortionToken = {
+    subjectPortion: documentToken.subjectPortion,
+    parentErfNumber: documentToken.parentErfNumber,
+    generalPlanReference: documentToken.generalPlanReference,
+    lineage: documentToken.lineage,
+  };
+
   let portionOk = true;
-  if (erfMatch) {
+  if (erfMatch && documentToken.subjectPortion != null) {
     const expectedPortion = normPortion(expected.portionNumber) ?? "0";
-    const documentPortion = normPortion(document.portionNumber) ?? "0";
-    if (expectedPortion !== documentPortion) {
+    if (expectedPortion !== documentToken.subjectPortion) {
       portionOk = false;
-      conflicts.push("the document describes a different portion");
+      conflicts.push(
+        `the document describes portion ${documentToken.subjectPortion}, not portion ${expectedPortion}`,
+      );
     }
   }
 
   let placeMatch = false;
-  for (const [label, expectedValue, documentValue] of [
-    ["municipality", expected.municipality, document.municipality],
-    ["province", expected.province, document.province],
-    ["town", expected.town, document.suburbOrTown],
+  for (const [label, expectedValue, documentValue, hard] of [
+    ["municipality", expected.municipality, document.municipality, false],
+    ["province", expected.province, document.province, true],
+    ["town", expected.town, document.suburbOrTown, false],
   ] as const) {
     const a = normPlace(expectedValue);
     const b = normPlace(documentValue);
@@ -482,19 +576,25 @@ export function matchDocumentIdentity(
     if (placeAgrees(a, b)) {
       placeMatch = true;
       positives.push(`${label} matches`);
-    } else {
+    } else if (hard) {
+      // Province is coarse and stable, so a disagreement is decisive.
       conflicts.push(`the document ${label} is different`);
     }
+    // Municipality and suburb names are aliased and re-demarcated frequently
+    // (e.g. "ST FRANCIS BAY MUN" vs "Kouga Local Municipality"), so a
+    // disagreement there simply fails to corroborate rather than conflicting.
   }
 
   if (conflicts.length) {
-    return { status: "mismatch", reason: `Identity conflict: ${conflicts[0]}.` };
+    return { status: "mismatch", reason: `Identity conflict: ${conflicts[0]}.`, lineage };
   }
   if (lpiMatch || (erfMatch && portionOk && placeMatch)) {
-    return { status: "matched", reason: `Identity confirmed: ${positives.join(", ")}.` };
+    return { status: "matched", reason: `Identity confirmed: ${positives.join(", ")}.`, lineage };
   }
   return {
     status: "unverified",
     reason: "The document does not state enough matching identity fields to bind it to this parcel.",
+    lineage,
   };
 }
+

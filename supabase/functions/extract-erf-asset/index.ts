@@ -554,6 +554,8 @@ Deno.serve(async (request: Request) => {
           identityMatchStatus,
           identityMatchReason: identity.reason,
           extractedIdentity: result.identity,
+          documentLineage: identity.lineage ?? null,
+
           extractedText: "",
           extractedClaims: [],
           extractedDocumentType: null,
@@ -581,6 +583,8 @@ Deno.serve(async (request: Request) => {
         identityMatchStatus,
         identityMatchReason: identity.reason,
         extractedIdentity: result.identity,
+        documentLineage: identity.lineage ?? null,
+
         extractionModel: model,
         extractionWarning: result.warning,
         extractedText: result.extractedText,
