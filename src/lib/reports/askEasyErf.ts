@@ -304,6 +304,33 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
     ],
   },
   {
+    // Surveyor-General diagram questions span cadastral identity, registered
+    // restrictions, printed setbacks and the diagram document itself.
+    domains: ["identity", "deeds", "planning", "documents"],
+    patterns: [
+      /\bsg\b/i,
+      /\bs\.?g\.? diagram\b/i,
+      /\bsurveyor[- ]?general\b/i,
+      /\bdiagrams?\b/i,
+      /\bgeneral plan\b/i,
+      /\bgp\s?\d/i,
+      /\bparent erf\b/i,
+      /\bparent portion\b/i,
+      /\bcadastral\b/i,
+      /\bbeacons?\b/i,
+      /\bbearings?\b/i,
+      /\bboundar(?:y|ies)\b/i,
+      /\bregistered extent\b/i,
+      /\bextent\b/i,
+      /\bsurveyor\b/i,
+      /\bright of way\b/i,
+      /\bendorsements?\b/i,
+      /\breserves?\b/i,
+      /\badjoining\b/i,
+    ],
+  },
+
+  {
     domains: ["notes"],
     patterns: [/\bnotes?\b/i, /\bquestions?\b/i, /\bconcerns?\b/i, /\bpros?\b/i, /\bcons?\b/i],
   },
