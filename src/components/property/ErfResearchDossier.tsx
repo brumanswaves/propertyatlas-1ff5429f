@@ -1980,7 +1980,14 @@ function StoepAiReportView({
         id="report-ownership"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <ReportSectionTitle eyebrow="Ownership & Deeds" title="Not verified by Easy Erf" />
+        <ReportSectionTitle
+          eyebrow="Ownership & Deeds"
+          title={
+            report.ownership.owners.length || report.ownership.titleDeed.length
+              ? "Read from a matched document — not certified by Easy Erf"
+              : "Not verified by Easy Erf"
+          }
+        />
         <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{report.ownership.message}</p>
         {report.ownership.hasUploadedReport && (
           <ul className="mt-3 space-y-1 text-xs text-[#0D1B2A]/70">
@@ -1989,9 +1996,48 @@ function StoepAiReportView({
             ))}
           </ul>
         )}
+
+        {(report.ownership.owners.length > 0 || report.ownership.titleDeed.length > 0) && (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {report.ownership.owners.length > 0 && (
+              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Registered ownership
+                </div>
+                <dl className="mt-3 space-y-3">
+                  {report.ownership.owners.map((detail) => (
+                    <OwnershipDetailRow key={`owner-${detail.label}`} detail={detail} />
+                  ))}
+                </dl>
+              </div>
+            )}
+            {report.ownership.titleDeed.length > 0 && (
+              <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Title deed
+                </div>
+                <dl className="mt-3 space-y-3">
+                  {report.ownership.titleDeed.map((detail) => (
+                    <OwnershipDetailRow key={`deed-${detail.label}`} detail={detail} />
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p className="mt-3 text-xs leading-5 text-[#64748B]">
+          Easy Erf does not certify ownership. Owner identity numbers, registration numbers, phone
+          numbers and email addresses are never extracted or displayed.
+        </p>
+
         <div className="mt-3 flex flex-wrap gap-2">
-          <EvidenceBadgeChip badge="missing" label="Owner name" />
-          <EvidenceBadgeChip badge="missing" label="Deed number" />
+          {report.ownership.owners.length === 0 && (
+            <EvidenceBadgeChip badge="missing" label="Owner name" />
+          )}
+          {report.ownership.titleDeed.length === 0 && (
+            <EvidenceBadgeChip badge="missing" label="Deed number" />
+          )}
           <EvidenceBadgeChip badge="missing" label="Bond info" />
           <EvidenceBadgeChip badge="missing" label="Transfer history" />
         </div>
@@ -2003,6 +2049,7 @@ function StoepAiReportView({
           Open Reports tab <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </section>
+
 
       {/* PLANNING */}
       <section
