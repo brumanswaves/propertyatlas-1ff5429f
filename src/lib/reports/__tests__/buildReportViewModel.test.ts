@@ -428,7 +428,12 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
     expect(lifecycleSource).toContain('frameWindow.matchMedia?.("print")');
     expect(lifecycleSource).toContain("printMediaEntered = true");
     expect(lifecycleSource).toContain("now() - printStartedAt >= focusMinimumHoldMs");
-    expect(source).toContain("Print / Save PDF");
+    expect(
+      readFileSync(
+        resolve(process.cwd(), "src/components/property/dossier/ReportOpening.tsx"),
+        "utf8",
+      ),
+    ).toContain("Print / Save PDF");
   });
 
   it("renders the Phase 2 Executive Decision Brief from decision intelligence", () => {
