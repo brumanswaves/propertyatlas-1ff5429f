@@ -452,7 +452,7 @@ Deno.serve(async (request: Request) => {
         assetId: asset.id,
         success: true,
         extractionStatus: "ready",
-        identityMatchStatus: "matched",
+        identityMatchStatus: currentIdentity,
         claimCount: Array.isArray(asset.metadata?.extractedClaims)
           ? (asset.metadata!.extractedClaims as unknown[]).length
           : 0,
