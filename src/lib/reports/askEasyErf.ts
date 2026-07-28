@@ -867,12 +867,13 @@ function extractedDocumentText(
   if (metadataString(asset.metadata, "identityMatchStatus") === "parent_lineage_match") {
     const lineage = asset.metadata?.documentLineage as { parentErfNumber?: string; generalPlanReference?: string } | null | undefined;
     const banner =
-      `PARENT GENERAL PLAN — CONTEXT ONLY. This document is the General Plan${
+      `PARENT GENERAL PLAN${
         lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : ""
-      }${lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : ""}, from which this erf was created. ` +
-      `It covers several erven. Nothing in it is confirmed for this erf on its own, and it never states this erf's extent. ` +
-      `Describe anything from it as parent-plan context to confirm with a land surveyor or conveyancer.\n\n`;
-    return cleanText(banner + extracted, max);
+      }${lineage?.parentErfNumber ? ` (parent Erf ${lineage.parentErfNumber})` : ""} — CONTEXT ONLY; ` +
+      `never this erf's extent. Only an annotation explicitly naming this erf may be reported for it, still to confirm.\n\n`;
+    // The banner counts against the same budget so the transport cap can never
+    // silently truncate the document text away from its warning.
+    return banner + cleanText(extracted, Math.max(0, max - banner.length));
   }
   return cleanText(extracted, max);
 }
