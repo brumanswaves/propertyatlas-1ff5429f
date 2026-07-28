@@ -681,8 +681,10 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("newest saved scenario");
     expect(dossier).toContain("Open file");
     expect(dossier).toContain(
-      "Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis",
+      "Each file shows whether Easy Erf actually read it and",
     );
+    expect(dossier).not.toContain("Easy Erf AI extraction and PDF analysis");
+
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
     expect(dossier).not.toContain("Concept image not selected");
   });
