@@ -1793,12 +1793,250 @@ function StoepAiReportView({
         </ul>
       </nav>
 
-      {/* DECISION INTELLIGENCE */}
+      <ReportGroupHeading
+        letter="A"
+        title="Decision & identity"
+        intro="Who and what this erf officially is, and how the records reconcile."
+      />
+
+      {/* IDENTITY */}
+      <section
+        id="report-identity"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Property Identity"
+          title="Official identifiers and confirmed address"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
+          <IdRow label="Portion" value={report.identity.portion} badge="official" />
+          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
+          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
+          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
+          <IdRow label="Province" value={report.identity.province} badge="official" />
+          <IdRow
+            label="Erf size (m²)"
+            value={formatAreaM2Value(report.identity.areaM2)}
+            badge="official"
+          />
+          <IdRow
+            label="Coordinates"
+            value={
+              report.identity.coordinates
+                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
+                : null
+            }
+            badge="official"
+          />
+          <IdRow
+            label="Market address (user-confirmed)"
+            value={report.identity.marketAddressLine}
+            badge="user_confirmed"
+          />
+          {report.identity.cadastral.map((row) => (
+            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
+          ))}
+        </dl>
+
+        {report.identity.addressAndOfficialMismatch && (
+          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
+            Possible mismatch: the saved market address municipality differs from the official
+            parcel municipality. Recheck identity before using downstream data.
+          </p>
+        )}
+
+        <ReportAreaReconciliation
+          identity={report.identity}
+          officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
+          discrepancy={reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null}
+          actions={reportDoc.actions}
+          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        />
+      </section>
+
+      {/* OWNERSHIP */}
+      <ReportOwnershipSection
+        ownership={report.ownership}
+        onOpenReports={() => onSelectView?.("reports")}
+      />
+
+      {/* SG / LINEAGE EVIDENCE */}
+      <ReportSgLineageSection
+        anchorId="report-sg-evidence"
+        model={sgSection}
+        onOpenAsset={(assetId) => {
+          const asset = fileVault.assets.find((file) => file.id === assetId);
+          if (asset) void openVaultAsset(asset);
+        }}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+      />
+
+      <ReportFindingsBlock
+        anchorId="report-sg-findings"
+        eyebrow="SG findings"
+        title="What the diagrams support about this erf"
+        intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
+        findings={reportDoc.findings.filter((f) =>
+          [
+            "finding-sg-parent-lineage",
+            "finding-registered-extent",
+            "finding-servitudes-sg",
+          ].includes(f.id),
+        )}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
+      />
+
+      <ReportGroupHeading
+        letter="B"
+        title="What exists / what can be done"
+        intro="Approved structures, planning controls and explored site potential."
+      />
+
+      {/* BUILDINGS, PLANS & COMPLIANCE */}
+      <ReportFindingsBlock
+        anchorId="report-buildings"
+        eyebrow="Buildings, Plans & Compliance"
+        title="Approved plans and structure compliance"
+        intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
+        findings={reportDoc.findings.filter((f) => f.category === "buildings")}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
+      />
+
+      {/* PLANNING */}
+      <section
+        id="report-planning"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Zoning, Planning & Buildability"
+          title="Only municipally supported controls are shown"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          {report.planning.map((field) => (
+            <div key={field.label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                {field.label}
+              </dt>
+              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
+                {field.value ?? (
+                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
+                )}
+              </dd>
+              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
+            </div>
+          ))}
+        </dl>
+        {reportDoc.findings.filter((f) => f.category === "planning").length > 0 && (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {reportDoc.findings
+              .filter((f) => f.category === "planning")
+              .map((finding) => (
+                <FindingCard
+                  key={finding.id}
+                  finding={finding}
+                  actions={reportDoc.actions}
+                  onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+                />
+              ))}
+          </div>
+        )}
+      </section>
+
+      {/* SITE POTENTIAL */}
+      <ReportSitePotentialSection
+        anchorId="report-site"
+        hasConcept={Boolean(selectedDesign)}
+        skipped={sitePotentialSkipped}
+        conceptName={
+          selectedDesign
+            ? siteProject.project?.selected_style
+              ? `Selected concept — ${siteProject.project.selected_style}`
+              : "Selected property concept"
+            : null
+        }
+        rationale={
+          selectedDesign
+            ? "Concept selected from the saved Site Potential project and linked to the Erf File Vault."
+            : null
+        }
+        projectStatus={sitePotentialReportModeLabel(selectedSiteMode)}
+        brief={siteProject.project?.design_brief || null}
+        conceptAssetId={selectedDesign?.id ?? null}
+        disclaimer={SITE_POTENTIAL_DISCLAIMER}
+        visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
+        onOpenSitePotential={() => onSelectView?.("site-potential")}
+        onOpenSourceFile={selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined}
+      />
+
+      <ReportGroupHeading
+        letter="C"
+        title="Price & strategy"
+        intro="What the market evidence supports, and what the numbers say under your own assumptions."
+      />
+
+      {/* MARKET */}
+      <ReportMarketSection
+        anchorId="report-market"
+        model={marketSection}
+        onOpenMarket={() => onSelectView?.("listings")}
+      />
+
+      {/* STRATEGY & FINANCIALS */}
+      <ReportStrategySection
+        anchorId="report-strategy"
+        model={strategySection}
+        onOpenStrategy={() => onSelectView?.("calculators")}
+      />
+
+      <ReportGroupHeading
+        letter="D"
+        title="Physical & ownership context"
+        intro="Conditions, services, running costs and surroundings supported by evidence."
+      />
+
+      {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
+      <ReportContextSection
+        anchorId="report-site-risk"
+        eyebrow="Site, Environmental & Physical Risk"
+        title="Physical and environmental conditions supported by evidence"
+        model={siteRiskSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
+      <ReportMunicipalSection
+        anchorId="report-municipal"
+        model={municipalSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* LOCATION & LIFESTYLE */}
+      <ReportContextSection
+        anchorId="report-location"
+        eyebrow="Location & Lifestyle"
+        title="Where this erf sits, and what is actually known about it"
+        model={locationSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
       <section
         id="report-brief"
         className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
       >
-        <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+        <ReportSectionTitle
+          eyebrow="Decision Detail"
+          title="Evidence readiness behind the decision"
+          intro="The headline decision is in the report opening. This section shows how that decision was reached: confidence by category, what is known, what is still needed, contradictions and the saved evidence chronology."
+        />
+        <div className="mt-4">
+          <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+        </div>
 
         {/* EXECUTIVE DECISION BRIEF */}
         {decisionMode === "investor" ? (
@@ -2010,211 +2248,10 @@ function StoepAiReportView({
         )}
       </section>
 
-      {/* IDENTITY */}
-      <section
-        id="report-identity"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Property Identity"
-          title="Official identifiers and confirmed address"
-        />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
-          <IdRow label="Portion" value={report.identity.portion} badge="official" />
-          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
-          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
-          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
-          <IdRow label="Province" value={report.identity.province} badge="official" />
-          <IdRow
-            label="Erf size (m²)"
-            value={formatAreaM2Value(report.identity.areaM2)}
-            badge="official"
-          />
-          <IdRow
-            label="Coordinates"
-            value={
-              report.identity.coordinates
-                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
-                : null
-            }
-            badge="official"
-          />
-          <IdRow
-            label="Market address (user-confirmed)"
-            value={report.identity.marketAddressLine}
-            badge="user_confirmed"
-          />
-          {report.identity.cadastral.map((row) => (
-            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
-          ))}
-        </dl>
-
-        {report.identity.addressAndOfficialMismatch && (
-          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
-            Possible mismatch: the saved market address municipality differs from the official
-            parcel municipality. Recheck identity before using downstream data.
-          </p>
-        )}
-
-        <ReportAreaReconciliation
-          identity={report.identity}
-          officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
-          discrepancy={reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null}
-          actions={reportDoc.actions}
-          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        />
-      </section>
-
-      {/* OWNERSHIP */}
-      <ReportOwnershipSection
-        ownership={report.ownership}
-        onOpenReports={() => onSelectView?.("reports")}
-      />
-
-      {/* SG / LINEAGE EVIDENCE */}
-      <ReportSgLineageSection
-        anchorId="report-sg-evidence"
-        model={sgSection}
-        onOpenAsset={(assetId) => {
-          const asset = fileVault.assets.find((file) => file.id === assetId);
-          if (asset) void openVaultAsset(asset);
-        }}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-      />
-
-      <ReportFindingsBlock
-        anchorId="report-sg-findings"
-        eyebrow="SG findings"
-        title="What the diagrams support about this erf"
-        intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
-        findings={reportDoc.findings.filter((f) =>
-          [
-            "finding-sg-parent-lineage",
-            "finding-registered-extent",
-            "finding-servitudes-sg",
-          ].includes(f.id),
-        )}
-        actions={reportDoc.actions}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
-      />
-
-      {/* BUILDINGS, PLANS & COMPLIANCE */}
-      <ReportFindingsBlock
-        anchorId="report-buildings"
-        eyebrow="Buildings, Plans & Compliance"
-        title="Approved plans and structure compliance"
-        intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
-        findings={reportDoc.findings.filter((f) => f.category === "buildings")}
-        actions={reportDoc.actions}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
-      />
-
-      {/* PLANNING */}
-      <section
-        id="report-planning"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Zoning, Planning & Buildability"
-          title="Only municipally supported controls are shown"
-        />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          {report.planning.map((field) => (
-            <div key={field.label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                {field.label}
-              </dt>
-              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
-                {field.value ?? (
-                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
-                )}
-              </dd>
-              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
-            </div>
-          ))}
-        </dl>
-        {reportDoc.findings.filter((f) => f.category === "planning").length > 0 && (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {reportDoc.findings
-              .filter((f) => f.category === "planning")
-              .map((finding) => (
-                <FindingCard
-                  key={finding.id}
-                  finding={finding}
-                  actions={reportDoc.actions}
-                  onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-                />
-              ))}
-          </div>
-        )}
-      </section>
-
-      {/* MARKET */}
-      <ReportMarketSection
-        anchorId="report-market"
-        model={marketSection}
-        onOpenMarket={() => onSelectView?.("listings")}
-      />
-
-      {/* STRATEGY & FINANCIALS */}
-      <ReportStrategySection
-        anchorId="report-strategy"
-        model={strategySection}
-        onOpenStrategy={() => onSelectView?.("calculators")}
-      />
-
-      {/* SITE POTENTIAL */}
-      <ReportSitePotentialSection
-        anchorId="report-site"
-        hasConcept={Boolean(selectedDesign)}
-        skipped={sitePotentialSkipped}
-        conceptName={
-          selectedDesign
-            ? siteProject.project?.selected_style
-              ? `Selected concept — ${siteProject.project.selected_style}`
-              : "Selected property concept"
-            : null
-        }
-        rationale={
-          selectedDesign
-            ? "Concept selected from the saved Site Potential project and linked to the Erf File Vault."
-            : null
-        }
-        projectStatus={sitePotentialReportModeLabel(selectedSiteMode)}
-        brief={siteProject.project?.design_brief || null}
-        conceptAssetId={selectedDesign?.id ?? null}
-        disclaimer={SITE_POTENTIAL_DISCLAIMER}
-        visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
-        onOpenSitePotential={() => onSelectView?.("site-potential")}
-        onOpenSourceFile={selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined}
-      />
-
-      {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-      <ReportContextSection
-        anchorId="report-site-risk"
-        eyebrow="Site, Environmental & Physical Risk"
-        title="Physical and environmental conditions supported by evidence"
-        model={siteRiskSection}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-      />
-
-      {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-      <ReportMunicipalSection
-        anchorId="report-municipal"
-        model={municipalSection}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-      />
-
-      {/* LOCATION & LIFESTYLE */}
-      <ReportContextSection
-        anchorId="report-location"
-        eyebrow="Location & Lifestyle"
-        title="Where this erf sits, and what is actually known about it"
-        model={locationSection}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      <ReportGroupHeading
+        letter="E"
+        title="What happens next"
+        intro="Open uncertainties, the due-diligence plan and every source behind this report."
       />
 
       {/* RISK REGISTER */}
@@ -2332,6 +2369,28 @@ function StoepAiReportView({
           )
         : null}
     </>
+  );
+}
+
+function ReportGroupHeading({
+  letter,
+  title,
+  intro,
+}: {
+  letter: string;
+  title: string;
+  intro: string;
+}) {
+  return (
+    <div className="report-group-heading mt-8 flex items-start gap-3 border-t border-[#0D1B2A]/10 pt-6 first:mt-0">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[11px] font-bold text-white">
+        {letter}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-[#0D1B2A]">{title}</h3>
+        <p className="mt-1 max-w-3xl text-xs leading-5 text-[#64748B]">{intro}</p>
+      </div>
+    </div>
   );
 }
 
@@ -2595,13 +2654,22 @@ function routeTabForInvestor(tab?: string): DossierView {
   }
 }
 
-function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
+function ReportSectionTitle({
+  eyebrow,
+  title,
+  intro,
+}: {
+  eyebrow: string;
+  title: string;
+  intro?: string;
+}) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
         {eyebrow}
       </div>
       <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
+      {intro && <p className="mt-2 max-w-3xl text-xs leading-5 text-[#64748B]">{intro}</p>}
     </div>
   );
 }

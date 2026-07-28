@@ -38,7 +38,7 @@ export function ReportOpening({
   const action = doc.nextBestAction;
 
   return (
-    <div className="report-opening space-y-5">
+    <div className="report-opening space-y-4">
       {/* A. HEADER */}
       <section
         id="report-opening-header"
@@ -69,7 +69,8 @@ export function ReportOpening({
               {header.propertyType && <span>· {header.propertyType}</span>}
             </div>
             <p className="mt-2 text-xs text-[#64748B]">
-              Updated {new Date(header.generatedAtLabel).toLocaleString()} — {header.evidenceStatusLabel}.
+              Updated {new Date(header.generatedAtLabel).toLocaleString()} —{" "}
+              {header.evidenceStatusLabel}.
             </p>
           </div>
           {!printOnly && onPrint && (
@@ -156,9 +157,7 @@ export function ReportOpening({
               <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#92400E]">
                 Biggest concern
               </dt>
-              <dd className="mt-1 text-[#0D1B2A]/80">
-                {snapshot.biggestConcern}
-              </dd>
+              <dd className="mt-1 text-[#0D1B2A]/80">{snapshot.biggestConcern}</dd>
             </div>
             <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
               <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
@@ -185,9 +184,9 @@ export function ReportOpening({
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
             Property at a glance
           </div>
-          <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+          <dl className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-3 divide-x divide-[#0D1B2A]/10">
             {doc.atAGlance.map((item) => (
-              <div key={item.id} className="min-w-[110px]">
+              <div key={item.id} className="min-w-[110px] pl-6 first:pl-0">
                 <dt className="text-[11px] text-[#64748B]">{item.label}</dt>
                 <dd className="text-sm font-semibold text-[#0D1B2A]">{item.value}</dd>
                 <p className="text-[10px] text-[#94A3B8]">{item.provenance}</p>
@@ -231,17 +230,17 @@ export function ReportOpening({
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
           Critical checks
         </div>
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="mt-3 flex flex-wrap gap-2">
           {doc.riskStrip.map((item) => (
             <li
               key={item.id}
-              className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-3"
+              className="inline-flex items-center gap-2 rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] py-1 pl-3 pr-1.5"
               title={item.explanation}
             >
-              <div className="text-xs font-semibold text-[#0D1B2A]">{item.label}</div>
+              <span className="text-xs font-semibold text-[#0D1B2A]">{item.label}</span>
               <span
                 className={cn(
-                  "mt-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                  "inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
                   riskTone(item.status),
                 )}
               >
@@ -255,7 +254,7 @@ export function ReportOpening({
       {/* G. NEXT BEST ACTION */}
       <section
         id="report-next-action"
-        className="report-section rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5 scroll-mt-24"
+        className="report-section rounded-[1.75rem] border-2 border-[#FF6A00]/35 bg-[#FFF7ED] p-6 shadow-[0_18px_45px_-36px_rgba(255,106,0,0.55)] scroll-mt-24"
       >
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
           Next best action
@@ -263,7 +262,9 @@ export function ReportOpening({
         {action ? (
           <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <h4 className="text-lg font-semibold text-[#0D1B2A]">{action.title}</h4>
+              <h4 className="text-xl font-semibold tracking-tight text-[#0D1B2A] sm:text-2xl">
+                {action.title}
+              </h4>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/70">{action.reason}</p>
               <p className="mt-1 text-xs text-[#64748B]">{action.completionCriteria}</p>
               {action.professionalType && (
