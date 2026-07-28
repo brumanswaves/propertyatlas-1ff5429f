@@ -881,33 +881,80 @@ function evaluateParentLineageMatch(input: {
 }
 
 /**
+ * Contexts in which an erf number is listed for orientation rather than as the
+ * subject of the annotation (legends, adjoining-erf lists, subdivision
+ * schedules, sheet indexes). A number appearing inside one of these never makes
+ * a note child-specific.
+ */
+const NON_SPECIFIC_LIST_CONTEXT =
+  /\b(adjoin\w*|abut\w*|legend|schedule|index|sheet\s*\d|surrounded by|bounded by|consisting of|comprising|subdivided into|subdivision of|remainder of)\b/i;
+
+/**
+ * Deterministically decides whether an extracted claim is explicitly tied to
+ * the ACTIVE erf by its own printed text.
+ *
+ * Requires a direct textual relationship — a singular `Erf <n>` reference
+ * inside the annotation's own quote (or its printed label). A number that only
+ * appears inside an erf range, an enumerated erf list, a legend, an
+ * adjoining-erf list or a subdivision schedule is explicitly rejected, because
+ * the subject erf and the annotation merely share a page in that case.
+ */
+export function isClaimExplicitlyTiedToSubjectErf(
+  claim: Pick<ErfExtractedClaim, "quote" | "label" | "value">,
+  subjectErfNumber: string | number | null | undefined,
+): boolean {
+  const subject = normNumber(subjectErfNumber);
+  if (!subject) return false;
+  const candidates = [claim.quote, claim.label].filter(
+    (text): text is string => typeof text === "string" && text.trim().length > 0,
+  );
+  for (const raw of candidates) {
+    const text = raw.replace(/[\u00a0]/g, " ").replace(/\s+/g, " ");
+    if (NON_SPECIFIC_LIST_CONTEXT.test(text)) continue;
+    const pattern = /\b(erf|erven|stand|stands|portion|portions|ptn)\s*(?:nos?\.?\s*)?([0-9][0-9\s,&/–—-]*[0-9]|[0-9])/gi;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const keyword = match[1].toLowerCase();
+      const enumeration = match[2];
+      // A plural keyword always describes a group, never this erf alone.
+      if (keyword === "erven" || keyword === "stands" || keyword === "portions") continue;
+      // A range or comma/ampersand list is a group reference, not this erf.
+      if (/[,&/–—-]/.test(enumeration)) continue;
+      // "Erf 1570 to 1580" — a range written with a word.
+      const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 12);
+      if (/^\s*(?:to|-|–|—|and|&)\s*\d/i.test(tail)) continue;
+      if (normNumber(enumeration) === subject) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Restricts what a parent General Plan may assert about the ACTIVE erf.
  *
- * Everything it produces is marked `scope: "parent_plan"`, the parent's extent
- * can never reach the subject's area, and any deeds/planning note that does not
- * literally name the subject erf is demoted to a contextual annotation the user
- * must confirm.
+ * Parent identity, provenance and plan-wide annotations are marked
+ * `scope: "parent_plan"` and the parent's extent can never reach the subject's
+ * area. A deeds or planning note whose own printed text explicitly names the
+ * subject erf keeps its domain, key, page and quote at `scope: "subject"` — it
+ * is a printed statement about this erf, sourced from the parent plan.
  */
 export function applyParentLineageClaimPolicy(
   claims: ErfExtractedClaim[],
   context: { subjectErfNumber?: string | number | null; parentErfNumber?: string | null; generalPlanReference?: string | null },
 ): ErfExtractedClaim[] {
-  const subjectErf = normNumber(context.subjectErfNumber);
   const planLabel = context.generalPlanReference
     ? `Parent plan ${context.generalPlanReference}`
     : context.parentErfNumber
       ? `Parent Erf ${context.parentErfNumber} plan`
       : "Parent plan";
-  const subjectPattern = subjectErf
-    ? new RegExp(`\\b(?:erf|erven|stand|portion|ptn)\\s*(?:no\\.?\\s*)?${subjectErf}\\b`, "i")
-    : null;
 
   const out: ErfExtractedClaim[] = [];
   for (const claim of claims) {
-    const namesSubject = Boolean(
-      subjectPattern && (subjectPattern.test(claim.quote) || subjectPattern.test(claim.value)),
-    );
     const relabel = (label: string) => `${planLabel}: ${label}`;
+
+    // Rights, value and transfer history are never readable off a general plan.
+    if (SG_DIAGRAM_FORBIDDEN_DOMAINS.includes(claim.domain)) continue;
+    if ((SG_DIAGRAM_FORBIDDEN_KEYS[claim.domain] ?? []).includes(claim.key)) continue;
 
     if (claim.domain === "identity") {
       // The parent's own identifiers must never masquerade as the subject's.
@@ -944,9 +991,17 @@ export function applyParentLineageClaimPolicy(
       continue;
     }
 
-    if (namesSubject) {
-      // Explicitly about this erf: keep the claim, but still flag its origin.
-      out.push({ ...claim, label: `${planLabel} (states this erf): ${claim.label}`, scope: "parent_plan" });
+    if (
+      (claim.domain === "deeds" || claim.domain === "planning") &&
+      isClaimExplicitlyTiedToSubjectErf(claim, context.subjectErfNumber)
+    ) {
+      // Explicitly printed as affecting this erf: keep the real claim, but
+      // always show that it came off the parent General Plan.
+      out.push({
+        ...claim,
+        label: `${planLabel} (states this erf): ${claim.label}`,
+        scope: "subject",
+      });
       continue;
     }
 
@@ -963,4 +1018,5 @@ export function applyParentLineageClaimPolicy(
   }
   return out;
 }
+
 
