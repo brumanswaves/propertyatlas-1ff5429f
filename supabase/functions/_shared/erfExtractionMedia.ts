@@ -21,16 +21,29 @@ export const ERF_NORMALIZED_IMAGE_MIME = "image/png";
 
 /** Safety budgets for TIFF rasterisation. Conservative on purpose. */
 export const ERF_TIFF_MAX_PAGES = 8;
-/** Per-page source pixels. A 100 MP scan is a decode bomb, not a diagram. */
+/**
+ * Per-page source pixels for multi-channel scans, where every pixel costs
+ * 4 bytes of RGBA. A 100 MP colour scan is a decode bomb, not a diagram.
+ */
 export const ERF_TIFF_MAX_SOURCE_PIXELS = 60_000_000;
+/**
+ * Bilevel (1 bit per pixel) budget. Real Surveyor-General diagrams are
+ * CCITT Group 4 scans of 70-120 MP, which is far past the RGBA budget but
+ * only ~1 byte per 8 pixels in memory, so they are downsampled straight
+ * from the packed bits and never expanded to full-size RGBA.
+ */
+export const ERF_TIFF_MAX_BILEVEL_SOURCE_PIXELS = 160_000_000;
 /**
  * Longest edge kept after downscaling. Cadastral labels are small, so this is
  * deliberately generous: only genuinely oversized scans are reduced.
  */
 export const ERF_TIFF_MAX_EDGE_PX = 4_000;
+/** Bilevel scans are box-averaged to grey, so a smaller edge stays legible. */
+export const ERF_TIFF_MAX_BILEVEL_EDGE_PX = 3_000;
 /** Per converted page, and across all converted pages of one document. */
 export const ERF_TIFF_MAX_PAGE_BYTES = 8 * 1024 * 1024;
 export const ERF_TIFF_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+
 
 export interface NormalizedExtractionPage {
   /** 1-based, in original document order. */
@@ -62,12 +75,13 @@ export function canSendMimeTypeDirectly(mimeType: string | null | undefined) {
  * reduction is needed — legibility of fine cadastral text matters more than
  * bandwidth, so we only shrink what exceeds the edge budget.
  */
-export function planTiffPageScale(width: number, height: number) {
+export function planTiffPageScale(width: number, height: number, maxEdgePx = ERF_TIFF_MAX_EDGE_PX) {
   const w = Math.max(1, Math.floor(width));
   const h = Math.max(1, Math.floor(height));
+  const limit = Math.max(1, Math.floor(maxEdgePx));
   const longest = Math.max(w, h);
-  if (longest <= ERF_TIFF_MAX_EDGE_PX) return { width: w, height: h, scale: 1, downscaled: false };
-  const scale = ERF_TIFF_MAX_EDGE_PX / longest;
+  if (longest <= limit) return { width: w, height: h, scale: 1, downscaled: false };
+  const scale = limit / longest;
   return {
     width: Math.max(1, Math.round(w * scale)),
     height: Math.max(1, Math.round(h * scale)),
@@ -92,9 +106,19 @@ export function checkTiffPageBudget(pageCount: number): TiffBudgetRejection {
   return { ok: true };
 }
 
-/** Source-pixel budget for a single page. */
-export function checkTiffPixelBudget(width: number, height: number): TiffBudgetRejection {
-  if (width * height > ERF_TIFF_MAX_SOURCE_PIXELS) {
+/**
+ * Source-pixel budget for a single page. Bilevel pages get the larger budget
+ * because they are downsampled from packed 1-bit rows, not from RGBA.
+ */
+export function checkTiffPixelBudget(
+  width: number,
+  height: number,
+  options: { bilevel?: boolean } = {},
+): TiffBudgetRejection {
+  const limit = options.bilevel
+    ? ERF_TIFF_MAX_BILEVEL_SOURCE_PIXELS
+    : ERF_TIFF_MAX_SOURCE_PIXELS;
+  if (width * height > limit) {
     return {
       ok: false,
       reason: "page_too_large",
@@ -103,6 +127,7 @@ export function checkTiffPixelBudget(width: number, height: number): TiffBudgetR
   }
   return { ok: true };
 }
+
 
 /** Converted-byte budget, per page and cumulative. */
 export function checkConvertedByteBudget(pageBytes: number, totalBytes: number): TiffBudgetRejection {

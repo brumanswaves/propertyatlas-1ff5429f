@@ -462,7 +462,7 @@ Deno.serve(async (request: Request) => {
       // Imported lazily: the TIFF decoder pulls npm: specifiers that only the
       // Deno runtime resolves, and non-TIFF uploads must never load it.
       const { normalizeTiffToPngPages } = await import("./tiffDecode.ts");
-      const normalized = normalizeTiffToPngPages(bytes);
+      const normalized = await normalizeTiffToPngPages(bytes);
       normalizedPages = normalized.pages;
       normalizationWarning = normalized.warning;
       sourcePageCount = normalized.sourcePageCount;
