@@ -2077,52 +2077,45 @@ function StoepAiReportView({
       </section>
 
       {/* MARKET */}
-      <section
-        id="report-market"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Market Evidence"
-          title={`${report.market.evidenceCount} saved evidence item${report.market.evidenceCount === 1 ? "" : "s"}`}
-        />
-        <p className="mt-2 text-sm text-[#0D1B2A]/70">
-          {report.market.canShowIndicativeValue
-            ? `Included comps: ${report.market.includedCount}. Median asking price R ${report.market.summary.medianAskingPrice?.toLocaleString("en-ZA")}.`
-            : "Evidence is currently too thin to responsibly calculate an indicative value. Add more comparables to strengthen the summary."}
-        </p>
-        {report.market.subjectListing && (
-          <div className="mt-3 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-3 text-xs">
-            <span className="font-semibold text-[#B24A00]">Active listing:</span>{" "}
-            {report.market.subjectListing.title || report.market.subjectListing.sourceUrl}
-            <EvidenceBadgeChip badge="listing" label="Asking price" />
-          </div>
-        )}
-        {report.market.strongest.length > 0 && (
-          <ul className="mt-3 grid gap-2 md:grid-cols-3">
-            {report.market.strongest.map((c) => (
-              <li
-                key={c.id}
-                className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-xs"
-              >
-                <div className="font-semibold text-[#0D1B2A]">
-                  {c.title || c.sourcePortal || "Comp"}
-                </div>
-                <div className="mt-1 text-[#0D1B2A]/70">
-                  {c.askingPrice ? `Asking R ${c.askingPrice.toLocaleString("en-ZA")}` : "Price not captured"}
-                </div>
-                <EvidenceBadgeChip badge="listing" label={c.confidence} />
-              </li>
-            ))}
-          </ul>
-        )}
-        <button
-          type="button"
-          onClick={() => onSelectView?.("listings")}
-          className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
-        >
-          Add or manage market evidence <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      </section>
+      <ReportMarketSection
+        anchorId="report-market"
+        model={marketSection}
+        onOpenMarket={() => onSelectView?.("listings")}
+      />
+
+      {/* STRATEGY & FINANCIALS */}
+      <ReportStrategySection
+        anchorId="report-strategy"
+        model={strategySection}
+        onOpenStrategy={() => onSelectView?.("calculators")}
+      />
+
+      {/* SITE POTENTIAL */}
+      <ReportSitePotentialSection
+        anchorId="report-site"
+        hasConcept={Boolean(selectedDesign)}
+        skipped={sitePotentialSkipped}
+        conceptName={
+          selectedDesign
+            ? siteProject.project?.selected_style
+              ? `Selected concept — ${siteProject.project.selected_style}`
+              : "Selected property concept"
+            : null
+        }
+        rationale={
+          selectedDesign
+            ? "Concept selected from the saved Site Potential project and linked to the Erf File Vault."
+            : null
+        }
+        projectStatus={sitePotentialReportModeLabel(selectedSiteMode)}
+        brief={siteProject.project?.design_brief || null}
+        disclaimer={SITE_POTENTIAL_DISCLAIMER}
+        visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
+        onOpenSitePotential={() => onSelectView?.("site-potential")}
+        onOpenSourceFile={
+          selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
+        }
+      />
 
       {/* RISK REGISTER */}
       <section
@@ -2130,7 +2123,7 @@ function StoepAiReportView({
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
         <ReportSectionTitle
-          eyebrow="Risk Register"
+          eyebrow="Risk & Actions"
           title="Evidence gaps and open uncertainties"
         />
         {report.risks.length === 0 ? (
@@ -2185,221 +2178,17 @@ function StoepAiReportView({
         </div>
       </section>
 
+      {/* EVIDENCE & DOCUMENTS APPENDIX */}
+      <ReportEvidenceAppendix
+        anchorId="report-documents"
+        rows={appendixRows}
+        completenessPercent={report.documents.completenessPercent}
+        onOpenAsset={(assetId) => {
+          const asset = fileVault.assets.find((file) => file.id === assetId);
+          if (asset) void openVaultAsset(asset);
+        }}
+      />
 
-      {/* SITE POTENTIAL — retains existing selected concept card */}
-      <section
-        id="report-site"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle eyebrow="Site Potential" title="Concept visualisation" />
-        {selectedDesign ? (
-          <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-4 text-white">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-              Site Potential
-            </div>
-            <h4 className="mt-2 text-base font-semibold">Selected property concept</h4>
-            <p className="mt-1 text-sm leading-6 text-white/68">
-              This selected concept is loaded from the Erf File Vault and linked to the saved Site
-              Potential project.
-            </p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-              <SignedAssetPreview asset={selectedDesign} />
-              <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-                <dl className="grid gap-3 text-sm">
-                  <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                      Project mode
-                    </dt>
-                    <dd className="mt-1 text-white/85">
-                      {sitePotentialReportModeLabel(selectedSiteMode)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                      Architectural style
-                    </dt>
-                    <dd className="mt-1 text-white/85">
-                      {siteProject.project?.selected_style || "Style not specified."}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                      Brief
-                    </dt>
-                    <dd className="mt-1 text-white/85">
-                      {siteProject.project?.design_brief || "No design brief saved yet."}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                      Stable asset ID
-                    </dt>
-                    <dd className="mt-1 break-all font-mono text-xs text-white/75">
-                      {selectedDesign.id}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-            <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs leading-5 text-white/62">
-              Concept visualisation only. Not an architectural plan, feasibility study, quotation or
-              municipal approval. {SITE_POTENTIAL_DISCLAIMER}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-3 rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4">
-            <p className="text-sm leading-6 text-[#0D1B2A]/75">
-              {sitePotentialSkipped
-                ? "Site Potential has been skipped for this report."
-                : "No Site Potential concept has been selected yet."}
-            </p>
-            {!sitePotentialSkipped && (
-              <button
-                type="button"
-                onClick={() => onSelectView?.("site-potential")}
-                className="report-no-print mt-3 inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
-              >
-                Return to Site Potential <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* STRATEGY */}
-      <section
-        id="report-strategy"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle eyebrow="Strategy Scenarios" title="Saved assumptions and results" />
-        {chosenScenario ? (
-          <div className="mt-3 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Chosen strategy scenario
-            </div>
-            <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">{chosenScenario.label}</h4>
-            <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-              Easy Erf Report uses the chosen scenario first. If no chosen scenario exists, it falls
-              back to the newest saved scenario. Every number below reflects your assumptions, not a
-              verified valuation.
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {chosenScenario.summary.slice(0, 4).map((item) => (
-                <div key={item.label} className="rounded-2xl border border-[#D9E6F2] bg-white p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    {item.label}
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-[#0D1B2A]">{item.value}</p>
-                  <EvidenceBadgeChip badge="assumption" label="Assumption" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-[#0D1B2A]/70">
-            No strategy scenario saved yet. Open Strategy Lab to test purchase, build, flip and hold
-            assumptions.
-          </p>
-        )}
-        <p className="mt-3 text-xs text-[#64748B]">
-          {scenarios.length} saved scenario{scenarios.length === 1 ? "" : "s"} — chosen wins, else the
-          newest saved scenario is used.
-        </p>
-      </section>
-
-      {/* DOCUMENTS — retains existing uploaded files block */}
-      <section
-        id="report-documents"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle eyebrow="Evidence & Documents" title="Uploaded files and source documents" />
-        <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-          Stored in the cloud Erf File Vault. Each file shows whether Easy Erf actually read it and
-          matched it to this erf. Storing a file does not make it evidence, and only the states
-          below are used by the report.
-        </p>
-        {fileVault.assets.length ? (
-          <div className="mt-4 space-y-4">
-            {REPORT_ASSET_GROUP_ORDER.filter((group) => groupedAssets[group].length).map((group) => (
-              <section key={group}>
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                  {group}
-                </div>
-                <div className="mt-2 grid gap-3 md:grid-cols-2">
-                  {groupedAssets[group].map((file) => (
-                    <article
-                      key={file.id}
-                      className="rounded-2xl border border-[#D9E6F2] bg-white p-4"
-                    >
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                        {workspaceAssetCategory(file)}
-                      </div>
-                      <p className="mt-2 break-words text-sm font-semibold text-[#0D1B2A]">
-                        {file.original_file_name}
-                      </p>
-                      <p className="mt-1 text-xs text-[#0D1B2A]/60">
-                        {formatAssetSize(file.size_bytes)} - uploaded {formatAssetDate(file.created_at)}
-                      </p>
-                      <AssetExtractionStatusChip asset={file} />
-                      <button
-                        type="button"
-                        onClick={() => void openVaultAsset(file)}
-                        className="report-no-print mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                      >
-                        Open file
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-3 text-sm text-[#0D1B2A]/60">
-            No uploaded SG diagrams, paid reports, site photos, plans, concepts, or report exports
-            are stored for this erf yet.
-          </p>
-        )}
-        <p className="mt-3 text-xs text-[#64748B]">
-          Evidence completeness: {report.documents.completenessPercent}%.
-        </p>
-      </section>
-
-      {/* RECOMMENDATIONS */}
-      <section
-        id="report-recommendations"
-        className="report-section rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle eyebrow="Recommendations" title="Ordered next actions" />
-        {report.recommendations.length === 0 ? (
-          <p className="mt-3 text-sm text-[#0D1B2A]/70">
-            No outstanding recommendations. Continue keeping evidence fresh.
-          </p>
-        ) : (
-          <ol className="mt-3 space-y-2 text-sm">
-            {report.recommendations.map((r) => (
-              <li key={r.id} className="rounded-2xl border border-[#FF6A00]/20 bg-white p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-                      Step {r.order}
-                    </div>
-                    <div className="mt-1 font-semibold text-[#0D1B2A]">{r.title}</div>
-                    <p className="mt-1 text-xs text-[#0D1B2A]/70">{r.detail}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onSelectView?.(routeTabFor(r.actionTab))}
-                    className="report-no-print inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#142941]"
-                  >
-                    {r.actionLabel} <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
 
       {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
       <ReportChangeTrackingSection
