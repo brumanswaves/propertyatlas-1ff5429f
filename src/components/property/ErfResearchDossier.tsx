@@ -69,6 +69,8 @@ import {
   buildReportViewModel,
   REPORT_SECTIONS,
   type EvidenceBadge,
+  type OwnershipDetail,
+
 } from "@/lib/reports/buildReportViewModel";
 import {
   buildDecisionIntelligence,
