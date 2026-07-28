@@ -2143,6 +2143,7 @@ function StoepAiReportView({
         }
         projectStatus={sitePotentialReportModeLabel(selectedSiteMode)}
         brief={siteProject.project?.design_brief || null}
+        conceptAssetId={selectedDesign?.id ?? null}
         disclaimer={SITE_POTENTIAL_DISCLAIMER}
         visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
         onOpenSitePotential={() => onSelectView?.("site-potential")}

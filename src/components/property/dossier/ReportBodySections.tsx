@@ -322,6 +322,7 @@ export function ReportSitePotentialSection({
   rationale,
   projectStatus,
   brief,
+  conceptAssetId,
   disclaimer,
   visual,
   onOpenSitePotential,
@@ -334,6 +335,7 @@ export function ReportSitePotentialSection({
   rationale: string | null;
   projectStatus: string | null;
   brief: string | null;
+  conceptAssetId?: string | null;
   disclaimer: string;
   visual?: React.ReactNode;
   onOpenSitePotential?: () => void;
@@ -377,6 +379,16 @@ export function ReportSitePotentialSection({
                     {brief ?? "No design brief saved yet."}
                   </dd>
                 </div>
+                {conceptAssetId && (
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                      Stable asset ID
+                    </dt>
+                    <dd className="mt-1 break-all font-mono text-xs text-[#0D1B2A]/70">
+                      {conceptAssetId}
+                    </dd>
+                  </div>
+                )}
               </dl>
               <div className="report-no-print mt-4 flex flex-wrap gap-2">
                 <button
