@@ -73,9 +73,13 @@ export const REPORT_SECTIONS: ReportSectionMeta[] = [
   { id: "market", label: "Market Evidence", anchorId: "report-market" },
   { id: "strategy", label: "Strategy & Financials", anchorId: "report-strategy" },
   { id: "site", label: "Site Potential", anchorId: "report-site" },
+  { id: "site-risk", label: "Site & Environmental Risk", anchorId: "report-site-risk" },
+  { id: "municipal", label: "Services & Costs", anchorId: "report-municipal" },
+  { id: "location", label: "Location & Lifestyle", anchorId: "report-location" },
   { id: "risk", label: "Risk & Actions", anchorId: "report-risk" },
   { id: "documents", label: "Evidence Appendix", anchorId: "report-documents" },
 ];
+
 
 
 export interface RiskItem {

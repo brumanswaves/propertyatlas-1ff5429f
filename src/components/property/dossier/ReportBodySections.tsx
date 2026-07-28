@@ -143,28 +143,49 @@ export function ReportMarketSection({
         </div>
       </div>
 
-      {model.strongest.length > 0 && (
+      {model.comparables.length > 0 && (
         <div className="mt-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
             Strongest comparable evidence
           </div>
-          <ul className="mt-3 grid gap-3 md:grid-cols-3">
-            {model.strongest.map((comp) => (
-              <li key={comp.id} className="rounded-2xl border border-[#D9E6F2] bg-white p-4">
-                <div className="text-sm font-semibold text-[#0D1B2A]">
-                  {comp.title || comp.sourcePortal || "Comparable"}
+          <ul className="mt-3 space-y-2">
+            {model.comparables.map((comp) => (
+              <li
+                key={comp.id}
+                data-comparable={comp.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D9E6F2] bg-white px-4 py-3"
+              >
+                <div className="min-w-[12rem] flex-1">
+                  <div className="text-sm font-semibold text-[#0D1B2A]">{comp.title}</div>
+                  <div className="mt-1 text-[11px] text-[#64748B]">
+                    {comp.relationshipLabel} · {comp.evidenceType} · {comp.confidenceLabel}
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-[#0D1B2A]/70">
-                  {typeof comp.askingPrice === "number" && comp.askingPrice > 0
-                    ? `Asking R ${Math.round(comp.askingPrice).toLocaleString("en-ZA")}`
-                    : "Price not captured"}
+                <div className="text-right">
+                  <div className="text-base font-semibold tabular-nums text-[#0D1B2A]">
+                    {comp.priceLabel ?? "Price not captured"}
+                  </div>
+                  <div className="text-[11px] text-[#64748B]">
+                    {comp.sizeLabel ?? "Size not captured"}
+                  </div>
                 </div>
-                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-                  Confidence: {comp.confidence}
-                </p>
+                {comp.url && (
+                  <a
+                    href={comp.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="report-no-print inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
+                  >
+                    Open source <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </li>
             ))}
           </ul>
+          <p className="mt-2 text-[11px] leading-5 text-[#94A3B8]">
+            Asking evidence is never presented as a completed sale. Sold evidence is only shown when
+            a source states it.
+          </p>
         </div>
       )}
 

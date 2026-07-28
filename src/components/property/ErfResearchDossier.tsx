@@ -72,6 +72,17 @@ import {
   ReportStrategySection,
 } from "@/components/property/dossier/ReportBodySections";
 import { buildMarketSectionModel } from "@/lib/reports/marketSection";
+import {
+  buildLocationLifestyleSectionModel,
+  buildMunicipalServicesSectionModel,
+  buildSiteRiskSectionModel,
+} from "@/lib/reports/contextSections";
+import { buildSgSectionModel } from "@/lib/reports/sgSection";
+import {
+  ReportContextSection,
+  ReportMunicipalSection,
+  ReportSgLineageSection,
+} from "@/components/property/dossier/ReportContextSections";
 import { buildStrategySectionModel } from "@/lib/reports/strategySection";
 import { buildEvidenceAppendixRows } from "@/lib/reports/evidenceAppendix";
 
@@ -100,7 +111,6 @@ import {
   REPORT_SECTIONS,
   type EvidenceBadge,
   type OwnershipDetail,
-
 } from "@/lib/reports/buildReportViewModel";
 import {
   buildDecisionIntelligence,
@@ -121,10 +131,7 @@ import {
 } from "@/lib/reports/askEasyErf";
 import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
 import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
-import {
-  loadReportPropertyNotes,
-  type PropertyNotes,
-} from "@/lib/workbench/propertyNotes";
+import { loadReportPropertyNotes, type PropertyNotes } from "@/lib/workbench/propertyNotes";
 import {
   buildReportSnapshot,
   clearReportSnapshots,
@@ -1465,7 +1472,10 @@ function StoepAiReportView({
     void loadReportPropertyNotes(
       parcelId,
       userId,
-      () => notesRequestRef.current === requestId && parcel.id === parcelId && (user?.id ?? null) === userId,
+      () =>
+        notesRequestRef.current === requestId &&
+        parcel.id === parcelId &&
+        (user?.id ?? null) === userId,
     ).then((result) => {
       if (notesRequestRef.current !== requestId) return;
       if (result.status === "loaded") setReportNotes(result.notes);
@@ -1533,6 +1543,28 @@ function StoepAiReportView({
     () => buildStrategySectionModel({ chosen: chosenScenario, scenarioCount: scenarios.length }),
     [chosenScenario, scenarios.length],
   );
+  const siteRiskSection = useMemo(
+    () => buildSiteRiskSectionModel({ pack: report.evidencePack ?? null }),
+    [report.evidencePack],
+  );
+  const municipalSection = useMemo(
+    () => buildMunicipalServicesSectionModel({ pack: report.evidencePack ?? null }),
+    [report.evidencePack],
+  );
+  const locationSection = useMemo(
+    () =>
+      buildLocationLifestyleSectionModel({
+        pack: report.evidencePack ?? null,
+        identity: {
+          marketAddressLine: report.identity.marketAddressLine,
+          municipality: report.identity.municipality,
+          province: report.identity.province,
+          coordinates: report.identity.coordinates,
+        },
+        subjectListing: report.market.subjectListing,
+      }),
+    [report.evidencePack, report.identity, report.market.subjectListing],
+  );
   const appendixRows = useMemo(
     () =>
       buildEvidenceAppendixRows({
@@ -1542,7 +1574,10 @@ function StoepAiReportView({
     [fileVault.assets, report.evidencePack],
   );
 
-
+  const sgSection = useMemo(
+    () => buildSgSectionModel({ appendixRows, pack: report.evidencePack ?? null }),
+    [appendixRows, report.evidencePack],
+  );
 
   const askSuggestionPayload = useMemo(
     () =>
@@ -1742,8 +1777,6 @@ function StoepAiReportView({
         }
       />
 
-
-
       {/* STICKY REPORT NAV */}
       <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
         <ul className="flex min-w-max gap-1 text-xs">
@@ -1759,6 +1792,223 @@ function StoepAiReportView({
           ))}
         </ul>
       </nav>
+
+      {/* DECISION INTELLIGENCE */}
+      <section
+        id="report-brief"
+        className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
+      >
+        <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+
+        {/* EXECUTIVE DECISION BRIEF */}
+        {decisionMode === "investor" ? (
+          <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
+        ) : (
+          <div className="mt-6 space-y-5">
+            <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
+              <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                  Overall verdict
+                </div>
+                <h3 className="mt-3 text-3xl font-semibold tracking-tight">
+                  {decisionVerdictLabel(decision.verdict)}
+                </h3>
+                <div className="mt-4 flex items-center gap-4">
+                  <div
+                    className="grid h-24 w-24 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
+                    style={{
+                      background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
+                    }}
+                    aria-label={`Evidence confidence ${decision.confidencePercent}%`}
+                  >
+                    <span className="grid h-20 w-20 place-items-center rounded-full bg-[#0D1B2A]">
+                      {decision.confidencePercent}%
+                    </span>
+                  </div>
+                  <p className="text-xs leading-5 text-white/68">
+                    Evidence confidence measures completeness and recorded-risk coverage. It is not
+                    a property-quality score, valuation confidence, or purchase recommendation.
+                  </p>
+                </div>
+              </article>
+              <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                  Evidence-grounded interpretation
+                </div>
+                <p className="mt-3 max-w-4xl text-base leading-7 text-white/82">
+                  {decision.summary}
+                </p>
+                <p className="mt-3 text-xs leading-5 text-white/58">
+                  This interpretation is assembled from official, uploaded, user-confirmed, market,
+                  and saved workspace data. It is not labelled human verified.
+                </p>
+              </article>
+            </div>
+
+            <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                    Property IQ / Confidence Engine
+                  </div>
+                  <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                    Why the report confidence exists
+                  </h3>
+                </div>
+                <p className="max-w-xl text-xs leading-5 text-[#64748B]">
+                  Each category is scored from the recorded evidence state. Open a row to see the
+                  reason behind the score.
+                </p>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                {decision.confidenceCategories.map((category) => (
+                  <details
+                    key={category.id}
+                    className="group rounded-2xl border border-[#D9E6F2] bg-white p-3 open:border-[#FF6A00]/35"
+                  >
+                    <summary className="cursor-pointer list-none">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-[#0D1B2A]">
+                          {category.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                            readinessStroke(category.state),
+                          )}
+                        >
+                          {readinessLabel(category.state)}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
+                        {category.score}
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
+                        <div
+                          className="h-full rounded-full bg-[#FF6A00]"
+                          style={{ width: `${category.score}%` }}
+                        />
+                      </div>
+                    </summary>
+                    <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
+                      {category.explanation}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </section>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <DecisionListPanel
+                title="What Easy Erf knows"
+                items={decision.known}
+                empty="No structured facts are strong enough to list yet."
+              />
+              <DecisionListPanel
+                title="What Easy Erf still needs"
+                items={decision.stillNeeded}
+                empty="No immediate evidence gaps were generated from the current structured state."
+                footnote="Completing these items may improve report confidence."
+              />
+            </div>
+
+            <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+              <ReportSectionTitle
+                eyebrow="Contradictions"
+                title="Conflicting structured evidence"
+              />
+              {decision.contradictions.length ? (
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  {decision.contradictions.map((item) => (
+                    <article
+                      key={item.id}
+                      className="rounded-2xl border border-[#F59E0B]/35 bg-[#fffbeb] p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                            severityTone(item.severity),
+                          )}
+                        >
+                          {item.severity}
+                        </span>
+                        <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">{item.explanation}</p>
+                      <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
+                        {item.evidence.map((line) => (
+                          <li key={line}>- {line}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-3 text-xs font-semibold text-[#92400E]">
+                        Next action: {item.nextAction}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/72">
+                  No direct contradictions were detected in the currently available structured
+                  evidence.
+                  <span className="mt-1 block text-xs text-[#64748B]">
+                    Missing evidence is not proof that no conflict exists.
+                  </span>
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+              <ReportSectionTitle
+                eyebrow="Immediate next actions"
+                title="Move the report forward"
+              />
+              {decision.immediateActions.length ? (
+                <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                  {decision.immediateActions.map((action, index) => (
+                    <button
+                      key={`${index}-${action.label}`}
+                      type="button"
+                      onClick={() => onSelectView?.(routeTabFor(action.tab))}
+                      className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
+                    >
+                      <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+                        Action {index + 1}
+                      </span>
+                      <span className="mt-1 flex items-center justify-between gap-2">
+                        {action.label}
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-sm text-[#0D1B2A]/66">
+                  No immediate action is generated from the current structured evidence.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+              <ReportSectionTitle eyebrow="Decision Matrix" title="Key questions and answers" />
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {decision.matrix.map((row) => (
+                  <DecisionMatrixCard key={row.id} row={row} />
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+              <ReportSectionTitle eyebrow="Evidence Timeline" title="Saved evidence chronology" />
+              <ol className="mt-4 space-y-3">
+                {decision.timeline.map((item) => (
+                  <EvidenceTimelineRow key={item.id} item={item} />
+                ))}
+              </ol>
+            </section>
+          </div>
+        )}
+      </section>
 
       {/* IDENTITY */}
       <section
@@ -1802,17 +2052,15 @@ function StoepAiReportView({
 
         {report.identity.addressAndOfficialMismatch && (
           <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
-            Possible mismatch: the saved market address municipality differs from the official parcel
-            municipality. Recheck identity before using downstream data.
+            Possible mismatch: the saved market address municipality differs from the official
+            parcel municipality. Recheck identity before using downstream data.
           </p>
         )}
 
         <ReportAreaReconciliation
           identity={report.identity}
           officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
-          discrepancy={
-            reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null
-          }
+          discrepancy={reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null}
           actions={reportDoc.actions}
           onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
         />
@@ -1825,15 +2073,27 @@ function StoepAiReportView({
       />
 
       {/* SG / LINEAGE EVIDENCE */}
-      <ReportFindingsBlock
+      <ReportSgLineageSection
         anchorId="report-sg-evidence"
-        eyebrow="SG Diagrams & Lineage"
-        title="Surveyor-General evidence read for this erf"
+        model={sgSection}
+        onOpenAsset={(assetId) => {
+          const asset = fileVault.assets.find((file) => file.id === assetId);
+          if (asset) void openVaultAsset(asset);
+        }}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+      />
+
+      <ReportFindingsBlock
+        anchorId="report-sg-findings"
+        eyebrow="SG findings"
+        title="What the diagrams support about this erf"
         intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
         findings={reportDoc.findings.filter((f) =>
-          ["finding-sg-parent-lineage", "finding-registered-extent", "finding-servitudes-sg"].includes(
-            f.id,
-          ),
+          [
+            "finding-sg-parent-lineage",
+            "finding-registered-extent",
+            "finding-servitudes-sg",
+          ].includes(f.id),
         )}
         actions={reportDoc.actions}
         onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
@@ -1863,10 +2123,7 @@ function StoepAiReportView({
         />
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {report.planning.map((field) => (
-            <div
-              key={field.label}
-              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
-            >
+            <div key={field.label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
               <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
                 {field.label}
               </dt>
@@ -1893,221 +2150,6 @@ function StoepAiReportView({
               ))}
           </div>
         )}
-      </section>
-
-
-      {/* DECISION INTELLIGENCE */}
-      <section
-        id="report-brief"
-        className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
-      >
-        <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
-
-        {/* EXECUTIVE DECISION BRIEF */}
-        {decisionMode === "investor" ? (
-          <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
-        ) : (
-        <div className="mt-6 space-y-5">
-          <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
-            <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                Overall verdict
-              </div>
-              <h3 className="mt-3 text-3xl font-semibold tracking-tight">
-                {decisionVerdictLabel(decision.verdict)}
-              </h3>
-              <div className="mt-4 flex items-center gap-4">
-                <div
-                  className="grid h-24 w-24 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
-                  style={{
-                    background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
-                  }}
-                  aria-label={`Evidence confidence ${decision.confidencePercent}%`}
-                >
-                  <span className="grid h-20 w-20 place-items-center rounded-full bg-[#0D1B2A]">
-                    {decision.confidencePercent}%
-                  </span>
-                </div>
-                <p className="text-xs leading-5 text-white/68">
-                  Evidence confidence measures completeness and recorded-risk coverage. It is not a
-                  property-quality score, valuation confidence, or purchase recommendation.
-                </p>
-              </div>
-            </article>
-            <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                Evidence-grounded interpretation
-              </div>
-              <p className="mt-3 max-w-4xl text-base leading-7 text-white/82">
-                {decision.summary}
-              </p>
-              <p className="mt-3 text-xs leading-5 text-white/58">
-                This interpretation is assembled from official, uploaded, user-confirmed, market,
-                and saved workspace data. It is not labelled human verified.
-              </p>
-            </article>
-          </div>
-
-          <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-                  Property IQ / Confidence Engine
-                </div>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                  Why the report confidence exists
-                </h3>
-              </div>
-              <p className="max-w-xl text-xs leading-5 text-[#64748B]">
-                Each category is scored from the recorded evidence state. Open a row to see the
-                reason behind the score.
-              </p>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-              {decision.confidenceCategories.map((category) => (
-                <details
-                  key={category.id}
-                  className="group rounded-2xl border border-[#D9E6F2] bg-white p-3 open:border-[#FF6A00]/35"
-                >
-                  <summary className="cursor-pointer list-none">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-[#0D1B2A]">
-                        {category.label}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                          readinessStroke(category.state),
-                        )}
-                      >
-                        {readinessLabel(category.state)}
-                      </span>
-                    </div>
-                    <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
-                      {category.score}
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
-                      <div
-                        className="h-full rounded-full bg-[#FF6A00]"
-                        style={{ width: `${category.score}%` }}
-                      />
-                    </div>
-                  </summary>
-                  <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
-                    {category.explanation}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </section>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <DecisionListPanel
-              title="What Easy Erf knows"
-              items={decision.known}
-              empty="No structured facts are strong enough to list yet."
-            />
-            <DecisionListPanel
-              title="What Easy Erf still needs"
-              items={decision.stillNeeded}
-              empty="No immediate evidence gaps were generated from the current structured state."
-              footnote="Completing these items may improve report confidence."
-            />
-          </div>
-
-          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-            <ReportSectionTitle eyebrow="Contradictions" title="Conflicting structured evidence" />
-            {decision.contradictions.length ? (
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                {decision.contradictions.map((item) => (
-                  <article
-                    key={item.id}
-                    className="rounded-2xl border border-[#F59E0B]/35 bg-[#fffbeb] p-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                          severityTone(item.severity),
-                        )}
-                      >
-                        {item.severity}
-                      </span>
-                      <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">
-                      {item.explanation}
-                    </p>
-                    <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
-                      {item.evidence.map((line) => (
-                        <li key={line}>- {line}</li>
-                      ))}
-                    </ul>
-                    <p className="mt-3 text-xs font-semibold text-[#92400E]">
-                      Next action: {item.nextAction}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/72">
-                No direct contradictions were detected in the currently available structured
-                evidence.
-                <span className="mt-1 block text-xs text-[#64748B]">
-                  Missing evidence is not proof that no conflict exists.
-                </span>
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
-            <ReportSectionTitle eyebrow="Immediate next actions" title="Move the report forward" />
-            {decision.immediateActions.length ? (
-              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-                {decision.immediateActions.map((action, index) => (
-                  <button
-                    key={`${index}-${action.label}`}
-                    type="button"
-                    onClick={() => onSelectView?.(routeTabFor(action.tab))}
-                    className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
-                  >
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-                      Action {index + 1}
-                    </span>
-                    <span className="mt-1 flex items-center justify-between gap-2">
-                      {action.label}
-                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-sm text-[#0D1B2A]/66">
-                No immediate action is generated from the current structured evidence.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-            <ReportSectionTitle eyebrow="Decision Matrix" title="Key questions and answers" />
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {decision.matrix.map((row) => (
-                <DecisionMatrixCard key={row.id} row={row} />
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-            <ReportSectionTitle eyebrow="Evidence Timeline" title="Saved evidence chronology" />
-            <ol className="mt-4 space-y-3">
-              {decision.timeline.map((item) => (
-                <EvidenceTimelineRow key={item.id} item={item} />
-              ))}
-            </ol>
-          </section>
-        </div>
-        )}
-
       </section>
 
       {/* MARKET */}
@@ -2147,9 +2189,32 @@ function StoepAiReportView({
         disclaimer={SITE_POTENTIAL_DISCLAIMER}
         visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
         onOpenSitePotential={() => onSelectView?.("site-potential")}
-        onOpenSourceFile={
-          selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
-        }
+        onOpenSourceFile={selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined}
+      />
+
+      {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
+      <ReportContextSection
+        anchorId="report-site-risk"
+        eyebrow="Site, Environmental & Physical Risk"
+        title="Physical and environmental conditions supported by evidence"
+        model={siteRiskSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
+      <ReportMunicipalSection
+        anchorId="report-municipal"
+        model={municipalSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* LOCATION & LIFESTYLE */}
+      <ReportContextSection
+        anchorId="report-location"
+        eyebrow="Location & Lifestyle"
+        title="Where this erf sits, and what is actually known about it"
+        model={locationSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
       />
 
       {/* RISK REGISTER */}
@@ -2157,10 +2222,7 @@ function StoepAiReportView({
         id="report-risk"
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
       >
-        <ReportSectionTitle
-          eyebrow="Risk & Actions"
-          title="Evidence gaps and open uncertainties"
-        />
+        <ReportSectionTitle eyebrow="Risk & Actions" title="Evidence gaps and open uncertainties" />
         {report.risks.length === 0 ? (
           <p className="mt-3 text-sm text-[#0D1B2A]/70">
             No blocking risks identified in current evidence. Continue to verify sources.
@@ -2224,7 +2286,6 @@ function StoepAiReportView({
         }}
       />
 
-
       {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
       <ReportChangeTrackingSection
         comparison={snapshotComparison}
@@ -2237,8 +2298,6 @@ function StoepAiReportView({
         onConfirmClear={handleClearReportSnapshots}
       />
 
-
-
       <section className="report-section report-no-print mt-1 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
           Take action on this erf
@@ -2247,8 +2306,8 @@ function StoepAiReportView({
           <div>
             <h4 className="text-lg font-semibold text-[#0D1B2A]">Assemble a local property team</h4>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Find relevant local professionals and services based on this erf's location and property
-              context.
+              Find relevant local professionals and services based on this erf's location and
+              property context.
             </p>
           </div>
           <button
@@ -2320,9 +2379,7 @@ function InvestorDecisionBrief({
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
               Investor Decision Brief
             </div>
-            <h3 className="mt-3 text-3xl font-semibold tracking-tight">
-              {data.readinessStatus}
-            </h3>
+            <h3 className="mt-3 text-3xl font-semibold tracking-tight">{data.readinessStatus}</h3>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-white/72">
               {data.readinessExplanation}
             </p>
@@ -2359,15 +2416,18 @@ function InvestorDecisionBrief({
       </section>
 
       <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
-        <ReportSectionTitle eyebrow="Investor Numbers" title="Real inputs and deterministic outputs" />
+        <ReportSectionTitle
+          eyebrow="Investor Numbers"
+          title="Real inputs and deterministic outputs"
+        />
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {data.numberRows.map((row) => (
             <InvestorNumberCard key={row.id} row={row} />
           ))}
         </div>
         <p className="mt-3 text-xs leading-5 text-[#64748B]">
-          Projected rows come from user assumptions and deterministic calculators. Missing values are
-          shown as not provided or not calculated.
+          Projected rows come from user assumptions and deterministic calculators. Missing values
+          are shown as not provided or not calculated.
         </p>
       </section>
 
@@ -2395,7 +2455,10 @@ function InvestorDecisionBrief({
       </section>
 
       <section className="rounded-[1.5rem] border border-[#F59E0B]/35 bg-[#FFFBEB] p-5">
-        <ReportSectionTitle eyebrow="Downside View" title="Issues that could weaken the investor case" />
+        <ReportSectionTitle
+          eyebrow="Downside View"
+          title="Issues that could weaken the investor case"
+        />
         {data.downsideRisks.length ? (
           <ul className="mt-4 grid gap-2 md:grid-cols-2">
             {data.downsideRisks.map((risk) => (
@@ -2416,7 +2479,10 @@ function InvestorDecisionBrief({
 
       {data.nextActions.length > 0 && (
         <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
-          <ReportSectionTitle eyebrow="Additional next actions" title="Keep the investor case grounded" />
+          <ReportSectionTitle
+            eyebrow="Additional next actions"
+            title="Keep the investor case grounded"
+          />
           <div className="mt-4 grid gap-2 md:grid-cols-2">
             {data.nextActions.map((action) => (
               <button
@@ -2467,7 +2533,14 @@ function InvestorNumberCard({ row }: { row: InvestorNumberRow }) {
         {row.value}
       </p>
       <EvidenceBadgeChip
-        badge={row.provenance === "User assumption" ? "assumption" : row.provenance === "Saved subject listing" || row.provenance === "Saved market evidence" ? "listing" : "user_confirmed"}
+        badge={
+          row.provenance === "User assumption"
+            ? "assumption"
+            : row.provenance === "Saved subject listing" ||
+                row.provenance === "Saved market evidence"
+              ? "listing"
+              : "user_confirmed"
+        }
         label={row.provenance}
       />
     </article>
@@ -2646,9 +2719,7 @@ function ReportChangeTrackingSection({
             (type) =>
               grouped[type].length > 0 && (
                 <div key={type}>
-                  <h4 className="text-sm font-semibold text-[#0D1B2A]">
-                    {changeGroupLabel(type)}
-                  </h4>
+                  <h4 className="text-sm font-semibold text-[#0D1B2A]">{changeGroupLabel(type)}</h4>
                   <div className="mt-2 grid gap-2 md:grid-cols-2">
                     {grouped[type].map((change) => (
                       <ChangeCard key={change.id} change={change} />
@@ -2727,7 +2798,12 @@ function ChangeCard({ change }: { change: ReportSnapshotChange }) {
   return (
     <article className="report-change-card rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]", changeTone(change.type))}>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]",
+            changeTone(change.type),
+          )}
+        >
           {change.type}
         </span>
         <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
@@ -2837,7 +2913,9 @@ function AskEasyErfSection({
     }
     if (!hasCanonicalPackEvidence) {
       setAnswer(null);
-      setError("More saved evidence is required before Ask Easy Erf can answer this property question.");
+      setError(
+        "More saved evidence is required before Ask Easy Erf can answer this property question.",
+      );
       return;
     }
 
@@ -2943,7 +3021,7 @@ function AskEasyErfSection({
               <p className="text-sm font-semibold text-[#0D1B2A]">
                 More saved evidence is required first.
               </p>
-          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
                 Ask Easy Erf will not fabricate a fallback answer. Add official source reviews,
                 market evidence, uploaded documents, notes, or strategy assumptions before asking.
               </p>
@@ -3095,7 +3173,7 @@ function AskEasyErfAnswerCard({ answer }: { answer: AskEasyErfAnswer }) {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748B]">
-          Evidence references
+            Evidence references
           </h4>
           <div className="mt-2 flex flex-wrap gap-2">
             {answer.evidenceReferences.map((reference) => (
@@ -3273,7 +3351,6 @@ function EvidenceTimelineRow({ item }: { item: EvidenceTimelineItem }) {
  * now live in ./dossier/ReportEvidenceUi so their rendered output can be
  * asserted in behavioural tests.
  */
-
 
 type CalculatorTab =
   | "acquisition"
