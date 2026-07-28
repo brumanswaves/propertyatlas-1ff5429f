@@ -261,7 +261,7 @@ export interface ErfExtractionMetadataPatch {
   extractionStartedAt?: string | null;
 }
 
-export const ERF_EXTRACTION_VERSION = 3;
+export const ERF_EXTRACTION_VERSION = 4;
 
 /** Largest accepted request body, checked before JSON parsing. */
 export const ERF_EXTRACTION_MAX_REQUEST_BYTES = 4_096;
