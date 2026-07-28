@@ -90,6 +90,8 @@ export interface EasyErfReportDocument {
   perspective: ReportPerspective;
   generatedAt: string;
   evidenceFingerprint: string;
+  /** True only when a canonical evidence pack backed this composition. */
+  hasCanonicalEvidence: boolean;
   header: ReportHeaderModel;
   ask: ReportAskContext;
   decisionSnapshot: DecisionSnapshotModel;
@@ -195,7 +197,7 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
   };
 
   // ---- decision snapshot --------------------------------------------------
-  const decisionSnapshot = buildDecisionSnapshot(findings);
+  const decisionSnapshot = buildDecisionSnapshot(findings, Boolean(pack));
 
   // ---- property at a glance ----------------------------------------------
   const atAGlance: GlanceItem[] = [];
@@ -266,7 +268,10 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
       id: "registered-extent",
       label: "Registered extent",
       value: `${deedExtent.toLocaleString("en-ZA")} m²`,
-      provenance: "Uploaded deed/diagram — differs from the cadastral area",
+      provenance:
+        officialArea != null
+          ? "Uploaded deed/diagram — differs from the cadastral area"
+          : "Uploaded deed/diagram — no official cadastral area is recorded for comparison",
     });
   }
   if (subject?.askingPrice && officialArea) {
@@ -302,8 +307,11 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
   const riskCandidates: Array<RiskStripItem | null> = [
     riskItem("identity", "Identity", [findingById("finding-address-conflict"), findingById("finding-identity-parcel")]),
     riskItem("title", "Title & Deed", [findingById("finding-title-deed"), findingById("finding-ownership")]),
-    riskItem("sg", "Servitudes / SG", [findingById("finding-sg-parent-lineage")]),
-    riskItem("buildings", "Buildings & Plans", [findingById("finding-site-potential")]),
+    riskItem("sg", "Servitudes / SG", [
+      findingById("finding-servitudes-sg"),
+      findingById("finding-sg-parent-lineage"),
+    ]),
+    riskItem("buildings", "Buildings & Plans", [findingById("finding-buildings-plans")]),
     riskItem("zoning", "Zoning & Use", [findingById("finding-planning-completeness")]),
     environmentFindings.length ? riskItem("environment", "Environment", environmentFindings) : null,
   ];
@@ -314,6 +322,7 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
     perspective,
     generatedAt,
     evidenceFingerprint: pack?.fingerprint ?? "",
+    hasCanonicalEvidence: Boolean(pack) && findings.length > 0,
     header,
     ask,
     decisionSnapshot,
