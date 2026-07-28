@@ -642,8 +642,9 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       // A value the model read off a drawing (rather than printed text) is
       // never presented as an established fact.
       nature: item.interpretation === true ? "interpretation" : "fact",
-      status: item.interpretation === true ? "unverified" : "supported",
-      confidence: item.interpretation === true ? "low" : "medium",
+      status: item.interpretation === true ? "not_reviewed" : "supported",
+      confidence: item.interpretation === true ? "unverified" : "medium",
+
       confidenceReason:
         item.interpretation === true
           ? "Read from the drawing rather than printed text. A surveyor or conveyancer must confirm it."
