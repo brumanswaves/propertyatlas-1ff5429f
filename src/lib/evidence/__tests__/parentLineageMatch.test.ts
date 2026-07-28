@@ -152,7 +152,7 @@ describe("parent-lineage claim policy", () => {
     const out = applyParentLineageClaimPolicy(
       [
         claim({
-          domain: "planning",
+          domain: "deeds",
           key: "servitudes",
           label: "Servitude",
           value: "3 m municipal servitude along the northern boundary",
@@ -213,7 +213,7 @@ describe("parent-lineage claim policy", () => {
     const out = applyParentLineageClaimPolicy(
       [
         claim({
-          domain: "planning",
+          domain: "deeds",
           key: "servitudes",
           label: "Servitude",
           value: "Servitude over Erven 1560 to 1580",
@@ -332,7 +332,7 @@ describe("evidence pack with a parent General Plan", () => {
         page: 1,
       }),
       claim({
-        domain: "planning",
+        domain: "deeds",
         key: "servitudes",
         label: "Servitude",
         value: "3 m municipal servitude along the northern boundary",
