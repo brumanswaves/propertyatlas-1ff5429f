@@ -673,7 +673,7 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("buildStrategySectionModel");
     expect(dossier).toContain("ReportSitePotentialSection");
     expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
-    expect(dossier).toContain("Return to Site Potential");
+    expect(dossier).toContain("onOpenSitePotential");
     expect(dossier).toContain("sitePotentialSkipped");
     expect(dossier).toContain("sitePotentialReportModeLabel");
     expect(dossier).toContain("Stable asset ID");
