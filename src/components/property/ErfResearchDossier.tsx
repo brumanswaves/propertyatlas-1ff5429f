@@ -63,6 +63,8 @@ import { useSitePotentialProject } from "@/lib/sitePotential/sitePotentialServic
 import { SITE_POTENTIAL_DISCLAIMER } from "@/lib/sitePotential/config";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 import { StrategyLab } from "./strategy/StrategyLab";
+import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
+import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
   buildReportViewModel,
   REPORT_SECTIONS,
@@ -1154,6 +1156,14 @@ const REPORT_PRINT_IFRAME_CSS = `
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .report-print-document .report-opening-header,
+  .report-print-document .report-decision-area,
+  .report-print-document .report-opening figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-print-document .report-decision-area { display: block; }
+  .report-print-document .report-decision-area > * + * { margin-top: 10mm; }
   .report-no-print { display: none !important; }
   img { max-width: 100%; }
 `;
@@ -1467,6 +1477,17 @@ function StoepAiReportView({
   const updateDecisionMode = (mode: ReportDecisionMode) => {
     setDecisionMode(writeReportDecisionMode(parcel.id, mode));
   };
+  const reportDoc = useMemo(
+    () =>
+      composeEasyErfReport({
+        report,
+        pack: report.evidencePack ?? undefined,
+        perspective: decisionMode === "investor" ? "investor" : "home_buyer",
+        decisionMode,
+      }),
+    [decisionMode, report],
+  );
+
   const askSuggestionPayload = useMemo(
     () =>
       buildAskEasyErfEvidencePayload({
@@ -1644,46 +1665,32 @@ function StoepAiReportView({
       className={cn("report-page space-y-5", printOnly && "report-print-document")}
       aria-label={printOnly ? "Printable Easy Erf Report" : undefined}
     >
-      {/* HEADER */}
+      <ReportOpening
+        doc={reportDoc}
+        printOnly={printOnly}
+        onPrint={handlePrint}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        heroSlot={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
+        heroCaption={
+          selectedDesign
+            ? "AI-generated concept visualisation saved to this erf. It is an interpretation, not a photograph or approved plan."
+            : null
+        }
+        askSlot={
+          <AskEasyErfSection
+            suggestionPayload={askSuggestionPayload}
+            evidencePack={report.evidencePack ?? null}
+            decisionMode={decisionMode}
+            onSelectView={onSelectView}
+          />
+        }
+      />
+
+      {/* DECISION INTELLIGENCE */}
       <section
         id="report-brief"
         className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
       >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-              Easy Erf Property Intelligence Report
-              <span className="rounded-full bg-[#FF6A00] px-2 py-[1px] text-[9px] tracking-[0.14em] text-white">
-                Living report
-              </span>
-            </div>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] sm:text-3xl">
-              {report.identity.displayName}
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-[#0D1B2A]/70">
-              {report.identity.officialLine && (
-                <span>{report.identity.officialLine}</span>
-              )}
-              {formatAreaM2WithUnit(report.identity.areaM2) && (
-                <span>· {formatAreaM2WithUnit(report.identity.areaM2)}</span>
-              )}
-              {report.identity.lpi && <span>· LPI {report.identity.lpi}</span>}
-            </div>
-            <p className="mt-2 text-xs text-[#64748B]">
-              Report updated {new Date(report.generatedAt).toLocaleString()} — updates each time you save evidence.
-            </p>
-          </div>
-          <div className="report-no-print flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40 hover:bg-[#fff8ec]"
-            >
-              Print / Save PDF
-            </button>
-          </div>
-        </div>
-
         <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
 
         {/* EXECUTIVE DECISION BRIEF */}
@@ -1902,13 +1909,6 @@ function StoepAiReportView({
         onRequestClear={() => setClearSnapshotsRequested(true)}
         onCancelClear={() => setClearSnapshotsRequested(false)}
         onConfirmClear={handleClearReportSnapshots}
-      />
-
-      <AskEasyErfSection
-        suggestionPayload={askSuggestionPayload}
-        evidencePack={report.evidencePack ?? null}
-        decisionMode={decisionMode}
-        onSelectView={onSelectView}
       />
 
       {/* STICKY REPORT NAV */}
