@@ -20,7 +20,7 @@ describe("parent General Plan lineage matching", () => {
   it("matches when the plan states the proven parent erf and general plan reference", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "1496", township: "HUMANSDORP", sgCode: "GP12252" },
+      { erfNumber: "1496", town: "HUMANSDORP", sgCode: "GP12252" },
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
@@ -36,7 +36,7 @@ describe("parent General Plan lineage matching", () => {
   it("still rejects an unrelated erf's general plan as a mismatch", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "2210", township: "HUMANSDORP", sgCode: "GP99999" },
+      { erfNumber: "2210", town: "HUMANSDORP", sgCode: "GP99999" },
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
@@ -51,7 +51,7 @@ describe("parent General Plan lineage matching", () => {
   it("rejects a parent plan when no matched document has proven the lineage", () => {
     const result = matchDocumentIdentity(
       expected,
-      { erfNumber: "1496", township: "HUMANSDORP", sgCode: "GP12252" },
+      { erfNumber: "1496", town: "HUMANSDORP", sgCode: "GP12252" },
       {
         assetCategory: "sg_diagram",
         documentType: "General Plan",
