@@ -635,12 +635,20 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
     if (!item || typeof item.key !== "string" || !item.key) continue;
     const value = typeof item.value === "string" ? item.value.trim() : "";
     if (!value) continue;
-    const domain = (item.domain ?? "documents") as EvidenceDomain;
+    const rawDomain = (item.domain ?? "documents") as EvidenceDomain;
+    // Defence in depth: a parent plan may never state this erf's identity
+    // (extent, erf number, LPI), whatever scope the extraction claimed.
+    if (parentLineage && rawDomain === "identity") continue;
+    if (parentLineage && (rawDomain === "ownership" || rawDomain === "valuation" || rawDomain === "transfers")) {
+      continue;
+    }
+    const domain = rawDomain;
     // Only a value the extraction policy actually scoped to the parent plan is
     // context-only. A note explicitly printed as affecting this erf stays a
     // real subject claim even when it came off the parent General Plan.
     const parentScoped = item.scope === "parent_plan";
     const fromParentPlan = parentLineage && !parentScoped;
+
     const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
       ? item.numericValue
       : null;
