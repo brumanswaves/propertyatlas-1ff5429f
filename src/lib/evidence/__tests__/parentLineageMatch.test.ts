@@ -409,6 +409,7 @@ describe("Ask Easy Erf parent-plan context", () => {
       }),
       workspaceState: createEmptyErfWorkspaceState(),
       savedEvidence: [],
+      marketAddress: null,
       assets,
       chosenScenario: null,
       strategyScenarios: [],
