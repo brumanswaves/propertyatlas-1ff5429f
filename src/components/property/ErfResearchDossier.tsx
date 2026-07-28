@@ -66,6 +66,12 @@ import { StrategyLab } from "./strategy/StrategyLab";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
+  erfAssetExtractionLabel,
+  erfAssetExtractionStatus,
+  erfAssetIdentityMatchStatus,
+  isExtractableErfAsset,
+} from "@/lib/evidence/extractionMetadata";
+import {
   buildReportViewModel,
   REPORT_SECTIONS,
   type EvidenceBadge,
@@ -2305,8 +2311,9 @@ function StoepAiReportView({
       >
         <ReportSectionTitle eyebrow="Evidence & Documents" title="Uploaded files and source documents" />
         <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-          Stored in the cloud Erf File Vault for reference. Easy Erf AI extraction and PDF analysis
-          are not enabled yet.
+          Stored in the cloud Erf File Vault. Each file shows whether Easy Erf actually read it and
+          matched it to this erf. Storing a file does not make it evidence, and only the states
+          below are used by the report.
         </p>
         {fileVault.assets.length ? (
           <div className="mt-4 space-y-4">
@@ -2330,6 +2337,7 @@ function StoepAiReportView({
                       <p className="mt-1 text-xs text-[#0D1B2A]/60">
                         {formatAssetSize(file.size_bytes)} - uploaded {formatAssetDate(file.created_at)}
                       </p>
+                      <AssetExtractionStatusChip asset={file} />
                       <button
                         type="button"
                         onClick={() => void openVaultAsset(file)}
