@@ -532,8 +532,8 @@ function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfA
       : state === "wrong_property"
         ? "An uploaded ownership report describes a different property, so none of its contents are used. Upload the correct report for this erf."
         : state === "uploaded_not_searchable"
-          ? "An ownership report is stored for this erf, but no ownership value has been read and matched to it yet, so ownership remains unestablished."
-          : `Ownership has not been established for this erf. ${
+          ? "Ownership is not verified. An ownership report is stored for this erf, but no ownership value has been read and matched to it yet."
+          : `Ownership is not verified and has not been established for this erf. ${
               pack.domains.find((domain) => domain.domain === "ownership")?.nextAction ??
               "Add a title deed, WinDeed or Lightstone report to establish ownership."
             }`;
