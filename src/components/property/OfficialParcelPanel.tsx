@@ -44,6 +44,14 @@ import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
+import {
+  erfAssetExtractionLabel,
+  erfAssetExtractionStatus,
+  erfAssetIdentityMatchStatus,
+  isExtractableErfAsset,
+} from "@/lib/evidence/extractionMetadata";
+
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
   marketAddressToPropertyIdentityOverride,
@@ -382,10 +390,37 @@ function SgDiagramEvidenceSection({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcelId, ["sg_diagram"]);
   const attachments = vault.assets;
+  const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
 
   useEffect(() => {
     onAttachmentCountChange?.(attachments.length);
   }, [attachments.length, onAttachmentCountChange]);
+
+  /**
+   * Sends one SG diagram to the server-side reader so the diagram becomes
+   * searchable evidence instead of a stored-but-opaque file. Never blocks the
+   * upload itself: the file is already safe in the vault by this point.
+   */
+  async function readDiagram(asset: ErfAsset, retry = false) {
+    setReadingAssetId(asset.id);
+    try {
+      const outcome = await extractErfAsset(asset.id, { expectedParcelId: parcelId, retry });
+      if (outcome.success) {
+        if (outcome.claimCount > 0) {
+          toast.success(`Read ${outcome.claimCount} values from ${asset.original_file_name}.`);
+        } else {
+          toast.warning(`No readable diagram text was found in ${asset.original_file_name}.`);
+        }
+      } else {
+        toast.error(outcome.error);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Reading this diagram failed.");
+    } finally {
+      setReadingAssetId(null);
+      await vault.refresh();
+    }
+  }
 
   async function uploadFiles(files: FileList | null | undefined) {
     const list = Array.from(files ?? []);
@@ -395,6 +430,7 @@ function SgDiagramEvidenceSection({
       return;
     }
     let savedCount = 0;
+    const uploaded: ErfAsset[] = [];
     for (const file of list) {
       const result = await vault
         .upload({
@@ -419,15 +455,21 @@ function SgDiagramEvidenceSection({
         continue;
       }
       savedCount += 1;
+      if (result.asset) uploaded.push(result.asset);
     }
     if (!savedCount) return;
     onAttachmentCountChange?.(attachments.length + savedCount);
     onOpenSource("sg-diagram-evidence");
     toast.success(
       savedCount === 1
-        ? "SG diagram file saved to the Erf File Vault."
-        : `${savedCount} SG diagram files saved to the Erf File Vault.`,
+        ? "SG diagram file saved to the Erf File Vault. Reading it now."
+        : `${savedCount} SG diagram files saved to the Erf File Vault. Reading them now.`,
     );
+    // Extraction runs after the upload has already succeeded, so a reader
+    // failure can never lose the user's file.
+    for (const asset of uploaded) {
+      await readDiagram(asset);
+    }
   }
 
   async function removeAttachment(attachment: ErfAsset) {
@@ -435,6 +477,7 @@ function SgDiagramEvidenceSection({
     onAttachmentCountChange?.(Math.max(0, attachments.length - 1));
     toast.success("SG diagram attachment removed");
   }
+
 
   return (
     <article className="rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white p-4">
@@ -536,9 +579,12 @@ function SgDiagramEvidenceSection({
             <SgAttachmentCard
               key={attachment.id}
               attachment={attachment}
+              reading={readingAssetId === attachment.id}
               onOpen={() => void vault.open(attachment)}
+              onRead={(retry) => void readDiagram(attachment, retry)}
               onRemove={() => void removeAttachment(attachment)}
             />
+
           ))}
         </div>
       ) : (
@@ -553,13 +599,30 @@ function SgDiagramEvidenceSection({
 
 function SgAttachmentCard({
   attachment,
+  reading,
   onOpen,
+  onRead,
   onRemove,
 }: {
   attachment: ErfAsset;
+  reading: boolean;
   onOpen: () => void;
+  onRead: (retry: boolean) => void;
   onRemove: () => void;
 }) {
+  const status = erfAssetExtractionStatus(attachment);
+  const identity = erfAssetIdentityMatchStatus(attachment);
+  const readable = isExtractableErfAsset(attachment);
+  // A diagram that was never read, failed, or produced nothing must always be
+  // retryable — a silently reference-only diagram is not acceptable evidence.
+  const needsRetry =
+    status === "failed" ||
+    status === "partial" ||
+    status === "unsupported" ||
+    status === "not_started" ||
+    identity === "unverified";
+  const statusLabel = reading ? "Extracting diagram..." : erfAssetExtractionLabel(attachment, "diagram");
+
   return (
     <div className="rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -573,12 +636,41 @@ function SgAttachmentCard({
             <div>Uploaded: {formatAttachmentDate(attachment.created_at)}</div>
             <div>Source: {attachment.source_label}</div>
           </dl>
+          <div
+            className={cn(
+              "mt-2 inline-flex w-fit items-center rounded-full px-3 py-1 text-[11px] font-semibold",
+              identity === "mismatch"
+                ? "bg-[#fff1e9] text-[#7A2D12]"
+                : status === "ready"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-[#0D1B2A]/8 text-[#0D1B2A]/68",
+            )}
+          >
+            {statusLabel}
+          </div>
+          {identity === "mismatch" && (
+            <p className="mt-2 text-xs font-medium leading-5 text-[#7A2D12]">
+              This diagram describes a different property, so its contents are not used as evidence
+              for this erf.
+            </p>
+          )}
           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
             SG evidence saved in the cloud Erf File Vault. This records evidence, not legal
             verification.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {readable && identity !== "mismatch" && (
+            <button
+              type="button"
+              disabled={reading}
+              onClick={() => onRead(needsRetry)}
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-emerald-700/20 bg-white px-4 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reading ? "Extracting diagram..." : needsRetry ? "Retry extraction" : "Read diagram"}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpen}

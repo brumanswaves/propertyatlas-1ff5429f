@@ -22,13 +22,27 @@ export const ERF_EXTRACTION_MAX_TEXT_CHARS = 40_000;
 export const ERF_EXTRACTION_MAX_QUOTE_CHARS = 300;
 export const ERF_EXTRACTION_MAX_CLAIMS = 60;
 
-export const ERF_EXTRACTION_SUPPORTED_MIME_TYPES = [
+/**
+ * TIFF is the native Surveyor-General diagram format. OpenAI vision does NOT
+ * accept it, so it is accepted here only as a *normalizable* type: the Edge
+ * Function must convert it to PNG before any model call.
+ */
+export const ERF_EXTRACTION_TIFF_MIME_TYPES = ["image/tiff", "image/tif", "image/x-tiff"] as const;
+
+/** MIME types that may be sent to the model exactly as stored. */
+export const ERF_EXTRACTION_DIRECT_MIME_TYPES = [
   "application/pdf",
   "image/png",
   "image/jpeg",
   "image/jpg",
   "image/webp",
 ] as const;
+
+export const ERF_EXTRACTION_SUPPORTED_MIME_TYPES = [
+  ...ERF_EXTRACTION_DIRECT_MIME_TYPES,
+  ...ERF_EXTRACTION_TIFF_MIME_TYPES,
+] as const;
+
 
 export type ErfExtractionStatus =
   | "not_started"
@@ -71,6 +85,7 @@ export const ERF_EXTRACTION_DOMAINS = [
   "transfers",
   "environment",
   "infrastructure",
+  "documents",
 ] as const;
 
 export type ErfExtractionDomain = (typeof ERF_EXTRACTION_DOMAINS)[number];
@@ -80,18 +95,92 @@ export type ErfExtractionDomain = (typeof ERF_EXTRACTION_DOMAINS)[number];
  * invented, so extraction can never smuggle a new vocabulary into the pack.
  */
 export const ERF_EXTRACTION_KEYS: Record<ErfExtractionDomain, readonly string[]> = {
-  identity: ["erfNumber", "portionNumber", "township", "areaM2", "sgCode", "lpiCode", "municipality", "province"],
+  identity: [
+    "erfNumber",
+    "portionNumber",
+    "township",
+    "areaM2",
+    "sgCode",
+    "lpiCode",
+    "municipality",
+    "province",
+    // Surveyor-General cadastral identity.
+    "parentErfNumber",
+    "parentPortionNumber",
+    "diagramNumber",
+    "generalPlanNumber",
+    "registeredExtent",
+  ],
   // Owner identity/registration numbers are deliberately NOT extractable:
   // they are personal data with no decision value in this product.
   ownership: ["registeredOwner", "ownerType", "ownershipShare", "coOwners"],
 
-  deeds: ["titleDeedNumber", "registrationDate", "conditionsOfTitle", "servitudes", "bondHolder", "bondAmount"],
-  planning: ["zoning", "landUse", "coverage", "far", "heightRestriction", "buildingLines", "densityUnits"],
+  deeds: [
+    "titleDeedNumber",
+    "registrationDate",
+    "conditionsOfTitle",
+    "servitudes",
+    "bondHolder",
+    "bondAmount",
+    // Restrictions a diagram can show explicitly.
+    "easements",
+    "rightsOfWay",
+    "endorsements",
+    "roadWidening",
+    "restrictions",
+  ],
+  planning: [
+    "zoning",
+    "landUse",
+    "coverage",
+    "far",
+    "heightRestriction",
+    "buildingLines",
+    "densityUnits",
+    // Setback / reserve geometry printed on a diagram.
+    "setbacks",
+    "noBuildArea",
+    "reserveLine",
+  ],
   valuation: ["municipalValue", "valuationDate", "estimatedMarketValue", "ratesAmount"],
   transfers: ["lastSalePrice", "lastSaleDate", "previousOwner", "transferDutyPaid"],
   environment: ["floodRisk", "heritageStatus", "geotechnicalNote", "coastalSetback"],
   infrastructure: ["waterConnection", "electricityConnection", "sewerConnection", "roadAccess"],
+  // Provenance of the document itself, not a fact about land rights.
+  documents: [
+    "surveyorName",
+    "surveyDate",
+    "approvalDate",
+    "beaconNotes",
+    "boundaryNotes",
+    "adjoiningErven",
+    "diagramAnnotations",
+    "documentStatus",
+  ],
 };
+
+/**
+ * Surveyor-General diagrams show geometry and survey provenance. They never
+ * state who owns the land today, what it may be used for, or what it is worth,
+ * so those domains are dropped deterministically rather than trusted to the
+ * prompt.
+ */
+export const SG_DIAGRAM_FORBIDDEN_DOMAINS: readonly ErfExtractionDomain[] = [
+  "ownership",
+  "valuation",
+  "transfers",
+];
+
+/** Planning keys a diagram may never assert (rights, not geometry). */
+export const SG_DIAGRAM_FORBIDDEN_KEYS: Readonly<Record<string, readonly string[]>> = {
+  planning: ["zoning", "landUse", "coverage", "far", "densityUnits", "heightRestriction"],
+};
+
+/** True when this asset category is a Surveyor-General diagram. */
+export function isSgDiagramCategory(assetCategory: string | null | undefined) {
+  return String(assetCategory ?? "").trim().toLowerCase() === "sg_diagram";
+}
+
 
 export type ErfExtractionUnit = "m2" | "ZAR" | "percent" | "m" | "ratio" | "date" | null;
 
@@ -109,6 +198,12 @@ export interface ErfExtractedClaim {
   /** Verbatim supporting quote from the document. */
   quote: string;
   confidence: "high" | "medium" | "low";
+  /**
+   * True when the value is the model's reading of a drawing rather than text
+   * printed on it. Interpretation never becomes a supported fact.
+   */
+  interpretation: boolean;
+
 }
 
 export interface ErfExtractionResult {
@@ -143,12 +238,16 @@ export interface ErfExtractionMetadataPatch {
   extractedIdentity?: ErfExtractedIdentity | null;
   /** Parent erf / general-plan provenance retained separately from the subject. */
   documentLineage?: ErfLegalPortionToken | null;
+  /** Media provenance for normalised (e.g. TIFF -> PNG) inputs. Never bytes. */
+  originalMimeType?: string | null;
+  normalizedExtractionMimeType?: string | null;
+
 
   extractionRequestId?: string | null;
   extractionStartedAt?: string | null;
 }
 
-export const ERF_EXTRACTION_VERSION = 2;
+export const ERF_EXTRACTION_VERSION = 3;
 
 /** Largest accepted request body, checked before JSON parsing. */
 export const ERF_EXTRACTION_MAX_REQUEST_BYTES = 4_096;
@@ -220,11 +319,26 @@ export function normalizeExtractedClaim(raw: unknown): ErfExtractedClaim | null 
     confidenceRaw === "high" || confidenceRaw === "low" ? confidenceRaw : "medium";
 
   const numericValue = unit === "date" ? null : toNumeric(item.numericValue ?? value);
+  const interpretation = item.interpretation === true;
 
-  return { domain, key, label, value, numericValue, unit, page, quote, confidence };
+  return { domain, key, label, value, numericValue, unit, page, quote, confidence, interpretation };
 }
 
-export function normalizeExtractionResult(raw: unknown): ErfExtractionResult | null {
+/**
+ * True when a claim is one this asset category is allowed to make at all.
+ * Enforced in code, so a prompt-injected or hallucinated ownership/zoning
+ * claim on an SG diagram is dropped rather than trusted.
+ */
+export function isClaimAllowedForCategory(claim: ErfExtractedClaim, assetCategory: string | null | undefined) {
+  if (!isSgDiagramCategory(assetCategory)) return true;
+  if (SG_DIAGRAM_FORBIDDEN_DOMAINS.includes(claim.domain)) return false;
+  return !(SG_DIAGRAM_FORBIDDEN_KEYS[claim.domain] ?? []).includes(claim.key);
+}
+
+export function normalizeExtractionResult(
+  raw: unknown,
+  options: { assetCategory?: string | null } = {},
+): ErfExtractionResult | null {
   if (!raw || typeof raw !== "object") return null;
   const item = raw as Record<string, unknown>;
   const extractedText = sanitizeExtractedText(item.extractedText);
@@ -234,12 +348,14 @@ export function normalizeExtractionResult(raw: unknown): ErfExtractionResult | n
   for (const entry of claimsRaw) {
     const claim = normalizeExtractedClaim(entry);
     if (!claim) continue;
+    if (!isClaimAllowedForCategory(claim, options.assetCategory)) continue;
     const dedupeKey = `${claim.domain}:${claim.key}:${claim.value.toLowerCase()}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
     claims.push(claim);
     if (claims.length >= ERF_EXTRACTION_MAX_CLAIMS) break;
   }
+
   // An empty-but-valid result is NOT malformed: the caller reports it as
   // "no readable text" so the user gets an accurate reason.
 
@@ -257,8 +373,8 @@ export function normalizeExtractionResult(raw: unknown): ErfExtractionResult | n
   };
 }
 
-export function erfExtractionSystemPrompt() {
-  return [
+export function erfExtractionSystemPrompt(assetCategory?: string | null) {
+  const base = [
     "You extract structured property facts from a South African property document.",
     "",
     "Absolute rules:",
@@ -270,6 +386,29 @@ export function erfExtractionSystemPrompt() {
     "6. extractedText must be the readable text of the document in reading order, no commentary added.",
     "7. Use the allowed domain and key vocabulary only. Drop anything that does not fit it.",
     "8. Fill the identity object with the property identifiers literally printed in the document (erf number, portion, LPI code, SG code, street address, suburb or town, municipality, province). Use null for anything not printed. Never infer identity from context.",
+    "9. Set interpretation=true when a value is your reading of the drawing rather than text printed on it. Printed text is interpretation=false.",
+  ];
+
+  if (isSgDiagramCategory(assetCategory)) {
+    base.push(
+      "",
+      "This document is a Surveyor-General (SG) cadastral diagram or general plan.",
+      "",
+      "SG rules:",
+      "A. The subject property is the parcel the diagram is OF, normally the largest labelled figure with its own extent and beacons.",
+      "B. Numbers of neighbouring parcels printed outside the subject figure are ADJOINING ERVEN. Report them only under documents.adjoiningErven. Never place them in identity.erfNumber.",
+      "C. A parent erf, 'PTN OF <n>', 'portion of Erf <n>' or a general plan reference describes lineage. Report them under identity.parentErfNumber / identity.parentPortionNumber / identity.generalPlanNumber. Never place them in identity.erfNumber or identity.portionNumber.",
+      "D. Diagram numbers, SG numbers, GP numbers, beacon labels, bearings and distances are never the subject erf or portion number.",
+      "E. Report the stated extent exactly as printed under identity.registeredExtent, and also as identity.areaM2 with unit m2 when it is given in square metres.",
+      "F. Servitudes, easements, rights of way, endorsements, road widenings and reserves count only when explicitly labelled on the diagram.",
+      "G. Building lines, setbacks, no-build strips and reserve lines count only when a dimension or label is printed for them.",
+      "H. Never state ownership, zoning, permitted land use, coverage, FAR, density, height rights, market value or sale price. A diagram does not establish any of them.",
+      "I. When a line or annotation is visible but its meaning is not printed, either omit it or report it with interpretation=true — never as a stated servitude or building line.",
+    );
+  }
+
+  return [
+    ...base,
     "",
     "Allowed domain -> keys:",
     ...ERF_EXTRACTION_DOMAINS.map((domain) => `- ${domain}: ${ERF_EXTRACTION_KEYS[domain].join(", ")}`),
@@ -278,6 +417,7 @@ export function erfExtractionSystemPrompt() {
     "Set warning when the document is partly unreadable, scanned poorly, or truncated.",
   ].join("\n");
 }
+
 
 export function erfExtractionResponseFormat() {
   return {
@@ -320,7 +460,18 @@ export function erfExtractionResponseFormat() {
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["domain", "key", "label", "value", "numericValue", "unit", "page", "quote", "confidence"],
+              required: [
+                "domain",
+                "key",
+                "label",
+                "value",
+                "numericValue",
+                "unit",
+                "page",
+                "quote",
+                "confidence",
+                "interpretation",
+              ],
               properties: {
                 domain: { type: "string", enum: [...ERF_EXTRACTION_DOMAINS] },
                 key: { type: "string" },
@@ -331,7 +482,9 @@ export function erfExtractionResponseFormat() {
                 page: { type: ["integer", "null"] },
                 quote: { type: "string" },
                 confidence: { type: "string", enum: ["high", "medium", "low"] },
+                interpretation: { type: "boolean" },
               },
+
             },
           },
         },

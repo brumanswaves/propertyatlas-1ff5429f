@@ -1962,7 +1962,11 @@ function StoepAiReportView({
             value={report.identity.marketAddressLine}
             badge="user_confirmed"
           />
+          {report.identity.cadastral.map((row) => (
+            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
+          ))}
         </dl>
+
         {report.identity.addressAndOfficialMismatch && (
           <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
             Possible mismatch: the saved market address municipality differs from the official parcel
