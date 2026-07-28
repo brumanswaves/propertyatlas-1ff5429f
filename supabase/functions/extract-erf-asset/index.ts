@@ -283,10 +283,15 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
       if (metadata.identityMatchStatus !== "matched") continue;
       const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
       const fromLineage = raw && typeof raw === "object" ? raw : null;
+      // Fall back to the legal-description token the matched document stated.
+      const identityRaw = metadata.extractedIdentity as Record<string, unknown> | null | undefined;
+      const parsed = parseLegalPortionToken(
+        identityRaw && typeof identityRaw === "object" ? identityRaw.portionNumber : null,
+      );
       const parentErfNumber =
         typeof fromLineage?.parentErfNumber === "string" && fromLineage.parentErfNumber
           ? fromLineage.parentErfNumber
-          : null;
+          : parsed.parentErfNumber;
       if (!parentErfNumber) continue;
       const generalPlanReference =
         typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
