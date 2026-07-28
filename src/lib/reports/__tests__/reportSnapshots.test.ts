@@ -59,7 +59,6 @@ function snapshot(overrides: SnapshotOverrides = {}): ReportSnapshot {
       province: "Eastern Cape",
       marketAddressLine: "8 Harbour Road",
       areaM2: 721,
-      cadastral: [],
     },
     decision: {
       verdict: "investigate_further",
@@ -189,6 +188,7 @@ function report(overrides: Partial<ReportViewModel> = {}): ReportViewModel {
       sourceLabel: "Kouga SG Properties",
       coordinates: { lng: 24.8, lat: -34.1 },
       areaM2: 721,
+      cadastral: [],
     },
     ownership: {
       hasUploadedReport: false,

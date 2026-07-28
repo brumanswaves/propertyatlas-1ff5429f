@@ -6,7 +6,7 @@ import type {
   SavedMarketEvidence,
 } from "@/features/marketEvidence/types";
 import type { DecisionIntelligence } from "./buildDecisionIntelligence";
-import type { ReportViewModel, RiskItem } from "./buildReportViewModel";
+import type { EvidenceBadge, ReportViewModel, RiskItem } from "./buildReportViewModel";
 import type { ReportDecisionMode } from "./reportDecisionMode";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
