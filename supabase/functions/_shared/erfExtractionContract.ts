@@ -955,19 +955,21 @@ export function isClaimExplicitlyTiedToSubjectErf(
   for (const raw of candidates) {
     const text = raw.replace(/[\u00a0]/g, " ").replace(/\s+/g, " ");
     if (NON_SPECIFIC_LIST_CONTEXT.test(text)) continue;
-    const pattern = /\b(erf|erven|stand|stands|portion|portions|ptn)\s*(?:nos?\.?\s*)?([0-9][0-9\s,&/–—-]*[0-9]|[0-9])/gi;
+    // Only the first integer immediately following a singular identifier is
+    // read as the parcel number. Anything after it (dimensions, extents,
+    // building lines) is separate text and must never be absorbed here.
+    const pattern = /\b(erf|erven|stand|stands|portion|portions|ptn)\s*(?:nos?\.?\s*)?(\d+)/gi;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
       const keyword = match[1].toLowerCase();
-      const enumeration = match[2];
+      const erfNumber = match[2];
       // A plural keyword always describes a group, never this erf alone.
       if (keyword === "erven" || keyword === "stands" || keyword === "portions") continue;
-      // A range or comma/ampersand list is a group reference, not this erf.
-      if (/[,&/–—-]/.test(enumeration)) continue;
-      // "Erf 1570 to 1580" — a range written with a word.
-      const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 12);
-      if (/^\s*(?:to|-|–|—|and|&)\s*\d/i.test(tail)) continue;
-      if (normNumber(enumeration) === subject) return true;
+      // What immediately follows decides whether this is a group reference:
+      // "1560-1580", "1569, 1570", "1569 & 1570", "1560 to 1580" all are.
+      const tail = text.slice(match.index + match[0].length, match.index + match[0].length + 16);
+      if (/^\s*(?:[,&/]|-|–|—|\bto\b|\band\b|\ben\b)\s*\d/i.test(tail)) continue;
+      if (normNumber(erfNumber) === subject) return true;
     }
   }
   return false;
