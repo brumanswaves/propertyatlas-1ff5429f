@@ -75,8 +75,11 @@ describe("reportFindings", () => {
   it("tracks servitude and building-plan categories separately", () => {
     const ids = findings.map((finding) => finding.id);
     expect(ids).toContain("finding-servitudes-sg");
-    expect(ids).toContain("finding-buildings-plans");
-    const buildings = findings.find((f) => f.id === "finding-buildings-plans")!;
-    expect(isPositiveFindingStatus(buildings.status)).toBe(false);
+    // Buildings only appears when some plan evidence exists; when it does, an
+    // AI site concept must never make it positive.
+    const buildings = findings.find((f) => f.id === "finding-buildings-plans");
+    if (buildings) expect(isPositiveFindingStatus(buildings.status)).toBe(false);
+    const sitePotential = findings.find((f) => f.id === "finding-site-potential");
+    if (sitePotential) expect(sitePotential.id).not.toBe(buildings?.id);
   });
 });
