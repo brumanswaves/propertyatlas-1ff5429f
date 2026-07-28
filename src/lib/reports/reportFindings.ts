@@ -82,9 +82,15 @@ export function isPositiveFindingStatus(status: ReportFindingStatus): boolean {
 }
 
 const OWNERSHIP_CLAIM_KEYS = ["registeredOwner", "ownerType", "ownershipShare", "coOwners"];
-/** Servitude / building-line evidence that is genuinely scoped to this erf. */
-const SERVITUDE_DEED_KEYS = ["conditionsOfTitle", "servitudes", "titleConditions"];
-const SERVITUDE_PLANNING_KEYS = ["servitudes", "buildingLines"];
+/**
+ * Servitude / building-line evidence that is genuinely scoped to this erf.
+ * A generic `conditionsOfTitle` claim is deliberately excluded: the mere
+ * existence of some title condition says nothing about servitudes and may
+ * never make this category positive.
+ */
+const SERVITUDE_DEED_KEYS = ["servitudes", "servitudeConditions", "rightOfWay"];
+const SERVITUDE_PLANNING_KEYS = ["servitudes", "buildingLines", "rightOfWay"];
+
 /** Approved-building evidence. Site Potential concepts are excluded by design. */
 const BUILDING_CLAIM_KEYS = [
   "approvedBuildingPlans",
@@ -180,6 +186,53 @@ function hasQualifiedSupport(
       ids.has(source.id) &&
       authorities.includes(source.authorityType) &&
       !WEAK_SOURCE_QUALITIES.includes(source.sourceQuality),
+  );
+}
+
+/**
+ * A matched paid-provider document (for example a deeds report) is real,
+ * qualified evidence for legal conditions even though its extracted text is
+ * treated as untrusted content everywhere else. It must still be a stated
+ * fact about this erf, so parent General Plan context and drawing
+ * interpretations are removed before this test runs.
+ */
+function subjectFactClaims(claims: EvidenceClaim[]): EvidenceClaim[] {
+  return claims.filter(
+    (claim) =>
+      claim.nature === "fact" &&
+      !/general plan|parent/i.test(claim.confidenceReason ?? "") &&
+      !/general plan|parent/i.test(claim.notes ?? ""),
+  );
+}
+
+function hasMatchedPaidDocumentSupport(
+  pack: PropertyEvidencePack,
+  claims: EvidenceClaim[],
+): boolean {
+  const ids = new Set(claims.flatMap((claim) => claim.sourceIds));
+  return pack.sources.some(
+    (source) =>
+      ids.has(source.id) &&
+      source.authorityType === "paid_provider" &&
+      source.status === "ready",
+  );
+}
+
+/**
+ * A municipal/official document (approved plan set, occupancy certificate)
+ * that was read and matched to this erf. Architectural plans, notes, listings
+ * and AI concepts are deliberately excluded.
+ */
+function hasMatchedOfficialDocumentSupport(
+  pack: PropertyEvidencePack,
+  claims: EvidenceClaim[],
+): boolean {
+  const ids = new Set(claims.flatMap((claim) => claim.sourceIds));
+  return pack.sources.some(
+    (source) =>
+      ids.has(source.id) &&
+      source.asset?.category === "official_document" &&
+      source.status === "ready",
   );
 }
 
@@ -339,24 +392,29 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   }
 
   // 5. Area discrepancy -----------------------------------------------------
-  if (officialAreaValue && deedExtentValue) {
-    const delta = Math.abs(officialAreaValue - deedExtentValue);
-    if (delta / Math.max(officialAreaValue, deedExtentValue) > 0.005) {
-      add({
-        id: "finding-area-discrepancy",
-        category: "legal",
-        status: "conflicting",
-        severity: "medium",
-        headline: "Cadastral area and registered extent differ",
-        whatWeFound: `Official cadastral area ${officialAreaValue.toLocaleString("en-ZA")} m² vs registered extent ${deedExtentValue.toLocaleString("en-ZA")} m².`,
-        whatItMeans:
-          "Both figures are kept. A conveyancer or land surveyor must confirm which extent applies before it is used in pricing or planning.",
-        confidence: "low",
-        claimIds: [officialArea!.id, deedExtent!.id],
-        sourceIds: uniq([...officialArea!.sourceIds, ...deedExtent!.sourceIds]),
-      });
-    }
+  // The discrepancy itself is canonical: it lives in the evidence pack as a
+  // contradiction. This finding only reads it, so the report can never invent
+  // a discrepancy the evidence layer did not record.
+  const areaDiscrepancy = pack.contradictions.find(
+    (item) => item.id === "official-area-vs-registered-extent",
+  );
+  if (areaDiscrepancy && officialAreaValue && deedExtentValue) {
+    add({
+      id: "finding-area-discrepancy",
+      category: "legal",
+      status: "conflicting",
+      severity: "medium",
+      headline: "Cadastral area and registered extent differ",
+      whatWeFound: `Official cadastral area ${officialAreaValue.toLocaleString("en-ZA")} m² vs registered extent ${deedExtentValue.toLocaleString("en-ZA")} m².`,
+      whatItMeans:
+        "Both figures are kept. A conveyancer or land surveyor must confirm which extent applies before it is used in pricing or planning.",
+      confidence: "low",
+      claimIds: uniq([...areaDiscrepancy.claimIds, officialArea!.id, deedExtent!.id]),
+      sourceIds: uniq([...areaDiscrepancy.sourceIds, ...officialArea!.sourceIds, ...deedExtent!.sourceIds]),
+      contradictionIds: [areaDiscrepancy.id],
+    });
   }
+
 
   // 6. Ownership ------------------------------------------------------------
   const ownershipClaims = supported(claimsFor(pack, "ownership", OWNERSHIP_CLAIM_KEYS));
@@ -444,33 +502,41 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   }
 
   // 8b. Servitudes / SG -----------------------------------------------------
-  // Only a subject-scoped supported servitude or building-line claim, or a
-  // title/deed servitude condition, may make this category positive. An
-  // uploaded diagram or a matched parent General Plan is never clearance.
+  // Positive ONLY for an explicit subject-scoped servitude / building-line /
+  // right-of-way claim carried by a qualified matched source. A generic title
+  // condition, a stored diagram or deed, or a matched parent General Plan is
+  // never clearance and never turns this category green.
   const servitudeClaims = supported([
     ...claimsFor(pack, "deeds", SERVITUDE_DEED_KEYS),
     ...claimsFor(pack, "planning", SERVITUDE_PLANNING_KEYS),
   ]);
+  const servitudeSubjectClaims = subjectFactClaims(servitudeClaims);
+  const servitudeQualified =
+    servitudeSubjectClaims.length > 0 &&
+    (hasQualifiedSupport(pack, servitudeSubjectClaims, ["official", "municipal"]) ||
+      hasMatchedPaidDocumentSupport(pack, servitudeSubjectClaims));
   const sgSources = pack.sources.filter(
     (source) => source.asset?.category === "sg_diagram" || source.asset?.category === "title_deed",
   );
-  const sgStatus: ReportFindingStatus = servitudeClaims.length
+  const sgStatus: ReportFindingStatus = servitudeQualified
     ? "supported"
-    : parentLineageGaps.length || sgSources.length || deedClaims.length
+    : servitudeClaims.length || parentLineageGaps.length || sgSources.length || deedClaims.length
       ? "not_checked"
       : "missing";
   add({
     id: "finding-servitudes-sg",
     category: "legal",
     status: sgStatus,
-    severity: servitudeClaims.length ? "information" : "medium",
-    headline: servitudeClaims.length
+    severity: servitudeQualified ? "information" : "medium",
+    headline: servitudeQualified
       ? "Servitude and building-line conditions read for this erf"
-      : parentLineageGaps.length
-        ? "Only parent General Plan context is available for servitudes"
-        : sgSources.length
-          ? "Diagram or deed uploaded, servitude conditions not read yet"
-          : "No servitude or building-line evidence",
+      : servitudeClaims.length
+        ? "Servitude wording found, but not from a qualified matched source"
+        : parentLineageGaps.length
+          ? "Only parent General Plan context is available for servitudes"
+          : sgSources.length
+            ? "Diagram or deed uploaded, servitude conditions not read yet"
+            : "No servitude or building-line evidence",
     whatWeFound: servitudeClaims.length
       ? servitudeClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
       : parentLineageGaps.length
@@ -479,7 +545,7 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
           ? `${sgSources.length} diagram/deed file(s) are stored, but no servitude or building-line value has been read from them.`
           : "No SG diagram, general plan or deed condition has been read for this erf.",
     whatItMeans:
-      "Servitudes and building lines can only be cleared from this erf's own diagram and title conditions. A stored file, or a matched parent General Plan, is not clearance.",
+      "Servitudes and building lines can only be cleared from this erf's own diagram and title conditions. A stored file, a generic title condition, or a matched parent General Plan is not clearance.",
     confidence: servitudeClaims.length ? weakestConfidence(servitudeClaims) : "unverified",
     claimIds: servitudeClaims.map((claim) => claim.id),
     sourceIds: uniq([...sourceIdsOf(servitudeClaims), ...sgSources.map((source) => source.id)]),
@@ -488,7 +554,9 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
 
   // 8c. Buildings & plans ---------------------------------------------------
   // Deliberately independent of Site Potential: an AI concept is not building
-  // plan evidence and may never make this category positive.
+  // plan evidence and may never make this category positive. Positive requires
+  // qualified official/municipal approved-plan or occupancy evidence scoped to
+  // this parcel, with no unresolved building-plan gap or contradiction.
   const buildingClaims = supported(claimsFor(pack, "planning", BUILDING_CLAIM_KEYS));
   const buildingPlanSources = pack.sources.filter(
     (source) => source.asset?.category === "architectural_plan",
@@ -496,27 +564,45 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   const buildingGaps = pack.gaps.filter(
     (gap) => gap.domain === "planning" && /building plan|occupancy|approved plan/i.test(gap.title),
   );
+  const buildingContradictions = pack.contradictions.filter((item) =>
+    /building plan|occupancy|approved plan|structure/i.test(item.title),
+  );
+  const buildingSubjectClaims = subjectFactClaims(buildingClaims);
+  const buildingQualified =
+    buildingSubjectClaims.length > 0 &&
+    buildingGaps.length === 0 &&
+    buildingContradictions.length === 0 &&
+    (hasQualifiedSupport(pack, buildingSubjectClaims, ["official", "municipal"]) ||
+      hasMatchedOfficialDocumentSupport(pack, buildingSubjectClaims));
   add({
     id: "finding-buildings-plans",
     category: "buildings",
-    status: buildingClaims.length ? "supported" : buildingPlanSources.length ? "not_checked" : "missing",
-    severity: buildingClaims.length ? "information" : "medium",
-    headline: buildingClaims.length
+    status: buildingQualified
+      ? "supported"
+      : buildingClaims.length || buildingPlanSources.length
+        ? "not_checked"
+        : "missing",
+    severity: buildingQualified ? "information" : "medium",
+    headline: buildingQualified
       ? "Approved building information recorded"
-      : buildingPlanSources.length
-        ? "Building plans uploaded but not read as evidence yet"
-        : "No approved building plan evidence",
+      : buildingClaims.length
+        ? "Building information found, but not from a qualified municipal source"
+        : buildingPlanSources.length
+          ? "Building plans uploaded but not read as evidence yet"
+          : "No approved building plan evidence",
     whatWeFound: buildingClaims.length
       ? buildingClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
       : buildingPlanSources.length
         ? `${buildingPlanSources.length} plan file(s) are stored, but no approved-plan value has been read from them.`
         : "No approved building plan, occupancy certificate or recorded structure exists for this erf.",
     whatItMeans:
-      "Whether existing structures are approved can only be answered from municipal building plan records. An AI site concept is not evidence of approved buildings.",
+      "Whether existing structures are approved can only be answered from municipal building plan records. Uploaded architectural plans, user notes and AI site concepts are not evidence of approved buildings.",
     confidence: buildingClaims.length ? weakestConfidence(buildingClaims) : "unverified",
     claimIds: buildingClaims.map((claim) => claim.id),
     sourceIds: uniq([...sourceIdsOf(buildingClaims), ...buildingPlanSources.map((s) => s.id)]),
     gapIds: buildingGaps.map((gap) => gap.id),
+    contradictionIds: buildingContradictions.map((item) => item.id),
+
   });
 
   // 9. Zoning / planning completeness --------------------------------------
@@ -672,6 +758,15 @@ function severityRank(input: { blocking: boolean; importance: "low" | "medium" |
   return 3;
 }
 
+/** Which professional resolves a contradiction, when that is unambiguous. */
+function professionalForContradiction(contradiction: EvidenceContradiction): string | undefined {
+  if (contradiction.id === "official-area-vs-registered-extent") {
+    return "Land surveyor or conveyancer";
+  }
+  if (/deed|owner|transfer|bond/i.test(contradiction.title)) return "Conveyancer";
+  return undefined;
+}
+
 function professionalFor(domain: EvidenceDomain): string | undefined {
   switch (domain) {
     case "ownership":
@@ -722,6 +817,8 @@ export function buildReportActions(
       reason: contradiction.explanation,
       completionCriteria: completionCriteriaFor({ title: contradiction.title, nextAction: contradiction.nextAction }),
       targetTab: contradiction.targetTab ?? "research",
+      professionalType: professionalForContradiction(contradiction),
+
       gapIds: [],
       contradictionIds: [contradiction.id],
     });
