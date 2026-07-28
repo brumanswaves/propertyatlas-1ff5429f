@@ -64,18 +64,19 @@ export interface ReportSectionMeta {
 }
 
 export const REPORT_SECTIONS: ReportSectionMeta[] = [
-  { id: "brief", label: "Decision Brief", anchorId: "report-brief" },
+  { id: "brief", label: "Decision Summary", anchorId: "report-brief" },
   { id: "identity", label: "Property Identity", anchorId: "report-identity" },
   { id: "ownership", label: "Ownership & Deeds", anchorId: "report-ownership" },
+  { id: "sg-evidence", label: "SG & Lineage", anchorId: "report-sg-evidence" },
   { id: "buildings", label: "Buildings & Compliance", anchorId: "report-buildings" },
   { id: "planning", label: "Zoning & Buildability", anchorId: "report-planning" },
   { id: "market", label: "Market Evidence", anchorId: "report-market" },
-  { id: "risk", label: "Risk Register", anchorId: "report-risk" },
+  { id: "strategy", label: "Strategy & Financials", anchorId: "report-strategy" },
   { id: "site", label: "Site Potential", anchorId: "report-site" },
-  { id: "strategy", label: "Strategy Scenarios", anchorId: "report-strategy" },
-  { id: "documents", label: "Evidence & Documents", anchorId: "report-documents" },
-  { id: "recommendations", label: "Recommendations", anchorId: "report-recommendations" },
+  { id: "risk", label: "Risk & Actions", anchorId: "report-risk" },
+  { id: "documents", label: "Evidence Appendix", anchorId: "report-documents" },
 ];
+
 
 export interface RiskItem {
   id: string;

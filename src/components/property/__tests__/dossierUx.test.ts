@@ -591,7 +591,10 @@ describe("official dossier UX guardrails", () => {
   });
 
   it("renders the Easy Erf intelligence dashboard shell without fake paid data", () => {
-    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const dossier = [
+      read("src/components/property/ErfResearchDossier.tsx"),
+      read("src/components/property/dossier/ReportBodySections.tsx"),
+    ].join("\n");
     const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportsTab = read("src/components/property/tabs/ReportsTab.tsx");
@@ -666,23 +669,20 @@ describe("official dossier UX guardrails", () => {
       "requestImageGenerationWithOpenAI",
     );
     expect(read("src/lib/sitePotential/generationWorker.ts")).toContain("downloadReferenceAsset");
-    expect(dossier).toContain("Uploaded files and source documents");
-    expect(dossier).toContain("groupErfAssets");
-    expect(dossier).toContain("workspaceAssetCategory");
+    expect(dossier).toContain("buildEvidenceAppendixRows");
+
     expect(dossier).toContain("getChosenStrategyScenario");
-    expect(dossier).toContain("Chosen strategy scenario");
-    expect(dossier).toContain("Selected property concept");
+    expect(dossier).toContain("buildStrategySectionModel");
+    expect(dossier).toContain("ReportSitePotentialSection");
     expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
-    expect(dossier).toContain("Return to Site Potential");
+    expect(dossier).toContain("onOpenSitePotential");
     expect(dossier).toContain("sitePotentialSkipped");
     expect(dossier).toContain("sitePotentialReportModeLabel");
     expect(dossier).toContain("Stable asset ID");
     expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
-    expect(dossier).toContain("newest saved scenario");
-    expect(dossier).toContain("Open file");
-    expect(dossier).toContain(
-      "Each file shows whether Easy Erf actually read it and",
-    );
+    expect(dossier).toContain("savedStatus");
+    expect(dossier).toContain("Open original");
+    expect(dossier).toContain("whether Easy Erf actually read the");
     expect(dossier).not.toContain("Easy Erf AI extraction and PDF analysis");
 
     expect(dossier).not.toMatch(/PDFs? (have been )?(parsed|analyzed|extracted)/i);
@@ -823,7 +823,6 @@ describe("official dossier UX guardrails", () => {
   });
 });
 
-
 describe("Local Property Team MVP guardrails", () => {
   it("connects the report to a real Local Property Team and hides purchases", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
@@ -847,7 +846,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(localTeam).toContain("Top local Google results");
     expect(localTeam).toContain("Try wider area");
     expect(localTeam).toContain("No matching Google providers were found in this search area.");
-    expect(localTeam).toContain("Service-area businesses may not always appear near the property pin.");
+    expect(localTeam).toContain(
+      "Service-area businesses may not always appear near the property pin.",
+    );
     expect(localTeam).toContain("Add the property address first");
     expect(localTeam).toContain("Go to Market and update address");
     expect(localTeam).toContain("Change address in Market");
@@ -899,7 +900,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).toContain('url.protocol === "https:"');
     expect(serverRoute).not.toContain("dangerouslySetInnerHTML");
     expect(serverRoute).toContain("localitySearchContext(address)");
-    expect(serverRoute).toContain('return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`');
+    expect(serverRoute).toContain(
+      "return hasCoordinates ? searchQuery : `${searchQuery} near ${localitySearchContext(address)}`",
+    );
     expect(serverRoute).toContain("includePureServiceAreaBusinesses");
     expect(serverRoute).toContain("invalid_query");
     expect(serverRoute).toContain("places_not_configured");
@@ -924,7 +927,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).toContain('aria-live="polite"');
     expect(sitePotential).toContain("Eligible concepts can be retried.");
     expect(sitePotential).toContain("Waiting for eligible concepts to be retried.");
-    expect(sitePotential).toContain("failedish && packStatus.terminal && !retryable && !activeWorker");
+    expect(sitePotential).toContain(
+      "failedish && packStatus.terminal && !retryable && !activeWorker",
+    );
   });
 });
 
@@ -990,7 +995,11 @@ describe("Investor Decision Mode guardrails", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
     const investorSource = `${helper}\n${dossier}`;
 
-    expect(investorSource).not.toMatch(/Strong buy|Buy this property|Undervalued|Overvalued|Guaranteed|Great investment|Recommended investment|Expected return|Verified return/i);
-    expect(investorSource).toContain("It does not create a valuation, forecast, offer recommendation, or purchase advice.");
+    expect(investorSource).not.toMatch(
+      /Strong buy|Buy this property|Undervalued|Overvalued|Guaranteed|Great investment|Recommended investment|Expected return|Verified return/i,
+    );
+    expect(investorSource).toContain(
+      "It does not create a valuation, forecast, offer recommendation, or purchase advice.",
+    );
   });
 });
