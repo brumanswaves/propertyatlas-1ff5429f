@@ -7,6 +7,7 @@
  * enforced *before* any file download or OpenAI call.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ERF_EXTRACTION_VERSION } from "../../../../supabase/functions/_shared/erfExtractionContract";
 
 const OPENAI_HOST = "api.openai.com";
 

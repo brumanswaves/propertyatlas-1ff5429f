@@ -449,7 +449,9 @@ describe("historical province naming on pre-1994 survey sheets", () => {
 
   it("still rejects a genuinely different present-day province", () => {
     expect(sheet("Gauteng").status).toBe("mismatch");
-    expect(sheet("Gauteng").reason).toMatch(/province is different/);
+    // A present-day province mismatch blocks the parent-lineage acceptance
+    // path entirely, so the document falls back to the plain erf conflict.
+    expect(sheet("Gauteng").reason).toMatch(/erf 1496, not erf 1570/);
   });
 
   it("treats a superseded province as neither conflict nor corroboration", () => {
