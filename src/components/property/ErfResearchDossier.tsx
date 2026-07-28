@@ -2638,13 +2638,22 @@ function routeTabForInvestor(tab?: string): DossierView {
   }
 }
 
-function ReportSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
+function ReportSectionTitle({
+  eyebrow,
+  title,
+  intro,
+}: {
+  eyebrow: string;
+  title: string;
+  intro?: string;
+}) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
         {eyebrow}
       </div>
       <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">{title}</h3>
+      {intro && <p className="mt-2 max-w-3xl text-xs leading-5 text-[#64748B]">{intro}</p>}
     </div>
   );
 }
