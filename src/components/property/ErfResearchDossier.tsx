@@ -1156,6 +1156,14 @@ const REPORT_PRINT_IFRAME_CSS = `
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .report-print-document .report-opening-header,
+  .report-print-document .report-decision-area,
+  .report-print-document .report-opening figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-print-document .report-decision-area { display: block; }
+  .report-print-document .report-decision-area > * + * { margin-top: 10mm; }
   .report-no-print { display: none !important; }
   img { max-width: 100%; }
 `;
