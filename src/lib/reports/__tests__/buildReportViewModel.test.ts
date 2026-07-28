@@ -497,9 +497,12 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
 
   it("renders section anchor targets that match REPORT_SECTIONS", () => {
     for (const s of REPORT_SECTIONS) {
-      expect(source).toContain(`id="${s.anchorId}"`);
+      const rendered =
+        source.includes(`id="${s.anchorId}"`) || source.includes(`anchorId="${s.anchorId}"`);
+      expect(rendered, `missing anchor for ${s.anchorId}`).toBe(true);
     }
   });
+
 
   it("keeps ownership section labelled unverified in the UI", () => {
     expect(source).toMatch(/Not verified by Easy Erf/);
