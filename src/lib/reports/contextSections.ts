@@ -16,12 +16,7 @@ import type {
 } from "@/lib/evidence/propertyEvidenceTypes";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 
-export type ContextFactSource =
-  | "official"
-  | "document"
-  | "listing"
-  | "user_confirmed"
-  | "unknown";
+export type ContextFactSource = "official" | "document" | "listing" | "user_confirmed" | "unknown";
 
 export const CONTEXT_SOURCE_LABEL: Record<ContextFactSource, string> = {
   official: "Official / map-derived",
@@ -264,9 +259,9 @@ export function buildSiteRiskSectionModel(input: {
     fromClaim(spec.id, spec.label, firstClaim(pack, spec.domains, spec.keys), spec.unknown),
   );
   const supported = facts.filter((fact) => fact.value !== null);
-  const ranked = SITE_CONSTRAINT_ORDER.map((id) =>
-    supported.find((fact) => fact.id === id),
-  ).filter(Boolean) as ContextFact[];
+  const ranked = SITE_CONSTRAINT_ORDER.map((id) => supported.find((fact) => fact.id === id)).filter(
+    Boolean,
+  ) as ContextFact[];
   const top = ranked[0] ?? null;
   const unknownIds = new Set(facts.filter((fact) => fact.value === null).map((fact) => fact.id));
   const missingChecks = SITE_SPECIALIST_CHECKS.filter((check) => {
@@ -408,9 +403,13 @@ export function buildMunicipalServicesSectionModel(input: {
   });
 
   // Monthly estimate only from amounts the source itself states as monthly.
-  const monthlyClaims = SERVICE_FACT_SPECS.filter((spec) => spec.money && spec.id !== "municipal-valuation")
+  const monthlyClaims = SERVICE_FACT_SPECS.filter(
+    (spec) => spec.money && spec.id !== "municipal-valuation",
+  )
     .map((spec) => ({ spec, claim: firstClaim(pack, spec.domains, spec.keys) }))
-    .filter((entry) => entry.claim && isMonthlyClaim(entry.claim) && moneyFromClaim(entry.claim) !== null);
+    .filter(
+      (entry) => entry.claim && isMonthlyClaim(entry.claim) && moneyFromClaim(entry.claim) !== null,
+    );
 
   const monthlyTotal = monthlyClaims.reduce(
     (total, entry) => total + (moneyFromClaim(entry.claim) ?? 0),
@@ -447,7 +446,9 @@ export function buildMunicipalServicesSectionModel(input: {
           value: formatZar(monthlyTotal),
           basis: `Sum of ${monthlyClaims.length} amount(s) the source itself states as monthly: ${monthlyClaims
             .map((entry) => entry.spec.label)
-            .join(", ")}. Items with no supported monthly amount are excluded, so this is a partial figure.`,
+            .join(
+              ", ",
+            )}. Items with no supported monthly amount are excluded, so this is a partial figure.`,
         }
       : null,
     nextStep: missingChecks.length ? "Add municipal account or service evidence" : null,

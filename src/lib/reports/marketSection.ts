@@ -90,7 +90,6 @@ function buildComparableRows(items: SavedMarketEvidence[]): MarketComparableRow[
   });
 }
 
-
 export function isDisplayableAmount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }

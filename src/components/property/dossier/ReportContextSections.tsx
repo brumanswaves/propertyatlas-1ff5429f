@@ -37,10 +37,7 @@ function FactRow({ fact }: { fact: ContextFact }) {
         {fact.label}
       </div>
       <div
-        className={cn(
-          "mt-2 text-sm font-semibold",
-          known ? "text-[#0D1B2A]" : "text-[#0D1B2A]/45",
-        )}
+        className={cn("mt-2 text-sm font-semibold", known ? "text-[#0D1B2A]" : "text-[#0D1B2A]/45")}
       >
         {known ? fact.value : "Not established"}
       </div>
@@ -202,7 +199,9 @@ export function ReportSgLineageSection({
                     data-sg-file={file.id}
                     className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2"
                   >
-                    <div className="text-sm font-semibold break-all text-[#0D1B2A]">{file.name}</div>
+                    <div className="text-sm font-semibold break-all text-[#0D1B2A]">
+                      {file.name}
+                    </div>
                     <div className="mt-1 text-[11px] text-[#64748B]">
                       {file.readLabel}
                       {file.locator ? ` · ${file.locator}` : ""}

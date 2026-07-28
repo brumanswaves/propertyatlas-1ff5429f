@@ -43,13 +43,40 @@ const LINEAGE_SPECS: Array<{
   keys: string[];
   parentContext?: boolean;
 }> = [
-  { label: "SG diagram / reference", domains: ["identity", "documents"], keys: ["sgDiagramNumber", "diagramNumber", "sgReference"] },
-  { label: "General plan", domains: ["identity", "documents"], keys: ["generalPlanNumber", "generalPlan"], parentContext: true },
-  { label: "Parent erf", domains: ["identity"], keys: ["parentErfNumber", "parentErf"], parentContext: true },
-  { label: "Registered extent", domains: ["identity", "deeds"], keys: ["registeredExtent", "extent"] },
-  { label: "Approval date", domains: ["documents", "identity"], keys: ["sgApprovalDate", "approvalDate"] },
+  {
+    label: "SG diagram / reference",
+    domains: ["identity", "documents"],
+    keys: ["sgDiagramNumber", "diagramNumber", "sgReference"],
+  },
+  {
+    label: "General plan",
+    domains: ["identity", "documents"],
+    keys: ["generalPlanNumber", "generalPlan"],
+    parentContext: true,
+  },
+  {
+    label: "Parent erf",
+    domains: ["identity"],
+    keys: ["parentErfNumber", "parentErf"],
+    parentContext: true,
+  },
+  {
+    label: "Registered extent",
+    domains: ["identity", "deeds"],
+    keys: ["registeredExtent", "extent"],
+  },
+  {
+    label: "Approval date",
+    domains: ["documents", "identity"],
+    keys: ["sgApprovalDate", "approvalDate"],
+  },
   { label: "Surveyor", domains: ["documents", "identity"], keys: ["surveyor", "landSurveyor"] },
-  { label: "Township / general plan area", domains: ["identity", "address"], keys: ["township", "generalPlanArea"], parentContext: true },
+  {
+    label: "Township / general plan area",
+    domains: ["identity", "address"],
+    keys: ["township", "generalPlanArea"],
+    parentContext: true,
+  },
 ];
 
 function pickClaim(

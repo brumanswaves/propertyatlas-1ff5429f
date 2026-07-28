@@ -165,7 +165,9 @@ export function ReportMarketSection({
                   <div className="text-base font-semibold tabular-nums text-[#0D1B2A]">
                     {comp.priceLabel ?? "Price not captured"}
                   </div>
-                  <div className="text-[11px] text-[#64748B]">{comp.sizeLabel ?? "Size not captured"}</div>
+                  <div className="text-[11px] text-[#64748B]">
+                    {comp.sizeLabel ?? "Size not captured"}
+                  </div>
                 </div>
                 {comp.url && (
                   <a
@@ -186,7 +188,6 @@ export function ReportMarketSection({
           </p>
         </div>
       )}
-
 
       {model.gaps.length > 0 && (
         <div className="mt-5 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-5">

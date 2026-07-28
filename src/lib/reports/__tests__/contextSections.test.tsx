@@ -11,10 +11,7 @@ import {
   ReportMunicipalSection,
   ReportSgLineageSection,
 } from "@/components/property/dossier/ReportContextSections";
-import type {
-  EvidenceClaim,
-  PropertyEvidencePack,
-} from "@/lib/evidence/propertyEvidenceTypes";
+import type { EvidenceClaim, PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import type { EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
 
 function claim(overrides: Partial<EvidenceClaim>): EvidenceClaim {
