@@ -1511,6 +1511,7 @@ function selectVerifiedRegisteredExtent(assets: ErfAsset[], parcelId: string) {
     if (erfAssetIsParentLineageMatch(asset)) continue;
     for (const claim of erfAssetExtractedClaims(asset)) {
       if (!claim || claim.domain !== "identity" || claim.key !== "areaM2") continue;
+      if (claim.scope === "parent_plan") continue;
       if (typeof claim.quote !== "string" || !claim.quote.trim()) continue;
       if (typeof claim.page !== "number" || !Number.isFinite(claim.page)) continue;
       const numeric =
