@@ -59,6 +59,7 @@ function snapshot(overrides: SnapshotOverrides = {}): ReportSnapshot {
       province: "Eastern Cape",
       marketAddressLine: "8 Harbour Road",
       areaM2: 721,
+      cadastral: [],
     },
     decision: {
       verdict: "investigate_further",
