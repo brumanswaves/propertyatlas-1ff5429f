@@ -126,15 +126,67 @@ function sourceIdsOf(claims: EvidenceClaim[]): string[] {
   return uniq(claims.flatMap((claim) => claim.sourceIds));
 }
 
-function weakestConfidence(claims: EvidenceClaim[]): EvidenceConfidence {
-  const order: EvidenceConfidence[] = ["unverified", "low", "medium", "high"];
-  let best = -1;
+const CONFIDENCE_ORDER: EvidenceConfidence[] = ["unverified", "low", "medium", "high"];
+
+/**
+ * Mixed evidence is only ever as strong as its weakest claim. Returning the
+ * strongest value here would silently overstate a finding, so the weakest
+ * confidence actually present always wins, and no claims means unverified.
+ */
+export function weakestConfidence(claims: EvidenceClaim[]): EvidenceConfidence {
+  let weakest = -1;
   for (const claim of claims) {
-    const index = order.indexOf(claim.confidence);
-    if (index > best) best = index;
+    const index = CONFIDENCE_ORDER.indexOf(claim.confidence);
+    if (index < 0) continue;
+    if (weakest < 0 || index < weakest) weakest = index;
   }
-  return best >= 0 ? order[best] : "unverified";
+  return weakest >= 0 ? CONFIDENCE_ORDER[weakest] : "unverified";
 }
+
+/** Canonical domain state from the pack — never a raw count of claims. */
+function domainState(pack: PropertyEvidencePack, domain: EvidenceDomain): EvidenceDomainState {
+  return pack.domains.find((summary) => summary.domain === domain)?.state ?? "not_reviewed";
+}
+
+const WEAK_SOURCE_QUALITIES = ["untrusted_content", "generated_search", "unavailable", "reference"];
+
+/**
+ * A category may only become positive when at least one supporting claim is
+ * carried by a source of acceptable authority AND quality. Repeating a weak
+ * source, or saving the same listing twice, can never satisfy this.
+ */
+function hasQualifiedSupport(
+  pack: PropertyEvidencePack,
+  claims: EvidenceClaim[],
+  authorities: string[],
+): boolean {
+  const ids = new Set(claims.flatMap((claim) => claim.sourceIds));
+  return pack.sources.some(
+    (source) =>
+      ids.has(source.id) &&
+      authorities.includes(source.authorityType) &&
+      !WEAK_SOURCE_QUALITIES.includes(source.sourceQuality),
+  );
+}
+
+function distinctKeyCount(claims: EvidenceClaim[]): number {
+  return new Set(claims.map((claim) => claim.key)).size;
+}
+
+/** Collapse duplicate listing saves so repetition cannot look like breadth. */
+function distinctSources(sources: PropertyEvidencePack["sources"]) {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    const key = String(source.url ?? source.label ?? source.id)
+      .trim()
+      .toLowerCase()
+      .replace(/[?#].*$/, "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 
 export function claimNumericValue(claim: EvidenceClaim | null | undefined): number | null {
   if (!claim) return null;
