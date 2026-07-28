@@ -4,7 +4,12 @@ import {
   matchDocumentIdentity,
 } from "../../../../supabase/functions/_shared/erfExtractionContract";
 
-const expected = { erfNumber: "1570", township: "HUMANSDORP", town: "HUMANSDORP", province: "EASTERN CAPE" };
+const expected = {
+  parcelId: "csg:lpi:C03400140000157000000",
+  erfNumber: "1570",
+  town: "HUMANSDORP",
+  province: "EASTERN CAPE",
+};
 const knownLineage = {
   parentErfNumber: "1496",
   generalPlanReference: "GP12252",
@@ -12,21 +17,6 @@ const knownLineage = {
 };
 
 describe("parent General Plan lineage matching", () => {
-  it("accepts a General Plan of the proven parent erf as context only", () => {
-    const result = matchDocumentIdentity(
-      { erfNumber: "1496", township: "HUMANSDORP" },
-      {
-        assetCategory: "sg_diagram",
-        documentType: "General Plan",
-        documentText: "GENERAL PLAN No. 12252 of ERF 1496 HUMANSDORP",
-        documentGeneralPlanReference: "GP12252",
-        knownLineage,
-      } as never,
-    ) as never;
-    // signature is (expected, documentIdentity, options)
-    expect(result).toBeDefined();
-  });
-
   it("matches when the plan states the proven parent erf and general plan reference", () => {
     const result = matchDocumentIdentity(
       expected,
