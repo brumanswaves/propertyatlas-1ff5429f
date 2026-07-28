@@ -22,6 +22,11 @@ import type {
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
+import {
+  claimNumericValue,
+  deedExtentClaim,
+  redactPersonalIdentifiers,
+} from "@/lib/reports/reportFindings";
 
 /**
  * Evidence-based readiness — never a subjective "quality" score.
