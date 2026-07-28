@@ -957,6 +957,17 @@ function validateIdentity(value: unknown): ReportViewModel["identity"] | null {
     sourceLabel: nullableText(raw.sourceLabel, 160),
     coordinates,
     areaM2,
+    cadastral: (Array.isArray(raw.cadastral) ? raw.cadastral : [])
+      .slice(0, MAX_ITEMS)
+      .flatMap((entry) => {
+        const row = asRecord(entry);
+        const label = row ? requireText(row.label, 120) : null;
+        const value = row ? requireText(row.value, 240) : null;
+        return label && value
+          ? [{ label, value, badge: (row!.badge ?? "uploaded_report") as EvidenceBadge }]
+          : [];
+      }),
+
   };
 }
 
