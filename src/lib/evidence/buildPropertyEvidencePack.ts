@@ -689,8 +689,28 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
  */
 function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceId: string) {
   const identity = erfAssetIdentityMatchStatus(asset);
-  if (identity !== "mismatch" && identity !== "unverified") return;
   const reason = erfAssetIdentityMatchReason(asset);
+  if (identity === "parent_lineage_match") {
+    // Accepted, but never as a diagram of this erf: it stays a labelled
+    // context source with an explicit "confirm applicability" next action.
+    const lineage = erfAssetDocumentLineage(asset);
+    const plan = lineage?.generalPlanReference ? `General Plan ${lineage.generalPlanReference}` : "General Plan";
+    const parent = lineage?.parentErfNumber ? ` of parent Erf ${lineage.parentErfNumber}` : "";
+    pack.gaps.push({
+      id: `document-parent-lineage-${asset.id}`,
+      parcelId: asset.parcel_id,
+      domain: "documents",
+      importance: "low",
+      title: `${plan}${parent} — parent-plan context only`,
+      explanation: `${asset.original_file_name} is the ${plan}${parent}, from which this erf was created. It covers several erven, so nothing on it is confirmed for this erf on its own, and it never sets this erf's extent.`,
+      basis: reason ?? "identityMatchStatus=parent_lineage_match",
+      nextAction: "Upload the SG diagram of this erf, or confirm any relevant plan note with a land surveyor or conveyancer.",
+      targetTab: "sources",
+      blocking: false,
+    });
+    return;
+  }
+  if (identity !== "mismatch" && identity !== "unverified") return;
   if (identity === "mismatch") {
     addContradiction(pack, {
       id: `document-property-mismatch-${asset.id}`,
