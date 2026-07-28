@@ -504,6 +504,11 @@ Deno.serve(async (request: Request) => {
   }
 
   const expectedIdentity = await loadExpectedIdentity(asset);
+  // Only SG diagrams can ever be accepted as parent-plan context, so the
+  // lineage lookup is skipped entirely for every other category.
+  const knownLineage = isSgDiagramCategory(asset.asset_category)
+    ? await loadKnownParcelLineage(asset)
+    : null;
 
   const bytes = await downloadAsset(asset);
   if (!bytes || bytes.byteLength === 0) {
