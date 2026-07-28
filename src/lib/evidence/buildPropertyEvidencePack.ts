@@ -636,8 +636,11 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
     const value = typeof item.value === "string" ? item.value.trim() : "";
     if (!value) continue;
     const domain = (item.domain ?? "documents") as EvidenceDomain;
-    // A parent-plan value is never an established fact about this erf.
-    const parentScoped = parentLineage || item.scope === "parent_plan";
+    // Only a value the extraction policy actually scoped to the parent plan is
+    // context-only. A note explicitly printed as affecting this erf stays a
+    // real subject claim even when it came off the parent General Plan.
+    const parentScoped = item.scope === "parent_plan";
+    const fromParentPlan = parentLineage && !parentScoped;
     const numeric = typeof item.numericValue === "number" && Number.isFinite(item.numericValue)
       ? item.numericValue
       : null;
@@ -660,7 +663,9 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
         ? `Read from ${planLabel}, which covers this erf's parent property and many other erven. It is contextual cadastral evidence for this erf, not a confirmed value for it.`
         : item.interpretation === true
           ? "Read from the drawing rather than printed text. A surveyor or conveyancer must confirm it."
-          : EXTRACTED_FACT_CONFIDENCE_REASON,
+          : fromParentPlan
+            ? `Explicitly printed on ${planLabel} as affecting this erf. It is supported only to the extent of that printed statement; its legal effect must still be confirmed by a land surveyor or conveyancer.`
+            : EXTRACTED_FACT_CONFIDENCE_REASON,
 
       sourceIds: [sourceId],
       locators: [
@@ -675,10 +680,11 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       updatedAt: asset.updated_at,
       userConfirmed: false,
       excluded: false,
-      notes: parentScoped
+      notes: parentScoped || fromParentPlan
         ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
         : undefined,
     });
+
   }
 }
 
