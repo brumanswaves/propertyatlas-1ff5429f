@@ -390,10 +390,20 @@ describe("buildReportViewModel", () => {
 });
 
 describe("PropertyIntelligenceReport view (source-level)", () => {
-  const source = readFileSync(
-    resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"),
-    "utf8",
-  );
+  // The report UI is split across the dossier and its extracted, testable
+  // presentation primitives, so source-level checks read both.
+  const source = [
+    readFileSync(resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"), "utf8"),
+    readFileSync(
+      resolve(__dirname, "../../../components/property/dossier/ReportEvidenceUi.tsx"),
+      "utf8",
+    ),
+    readFileSync(
+      resolve(__dirname, "../../../components/property/dossier/ReportOpening.tsx"),
+      "utf8",
+    ),
+  ].join("\n");
+
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
   const lifecycleSource = readFileSync(
     resolve(__dirname, "../reportPrintLifecycle.ts"),

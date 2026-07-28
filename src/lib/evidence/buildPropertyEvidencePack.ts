@@ -1124,6 +1124,34 @@ function addContradictions(
   addAliasConflict(pack, "planning", "zoning", "official-zoning-alias-conflict", "Official zoning aliases disagree", "Verify zoning against municipal planning records.");
 
   const officialArea = firstClaimNumber(pack.claims, "identity", "areaM2", true);
+  // Official cadastral area vs a registered/deed extent read from a matched
+  // document. Both values are canonical and must both survive: this is
+  // recorded as a contradiction for the user to reconcile, and neither claim
+  // is marked conflicting, so neither value is ever suppressed or overwritten.
+  const registeredExtent = firstClaimNumber(pack.claims, "identity", "registeredExtent", true);
+  if (officialArea && registeredExtent) {
+    const extentDelta = Math.abs(officialArea - registeredExtent);
+    if (extentDelta / Math.max(officialArea, registeredExtent) > 0.005) {
+      const areaClaim = findClaim(pack, "identity", "areaM2");
+      const extentClaim = findClaim(pack, "identity", "registeredExtent");
+      addContradiction(pack, {
+        id: "official-area-vs-registered-extent",
+        title: "Official cadastral area and registered extent differ",
+        severity: "medium",
+        explanation: `The official cadastral record states ${officialArea} m2 while a matched document states a registered extent of ${registeredExtent} m2. Easy Erf keeps both values and does not choose between them.`,
+        claimIds: compact([areaClaim?.id, extentClaim?.id]),
+        sourceIds: unique(compact([...(areaClaim?.sourceIds ?? []), ...(extentClaim?.sourceIds ?? [])])),
+        displayedValues: [
+          `Official cadastral area: ${officialArea} m2`,
+          `Registered extent: ${registeredExtent} m2`,
+        ],
+        nextAction:
+          "Reconcile the official cadastral area with the registered extent through a land surveyor or conveyancer.",
+        targetTab: "reports",
+      });
+    }
+  }
+
   const subjectListings = evidence.filter((item) => item.listingRole === "subject_active_listing");
   if (subjectListings.length > 1) {
     const listingClaims = subjectListings
