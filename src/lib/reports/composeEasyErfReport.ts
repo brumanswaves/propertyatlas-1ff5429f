@@ -403,7 +403,11 @@ function suggestedQuestions(findings: ReportFinding[]): string[] {
   return questions.slice(0, 4);
 }
 
-function buildDecisionSnapshot(findings: ReportFinding[]): DecisionSnapshotModel {
+function buildDecisionSnapshot(
+  findings: ReportFinding[],
+  hasPack: boolean,
+): DecisionSnapshotModel {
+  const hasEvidence = hasPack && findings.length > 0;
   const positivesFindings = findings.filter(
     (finding) => isPositiveFindingStatus(finding.status) && finding.severity === "information",
   );
@@ -418,7 +422,11 @@ function buildDecisionSnapshot(findings: ReportFinding[]): DecisionSnapshotModel
   let verdict = "Worth investigating, subject to checks";
   let verdictDetail =
     "Enough evidence exists to keep going, but material checks are still outstanding for this erf.";
-  if (conflicting.length) {
+  if (!hasEvidence) {
+    verdict = "Decision not ready — evidence unavailable";
+    verdictDetail =
+      "No canonical evidence has been recorded for this erf yet, so nothing can be concluded either way.";
+  } else if (conflicting.length) {
     verdict = "Decision not ready — conflicting evidence";
     verdictDetail = "Recorded evidence disagrees with itself. Resolve the conflict before making any decision.";
   } else if (highOpen.length >= 2) {
@@ -430,32 +438,52 @@ function buildDecisionSnapshot(findings: ReportFinding[]): DecisionSnapshotModel
   }
 
   const supportedRatio = findings.length ? positivesFindings.length / findings.length : 0;
-  const confidence: DecisionSnapshotModel["confidence"] = conflicting.length
+  const confidence: DecisionSnapshotModel["confidence"] = !hasEvidence
     ? "unverified"
-    : supportedRatio >= 0.7
-      ? "medium"
-      : supportedRatio >= 0.35
-        ? "low"
-        : "unverified";
+    : conflicting.length
+      ? "unverified"
+      : supportedRatio >= 0.7
+        ? "medium"
+        : supportedRatio >= 0.35
+          ? "low"
+          : "unverified";
 
+  // An opportunity may only come from evidence that is actually supported.
+  // Missing, unchecked, conflicting or user-assumption findings never qualify.
   const opportunity = findings.find(
     (finding) =>
-      (finding.category === "strategy" || finding.category === "market" || finding.category === "buildings") &&
+      OPPORTUNITY_CATEGORIES.includes(finding.category) &&
+      (finding.status === "supported" || finding.status === "verified") &&
       finding.claimIds.length > 0,
   );
+
+  const biggestConcern = concerns[0]
+    ? concerns[0].headline
+    : hasEvidence
+      ? "No outstanding concern was derived from recorded evidence."
+      : "No concern can be determined yet because the evidence for this erf is incomplete.";
 
   return {
     verdict,
     verdictDetail,
     positives: positivesFindings.slice(0, 3).map((finding) => finding.headline),
-    biggestConcern: concerns[0]?.headline ?? null,
+    biggestConcern,
     bestOpportunity: opportunity ? opportunity.headline : null,
     confidence,
-    confidenceReason: conflicting.length
-      ? "Evidence for this erf currently contradicts itself."
-      : `${positivesFindings.length} of ${findings.length} tracked categories are supported by recorded evidence.`,
+    confidenceReason: !hasEvidence
+      ? "No canonical evidence pack is available for this erf yet."
+      : conflicting.length
+        ? "Evidence for this erf currently contradicts itself."
+        : `${positivesFindings.length} of ${findings.length} tracked categories are supported by recorded evidence.`,
   };
 }
+
+const OPPORTUNITY_CATEGORIES: ReportFinding["category"][] = [
+  "strategy",
+  "market",
+  "buildings",
+  "planning",
+];
 
 function severityWeight(severity: ReportFinding["severity"]): number {
   return severity === "high" ? 3 : severity === "medium" ? 2 : severity === "low" ? 1 : 0;
