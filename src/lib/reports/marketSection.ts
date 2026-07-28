@@ -10,6 +10,7 @@
  */
 import type { MarketView } from "./buildReportViewModel";
 import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
+import { RELATIONSHIP_LABELS } from "@/features/marketEvidence/types";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 
 export type MarketFigureKind =
@@ -31,8 +32,21 @@ export interface MarketFigure {
 
 export type MarketEvidenceStrength = "none" | "thin" | "indicative";
 
+export interface MarketComparableRow {
+  id: string;
+  title: string;
+  relationshipLabel: string;
+  priceLabel: string | null;
+  sizeLabel: string | null;
+  /** Asking vs sold is never blurred. Sold is only ever stated when known. */
+  evidenceType: "Asking listing" | "Sold evidence" | "Market note";
+  confidenceLabel: string;
+  url: string | null;
+}
+
 export interface MarketSectionModel {
   figures: MarketFigure[];
+  comparables: MarketComparableRow[];
   subjectListing: SavedMarketEvidence | null;
   subjectListingStatus: string | null;
   subjectListingAge: string | null;
@@ -44,6 +58,38 @@ export interface MarketSectionModel {
   gaps: string[];
   nextStep: string | null;
 }
+
+function buildComparableRows(items: SavedMarketEvidence[]): MarketComparableRow[] {
+  return items.map((item) => {
+    const price = isDisplayableAmount(item.askingPrice) ? item.askingPrice : null;
+    const land = isDisplayableAmount(item.landSizeM2) ? item.landSizeM2 : null;
+    const building = isDisplayableAmount(item.buildingSizeM2) ? item.buildingSizeM2 : null;
+    const size = [
+      land !== null ? `${land.toLocaleString("en-ZA")} m² land` : null,
+      building !== null ? `${building.toLocaleString("en-ZA")} m² building` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      id: item.id,
+      title: item.title || item.sourcePortal || "Saved comparable",
+      relationshipLabel: RELATIONSHIP_LABELS[item.relationship] ?? String(item.relationship),
+      priceLabel: price === null ? null : formatZarAmount(price),
+      sizeLabel: size || null,
+      evidenceType: price === null ? "Market note" : "Asking listing",
+      confidenceLabel:
+        item.confidence === "high"
+          ? "High confidence"
+          : item.confidence === "medium"
+            ? "Medium confidence"
+            : item.confidence === "low"
+              ? "Low confidence"
+              : "Unrated",
+      url: item.sourceUrl ?? null,
+    };
+  });
+}
+
 
 export function isDisplayableAmount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -194,6 +240,8 @@ export function buildMarketSectionModel(input: MarketSectionInput): MarketSectio
     market.evidenceCount === 0 ? "none" : market.canShowIndicativeValue ? "indicative" : "thin";
 
   return {
+    comparables: buildComparableRows(market.strongest),
+
     figures,
     subjectListing: subject,
     subjectListingStatus: subject

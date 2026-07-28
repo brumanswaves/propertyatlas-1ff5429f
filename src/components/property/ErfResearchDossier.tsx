@@ -72,6 +72,17 @@ import {
   ReportStrategySection,
 } from "@/components/property/dossier/ReportBodySections";
 import { buildMarketSectionModel } from "@/lib/reports/marketSection";
+import {
+  buildLocationLifestyleSectionModel,
+  buildMunicipalServicesSectionModel,
+  buildSiteRiskSectionModel,
+} from "@/lib/reports/contextSections";
+import { buildSgSectionModel } from "@/lib/reports/sgSection";
+import {
+  ReportContextSection,
+  ReportMunicipalSection,
+  ReportSgLineageSection,
+} from "@/components/property/dossier/ReportContextSections";
 import { buildStrategySectionModel } from "@/lib/reports/strategySection";
 import { buildEvidenceAppendixRows } from "@/lib/reports/evidenceAppendix";
 
@@ -1533,6 +1544,28 @@ function StoepAiReportView({
     () => buildStrategySectionModel({ chosen: chosenScenario, scenarioCount: scenarios.length }),
     [chosenScenario, scenarios.length],
   );
+  const siteRiskSection = useMemo(
+    () => buildSiteRiskSectionModel({ pack: report.evidencePack ?? null }),
+    [report.evidencePack],
+  );
+  const municipalSection = useMemo(
+    () => buildMunicipalServicesSectionModel({ pack: report.evidencePack ?? null }),
+    [report.evidencePack],
+  );
+  const locationSection = useMemo(
+    () =>
+      buildLocationLifestyleSectionModel({
+        pack: report.evidencePack ?? null,
+        identity: {
+          marketAddressLine: report.identity.marketAddressLine,
+          municipality: report.identity.municipality,
+          province: report.identity.province,
+          coordinates: report.identity.coordinates,
+        },
+        subjectListing: report.market.subjectListing,
+      }),
+    [report.evidencePack, report.identity, report.market.subjectListing],
+  );
   const appendixRows = useMemo(
     () =>
       buildEvidenceAppendixRows({
@@ -1543,6 +1576,11 @@ function StoepAiReportView({
   );
 
 
+
+  const sgSection = useMemo(
+    () => buildSgSectionModel({ appendixRows, pack: report.evidencePack ?? null }),
+    [appendixRows, report.evidencePack],
+  );
 
   const askSuggestionPayload = useMemo(
     () =>
@@ -1760,142 +1798,6 @@ function StoepAiReportView({
         </ul>
       </nav>
 
-      {/* IDENTITY */}
-      <section
-        id="report-identity"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Property Identity"
-          title="Official identifiers and confirmed address"
-        />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
-          <IdRow label="Portion" value={report.identity.portion} badge="official" />
-          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
-          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
-          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
-          <IdRow label="Province" value={report.identity.province} badge="official" />
-          <IdRow
-            label="Erf size (m²)"
-            value={formatAreaM2Value(report.identity.areaM2)}
-            badge="official"
-          />
-          <IdRow
-            label="Coordinates"
-            value={
-              report.identity.coordinates
-                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
-                : null
-            }
-            badge="official"
-          />
-          <IdRow
-            label="Market address (user-confirmed)"
-            value={report.identity.marketAddressLine}
-            badge="user_confirmed"
-          />
-          {report.identity.cadastral.map((row) => (
-            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
-          ))}
-        </dl>
-
-        {report.identity.addressAndOfficialMismatch && (
-          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
-            Possible mismatch: the saved market address municipality differs from the official parcel
-            municipality. Recheck identity before using downstream data.
-          </p>
-        )}
-
-        <ReportAreaReconciliation
-          identity={report.identity}
-          officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
-          discrepancy={
-            reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null
-          }
-          actions={reportDoc.actions}
-          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        />
-      </section>
-
-      {/* OWNERSHIP */}
-      <ReportOwnershipSection
-        ownership={report.ownership}
-        onOpenReports={() => onSelectView?.("reports")}
-      />
-
-      {/* SG / LINEAGE EVIDENCE */}
-      <ReportFindingsBlock
-        anchorId="report-sg-evidence"
-        eyebrow="SG Diagrams & Lineage"
-        title="Surveyor-General evidence read for this erf"
-        intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
-        findings={reportDoc.findings.filter((f) =>
-          ["finding-sg-parent-lineage", "finding-registered-extent", "finding-servitudes-sg"].includes(
-            f.id,
-          ),
-        )}
-        actions={reportDoc.actions}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
-      />
-
-      {/* BUILDINGS, PLANS & COMPLIANCE */}
-      <ReportFindingsBlock
-        anchorId="report-buildings"
-        eyebrow="Buildings, Plans & Compliance"
-        title="Approved plans and structure compliance"
-        intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
-        findings={reportDoc.findings.filter((f) => f.category === "buildings")}
-        actions={reportDoc.actions}
-        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-        emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
-      />
-
-      {/* PLANNING */}
-      <section
-        id="report-planning"
-        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-      >
-        <ReportSectionTitle
-          eyebrow="Zoning, Planning & Buildability"
-          title="Only municipally supported controls are shown"
-        />
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          {report.planning.map((field) => (
-            <div
-              key={field.label}
-              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
-            >
-              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                {field.label}
-              </dt>
-              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
-                {field.value ?? (
-                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
-                )}
-              </dd>
-              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
-            </div>
-          ))}
-        </dl>
-        {reportDoc.findings.filter((f) => f.category === "planning").length > 0 && (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {reportDoc.findings
-              .filter((f) => f.category === "planning")
-              .map((finding) => (
-                <FindingCard
-                  key={finding.id}
-                  finding={finding}
-                  actions={reportDoc.actions}
-                  onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-                />
-              ))}
-          </div>
-        )}
-      </section>
-
-
       {/* DECISION INTELLIGENCE */}
       <section
         id="report-brief"
@@ -2110,6 +2012,152 @@ function StoepAiReportView({
 
       </section>
 
+      {/* IDENTITY */}
+      <section
+        id="report-identity"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Property Identity"
+          title="Official identifiers and confirmed address"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
+          <IdRow label="Portion" value={report.identity.portion} badge="official" />
+          <IdRow label="LPI" value={report.identity.lpi} badge="official" />
+          <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
+          <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
+          <IdRow label="Province" value={report.identity.province} badge="official" />
+          <IdRow
+            label="Erf size (m²)"
+            value={formatAreaM2Value(report.identity.areaM2)}
+            badge="official"
+          />
+          <IdRow
+            label="Coordinates"
+            value={
+              report.identity.coordinates
+                ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
+                : null
+            }
+            badge="official"
+          />
+          <IdRow
+            label="Market address (user-confirmed)"
+            value={report.identity.marketAddressLine}
+            badge="user_confirmed"
+          />
+          {report.identity.cadastral.map((row) => (
+            <IdRow key={row.label} label={row.label} value={row.value} badge={row.badge} />
+          ))}
+        </dl>
+
+        {report.identity.addressAndOfficialMismatch && (
+          <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#fffbeb] px-3 py-2 text-xs leading-5 text-[#92400E]">
+            Possible mismatch: the saved market address municipality differs from the official parcel
+            municipality. Recheck identity before using downstream data.
+          </p>
+        )}
+
+        <ReportAreaReconciliation
+          identity={report.identity}
+          officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
+          discrepancy={
+            reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null
+          }
+          actions={reportDoc.actions}
+          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        />
+      </section>
+
+      {/* OWNERSHIP */}
+      <ReportOwnershipSection
+        ownership={report.ownership}
+        onOpenReports={() => onSelectView?.("reports")}
+      />
+
+      {/* SG / LINEAGE EVIDENCE */}
+      <ReportSgLineageSection
+        anchorId="report-sg-evidence"
+        model={sgSection}
+        onOpenAsset={(assetId) => {
+          const asset = fileVault.assets.find((file) => file.id === assetId);
+          if (asset) void openVaultAsset(asset);
+        }}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+      />
+
+      <ReportFindingsBlock
+        anchorId="report-sg-findings"
+        eyebrow="SG findings"
+        title="What the diagrams support about this erf"
+        intro="Parent-plan context is kept separate from parcel-specific facts. Context from a parent general plan never becomes a fact about this erf."
+        findings={reportDoc.findings.filter((f) =>
+          ["finding-sg-parent-lineage", "finding-registered-extent", "finding-servitudes-sg"].includes(
+            f.id,
+          ),
+        )}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
+      />
+
+      {/* BUILDINGS, PLANS & COMPLIANCE */}
+      <ReportFindingsBlock
+        anchorId="report-buildings"
+        eyebrow="Buildings, Plans & Compliance"
+        title="Approved plans and structure compliance"
+        intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
+        findings={reportDoc.findings.filter((f) => f.category === "buildings")}
+        actions={reportDoc.actions}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+        emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
+      />
+
+      {/* PLANNING */}
+      <section
+        id="report-planning"
+        className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+      >
+        <ReportSectionTitle
+          eyebrow="Zoning, Planning & Buildability"
+          title="Only municipally supported controls are shown"
+        />
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          {report.planning.map((field) => (
+            <div
+              key={field.label}
+              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
+            >
+              <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                {field.label}
+              </dt>
+              <dd className="mt-2 text-sm font-semibold text-[#0D1B2A]">
+                {field.value ?? (
+                  <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
+                )}
+              </dd>
+              <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
+            </div>
+          ))}
+        </dl>
+        {reportDoc.findings.filter((f) => f.category === "planning").length > 0 && (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {reportDoc.findings
+              .filter((f) => f.category === "planning")
+              .map((finding) => (
+                <FindingCard
+                  key={finding.id}
+                  finding={finding}
+                  actions={reportDoc.actions}
+                  onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+                />
+              ))}
+          </div>
+        )}
+      </section>
+
+
       {/* MARKET */}
       <ReportMarketSection
         anchorId="report-market"
@@ -2150,6 +2198,31 @@ function StoepAiReportView({
         onOpenSourceFile={
           selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
         }
+      />
+
+      {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
+      <ReportContextSection
+        anchorId="report-site-risk"
+        eyebrow="Site, Environmental & Physical Risk"
+        title="Physical and environmental conditions supported by evidence"
+        model={siteRiskSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
+      <ReportMunicipalSection
+        anchorId="report-municipal"
+        model={municipalSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+      />
+
+      {/* LOCATION & LIFESTYLE */}
+      <ReportContextSection
+        anchorId="report-location"
+        eyebrow="Location & Lifestyle"
+        title="Where this erf sits, and what is actually known about it"
+        model={locationSection}
+        onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
       />
 
       {/* RISK REGISTER */}
