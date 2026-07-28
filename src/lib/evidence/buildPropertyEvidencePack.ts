@@ -1506,6 +1506,9 @@ function selectVerifiedRegisteredExtent(assets: ErfAsset[], parcelId: string) {
     if (asset.parcel_id !== parcelId) continue;
     if (!REGISTERED_EXTENT_CATEGORIES.includes(asset.asset_category)) continue;
     if (!erfAssetHasSearchableExtraction(asset)) continue;
+    // A parent General Plan states the PARENT's extent; it may never set this
+    // erf's area, so the whole asset is excluded from this selector.
+    if (erfAssetIsParentLineageMatch(asset)) continue;
     for (const claim of erfAssetExtractedClaims(asset)) {
       if (!claim || claim.domain !== "identity" || claim.key !== "areaM2") continue;
       if (typeof claim.quote !== "string" || !claim.quote.trim()) continue;
