@@ -426,7 +426,7 @@ describe("Ask Easy Erf parent-plan context", () => {
     });
     const serialized = JSON.stringify(payload);
     expect(serialized).toContain("PARENT GENERAL PLAN");
-    expect(serialized).toMatch(/explicitly names this erf/i);
+    expect(serialized).toMatch(/explicitly naming this erf/i);
     expect(serialized).toContain("GP12252-sheet-1.tif");
   });
 });

@@ -871,7 +871,9 @@ function extractedDocumentText(
         lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : ""
       }${lineage?.parentErfNumber ? ` (parent Erf ${lineage.parentErfNumber})` : ""} — CONTEXT ONLY; ` +
       `never this erf's extent. Only an annotation explicitly naming this erf may be reported for it, still to confirm.\n\n`;
-    return banner + cleanText(extracted, max);
+    // The banner counts against the same budget so the transport cap can never
+    // silently truncate the document text away from its warning.
+    return banner + cleanText(extracted, Math.max(0, max - banner.length));
   }
   return cleanText(extracted, max);
 }
