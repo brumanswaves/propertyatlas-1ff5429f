@@ -17,7 +17,11 @@ function buildDoc() {
     selectedSiteDesign: null,
     propertyNotes: null,
   });
-  return composeEasyErfReport({ report, pack: buildEvidencePackFixture() });
+  return composeEasyErfReport({
+    report,
+    pack: buildEvidencePackFixture(),
+    generatedAt: "2026-07-23T10:00:00Z",
+  });
 }
 
 describe("composeEasyErfReport", () => {
