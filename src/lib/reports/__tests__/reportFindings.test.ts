@@ -6,6 +6,7 @@ import {
   linkFindingActions,
   nextBestAction,
   redactPersonalIdentifiers,
+  weakestConfidence,
 } from "../reportFindings";
 import { buildEvidencePackFixture } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 
@@ -58,5 +59,27 @@ describe("reportFindings", () => {
     expect(buildReportFindings(buildEvidencePackFixture()).map((f) => `${f.id}:${f.status}`)).toEqual(
       findings.map((f) => `${f.id}:${f.status}`),
     );
+  });
+
+  it("returns the weakest confidence present in mixed evidence", () => {
+    expect(
+      weakestConfidence([
+        { confidence: "high" } as never,
+        { confidence: "low" } as never,
+      ]),
+    ).toBe("low");
+    expect(weakestConfidence([{ confidence: "high" } as never])).toBe("high");
+    expect(weakestConfidence([])).toBe("unverified");
+  });
+
+  it("tracks servitude and building-plan categories separately", () => {
+    const ids = findings.map((finding) => finding.id);
+    expect(ids).toContain("finding-servitudes-sg");
+    // Buildings only appears when some plan evidence exists; when it does, an
+    // AI site concept must never make it positive.
+    const buildings = findings.find((f) => f.id === "finding-buildings-plans");
+    if (buildings) expect(isPositiveFindingStatus(buildings.status)).toBe(false);
+    const sitePotential = findings.find((f) => f.id === "finding-site-potential");
+    if (sitePotential) expect(sitePotential.id).not.toBe(buildings?.id);
   });
 });

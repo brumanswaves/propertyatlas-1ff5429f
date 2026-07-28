@@ -11,6 +11,8 @@ import type {
   EvidenceConfidence,
   EvidenceContradiction,
   EvidenceDomain,
+  EvidenceDomainState,
+
   EvidenceGap,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
@@ -80,6 +82,18 @@ export function isPositiveFindingStatus(status: ReportFindingStatus): boolean {
 }
 
 const OWNERSHIP_CLAIM_KEYS = ["registeredOwner", "ownerType", "ownershipShare", "coOwners"];
+/** Servitude / building-line evidence that is genuinely scoped to this erf. */
+const SERVITUDE_DEED_KEYS = ["conditionsOfTitle", "servitudes", "titleConditions"];
+const SERVITUDE_PLANNING_KEYS = ["servitudes", "buildingLines"];
+/** Approved-building evidence. Site Potential concepts are excluded by design. */
+const BUILDING_CLAIM_KEYS = [
+  "approvedBuildingPlans",
+  "buildingPlanStatus",
+  "occupancyCertificate",
+  "existingStructures",
+  "buildingFootprintM2",
+];
+
 const PLANNING_CONTROL_KEYS = [
   "zoning",
   "landUse",
@@ -126,15 +140,67 @@ function sourceIdsOf(claims: EvidenceClaim[]): string[] {
   return uniq(claims.flatMap((claim) => claim.sourceIds));
 }
 
-function weakestConfidence(claims: EvidenceClaim[]): EvidenceConfidence {
-  const order: EvidenceConfidence[] = ["unverified", "low", "medium", "high"];
-  let best = -1;
+const CONFIDENCE_ORDER: EvidenceConfidence[] = ["unverified", "low", "medium", "high"];
+
+/**
+ * Mixed evidence is only ever as strong as its weakest claim. Returning the
+ * strongest value here would silently overstate a finding, so the weakest
+ * confidence actually present always wins, and no claims means unverified.
+ */
+export function weakestConfidence(claims: EvidenceClaim[]): EvidenceConfidence {
+  let weakest = -1;
   for (const claim of claims) {
-    const index = order.indexOf(claim.confidence);
-    if (index > best) best = index;
+    const index = CONFIDENCE_ORDER.indexOf(claim.confidence);
+    if (index < 0) continue;
+    if (weakest < 0 || index < weakest) weakest = index;
   }
-  return best >= 0 ? order[best] : "unverified";
+  return weakest >= 0 ? CONFIDENCE_ORDER[weakest] : "unverified";
 }
+
+/** Canonical domain state from the pack — never a raw count of claims. */
+function domainState(pack: PropertyEvidencePack, domain: EvidenceDomain): EvidenceDomainState {
+  return pack.domains.find((summary) => summary.domain === domain)?.state ?? "not_reviewed";
+}
+
+const WEAK_SOURCE_QUALITIES = ["untrusted_content", "generated_search", "unavailable", "reference"];
+
+/**
+ * A category may only become positive when at least one supporting claim is
+ * carried by a source of acceptable authority AND quality. Repeating a weak
+ * source, or saving the same listing twice, can never satisfy this.
+ */
+function hasQualifiedSupport(
+  pack: PropertyEvidencePack,
+  claims: EvidenceClaim[],
+  authorities: string[],
+): boolean {
+  const ids = new Set(claims.flatMap((claim) => claim.sourceIds));
+  return pack.sources.some(
+    (source) =>
+      ids.has(source.id) &&
+      authorities.includes(source.authorityType) &&
+      !WEAK_SOURCE_QUALITIES.includes(source.sourceQuality),
+  );
+}
+
+function distinctKeyCount(claims: EvidenceClaim[]): number {
+  return new Set(claims.map((claim) => claim.key)).size;
+}
+
+/** Collapse duplicate listing saves so repetition cannot look like breadth. */
+function distinctSources(sources: PropertyEvidencePack["sources"]) {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    const key = String(source.url ?? source.label ?? source.id)
+      .trim()
+      .toLowerCase()
+      .replace(/[?#].*$/, "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 
 export function claimNumericValue(claim: EvidenceClaim | null | undefined): number | null {
   if (!claim) return null;
@@ -377,22 +443,113 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
     });
   }
 
+  // 8b. Servitudes / SG -----------------------------------------------------
+  // Only a subject-scoped supported servitude or building-line claim, or a
+  // title/deed servitude condition, may make this category positive. An
+  // uploaded diagram or a matched parent General Plan is never clearance.
+  const servitudeClaims = supported([
+    ...claimsFor(pack, "deeds", SERVITUDE_DEED_KEYS),
+    ...claimsFor(pack, "planning", SERVITUDE_PLANNING_KEYS),
+  ]);
+  const sgSources = pack.sources.filter(
+    (source) => source.asset?.category === "sg_diagram" || source.asset?.category === "title_deed",
+  );
+  const sgStatus: ReportFindingStatus = servitudeClaims.length
+    ? "supported"
+    : parentLineageGaps.length || sgSources.length || deedClaims.length
+      ? "not_checked"
+      : "missing";
+  add({
+    id: "finding-servitudes-sg",
+    category: "legal",
+    status: sgStatus,
+    severity: servitudeClaims.length ? "information" : "medium",
+    headline: servitudeClaims.length
+      ? "Servitude and building-line conditions read for this erf"
+      : parentLineageGaps.length
+        ? "Only parent General Plan context is available for servitudes"
+        : sgSources.length
+          ? "Diagram or deed uploaded, servitude conditions not read yet"
+          : "No servitude or building-line evidence",
+    whatWeFound: servitudeClaims.length
+      ? servitudeClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
+      : parentLineageGaps.length
+        ? "A parent General Plan is attached as context. It does not state this erf's servitudes."
+        : sgSources.length
+          ? `${sgSources.length} diagram/deed file(s) are stored, but no servitude or building-line value has been read from them.`
+          : "No SG diagram, general plan or deed condition has been read for this erf.",
+    whatItMeans:
+      "Servitudes and building lines can only be cleared from this erf's own diagram and title conditions. A stored file, or a matched parent General Plan, is not clearance.",
+    confidence: servitudeClaims.length ? weakestConfidence(servitudeClaims) : "unverified",
+    claimIds: servitudeClaims.map((claim) => claim.id),
+    sourceIds: uniq([...sourceIdsOf(servitudeClaims), ...sgSources.map((source) => source.id)]),
+    gapIds: parentLineageGaps.map((gap) => gap.id),
+  });
+
+  // 8c. Buildings & plans ---------------------------------------------------
+  // Deliberately independent of Site Potential: an AI concept is not building
+  // plan evidence and may never make this category positive.
+  const buildingClaims = supported(claimsFor(pack, "planning", BUILDING_CLAIM_KEYS));
+  const buildingPlanSources = pack.sources.filter(
+    (source) => source.asset?.category === "architectural_plan",
+  );
+  const buildingGaps = pack.gaps.filter(
+    (gap) => gap.domain === "planning" && /building plan|occupancy|approved plan/i.test(gap.title),
+  );
+  add({
+    id: "finding-buildings-plans",
+    category: "buildings",
+    status: buildingClaims.length ? "supported" : buildingPlanSources.length ? "not_checked" : "missing",
+    severity: buildingClaims.length ? "information" : "medium",
+    headline: buildingClaims.length
+      ? "Approved building information recorded"
+      : buildingPlanSources.length
+        ? "Building plans uploaded but not read as evidence yet"
+        : "No approved building plan evidence",
+    whatWeFound: buildingClaims.length
+      ? buildingClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
+      : buildingPlanSources.length
+        ? `${buildingPlanSources.length} plan file(s) are stored, but no approved-plan value has been read from them.`
+        : "No approved building plan, occupancy certificate or recorded structure exists for this erf.",
+    whatItMeans:
+      "Whether existing structures are approved can only be answered from municipal building plan records. An AI site concept is not evidence of approved buildings.",
+    confidence: buildingClaims.length ? weakestConfidence(buildingClaims) : "unverified",
+    claimIds: buildingClaims.map((claim) => claim.id),
+    sourceIds: uniq([...sourceIdsOf(buildingClaims), ...buildingPlanSources.map((s) => s.id)]),
+    gapIds: buildingGaps.map((gap) => gap.id),
+  });
+
   // 9. Zoning / planning completeness --------------------------------------
+  // Canonical domain state + source quality decide this, never a claim count.
   const planningClaims = supported(claimsFor(pack, "planning", PLANNING_CONTROL_KEYS));
   const planningGaps = pack.gaps.filter((gap) => gap.domain === "planning");
+  const planningState = domainState(pack, "planning");
+  const planningQualified =
+    planningState === "supported" &&
+    planningGaps.length === 0 &&
+    distinctKeyCount(planningClaims) > 0 &&
+    hasQualifiedSupport(pack, planningClaims, ["official", "municipal"]);
+  const planningStatus: ReportFindingStatus =
+    planningState === "conflicting"
+      ? "conflicting"
+      : planningQualified
+        ? "supported"
+        : planningClaims.length
+          ? "not_checked"
+          : "missing";
   add({
     id: "finding-planning-completeness",
     category: "planning",
-    status: planningClaims.length >= 4 ? "supported" : planningClaims.length ? "not_checked" : "missing",
-    severity: planningClaims.length >= 4 ? "information" : planningClaims.length ? "medium" : "high",
+    status: planningStatus,
+    severity: planningQualified ? "information" : planningClaims.length ? "medium" : "high",
     headline: planningClaims.length
-      ? `${planningClaims.length} planning control(s) recorded`
+      ? `${distinctKeyCount(planningClaims)} planning control(s) recorded`
       : "No planning controls recorded",
     whatWeFound: planningClaims.length
       ? planningClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
       : "No zoning, coverage, FAR or height value exists for this erf.",
     whatItMeans:
-      "What may legally be built cannot be established until the municipal zoning certificate and scheme controls are confirmed.",
+      "What may legally be built cannot be established until the municipal zoning certificate and scheme controls are confirmed. Repeating the same source does not strengthen this.",
     confidence: planningClaims.length ? weakestConfidence(planningClaims) : "unverified",
     claimIds: planningClaims.map((claim) => claim.id),
     sourceIds: sourceIdsOf(planningClaims),
@@ -400,27 +557,46 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   });
 
   // 10. Market evidence strength -------------------------------------------
-  const marketSources = pack.sources.filter((source) => source.kind === "market_listing");
+  // Duplicate saves of the same listing collapse, and asking prices are never
+  // a valuation, so market can only reach "supported" on canonical state.
+  const marketSourcesAll = pack.sources.filter((source) => source.kind === "market_listing");
+  const marketSources = distinctSources(marketSourcesAll);
   const marketClaims = supported(claimsFor(pack, "market"));
   const marketGaps = pack.gaps.filter((gap) => gap.domain === "market");
+  const marketState = domainState(pack, "market");
+  const marketQualified =
+    marketState === "supported" &&
+    marketGaps.length === 0 &&
+    marketClaims.length > 0 &&
+    marketSources.length > 1 &&
+    hasQualifiedSupport(pack, marketClaims, ["market", "paid_provider", "official", "municipal"]);
+  const marketStatus: ReportFindingStatus =
+    marketState === "conflicting"
+      ? "conflicting"
+      : marketQualified
+        ? "supported"
+        : marketSourcesAll.length
+          ? "not_checked"
+          : "missing";
   add({
     id: "finding-market-strength",
     category: "market",
-    status: marketSources.length >= 3 ? "supported" : marketSources.length ? "not_checked" : "missing",
-    severity: marketSources.length >= 3 ? "information" : "medium",
+    status: marketStatus,
+    severity: marketQualified ? "information" : "medium",
     headline: marketSources.length
-      ? `${marketSources.length} saved market evidence item(s)`
+      ? `${marketSources.length} distinct market evidence item(s)`
       : "No market evidence saved",
     whatWeFound: marketSources.length
       ? marketSources.map((source) => source.label).slice(0, 4).join(" · ")
       : "No listing or comparable has been saved against this erf.",
     whatItMeans:
       "Asking prices are not sold prices. Saved listings indicate the asking market only and are never a formal valuation.",
-    confidence: marketSources.length >= 3 ? "low" : "unverified",
+    confidence: marketQualified ? "low" : "unverified",
     claimIds: marketClaims.map((claim) => claim.id),
-    sourceIds: marketSources.map((source) => source.id),
+    sourceIds: marketSourcesAll.map((source) => source.id),
     gapIds: marketGaps.map((gap) => gap.id),
   });
+
 
   // 11. Selected strategy ---------------------------------------------------
   const strategyClaims = claimsFor(pack, "strategy").filter((claim) => claim.status !== "missing");

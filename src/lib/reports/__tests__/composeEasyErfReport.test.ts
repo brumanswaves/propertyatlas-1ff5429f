@@ -66,4 +66,17 @@ describe("composeEasyErfReport", () => {
   it("is deterministic for identical inputs", () => {
     expect(JSON.stringify(buildDoc())).toBe(JSON.stringify(doc));
   });
+
+  it("never claims an opportunity or an all-clear without supported evidence", () => {
+    if (!doc.decisionSnapshot.positives.length) {
+      expect(doc.decisionSnapshot.bestOpportunity).toBeNull();
+      expect(doc.decisionSnapshot.verdict.toLowerCase()).not.toContain("good");
+    }
+    expect(doc.decisionSnapshot.biggestConcern).toBeTruthy();
+  });
+
+  it("reports whether canonical evidence backed the composition", () => {
+    expect(typeof doc.hasCanonicalEvidence).toBe("boolean");
+    expect(doc.hasCanonicalEvidence).toBe(true);
+  });
 });

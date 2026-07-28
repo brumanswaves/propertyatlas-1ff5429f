@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AtlasPin } from "@/components/brand/AtlasPin";
 import {
   riskStatusLabel,
   type EasyErfReportDocument,
@@ -45,11 +46,18 @@ export function ReportOpening({
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-              {header.title}
-              <span className="rounded-full bg-[#FF6A00] px-2 py-[1px] text-[9px] tracking-[0.14em] text-white">
-                Living report
-              </span>
+            <div className="report-brandbar flex flex-wrap items-center gap-3">
+              <AtlasPin
+                variant="horizontal"
+                title="Easy Erf"
+                className="h-[26px] w-auto shrink-0 sm:h-[30px]"
+              />
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                {header.title}
+                <span className="rounded-full bg-[#FF6A00] px-2 py-[1px] text-[9px] tracking-[0.14em] text-white">
+                  Living report
+                </span>
+              </div>
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A] sm:text-3xl">
               {header.addressLine ?? header.officialLine ?? "Selected erf"}
@@ -149,7 +157,7 @@ export function ReportOpening({
                 Biggest concern
               </dt>
               <dd className="mt-1 text-[#0D1B2A]/80">
-                {snapshot.biggestConcern ?? "No outstanding concern was derived from recorded evidence."}
+                {snapshot.biggestConcern}
               </dd>
             </div>
             <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
@@ -157,7 +165,8 @@ export function ReportOpening({
                 Best opportunity
               </dt>
               <dd className="mt-1 text-[#0D1B2A]/80">
-                {snapshot.bestOpportunity ?? "No opportunity is supported by recorded evidence yet."}
+                {snapshot.bestOpportunity ??
+                  "No opportunity is supported by recorded evidence yet."}
               </dd>
             </div>
           </dl>
@@ -273,10 +282,15 @@ export function ReportOpening({
           </div>
         ) : (
           <div className="mt-2">
-            <h4 className="text-lg font-semibold text-[#0D1B2A]">Keep evidence current</h4>
+            <h4 className="text-lg font-semibold text-[#0D1B2A]">
+              {doc.hasCanonicalEvidence
+                ? "Keep evidence current"
+                : "Evidence for this erf is unavailable"}
+            </h4>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/70">
-              No material gap or contradiction remains in the recorded evidence. Review the evidence
-              appendix below and refresh anything that has aged.
+              {doc.hasCanonicalEvidence
+                ? "No material gap or contradiction remains in the recorded evidence. Review the evidence appendix below and refresh anything that has aged."
+                : "No canonical evidence has been recorded for this erf yet, so Easy Erf cannot say that nothing remains outstanding. Add official, document or market evidence to start the report."}
             </p>
             <a
               href="#report-documents"
