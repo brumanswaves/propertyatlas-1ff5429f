@@ -36,7 +36,6 @@ import {
   isTiffExtractionMimeType,
   type NormalizedExtractionPage,
 } from "../_shared/erfExtractionMedia.ts";
-import { TiffNormalizationError, normalizeTiffToPngPages } from "./tiffDecode.ts";
 
 
 declare const Deno: {
@@ -460,6 +459,9 @@ Deno.serve(async (request: Request) => {
   let normalizedMime: string | null = null;
   if (isTiffExtractionMimeType(mime)) {
     try {
+      // Imported lazily: the TIFF decoder pulls npm: specifiers that only the
+      // Deno runtime resolves, and non-TIFF uploads must never load it.
+      const { normalizeTiffToPngPages } = await import("./tiffDecode.ts");
       const normalized = normalizeTiffToPngPages(bytes);
       normalizedPages = normalized.pages;
       normalizationWarning = normalized.warning;
@@ -472,7 +474,7 @@ Deno.serve(async (request: Request) => {
       });
     } catch (error) {
       const message =
-        error instanceof TiffNormalizationError
+        error instanceof Error && error.name === "TiffNormalizationError"
           ? error.message
           : "This diagram could not be converted for reading.";
       log("tiff_normalize_failed", requestId);
