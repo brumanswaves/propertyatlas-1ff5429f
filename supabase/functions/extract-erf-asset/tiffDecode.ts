@@ -87,7 +87,7 @@ function pngChunk(type: string, data: Uint8Array) {
 }
 
 async function deflate(bytes: Uint8Array) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate"));
+  const stream = new Blob([bytes as unknown as BlobPart]).stream().pipeThrough(new CompressionStream("deflate"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
