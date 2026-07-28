@@ -591,7 +591,10 @@ describe("official dossier UX guardrails", () => {
   });
 
   it("renders the Easy Erf intelligence dashboard shell without fake paid data", () => {
-    const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const dossier = [
+      read("src/components/property/ErfResearchDossier.tsx"),
+      read("src/components/property/dossier/ReportBodySections.tsx"),
+    ].join("\n");
     const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportsTab = read("src/components/property/tabs/ReportsTab.tsx");
@@ -678,8 +681,8 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("sitePotentialReportModeLabel");
     expect(dossier).toContain("Stable asset ID");
     expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
-    expect(dossier).toContain("newest saved scenario");
-    expect(dossier).toContain("Open file");
+    expect(dossier).toContain("savedStatus");
+    expect(dossier).toContain("Open original");
     expect(dossier).toContain(
       "Each file shows whether Easy Erf actually read it and",
     );
