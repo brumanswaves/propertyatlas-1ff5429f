@@ -3431,6 +3431,50 @@ function EvidenceTimelineRow({ item }: { item: EvidenceTimelineItem }) {
  * One supported ownership/deed value. Every rendered value keeps the source
  * ids and page locators it was read from, so nothing appears unattributed.
  */
+/**
+ * Per-file honesty chip: says whether Easy Erf read the document and whether
+ * it matched this erf. Non-extractable files are labelled reference-only
+ * rather than silently implying they were analysed.
+ */
+function AssetExtractionStatusChip({
+  asset,
+}: {
+  asset: { asset_category: string; mime_type: string; metadata?: Record<string, unknown> | null };
+}) {
+  if (!isExtractableErfAsset(asset)) {
+    return (
+      <p className="mt-1 text-[11px] font-medium text-[#64748B]">
+        Stored for reference — not read by Easy Erf
+      </p>
+    );
+  }
+  const identity = erfAssetIdentityMatchStatus(asset);
+  const status = erfAssetExtractionStatus(asset);
+  const tone =
+    identity === "mismatch"
+      ? "bg-[#FEE2E2] text-[#991B1B]"
+      : identity === "parent_lineage_match"
+        ? "bg-[#DBEAFE] text-[#1E40AF]"
+        : status === "ready" && identity === "matched"
+          ? "bg-[#DCFCE7] text-[#166534]"
+          : status === "failed" || identity === "unverified"
+            ? "bg-[#FEF3C7] text-[#92400E]"
+            : "bg-[#E2E8F0] text-[#334155]";
+  return (
+    <span
+      className={cn(
+        "mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em]",
+        tone,
+      )}
+    >
+      {erfAssetExtractionLabel(
+        asset,
+        asset.asset_category === "sg_diagram" ? "diagram" : "report",
+      )}
+    </span>
+  );
+}
+
 function OwnershipDetailRow({ detail }: { detail: OwnershipDetail }) {
   return (
     <div>
