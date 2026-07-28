@@ -88,25 +88,31 @@ export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
   return erfAssetExtractionStatus(asset) === "ready" && erfAssetIdentityMatchStatus(asset) === "matched";
 }
 
-/** Human label for the extraction state, used across Sources and Reports. */
-export function erfAssetExtractionLabel(asset: MetadataBearer) {
+/**
+ * Human label for the extraction state, used across Sources and Reports.
+ * `variant` only changes the noun, so Sources can say "diagram" where the
+ * Reports tab says "report" without a second status vocabulary.
+ */
+export function erfAssetExtractionLabel(asset: MetadataBearer, variant: "report" | "diagram" = "report") {
+  const noun = variant === "diagram" ? "diagram" : "report";
+  const Noun = variant === "diagram" ? "Diagram" : "Report";
   const identity = erfAssetIdentityMatchStatus(asset);
-  if (identity === "mismatch") return "Wrong property report";
-  if (identity === "unverified") return "Report could not be matched to this erf";
+  if (identity === "mismatch") return `Wrong property ${noun}`;
+  if (identity === "unverified") return `${Noun} could not be matched to this erf`;
   const status = erfAssetExtractionStatus(asset);
   switch (status) {
     case "ready":
-      return "Report searchable";
+      return `${Noun} searchable`;
     case "partial":
-      return "Read — no structured values found";
+      return variant === "diagram" ? "No readable diagram text" : "Read — no structured values found";
     case "processing":
-      return "Extracting report...";
+      return `Extracting ${noun}...`;
     case "queued":
       return "Queued for reading";
     case "unsupported":
       return "Cannot be read automatically";
     case "failed":
-      return erfAssetExtractionError(asset) ?? "Reading failed";
+      return erfAssetExtractionError(asset) ?? "Extraction failed";
     default:
       return "Not read yet";
   }

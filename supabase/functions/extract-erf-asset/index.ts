@@ -29,6 +29,15 @@ import {
   type ErfExtractionStatus,
   type ErfIdentityMatchStatus,
 } from "../_shared/erfExtractionContract.ts";
+import {
+  ERF_NORMALIZED_IMAGE_MIME,
+  buildExtractionContent,
+  findUnsupportedContentMime,
+  isTiffExtractionMimeType,
+  type NormalizedExtractionPage,
+} from "../_shared/erfExtractionMedia.ts";
+import { TiffNormalizationError, normalizeTiffToPngPages } from "./tiffDecode.ts";
+
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -442,17 +451,65 @@ Deno.serve(async (request: Request) => {
   }
 
   const mime = mimeType || "application/pdf";
-  const dataUrl = `data:${mime};base64,${toBase64(bytes)}`;
-  const content =
-    mime === "application/pdf"
-      ? [
-          { type: "text", text: `Extract this property document: ${asset.original_file_name}` },
-          { type: "file", file: { filename: asset.original_file_name, file_data: dataUrl } },
-        ]
-      : [
-          { type: "text", text: `Extract this property document image: ${asset.original_file_name}` },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ];
+
+  // TIFF (the native Surveyor-General diagram format) is never sent to the
+  // model: it is rasterised to PNG pages first, in page order.
+  let normalizedPages: NormalizedExtractionPage[] | null = null;
+  let normalizationWarning: string | null = null;
+  let sourcePageCount: number | null = null;
+  let normalizedMime: string | null = null;
+  if (isTiffExtractionMimeType(mime)) {
+    try {
+      const normalized = normalizeTiffToPngPages(bytes);
+      normalizedPages = normalized.pages;
+      normalizationWarning = normalized.warning;
+      sourcePageCount = normalized.sourcePageCount;
+      normalizedMime = ERF_NORMALIZED_IMAGE_MIME;
+      log("tiff_normalized", requestId, {
+        sourcePageCount: normalized.sourcePageCount,
+        convertedPageCount: normalized.pages.length,
+        downscaled: normalized.downscaled,
+      });
+    } catch (error) {
+      const message =
+        error instanceof TiffNormalizationError
+          ? error.message
+          : "This diagram could not be converted for reading.";
+      log("tiff_normalize_failed", requestId);
+      return finish(
+        "failed",
+        {
+          extractionError: message,
+          originalMimeType: mime,
+          normalizedExtractionMimeType: null,
+          extractionWarning: message,
+        },
+        { success: false, code: "UNREADABLE_DOCUMENT", error: message },
+        200,
+      );
+    }
+  }
+
+  const dataUrl = normalizedPages ? null : `data:${mime};base64,${toBase64(bytes)}`;
+  const content = buildExtractionContent({
+    fileName: asset.original_file_name,
+    mimeType: mime,
+    dataUrl,
+    pages: normalizedPages,
+  });
+
+  // Defence in depth: nothing the model cannot accept may leave this function.
+  const offendingMime = findUnsupportedContentMime(content);
+  if (offendingMime) {
+    log("blocked_unsupported_content", requestId);
+    return finish(
+      "failed",
+      { extractionError: "This file type cannot be read automatically." },
+      { success: false, code: "UNSUPPORTED_FILE_TYPE", error: "This file type cannot be read automatically." },
+      200,
+    );
+  }
+
 
   const model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
   const controller = new AbortController();
@@ -469,7 +526,7 @@ Deno.serve(async (request: Request) => {
         max_tokens: 8000,
         response_format: erfExtractionResponseFormat(),
         messages: [
-          { role: "system", content: erfExtractionSystemPrompt() },
+          { role: "system", content: erfExtractionSystemPrompt(asset.asset_category) },
           { role: "user", content },
         ],
       }),
@@ -515,7 +572,7 @@ Deno.serve(async (request: Request) => {
         parsed = null;
       }
     }
-    const result = normalizeExtractionResult(parsed);
+    const result = normalizeExtractionResult(parsed, { assetCategory: asset.asset_category });
     if (!result) {
       log("malformed_model_response", requestId);
       return finish(
@@ -576,6 +633,8 @@ Deno.serve(async (request: Request) => {
     }
 
     const status: ErfExtractionStatus = result.claims.length > 0 ? "ready" : "partial";
+    const combinedWarning =
+      [normalizationWarning, result.warning].filter((entry) => Boolean(entry)).join(" ") || null;
     log("extraction_ready", requestId, { status, claimCount: result.claims.length });
     return finish(
       status,
@@ -586,25 +645,29 @@ Deno.serve(async (request: Request) => {
         documentLineage: identity.lineage ?? null,
 
         extractionModel: model,
-        extractionWarning: result.warning,
+        // Safe media provenance only: never converted bytes, URLs or tokens.
+        originalMimeType: mime,
+        normalizedExtractionMimeType: normalizedMime,
+        extractionWarning: combinedWarning,
         extractedText: result.extractedText,
         extractedClaims: result.claims,
         extractedDocumentType: result.documentType,
         extractedProvider: result.provider,
         extractedDocumentDate: result.documentDate,
         extractionSummary: result.summary,
-        pageCount: result.pageCount,
+        pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
       },
       {
         success: true,
         identityMatchStatus,
         claimCount: result.claims.length,
         documentType: result.documentType,
-        pageCount: result.pageCount,
-        warning: result.warning,
+        pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
+        warning: combinedWarning,
       },
       200,
     );
+
   } catch (error) {
     const name = error instanceof Error ? error.name : "UnknownError";
     const timedOut = name === "AbortError" || name === "TimeoutError";
