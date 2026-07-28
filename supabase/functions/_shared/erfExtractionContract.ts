@@ -836,6 +836,10 @@ export function matchDocumentIdentity(
     if (placeAgrees(a, b)) {
       placeMatch = true;
       positives.push(`${label} matches`);
+    } else if (hard && isSupersededProvincePair(a, b)) {
+      // Pre-1994 province name on a historical survey sheet. Neither a
+      // conflict nor corroboration: the era differs, not the property.
+      continue;
     } else if (hard) {
       // Province is coarse and stable, so a disagreement is decisive.
       conflicts.push({ code: "place", message: `the document ${label} is different` });
