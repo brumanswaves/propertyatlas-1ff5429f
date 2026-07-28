@@ -88,7 +88,8 @@ function providerTypeFor(category: string): string {
   if (category === "paid_report") return "Paid data provider";
   if (category === "sg_diagram") return "Surveyor-General";
   if (category === "title_deed") return "Deeds registry document";
-  if (category === "zoning_document" || category === "official_document") return "Official / municipal";
+  if (category === "zoning_document" || category === "official_document")
+    return "Official / municipal";
   return "User supplied";
 }
 
@@ -177,7 +178,10 @@ export function buildEvidenceAppendixRows(input: {
       readLabel:
         readState === "reference_only"
           ? APPENDIX_READ_STATE_LABEL.reference_only
-          : erfAssetExtractionLabel(asset, asset.asset_category === "sg_diagram" ? "diagram" : "report"),
+          : erfAssetExtractionLabel(
+              asset,
+              asset.asset_category === "sg_diagram" ? "diagram" : "report",
+            ),
       scope: scopeForAsset(asset, readState),
       pageLocator: pageLocatorFor(pack, asset.id),
       detail: detailForAsset(asset, readState),
@@ -187,7 +191,13 @@ export function buildEvidenceAppendixRows(input: {
   });
 
   const linkRows: EvidenceAppendixRow[] = (pack?.sources ?? [])
-    .filter((source) => !source.assetId && (source.kind === "market_listing" || source.kind === "official_portal" || source.kind === "municipal_portal"))
+    .filter(
+      (source) =>
+        !source.assetId &&
+        (source.kind === "market_listing" ||
+          source.kind === "official_portal" ||
+          source.kind === "municipal_portal"),
+    )
     .map((source) => ({
       id: `source-${source.id}`,
       name: redactPersonalIdentifiers(source.label),

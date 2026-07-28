@@ -53,7 +53,10 @@ export function formatZarAmount(value: number): string {
   return `R ${Math.round(value).toLocaleString("en-ZA")}`;
 }
 
-function claimAmount(pack: PropertyEvidencePack | null, key: string): { value: number; sourceIds: string[] } | null {
+function claimAmount(
+  pack: PropertyEvidencePack | null,
+  key: string,
+): { value: number; sourceIds: string[] } | null {
   if (!pack) return null;
   for (const claim of pack.claims) {
     if (claim.key !== key) continue;
@@ -193,9 +196,17 @@ export function buildMarketSectionModel(input: MarketSectionInput): MarketSectio
   return {
     figures,
     subjectListing: subject,
-    subjectListingStatus: subject ? (subject.listingRole ? String(subject.listingRole) : "Saved subject listing") : null,
+    subjectListingStatus: subject
+      ? subject.listingRole
+        ? String(subject.listingRole)
+        : "Saved subject listing"
+      : null,
     subjectListingAge:
-      days === null ? null : days === 0 ? "Saved today" : `Saved ${days} day${days === 1 ? "" : "s"} ago`,
+      days === null
+        ? null
+        : days === 0
+          ? "Saved today"
+          : `Saved ${days} day${days === 1 ? "" : "s"} ago`,
     strongest: market.strongest,
     askingCount: market.askingCount,
     soldCount: market.soldCount,

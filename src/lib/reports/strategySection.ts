@@ -50,7 +50,10 @@ const ACQUISITION_KEYS = ["purchasePrice", "landPrice", "acquisitionPrice", "off
 const MAX_PRICE_PATTERN = /max(imum)?\s+(justified\s+)?(offer|purchase|bid|price)/i;
 
 function humanizeKey(key: string): string {
-  const spaced = key.replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").trim();
+  const spaced = key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]+/g, " ")
+    .trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
@@ -101,8 +104,7 @@ export function buildStrategySectionModel(input: {
     kind: MAX_PRICE_PATTERN.test(item.label) ? "calculation" : "calculation",
   }));
 
-  const maximumJustifiedPrice =
-    outputs.find((item) => MAX_PRICE_PATTERN.test(item.label)) ?? null;
+  const maximumJustifiedPrice = outputs.find((item) => MAX_PRICE_PATTERN.test(item.label)) ?? null;
 
   const inputs = Object.entries(chosen.inputs ?? {});
   const acquisitionEntry = ACQUISITION_KEYS.map((key) =>
@@ -127,9 +129,7 @@ export function buildStrategySectionModel(input: {
       kind: "user_assumption" as const,
     }));
 
-  const headline = outputs
-    .filter((item) => item.id !== maximumJustifiedPrice?.id)
-    .slice(0, 4);
+  const headline = outputs.filter((item) => item.id !== maximumJustifiedPrice?.id).slice(0, 4);
   const detail = outputs.filter(
     (item) => item.id !== maximumJustifiedPrice?.id && !headline.includes(item),
   );

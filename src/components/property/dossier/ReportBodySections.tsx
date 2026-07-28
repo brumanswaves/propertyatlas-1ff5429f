@@ -15,10 +15,7 @@ import {
   type StrategyFigure,
   type StrategySectionModel,
 } from "@/lib/reports/strategySection";
-import {
-  APPENDIX_SCOPE_LABEL,
-  type EvidenceAppendixRow,
-} from "@/lib/reports/evidenceAppendix";
+import { APPENDIX_SCOPE_LABEL, type EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
 
 const FIGURE_KIND_LABEL: Record<MarketFigureKind, string> = {
   evidence_input: "Evidence input",
@@ -274,9 +271,16 @@ export function ReportStrategySection({
                 onClick={() => setShowDetail((value) => !value)}
                 className="report-no-print inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
               >
-                {showDetail ? "Hide saved assumptions" : `Show ${deeper.length} saved assumption(s) and outputs`}
+                {showDetail
+                  ? "Hide saved assumptions"
+                  : `Show ${deeper.length} saved assumption(s) and outputs`}
               </button>
-              <div className={cn("mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3", !showDetail && "hidden report-print-show")}>
+              <div
+                className={cn(
+                  "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3",
+                  !showDetail && "hidden report-print-show",
+                )}
+              >
                 {deeper.map((figure) => (
                   <StrategyTile key={figure.id} figure={figure} />
                 ))}
@@ -353,7 +357,9 @@ export function ReportSitePotentialSection({
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
                     Project status
                   </dt>
-                  <dd className="mt-1 text-[#0D1B2A]/85">{projectStatus ?? "Status not recorded"}</dd>
+                  <dd className="mt-1 text-[#0D1B2A]/85">
+                    {projectStatus ?? "Status not recorded"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
@@ -367,7 +373,9 @@ export function ReportSitePotentialSection({
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
                     Brief summary
                   </dt>
-                  <dd className="mt-1 text-[#0D1B2A]/85">{brief ?? "No design brief saved yet."}</dd>
+                  <dd className="mt-1 text-[#0D1B2A]/85">
+                    {brief ?? "No design brief saved yet."}
+                  </dd>
                 </div>
               </dl>
               <div className="report-no-print mt-4 flex flex-wrap gap-2">
@@ -509,9 +517,7 @@ export function ReportEvidenceAppendix({
         </p>
       )}
 
-      <p className="mt-4 text-xs text-[#64748B]">
-        Evidence completeness: {completenessPercent}%.
-      </p>
+      <p className="mt-4 text-xs text-[#64748B]">Evidence completeness: {completenessPercent}%.</p>
     </section>
   );
 }
