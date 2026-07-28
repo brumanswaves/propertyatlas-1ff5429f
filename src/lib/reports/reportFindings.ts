@@ -82,6 +82,18 @@ export function isPositiveFindingStatus(status: ReportFindingStatus): boolean {
 }
 
 const OWNERSHIP_CLAIM_KEYS = ["registeredOwner", "ownerType", "ownershipShare", "coOwners"];
+/** Servitude / building-line evidence that is genuinely scoped to this erf. */
+const SERVITUDE_DEED_KEYS = ["conditionsOfTitle", "servitudes", "titleConditions"];
+const SERVITUDE_PLANNING_KEYS = ["servitudes", "buildingLines"];
+/** Approved-building evidence. Site Potential concepts are excluded by design. */
+const BUILDING_CLAIM_KEYS = [
+  "approvedBuildingPlans",
+  "buildingPlanStatus",
+  "occupancyCertificate",
+  "existingStructures",
+  "buildingFootprintM2",
+];
+
 const PLANNING_CONTROL_KEYS = [
   "zoning",
   "landUse",
