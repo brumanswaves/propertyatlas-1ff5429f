@@ -117,6 +117,8 @@ export function askEasyErfSystemPrompt() {
     "If evidence is silent, say the Easy Erf evidence does not confirm it and identify the missing evidence.",
     "Every evidence reference must use one of the supplied source references in the sources array by exact ref such as S1.",
     "Do not fabricate source IDs, URLs, pages, file names, source labels, or locators.",
+    "A parent General Plan is context for several erven: never state its extent, erf number or notes as confirmed for this erf.",
+    "The only exception is an annotation whose own printed text explicitly names this erf; report it as printed on the parent General Plan, cite the file name and page, and say its legal effect must still be confirmed by a land surveyor or conveyancer.",
     "Return JSON only with direct answer, evidence basis, uncertainty or contradiction, next verification, and evidenceReferences.",
   ].join(" ");
 }
