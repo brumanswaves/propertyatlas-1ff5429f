@@ -93,7 +93,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 }
 
 type Tab =
-  | "overview"
+  | "investigation"
   | "research"
   | "zoning-build"
   | "site-potential"
@@ -103,24 +103,32 @@ type Tab =
   | "calculators"
   | "stoep-report"
   | "local-services";
+/**
+ * Primary navigation stays short so an ordinary user does not have to
+ * understand the whole toolset before starting. Nothing is removed: the
+ * secondary items below remain directly routable.
+ */
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "research", label: "Sources" },
+  { id: "investigation", label: "Investigation" },
+  { id: "research", label: "Property & Sources" },
   { id: "zoning-build", label: "Zoning & Build" },
-  { id: "listings", label: "Market" },
-  { id: "reports", label: "Paid Reports" },
-  { id: "calculators", label: "Strategy" },
-  { id: "notes", label: "Notes" },
   { id: "site-potential", label: "Site Potential" },
-  { id: "stoep-report", label: "Easy Erf Report" },
+  { id: "listings", label: "Market" },
+  { id: "reports", label: "Documents" },
+  { id: "calculators", label: "Strategy" },
+  { id: "stoep-report", label: "Report" },
+];
+
+const WORKBENCH_NAV_MORE: { id: Tab; label: string }[] = [
+  { id: "notes", label: "Notes" },
   { id: "local-services", label: "Local Services" },
 ];
 
 const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidance: string }> = {
-  overview: {
-    title: "Overview",
-    subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
-    guidance: "Use this first read to decide what evidence to check next.",
+  investigation: {
+    title: "Investigation",
+    subtitle: "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
+    guidance: "Every statement here comes from evidence saved for this erf.",
   },
   research: {
     title: "Official Sources",
@@ -193,7 +201,7 @@ function buildWorkbenchPageNextStep(
   opts: { paidReportCount: number; workspaceState: ErfWorkspaceState },
 ): WorkbenchNextStepModel {
   switch (tab) {
-    case "overview":
+    case "investigation":
       return {
         title: "Verify official sources",
         body: "Before you rely on this erf file, confirm the official parcel identity and source links.",
@@ -295,13 +303,23 @@ const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
   { label: "Run the numbers", tab: "calculators" },
 ];
 
+/**
+ * Selecting a parcel always opens the Investigation, unless the URL asks for a
+ * specific tool explicitly.
+ */
 function readInitialTab(): Tab {
-  if (typeof window === "undefined") return "overview";
+  if (typeof window === "undefined") return "investigation";
   const value = new URLSearchParams(window.location.search).get("tab");
   if (value === "calc" || value === "calculators") return "calculators";
   if (value === "site" || value === "site-potential") return "site-potential";
   if (value === "zoning" || value === "zoning-build") return "zoning-build";
-  return "overview";
+  if (value === "research" || value === "sources") return "research";
+  if (value === "listings" || value === "market") return "listings";
+  if (value === "reports" || value === "documents") return "reports";
+  if (value === "notes") return "notes";
+  if (value === "local-services") return "local-services";
+  if (value === "stoep-report" || value === "report") return "stoep-report";
+  return "investigation";
 }
 
 function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
@@ -1917,7 +1935,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   const activeSection = WORKBENCH_SECTIONS[tab];
-  const isOverview = tab === "overview";
+  const isInvestigation = tab === "investigation";
   const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
   const pageNextStep = buildWorkbenchPageNextStep(tab, { paidReportCount, workspaceState });
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
@@ -2162,7 +2180,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </section>
 
-        {!isOverview && (
+        {!isInvestigation && (
           <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
             <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
               Workbench / {activeSection.title}
@@ -2179,7 +2197,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </section>
         )}
 
-        {isOverview ? (
+        {isInvestigation ? (
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">
             <ReportBuilderOverview
               parcel={normalizedParcel}
@@ -2197,7 +2215,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </section>
         ) : null}
 
-        {isOverview && (
+        {isInvestigation && (
           <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
             <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">
               <div className="min-w-0">
@@ -2275,7 +2293,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         )}
 
         <div ref={dossierContentRef} className="px-5 pt-4">
-          {tab === "overview" && null}
+          {tab === "investigation" && null}
 
           {tab === "research" && (
             <>

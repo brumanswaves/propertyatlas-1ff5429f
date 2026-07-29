@@ -21,7 +21,7 @@ function zoneStorageKey(parcelId: string) {
   return `easyerf.planningZone.${parcelId}`;
 }
 
-function readStoredZone(parcelId: string): string | null {
+export function readStoredPlanningZone(parcelId: string): string | null {
   if (typeof window === "undefined") return null;
   try {
     return window.localStorage.getItem(zoneStorageKey(parcelId));
@@ -47,7 +47,7 @@ export function ZoningBuildTab({
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setManualZoneCode(readStoredZone(parcel.id));
+    setManualZoneCode(readStoredPlanningZone(parcel.id));
   }, [parcel.id]);
 
   const selectZone = useCallback(

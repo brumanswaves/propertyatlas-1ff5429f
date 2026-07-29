@@ -47,6 +47,47 @@ export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
   };
 }
 
+/**
+ * Versioned investigation snapshot.
+ *
+ * Only holds state that cannot be re-derived from evidence: when the
+ * investigation started, when it was last viewed, and which guided tasks the
+ * user deliberately skipped or acknowledged. Completion is always derived
+ * from real evidence, never persisted here.
+ */
+export interface InvestigationSnapshot {
+  version: 1;
+  startedAt: string | null;
+  lastViewedAt: string | null;
+  skippedTaskIds: string[];
+  acknowledgedTaskIds: string[];
+}
+
+export function createEmptyInvestigationSnapshot(): InvestigationSnapshot {
+  return {
+    version: 1,
+    startedAt: null,
+    lastViewedAt: null,
+    skippedTaskIds: [],
+    acknowledgedTaskIds: [],
+  };
+}
+
+function coerceInvestigation(value: unknown): InvestigationSnapshot {
+  const base = createEmptyInvestigationSnapshot();
+  if (!value || typeof value !== "object") return base;
+  const raw = value as Partial<InvestigationSnapshot>;
+  const ids = (list: unknown) =>
+    Array.isArray(list) ? list.filter((id): id is string => typeof id === "string") : [];
+  return {
+    version: 1,
+    startedAt: typeof raw.startedAt === "string" ? raw.startedAt : null,
+    lastViewedAt: typeof raw.lastViewedAt === "string" ? raw.lastViewedAt : null,
+    skippedTaskIds: ids(raw.skippedTaskIds),
+    acknowledgedTaskIds: ids(raw.acknowledgedTaskIds),
+  };
+}
+
 export interface ErfWorkspaceState {
   saved: boolean;
   dirty: boolean;
@@ -61,7 +102,9 @@ export interface ErfWorkspaceState {
   chosenScenarioId: string | null;
   reportStarted: boolean;
   sitePotential: SitePotentialSnapshot;
+  investigation: InvestigationSnapshot;
   updatedAt: string;
+
 }
 
 export type ErfWorkspaceTab =
@@ -149,6 +192,7 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     chosenScenarioId: null,
     reportStarted: false,
     sitePotential: createEmptySitePotentialSnapshot(),
+    investigation: createEmptyInvestigationSnapshot(),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -251,6 +295,7 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
     chosenScenarioId: typeof raw.chosenScenarioId === "string" ? raw.chosenScenarioId : null,
     reportStarted: Boolean(raw.reportStarted),
     sitePotential: coerceSitePotential(raw.sitePotential),
+    investigation: coerceInvestigation(raw.investigation),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : base.updatedAt,
   };
 }
