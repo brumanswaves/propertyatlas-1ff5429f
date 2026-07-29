@@ -177,125 +177,183 @@ export function InvestigationHome({
     onSelectView(task.targetTab as DossierView, { anchorId: task.targetAnchorId });
   }
 
+  const currentStep =
+    investigation.journey.find((step) => step.current) ??
+    investigation.journey[investigation.journey.length - 1];
+  const rewardMessage = investigation.messages.find((message) => message.kind === "reward") ?? null;
+  const supportingMessages = investigation.messages.filter(
+    (message) => message.kind !== "reward",
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 md:space-y-5">
       {/* A. Compact identity header */}
-      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/90 px-5 py-4 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.45)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-              Investigating
-            </div>
-            <h2 className="mt-1 truncate text-xl font-semibold tracking-tight text-[#0D1B2A] md:text-2xl">
-              {investigation.identitySummary}
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#F1F5F9] px-2.5 py-1">
-                <MapPin className="h-3 w-3" />
-                {parcel.municipality ?? "Municipality not confirmed"}
-              </span>
-              <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1">
-                {areaLabel ? `${areaLabel} recorded extent` : "Extent not available"}
-              </span>
-              <span
+      <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/90 px-4 py-3.5 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.45)] md:rounded-[1.5rem] md:px-5 md:py-4">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+          Investigating
+        </div>
+        <h2 className="mt-1 text-lg font-semibold leading-tight tracking-tight text-[#0D1B2A] md:text-2xl">
+          {investigation.identitySummary}
+        </h2>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-[#0D1B2A]/70">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#F1F5F9] px-2.5 py-1">
+            <MapPin className="h-3 w-3" />
+            {parcel.municipality ?? "Municipality not confirmed"}
+          </span>
+          <span className="rounded-full bg-[#F1F5F9] px-2.5 py-1">
+            {areaLabel ? `${areaLabel} recorded extent` : "Extent not available"}
+          </span>
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1",
+              investigation.reportReady
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-[#FFFBEB] text-[#92400E]",
+            )}
+          >
+            {investigation.reportReady ? "Identity confirmed" : "Identity not confirmed"}
+          </span>
+        </div>
+      </section>
+
+      {/* B. Six-step journey row */}
+      <section className="rounded-[1.25rem] border border-white/10 bg-[#0D1B2A] p-4 text-white shadow-[0_28px_70px_-40px_rgba(0,0,0,0.85)] md:rounded-[1.5rem] md:p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+            Step {investigation.currentStepIndex} of {investigation.totalSteps}
+          </div>
+          <div className="text-[11px] font-semibold text-white/62">
+            {investigation.overallProgressPercent}% complete
+          </div>
+        </div>
+        <h3 className="mt-1.5 text-xl font-semibold tracking-tight md:text-2xl">
+          {currentStep?.label ?? investigation.headline}
+        </h3>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-white/72">
+          {currentStep?.summary ?? investigation.headline}
+        </p>
+
+        <div
+          role="progressbar"
+          aria-valuenow={investigation.overallProgressPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Investigation progress"
+          className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+        >
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#FF6A00,#FFB86B)]"
+            style={{ width: `${investigation.overallProgressPercent}%` }}
+          />
+        </div>
+
+        <ol className="mt-3 -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {investigation.journey.map((step) => (
+            <li key={step.id} className="min-w-[7.5rem] flex-1 snap-start">
+              <button
+                type="button"
+                onClick={() => onSelectView(step.targetTab as DossierView)}
+                aria-current={step.current ? "step" : undefined}
                 className={cn(
-                  "rounded-full px-2.5 py-1",
-                  investigation.reportReady
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-[#FFFBEB] text-[#92400E]",
+                  "flex h-full w-full flex-col rounded-xl border px-2.5 py-2 text-left transition hover:brightness-110",
+                  step.current
+                    ? "border-[#FF6A00] bg-[#FF6A00]/16 text-white"
+                    : STAGE_TONE[step.status],
                 )}
               >
-                {investigation.reportReady ? "Identity confirmed" : "Identity not confirmed"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* B. Investigation hero */}
-      <section className="rounded-[1.75rem] border border-white/10 bg-[#0D1B2A] p-5 text-white shadow-[0_28px_70px_-40px_rgba(0,0,0,0.85)] md:p-6">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
-          Easy Erf investigation
-        </div>
-        <h3 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-          {investigation.headline}
-        </h3>
-        <ul className="mt-3 max-w-3xl space-y-1.5 text-sm leading-6 text-white/74">
-          {investigation.messages.map((message) => (
-            <li key={message.id} className="flex gap-2">
-              <span
-                className={cn("mt-2 h-1.5 w-1.5 shrink-0 rounded-full", MESSAGE_TONE[message.kind])}
-              />
-              <span>
-                {message.text}
-                {message.targetTab && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onSelectView(message.targetTab as DossierView, {
-                        anchorId: message.targetAnchorId,
-                      })
-                    }
-                    className="ml-2 text-[11px] font-semibold text-[#FFC694] underline"
-                  >
-                    Open
-                  </button>
-                )}
-              </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em]">
+                  {step.status === "complete" ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <CircleDashed className="h-3.5 w-3.5" />
+                  )}
+                  {step.index}. {step.shortLabel}
+                </span>
+              </button>
             </li>
           ))}
-        </ul>
-
-        <div className="mt-5">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-white/62">
-            <span>Investigation progress</span>
-            <span>{investigation.overallProgressPercent}%</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={investigation.overallProgressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Investigation progress"
-            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10"
-          >
-            <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,#FF6A00,#FFB86B)]"
-              style={{ width: `${investigation.overallProgressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {investigation.stages.map((stage) => (
-            <button
-              key={stage.id}
-              type="button"
-              onClick={() => onSelectView(stage.targetTab as DossierView)}
-              className={cn(
-                "rounded-2xl border px-3 py-2.5 text-left transition hover:brightness-110",
-                STAGE_TONE[stage.status],
-              )}
-            >
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]">
-                {stage.status === "complete" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <CircleDashed className="h-3.5 w-3.5" />
-                )}
-                {stage.label}
-              </div>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-4 opacity-80">{stage.summary}</p>
-            </button>
-          ))}
-        </div>
+        </ol>
       </section>
 
-      {/* C. Latest findings */}
-      <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.4)]">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
-          Latest findings
-        </div>
+      {/* C. Reward moment for the step just completed */}
+      {rewardMessage && (
+        <section className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3 md:rounded-[1.5rem] md:px-5">
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+            <p className="text-sm leading-6 text-[#0D1B2A]">{rewardMessage.text}</p>
+          </div>
+        </section>
+      )}
+
+      {/* D. The one current guided task */}
+      {investigation.nextTask ? (
+        <GuidedEvidenceTaskCard
+          task={investigation.nextTask}
+          onPrimaryAction={runTask}
+          onSkip={onSkipTask ? (task) => onSkipTask(task.id) : undefined}
+        />
+      ) : (
+        <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5">
+          <h3 className="text-lg font-semibold tracking-tight text-[#0D1B2A]">
+            No outstanding guided task
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
+            Everything Easy Erf can guide you through for this erf has been completed or skipped.
+            Open the Easy Erf Report to review what is still unconfirmed.
+          </p>
+          <button
+            type="button"
+            onClick={() => onSelectView("stoep-report")}
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-3 text-sm font-semibold text-white"
+          >
+            Open Easy Erf Report <ArrowRight className="h-4 w-4" />
+          </button>
+        </section>
+      )}
+
+      {/* E. Everything already known, kept secondary */}
+      <details className="group rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/92 p-4 md:rounded-[1.5rem] md:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-[#0D1B2A]">
+            What Easy Erf already knows ({investigation.latestFindings.length})
+          </span>
+          <span className="text-xs font-semibold text-[#64748B] group-open:hidden">Show</span>
+          <span className="hidden text-xs font-semibold text-[#64748B] group-open:inline">
+            Hide
+          </span>
+        </summary>
+
+        {supportingMessages.length > 0 && (
+          <ul className="mt-3 space-y-1.5 text-[12px] leading-5 text-[#0D1B2A]/72">
+            {supportingMessages.map((message) => (
+              <li key={message.id} className="flex gap-2">
+                <span
+                  className={cn(
+                    "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                    MESSAGE_TONE[message.kind],
+                  )}
+                />
+                <span>
+                  {message.text}
+                  {message.targetTab && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSelectView(message.targetTab as DossierView, {
+                          anchorId: message.targetAnchorId,
+                        })
+                      }
+                      className="ml-2 text-[11px] font-semibold text-[#B45309] underline"
+                    >
+                      Open
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <ul className="mt-3 divide-y divide-[#0D1B2A]/8">
           {investigation.latestFindings.map((finding) => (
             <li key={finding.id} className="flex flex-wrap items-start gap-3 py-3">
@@ -316,7 +374,7 @@ export function InvestigationHome({
                 <button
                   type="button"
                   onClick={() => onSelectView(finding.targetTab as DossierView)}
-                  className="shrink-0 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40"
+                  className="min-h-9 shrink-0 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/40"
                 >
                   Open
                 </button>
@@ -324,33 +382,8 @@ export function InvestigationHome({
             </li>
           ))}
         </ul>
-      </section>
+      </details>
 
-      {/* D. One guided evidence task */}
-      {investigation.nextTask ? (
-        <GuidedEvidenceTaskCard
-          task={investigation.nextTask}
-          onPrimaryAction={runTask}
-          onSkip={onSkipTask ? (task) => onSkipTask(task.id) : undefined}
-        />
-      ) : (
-        <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5">
-          <h3 className="text-lg font-semibold tracking-tight text-[#0D1B2A]">
-            No outstanding guided task
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
-            Everything Easy Erf can guide you through for this erf has been completed or skipped.
-            Open the Easy Erf Report to review what is still unconfirmed.
-          </p>
-          <button
-            type="button"
-            onClick={() => onSelectView("stoep-report")}
-            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-3 text-sm font-semibold text-white"
-          >
-            Open Easy Erf Report <ArrowRight className="h-4 w-4" />
-          </button>
-        </section>
-      )}
 
       {/* E. Compact Ask Easy Erf */}
       <AskEasyErfPanel

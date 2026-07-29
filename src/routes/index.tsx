@@ -254,10 +254,11 @@ function AtlasHome() {
       setSelectedOfficial({
         source: parcel.sourceLabel as OfficialFeatureSelection["source"],
         layer: parcel.layer as OfficialFeatureSelection["layer"],
-
         properties: parcel.properties,
+        geometry: parcel.geometry ?? null,
         lngLat,
       });
+
       setRequestedOfficialParcel(null);
       setOfficialReopenStatus("resolved");
       clearSavedReopenUrl();

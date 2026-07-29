@@ -1,4 +1,16 @@
-import { formatAreaM2Value, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
+import {
+  canonicalAreaM2,
+  formatAreaM2Value,
+  formatAreaM2WithUnit,
+} from "@/lib/evidence/parcelArea";
+import {
+  calculateBuildEnvelope,
+  createEmptyBuildEnvelopeInputs,
+} from "@/lib/sitePotential/buildEnvelope";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { selectReportHero } from "@/lib/reports/reportHero";
+import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
+
 import {
   Fragment,
   useEffect,
@@ -180,9 +192,12 @@ import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintL
 
 interface Props {
   parcel: NormalizedOfficialParcel;
+  /** Official parcel exterior ring, used for the deterministic report hero. */
+  parcelRing?: Array<[number, number]> | null;
   view?: DossierView;
   onSelectView?: (view: DossierView) => void;
 }
+
 
 export type { DossierView } from "@/components/property/dossier/reportViews";
 
@@ -441,7 +456,13 @@ function extractDefaultPrice(parcel: NormalizedOfficialParcel): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: Props) {
+export function ErfResearchDossier({
+  parcel,
+  parcelRing = null,
+  view = "overview",
+  onSelectView,
+}: Props) {
+
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel).filter(
@@ -598,7 +619,7 @@ export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: 
   }
 
   if (view === "stoep-report") {
-    return <StoepAiReportView parcel={parcel} onSelectView={onSelectView} />;
+    return <StoepAiReportView parcel={parcel} parcelRing={parcelRing} onSelectView={onSelectView} />;
   }
 
   return (
@@ -1450,11 +1471,14 @@ function sitePotentialReportModeLabel(mode: string | null | undefined) {
 
 function StoepAiReportView({
   parcel,
+  parcelRing = null,
   onSelectView,
 }: {
   parcel: NormalizedOfficialParcel;
+  parcelRing?: Array<[number, number]> | null;
   onSelectView?: (view: DossierView) => void;
 }) {
+
   const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
@@ -1467,6 +1491,37 @@ function StoepAiReportView({
   );
   const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
   const selectedDesign = siteProject.selectedDesign;
+
+  /**
+   * Deterministic report hero. The envelope is only drawn from real geometry
+   * plus rules the user actually recorded — never invented.
+   */
+  const heroEnvelope = useMemo(() => {
+    if (!parcelRing || parcelRing.length < 3) return null;
+    const stored = readStoredBuildEnvelopeInputs(parcel.id);
+    const base = createEmptyBuildEnvelopeInputs(
+      parcel.id,
+      parcelRing,
+      canonicalAreaM2(parcel.rawProperties),
+    );
+
+    return calculateBuildEnvelope(stored ? { ...base, ...stored, ring: parcelRing } : base);
+  }, [parcel, parcelRing]);
+
+  const reportHero = useMemo(
+    () =>
+      selectReportHero({
+        hasSitePotentialVisual:
+          Boolean(selectedDesign) ||
+          heroEnvelope?.state === "verified" ||
+          heroEnvelope?.state === "estimated",
+        sitePotentialVisualIsDeterministic: !selectedDesign,
+        hasParcelGeometry: Boolean(heroEnvelope),
+        hasPropertyPhotograph: false,
+      }),
+    [heroEnvelope, selectedDesign],
+  );
+
   const groupedAssets = groupErfAssets(fileVault.assets);
   const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const sitePotentialSkipped =
@@ -2436,12 +2491,15 @@ function StoepAiReportView({
           printOnly={printOnly}
           onPrint={handlePrint}
           onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-          heroSlot={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
-          heroCaption={
-            selectedDesign
-              ? "AI-generated concept visualisation saved to this erf. It is an interpretation, not a photograph or approved plan."
-              : null
+          heroSlot={
+            reportHero.kind === "site_potential" && selectedDesign ? (
+              <SignedAssetPreview asset={selectedDesign} />
+            ) : reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
+              <BuildEnvelopeDiagram result={heroEnvelope!} compact className="border-0" />
+            ) : undefined
           }
+          heroCaption={reportHero.kind === "neutral_card" ? null : reportHero.caption}
+
           modeSlot={<ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />}
           askSlot={
             <AskEasyErfPanel

@@ -24,6 +24,9 @@ import {
   type NormalizedOfficialParcel,
 } from "@/lib/parcels/officialParcelId";
 import { cn } from "@/lib/utils";
+import { resolveParcelArea } from "@/lib/evidence/parcelArea";
+import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
@@ -1664,7 +1667,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       csg?.province,
     ],
   );
+  const parcelRing = useMemo(
+    () => extractExteriorRing(selection.geometry ?? null),
+    [selection.geometry],
+  );
+  const recordedAreaM2 = useMemo(() => {
+    const resolved = resolveParcelArea(selection.properties ?? {});
+    return resolved?.areaM2 ?? null;
+  }, [selection.properties]);
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
+
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
     const pushKnown = (label: string, value: unknown, source: string) => {
@@ -2336,7 +2348,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "site-potential" && (
             <SitePotentialTab
               parcel={normalizedParcel}
+              parcelRing={parcelRing}
+              recordedAreaM2={recordedAreaM2}
               workspaceState={workspaceState}
+
               onUpdateSite={(patch) =>
                 setWorkspacePatch({
                   sitePotential: { ...workspaceState.sitePotential, ...patch },
@@ -2359,7 +2374,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "stoep-report" && (
             <ErfResearchDossier
               parcel={normalizedParcel}
+              parcelRing={parcelRing}
               view="stoep-report"
+
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
             />
           )}

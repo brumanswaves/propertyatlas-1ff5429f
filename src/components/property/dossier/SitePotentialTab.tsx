@@ -36,6 +36,8 @@ import {
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
+import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
+
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import {
   createErfAssetSignedUrl,
@@ -48,10 +50,14 @@ import { toast } from "sonner";
 
 export interface SitePotentialTabProps {
   parcel: NormalizedOfficialParcel;
+  /** Official parcel exterior ring, used for the deterministic build envelope. */
+  parcelRing?: Array<[number, number]> | null;
+  recordedAreaM2?: number | null;
   workspaceState: ErfWorkspaceState;
   onUpdateSite: (patch: Partial<SitePotentialSnapshot>) => void;
   onExploreReport?: () => void;
 }
+
 
 const STYLES = [
   "Coastal contemporary",
@@ -502,10 +508,13 @@ function SitePotentialGenerationProgressPanel({
 
 export function SitePotentialTab({
   parcel,
+  parcelRing = null,
+  recordedAreaM2 = null,
   workspaceState,
   onUpdateSite,
   onExploreReport,
 }: SitePotentialTabProps) {
+
   const site = workspaceState.sitePotential;
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const topographyInputRef = useRef<HTMLInputElement | null>(null);
@@ -1298,6 +1307,17 @@ export function SitePotentialTab({
           Skip Site Potential for this erf
         </button>
       </section>
+
+      {(mode === "vacant_land" || mode === "unknown") && (
+        <VacantLandBuildEnvelope
+          parcelId={parcel.id}
+          parcelLabel={parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "this erf"}
+          ring={parcelRing}
+          recordedAreaM2={recordedAreaM2}
+        />
+      )}
+
+
 
       <section className="grid gap-4 lg:grid-cols-2">
         <UploadPanel

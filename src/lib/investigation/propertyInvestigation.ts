@@ -17,12 +17,15 @@ import {
 } from "./guidedTaskRegistry";
 import type {
   InvestigationFinding,
+  InvestigationJourneyStep,
   InvestigationMessage,
   InvestigationOverallStatus,
   InvestigationStage,
+  InvestigationStageId,
   InvestigationTab,
   PropertyInvestigation,
 } from "./types";
+
 
 /**
  * A contradiction that the evidence layer already recorded. The investigation
@@ -537,15 +540,96 @@ function buildMessages(
 
 const STAGE_WEIGHT = 100 / 7;
 
+const JOURNEY_STEPS: Array<{
+  id: InvestigationStageId;
+  label: string;
+  shortLabel: string;
+  /** Stages folded into this visible step, in precedence order. */
+  stageIds: InvestigationStageId[];
+}> = [
+  { id: "identify", label: "Identify the erf", shortLabel: "Identify", stageIds: ["identify"] },
+  { id: "planning", label: "Planning rules", shortLabel: "Planning", stageIds: ["planning"] },
+  {
+    id: "constraints",
+    label: "Constraints",
+    shortLabel: "Constraints",
+    stageIds: ["constraints"],
+  },
+  {
+    id: "site_potential",
+    label: "Site potential",
+    shortLabel: "Potential",
+    stageIds: ["site_potential"],
+  },
+  { id: "market", label: "Market evidence", shortLabel: "Market", stageIds: ["market"] },
+  {
+    id: "report",
+    label: "Decision & report",
+    shortLabel: "Decision",
+    stageIds: ["strategy", "report"],
+  },
+];
+
+const STATUS_RANK: Record<InvestigationStage["status"], number> = {
+  blocked: 0,
+  waiting: 1,
+  in_progress: 2,
+  unavailable: 3,
+  complete: 4,
+};
+
+/**
+ * Collapses the seven internal stages into the visible six-step journey and
+ * marks exactly one step as current, based on the canonical next task.
+ */
+export function buildInvestigationJourney(
+  stages: InvestigationStage[],
+  currentStageId: InvestigationStageId | null,
+): InvestigationJourneyStep[] {
+  const byId = new Map(stages.map((stage) => [stage.id, stage]));
+
+  const steps = JOURNEY_STEPS.map((step, index) => {
+    const members = step.stageIds
+      .map((id) => byId.get(id))
+      .filter((stage): stage is InvestigationStage => Boolean(stage));
+    const weakest = members.reduce<InvestigationStage | null>((worst, stage) => {
+      if (!worst) return stage;
+      return STATUS_RANK[stage.status] < STATUS_RANK[worst.status] ? stage : worst;
+    }, null);
+    return {
+      id: step.id,
+      index: index + 1,
+      label: step.label,
+      shortLabel: step.shortLabel,
+      status: weakest?.status ?? "waiting",
+      summary: weakest?.summary ?? "Not started yet.",
+      targetTab: weakest?.targetTab ?? ("investigation" as InvestigationTab),
+      current: false,
+    };
+  });
+
+  const currentIndex = currentStageId
+    ? steps.findIndex((step) => JOURNEY_STEPS[step.index - 1].stageIds.includes(currentStageId))
+    : -1;
+  const fallbackIndex = steps.findIndex((step) => step.status !== "complete");
+  const activeIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
+  if (activeIndex >= 0) steps[activeIndex].current = true;
+
+  return steps;
+}
+
 export function buildPropertyInvestigation(
   input: BuildPropertyInvestigationInput,
 ): PropertyInvestigation {
+
   const facts = deriveInvestigationFacts(input);
   const stages = buildStages(facts, input.parcel);
   const contradictions = input.contradictions ?? [];
   const definition = selectNextGuidedTask(facts, input.skippedTaskIds ?? []);
   const nextTask = definition ? toGuidedEvidenceTask(definition, facts) : null;
   const nextAction = buildCanonicalNextAction(facts, input.skippedTaskIds ?? []);
+  const journey = buildInvestigationJourney(stages, nextTask?.stageId ?? nextAction?.stageId ?? null);
+
 
   const progress = stages.reduce((total, stage) => {
     if (stage.status === "complete") return total + STAGE_WEIGHT;
@@ -586,6 +670,10 @@ export function buildPropertyInvestigation(
       status: overallStatus,
     },
     stages,
+    journey,
+    currentStepIndex: journey.find((step) => step.current)?.index ?? journey.length,
+    totalSteps: journey.length,
+
     latestFindings: buildFindings(facts, input.parcel, contradictions),
     nextTask,
     nextAction,

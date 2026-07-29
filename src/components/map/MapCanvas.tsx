@@ -53,8 +53,11 @@ export interface OfficialFeatureSelection {
   source: "Chief Surveyor-General" | "Kouga Municipality GIS";
   layer: "csg-parcels" | "kouga-zoning";
   properties: Record<string, unknown>;
+  /** Official parcel geometry, when the feature carried one. */
+  geometry?: GeoJSON.Geometry | null;
   lngLat: [number, number];
 }
+
 
 export interface OfficialLayerStatus {
   csg: {
@@ -463,8 +466,10 @@ export function MapCanvas({
         source: officialLayerSource(layer),
         layer,
         properties: (feature.properties ?? {}) as Record<string, unknown>,
+        geometry: (feature.geometry ?? null) as GeoJSON.Geometry | null,
         lngLat,
       });
+
     },
     [clearOfficialSelectedFeature, onSelect, onSelectOfficial],
   );

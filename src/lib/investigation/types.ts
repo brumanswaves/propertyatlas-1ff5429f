@@ -134,6 +134,25 @@ export interface InvestigationProgress {
   status: InvestigationOverallStatus;
 }
 
+/**
+ * One step of the visible six-step investigation journey.
+ *
+ * The journey is a presentation grouping of the underlying stages: strategy and
+ * report are shown as a single "Decision" step so the user always sees six
+ * steps, never a shifting count.
+ */
+export interface InvestigationJourneyStep {
+  id: InvestigationStageId;
+  /** 1-based position in the six-step row. */
+  index: number;
+  label: string;
+  shortLabel: string;
+  status: InvestigationStageStatus;
+  summary: string;
+  targetTab: InvestigationTab;
+  current: boolean;
+}
+
 export interface PropertyInvestigation {
   parcelId: string;
   startedAt: string;
@@ -143,9 +162,15 @@ export interface PropertyInvestigation {
   overallProgressPercent: number;
   progress: InvestigationProgress;
   stages: InvestigationStage[];
+  /** Always six steps, in order. */
+  journey: InvestigationJourneyStep[];
+  /** 1-based index of the step the user is on right now. */
+  currentStepIndex: number;
+  totalSteps: number;
   latestFindings: InvestigationFinding[];
   nextTask: GuidedEvidenceTask | null;
   nextAction: InvestigationNextAction | null;
   messages: InvestigationMessage[];
   reportReady: boolean;
 }
+
