@@ -77,7 +77,13 @@ export interface GuidedEvidenceTask {
   primaryActionLabel: string;
   targetTab: InvestigationTab;
   targetAnchorId?: string;
+  /** External public source the user can open for this task, when one exists. */
   sourceUrl?: string;
+  sourceLabel?: string;
+  /** Extra public sources (for example Property24 and Private Property). */
+  extraSources?: Array<{ label: string; url: string }>;
+  /** Deterministic copy-and-send template, for example a plans request. */
+  requestTemplate?: string;
   steps: string[];
   afterCompletion: string;
   canSkip: boolean;
@@ -86,11 +92,47 @@ export interface GuidedEvidenceTask {
   limitations?: string;
 }
 
+/**
+ * The single canonical next action. The investigation panel, the guided task
+ * and the report opening must all read this same value.
+ */
+export interface InvestigationNextAction {
+  id: string;
+  label: string;
+  targetTab: InvestigationTab;
+  targetAnchorId?: string;
+  stageId: InvestigationStageId;
+}
+
+export type InvestigationMessageKind =
+  | "identified"
+  | "supported"
+  | "estimated"
+  | "missing"
+  | "conflict"
+  | "reward"
+  | "next_action";
+
+export interface InvestigationMessage {
+  id: string;
+  kind: InvestigationMessageKind;
+  text: string;
+  targetTab?: InvestigationTab;
+  targetAnchorId?: string;
+}
+
 export type InvestigationOverallStatus =
   | "starting"
   | "underway"
   | "waiting_on_evidence"
   | "ready_for_report";
+
+export interface InvestigationProgress {
+  percent: number;
+  completedStages: number;
+  totalStages: number;
+  status: InvestigationOverallStatus;
+}
 
 export interface PropertyInvestigation {
   parcelId: string;
@@ -99,9 +141,12 @@ export interface PropertyInvestigation {
   identitySummary: string;
   overallStatus: InvestigationOverallStatus;
   overallProgressPercent: number;
+  progress: InvestigationProgress;
   stages: InvestigationStage[];
   latestFindings: InvestigationFinding[];
   nextTask: GuidedEvidenceTask | null;
-  assistantMessages: string[];
+  nextAction: InvestigationNextAction | null;
+  messages: InvestigationMessage[];
   reportReady: boolean;
 }
+
