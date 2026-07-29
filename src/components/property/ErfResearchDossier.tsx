@@ -3017,7 +3017,6 @@ function formatSnapshotDate(value?: string | null) {
   return date.toLocaleString();
 }
 
-
 function decisionVerdictLabel(verdict: DecisionVerdict) {
   switch (verdict) {
     case "proceed":
