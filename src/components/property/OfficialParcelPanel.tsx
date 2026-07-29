@@ -2199,98 +2199,62 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
         {isInvestigation ? (
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">
-            <ReportBuilderOverview
+            <InvestigationHome
               parcel={normalizedParcel}
               workspaceState={workspaceState}
-              onSelectView={(view) =>
+              onSelectView={(view, options) =>
                 selectWorkbenchTab(view as Tab, {
                   markStarted:
                     view === "listings" ||
                     view === "calculators" ||
                     view === "reports" ||
                     view === "stoep-report",
+                  anchorId: options?.anchorId,
                 })
+              }
+              onSkipTask={skipGuidedTask}
+              mapSlot={
+                <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                      Selected erf on the map
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBackToMap}
+                        className="rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#142941]"
+                      >
+                        Back to full map
+                      </button>
+                      {selectedErfGoogleMapsUrl && (
+                        <a
+                          href={selectedErfGoogleMapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35"
+                        >
+                          Google Maps
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <SelectedErfMiniMap
+                      coordinates={normalizedParcel.coordinates}
+                      title={resolved.displayTitle}
+                      onBackToMap={handleBackToMap}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+                    Map position is approximate context, not a boundary confirmation.
+                  </p>
+                </section>
               }
             />
           </section>
         ) : null}
-
-        {isInvestigation && (
-          <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
-            <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                  Selected erf map
-                </div>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                  {resolved.displayTitle}
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-                  Coordinates are approximate. This read-only map context is centered on the
-                  selected erf area. Treat it as parcel context unless confirmed by an official
-                  source.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
-                  {normalizedParcel.erfNumber && (
-                    <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                      Erf {normalizedParcel.erfNumber}
-                    </span>
-                  )}
-                  {normalizedParcel.suburbOrArea && (
-                    <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                      {normalizedParcel.suburbOrArea}
-                    </span>
-                  )}
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                    {formatAreaM2(csg?.geometryArea ?? kouga?.shapeArea)}
-                  </span>
-                </div>
-                <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    Coordinates
-                  </div>
-                  <dl className="mt-2 space-y-1 text-xs text-[#0D1B2A]/70">
-                    <div className="flex justify-between gap-3">
-                      <dt>Lat</dt>
-                      <dd className="font-mono">
-                        {formatMapCoordinate(normalizedParcel.coordinates?.lat)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt>Lng</dt>
-                      <dd className="font-mono">
-                        {formatMapCoordinate(normalizedParcel.coordinates?.lng)}
-                      </dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    onClick={handleBackToMap}
-                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-                  >
-                    Back to full map
-                  </button>
-                  {selectedErfGoogleMapsUrl && (
-                    <a
-                      href={selectedErfGoogleMapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                    >
-                      Open in Google Maps
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                </div>
-              </div>
-              <SelectedErfMiniMap
-                coordinates={normalizedParcel.coordinates}
-                title={resolved.displayTitle}
-                onBackToMap={handleBackToMap}
-              />
-            </div>
-          </section>
-        )}
 
         <div ref={dossierContentRef} className="px-5 pt-4">
           {tab === "investigation" && null}
