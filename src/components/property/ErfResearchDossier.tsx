@@ -2445,12 +2445,15 @@ function StoepAiReportView({
           printOnly={printOnly}
           onPrint={handlePrint}
           onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-          heroSlot={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
-          heroCaption={
-            selectedDesign
-              ? "AI-generated concept visualisation saved to this erf. It is an interpretation, not a photograph or approved plan."
-              : null
+          heroSlot={
+            reportHero.kind === "site_potential" && selectedDesign ? (
+              <SignedAssetPreview asset={selectedDesign} />
+            ) : reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
+              <BuildEnvelopeDiagram result={heroEnvelope!} compact className="border-0" />
+            ) : undefined
           }
+          heroCaption={reportHero.kind === "neutral_card" ? null : reportHero.caption}
+
           modeSlot={<ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />}
           askSlot={
             <AskEasyErfPanel
