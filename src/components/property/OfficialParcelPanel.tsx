@@ -2348,7 +2348,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "site-potential" && (
             <SitePotentialTab
               parcel={normalizedParcel}
+              parcelRing={parcelRing}
+              recordedAreaM2={recordedAreaM2}
               workspaceState={workspaceState}
+
               onUpdateSite={(patch) =>
                 setWorkspacePatch({
                   sitePotential: { ...workspaceState.sitePotential, ...patch },
