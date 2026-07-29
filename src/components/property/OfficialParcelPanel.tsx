@@ -24,6 +24,9 @@ import {
   type NormalizedOfficialParcel,
 } from "@/lib/parcels/officialParcelId";
 import { cn } from "@/lib/utils";
+import { resolveParcelArea } from "@/lib/evidence/parcelArea";
+import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
