@@ -23,7 +23,6 @@ import {
   validateAskEasyErfRequestPayload,
 } from "../_shared/askEasyErfSelectedEvidence.ts";
 
-
 declare const Deno: {
   env: { get(key: string): string | undefined };
   serve(handler: (request: Request) => Promise<Response>): unknown;
@@ -31,7 +30,8 @@ declare const Deno: {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-request-id",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -301,7 +301,6 @@ Deno.serve(async (request: Request) => {
       502,
       requestId,
     );
-
   } catch (error) {
     const name = error instanceof Error ? error.name : "UnknownError";
     if (name === "AbortError" || name === "TimeoutError") {

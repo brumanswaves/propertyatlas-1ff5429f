@@ -67,9 +67,10 @@ describe("Ask Easy Erf dynamic response schema", () => {
 
   it("deduplicates and ignores blank refs, and stays open when none are supplied", () => {
     const format = askEasyErfResponseFormat(["S1", "S1", " ", "S2"]);
-    expect(
-      format.json_schema.schema.properties.evidenceReferences.items.properties.ref,
-    ).toEqual({ type: "string", enum: ["S1", "S2"] });
+    expect(format.json_schema.schema.properties.evidenceReferences.items.properties.ref).toEqual({
+      type: "string",
+      enum: ["S1", "S2"],
+    });
     expect(
       askEasyErfResponseFormat().json_schema.schema.properties.evidenceReferences.items.properties
         .ref,
@@ -146,9 +147,9 @@ describe("Ask Easy Erf attempt evaluation", () => {
     expect(evaluateAskEasyErfAttempt(answer(["S1"], "high"), SOURCES).answer?.confidence).toBe(
       "high",
     );
-    expect(capAskEasyErfConfidence("high", [{ sourceType: "official", status: "unverified" }])).toBe(
-      "medium",
-    );
+    expect(
+      capAskEasyErfConfidence("high", [{ sourceType: "official", status: "unverified" }]),
+    ).toBe("medium");
     expect(capAskEasyErfConfidence("low", [{ sourceType: "missing" }])).toBe("low");
   });
 

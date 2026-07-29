@@ -144,7 +144,6 @@ export function capAskEasyErfConfidence(
   return hasStrongSource ? "high" : "medium";
 }
 
-
 export function askEasyErfSystemPrompt() {
   return [
     "You are Ask Easy Erf, a property-evidence assistant inside the Easy Erf report.",
@@ -280,11 +279,7 @@ export function resolveAskEasyErfAnswerReferences(
   return resolved;
 }
 
-export type AskEasyErfAttemptReason =
-  | "ok"
-  | "malformed_shape"
-  | "empty_references"
-  | "unknown_ref";
+export type AskEasyErfAttemptReason = "ok" | "malformed_shape" | "empty_references" | "unknown_ref";
 
 export interface AskEasyErfAttemptResult {
   reason: AskEasyErfAttemptReason;
