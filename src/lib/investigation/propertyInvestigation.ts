@@ -496,13 +496,30 @@ function buildMessages(
   }
 
   const completedRewards: Array<[boolean, string, InvestigationTab]> = [
-    [facts.identityConfirmed, "You confirmed the parcel identity, so downstream findings can rely on it.", "research"],
-    [facts.sgDiagramSearchable, "Your SG diagram is readable evidence now and is used in the report.", "research"],
-    [facts.marketEvidenceCount > 0, "Your saved comparable evidence is now part of the market view.", "listings"],
+    [
+      facts.identityConfirmed,
+      "You confirmed the parcel identity, so downstream findings can rely on it.",
+      "research",
+    ],
+    [
+      facts.sgDiagramSearchable,
+      "Your SG diagram is readable evidence now and is used in the report.",
+      "research",
+    ],
+    [
+      facts.marketEvidenceCount > 0,
+      "Your saved comparable evidence is now part of the market view.",
+      "listings",
+    ],
   ];
   for (const [done, text, tab] of completedRewards) {
     if (done) {
-      messages.push({ id: `msg-reward-${tab}-${text.length}`, kind: "reward", text, targetTab: tab });
+      messages.push({
+        id: `msg-reward-${tab}-${text.length}`,
+        kind: "reward",
+        text,
+        targetTab: tab,
+      });
     }
   }
 

@@ -16,9 +16,7 @@ import {
  * There is only one ranking engine (the guided task registry). This adapter
  * exists so the report opening and the investigation panel cannot drift.
  */
-export function canonicalReportAction(
-  input: BuildPropertyInvestigationInput,
-): ReportAction | null {
+export function canonicalReportAction(input: BuildPropertyInvestigationInput): ReportAction | null {
   const facts: InvestigationFacts = deriveInvestigationFacts(input);
   const action = buildCanonicalNextAction(facts, input.skippedTaskIds ?? []);
   if (!action) return null;

@@ -149,4 +149,3 @@ export interface PropertyInvestigation {
   messages: InvestigationMessage[];
   reportReady: boolean;
 }
-

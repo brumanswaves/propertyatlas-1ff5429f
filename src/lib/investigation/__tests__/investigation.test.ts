@@ -104,9 +104,9 @@ describe("investigation model", () => {
     const conflict = conflicted.messages.find((message) => message.kind === "conflict");
     expect(conflict?.text).toContain("619 m²");
     expect(conflict?.text).toContain("602 m²");
-    expect(
-      conflicted.latestFindings.some((finding) => finding.status === "conflicting"),
-    ).toBe(true);
+    expect(conflicted.latestFindings.some((finding) => finding.status === "conflicting")).toBe(
+      true,
+    );
   });
 
   it("exposes exactly one canonical next action and progresses when it is completed", () => {

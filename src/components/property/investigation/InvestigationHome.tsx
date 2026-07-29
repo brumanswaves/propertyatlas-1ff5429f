@@ -224,10 +224,7 @@ export function InvestigationHome({
           {investigation.messages.map((message) => (
             <li key={message.id} className="flex gap-2">
               <span
-                className={cn(
-                  "mt-2 h-1.5 w-1.5 shrink-0 rounded-full",
-                  MESSAGE_TONE[message.kind],
-                )}
+                className={cn("mt-2 h-1.5 w-1.5 shrink-0 rounded-full", MESSAGE_TONE[message.kind])}
               />
               <span>
                 {message.text}
