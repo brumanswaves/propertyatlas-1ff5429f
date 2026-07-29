@@ -1664,7 +1664,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       csg?.province,
     ],
   );
+  const parcelRing = useMemo(
+    () => extractExteriorRing(selection.geometry ?? null),
+    [selection.geometry],
+  );
+  const recordedAreaM2 = useMemo(() => {
+    const resolved = resolveParcelArea(selection.properties ?? {});
+    return resolved?.areaM2 ?? null;
+  }, [selection.properties]);
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
+
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
     const pushKnown = (label: string, value: unknown, source: string) => {
