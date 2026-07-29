@@ -200,25 +200,20 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Workbench rail");
     expect(panel).toContain("Erf Workbench");
     expect(panel).toContain("Back to full map");
-    expect(panel).toContain('label: "Overview"');
+    expect(panel).toContain('label: "Investigation"');
+    expect(panel).toContain('label: "Property & Sources"');
+    expect(panel).toContain('label: "Zoning & Build"');
     expect(panel).toContain('label: "Market"');
     expect(panel).toContain('label: "Strategy"');
-    expect(panel).toContain('label: "Sources"');
-    expect(panel).toContain('label: "Paid Reports"');
+    expect(panel).toContain('label: "Documents"');
     expect(panel).toContain('label: "Notes"');
     expect(panel).toContain('label: "Site Potential"');
-    expect(panel).toContain('label: "Easy Erf Report"');
+    expect(panel).toContain('label: "Report"');
     expect(panel).toContain('label: "Local Services"');
+    expect(panel.indexOf('label: "Investigation"')).toBeLessThan(panel.indexOf('label: "Market"'));
+    expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(panel.indexOf('label: "Market"'));
     expect(panel.indexOf('label: "Market"')).toBeLessThan(panel.indexOf('label: "Strategy"'));
-    expect(panel.indexOf('label: "Strategy"')).toBeLessThan(
-      panel.indexOf('label: "Site Potential"'),
-    );
-    expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(
-      panel.indexOf('label: "Easy Erf Report"'),
-    );
-    expect(panel.indexOf('label: "Easy Erf Report"')).toBeLessThan(
-      panel.indexOf('label: "Local Services"'),
-    );
+    expect(panel.indexOf('label: "Notes"')).toBeGreaterThan(panel.indexOf('WORKBENCH_NAV_MORE'));
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");
@@ -240,7 +235,7 @@ describe("official dossier UX guardrails", () => {
   it("shows an interactive selected erf mini map without faking parcel precision", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("Selected erf map");
+    expect(panel).toContain("Selected erf on the map");
     expect(panel).toContain("SelectedErfMiniMap");
     expect(panel).toContain("new mapboxgl.Map");
     expect(panel).toContain("MINI_MAP_STYLE");
@@ -383,9 +378,9 @@ describe("official dossier UX guardrails", () => {
       "Working address is stored separately from the official parcel identity.",
     );
     expect(panel).toContain("Workbench / {activeSection.title}");
-    expect(panel).toContain('title: "Overview"');
+    expect(panel).toContain('title: "Investigation"');
     expect(panel).toContain(
-      "Start with the first read, evidence readiness, and the recommended next step.",
+      "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
     );
     expect(panel).toContain('title: "Official Sources"');
     expect(panel).toContain("Check public records and source links tied to this erf.");
@@ -403,17 +398,17 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Capture your research, questions, and decision notes.");
     expect(panel).toContain('title: "Easy Erf Report"');
     expect(panel).toContain("Assemble the final report from saved identity");
-    expect(panel).toContain("!isOverview && (");
-    expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("!isInvestigation && (");
+    expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("parcel={normalizedParcel}");
     expect(panel).toContain("workspaceState={workspaceState}");
-    expect(panel).toContain("onSelectView={(view)");
+    expect(panel).toContain("onSelectView={(view");
     expect(panel).toContain("{activeSection.guidance}");
     expect(panel).not.toContain("guidanceTitle");
     expect(panel).not.toContain("Comp-building guidance");
     expect(panel).not.toContain("Paid report guidance");
     expect(panel).not.toContain("Source-check guidance");
-    expect(panel).toContain("{isOverview && (");
+    expect(panel).toContain("{isInvestigation ? (");
   });
 
   it("keeps mobile official parcel close and save controls visible", () => {
@@ -439,12 +434,12 @@ describe("official dossier UX guardrails", () => {
 
   it("surfaces Easy Erf intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
-    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    const reportBuilder = read("src/components/property/investigation/InvestigationHome.tsx");
     const reportProgress = read("src/lib/workbench/reportProgress.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
     expect(panel).toContain("ownership, transfer, and deeds-level context");
-    expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("Enhance this erf file");
     expect(panel).toContain("Add Lightstone or WinDeed report documents");
     expect(panel).toContain("Public sources still");
@@ -533,14 +528,14 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("reportStarted: true");
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
-    expect(panel).toContain("ReportBuilderOverview");
-    expect(panel).toContain("needs evidence");
+    expect(panel).toContain("InvestigationHome");
+    expect(reportBuilder).toContain("Latest findings");
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");
     expect(panel).not.toMatch(/ownership verified|valuation verified|zoning verified/i);
     expect(panel).not.toMatch(/PDF extraction|listing scraping|auto-fill/i);
-    expect(panel).toContain('{tab === "overview" && null}');
+    expect(panel).toContain('{tab === "investigation" && null}');
     expect(panel).toContain("bg-[#FF6A00]");
     expect(panel).not.toContain("bg-[radial-gradient");
     expect(panel).toContain("selectWorkbenchTab");

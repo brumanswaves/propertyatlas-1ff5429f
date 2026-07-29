@@ -1284,10 +1284,15 @@ describe("Ask Easy Erf server handler", () => {
 });
 
 describe("Ask Easy Erf report UI guardrails", () => {
-  const source = readFileSync(
-    resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"),
-    "utf8",
-  );
+  // Ask Easy Erf UI now lives in a shared panel used by both the report and
+  // the Investigation Home, so guardrails read both files.
+  const source = [
+    readFileSync(resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"), "utf8"),
+    readFileSync(
+      resolve(__dirname, "../../../components/property/dossier/AskEasyErfPanel.tsx"),
+      "utf8",
+    ),
+  ].join("\n");
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
 
   it("renders the Ask Easy Erf section, loading/error states, disclaimer, and print-safe controls", () => {
