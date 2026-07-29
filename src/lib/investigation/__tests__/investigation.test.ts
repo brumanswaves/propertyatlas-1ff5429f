@@ -185,7 +185,7 @@ describe("investigation surface guardrails", () => {
 
   it("renders deterministic messages instead of a blank chatbot", () => {
     const home = read("src/components/property/investigation/InvestigationHome.tsx");
-    expect(home).toContain("investigation.messages.map");
+    expect(home).toContain("supportingMessages.map");
     expect(home).not.toContain("assistantMessages");
   });
 });
