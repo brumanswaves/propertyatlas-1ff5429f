@@ -958,15 +958,20 @@ describe("Investor Decision Mode guardrails", () => {
 
   it("adds exactly Standard and Investor lenses and hides the selector when printing", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
+    const selector = read("src/components/property/dossier/ReportViewSelector.tsx");
     const styles = read("src/styles.css");
 
-    expect(dossier).toContain("DecisionLensSelector");
-    expect(dossier).toContain('(["standard", "investor"] as const)');
-    expect(dossier).toContain("Standard");
-    expect(dossier).toContain("Investor");
+    // The one obvious control lives in the first viewport, before Ask Easy Erf.
+    expect(dossier).toContain("ReportViewSelector");
+    expect(dossier).toContain("modeSlot=");
+    expect(dossier).not.toContain("function DecisionLensSelector");
+    expect(selector).toContain('mode: "standard"');
+    expect(selector).toContain('mode: "investor"');
+    expect(selector).toContain("Buyer due diligence");
+    expect(selector).toContain("Returns, assumptions & downside");
     expect(dossier).not.toContain("Developer</button>");
     expect(dossier).not.toContain("Renovator</button>");
-    expect(dossier).toContain("report-no-print mt-5 inline-flex");
+    expect(selector).toContain("report-no-print");
     expect(styles).toContain(".report-no-print { display: none !important; }");
   });
 

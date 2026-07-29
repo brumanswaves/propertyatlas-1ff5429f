@@ -4,10 +4,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReportOpening } from "../ReportOpening";
-import {
-  AssetExtractionStatusChip,
-  ReportOwnershipSection,
-} from "../ReportEvidenceUi";
+import { ReportViewSelector } from "../ReportViewSelector";
+import { AssetExtractionStatusChip, ReportOwnershipSection } from "../ReportEvidenceUi";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import {
@@ -104,7 +102,9 @@ describe("ReportOpening (rendered)", () => {
     expect(web.match(/class="report-opening /g)?.length ?? 0).toBe(1);
     expect(web.match(/id="report-ask"/g)?.length ?? 0).toBe(1);
     expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
-    expect(web.indexOf('id="report-decision"')).toBeLessThan(web.indexOf('id="report-next-action"'));
+    expect(web.indexOf('id="report-decision"')).toBeLessThan(
+      web.indexOf('id="report-next-action"'),
+    );
   });
 
   it("shows a live Ask control in web mode and a static explanation in print mode", () => {
@@ -195,7 +195,9 @@ describe("Ownership section (rendered)", () => {
 
   it("shows the missing badges when nothing is supported", () => {
     const { report: empty } = buildDoc([]);
-    const emptyMarkup = renderToStaticMarkup(<ReportOwnershipSection ownership={empty.ownership} />);
+    const emptyMarkup = renderToStaticMarkup(
+      <ReportOwnershipSection ownership={empty.ownership} />,
+    );
     expect(emptyMarkup).toContain("Owner name");
     expect(emptyMarkup).toContain("Deed number");
     expect(emptyMarkup).toContain("Not verified by Easy Erf");
@@ -239,9 +241,9 @@ describe("Extraction status chip (rendered)", () => {
   });
 
   it("shows an unreadable state when nothing could be read", () => {
-    expect(chip({ metadata: { extractionStatus: "partial", identityMatchStatus: "matched" } })).toContain(
-      "no structured values found",
-    );
+    expect(
+      chip({ metadata: { extractionStatus: "partial", identityMatchStatus: "matched" } }),
+    ).toContain("no structured values found");
     expect(chip({ metadata: { extractionStatus: "unsupported" } })).toContain(
       "Cannot be read automatically",
     );
@@ -266,17 +268,14 @@ describe("Extraction status chip (rendered)", () => {
   });
 
   it("labels a non-extractable asset as reference only", () => {
-    expect(
-      chip({ asset_category: "site_photo", mime_type: "image/heic", metadata: {} }),
-    ).toContain("Stored for reference");
+    expect(chip({ asset_category: "site_photo", mime_type: "image/heic", metadata: {} })).toContain(
+      "Stored for reference",
+    );
   });
 });
 
 describe("Report opening order (dossier source)", () => {
-  const source = readFileSync(
-    resolve(__dirname, "../../ErfResearchDossier.tsx"),
-    "utf8",
-  );
+  const source = readFileSync(resolve(__dirname, "../../ErfResearchDossier.tsx"), "utf8");
 
   it("renders the opening, then the lens navigation, then the composed groups", () => {
     const opening = source.indexOf("<ReportOpening");
@@ -298,7 +297,6 @@ describe("Report opening order (dossier source)", () => {
     }
   });
 
-
   it("keeps vacant-land reports free of unsupported house fields", () => {
     const { doc } = buildDoc();
     // Vacant land has no building metrics, so no house metric may be composed.
@@ -307,5 +305,59 @@ describe("Report opening order (dossier source)", () => {
     }
     // A house field may only render when the view model marked it supported.
     expect(source).not.toMatch(/Bedrooms[^]{0,80}\{0\}/);
+  });
+});
+
+describe("Report view selector (rendered)", () => {
+  const { doc } = buildDoc();
+  const render = (mode: "standard" | "investor", onChange = () => {}) =>
+    renderToStaticMarkup(
+      <ReportOpening
+        doc={doc}
+        modeSlot={<ReportViewSelector mode={mode} onChange={onChange} />}
+        askSlot={<textarea aria-label="Ask Easy Erf about this erf" />}
+      />,
+    );
+
+  it("renders one obvious Report view control before Ask Easy Erf", () => {
+    const web = render("standard");
+    expect(web).toContain("Report view");
+    expect(web).toContain("Buyer due diligence");
+    expect(web).toContain("Returns, assumptions &amp; downside");
+    expect(web.indexOf('id="report-view-mode"')).toBeGreaterThan(
+      web.indexOf('id="report-opening-header"'),
+    );
+    expect(web.indexOf('id="report-view-mode"')).toBeLessThan(web.indexOf('id="report-ask"'));
+    expect(web.match(/aria-label="Report view"/g)?.length ?? 0).toBe(1);
+  });
+
+  it("marks the active mode unmistakably and never both at once", () => {
+    for (const mode of ["standard", "investor"] as const) {
+      const markup = render(mode);
+      expect(markup.match(/aria-pressed="true"/g)?.length ?? 0).toBe(1);
+    }
+    expect(render("investor")).toContain("Active");
+  });
+
+  it("hides the control from the printed report", () => {
+    const print = renderToStaticMarkup(
+      <ReportOpening
+        doc={doc}
+        printOnly
+        modeSlot={<ReportViewSelector mode="investor" onChange={() => {}} />}
+      />,
+    );
+    expect(print).not.toContain('id="report-view-mode"');
+  });
+
+  it("switching to Investor changes the composition the report renders", () => {
+    const standard = buildReportComposition("standard");
+    const investor = buildReportComposition("investor");
+    expect(investor.groupOrder).not.toEqual(standard.groupOrder);
+    expect(investor.destinations.map((d) => d.id)).not.toEqual(
+      standard.destinations.map((d) => d.id),
+    );
+    expect(investor.askSuggestionFocus).not.toEqual(standard.askSuggestionFocus);
+    expect(investor.verdictHeading).not.toBe(standard.verdictHeading);
   });
 });

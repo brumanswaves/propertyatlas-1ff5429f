@@ -65,7 +65,6 @@ export async function askEasyErfViaEdgeFunction(input: {
     return { success: false, error: "Sign in to use Ask Easy Erf." };
   }
 
-
   const response = await fetchImpl(url, {
     method: "POST",
     headers: {
@@ -101,7 +100,10 @@ export async function askEasyErfViaEdgeFunction(input: {
   const answer = validateAnswerAgainstSelectedEvidence(payload.answer, input.evidence);
   if (!answer) {
     const ref = typeof payload.requestId === "string" ? ` (ref ${payload.requestId})` : "";
-    return { success: false, error: `Ask Easy Erf returned an invalid answer. Try again.${ref}` };
+    return {
+      success: false,
+      error: `Ask Easy Erf could not match the answer to this property's evidence. Try the question again.${ref}`,
+    };
   }
   return { success: true, answer };
 }
@@ -110,23 +112,21 @@ export async function askEasyErfViaEdgeFunction(input: {
  * Canonicalises the Edge Function answer against the exact evidence slice the
  * browser submitted.
  *
- * ROOT CAUSE THIS REPAIRS: the deployed Edge Function already resolves every
- * reference and returns the canonical source record. The browser used to run
- * that resolved payload through the *model-answer* validator first, which
- * requires a non-empty `label` and a `sourceType` inside the enum on the
- * reference object itself. Any resolved reference whose label/sourceType did
- * not survive the round-trip in that exact shape was rejected client-side with
- * "Ask Easy Erf returned an invalid answer", even though its `ref` mapped
- * cleanly to a submitted source (observed as request ref
- * 7d32b908-7e44-43d7-9bf0-8af5f81d4b9b).
+ * The deployed Edge Function may return either a raw model-style reference
+ * (`{ ref, label, sourceType, sourceId }`) or an already-resolved canonical
+ * source record. Broad questions ("What are the biggest risks?") can also come
+ * back with a resolved reference that carries only `sourceId`. A reference is
+ * therefore accepted when EITHER its `ref` or its `sourceId` matches a
+ * submitted evidence source.
  *
- * The repair does not weaken evidence safety:
- *  - every returned `ref` must exist in the submitted evidence, or the answer
- *    is rejected;
- *  - a returned `sourceId` that disagrees with the submitted source is
- *    rejected;
- *  - labels, source types, authority, status and locators are always taken
- *    from the submitted canonical evidence, never from the response.
+ * Evidence safety is unchanged:
+ *  - at least one of `ref` / `sourceId` must match a submitted source;
+ *  - if both are supplied they must resolve to the SAME submitted source;
+ *  - fabricated refs and fabricated source ids are rejected;
+ *  - label, sourceType, authorityType, status and locator are always
+ *    reconstructed from the submitted evidence, never trusted from the
+ *    response;
+ *  - repeated references are deduplicated by canonical source.
  */
 export function canonicalizeAskEasyErfAnswer(
   value: unknown,
@@ -149,18 +149,31 @@ export function canonicalizeAskEasyErfAnswer(
     sourceType: AskEasyErfSelectedEvidencePayload["sources"][number]["sourceType"];
     sourceId: string | null;
   }> = [];
+  const seen = new Set<string>();
 
   for (const item of raw.evidenceReferences.slice(0, 10)) {
     if (!item || typeof item !== "object" || Array.isArray(item)) return null;
     const reference = item as Record<string, unknown>;
     const ref = typeof reference.ref === "string" ? reference.ref.trim() : "";
-    if (!ref) return null;
-    const source = evidence.sources.find((candidate) => candidate.ref === ref);
-    // Fabricated refs are rejected outright.
+    const sourceId = typeof reference.sourceId === "string" ? reference.sourceId.trim() : "";
+    if (!ref && !sourceId) return null;
+
+    const byRef = ref ? evidence.sources.find((candidate) => candidate.ref === ref) : undefined;
+    const bySourceId = sourceId
+      ? evidence.sources.find((candidate) => candidate.sourceId === sourceId)
+      : undefined;
+
+    // A supplied identifier that matches nothing is fabricated.
+    if (ref && !byRef) return null;
+    if (sourceId && !bySourceId) return null;
+    // Two supplied identifiers must agree on one submitted source.
+    if (byRef && bySourceId && byRef.ref !== bySourceId.ref) return null;
+
+    const source = byRef ?? bySourceId;
     if (!source) return null;
-    if (typeof reference.sourceId === "string" && reference.sourceId !== source.sourceId) {
-      return null;
-    }
+    if (seen.has(source.ref)) continue;
+    seen.add(source.ref);
+
     // Canonical label / sourceType always win over anything in the response.
     contractReferences.push({
       ref: source.ref,
@@ -201,4 +214,3 @@ function validateAnswerAgainstSelectedEvidence(
 ): AskEasyErfAnswer | null {
   return canonicalizeAskEasyErfAnswer(value, evidence);
 }
-
