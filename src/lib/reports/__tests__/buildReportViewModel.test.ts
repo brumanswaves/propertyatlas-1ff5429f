@@ -149,7 +149,9 @@ describe("buildReportViewModel", () => {
     );
 
     expect(vm.identity.marketAddressLine).toBeNull();
-    expect(vm.evidencePack?.claims.find((claim) => claim.id === "claim-address-addr-1-marketAddress")).toMatchObject({
+    expect(
+      vm.evidencePack?.claims.find((claim) => claim.id === "claim-address-addr-1-marketAddress"),
+    ).toMatchObject({
       status: "not_reviewed",
       userConfirmed: false,
     });
@@ -406,10 +408,7 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   ].join("\n");
 
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
-  const lifecycleSource = readFileSync(
-    resolve(__dirname, "../reportPrintLifecycle.ts"),
-    "utf8",
-  );
+  const lifecycleSource = readFileSync(resolve(__dirname, "../reportPrintLifecycle.ts"), "utf8");
 
   it("wires print through a dedicated iframe document", () => {
     expect(source).toContain("createReportPrintFrame");
@@ -476,7 +475,9 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
   });
 
   it("keeps the visible report away from unsupported advice claims", () => {
-    expect(source).toContain("property-quality score, valuation confidence, or purchase recommendation");
+    expect(source.replace(/\s+/g, " ")).toContain(
+      "property-quality score, valuation confidence, or purchase recommendation",
+    );
     expect(source).not.toMatch(/\bBuy recommendation\b/i);
     expect(source).not.toMatch(/\bSell recommendation\b/i);
     expect(source).not.toMatch(/\bownership is verified\b/i);
@@ -503,7 +504,6 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
       expect(rendered, `missing anchor for ${s.anchorId}`).toBe(true);
     }
   });
-
 
   it("keeps ownership section labelled unverified in the UI", () => {
     expect(source).toMatch(/Not verified by Easy Erf/);

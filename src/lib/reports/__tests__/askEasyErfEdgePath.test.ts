@@ -6,10 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-  askEasyErfViaEdgeFunction,
-  ASK_EASY_ERF_FUNCTION_NAME,
-} from "../askEasyErfClient";
+import { askEasyErfViaEdgeFunction, ASK_EASY_ERF_FUNCTION_NAME } from "../askEasyErfClient";
 import { buildAskEasyErfSelectedEvidencePayload } from "../askEasyErf";
 import { buildEvidencePackFixture } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 import { validateAskEasyErfRequestPayload } from "../../../../supabase/functions/_shared/askEasyErfSelectedEvidence";
@@ -36,9 +33,7 @@ function answerFor(evidencePayload: ReturnType<typeof evidence>) {
   return {
     answer: "The Easy Erf evidence does not confirm the registered owner.",
     confidence: "low" as const,
-    evidenceReferences: [
-      { ref: source.ref, label: source.label, sourceType: source.sourceType },
-    ],
+    evidenceReferences: [{ ref: source.ref, label: source.label, sourceType: source.sourceType }],
     unknowns: ["Registered owner"],
     nextAction: "Order a Deeds Office search.",
   };
@@ -54,13 +49,19 @@ async function callClient(
   const payload = evidence(overrides.question);
   const fetchImpl = vi
     .fn()
-    .mockResolvedValue(overrides.response ?? jsonResponse({ success: true, answer: answerFor(payload) }));
+    .mockResolvedValue(
+      overrides.response ?? jsonResponse({ success: true, answer: answerFor(payload) }),
+    );
   const result = await askEasyErfViaEdgeFunction({
     parcelId: payload.parcelId,
     question: overrides.question ?? "Who owns this property?",
     evidence: payload,
     accessToken: overrides.accessToken ?? "user-access-token",
-    deps: { fetchImpl: fetchImpl as unknown as typeof fetch, functionsUrl: FUNCTIONS_URL, apiKey: "publishable-key" },
+    deps: {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      functionsUrl: FUNCTIONS_URL,
+      apiKey: "publishable-key",
+    },
   });
   return { result, fetchImpl, payload };
 }
@@ -120,14 +121,19 @@ describe("Ask Easy Erf live browser path", () => {
 
     expect(result.success).toBe(false);
     if (result.success) return;
-    expect(result.error).toContain("invalid answer");
+    expect(result.error).toContain("could not match the answer to this property's evidence");
     expect(result.error).toContain("ask-fixture");
   });
 
   it("surfaces the Edge Function failure message with its reference", async () => {
     const { result } = await callClient({
       response: jsonResponse(
-        { success: false, code: "AUTH_REQUIRED", error: "Sign in is required. (ref ask-401)", requestId: "ask-401" },
+        {
+          success: false,
+          code: "AUTH_REQUIRED",
+          error: "Sign in is required. (ref ask-401)",
+          requestId: "ask-401",
+        },
         401,
       ),
     });
@@ -138,7 +144,11 @@ describe("Ask Easy Erf live browser path", () => {
 
 describe("Ask Easy Erf canonical request boundary (shared with the Edge Function)", () => {
   const payload = evidence();
-  const body = { parcelId: payload.parcelId, question: "Who owns this property?", evidence: payload };
+  const body = {
+    parcelId: payload.parcelId,
+    question: "Who owns this property?",
+    evidence: payload,
+  };
 
   it("accepts a well-formed canonical request", () => {
     const validated = validateAskEasyErfRequestPayload(body);
@@ -163,7 +173,12 @@ describe("Ask Easy Erf canonical request boundary (shared with the Edge Function
   });
 
   it("rejects malformed or missing evidence", () => {
-    for (const bad of [{}, { ...body, evidence: null }, { ...body, evidence: { sources: [] } }, { ...body, question: "" }]) {
+    for (const bad of [
+      {},
+      { ...body, evidence: null },
+      { ...body, evidence: { sources: [] } },
+      { ...body, question: "" },
+    ]) {
       expect(validateAskEasyErfRequestPayload(bad).ok).toBe(false);
     }
   });

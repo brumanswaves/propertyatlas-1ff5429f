@@ -168,6 +168,10 @@ import {
   writeReportDecisionMode,
   type ReportDecisionMode,
 } from "@/lib/reports/reportDecisionMode";
+import {
+  ReportViewActiveLabel,
+  ReportViewSelector,
+} from "@/components/property/dossier/ReportViewSelector";
 import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
 
 interface Props {
@@ -1830,7 +1834,9 @@ function StoepAiReportView({
             <ReportAreaReconciliation
               identity={report.identity}
               officialAreaLabel={formatAreaM2Value(report.identity.areaM2)}
-              discrepancy={reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null}
+              discrepancy={
+                reportDoc.findings.find((f) => f.id === "finding-area-discrepancy") ?? null
+              }
               actions={reportDoc.actions}
               onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
             />
@@ -1903,7 +1909,10 @@ function StoepAiReportView({
             />
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               {report.planning.map((field) => (
-                <div key={field.label} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+                <div
+                  key={field.label}
+                  className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3"
+                >
                   <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
                     {field.label}
                   </dt>
@@ -1912,7 +1921,10 @@ function StoepAiReportView({
                       <span className="text-[#0D1B2A]/50 font-normal">Not yet verified</span>
                     )}
                   </dd>
-                  <EvidenceBadgeChip badge={field.badge} label={field.value ? "Official" : "Missing"} />
+                  <EvidenceBadgeChip
+                    badge={field.badge}
+                    label={field.value ? "Official" : "Missing"}
+                  />
                 </div>
               ))}
             </dl>
@@ -1974,9 +1986,10 @@ function StoepAiReportView({
             disclaimer={SITE_POTENTIAL_DISCLAIMER}
             visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
             onOpenSitePotential={() => onSelectView?.("site-potential")}
-            onOpenSourceFile={selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined}
+            onOpenSourceFile={
+              selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
+            }
           />
-
         </>
       ),
       market: (
@@ -2001,7 +2014,6 @@ function StoepAiReportView({
             model={strategySection}
             onOpenStrategy={() => onSelectView?.("calculators")}
           />
-
         </>
       ),
       context: (
@@ -2013,7 +2025,10 @@ function StoepAiReportView({
             intro="Conditions, services, running costs and surroundings supported by evidence."
           />
 
-          <details className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5" open={!isGroupCollapsedByDefault(composition, "context")}>
+          <details
+            className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5"
+            open={!isGroupCollapsedByDefault(composition, "context")}
+          >
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
               Show physical, municipal and location context
               <span className="ml-2 text-xs font-normal text-[#64748B]">
@@ -2021,32 +2036,30 @@ function StoepAiReportView({
               </span>
             </summary>
             <div className="mt-4 space-y-5">
+              {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
+              <ReportContextSection
+                anchorId="report-site-risk"
+                eyebrow="Site, Environmental & Physical Risk"
+                title="Physical and environmental conditions supported by evidence"
+                model={siteRiskSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
 
+              {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
+              <ReportMunicipalSection
+                anchorId="report-municipal"
+                model={municipalSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
 
-            {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-            <ReportContextSection
-              anchorId="report-site-risk"
-              eyebrow="Site, Environmental & Physical Risk"
-              title="Physical and environmental conditions supported by evidence"
-              model={siteRiskSection}
-              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-            />
-
-            {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-            <ReportMunicipalSection
-              anchorId="report-municipal"
-              model={municipalSection}
-              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-            />
-
-            {/* LOCATION & LIFESTYLE */}
-            <ReportContextSection
-              anchorId="report-location"
-              eyebrow="Location & Lifestyle"
-              title="Where this erf sits, and what is actually known about it"
-              model={locationSection}
-              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-            />
+              {/* LOCATION & LIFESTYLE */}
+              <ReportContextSection
+                anchorId="report-location"
+                eyebrow="Location & Lifestyle"
+                title="Where this erf sits, and what is actually known about it"
+                model={locationSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
             </div>
           </details>
         </>
@@ -2064,7 +2077,7 @@ function StoepAiReportView({
               intro="The headline decision is in the report opening. This section shows how that decision was reached: confidence by category, what is known, what is still needed, contradictions and the saved evidence chronology."
             />
             <div className="mt-4">
-              <DecisionLensSelector mode={decisionMode} onChange={updateDecisionMode} />
+              <ReportViewActiveLabel mode={decisionMode} />
             </div>
 
             {/* EXECUTIVE DECISION BRIEF */}
@@ -2093,8 +2106,9 @@ function StoepAiReportView({
                         </span>
                       </div>
                       <p className="text-xs leading-5 text-white/68">
-                        Evidence confidence measures completeness and recorded-risk coverage. It is not
-                        a property-quality score, valuation confidence, or purchase recommendation.
+                        Evidence confidence measures completeness and recorded-risk coverage. It is
+                        not a property-quality score, valuation confidence, or purchase
+                        recommendation.
                       </p>
                     </div>
                   </article>
@@ -2106,8 +2120,8 @@ function StoepAiReportView({
                       {decision.summary}
                     </p>
                     <p className="mt-3 text-xs leading-5 text-white/58">
-                      This interpretation is assembled from official, uploaded, user-confirmed, market,
-                      and saved workspace data. It is not labelled human verified.
+                      This interpretation is assembled from official, uploaded, user-confirmed,
+                      market, and saved workspace data. It is not labelled human verified.
                     </p>
                   </article>
                 </div>
@@ -2123,8 +2137,8 @@ function StoepAiReportView({
                       </h3>
                     </div>
                     <p className="max-w-xl text-xs leading-5 text-[#64748B]">
-                      Each category is scored from the recorded evidence state. Open a row to see the
-                      reason behind the score.
+                      Each category is scored from the recorded evidence state. Open a row to see
+                      the reason behind the score.
                     </p>
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
@@ -2202,7 +2216,9 @@ function StoepAiReportView({
                             </span>
                             <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
                           </div>
-                          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">{item.explanation}</p>
+                          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">
+                            {item.explanation}
+                          </p>
                           <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
                             {item.evidence.map((line) => (
                               <li key={line}>- {line}</li>
@@ -2266,7 +2282,10 @@ function StoepAiReportView({
                 </section>
 
                 <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-                  <ReportSectionTitle eyebrow="Evidence Timeline" title="Saved evidence chronology" />
+                  <ReportSectionTitle
+                    eyebrow="Evidence Timeline"
+                    title="Saved evidence chronology"
+                  />
                   <ol className="mt-4 space-y-3">
                     {decision.timeline.map((item) => (
                       <EvidenceTimelineRow key={item.id} item={item} />
@@ -2289,7 +2308,10 @@ function StoepAiReportView({
             id="report-risk"
             className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
           >
-            <ReportSectionTitle eyebrow="Risk & Actions" title="Evidence gaps and open uncertainties" />
+            <ReportSectionTitle
+              eyebrow="Risk & Actions"
+              title="Evidence gaps and open uncertainties"
+            />
             {report.risks.length === 0 ? (
               <p className="mt-3 text-sm text-[#0D1B2A]/70">
                 No blocking risks identified in current evidence. Continue to verify sources.
@@ -2371,7 +2393,9 @@ function StoepAiReportView({
             </div>
             <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h4 className="text-lg font-semibold text-[#0D1B2A]">Assemble a local property team</h4>
+                <h4 className="text-lg font-semibold text-[#0D1B2A]">
+                  Assemble a local property team
+                </h4>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
                   Find relevant local professionals and services based on this erf's location and
                   property context.
@@ -2406,6 +2430,7 @@ function StoepAiReportView({
               ? "AI-generated concept visualisation saved to this erf. It is an interpretation, not a photograph or approved plan."
               : null
           }
+          modeSlot={<ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />}
           askSlot={
             <AskEasyErfSection
               suggestionPayload={askSuggestionPayload}
@@ -2416,9 +2441,8 @@ function StoepAiReportView({
           }
         />
 
-
         {/* STICKY REPORT NAV — five primary destinations, ordered by the decision lens */}
-        <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
+        <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 flex items-center gap-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
           <ul className="flex min-w-max gap-1 text-xs">
             {composition.destinations.map((destination) => (
               <li key={destination.id}>
@@ -2431,6 +2455,7 @@ function StoepAiReportView({
               </li>
             ))}
           </ul>
+          <ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} compact />
         </nav>
 
         {composition.groupOrder.map((groupId) => (
@@ -2476,35 +2501,6 @@ function ReportGroupHeading({
         <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-[#0D1B2A]">{title}</h3>
         <p className="mt-1 max-w-3xl text-xs leading-5 text-[#64748B]">{intro}</p>
       </div>
-    </div>
-  );
-}
-
-function DecisionLensSelector({
-  mode,
-  onChange,
-}: {
-  mode: ReportDecisionMode;
-  onChange: (mode: ReportDecisionMode) => void;
-}) {
-  return (
-    <div className="report-no-print mt-5 inline-flex rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] p-1">
-      {(["standard", "investor"] as const).map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onChange(option)}
-          className={cn(
-            "rounded-full px-4 py-2 text-xs font-semibold transition",
-            mode === option
-              ? "bg-[#0D1B2A] text-white shadow-sm"
-              : "text-[#0D1B2A]/65 hover:bg-white hover:text-[#0D1B2A]",
-          )}
-          aria-pressed={mode === option}
-        >
-          {option === "standard" ? "Standard" : "Investor"}
-        </button>
-      ))}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 export function ReportOpening({
   doc,
   askSlot,
+  modeSlot,
   heroSlot,
   heroCaption,
   printOnly = false,
@@ -27,6 +28,7 @@ export function ReportOpening({
 }: {
   doc: EasyErfReportDocument;
   askSlot?: ReactNode;
+  modeSlot?: ReactNode;
   heroSlot?: ReactNode;
   heroCaption?: string | null;
   printOnly?: boolean;
@@ -86,6 +88,13 @@ export function ReportOpening({
           )}
         </div>
       </section>
+
+      {/* A2. REPORT VIEW — the one obvious lens control, before Ask Easy Erf */}
+      {!printOnly && modeSlot && (
+        <section id="report-view-mode" className="report-section scroll-mt-24">
+          {modeSlot}
+        </section>
+      )}
 
       {/* B. ASK EASY ERF */}
       <section
