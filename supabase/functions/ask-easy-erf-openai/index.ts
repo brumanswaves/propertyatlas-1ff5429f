@@ -12,10 +12,10 @@ import {
   ASK_EASY_ERF_MODEL,
   ASK_EASY_ERF_OPENAI_TIMEOUT_MS,
   ASK_EASY_ERF_OPENAI_URL,
+  askEasyErfRepairInstruction,
   askEasyErfResponseFormat,
   askEasyErfSystemPrompt,
-  resolveAskEasyErfAnswerReferences,
-  validateAskEasyErfContractAnswer,
+  evaluateAskEasyErfAttempt,
   type AskEasyErfContractSource,
 } from "../_shared/askEasyErfContract.ts";
 import {
@@ -23,11 +23,15 @@ import {
   validateAskEasyErfRequestPayload,
 } from "../_shared/askEasyErfSelectedEvidence.ts";
 
-declare const Deno: { env: { get(key: string): string | undefined } };
+declare const Deno: {
+  env: { get(key: string): string | undefined };
+  serve(handler: (request: Request) => Promise<Response>): unknown;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-request-id",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -42,6 +46,7 @@ type FailureCode =
   | "TIMEOUT"
   | "UPSTREAM_REQUEST_REJECTED"
   | "SERVER_UNAVAILABLE"
+  | "EVIDENCE_GROUNDING_FAILED"
   | "MALFORMED_MODEL_RESPONSE";
 
 function json(payload: unknown, status: number) {
@@ -159,82 +164,130 @@ Deno.serve(async (request: Request) => {
     return fail("OPENAI_NOT_CONFIGURED", "Ask Easy Erf is not configured yet.", 503, requestId);
   }
 
+  const allowedRefs = sources.map((source) => source.ref);
+  const responseFormat = askEasyErfResponseFormat(allowedRefs);
+  const baseMessages = [
+    { role: "system", content: askEasyErfSystemPrompt() },
+    {
+      role: "user",
+      content: JSON.stringify({ question, selectedPropertyEvidence: evidence }),
+    },
+  ];
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ASK_EASY_ERF_OPENAI_TIMEOUT_MS);
   try {
-    log("openai_request_start", requestId, { model: ASK_EASY_ERF_MODEL });
-    const response = await fetch(ASK_EASY_ERF_OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
+    // At most two attempts: the initial answer, then one controlled repair when
+    // the shape was fine but no usable evidence reference was cited.
+    let attempt = 0;
+    let lastReason = "malformed_shape";
+    while (attempt < 2) {
+      const isRepair = attempt === 1;
+      log(isRepair ? "retry_started" : "openai_request_start", requestId, {
         model: ASK_EASY_ERF_MODEL,
-        temperature: 0.1,
-        max_tokens: 700,
-        response_format: askEasyErfResponseFormat(),
-        messages: [
-          { role: "system", content: askEasyErfSystemPrompt() },
-          {
-            role: "user",
-            content: JSON.stringify({ question, selectedPropertyEvidence: evidence }),
-          },
-        ],
-      }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { message?: string; type?: string; code?: string };
-    } | null;
-
-    log("openai_response", requestId, { status: response.status });
-
-    if (!response.ok) {
-      console.error(
-        JSON.stringify({
-          fn: "ask-easy-erf-openai",
-          stage: "openai_request_failed",
-          requestId,
-          status: response.status,
-          errorType: payload?.error?.type ?? null,
-          errorCode: payload?.error?.code ?? null,
+      });
+      const response = await fetch(ASK_EASY_ERF_OPENAI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: ASK_EASY_ERF_MODEL,
+          temperature: 0.1,
+          max_tokens: 700,
+          response_format: responseFormat,
+          messages: isRepair
+            ? [
+                ...baseMessages,
+                { role: "system", content: askEasyErfRepairInstruction(allowedRefs) },
+              ]
+            : baseMessages,
         }),
-      );
-      if (response.status === 429) {
-        return fail(
-          "RATE_LIMITED",
-          "Ask Easy Erf is temporarily rate limited. Try again shortly.",
-          429,
-          requestId,
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        error?: { message?: string; type?: string; code?: string };
+      } | null;
+
+      log("openai_response", requestId, { status: response.status, attempt: attempt + 1 });
+
+      if (!response.ok) {
+        console.error(
+          JSON.stringify({
+            fn: "ask-easy-erf-openai",
+            stage: "openai_request_failed",
+            requestId,
+            status: response.status,
+            errorType: payload?.error?.type ?? null,
+            errorCode: payload?.error?.code ?? null,
+          }),
         );
-      }
-      if (response.status >= 400 && response.status < 500) {
+        if (response.status === 429) {
+          return fail(
+            "RATE_LIMITED",
+            "Ask Easy Erf is temporarily rate limited. Try again shortly.",
+            429,
+            requestId,
+          );
+        }
+        if (response.status >= 400 && response.status < 500) {
+          return fail(
+            "UPSTREAM_REQUEST_REJECTED",
+            "Ask Easy Erf could not process this question. Please report this if it repeats.",
+            502,
+            requestId,
+          );
+        }
         return fail(
-          "UPSTREAM_REQUEST_REJECTED",
-          "Ask Easy Erf could not process this question. Please report this if it repeats.",
+          "SERVER_UNAVAILABLE",
+          "Ask Easy Erf is temporarily unavailable.",
           502,
           requestId,
         );
       }
-      return fail("SERVER_UNAVAILABLE", "Ask Easy Erf is temporarily unavailable.", 502, requestId);
+
+      const content = payload?.choices?.[0]?.message?.content;
+      let parsed: unknown = null;
+      if (typeof content === "string") {
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          parsed = null;
+        }
+      }
+
+      const attemptResult = evaluateAskEasyErfAttempt(parsed, sources);
+      lastReason = attemptResult.reason;
+
+      if (attemptResult.reason === "ok" && attemptResult.answer && attemptResult.resolved) {
+        if (isRepair) log("retry_succeeded", requestId);
+        log("answer_ready", requestId, { referenceCount: attemptResult.resolved.length });
+        return json(
+          {
+            success: true,
+            requestId,
+            answer: {
+              ...attemptResult.answer,
+              evidenceReferences: attemptResult.resolved,
+            },
+          },
+          200,
+        );
+      }
+
+      log(isRepair ? "retry_failed" : "attempt_rejected", requestId, {
+        reason: attemptResult.reason,
+      });
+
+      // Only an ungrounded but well-shaped first answer earns the single repair.
+      if (isRepair || attemptResult.reason === "malformed_shape") break;
+      attempt += 1;
     }
 
-    const content = payload?.choices?.[0]?.message?.content;
-    let parsed: unknown = null;
-    if (typeof content === "string") {
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        parsed = null;
-      }
-    }
-    const shaped = validateAskEasyErfContractAnswer(parsed);
-    const resolved = shaped ? resolveAskEasyErfAnswerReferences(shaped, sources) : null;
-    if (!shaped || !resolved) {
-      log("malformed_model_response", requestId);
+    if (lastReason === "malformed_shape") {
       return fail(
         "MALFORMED_MODEL_RESPONSE",
         "Ask Easy Erf returned an invalid answer. Try again.",
@@ -242,15 +295,11 @@ Deno.serve(async (request: Request) => {
         requestId,
       );
     }
-
-    log("answer_ready", requestId, { referenceCount: resolved.length });
-    return json(
-      {
-        success: true,
-        requestId,
-        answer: { ...shaped, evidenceReferences: resolved },
-      },
-      200,
+    return fail(
+      "EVIDENCE_GROUNDING_FAILED",
+      "Ask Easy Erf could not ground an answer in this property's selected evidence. Try the question again.",
+      502,
+      requestId,
     );
   } catch (error) {
     const name = error instanceof Error ? error.name : "UnknownError";
