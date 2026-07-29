@@ -41,6 +41,7 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
+import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
@@ -94,6 +95,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 type Tab =
   | "overview"
   | "research"
+  | "zoning-build"
   | "site-potential"
   | "listings"
   | "reports"
@@ -104,6 +106,7 @@ type Tab =
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "research", label: "Sources" },
+  { id: "zoning-build", label: "Zoning & Build" },
   { id: "listings", label: "Market" },
   { id: "reports", label: "Paid Reports" },
   { id: "calculators", label: "Strategy" },
@@ -124,6 +127,12 @@ const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidanc
     subtitle: "Check public records and source links tied to this erf.",
     guidance:
       "Start with official and municipal records. Keep ownership, valuation and zoning marked needs evidence until a verified source supports them.",
+  },
+  "zoning-build": {
+    title: "Zoning & Build",
+    subtitle: "See the published planning rules for this erf, and what still has to be confirmed.",
+    guidance:
+      "Published zone rules are general municipal rules, not confirmed rights for this erf. Title conditions, servitudes, departures and approved plans can all change what may actually be built.",
   },
   "site-potential": {
     title: "Site Potential",
@@ -239,6 +248,14 @@ function buildWorkbenchPageNextStep(
         tab: "site-potential",
         markStarted: true,
       };
+    case "zoning-build":
+      return {
+        title: "Attach planning evidence",
+        body: "Zoning, title conditions and approved plans decide what may actually be built here. Attach what you have.",
+        cta: "Go to Paid Reports",
+        tab: "reports",
+        markStarted: true,
+      };
     case "site-potential":
       return {
         title: "Build the Easy Erf Report",
@@ -283,6 +300,7 @@ function readInitialTab(): Tab {
   const value = new URLSearchParams(window.location.search).get("tab");
   if (value === "calc" || value === "calculators") return "calculators";
   if (value === "site" || value === "site-potential") return "site-potential";
+  if (value === "zoning" || value === "zoning-build") return "zoning-build";
   return "overview";
 }
 
@@ -2275,6 +2293,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               />
               <ErfResearchDossier parcel={normalizedParcel} view="research" />
             </>
+          )}
+          {tab === "zoning-build" && (
+            <ZoningBuildTab
+              parcel={normalizedParcel}
+              onOpenTab={(next) => selectWorkbenchTab(next as Tab, { markStarted: true })}
+            />
           )}
           {tab === "site-potential" && (
             <SitePotentialTab
