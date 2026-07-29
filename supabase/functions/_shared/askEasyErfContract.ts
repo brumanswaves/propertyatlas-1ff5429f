@@ -195,20 +195,25 @@ function normalizeReference(value: unknown): AskEasyErfContractReference | null 
 }
 
 /** Shape-level validation of the raw model answer. Returns null when malformed. */
-export function validateAskEasyErfContractAnswer(value: unknown): AskEasyErfContractAnswer | null {
+export function validateAskEasyErfContractAnswer(
+  value: unknown,
+  options: { allowEmptyReferences?: boolean } = {},
+): AskEasyErfContractAnswer | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   if (typeof raw.answer !== "string" || !raw.answer.trim()) return null;
   if (raw.confidence !== "high" && raw.confidence !== "medium" && raw.confidence !== "low") {
     return null;
   }
-  if (!Array.isArray(raw.evidenceReferences) || raw.evidenceReferences.length === 0) return null;
+  if (!Array.isArray(raw.evidenceReferences)) return null;
+  if (!options.allowEmptyReferences && raw.evidenceReferences.length === 0) return null;
   const evidenceReferences = raw.evidenceReferences
     .map((item) => normalizeReference(item))
     .filter((item): item is AskEasyErfContractReference => Boolean(item))
     .slice(0, 10);
   // Deterministic replacement for the schema-level `minItems: 1`.
-  if (!evidenceReferences.length) return null;
+  if (!options.allowEmptyReferences && !evidenceReferences.length) return null;
+
   if (!Array.isArray(raw.unknowns)) return null;
   if (raw.nextAction != null && typeof raw.nextAction !== "string") return null;
   return {
