@@ -117,15 +117,41 @@ export function GuidedEvidenceTaskCard({
           <p className="mt-3 rounded-2xl border border-[#FF8A33]/25 bg-[#FF6A00]/10 px-3 py-2 text-xs leading-5 text-white/78">
             After you do this: {task.afterCompletion}
           </p>
-          {task.sourceUrl && (
-            <a
-              href={task.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex text-xs font-semibold text-[#FFC694] underline"
-            >
-              Open the source
-            </a>
+          {(task.sourceUrl || task.extraSources?.length) && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {task.sourceUrl && (
+                <a
+                  href={task.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-xs font-semibold text-[#FFC694] underline"
+                >
+                  Open {task.sourceLabel ?? "the source"}
+                </a>
+              )}
+              {task.extraSources?.map((source) => (
+                <a
+                  key={source.url}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-xs font-semibold text-[#FFC694] underline"
+                >
+                  Open {source.label}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {task.requestTemplate && (
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+                Request message you can send
+              </div>
+              <pre className="mt-2 whitespace-pre-wrap text-xs leading-5 text-white/72">
+                {task.requestTemplate}
+              </pre>
+            </div>
           )}
         </div>
       )}

@@ -10,16 +10,31 @@ import {
 } from "@/lib/evidence/extractionMetadata";
 import { canonicalAreaM2, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import {
+  buildCanonicalNextAction,
   selectNextGuidedTask,
   toGuidedEvidenceTask,
   type InvestigationFacts,
 } from "./guidedTaskRegistry";
 import type {
   InvestigationFinding,
+  InvestigationMessage,
   InvestigationOverallStatus,
   InvestigationStage,
+  InvestigationTab,
   PropertyInvestigation,
 } from "./types";
+
+/**
+ * A contradiction that the evidence layer already recorded. The investigation
+ * never derives a conflict itself — it only surfaces recorded ones.
+ */
+export interface InvestigationContradictionInput {
+  id: string;
+  title: string;
+  explanation: string;
+  displayedValues?: string[];
+  targetTab?: string | null;
+}
 
 export interface BuildPropertyInvestigationInput {
   parcel: NormalizedOfficialParcel;
@@ -31,6 +46,8 @@ export interface BuildPropertyInvestigationInput {
   chosenScenarioId?: string | null;
   marketAddressLine?: string | null;
   skippedTaskIds?: string[];
+  /** Contradictions recorded in the PropertyEvidencePack for this parcel. */
+  contradictions?: InvestigationContradictionInput[];
   startedAt?: string | null;
   now?: Date;
 }
@@ -248,11 +265,45 @@ function buildStages(
   return [identity, planning, constraints, site, market, strategy, report];
 }
 
+const KNOWN_TABS: InvestigationTab[] = [
+  "investigation",
+  "research",
+  "zoning-build",
+  "site-potential",
+  "listings",
+  "reports",
+  "notes",
+  "calculators",
+  "stoep-report",
+  "local-services",
+];
+
+function coerceTab(tab: string | null | undefined): InvestigationTab | undefined {
+  if (!tab) return undefined;
+  return KNOWN_TABS.find((known) => known === tab);
+}
+
 function buildFindings(
   facts: InvestigationFacts,
   parcel: NormalizedOfficialParcel,
+  contradictions: InvestigationContradictionInput[],
 ): InvestigationFinding[] {
   const findings: InvestigationFinding[] = [];
+
+  for (const contradiction of contradictions) {
+    findings.push({
+      id: `finding-conflict-${contradiction.id}`,
+      stageId: "identify",
+      title: contradiction.title,
+      body: contradiction.displayedValues?.length
+        ? `${contradiction.explanation} Recorded values: ${contradiction.displayedValues.join(" vs ")}.`
+        : contradiction.explanation,
+      status: "conflicting",
+      sourceLabel: "Recorded evidence conflict",
+      targetTab: coerceTab(contradiction.targetTab) ?? "research",
+    });
+  }
+
   const areaLabel = formatAreaM2WithUnit(canonicalAreaM2(parcel.rawProperties));
 
   if (facts.hasOfficialParcelKey) {
@@ -343,46 +394,142 @@ function buildFindings(
     });
   }
 
-  return findings.slice(0, 4);
+  return findings.slice(0, 5);
 }
 
-function buildAssistantMessages(
+function buildMessages(
   facts: InvestigationFacts,
   parcel: NormalizedOfficialParcel,
-): string[] {
-  const messages: string[] = [];
+  contradictions: InvestigationContradictionInput[],
+  nextTaskLabel: string | null,
+  nextTaskTab: InvestigationTab | null,
+): InvestigationMessage[] {
+  const messages: InvestigationMessage[] = [];
   const where = [parcel.suburbOrArea, parcel.town, parcel.municipality].filter(Boolean)[0];
   const erf = parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : "this parcel";
-  messages.push(`I identified ${erf}${where ? ` in ${where}` : ""}.`);
+
+  messages.push({
+    id: "msg-identity",
+    kind: "identified",
+    text: `I identified ${erf}${where ? ` in ${where}` : ""}.`,
+    targetTab: "research",
+  });
 
   if (facts.hasOfficialParcelKey) {
-    messages.push(
-      facts.hasAreaEvidence
-        ? "I found the official cadastral boundary and an approximate recorded area."
-        : "I found the official cadastral boundary for this parcel.",
-    );
+    messages.push({
+      id: "msg-cadastral",
+      kind: facts.hasAreaEvidence ? "supported" : "identified",
+      text: facts.hasAreaEvidence
+        ? "I found the cadastral boundary and the official recorded area."
+        : "I found the cadastral boundary for this parcel.",
+      targetTab: "research",
+    });
+  }
+
+  if (facts.hasAreaEvidence && !facts.sgDiagramSearchable) {
+    messages.push({
+      id: "msg-area-estimated",
+      kind: "estimated",
+      text: "The recorded extent stays approximate until an identity-matched SG diagram confirms it.",
+      targetTab: "research",
+      targetAnchorId: "sg-diagram-evidence",
+    });
+  }
+
+  if (facts.sgDiagramParentLineageOnly) {
+    messages.push({
+      id: "msg-sg-parent",
+      kind: "conflict",
+      text: "The SG diagram on file belongs to the parent property in this erf's lineage, so it gives context only.",
+      targetTab: "research",
+    });
   }
 
   messages.push(
     facts.zoningConfirmedByDocument
-      ? "I found a zoning document attached to this erf."
+      ? {
+          id: "msg-zoning",
+          kind: "supported",
+          text: "I found a zoning document attached to this erf.",
+          targetTab: "zoning-build",
+        }
       : facts.zoningRegistryPublished
-        ? "I found published municipal planning sources, but the zoning of this erf is not yet confirmed."
-        : "The next source to check is the municipal planning department, because no published rule set is available here yet.",
+        ? {
+            id: "msg-zoning",
+            kind: "estimated",
+            text: "I found a likely planning framework, but the zoning of this erf is not yet verified.",
+            targetTab: "zoning-build",
+          }
+        : {
+            id: "msg-zoning",
+            kind: "missing",
+            text: "I do not hold a dependable published planning rule set for this municipality yet.",
+            targetTab: "zoning-build",
+          },
   );
 
   if (facts.paidReportSearchable) {
-    messages.push("I found an identity-matched property report with ownership information.");
+    messages.push({
+      id: "msg-paid-report",
+      kind: "supported",
+      text: "I read an identity-matched property report and can use its ownership context.",
+      targetTab: "reports",
+    });
   }
 
-  messages.push(
-    "I have not confirmed title restrictions, servitudes or approved plans yet from the information currently saved.",
-  );
+  messages.push({
+    id: "msg-constraints",
+    kind: "missing",
+    text: "I have not confirmed title restrictions or registered servitudes for this erf.",
+    targetTab: "reports",
+  });
 
-  if (!facts.siteSkipped && !facts.siteDesignSelected) {
-    messages.push(
-      "I can improve the Site Potential result once the planning controls for this erf are confirmed.",
-    );
+  for (const contradiction of contradictions) {
+    messages.push({
+      id: `msg-conflict-${contradiction.id}`,
+      kind: "conflict",
+      text: contradiction.displayedValues?.length
+        ? `${contradiction.title}: ${contradiction.displayedValues.join(" vs ")}.`
+        : contradiction.title,
+      targetTab: coerceTab(contradiction.targetTab) ?? "research",
+    });
+  }
+
+  const completedRewards: Array<[boolean, string, InvestigationTab]> = [
+    [
+      facts.identityConfirmed,
+      "You confirmed the parcel identity, so downstream findings can rely on it.",
+      "research",
+    ],
+    [
+      facts.sgDiagramSearchable,
+      "Your SG diagram is readable evidence now and is used in the report.",
+      "research",
+    ],
+    [
+      facts.marketEvidenceCount > 0,
+      "Your saved comparable evidence is now part of the market view.",
+      "listings",
+    ],
+  ];
+  for (const [done, text, tab] of completedRewards) {
+    if (done) {
+      messages.push({
+        id: `msg-reward-${tab}-${text.length}`,
+        kind: "reward",
+        text,
+        targetTab: tab,
+      });
+    }
+  }
+
+  if (nextTaskLabel && nextTaskTab) {
+    messages.push({
+      id: "msg-next-action",
+      kind: "next_action",
+      text: `Next: ${nextTaskLabel}.`,
+      targetTab: nextTaskTab,
+    });
   }
 
   return messages;
@@ -395,8 +542,10 @@ export function buildPropertyInvestigation(
 ): PropertyInvestigation {
   const facts = deriveInvestigationFacts(input);
   const stages = buildStages(facts, input.parcel);
+  const contradictions = input.contradictions ?? [];
   const definition = selectNextGuidedTask(facts, input.skippedTaskIds ?? []);
   const nextTask = definition ? toGuidedEvidenceTask(definition, facts) : null;
+  const nextAction = buildCanonicalNextAction(facts, input.skippedTaskIds ?? []);
 
   const progress = stages.reduce((total, stage) => {
     if (stage.status === "complete") return total + STAGE_WEIGHT;
@@ -430,10 +579,23 @@ export function buildPropertyInvestigation(
     identitySummary: location ? `${erf} — ${location}` : erf,
     overallStatus,
     overallProgressPercent,
+    progress: {
+      percent: overallProgressPercent,
+      completedStages: stages.filter((stage) => stage.status === "complete").length,
+      totalStages: stages.length,
+      status: overallStatus,
+    },
     stages,
-    latestFindings: buildFindings(facts, input.parcel),
+    latestFindings: buildFindings(facts, input.parcel, contradictions),
     nextTask,
-    assistantMessages: buildAssistantMessages(facts, input.parcel),
+    nextAction,
+    messages: buildMessages(
+      facts,
+      input.parcel,
+      contradictions,
+      nextTask?.title ?? null,
+      nextTask?.targetTab ?? null,
+    ),
     reportReady: facts.identityConfirmed,
   };
 }

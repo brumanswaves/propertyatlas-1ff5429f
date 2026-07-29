@@ -77,6 +77,7 @@ import { useSitePotentialProject } from "@/lib/sitePotential/sitePotentialServic
 import { SITE_POTENTIAL_DISCLAIMER } from "@/lib/sitePotential/config";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 import { StrategyLab } from "./strategy/StrategyLab";
+import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import {
@@ -1538,8 +1539,26 @@ function StoepAiReportView({
         pack: report.evidencePack ?? undefined,
         perspective: decisionMode === "investor" ? "investor" : "home_buyer",
         decisionMode,
+        canonicalNextAction: canonicalReportAction({
+          parcel,
+          workspaceState,
+          assets: fileVault.assets,
+          savedEvidence: evidence,
+          scenarioCount: scenarios.length,
+          chosenScenarioId: chosenScenario?.id ?? null,
+          skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+        }),
       }),
-    [decisionMode, report],
+    [
+      chosenScenario?.id,
+      decisionMode,
+      evidence,
+      fileVault.assets,
+      parcel,
+      report,
+      scenarios.length,
+      workspaceState,
+    ],
   );
 
   const marketSection = useMemo(
@@ -2997,7 +3016,6 @@ function formatSnapshotDate(value?: string | null) {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
 }
-
 
 function decisionVerdictLabel(verdict: DecisionVerdict) {
   switch (verdict) {

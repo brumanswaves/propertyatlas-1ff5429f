@@ -26,6 +26,7 @@ import type {
   InvestigationFinding,
   InvestigationStage,
 } from "@/lib/investigation/types";
+import { MESSAGE_TONE } from "./investigationTone";
 import { GuidedEvidenceTaskCard } from "./GuidedEvidenceTaskCard";
 
 /**
@@ -102,22 +103,6 @@ export function InvestigationHome({
     });
   }, [assets, parcel]);
 
-  const investigation = useMemo(
-    () =>
-      buildPropertyInvestigation({
-        parcel,
-        workspaceState,
-        assets,
-        savedEvidence: evidence,
-        planning,
-        scenarioCount: scenarios.length,
-        chosenScenarioId: chosenScenario?.id ?? null,
-        skippedTaskIds: workspaceState.investigation.skippedTaskIds,
-        startedAt: workspaceState.investigation.startedAt,
-      }),
-    [assets, chosenScenario, evidence, parcel, planning, scenarios.length, workspaceState],
-  );
-
   const selectedSiteDesign = useMemo(
     () =>
       assets.find((asset) => asset.id === workspaceState.sitePotential.selectedDesignAssetId) ??
@@ -149,6 +134,29 @@ export function InvestigationHome({
       strategyWorkspace,
       workspaceState,
     ],
+  );
+
+  const investigation = useMemo(
+    () =>
+      buildPropertyInvestigation({
+        parcel,
+        workspaceState,
+        assets,
+        savedEvidence: evidence,
+        planning,
+        scenarioCount: scenarios.length,
+        chosenScenarioId: chosenScenario?.id ?? null,
+        skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+        startedAt: workspaceState.investigation.startedAt,
+        contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          explanation: item.explanation,
+          displayedValues: item.displayedValues,
+          targetTab: item.targetTab ?? null,
+        })),
+      }),
+    [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
   );
 
   const askPayload = useMemo(
@@ -213,10 +221,27 @@ export function InvestigationHome({
           {investigation.headline}
         </h3>
         <ul className="mt-3 max-w-3xl space-y-1.5 text-sm leading-6 text-white/74">
-          {investigation.assistantMessages.map((message) => (
-            <li key={message} className="flex gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF8A33]" />
-              <span>{message}</span>
+          {investigation.messages.map((message) => (
+            <li key={message.id} className="flex gap-2">
+              <span
+                className={cn("mt-2 h-1.5 w-1.5 shrink-0 rounded-full", MESSAGE_TONE[message.kind])}
+              />
+              <span>
+                {message.text}
+                {message.targetTab && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSelectView(message.targetTab as DossierView, {
+                        anchorId: message.targetAnchorId,
+                      })
+                    }
+                    className="ml-2 text-[11px] font-semibold text-[#FFC694] underline"
+                  >
+                    Open
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>

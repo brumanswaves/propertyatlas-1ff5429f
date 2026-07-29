@@ -1,5 +1,6 @@
 import type {
   GuidedEvidenceTask,
+  InvestigationNextAction,
   InvestigationConfidence,
   InvestigationStageId,
   InvestigationTab,
@@ -51,6 +52,12 @@ export interface GuidedTaskDefinition {
   primaryActionLabel: string;
   targetTab: InvestigationTab;
   targetAnchorId?: string;
+  /** Public source the user can open for this task. Never fetched by Easy Erf. */
+  sourceUrl?: string;
+  sourceLabel?: string;
+  extraSources?: Array<{ label: string; url: string }>;
+  /** Deterministic template text the user can copy and send. */
+  requestTemplate?: string;
   steps: string[];
   afterCompletion: string;
   canSkip: boolean;
@@ -103,6 +110,8 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     primaryActionLabel: "Open Sources and add the SG diagram",
     targetTab: "research",
     targetAnchorId: "sg-diagram-evidence",
+    sourceUrl: "https://csg.esri-southafrica.com/",
+    sourceLabel: "Chief Surveyor-General document viewer",
     steps: [
       "Open the Sources tab and scroll to the SG diagram section.",
       "Use the SG document link to download the diagram for this erf.",
@@ -130,6 +139,8 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     estimatedMinutes: 10,
     primaryActionLabel: "Open Zoning & Build",
     targetTab: "zoning-build",
+    sourceUrl: "https://www.kouga.gov.za/",
+    sourceLabel: "Municipal planning department",
     steps: [
       "Open the Zoning & Build tab.",
       "Select the zone you believe applies, or request a zoning certificate from the municipality.",
@@ -164,6 +175,8 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     estimatedMinutes: 15,
     primaryActionLabel: "Open Documents",
     targetTab: "reports",
+    requestTemplate:
+      "Good day,\n\nI am requesting copies of the approved building plans on record for the property described below.\n\nErf / property: [erf and portion]\nTown / suburb: [town]\nMunicipality: [municipality]\n\nPlease advise the applicable fee and the process to collect or receive the plans electronically.\n\nThank you,\n[your name and contact number]",
     steps: [
       "Open the Documents tab.",
       "Request the approved building plans from the municipal building-control office if you do not have them.",
@@ -191,6 +204,9 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     estimatedMinutes: 5,
     primaryActionLabel: "Open Market",
     targetTab: "listings",
+    sourceUrl: "https://www.property24.com/",
+    sourceLabel: "Property24",
+    extraSources: [{ label: "Private Property", url: "https://www.privateproperty.co.za/" }],
     steps: [
       "Open the Market tab.",
       "Paste a listing URL into the listing importer.",
@@ -353,8 +369,34 @@ export function toGuidedEvidenceTask(
     steps: definition.steps,
     afterCompletion: definition.afterCompletion,
     canSkip: definition.canSkip,
+    sourceUrl: definition.sourceUrl,
+    sourceLabel: definition.sourceLabel,
+    extraSources: definition.extraSources,
+    requestTemplate: definition.requestTemplate,
     confidenceBefore: definition.confidenceBefore(facts),
     confidenceAfterLabel: definition.confidenceAfterLabel,
     limitations: definition.limitations,
+  };
+}
+
+/**
+ * The single canonical next action for a parcel.
+ *
+ * Both the investigation panel and the report opening read this, so the
+ * "one obvious next thing" can never disagree between the two surfaces.
+ * Completed actions are never returned.
+ */
+export function buildCanonicalNextAction(
+  facts: InvestigationFacts,
+  skippedTaskIds: string[] = [],
+): InvestigationNextAction | null {
+  const definition = selectNextGuidedTask(facts, skippedTaskIds);
+  if (!definition) return null;
+  return {
+    id: definition.id,
+    label: definition.primaryActionLabel,
+    targetTab: definition.targetTab,
+    targetAnchorId: definition.targetAnchorId,
+    stageId: definition.stageId,
   };
 }
