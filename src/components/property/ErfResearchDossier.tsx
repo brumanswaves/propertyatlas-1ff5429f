@@ -1,4 +1,16 @@
-import { formatAreaM2Value, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
+import {
+  canonicalAreaM2,
+  formatAreaM2Value,
+  formatAreaM2WithUnit,
+} from "@/lib/evidence/parcelArea";
+import {
+  calculateBuildEnvelope,
+  createEmptyBuildEnvelopeInputs,
+} from "@/lib/sitePotential/buildEnvelope";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { selectReportHero } from "@/lib/reports/reportHero";
+import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
+
 import {
   Fragment,
   useEffect,
