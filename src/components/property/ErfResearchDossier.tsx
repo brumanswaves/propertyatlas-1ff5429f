@@ -1476,6 +1476,32 @@ function StoepAiReportView({
   );
   const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
   const selectedDesign = siteProject.selectedDesign;
+
+  /**
+   * Deterministic report hero. The envelope is only drawn from real geometry
+   * plus rules the user actually recorded — never invented.
+   */
+  const heroEnvelope = useMemo(() => {
+    if (!parcelRing || parcelRing.length < 3) return null;
+    const stored = readStoredBuildEnvelopeInputs(parcel.id);
+    const base = createEmptyBuildEnvelopeInputs(parcel.id, parcelRing, canonicalAreaM2(parcel));
+    return calculateBuildEnvelope(stored ? { ...base, ...stored, ring: parcelRing } : base);
+  }, [parcel, parcelRing]);
+
+  const reportHero = useMemo(
+    () =>
+      selectReportHero({
+        hasSitePotentialVisual:
+          Boolean(selectedDesign) ||
+          heroEnvelope?.state === "verified" ||
+          heroEnvelope?.state === "estimated",
+        sitePotentialVisualIsDeterministic: !selectedDesign,
+        hasParcelGeometry: Boolean(heroEnvelope),
+        hasPropertyPhotograph: false,
+      }),
+    [heroEnvelope, selectedDesign],
+  );
+
   const groupedAssets = groupErfAssets(fileVault.assets);
   const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const sitePotentialSkipped =
