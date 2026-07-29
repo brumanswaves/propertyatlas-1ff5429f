@@ -628,6 +628,8 @@ export function buildPropertyInvestigation(
   const definition = selectNextGuidedTask(facts, input.skippedTaskIds ?? []);
   const nextTask = definition ? toGuidedEvidenceTask(definition, facts) : null;
   const nextAction = buildCanonicalNextAction(facts, input.skippedTaskIds ?? []);
+  const journey = buildInvestigationJourney(stages, nextTask?.stageId ?? nextAction?.stageId ?? null);
+
 
   const progress = stages.reduce((total, stage) => {
     if (stage.status === "complete") return total + STAGE_WEIGHT;
