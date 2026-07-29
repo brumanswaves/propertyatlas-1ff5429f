@@ -39,7 +39,8 @@ import {
   type ErfWorkspaceIdentityStatus,
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
-import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
+import { InvestigationHome } from "./investigation/InvestigationHome";
+import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
@@ -1844,7 +1845,22 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
   }
 
-  function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
+  /** Records that the user chose to skip a guided evidence task. */
+  function skipGuidedTask(taskId: string) {
+    const skippedTaskIds = Array.from(
+      new Set([...workspaceState.investigation.skippedTaskIds, taskId]),
+    );
+    setWorkspacePatch({
+      investigation: { ...workspaceState.investigation, skippedTaskIds },
+      dirty: true,
+    });
+    setWorkflowFeedback("Task skipped. Easy Erf will suggest the next best evidence action.");
+  }
+
+  function selectWorkbenchTab(
+    nextTab: Tab,
+    options?: { markStarted?: boolean; anchorId?: string },
+  ) {
     if (options?.markStarted) {
       if (nextTab === "listings") {
         setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
@@ -1872,7 +1888,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       }
     }
     setTab(nextTab);
-    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+    requestAnimationFrame(() => {
+      if (options?.anchorId) {
+        const target = document.getElementById(options.anchorId);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+      scrollRef.current?.scrollTo({ top: 0 });
+    });
   }
 
   function updateIdentityStatus(nextStatus: IdentityCheckStatus) {
@@ -2202,7 +2227,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <InvestigationHome
               parcel={normalizedParcel}
               workspaceState={workspaceState}
-              onSelectView={(view, options) =>
+              onSelectView={(view: DossierView, options?: { anchorId?: string }) =>
                 selectWorkbenchTab(view as Tab, {
                   markStarted:
                     view === "listings" ||
