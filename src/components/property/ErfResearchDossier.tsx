@@ -1,5 +1,13 @@
 import { formatAreaM2Value, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle,
@@ -17,6 +25,12 @@ import {
 } from "lucide-react";
 
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import {
+  buildReportComposition,
+  isGroupCollapsedByDefault,
+  type ReportGroupId,
+} from "@/lib/reports/reportComposition";
+import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import {
@@ -2438,15 +2452,20 @@ function StoepAiReportView({
 
 function ReportGroupHeading({
   letter,
+  anchorId,
   title,
   intro,
 }: {
   letter: string;
+  anchorId?: string;
   title: string;
   intro: string;
 }) {
   return (
-    <div className="report-group-heading mt-8 flex items-start gap-3 border-t border-[#0D1B2A]/10 pt-6 first:mt-0">
+    <div
+      id={anchorId}
+      className="report-group-heading scroll-mt-24 mt-8 flex items-start gap-3 border-t border-[#0D1B2A]/10 pt-6 first:mt-0"
+    >
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[11px] font-bold text-white">
         {letter}
       </span>
