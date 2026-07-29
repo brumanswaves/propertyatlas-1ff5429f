@@ -2171,6 +2171,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
+        {!isInvestigation && (
         <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
             Current erf file
@@ -2204,6 +2205,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </button>
           </div>
         </section>
+        )}
 
         {!isInvestigation && (
           <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
