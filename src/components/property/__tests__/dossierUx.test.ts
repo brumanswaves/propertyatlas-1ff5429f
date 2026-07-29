@@ -200,25 +200,20 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Workbench rail");
     expect(panel).toContain("Erf Workbench");
     expect(panel).toContain("Back to full map");
-    expect(panel).toContain('label: "Overview"');
+    expect(panel).toContain('label: "Investigation"');
+    expect(panel).toContain('label: "Property & Sources"');
+    expect(panel).toContain('label: "Zoning & Build"');
     expect(panel).toContain('label: "Market"');
     expect(panel).toContain('label: "Strategy"');
-    expect(panel).toContain('label: "Sources"');
-    expect(panel).toContain('label: "Paid Reports"');
+    expect(panel).toContain('label: "Documents"');
     expect(panel).toContain('label: "Notes"');
     expect(panel).toContain('label: "Site Potential"');
-    expect(panel).toContain('label: "Easy Erf Report"');
+    expect(panel).toContain('label: "Report"');
     expect(panel).toContain('label: "Local Services"');
+    expect(panel.indexOf('label: "Investigation"')).toBeLessThan(panel.indexOf('label: "Market"'));
+    expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(panel.indexOf('label: "Market"'));
     expect(panel.indexOf('label: "Market"')).toBeLessThan(panel.indexOf('label: "Strategy"'));
-    expect(panel.indexOf('label: "Strategy"')).toBeLessThan(
-      panel.indexOf('label: "Site Potential"'),
-    );
-    expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(
-      panel.indexOf('label: "Easy Erf Report"'),
-    );
-    expect(panel.indexOf('label: "Easy Erf Report"')).toBeLessThan(
-      panel.indexOf('label: "Local Services"'),
-    );
+    expect(panel.indexOf('label: "Notes"')).toBeGreaterThan(panel.indexOf("WORKBENCH_NAV_MORE"));
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");
@@ -240,7 +235,7 @@ describe("official dossier UX guardrails", () => {
   it("shows an interactive selected erf mini map without faking parcel precision", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("Selected erf map");
+    expect(panel).toContain("Selected erf on the map");
     expect(panel).toContain("SelectedErfMiniMap");
     expect(panel).toContain("new mapboxgl.Map");
     expect(panel).toContain("MINI_MAP_STYLE");
@@ -263,11 +258,10 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Approximate selected-erf context");
     expect(panel).toContain("Approximate map context from selected parcel click");
     expect(panel).toContain("No parcel boundary or GIS precision");
-    expect(panel).toContain("Coordinates are approximate");
-    expect(panel).toContain("Coordinates");
+    expect(panel).toContain("Map position is approximate context, not a boundary confirmation.");
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
-    expect(panel).toContain("Open in Google Maps");
+    expect(panel).toContain("Google Maps");
     expect(panel).toContain("googleMapsCoordinateUrl");
     expect(panel).toContain("https://www.google.com/maps/@");
     expect(panel).toContain("Back to full map");
@@ -383,9 +377,9 @@ describe("official dossier UX guardrails", () => {
       "Working address is stored separately from the official parcel identity.",
     );
     expect(panel).toContain("Workbench / {activeSection.title}");
-    expect(panel).toContain('title: "Overview"');
+    expect(panel).toContain('title: "Investigation"');
     expect(panel).toContain(
-      "Start with the first read, evidence readiness, and the recommended next step.",
+      "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
     );
     expect(panel).toContain('title: "Official Sources"');
     expect(panel).toContain("Check public records and source links tied to this erf.");
@@ -403,17 +397,17 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Capture your research, questions, and decision notes.");
     expect(panel).toContain('title: "Easy Erf Report"');
     expect(panel).toContain("Assemble the final report from saved identity");
-    expect(panel).toContain("!isOverview && (");
-    expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("!isInvestigation && (");
+    expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("parcel={normalizedParcel}");
     expect(panel).toContain("workspaceState={workspaceState}");
-    expect(panel).toContain("onSelectView={(view)");
+    expect(panel).toContain("onSelectView={(view");
     expect(panel).toContain("{activeSection.guidance}");
     expect(panel).not.toContain("guidanceTitle");
     expect(panel).not.toContain("Comp-building guidance");
     expect(panel).not.toContain("Paid report guidance");
     expect(panel).not.toContain("Source-check guidance");
-    expect(panel).toContain("{isOverview && (");
+    expect(panel).toContain("{isInvestigation ? (");
   });
 
   it("keeps mobile official parcel close and save controls visible", () => {
@@ -439,36 +433,31 @@ describe("official dossier UX guardrails", () => {
 
   it("surfaces Easy Erf intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
-    const reportBuilder = read("src/components/property/dossier/ReportBuilderOverview.tsx");
+    const reportBuilder = read("src/components/property/investigation/InvestigationHome.tsx");
     const reportProgress = read("src/lib/workbench/reportProgress.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
     expect(panel).toContain("ownership, transfer, and deeds-level context");
-    expect(panel).toContain("<ReportBuilderOverview");
+    expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("Enhance this erf file");
     expect(panel).toContain("Add Lightstone or WinDeed report documents");
     expect(panel).toContain("Public sources still");
     expect(panel).toContain("Add report documents");
     expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
     expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
-    expect(reportBuilder).toContain("Easy Erf Report Builder");
-    expect(reportBuilder).toContain("Report progress");
-    expect(reportBuilder).toContain("This erf file becomes one final report.");
-    expect(reportBuilder).toContain("buildReportBuilderProgress");
-    expect(reportBuilder).toContain("buildReportActionCards");
-    expect(reportBuilder).toContain("About this erf");
-    expect(reportBuilder).toContain("Recommended next step");
-    expect(reportBuilder).toContain("ProgressRing");
-    expect(reportBuilder).toContain("rows.map");
-    expect(reportBuilder).toContain("onClick={() => step && onSelectView?.(step.view)}");
-    expect(reportBuilder).toContain("group-hover:translate-x-0.5");
-    expect(reportBuilder).toContain("{row.label}");
-    expect(reportBuilder).toContain("{row.status}");
-    expect(reportBuilder).toContain("{actionCards[0].title}");
-    expect(reportBuilder).toContain("{actionCards[1].title}");
-    expect(reportBuilder).toContain("{actionCards[2].title}");
-    expect(reportBuilder).toContain("{actionCards[3].title}");
-    expect(reportBuilder).toContain('view: "stoep-report"');
+    expect(reportBuilder).toContain("Easy Erf investigation");
+    expect(reportBuilder).toContain("Investigation progress");
+    expect(reportBuilder).toContain("buildPropertyInvestigation");
+    expect(reportBuilder).toContain("GuidedEvidenceTaskCard");
+    expect(reportBuilder).toContain("Latest findings");
+    expect(reportBuilder).toContain("Open investigation tools");
+    expect(reportBuilder).toContain('role="progressbar"');
+    expect(reportBuilder).toContain("investigation.stages.map");
+    expect(reportBuilder).toContain("investigation.latestFindings.map");
+    expect(reportBuilder).toContain("{finding.title}");
+    expect(reportBuilder).toContain("{stage.label}");
+    expect(reportBuilder).toContain("nextTask");
+    expect(reportBuilder).toContain('"stoep-report"');
     expect(reportBuilder).toContain("Open Easy Erf Report");
     expect(reportProgress).toContain('title: "Verify the erf"');
     expect(reportProgress).toContain('action: "Check official identity"');
@@ -533,14 +522,14 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("reportStarted: true");
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
-    expect(panel).toContain("ReportBuilderOverview");
-    expect(panel).toContain("needs evidence");
+    expect(panel).toContain("InvestigationHome");
+    expect(reportBuilder).toContain("Latest findings");
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");
     expect(panel).not.toMatch(/ownership verified|valuation verified|zoning verified/i);
     expect(panel).not.toMatch(/PDF extraction|listing scraping|auto-fill/i);
-    expect(panel).toContain('{tab === "overview" && null}');
+    expect(panel).toContain('{tab === "investigation" && null}');
     expect(panel).toContain("bg-[#FF6A00]");
     expect(panel).not.toContain("bg-[radial-gradient");
     expect(panel).toContain("selectWorkbenchTab");

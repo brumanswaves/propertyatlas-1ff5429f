@@ -8,6 +8,7 @@ import {
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import { planningZoneStorageKey, readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { ZoningBuildPanel } from "./ZoningBuildPanel";
 
 /**
@@ -17,19 +18,6 @@ import { ZoningBuildPanel } from "./ZoningBuildPanel";
  * browser. It is never presented as a confirmed municipal zoning.
  */
 
-function zoneStorageKey(parcelId: string) {
-  return `easyerf.planningZone.${parcelId}`;
-}
-
-function readStoredZone(parcelId: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(zoneStorageKey(parcelId));
-  } catch {
-    return null;
-  }
-}
-
 export interface ZoningBuildTabProps {
   parcel: NormalizedOfficialParcel;
   onOpenTab?: (tab: string) => void;
@@ -37,25 +25,20 @@ export interface ZoningBuildTabProps {
   compact?: boolean;
 }
 
-export function ZoningBuildTab({
-  parcel,
-  onOpenTab,
-  onAskEasyErf,
-  compact,
-}: ZoningBuildTabProps) {
+export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: ZoningBuildTabProps) {
   const { assets } = useErfFileVault(parcel.id);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setManualZoneCode(readStoredZone(parcel.id));
+    setManualZoneCode(readStoredPlanningZone(parcel.id));
   }, [parcel.id]);
 
   const selectZone = useCallback(
     (code: string | null) => {
       setManualZoneCode(code);
       try {
-        if (code) window.localStorage.setItem(zoneStorageKey(parcel.id), code);
-        else window.localStorage.removeItem(zoneStorageKey(parcel.id));
+        if (code) window.localStorage.setItem(planningZoneStorageKey(parcel.id), code);
+        else window.localStorage.removeItem(planningZoneStorageKey(parcel.id));
       } catch {
         /* storage is best-effort only */
       }
@@ -69,7 +52,8 @@ export function ZoningBuildTab({
   );
 
   const zoneOptions = useMemo(
-    () => (registry ? listZones(registry).map((zone) => ({ code: zone.code, name: zone.name })) : []),
+    () =>
+      registry ? listZones(registry).map((zone) => ({ code: zone.code, name: zone.name })) : [],
     [registry],
   );
 

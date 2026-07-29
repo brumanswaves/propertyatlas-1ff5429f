@@ -167,7 +167,10 @@ function selectedPayload(
   });
 }
 
-function selectedFixture(question: string, overrides: Parameters<typeof buildEvidencePackFixture>[0] = {}) {
+function selectedFixture(
+  question: string,
+  overrides: Parameters<typeof buildEvidencePackFixture>[0] = {},
+) {
   return buildAskEasyErfSelectedEvidencePayload({
     pack: buildEvidencePackFixture(overrides),
     question,
@@ -300,10 +303,19 @@ describe("Ask Easy Erf evidence payload", () => {
           fetchedAt: "2026-07-01T00:00:00Z",
           contentHash: `hash-${index}`,
           listingDate: "2026-07-01",
-          warnings: Array.from({ length: 8 }, (_, warningIndex) => `Warning ${warningIndex} ${long}`),
-          missingFields: Array.from({ length: 8 }, (_, fieldIndex) => `Missing ${fieldIndex} ${long}`),
+          warnings: Array.from(
+            { length: 8 },
+            (_, warningIndex) => `Warning ${warningIndex} ${long}`,
+          ),
+          missingFields: Array.from(
+            { length: 8 },
+            (_, fieldIndex) => `Missing ${fieldIndex} ${long}`,
+          ),
           matchStatus: "needs_review",
-          matchReasons: Array.from({ length: 8 }, (_, reasonIndex) => `Reason ${reasonIndex} ${long}`),
+          matchReasons: Array.from(
+            { length: 8 },
+            (_, reasonIndex) => `Reason ${reasonIndex} ${long}`,
+          ),
           userConfirmedAttachment: false,
         },
       }),
@@ -382,7 +394,9 @@ describe("Ask Easy Erf evidence payload", () => {
     const standard = suggestedAskEasyErfQuestions(evidencePayload);
     const investor = suggestedAskEasyErfQuestions(evidencePayload, "investor");
 
-    expect(investor).toContain("What assumptions have the greatest effect on this investment case?");
+    expect(investor).toContain(
+      "What assumptions have the greatest effect on this investment case?",
+    );
     expect(investor).toContain("What should I verify before making an offer?");
     expect(standard).not.toEqual(investor);
     expect(JSON.stringify(evidencePayload)).toEqual(JSON.stringify(payload({ assets: [] })));
@@ -493,7 +507,9 @@ describe("Ask Easy Erf evidence payload", () => {
   });
 
   it("keeps selected evidence within explicit retrieval budgets", () => {
-    const selected = selectedPayload("Tell me everything about planning, market, documents and strategy.");
+    const selected = selectedPayload(
+      "Tell me everything about planning, market, documents and strategy.",
+    );
 
     expect(selected.limits).toEqual({
       maxClaims: 12,
@@ -538,7 +554,9 @@ describe("Ask Easy Erf evidence payload", () => {
       "planning",
     );
 
-    expect(selectedFixture("What is the FAR?").claims.some((claim) => claim.domain === "planning")).toBe(true);
+    expect(
+      selectedFixture("What is the FAR?").claims.some((claim) => claim.domain === "planning"),
+    ).toBe(true);
     expect(selectedFixture("How far is the beach?").claims).toEqual([]);
   });
 
@@ -554,10 +572,18 @@ describe("Ask Easy Erf evidence payload", () => {
 
   it("selects ownership, deeds and document gaps for ownership questions", () => {
     const selected = selectedFixture("Who owns it and what title deed evidence is missing?", {
-      assets: [packAsset({ id: "windeed", asset_category: "paid_report", original_file_name: "windeed.pdf" })],
+      assets: [
+        packAsset({
+          id: "windeed",
+          asset_category: "paid_report",
+          original_file_name: "windeed.pdf",
+        }),
+      ],
     });
 
-    expect(selected.gaps.some((gap) => ["ownership", "deeds", "documents"].includes(gap.domain))).toBe(true);
+    expect(
+      selected.gaps.some((gap) => ["ownership", "deeds", "documents"].includes(gap.domain)),
+    ).toBe(true);
     expect(
       selected.sources.some((source) =>
         /windeed|official|ownership|deed/i.test(
@@ -565,7 +591,9 @@ describe("Ask Easy Erf evidence payload", () => {
         ),
       ),
     ).toBe(true);
-    expect(selected.claims.every((claim) => ["ownership", "deeds", "documents"].includes(claim.domain))).toBe(true);
+    expect(
+      selected.claims.every((claim) => ["ownership", "deeds", "documents"].includes(claim.domain)),
+    ).toBe(true);
   });
 
   it("selects planning controls and missing planning controls", () => {
@@ -590,7 +618,11 @@ describe("Ask Easy Erf evidence payload", () => {
 
     expect(selected.claims.length).toBeGreaterThan(0);
     expect(selected.claims.every((claim) => claim.domain === "strategy")).toBe(true);
-    expect(selected.claims.some((claim) => claim.nature === "assumption" || claim.nature === "calculation")).toBe(true);
+    expect(
+      selected.claims.some(
+        (claim) => claim.nature === "assumption" || claim.nature === "calculation",
+      ),
+    ).toBe(true);
     expect(selected.claims.map((claim) => claim.domain)).not.toContain("identity");
   });
 
@@ -605,12 +637,16 @@ describe("Ask Easy Erf evidence payload", () => {
   it("keeps real source references for official, Strategy, market and contradiction facts", () => {
     const identity = selectedFixture("What is the LPI and official parcel identity?");
     expect(identity.claims.some((claim) => claim.domain === "identity")).toBe(true);
-    expect(identity.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    expect(
+      identity.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0),
+    ).toBe(true);
     expect(identity.sources.some((source) => /official|kouga|csg/i.test(source.label))).toBe(true);
 
     const strategy = selectedFixture("Which Strategy assumptions and calculations matter?");
     expect(strategy.claims.some((claim) => claim.domain === "strategy")).toBe(true);
-    expect(strategy.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    expect(
+      strategy.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0),
+    ).toBe(true);
     const strategyRefs = new Set(strategy.claims.flatMap((claim) => claim.sourceRefs));
     expect(strategy.sources.some((source) => strategyRefs.has(source.ref))).toBe(true);
 
@@ -618,7 +654,9 @@ describe("Ask Easy Erf evidence payload", () => {
       savedMarketEvidence: [packMarket({ id: "comp-a", title: "Comparable listing" })],
     });
     expect(market.claims.some((claim) => claim.domain === "market")).toBe(true);
-    expect(market.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0)).toBe(true);
+    expect(
+      market.claims.every((claim) => claim.status === "missing" || claim.sourceRefs.length > 0),
+    ).toBe(true);
     expect(market.sources.some((source) => source.sourceType === "market")).toBe(true);
 
     const contradictory = selectedFixture("What are the biggest risks?", {
@@ -685,7 +723,9 @@ describe("Ask Easy Erf evidence payload", () => {
     const second = selectedFixture("Can I build two units?");
 
     expect(first.claims.map((claim) => claim.id)).toEqual(second.claims.map((claim) => claim.id));
-    expect(first.sources.map((source) => source.ref)).toEqual(second.sources.map((source) => source.ref));
+    expect(first.sources.map((source) => source.ref)).toEqual(
+      second.sources.map((source) => source.ref),
+    );
     expect(first.selectedText).toBe(second.selectedText);
   });
 });
@@ -696,7 +736,11 @@ describe("Ask Easy Erf server handler", () => {
     const response = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: "What are the risks?", evidence }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -713,7 +757,11 @@ describe("Ask Easy Erf server handler", () => {
   ) {
     const fetchMock = vi.fn();
     const response = await handleAskEasyErfRequest(request(body), {
-      env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+      env: {
+        ...process.env,
+        SUPABASE_URL: "https://proj.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY: "server-key",
+      },
       fetch: fetchMock,
       authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
     });
@@ -732,9 +780,7 @@ describe("Ask Easy Erf server handler", () => {
       openAiResponse({
         answer: "Known: the parcel identity exists. Missing: ownership remains unverified.",
         confidence: "medium",
-        evidenceReferences: [
-          { ref: "S1", label: "Official LPI", sourceType: "official" },
-        ],
+        evidenceReferences: [{ ref: "S1", label: "Official LPI", sourceType: "official" }],
         unknowns: ["Current registered owner"],
         nextAction: "Upload a deeds report.",
       }),
@@ -747,7 +793,12 @@ describe("Ask Easy Erf server handler", () => {
         evidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", ASK_EASY_ERF_FN_SECRET: "fn-secret", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          ASK_EASY_ERF_FN_SECRET: "fn-secret",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -777,7 +828,11 @@ describe("Ask Easy Erf server handler", () => {
     const exact = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: "Who owns it?", evidence }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "Ownership is not confirmed by the selected evidence.",
@@ -795,7 +850,11 @@ describe("Ask Easy Erf server handler", () => {
     const whitespace = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: "  Who   owns it?  ", evidence }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "Ownership is still unknown.",
@@ -827,7 +886,11 @@ describe("Ask Easy Erf server handler", () => {
         evidence: acceptedEvidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "The selected evidence has risks and missing information.",
@@ -853,7 +916,11 @@ describe("Ask Easy Erf server handler", () => {
         evidence: truncatedEvidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -902,7 +969,10 @@ describe("Ask Easy Erf server handler", () => {
     );
 
     const tooManyFragments = structuredClone(base);
-    tooManyFragments.sources[0].fragments = Array.from({ length: 7 }, (_, index) => `Fragment ${index}`);
+    tooManyFragments.sources[0].fragments = Array.from(
+      { length: 7 },
+      (_, index) => `Fragment ${index}`,
+    );
     await expectRejectedBeforeOpenAi(
       { parcelId: "parcel-current", question: base.question, evidence: tooManyFragments },
       "INVALID_REQUEST",
@@ -920,14 +990,21 @@ describe("Ask Easy Erf server handler", () => {
     const base = selectedPayload("What are the risks?");
 
     const duplicateRef = structuredClone(base);
-    duplicateRef.sources.push({ ...duplicateRef.sources[0], ref: duplicateRef.sources[0].ref, sourceId: "source-duplicate-ref" });
+    duplicateRef.sources.push({
+      ...duplicateRef.sources[0],
+      ref: duplicateRef.sources[0].ref,
+      sourceId: "source-duplicate-ref",
+    });
     await expectRejectedBeforeOpenAi(
       { parcelId: "parcel-current", question: base.question, evidence: duplicateRef },
       "INVALID_REQUEST",
     );
 
     const duplicateSourceId = structuredClone(base);
-    duplicateSourceId.sources.push({ ...duplicateSourceId.sources[0], ref: `S${duplicateSourceId.sources.length + 1}` });
+    duplicateSourceId.sources.push({
+      ...duplicateSourceId.sources[0],
+      ref: `S${duplicateSourceId.sources.length + 1}`,
+    });
     await expectRejectedBeforeOpenAi(
       { parcelId: "parcel-current", question: base.question, evidence: duplicateSourceId },
       "INVALID_REQUEST",
@@ -1085,12 +1162,18 @@ describe("Ask Easy Erf server handler", () => {
         evidence: currentPayload,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "The current parcel has an official identity, a subject listing, and one comp.",
             confidence: "medium",
-            evidenceReferences: [{ ref: "S1", label: "Current parcel evidence", sourceType: "official" }],
+            evidenceReferences: [
+              { ref: "S1", label: "Current parcel evidence", sourceType: "official" },
+            ],
             unknowns: ["Ownership"],
             nextAction: "Review sources.",
           }),
@@ -1126,7 +1209,11 @@ describe("Ask Easy Erf server handler", () => {
     const response = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: "What are the risks?", evidence: malformed }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -1146,12 +1233,18 @@ describe("Ask Easy Erf server handler", () => {
         evidence,
       }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "The current Easy Erf evidence does not confirm ownership.",
             confidence: "low",
-            evidenceReferences: [{ ref: "S1", label: "Ownership evidence missing", sourceType: "official" }],
+            evidenceReferences: [
+              { ref: "S1", label: "Ownership evidence missing", sourceType: "official" },
+            ],
             unknowns: ["Registered owner"],
             nextAction: "Upload a Lightstone or WinDeed report.",
           }),
@@ -1171,7 +1264,11 @@ describe("Ask Easy Erf server handler", () => {
     const response = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: evidence.question, evidence }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi
           .fn()
           .mockResolvedValue(openAiResponse({ answer: "No refs", confidence: "medium" })),
@@ -1209,7 +1306,11 @@ describe("Ask Easy Erf server handler", () => {
     const response = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: "What are the risks?", evidence: empty }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: fetchMock,
         authenticate: vi.fn().mockResolvedValue({ user: { id: "user-1" } }),
       },
@@ -1237,7 +1338,10 @@ describe("Ask Easy Erf server handler", () => {
 
     const stale = await handleAskEasyErfRequest(
       request({ parcelId: "other-parcel", question: evidence.question, evidence }),
-      { env: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" }, authenticate: vi.fn().mockResolvedValue({}) },
+      {
+        env: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        authenticate: vi.fn().mockResolvedValue({}),
+      },
     );
     expect(stale.status).toBe(409);
 
@@ -1245,14 +1349,12 @@ describe("Ask Easy Erf server handler", () => {
       request({ parcelId: "parcel-current", question: evidence.question, evidence }),
       {
         env: { SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
-        fetch: vi
-          .fn()
-          .mockResolvedValue(
-            new Response(JSON.stringify({ success: false, code: "RATE_LIMITED" }), {
-              status: 429,
-              headers: { "Content-Type": "application/json" },
-            }),
-          ),
+        fetch: vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ success: false, code: "RATE_LIMITED" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
         authenticate: vi.fn().mockResolvedValue({}),
       },
     );
@@ -1264,7 +1366,11 @@ describe("Ask Easy Erf server handler", () => {
     const response = await handleAskEasyErfRequest(
       request({ parcelId: "parcel-current", question: evidence.question, evidence }),
       {
-        env: { ...process.env, SUPABASE_URL: "https://proj.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "server-key" },
+        env: {
+          ...process.env,
+          SUPABASE_URL: "https://proj.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: "server-key",
+        },
         fetch: vi.fn().mockResolvedValue(
           openAiResponse({
             answer: "This cites a source that was not supplied.",
@@ -1284,10 +1390,15 @@ describe("Ask Easy Erf server handler", () => {
 });
 
 describe("Ask Easy Erf report UI guardrails", () => {
-  const source = readFileSync(
-    resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"),
-    "utf8",
-  );
+  // Ask Easy Erf UI now lives in a shared panel used by both the report and
+  // the Investigation Home, so guardrails read both files.
+  const source = [
+    readFileSync(resolve(__dirname, "../../../components/property/ErfResearchDossier.tsx"), "utf8"),
+    readFileSync(
+      resolve(__dirname, "../../../components/property/dossier/AskEasyErfPanel.tsx"),
+      "utf8",
+    ),
+  ].join("\n");
   const styles = readFileSync(resolve(__dirname, "../../../styles.css"), "utf8");
 
   it("renders the Ask Easy Erf section, loading/error states, disclaimer, and print-safe controls", () => {

@@ -12,7 +12,6 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import nextStepBannerAsset from "@/assets/recommended-next-step-banner-bg.png.asset.json";
 
-
 interface Props {
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: InvestorWorkflowView) => void;
@@ -180,7 +179,6 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
             View erf details <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </aside>
-
       </section>
 
       {/* 4 mini product panels */}
@@ -278,8 +276,8 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
               What could this erf become?
             </h3>
             <p className="mt-1 text-[13px] leading-5 text-[#4A5A6A]">
-              Explore renovation or new-build possibilities. Optional — skip if
-              not relevant to this report.
+              Explore renovation or new-build possibilities. Optional — skip if not relevant to this
+              report.
             </p>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-[12px] sm:grid-cols-4">
               <SitePotentialStat
@@ -323,7 +321,6 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
 
       {/* Recommended next step banner */}
       <section className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#06152A] p-6 text-white shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
-
         <img
           src={nextStepBannerAsset.url}
           alt=""
@@ -421,20 +418,10 @@ function sitePotentialModeLabel(mode: SitePotentialMode | null) {
   }
 }
 
-function SitePotentialStat({
-  label,
-  value,
-  ok,
-}: {
-  label: string;
-  value: string;
-  ok?: boolean;
-}) {
+function SitePotentialStat({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
   return (
     <div className="rounded-xl border border-[#EADFC9] bg-white/75 px-3 py-2">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
-        {label}
-      </div>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">{label}</div>
       <div
         className={cn(
           "mt-0.5 truncate text-[12.5px] font-semibold",
@@ -446,7 +433,6 @@ function SitePotentialStat({
     </div>
   );
 }
-
 
 function ProgressRing({ value }: { value: number }) {
   const size = 56;

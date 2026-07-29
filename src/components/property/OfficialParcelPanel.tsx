@@ -39,7 +39,8 @@ import {
   type ErfWorkspaceIdentityStatus,
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
-import { ReportBuilderOverview } from "./dossier/ReportBuilderOverview";
+import { InvestigationHome } from "./investigation/InvestigationHome";
+import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
@@ -93,7 +94,7 @@ function normalizeKouga(p: Record<string, unknown>) {
 }
 
 type Tab =
-  | "overview"
+  | "investigation"
   | "research"
   | "zoning-build"
   | "site-potential"
@@ -103,24 +104,33 @@ type Tab =
   | "calculators"
   | "stoep-report"
   | "local-services";
+/**
+ * Primary navigation stays short so an ordinary user does not have to
+ * understand the whole toolset before starting. Nothing is removed: the
+ * secondary items below remain directly routable.
+ */
 const WORKBENCH_NAV: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "research", label: "Sources" },
+  { id: "investigation", label: "Investigation" },
+  { id: "research", label: "Property & Sources" },
   { id: "zoning-build", label: "Zoning & Build" },
-  { id: "listings", label: "Market" },
-  { id: "reports", label: "Paid Reports" },
-  { id: "calculators", label: "Strategy" },
-  { id: "notes", label: "Notes" },
   { id: "site-potential", label: "Site Potential" },
-  { id: "stoep-report", label: "Easy Erf Report" },
+  { id: "listings", label: "Market" },
+  { id: "reports", label: "Documents" },
+  { id: "calculators", label: "Strategy" },
+  { id: "stoep-report", label: "Report" },
+];
+
+const WORKBENCH_NAV_MORE: { id: Tab; label: string }[] = [
+  { id: "notes", label: "Notes" },
   { id: "local-services", label: "Local Services" },
 ];
 
 const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidance: string }> = {
-  overview: {
-    title: "Overview",
-    subtitle: "Start with the first read, evidence readiness, and the recommended next step.",
-    guidance: "Use this first read to decide what evidence to check next.",
+  investigation: {
+    title: "Investigation",
+    subtitle:
+      "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
+    guidance: "Every statement here comes from evidence saved for this erf.",
   },
   research: {
     title: "Official Sources",
@@ -193,7 +203,7 @@ function buildWorkbenchPageNextStep(
   opts: { paidReportCount: number; workspaceState: ErfWorkspaceState },
 ): WorkbenchNextStepModel {
   switch (tab) {
-    case "overview":
+    case "investigation":
       return {
         title: "Verify official sources",
         body: "Before you rely on this erf file, confirm the official parcel identity and source links.",
@@ -295,13 +305,23 @@ const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
   { label: "Run the numbers", tab: "calculators" },
 ];
 
+/**
+ * Selecting a parcel always opens the Investigation, unless the URL asks for a
+ * specific tool explicitly.
+ */
 function readInitialTab(): Tab {
-  if (typeof window === "undefined") return "overview";
+  if (typeof window === "undefined") return "investigation";
   const value = new URLSearchParams(window.location.search).get("tab");
   if (value === "calc" || value === "calculators") return "calculators";
   if (value === "site" || value === "site-potential") return "site-potential";
   if (value === "zoning" || value === "zoning-build") return "zoning-build";
-  return "overview";
+  if (value === "research" || value === "sources") return "research";
+  if (value === "listings" || value === "market") return "listings";
+  if (value === "reports" || value === "documents") return "reports";
+  if (value === "notes") return "notes";
+  if (value === "local-services") return "local-services";
+  if (value === "stoep-report" || value === "report") return "stoep-report";
+  return "investigation";
 }
 
 function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
@@ -496,7 +516,6 @@ function SgDiagramEvidenceSection({
     toast.success("SG diagram attachment removed");
   }
 
-
   return (
     <article className="rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -602,7 +621,6 @@ function SgDiagramEvidenceSection({
               onRead={(retry) => void readDiagram(attachment, retry)}
               onRemove={() => void removeAttachment(attachment)}
             />
-
           ))}
         </div>
       ) : (
@@ -639,7 +657,9 @@ function SgAttachmentCard({
     status === "unsupported" ||
     status === "not_started" ||
     identity === "unverified";
-  const statusLabel = reading ? "Extracting diagram..." : erfAssetExtractionLabel(attachment, "diagram");
+  const statusLabel = reading
+    ? "Extracting diagram..."
+    : erfAssetExtractionLabel(attachment, "diagram");
 
   return (
     <div className="rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
@@ -1826,7 +1846,22 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
   }
 
-  function selectWorkbenchTab(nextTab: Tab, options?: { markStarted?: boolean }) {
+  /** Records that the user chose to skip a guided evidence task. */
+  function skipGuidedTask(taskId: string) {
+    const skippedTaskIds = Array.from(
+      new Set([...workspaceState.investigation.skippedTaskIds, taskId]),
+    );
+    setWorkspacePatch({
+      investigation: { ...workspaceState.investigation, skippedTaskIds },
+      dirty: true,
+    });
+    setWorkflowFeedback("Task skipped. Easy Erf will suggest the next best evidence action.");
+  }
+
+  function selectWorkbenchTab(
+    nextTab: Tab,
+    options?: { markStarted?: boolean; anchorId?: string },
+  ) {
     if (options?.markStarted) {
       if (nextTab === "listings") {
         setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
@@ -1854,7 +1889,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       }
     }
     setTab(nextTab);
-    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+    requestAnimationFrame(() => {
+      if (options?.anchorId) {
+        const target = document.getElementById(options.anchorId);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+      scrollRef.current?.scrollTo({ top: 0 });
+    });
   }
 
   function updateIdentityStatus(nextStatus: IdentityCheckStatus) {
@@ -1917,7 +1961,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   const activeSection = WORKBENCH_SECTIONS[tab];
-  const isOverview = tab === "overview";
+  const isInvestigation = tab === "investigation";
   const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
   const pageNextStep = buildWorkbenchPageNextStep(tab, { paidReportCount, workspaceState });
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
@@ -2014,6 +2058,27 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               </button>
             );
           })}
+          <div className="mt-2 border-t border-white/10 pt-2">
+            {WORKBENCH_NAV_MORE.map((item) => {
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectWorkbenchTab(item.id)}
+                  className={cn(
+                    "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
+                    active
+                      ? "bg-white/14 text-white"
+                      : "text-white/58 hover:bg-white/8 hover:text-white",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="mt-auto rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
@@ -2102,7 +2167,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           className="mobile-workbench-nav -mx-1 flex w-full gap-2 overflow-x-auto pb-1 md:hidden"
           aria-label="Mobile Workbench navigation"
         >
-          {WORKBENCH_NAV.map((item) => {
+          {[...WORKBENCH_NAV, ...WORKBENCH_NAV_MORE].map((item) => {
             const active = tab === item.id;
             return (
               <button
@@ -2128,41 +2193,45 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         ref={scrollRef}
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
-        <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
-            Current erf file
-          </div>
-          <p className="mt-1 text-sm font-semibold tracking-tight text-[#0D1B2A] md:text-base">
-            {workbenchIdentityLine}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
-            Working address is stored separately from the official parcel identity.
-          </p>
-        </section>
-
-        <section className="mx-4 mt-3 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 shadow-[0_18px_42px_-36px_rgba(13,27,42,0.35)] md:mx-7">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                Enhance this erf file
+        {!isInvestigation && (
+          <>
+            <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                Current erf file
               </div>
-              <p className="mt-1 max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
-                Add Lightstone or WinDeed report documents when you have them to keep valuation,
-                ownership, transfer, and deeds-level context in one place. Public sources still
-                power the first read.
+              <p className="mt-1 text-sm font-semibold tracking-tight text-[#0D1B2A] md:text-base">
+                {workbenchIdentityLine}
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
-              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-            >
-              Add report documents
-            </button>
-          </div>
-        </section>
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
+                Working address is stored separately from the official parcel identity.
+              </p>
+            </section>
 
-        {!isOverview && (
+            <section className="mx-4 mt-3 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 shadow-[0_18px_42px_-36px_rgba(13,27,42,0.35)] md:mx-7">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                    Enhance this erf file
+                  </div>
+                  <p className="mt-1 max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
+                    Add Lightstone or WinDeed report documents when you have them to keep valuation,
+                    ownership, transfer, and deeds-level context in one place. Public sources still
+                    power the first read.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                >
+                  Add report documents
+                </button>
+              </div>
+            </section>
+          </>
+        )}
+
+        {!isInvestigation && (
           <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
             <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
               Workbench / {activeSection.title}
@@ -2179,103 +2248,67 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </section>
         )}
 
-        {isOverview ? (
+        {isInvestigation ? (
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">
-            <ReportBuilderOverview
+            <InvestigationHome
               parcel={normalizedParcel}
               workspaceState={workspaceState}
-              onSelectView={(view) =>
+              onSelectView={(view: DossierView, options?: { anchorId?: string }) =>
                 selectWorkbenchTab(view as Tab, {
                   markStarted:
                     view === "listings" ||
                     view === "calculators" ||
                     view === "reports" ||
                     view === "stoep-report",
+                  anchorId: options?.anchorId,
                 })
+              }
+              onSkipTask={skipGuidedTask}
+              mapSlot={
+                <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                      Selected erf on the map
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBackToMap}
+                        className="rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#142941]"
+                      >
+                        Back to full map
+                      </button>
+                      {selectedErfGoogleMapsUrl && (
+                        <a
+                          href={selectedErfGoogleMapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35"
+                        >
+                          Google Maps
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <SelectedErfMiniMap
+                      coordinates={normalizedParcel.coordinates}
+                      title={resolved.displayTitle}
+                      onBackToMap={handleBackToMap}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+                    Map position is approximate context, not a boundary confirmation.
+                  </p>
+                </section>
               }
             />
           </section>
         ) : null}
 
-        {isOverview && (
-          <section className="mx-4 mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/86 p-4 shadow-[0_18px_45px_-34px_rgba(13,27,42,0.45)] backdrop-blur md:mx-7">
-            <div className="mb-4 grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#fbf8f1] p-4 lg:grid-cols-[minmax(18rem,1.15fr)_minmax(16rem,0.85fr)]">
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                  Selected erf map
-                </div>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                  {resolved.displayTitle}
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-                  Coordinates are approximate. This read-only map context is centered on the
-                  selected erf area. Treat it as parcel context unless confirmed by an official
-                  source.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#0D1B2A]/70">
-                  {normalizedParcel.erfNumber && (
-                    <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                      Erf {normalizedParcel.erfNumber}
-                    </span>
-                  )}
-                  {normalizedParcel.suburbOrArea && (
-                    <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                      {normalizedParcel.suburbOrArea}
-                    </span>
-                  )}
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-[#0D1B2A]/8">
-                    {formatAreaM2(csg?.geometryArea ?? kouga?.shapeArea)}
-                  </span>
-                </div>
-                <div className="mt-4 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    Coordinates
-                  </div>
-                  <dl className="mt-2 space-y-1 text-xs text-[#0D1B2A]/70">
-                    <div className="flex justify-between gap-3">
-                      <dt>Lat</dt>
-                      <dd className="font-mono">
-                        {formatMapCoordinate(normalizedParcel.coordinates?.lat)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt>Lng</dt>
-                      <dd className="font-mono">
-                        {formatMapCoordinate(normalizedParcel.coordinates?.lng)}
-                      </dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    onClick={handleBackToMap}
-                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-                  >
-                    Back to full map
-                  </button>
-                  {selectedErfGoogleMapsUrl && (
-                    <a
-                      href={selectedErfGoogleMapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-                    >
-                      Open in Google Maps
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                </div>
-              </div>
-              <SelectedErfMiniMap
-                coordinates={normalizedParcel.coordinates}
-                title={resolved.displayTitle}
-                onBackToMap={handleBackToMap}
-              />
-            </div>
-          </section>
-        )}
-
         <div ref={dossierContentRef} className="px-5 pt-4">
-          {tab === "overview" && null}
+          {tab === "investigation" && null}
 
           {tab === "research" && (
             <>
@@ -2340,19 +2373,21 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
 
-          <WorkbenchNextStep
-            step={pageNextStep}
-            onAction={() => {
-              if (pageNextStep.anchorId && pageNextStep.tab === tab) {
-                document.getElementById(pageNextStep.anchorId)?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-                return;
-              }
-              selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
-            }}
-          />
+          {!isInvestigation && (
+            <WorkbenchNextStep
+              step={pageNextStep}
+              onAction={() => {
+                if (pageNextStep.anchorId && pageNextStep.tab === tab) {
+                  document.getElementById(pageNextStep.anchorId)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                  return;
+                }
+                selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
+              }}
+            />
+          )}
         </div>
       </div>
     </aside>

@@ -354,7 +354,10 @@ export function ZoningBuildPanel({
       ) : null}
 
       {/* RISK FLAGS */}
-      <Block title="Planning risk flags" intro="Each flag states why it exists and what to do next.">
+      <Block
+        title="Planning risk flags"
+        intro="Each flag states why it exists and what to do next."
+      >
         <div className="grid gap-3 md:grid-cols-2">
           {assessment.riskFlags.map((flag) => (
             <article
@@ -460,7 +463,10 @@ export function ZoningBuildPanel({
       ) : null}
 
       {/* SOURCES */}
-      <Block title="Planning sources" intro="Official documents this assessment is matched against.">
+      <Block
+        title="Planning sources"
+        intro="Official documents this assessment is matched against."
+      >
         <ul className="space-y-2">
           {assessment.sources.map((source) => (
             <li
@@ -478,9 +484,7 @@ export function ZoningBuildPanel({
               <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-[#64748B]">
                 <span>Status: {source.status}</span>
                 {source.version ? <span>Version: {source.version}</span> : null}
-                <span>
-                  Last checked by Easy Erf: {source.lastVerifiedAt ?? "Not recorded"}
-                </span>
+                <span>Last checked by Easy Erf: {source.lastVerifiedAt ?? "Not recorded"}</span>
               </div>
               {source.notes ? (
                 <p className="mt-1 text-xs leading-5 text-[#64748B]">{source.notes}</p>

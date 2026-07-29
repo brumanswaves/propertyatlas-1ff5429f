@@ -8,7 +8,11 @@
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportSectionTitleBlock } from "./ReportEvidenceUi";
-import type { ReportAction, ReportFinding, ReportFindingStatus } from "@/lib/reports/reportFindings";
+import type {
+  ReportAction,
+  ReportFinding,
+  ReportFindingStatus,
+} from "@/lib/reports/reportFindings";
 import type { PropertyIdentityDisplay } from "@/lib/reports/buildReportViewModel";
 
 const STATUS_LABEL: Record<ReportFindingStatus, string> = {
@@ -223,9 +227,7 @@ export function ReportActionPlan({
           data-action-id={action.id}
           className={cn(
             "rounded-2xl border p-4",
-            index === 0
-              ? "border-[#FF6A00]/35 bg-[#FFF7ED]"
-              : "border-[#D9E6F2] bg-white",
+            index === 0 ? "border-[#FF6A00]/35 bg-[#FFF7ED]" : "border-[#D9E6F2] bg-white",
           )}
         >
           <div className="flex flex-wrap items-center gap-2">

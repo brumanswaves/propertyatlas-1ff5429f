@@ -134,13 +134,7 @@ export function OwnershipDetailRow({ detail }: { detail: OwnershipDetail }) {
   );
 }
 
-export function ReportSectionTitleBlock({
-  eyebrow,
-  title,
-}: {
-  eyebrow: string;
-  title: string;
-}) {
+export function ReportSectionTitleBlock({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
