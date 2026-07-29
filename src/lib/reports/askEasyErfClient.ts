@@ -106,27 +106,99 @@ export async function askEasyErfViaEdgeFunction(input: {
   return { success: true, answer };
 }
 
-function validateAnswerAgainstSelectedEvidence(
+/**
+ * Canonicalises the Edge Function answer against the exact evidence slice the
+ * browser submitted.
+ *
+ * ROOT CAUSE THIS REPAIRS: the deployed Edge Function already resolves every
+ * reference and returns the canonical source record. The browser used to run
+ * that resolved payload through the *model-answer* validator first, which
+ * requires a non-empty `label` and a `sourceType` inside the enum on the
+ * reference object itself. Any resolved reference whose label/sourceType did
+ * not survive the round-trip in that exact shape was rejected client-side with
+ * "Ask Easy Erf returned an invalid answer", even though its `ref` mapped
+ * cleanly to a submitted source (observed as request ref
+ * 7d32b908-7e44-43d7-9bf0-8af5f81d4b9b).
+ *
+ * The repair does not weaken evidence safety:
+ *  - every returned `ref` must exist in the submitted evidence, or the answer
+ *    is rejected;
+ *  - a returned `sourceId` that disagrees with the submitted source is
+ *    rejected;
+ *  - labels, source types, authority, status and locators are always taken
+ *    from the submitted canonical evidence, never from the response.
+ */
+export function canonicalizeAskEasyErfAnswer(
   value: unknown,
   evidence: AskEasyErfSelectedEvidencePayload,
 ): AskEasyErfAnswer | null {
-  const answer = validateAskEasyErfAnswer(value);
-  if (!answer) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+
+  if (typeof raw.answer !== "string" || !raw.answer.trim()) return null;
+  if (raw.confidence !== "high" && raw.confidence !== "medium" && raw.confidence !== "low") {
+    return null;
+  }
+  if (!Array.isArray(raw.evidenceReferences) || raw.evidenceReferences.length === 0) return null;
+  if (!Array.isArray(raw.unknowns)) return null;
+  if (raw.nextAction != null && typeof raw.nextAction !== "string") return null;
+
+  const contractReferences: Array<{
+    ref: string;
+    label: string;
+    sourceType: AskEasyErfSelectedEvidencePayload["sources"][number]["sourceType"];
+    sourceId: string | null;
+  }> = [];
+
+  for (const item of raw.evidenceReferences.slice(0, 10)) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const reference = item as Record<string, unknown>;
+    const ref = typeof reference.ref === "string" ? reference.ref.trim() : "";
+    if (!ref) return null;
+    const source = evidence.sources.find((candidate) => candidate.ref === ref);
+    // Fabricated refs are rejected outright.
+    if (!source) return null;
+    if (typeof reference.sourceId === "string" && reference.sourceId !== source.sourceId) {
+      return null;
+    }
+    // Canonical label / sourceType always win over anything in the response.
+    contractReferences.push({
+      ref: source.ref,
+      label: source.label,
+      sourceType: source.sourceType,
+      sourceId: source.sourceId,
+    });
+  }
+  if (!contractReferences.length) return null;
+
   const resolved = resolveAskEasyErfAnswerReferences(
     {
-      answer: answer.answer,
-      confidence: answer.confidence,
-      unknowns: answer.unknowns,
-      nextAction: answer.nextAction,
-      evidenceReferences: answer.evidenceReferences.map((reference) => ({
-        ref: reference.ref ?? "",
-        label: reference.label ?? "",
-        sourceType: reference.sourceType,
-        sourceId: reference.sourceId ?? null,
-      })),
+      answer: raw.answer,
+      confidence: raw.confidence,
+      unknowns: raw.unknowns.filter((entry): entry is string => typeof entry === "string"),
+      nextAction: typeof raw.nextAction === "string" ? raw.nextAction : null,
+      evidenceReferences: contractReferences,
     },
     evidence.sources,
   );
   if (!resolved) return null;
+
+  const answer = validateAskEasyErfAnswer({
+    answer: raw.answer,
+    confidence: raw.confidence,
+    unknowns: raw.unknowns,
+    nextAction: typeof raw.nextAction === "string" ? raw.nextAction : null,
+    evidenceReferences: resolved,
+  });
+  if (!answer) return null;
+
   return { ...answer, evidenceReferences: resolved as AskEasyErfEvidenceReference[] };
 }
+
+function validateAnswerAgainstSelectedEvidence(
+  value: unknown,
+  evidence: AskEasyErfSelectedEvidencePayload,
+): AskEasyErfAnswer | null {
+  return canonicalizeAskEasyErfAnswer(value, evidence);
+}
+

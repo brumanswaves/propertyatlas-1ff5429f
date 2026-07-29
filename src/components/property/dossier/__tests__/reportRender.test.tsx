@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { buildReportComposition } from "@/lib/reports/reportComposition";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -277,14 +278,26 @@ describe("Report opening order (dossier source)", () => {
     "utf8",
   );
 
-  it("puts the opening first, then section navigation, then supporting sections", () => {
+  it("renders the opening, then the lens navigation, then the composed groups", () => {
     const opening = source.indexOf("<ReportOpening");
-    const nav = source.indexOf("REPORT_SECTIONS.map");
-    const tracking = source.indexOf("<ReportChangeTrackingSection");
+    // Navigation is driven by the decision-lens composition destinations, and
+    // the lettered groups are rendered after it in composition order.
+    const nav = source.indexOf("composition.destinations.map");
+    const groups = source.indexOf("composition.groupOrder.map");
     expect(opening).toBeGreaterThan(-1);
     expect(nav).toBeGreaterThan(opening);
-    expect(tracking).toBeGreaterThan(nav);
+    expect(groups).toBeGreaterThan(nav);
   });
+
+  it("keeps supporting sections inside the final group of every lens", () => {
+    // Change tracking must never precede the report opening at runtime: it
+    // lives in the "next" group, which is last in both compositions.
+    expect(source).toContain("<ReportChangeTrackingSection");
+    for (const mode of ["standard", "investor"] as const) {
+      expect(buildReportComposition(mode).groupOrder.at(-1)).toBe("next");
+    }
+  });
+
 
   it("keeps vacant-land reports free of unsupported house fields", () => {
     const { doc } = buildDoc();
