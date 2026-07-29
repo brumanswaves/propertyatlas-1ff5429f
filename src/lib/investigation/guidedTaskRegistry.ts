@@ -115,8 +115,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     confidenceAfterLabel: "Cadastral dimensions supported by an identity-matched SG diagram",
     isComplete: (facts) => facts.sgDiagramSearchable,
     isBlocked: (facts) => facts.identityUncertain,
-    confidenceBefore: (facts) =>
-      facts.sgDiagramParentLineageOnly ? "indicative" : "unconfirmed",
+    confidenceBefore: (facts) => (facts.sgDiagramParentLineageOnly ? "indicative" : "unconfirmed"),
   },
   {
     id: "confirm-zoning",
@@ -202,8 +201,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
       "Easy Erf saves the listing as parcel-scoped market evidence and includes it in the report and in Ask Easy Erf.",
     canSkip: true,
     confidenceAfterLabel: "Market view supported by saved comparable evidence",
-    limitations:
-      "Asking prices are not sold prices, and a comparable is not a valuation.",
+    limitations: "Asking prices are not sold prices, and a comparable is not a valuation.",
     isComplete: (facts) => facts.marketEvidenceCount > 0,
     confidenceBefore: () => "unconfirmed",
   },
@@ -296,8 +294,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     stageId: "report",
     priority: 90,
     title: "Review the Easy Erf Report",
-    shortExplanation:
-      "Read the assembled report and check what Easy Erf still lists as missing.",
+    shortExplanation: "Read the assembled report and check what Easy Erf still lists as missing.",
     whyItMatters:
       "The report is where the evidence, gaps and next actions come together in one place.",
     improves: ["Report"],

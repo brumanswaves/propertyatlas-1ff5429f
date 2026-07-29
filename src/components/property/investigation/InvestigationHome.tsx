@@ -120,9 +120,8 @@ export function InvestigationHome({
 
   const selectedSiteDesign = useMemo(
     () =>
-      assets.find(
-        (asset) => asset.id === workspaceState.sitePotential.selectedDesignAssetId,
-      ) ?? null,
+      assets.find((asset) => asset.id === workspaceState.sitePotential.selectedDesignAssetId) ??
+      null,
     [assets, workspaceState.sitePotential.selectedDesignAssetId],
   );
 

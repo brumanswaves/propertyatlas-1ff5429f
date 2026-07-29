@@ -16,10 +16,7 @@ import {
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import {
-  SITE_POTENTIAL_DISCLAIMER,
-  SITE_POTENTIAL_PACK_SIZE,
-} from "@/lib/sitePotential/config";
+import { SITE_POTENTIAL_DISCLAIMER, SITE_POTENTIAL_PACK_SIZE } from "@/lib/sitePotential/config";
 import {
   buildSitePotentialRuntimeProgress,
   type SitePotentialRuntimeProgress,
@@ -297,7 +294,8 @@ function packDisplayMessage(input: {
 }) {
   if (!input.packStatus) return input.activePackMessage;
   const appearsComplete =
-    input.packStatus.status === "complete" || input.packStatus.completedCount >= input.requestedCount;
+    input.packStatus.status === "complete" ||
+    input.packStatus.completedCount >= input.requestedCount;
   if (!appearsComplete) return input.activePackMessage;
   if (input.inaccessibleCount > 0) {
     return `${input.packStatus.completedCount} concept records exist, but ${input.inaccessibleCount} image${
@@ -417,9 +415,7 @@ function SitePotentialGenerationProgressPanel({
   retrying: boolean;
 }) {
   const retryDisabled =
-    retrying ||
-    progress.completedCount >= progress.requestedCount ||
-    !progress.canRetry;
+    retrying || progress.completedCount >= progress.requestedCount || !progress.canRetry;
 
   return (
     <section
@@ -435,9 +431,7 @@ function SitePotentialGenerationProgressPanel({
           <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
             {progress.heading}
           </h3>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-            {progress.detail}
-          </p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">{progress.detail}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -533,9 +527,9 @@ export function SitePotentialTab({
   const [lastPackStatusCheckedAt, setLastPackStatusCheckedAt] = useState<Date | null>(null);
   const [refreshingPackStatus, setRefreshingPackStatus] = useState(false);
   const [retryingPack, setRetryingPack] = useState(false);
-  const [conceptPreviewState, setConceptPreviewState] = useState<Record<string, ConceptPreviewState>>(
-    {},
-  );
+  const [conceptPreviewState, setConceptPreviewState] = useState<
+    Record<string, ConceptPreviewState>
+  >({});
   const betaStatusRequestIdRef = useRef(0);
   const lastPackProgressSignatureRef = useRef<string | null>(null);
 
@@ -629,44 +623,48 @@ export function SitePotentialTab({
     return area ? `${erf} - ${area}` : erf;
   }, [parcel]);
 
-  const refreshBetaStatus = useCallback(async (signal?: AbortSignal) => {
-    if (!BETA_UI_ENABLED) return;
-    const requestId = betaStatusRequestIdRef.current + 1;
-    betaStatusRequestIdRef.current = requestId;
-    setBetaStatus(null);
-    setBetaStatusError(null);
-    setBetaStatusLifecycle("loading");
-
-    const isCurrentRequest = () => requestId === betaStatusRequestIdRef.current && !signal?.aborted;
-
-    const result = await loadParcelBetaStatus({
-      parcelId: parcel.id,
-      signal,
-      getSession: () => supabase.auth.getSession(),
-      fetchImpl: fetch,
-      isCurrentRequest,
-    });
-
-    if (result.kind === "stale") return;
-    if (result.kind === "ready") {
-      setBetaStatus(result.status);
-      setBetaStatusLifecycle("ready");
-      return;
-    }
-
-    if (result.kind === "signed_out") {
+  const refreshBetaStatus = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!BETA_UI_ENABLED) return;
+      const requestId = betaStatusRequestIdRef.current + 1;
+      betaStatusRequestIdRef.current = requestId;
       setBetaStatus(null);
-      setBetaStatusError(result.message);
-      setBetaStatusLifecycle("error");
-      return;
-    }
+      setBetaStatusError(null);
+      setBetaStatusLifecycle("loading");
 
-    if (result.kind === "error") {
-      setBetaStatus(null);
-      setBetaStatusError(result.message);
-      setBetaStatusLifecycle("error");
-    }
-  }, [parcel.id]);
+      const isCurrentRequest = () =>
+        requestId === betaStatusRequestIdRef.current && !signal?.aborted;
+
+      const result = await loadParcelBetaStatus({
+        parcelId: parcel.id,
+        signal,
+        getSession: () => supabase.auth.getSession(),
+        fetchImpl: fetch,
+        isCurrentRequest,
+      });
+
+      if (result.kind === "stale") return;
+      if (result.kind === "ready") {
+        setBetaStatus(result.status);
+        setBetaStatusLifecycle("ready");
+        return;
+      }
+
+      if (result.kind === "signed_out") {
+        setBetaStatus(null);
+        setBetaStatusError(result.message);
+        setBetaStatusLifecycle("error");
+        return;
+      }
+
+      if (result.kind === "error") {
+        setBetaStatus(null);
+        setBetaStatusError(result.message);
+        setBetaStatusLifecycle("error");
+      }
+    },
+    [parcel.id],
+  );
 
   const updateConceptPreviewState = useCallback(
     (assetId: string, state: ConceptPreviewState) =>
@@ -1498,18 +1496,18 @@ export function SitePotentialTab({
                     : allowanceUnavailable
                       ? "Could not check Site Potential allowance."
                       : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !betaStatus?.enabled
-                    ? "Site Potential generation is disabled in this environment"
-                    : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !generationEntitled
-                      ? generationUnavailableReason(betaStatus)
-                      : !GENERATION_UI_ENABLED
-                        ? "Concept generation is unavailable until secure entitlement is configured"
-                        : !project?.id
-                          ? "Choose a site state first"
-                          : activePackMessage
-                            ? activePackDisplayMessage
-                            : betaStatus?.nextEntitlementSource === "free_allowance"
-                              ? "This pack will use your free allowance"
-                              : "This pack will use one Site Potential credit"}
+                        ? "Site Potential generation is disabled in this environment"
+                        : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !generationEntitled
+                          ? generationUnavailableReason(betaStatus)
+                          : !GENERATION_UI_ENABLED
+                            ? "Concept generation is unavailable until secure entitlement is configured"
+                            : !project?.id
+                              ? "Choose a site state first"
+                              : activePackMessage
+                                ? activePackDisplayMessage
+                                : betaStatus?.nextEntitlementSource === "free_allowance"
+                                  ? "This pack will use your free allowance"
+                                  : "This pack will use one Site Potential credit"}
             </span>
           </div>
         </div>
@@ -1538,12 +1536,11 @@ export function SitePotentialTab({
           <Notice
             tone={
               inaccessibleGeneratedCount > 0 ||
-              (packStatus.status === "complete" &&
-                displayableGeneratedCount < packRequestedCount)
+              (packStatus.status === "complete" && displayableGeneratedCount < packRequestedCount)
                 ? "amber"
                 : packStatus.status === "complete" || packCompletedCount >= packRequestedCount
-                ? "green"
-                : "amber"
+                  ? "green"
+                  : "amber"
             }
           >
             {activePackDisplayMessage}
@@ -1866,9 +1863,7 @@ function AssetCard({
         selected ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/15" : "border-[#EADFC9]",
       )}
     >
-      <div
-        className="group relative block aspect-[3/2] w-full overflow-hidden bg-[#0D1B2A]/5 text-left"
-      >
+      <div className="group relative block aspect-[3/2] w-full overflow-hidden bg-[#0D1B2A]/5 text-left">
         {imageError ? (
           <div className="grid h-full place-items-center p-5 text-center text-xs font-semibold text-[#0D1B2A]/55">
             <div>

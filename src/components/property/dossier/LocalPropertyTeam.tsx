@@ -186,7 +186,9 @@ function ProviderCard({
           type="button"
           onClick={onToggleSaved}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
-          aria-label={saved ? `Remove ${provider.name} from saved providers` : `Save ${provider.name}`}
+          aria-label={
+            saved ? `Remove ${provider.name} from saved providers` : `Save ${provider.name}`
+          }
           title={saved ? "Saved provider" : "Save provider"}
         >
           {saved ? (
@@ -202,7 +204,9 @@ function ProviderCard({
           <span className="inline-flex items-center gap-1 rounded-full bg-[#fff8ec] px-2.5 py-1">
             <Star className="h-3.5 w-3.5 fill-[#FFB020] text-[#FFB020]" />
             {provider.rating.toFixed(1)}
-            {provider.userRatingCount != null ? ` (${provider.userRatingCount.toLocaleString()})` : ""}
+            {provider.userRatingCount != null
+              ? ` (${provider.userRatingCount.toLocaleString()})`
+              : ""}
           </span>
         )}
         {provider.openNow != null && (
@@ -270,7 +274,9 @@ export function LocalPropertyTeam({
     () => categoriesForGroup(activeGroupId, propertyState),
     [activeGroupId, propertyState],
   );
-  const [activeCategoryId, setActiveCategoryId] = useState(activeCategories[0]?.id ?? "estate-agents");
+  const [activeCategoryId, setActiveCategoryId] = useState(
+    activeCategories[0]?.id ?? "estate-agents",
+  );
   const activeCategory =
     activeCategories.find((category) => category.id === activeCategoryId) ?? activeCategories[0];
   const [searches, setSearches] = useState<Record<string, SearchState>>({});
@@ -305,7 +311,9 @@ export function LocalPropertyTeam({
     }
   }, [activeCategoryId, activeGroupId, propertyState]);
 
-  const currentSearch = activeCategory ? searches[activeCategory.id] ?? EMPTY_SEARCH : EMPTY_SEARCH;
+  const currentSearch = activeCategory
+    ? (searches[activeCategory.id] ?? EMPTY_SEARCH)
+    : EMPTY_SEARCH;
   const marketAddressLabel = marketAddress?.formattedAddress.trim() ?? "";
   const hasMarketAddress = Boolean(marketAddressLabel);
   const fallbackUrl =
@@ -318,7 +326,7 @@ export function LocalPropertyTeam({
       ? "Vacant land priorities"
       : propertyState === "existing_home"
         ? "Existing home priorities"
-      : "General property priorities";
+        : "General property priorities";
 
   useEffect(() => {
     activeRequestRef.current?.controller.abort();
@@ -369,21 +377,19 @@ export function LocalPropertyTeam({
           widerArea,
         }),
       });
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            success?: boolean;
-            providers?: LocalProvider[];
-            error?: string;
-            code?: string;
-            attribution?: string;
-            parcelId?: string;
-            categoryId?: string;
-            confirmedAddress?: string;
-            radiusKm?: number;
-            queriesAttempted?: number;
-            includePureServiceAreaBusinesses?: boolean;
-          }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        providers?: LocalProvider[];
+        error?: string;
+        code?: string;
+        attribution?: string;
+        parcelId?: string;
+        categoryId?: string;
+        confirmedAddress?: string;
+        radiusKm?: number;
+        queriesAttempted?: number;
+        includePureServiceAreaBusinesses?: boolean;
+      } | null;
       if (!response.ok || !payload?.success) {
         throw new LocalSearchError(
           payload?.error || "Local provider results could not be loaded.",
@@ -524,7 +530,8 @@ export function LocalPropertyTeam({
           </h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
             Choose the service you need and Easy Erf will return up to three relevant Google results
-            around the confirmed Market address. Results are not based on the erf number or parcel label.
+            around the confirmed Market address. Results are not based on the erf number or parcel
+            label.
           </p>
         </div>
         <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66 lg:max-w-sm">
@@ -537,7 +544,10 @@ export function LocalPropertyTeam({
           >
             Change address in Market
           </button>
-          <div className="mt-2">{stateLabel} - {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"} saved</div>
+          <div className="mt-2">
+            {stateLabel} - {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"}{" "}
+            saved
+          </div>
         </div>
       </div>
 
@@ -611,7 +621,11 @@ export function LocalPropertyTeam({
                 onClick={() => void searchCategory(activeCategory, false)}
                 className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-wait disabled:opacity-60"
               >
-                {currentSearch.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                {currentSearch.loading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Search className="h-3.5 w-3.5" />
+                )}
                 {currentSearch.loaded ? "Refresh nearby results" : "Find nearby providers"}
               </button>
               {fallbackUrl && (
@@ -702,7 +716,8 @@ export function LocalPropertyTeam({
             </div>
           ) : (
             <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
-              Search only when you need this category. Easy Erf will show up to three genuine Google business results or an honest fallback.
+              Search only when you need this category. Easy Erf will show up to three genuine Google
+              business results or an honest fallback.
             </div>
           )}
         </section>

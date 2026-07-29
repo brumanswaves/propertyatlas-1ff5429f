@@ -138,7 +138,11 @@ function buildStages(
           ? "An official cadastral key is available, but you have not confirmed the identity yet."
           : "No official cadastral key is available for this selection yet.",
     identityEvidence,
-    facts.identityConfirmed ? "supported" : facts.hasOfficialParcelKey ? "indicative" : "unconfirmed",
+    facts.identityConfirmed
+      ? "supported"
+      : facts.hasOfficialParcelKey
+        ? "indicative"
+        : "unconfirmed",
     "research",
   );
 

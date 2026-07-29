@@ -213,7 +213,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel.indexOf('label: "Investigation"')).toBeLessThan(panel.indexOf('label: "Market"'));
     expect(panel.indexOf('label: "Site Potential"')).toBeLessThan(panel.indexOf('label: "Market"'));
     expect(panel.indexOf('label: "Market"')).toBeLessThan(panel.indexOf('label: "Strategy"'));
-    expect(panel.indexOf('label: "Notes"')).toBeGreaterThan(panel.indexOf('WORKBENCH_NAV_MORE'));
+    expect(panel.indexOf('label: "Notes"')).toBeGreaterThan(panel.indexOf("WORKBENCH_NAV_MORE"));
     expect(panel).toContain("WORKBENCH_NAV.map");
     expect(panel).not.toContain("TABS.map");
     expect(panel).not.toContain("Listings & Comps</button>");

@@ -128,7 +128,8 @@ const WORKBENCH_NAV_MORE: { id: Tab; label: string }[] = [
 const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidance: string }> = {
   investigation: {
     title: "Investigation",
-    subtitle: "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
+    subtitle:
+      "What Easy Erf found for this erf, what is still unconfirmed, and the best next step.",
     guidance: "Every statement here comes from evidence saved for this erf.",
   },
   research: {
@@ -515,7 +516,6 @@ function SgDiagramEvidenceSection({
     toast.success("SG diagram attachment removed");
   }
 
-
   return (
     <article className="rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -621,7 +621,6 @@ function SgDiagramEvidenceSection({
               onRead={(retry) => void readDiagram(attachment, retry)}
               onRemove={() => void removeAttachment(attachment)}
             />
-
           ))}
         </div>
       ) : (
@@ -658,7 +657,9 @@ function SgAttachmentCard({
     status === "unsupported" ||
     status === "not_started" ||
     identity === "unverified";
-  const statusLabel = reading ? "Extracting diagram..." : erfAssetExtractionLabel(attachment, "diagram");
+  const statusLabel = reading
+    ? "Extracting diagram..."
+    : erfAssetExtractionLabel(attachment, "diagram");
 
   return (
     <div className="rounded-[1.25rem] border border-emerald-500/24 bg-emerald-50 p-4">
@@ -2067,7 +2068,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   onClick={() => selectWorkbenchTab(item.id)}
                   className={cn(
                     "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
-                    active ? "bg-white/14 text-white" : "text-white/58 hover:bg-white/8 hover:text-white",
+                    active
+                      ? "bg-white/14 text-white"
+                      : "text-white/58 hover:bg-white/8 hover:text-white",
                   )}
                   aria-current={active ? "page" : undefined}
                 >
@@ -2191,41 +2194,41 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
         {!isInvestigation && (
-        <>
-        <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
-            Current erf file
-          </div>
-          <p className="mt-1 text-sm font-semibold tracking-tight text-[#0D1B2A] md:text-base">
-            {workbenchIdentityLine}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
-            Working address is stored separately from the official parcel identity.
-          </p>
-        </section>
-
-        <section className="mx-4 mt-3 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 shadow-[0_18px_42px_-36px_rgba(13,27,42,0.35)] md:mx-7">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-                Enhance this erf file
+          <>
+            <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                Current erf file
               </div>
-              <p className="mt-1 max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
-                Add Lightstone or WinDeed report documents when you have them to keep valuation,
-                ownership, transfer, and deeds-level context in one place. Public sources still
-                power the first read.
+              <p className="mt-1 text-sm font-semibold tracking-tight text-[#0D1B2A] md:text-base">
+                {workbenchIdentityLine}
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
-              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-            >
-              Add report documents
-            </button>
-          </div>
-        </section>
-        </>
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
+                Working address is stored separately from the official parcel identity.
+              </p>
+            </section>
+
+            <section className="mx-4 mt-3 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 shadow-[0_18px_42px_-36px_rgba(13,27,42,0.35)] md:mx-7">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
+                    Enhance this erf file
+                  </div>
+                  <p className="mt-1 max-w-4xl text-sm leading-6 text-[#0D1B2A]/72">
+                    Add Lightstone or WinDeed report documents when you have them to keep valuation,
+                    ownership, transfer, and deeds-level context in one place. Public sources still
+                    power the first read.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => selectWorkbenchTab("reports", { markStarted: true })}
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                >
+                  Add report documents
+                </button>
+              </div>
+            </section>
+          </>
         )}
 
         {!isInvestigation && (
@@ -2371,19 +2374,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           )}
 
           {!isInvestigation && (
-          <WorkbenchNextStep
-            step={pageNextStep}
-            onAction={() => {
-              if (pageNextStep.anchorId && pageNextStep.tab === tab) {
-                document.getElementById(pageNextStep.anchorId)?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-                return;
-              }
-              selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
-            }}
-          />
+            <WorkbenchNextStep
+              step={pageNextStep}
+              onAction={() => {
+                if (pageNextStep.anchorId && pageNextStep.tab === tab) {
+                  document.getElementById(pageNextStep.anchorId)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                  return;
+                }
+                selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
+              }}
+            />
           )}
         </div>
       </div>

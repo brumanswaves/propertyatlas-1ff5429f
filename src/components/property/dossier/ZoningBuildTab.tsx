@@ -37,12 +37,7 @@ export interface ZoningBuildTabProps {
   compact?: boolean;
 }
 
-export function ZoningBuildTab({
-  parcel,
-  onOpenTab,
-  onAskEasyErf,
-  compact,
-}: ZoningBuildTabProps) {
+export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: ZoningBuildTabProps) {
   const { assets } = useErfFileVault(parcel.id);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
@@ -69,7 +64,8 @@ export function ZoningBuildTab({
   );
 
   const zoneOptions = useMemo(
-    () => (registry ? listZones(registry).map((zone) => ({ code: zone.code, name: zone.name })) : []),
+    () =>
+      registry ? listZones(registry).map((zone) => ({ code: zone.code, name: zone.name })) : [],
     [registry],
   );
 
