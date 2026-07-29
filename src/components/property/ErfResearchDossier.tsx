@@ -1499,7 +1499,12 @@ function StoepAiReportView({
   const heroEnvelope = useMemo(() => {
     if (!parcelRing || parcelRing.length < 3) return null;
     const stored = readStoredBuildEnvelopeInputs(parcel.id);
-    const base = createEmptyBuildEnvelopeInputs(parcel.id, parcelRing, canonicalAreaM2(parcel));
+    const base = createEmptyBuildEnvelopeInputs(
+      parcel.id,
+      parcelRing,
+      canonicalAreaM2(parcel.rawProperties),
+    );
+
     return calculateBuildEnvelope(stored ? { ...base, ...stored, ring: parcelRing } : base);
   }, [parcel, parcelRing]);
 
