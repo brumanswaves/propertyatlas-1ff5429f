@@ -103,22 +103,6 @@ export function InvestigationHome({
     });
   }, [assets, parcel]);
 
-  const investigation = useMemo(
-    () =>
-      buildPropertyInvestigation({
-        parcel,
-        workspaceState,
-        assets,
-        savedEvidence: evidence,
-        planning,
-        scenarioCount: scenarios.length,
-        chosenScenarioId: chosenScenario?.id ?? null,
-        skippedTaskIds: workspaceState.investigation.skippedTaskIds,
-        startedAt: workspaceState.investigation.startedAt,
-      }),
-    [assets, chosenScenario, evidence, parcel, planning, scenarios.length, workspaceState],
-  );
-
   const selectedSiteDesign = useMemo(
     () =>
       assets.find((asset) => asset.id === workspaceState.sitePotential.selectedDesignAssetId) ??
@@ -150,6 +134,29 @@ export function InvestigationHome({
       strategyWorkspace,
       workspaceState,
     ],
+  );
+
+  const investigation = useMemo(
+    () =>
+      buildPropertyInvestigation({
+        parcel,
+        workspaceState,
+        assets,
+        savedEvidence: evidence,
+        planning,
+        scenarioCount: scenarios.length,
+        chosenScenarioId: chosenScenario?.id ?? null,
+        skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+        startedAt: workspaceState.investigation.startedAt,
+        contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          explanation: item.explanation,
+          displayedValues: item.displayedValues,
+          targetTab: item.targetTab ?? null,
+        })),
+      }),
+    [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
   );
 
   const askPayload = useMemo(
