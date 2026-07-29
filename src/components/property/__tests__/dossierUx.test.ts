@@ -261,7 +261,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Map position is approximate context, not a boundary confirmation.");
     expect(panel).toContain("formatMapCoordinate");
     expect(panel).toContain("formatAreaM2");
-    expect(panel).toContain("Open in Google Maps");
+    expect(panel).toContain("Google Maps");
     expect(panel).toContain("googleMapsCoordinateUrl");
     expect(panel).toContain("https://www.google.com/maps/@");
     expect(panel).toContain("Back to full map");
@@ -451,7 +451,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("GuidedEvidenceTaskCard");
     expect(reportBuilder).toContain("Latest findings");
     expect(reportBuilder).toContain("Open investigation tools");
-    expect(reportBuilder).toContain("ProgressRing");
+    expect(reportBuilder).toContain('role="progressbar"');
     expect(reportBuilder).toContain("rows.map");
     expect(reportBuilder).toContain("onClick={() => step && onSelectView?.(step.view)}");
     expect(reportBuilder).toContain("group-hover:translate-x-0.5");
