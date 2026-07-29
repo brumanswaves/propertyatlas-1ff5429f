@@ -36,6 +36,8 @@ import {
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
+import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
+
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import {
   createErfAssetSignedUrl,
