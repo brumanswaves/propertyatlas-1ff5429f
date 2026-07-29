@@ -506,10 +506,13 @@ function SitePotentialGenerationProgressPanel({
 
 export function SitePotentialTab({
   parcel,
+  parcelRing = null,
+  recordedAreaM2 = null,
   workspaceState,
   onUpdateSite,
   onExploreReport,
 }: SitePotentialTabProps) {
+
   const site = workspaceState.sitePotential;
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const topographyInputRef = useRef<HTMLInputElement | null>(null);
