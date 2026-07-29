@@ -13,7 +13,7 @@ import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
-import { readStoredPlanningZone } from "@/components/property/dossier/ZoningBuildTab";
+import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { canonicalAreaM2, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";

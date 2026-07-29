@@ -21,15 +21,6 @@ function zoneStorageKey(parcelId: string) {
   return `easyerf.planningZone.${parcelId}`;
 }
 
-export function readStoredPlanningZone(parcelId: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(zoneStorageKey(parcelId));
-  } catch {
-    return null;
-  }
-}
-
 export interface ZoningBuildTabProps {
   parcel: NormalizedOfficialParcel;
   onOpenTab?: (tab: string) => void;
@@ -49,8 +40,8 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
     (code: string | null) => {
       setManualZoneCode(code);
       try {
-        if (code) window.localStorage.setItem(zoneStorageKey(parcel.id), code);
-        else window.localStorage.removeItem(zoneStorageKey(parcel.id));
+        if (code) window.localStorage.setItem(planningZoneStorageKey(parcel.id), code);
+        else window.localStorage.removeItem(planningZoneStorageKey(parcel.id));
       } catch {
         /* storage is best-effort only */
       }
