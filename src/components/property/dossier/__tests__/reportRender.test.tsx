@@ -279,7 +279,8 @@ describe("Report opening order (dossier source)", () => {
 
   it("puts the opening first, then section navigation, then supporting sections", () => {
     const opening = source.indexOf("<ReportOpening");
-    const nav = source.indexOf("REPORT_SECTIONS.map");
+    // Navigation is now driven by the decision-lens composition destinations.
+    const nav = source.indexOf("composition.destinations.map");
     const tracking = source.indexOf("<ReportChangeTrackingSection");
     expect(opening).toBeGreaterThan(-1);
     expect(nav).toBeGreaterThan(opening);
