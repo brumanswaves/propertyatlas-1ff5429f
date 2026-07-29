@@ -279,3 +279,37 @@ export function resolveAskEasyErfAnswerReferences(
   if (!resolved.length) return null;
   return resolved;
 }
+
+export type AskEasyErfAttemptReason =
+  | "ok"
+  | "malformed_shape"
+  | "empty_references"
+  | "unknown_ref";
+
+export interface AskEasyErfAttemptResult {
+  reason: AskEasyErfAttemptReason;
+  answer: AskEasyErfContractAnswer | null;
+  resolved: ReturnType<typeof resolveAskEasyErfAnswerReferences>;
+}
+
+/**
+ * Deterministic evaluation of one model attempt against the submitted evidence
+ * slice. Returns a safe reason code only — never evidence or prompt text.
+ */
+export function evaluateAskEasyErfAttempt(
+  parsed: unknown,
+  sources: AskEasyErfContractSource[],
+): AskEasyErfAttemptResult {
+  const shaped = validateAskEasyErfContractAnswer(parsed, { allowEmptyReferences: true });
+  if (!shaped) return { reason: "malformed_shape", answer: null, resolved: null };
+  if (!shaped.evidenceReferences.length) {
+    return { reason: "empty_references", answer: shaped, resolved: null };
+  }
+  const resolved = resolveAskEasyErfAnswerReferences(shaped, sources);
+  if (!resolved) return { reason: "unknown_ref", answer: shaped, resolved: null };
+  return {
+    reason: "ok",
+    answer: { ...shaped, confidence: capAskEasyErfConfidence(shaped.confidence, resolved) },
+    resolved,
+  };
+}
