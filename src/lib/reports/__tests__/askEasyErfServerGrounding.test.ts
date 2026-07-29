@@ -7,6 +7,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAskEasyErfFixturePayload,
+  buildAskEasyErfFixtureRequest,
+} from "./askEasyErfServerFixture";
+import {
   askEasyErfRepairInstruction,
   askEasyErfResponseFormat,
   capAskEasyErfConfidence,
@@ -159,6 +163,7 @@ describe("Ask Easy Erf attempt evaluation", () => {
 describe("deployed Ask Easy Erf edge handler", () => {
   let handler: (request: Request) => Promise<Response>;
   const fetchMock = vi.fn();
+  const fixture = buildAskEasyErfFixturePayload();
 
   beforeEach(async () => {
     vi.resetModules();
@@ -193,24 +198,35 @@ describe("deployed Ask Easy Erf edge handler", () => {
   }
 
   async function ask() {
-    const { buildAskEasyErfFixtureRequest } = await import("./askEasyErfServerFixture");
-    return handler(buildAskEasyErfFixtureRequest());
+    return handler(buildAskEasyErfFixtureRequest(fixture));
+  }
+
+  function fixtureAnswer(count: number) {
+    return {
+      ...answer([]),
+      evidenceReferences: fixture.sources.slice(0, count).map((source) => ({
+        ref: source.ref,
+        label: "model supplied label",
+        sourceType: "market",
+      })),
+    };
   }
 
   it("returns a grounded answer for a broad risk question", async () => {
-    fetchMock.mockResolvedValueOnce(modelReply(answer(["S1", "S2"])));
+    fetchMock.mockResolvedValueOnce(modelReply(fixtureAnswer(2)));
     const response = await ask();
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.success).toBe(true);
     expect(payload.answer.evidenceReferences).toHaveLength(2);
+    expect(payload.answer.evidenceReferences[0].ref).toBe(fixture.sources[0].ref);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("performs exactly one repair retry when the first answer cites nothing", async () => {
     fetchMock
       .mockResolvedValueOnce(modelReply(answer([])))
-      .mockResolvedValueOnce(modelReply(answer(["S1"])));
+      .mockResolvedValueOnce(modelReply(fixtureAnswer(1)));
     const response = await ask();
     expect(response.status).toBe(200);
     expect((await response.json()).success).toBe(true);
@@ -242,12 +258,12 @@ describe("deployed Ask Easy Erf edge handler", () => {
   });
 
   it("sends a schema whose refs are limited to the submitted evidence", async () => {
-    fetchMock.mockResolvedValueOnce(modelReply(answer(["S1"])));
+    fetchMock.mockResolvedValueOnce(modelReply(fixtureAnswer(1)));
     await ask();
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     const refSchema =
       body.response_format.json_schema.schema.properties.evidenceReferences.items.properties.ref;
     expect(refSchema.enum).toBeInstanceOf(Array);
-    expect(refSchema.enum).not.toContain("S999");
+    expect(refSchema.enum).toEqual(fixture.sources.map((source) => source.ref));
   });
 });
