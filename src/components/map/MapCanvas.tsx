@@ -466,8 +466,10 @@ export function MapCanvas({
         source: officialLayerSource(layer),
         layer,
         properties: (feature.properties ?? {}) as Record<string, unknown>,
+        geometry: (feature.geometry ?? null) as GeoJSON.Geometry | null,
         lngLat,
       });
+
     },
     [clearOfficialSelectedFeature, onSelect, onSelectOfficial],
   );
