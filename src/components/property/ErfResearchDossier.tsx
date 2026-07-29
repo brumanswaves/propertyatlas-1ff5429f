@@ -444,7 +444,13 @@ function extractDefaultPrice(parcel: NormalizedOfficialParcel): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-export function ErfResearchDossier({ parcel, view = "overview", onSelectView }: Props) {
+export function ErfResearchDossier({
+  parcel,
+  parcelRing = null,
+  view = "overview",
+  onSelectView,
+}: Props) {
+
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel).filter(
