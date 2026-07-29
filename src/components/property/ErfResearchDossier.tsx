@@ -1756,6 +1756,8 @@ function StoepAiReportView({
         return "listings";
       case "calculators":
         return "calculators";
+      case "zoning-build":
+        return "zoning-build";
       case "site-potential":
         return "site-potential";
       case "stoep-report":

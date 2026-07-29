@@ -66,6 +66,7 @@ export interface ErfWorkspaceState {
 
 export type ErfWorkspaceTab =
   | "research"
+  | "zoning-build"
   | "site-potential"
   | "listings"
   | "reports"
