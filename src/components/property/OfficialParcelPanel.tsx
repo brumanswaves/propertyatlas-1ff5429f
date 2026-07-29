@@ -2057,6 +2057,25 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               </button>
             );
           })}
+          <div className="mt-2 border-t border-white/10 pt-2">
+            {WORKBENCH_NAV_MORE.map((item) => {
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectWorkbenchTab(item.id)}
+                  className={cn(
+                    "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
+                    active ? "bg-white/14 text-white" : "text-white/58 hover:bg-white/8 hover:text-white",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="mt-auto rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
@@ -2145,7 +2164,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           className="mobile-workbench-nav -mx-1 flex w-full gap-2 overflow-x-auto pb-1 md:hidden"
           aria-label="Mobile Workbench navigation"
         >
-          {WORKBENCH_NAV.map((item) => {
+          {[...WORKBENCH_NAV, ...WORKBENCH_NAV_MORE].map((item) => {
             const active = tab === item.id;
             return (
               <button
@@ -2172,6 +2191,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
       >
         {!isInvestigation && (
+        <>
         <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
             Current erf file
@@ -2205,6 +2225,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </button>
           </div>
         </section>
+        </>
         )}
 
         {!isInvestigation && (
@@ -2349,6 +2370,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
 
+          {!isInvestigation && (
           <WorkbenchNextStep
             step={pageNextStep}
             onAction={() => {
@@ -2362,6 +2384,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               selectWorkbenchTab(pageNextStep.tab, { markStarted: pageNextStep.markStarted });
             }}
           />
+          )}
         </div>
       </div>
     </aside>
