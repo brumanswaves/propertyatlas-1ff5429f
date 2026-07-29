@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { buildReportComposition } from "@/lib/reports/reportComposition";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
