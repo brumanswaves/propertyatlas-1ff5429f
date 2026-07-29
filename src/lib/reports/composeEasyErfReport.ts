@@ -114,6 +114,12 @@ export interface ComposeEasyErfReportInput {
   /** Existing report mode kept as a compatibility input only. */
   decisionMode?: string;
   generatedAt?: string;
+  /**
+   * Canonical next action supplied by the investigation orchestrator. When
+   * present it wins, so the report opening and the investigation panel can
+   * never show two different "next things to do".
+   */
+  canonicalNextAction?: ReportAction | null;
 }
 
 const RISK_STATUS_LABEL: Record<RiskStripStatus, string> = {
@@ -329,7 +335,7 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
     atAGlance,
     primaryMetrics,
     riskStrip,
-    nextBestAction: nextBestAction(actions),
+    nextBestAction: input.canonicalNextAction ?? nextBestAction(actions),
     findings,
     actions,
     sections: REPORT_SECTIONS,
