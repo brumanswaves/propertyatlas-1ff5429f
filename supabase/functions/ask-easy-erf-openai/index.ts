@@ -15,9 +15,7 @@ import {
   askEasyErfRepairInstruction,
   askEasyErfResponseFormat,
   askEasyErfSystemPrompt,
-  capAskEasyErfConfidence,
-  resolveAskEasyErfAnswerReferences,
-  validateAskEasyErfContractAnswer,
+  evaluateAskEasyErfAttempt,
   type AskEasyErfContractSource,
 } from "../_shared/askEasyErfContract.ts";
 import {
@@ -45,6 +43,7 @@ type FailureCode =
   | "TIMEOUT"
   | "UPSTREAM_REQUEST_REJECTED"
   | "SERVER_UNAVAILABLE"
+  | "EVIDENCE_GROUNDING_FAILED"
   | "MALFORMED_MODEL_RESPONSE";
 
 function json(payload: unknown, status: number) {
