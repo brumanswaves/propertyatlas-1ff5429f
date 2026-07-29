@@ -2374,7 +2374,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "stoep-report" && (
             <ErfResearchDossier
               parcel={normalizedParcel}
+              parcelRing={parcelRing}
               view="stoep-report"
+
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
             />
           )}
