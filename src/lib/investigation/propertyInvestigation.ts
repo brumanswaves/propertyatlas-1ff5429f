@@ -668,6 +668,10 @@ export function buildPropertyInvestigation(
       status: overallStatus,
     },
     stages,
+    journey,
+    currentStepIndex: journey.find((step) => step.current)?.index ?? journey.length,
+    totalSteps: journey.length,
+
     latestFindings: buildFindings(facts, input.parcel, contradictions),
     nextTask,
     nextAction,
