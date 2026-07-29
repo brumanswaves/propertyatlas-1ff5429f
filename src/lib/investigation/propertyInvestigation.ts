@@ -17,12 +17,15 @@ import {
 } from "./guidedTaskRegistry";
 import type {
   InvestigationFinding,
+  InvestigationJourneyStep,
   InvestigationMessage,
   InvestigationOverallStatus,
   InvestigationStage,
+  InvestigationStageId,
   InvestigationTab,
   PropertyInvestigation,
 } from "./types";
+
 
 /**
  * A contradiction that the evidence layer already recorded. The investigation
