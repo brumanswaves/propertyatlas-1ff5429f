@@ -180,9 +180,12 @@ import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintL
 
 interface Props {
   parcel: NormalizedOfficialParcel;
+  /** Official parcel exterior ring, used for the deterministic report hero. */
+  parcelRing?: Array<[number, number]> | null;
   view?: DossierView;
   onSelectView?: (view: DossierView) => void;
 }
+
 
 export type { DossierView } from "@/components/property/dossier/reportViews";
 
