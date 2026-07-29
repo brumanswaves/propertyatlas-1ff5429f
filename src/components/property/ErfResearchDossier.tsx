@@ -619,7 +619,7 @@ export function ErfResearchDossier({
   }
 
   if (view === "stoep-report") {
-    return <StoepAiReportView parcel={parcel} onSelectView={onSelectView} />;
+    return <StoepAiReportView parcel={parcel} parcelRing={parcelRing} onSelectView={onSelectView} />;
   }
 
   return (
