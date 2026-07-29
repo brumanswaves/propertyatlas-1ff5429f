@@ -60,8 +60,16 @@ const SOURCE_TYPES: AskEasyErfContractSourceType[] = [
  * Strict JSON schema for the OpenAI response.
  * `minItems` is deliberately absent: OpenAI strict mode rejects it. The
  * "at least one evidence reference" rule is enforced deterministically below.
+ *
+ * When `allowedRefs` is supplied the `ref` property is constrained to exactly
+ * those refs, so the model structurally cannot invent an S-reference.
  */
-export function askEasyErfResponseFormat() {
+export function askEasyErfResponseFormat(allowedRefs?: readonly string[]) {
+  const uniqueRefs = Array.from(
+    new Set((allowedRefs ?? []).map((ref) => ref.trim()).filter((ref) => ref.length > 0)),
+  );
+  const refSchema =
+    uniqueRefs.length > 0 ? { type: "string", enum: uniqueRefs } : { type: "string" };
   return {
     type: "json_schema",
     json_schema: {
@@ -81,7 +89,7 @@ export function askEasyErfResponseFormat() {
               additionalProperties: false,
               required: ["ref", "label", "sourceType"],
               properties: {
-                ref: { type: "string" },
+                ref: refSchema,
                 label: { type: "string" },
                 sourceType: { type: "string", enum: SOURCE_TYPES },
               },
@@ -94,6 +102,48 @@ export function askEasyErfResponseFormat() {
     },
   };
 }
+
+/**
+ * Single controlled repair instruction used when the first well-shaped answer
+ * carried no usable evidence reference. It never broadens the evidence slice.
+ */
+export function askEasyErfRepairInstruction(allowedRefs: readonly string[]) {
+  const refs = allowedRefs.join(", ");
+  return [
+    "Your previous answer could not be accepted because it cited no usable evidence reference.",
+    "Answer the same question again using only the same selectedPropertyEvidence already supplied.",
+    "Do not browse, do not request more evidence, and do not invent sources.",
+    `Cite between 1 and 3 evidence references, each using exactly one of these allowed refs: ${refs}.`,
+    "If the evidence does not confirm the answer, still cite the allowed refs you inspected and explain what is missing.",
+  ].join(" ");
+}
+
+/** Source types that can never on their own justify a high-confidence answer. */
+const WEAK_SOURCE_TYPES: AskEasyErfContractSourceType[] = [
+  "missing",
+  "ai_interpretation",
+  "calculation",
+  "user_confirmed",
+];
+
+/**
+ * Deterministic confidence cap: an answer resting only on missing, inferred,
+ * calculated or self-reported evidence can never be "high".
+ */
+export function capAskEasyErfConfidence(
+  confidence: AskEasyErfContractAnswer["confidence"],
+  resolved: ReadonlyArray<{ sourceType: AskEasyErfContractSourceType; status?: string }>,
+): AskEasyErfContractAnswer["confidence"] {
+  if (confidence !== "high") return confidence;
+  const hasStrongSource = resolved.some((reference) => {
+    if (WEAK_SOURCE_TYPES.includes(reference.sourceType)) return false;
+    const status = (reference.status ?? "").toLowerCase();
+    if (status === "unverified" || status === "missing" || status === "pending") return false;
+    return true;
+  });
+  return hasStrongSource ? "high" : "medium";
+}
+
 
 export function askEasyErfSystemPrompt() {
   return [
