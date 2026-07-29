@@ -48,10 +48,14 @@ import { toast } from "sonner";
 
 export interface SitePotentialTabProps {
   parcel: NormalizedOfficialParcel;
+  /** Official parcel exterior ring, used for the deterministic build envelope. */
+  parcelRing?: Array<[number, number]> | null;
+  recordedAreaM2?: number | null;
   workspaceState: ErfWorkspaceState;
   onUpdateSite: (patch: Partial<SitePotentialSnapshot>) => void;
   onExploreReport?: () => void;
 }
+
 
 const STYLES = [
   "Coastal contemporary",
