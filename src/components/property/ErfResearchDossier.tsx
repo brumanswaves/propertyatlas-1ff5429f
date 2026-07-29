@@ -179,6 +179,7 @@ interface Props {
 export type DossierView =
   | "overview"
   | "research"
+  | "zoning-build"
   | "site-potential"
   | "listings"
   | "reports"
