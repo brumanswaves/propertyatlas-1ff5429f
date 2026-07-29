@@ -12,8 +12,10 @@ import {
   ASK_EASY_ERF_MODEL,
   ASK_EASY_ERF_OPENAI_TIMEOUT_MS,
   ASK_EASY_ERF_OPENAI_URL,
+  askEasyErfRepairInstruction,
   askEasyErfResponseFormat,
   askEasyErfSystemPrompt,
+  capAskEasyErfConfidence,
   resolveAskEasyErfAnswerReferences,
   validateAskEasyErfContractAnswer,
   type AskEasyErfContractSource,
@@ -22,6 +24,7 @@ import {
   ASK_EASY_ERF_MAX_REQUEST_BYTES,
   validateAskEasyErfRequestPayload,
 } from "../_shared/askEasyErfSelectedEvidence.ts";
+
 
 declare const Deno: { env: { get(key: string): string | undefined } };
 
