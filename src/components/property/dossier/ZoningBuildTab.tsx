@@ -8,6 +8,7 @@ import {
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import { planningZoneStorageKey, readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { ZoningBuildPanel } from "./ZoningBuildPanel";
 
 /**
@@ -16,10 +17,6 @@ import { ZoningBuildPanel } from "./ZoningBuildPanel";
  * The manual zone selection is a working assumption stored per parcel in the
  * browser. It is never presented as a confirmed municipal zoning.
  */
-
-function zoneStorageKey(parcelId: string) {
-  return `easyerf.planningZone.${parcelId}`;
-}
 
 export interface ZoningBuildTabProps {
   parcel: NormalizedOfficialParcel;

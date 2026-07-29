@@ -3,7 +3,7 @@
  *
  * Stored locally per parcel; it is user-supplied, never an official source.
  */
-const STORAGE_PREFIX = "erfstoep.planning.zone.";
+const STORAGE_PREFIX = "easyerf.planningZone.";
 
 export function planningZoneStorageKey(parcelId: string): string {
   return `${STORAGE_PREFIX}${parcelId}`;
