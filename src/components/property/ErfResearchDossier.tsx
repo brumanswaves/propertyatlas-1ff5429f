@@ -1459,11 +1459,14 @@ function sitePotentialReportModeLabel(mode: string | null | undefined) {
 
 function StoepAiReportView({
   parcel,
+  parcelRing = null,
   onSelectView,
 }: {
   parcel: NormalizedOfficialParcel;
+  parcelRing?: Array<[number, number]> | null;
   onSelectView?: (view: DossierView) => void;
 }) {
+
   const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
