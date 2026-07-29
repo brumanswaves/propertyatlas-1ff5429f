@@ -1306,6 +1306,17 @@ export function SitePotentialTab({
         </button>
       </section>
 
+      {(mode === "vacant_land" || mode === "unknown") && (
+        <VacantLandBuildEnvelope
+          parcelId={parcel.id}
+          parcelLabel={parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "this erf"}
+          ring={parcelRing}
+          recordedAreaM2={recordedAreaM2}
+        />
+      )}
+
+
+
       <section className="grid gap-4 lg:grid-cols-2">
         <UploadPanel
           title={mode === "renovation" ? "Permitted property photographs" : "Site photographs"}
