@@ -666,8 +666,9 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
     expect(dossier).toContain("onOpenSitePotential");
     expect(dossier).toContain("sitePotentialSkipped");
-    expect(dossier).toContain("sitePotentialReportModeLabel");
-    expect(dossier).toContain("Stable asset ID");
+    expect(dossier).toContain("buildSitePotentialReportPanel");
+    expect(dossier).toContain("capacityVisual");
+    expect(dossier).toContain("conceptVisual");
     expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(dossier).toContain("savedStatus");
     expect(dossier).toContain("Open original");

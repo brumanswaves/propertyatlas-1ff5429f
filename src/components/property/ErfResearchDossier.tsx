@@ -1459,20 +1459,6 @@ async function openVaultAsset(file: ErfAsset) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-function sitePotentialReportModeLabel(mode: string | null | undefined) {
-  switch (mode) {
-    case "vacant_land":
-      return "Vacant land concept";
-    case "renovation":
-      return "Existing-house renovation concept";
-    case "other_building":
-      return "Other building concept";
-    case "skipped":
-      return "Skipped";
-    default:
-      return "Site Potential concept";
-  }
-}
 
 function StoepAiReportView({
   parcel,
