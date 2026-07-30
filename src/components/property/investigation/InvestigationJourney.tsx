@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import type { MasterInvestigationPlan } from "@/lib/investigation/masterPlan";
+import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";
 import type {
   GuidedInvestigationStep,
   GuidedInvestigationStepId,
@@ -11,6 +13,7 @@ import { ConfirmPropertyStep } from "./ConfirmPropertyStep";
 import { ExpertWorkspaceLauncher } from "./ExpertWorkspaceLauncher";
 import { GuidedMarketEvidenceStep } from "./GuidedMarketEvidenceStep";
 import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
+import { GuidedReportStep } from "./GuidedReportStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
@@ -21,6 +24,8 @@ import { InvestigationStepShell } from "./InvestigationStepShell";
 interface InvestigationJourneyProps {
   parcel: NormalizedOfficialParcel;
   workspaceState: ErfWorkspaceState;
+  plan: MasterInvestigationPlan;
+  report: ReportViewModel;
   steps: GuidedInvestigationStep[];
   activeStep: GuidedInvestigationStep;
   mapSlot?: ReactNode;
@@ -35,6 +40,8 @@ interface InvestigationJourneyProps {
 export function InvestigationJourney({
   parcel,
   workspaceState,
+  plan,
+  report,
   steps,
   activeStep,
   mapSlot,
@@ -81,6 +88,12 @@ export function InvestigationJourney({
           <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />
         ) : activeStep.id === "market" ? (
           <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("report")} />
+        ) : activeStep.id === "report" ? (
+          <GuidedReportStep
+            plan={plan}
+            report={report}
+            onOpenReport={() => onOpenExpertWorkspace("stoep-report")}
+          />
         ) : null}
       </InvestigationStepShell>
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/82 p-4">
