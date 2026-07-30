@@ -37,11 +37,11 @@ export interface ReportComposition {
 }
 
 const DESTINATIONS: Record<ReportGroupId, ReportDestination> = {
-  identity: { id: "identity", label: "Property & Legal", anchorId: "report-group-identity" },
-  planning: { id: "planning", label: "Planning & Build", anchorId: "report-group-planning" },
-  market: { id: "market", label: "Market & Financials", anchorId: "report-group-market" },
+  identity: { id: "identity", label: "Property & legal", anchorId: "report-group-identity" },
+  planning: { id: "planning", label: "Planning & Site Potential", anchorId: "report-group-planning" },
+  market: { id: "market", label: "Market & financials", anchorId: "report-group-market" },
   context: { id: "context", label: "Context", anchorId: "report-group-context" },
-  next: { id: "next", label: "Risks & Actions", anchorId: "report-group-next" },
+  next: { id: "next", label: "Risks & next actions", anchorId: "report-group-next" },
 };
 
 const SUMMARY_DESTINATION: ReportDestination = {
