@@ -103,12 +103,14 @@ import {
   buildLocationLifestyleSectionModel,
   buildMunicipalServicesSectionModel,
   buildSiteRiskSectionModel,
+  buildStillToVerifySummary,
 } from "@/lib/reports/contextSections";
 import { buildSgSectionModel } from "@/lib/reports/sgSection";
 import {
   ReportContextSection,
   ReportMunicipalSection,
   ReportSgLineageSection,
+  ReportStillToVerifySection,
 } from "@/components/property/dossier/ReportContextSections";
 import { buildStrategySectionModel } from "@/lib/reports/strategySection";
 import { buildEvidenceAppendixRows } from "@/lib/reports/evidenceAppendix";
@@ -1651,6 +1653,11 @@ function StoepAiReportView({
       }),
     [report.evidencePack, report.identity, report.market.subjectListing],
   );
+  const stillToVerify = useMemo(
+    () => buildStillToVerifySummary([siteRiskSection, municipalSection, locationSection]),
+    [siteRiskSection, municipalSection, locationSection],
+  );
+
   const appendixRows = useMemo(
     () =>
       buildEvidenceAppendixRows({

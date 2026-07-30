@@ -624,3 +624,42 @@ export function buildLocationLifestyleSectionModel(input: {
     nextStepTab: missingChecks.length ? "research" : null,
   };
 }
+
+/* -------------------------------------------------------- still to verify */
+
+export interface StillToVerifyItem {
+  id: string;
+  label: string;
+  action: string;
+}
+
+export interface StillToVerifySummary {
+  count: number;
+  topItems: StillToVerifyItem[];
+  allItems: StillToVerifyItem[];
+  action: string;
+}
+
+/**
+ * Replaces repeating "outstanding checks" blocks across several context
+ * sections with one compact summary. Nothing is dropped: every unknown item
+ * from every supplied section is preserved in `allItems` for the expandable
+ * full list; only the headline view is capped.
+ */
+export function buildStillToVerifySummary(
+  sections: Array<Pick<ContextSectionModel, "missingChecks">>,
+  extra: StillToVerifyItem[] = [],
+): StillToVerifySummary {
+  const allItems: StillToVerifyItem[] = [
+    ...sections.flatMap((section) => section.missingChecks),
+    ...extra,
+  ];
+  return {
+    count: allItems.length,
+    topItems: allItems.slice(0, 3),
+    allItems,
+    action: allItems.length
+      ? "Open the full due diligence & evidence area below to see every outstanding item and close it out."
+      : "No outstanding unknowns were recorded across the tracked context sections.",
+  };
+}

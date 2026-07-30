@@ -14,7 +14,9 @@ import {
   writeStoredBuildEnvelopeInputs,
   type StoredBuildEnvelopeInputs,
 } from "@/lib/sitePotential/buildEnvelopeStore";
-import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
+import { SatelliteParcelMap } from "./SatelliteParcelMap";
+import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
+import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
 
 export interface VacantLandBuildEnvelopeProps {
   parcelId: string;
@@ -24,6 +26,9 @@ export interface VacantLandBuildEnvelopeProps {
   recordedAreaM2: number | null;
   zoneLabel?: string | null;
   onResultChange?: (result: BuildEnvelopeResult) => void;
+  /** Same planning assessment that powers Zoning & Build — single source of truth. */
+  assessment?: ParcelPlanningAssessment | null;
+  onOpenTab?: (tab: string) => void;
 }
 
 const STATE_TONE: Record<BuildEnvelopeResult["state"], string> = {
@@ -64,19 +69,46 @@ export function VacantLandBuildEnvelope({
   recordedAreaM2,
   zoneLabel = null,
   onResultChange,
+  assessment = null,
+  onOpenTab,
 }: VacantLandBuildEnvelopeProps) {
+  const prefill = useMemo(
+    () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
+    [assessment],
+  );
+  const prefillDefaults = useCallback((): Partial<StoredBuildEnvelopeInputs> => {
+    if (!prefill) return {};
+    const defaults: Partial<StoredBuildEnvelopeInputs> = {};
+    if (prefill.ruleSource) defaults.ruleSource = prefill.ruleSource;
+    if (prefill.zone.value) defaults.zoneLabel = prefill.zone.value;
+    if (prefill.streetSetbackM.value != null) defaults.streetSetbackM = prefill.streetSetbackM.value;
+    if (prefill.sideSetbackM.value != null) defaults.sideSetbackM = prefill.sideSetbackM.value;
+    if (prefill.rearSetbackM.value != null) defaults.rearSetbackM = prefill.rearSetbackM.value;
+    if (prefill.maxCoveragePercent.value != null)
+      defaults.maxCoveragePercent = prefill.maxCoveragePercent.value;
+    if (prefill.maxHeightM.value != null) defaults.maxHeightM = prefill.maxHeightM.value;
+    if (prefill.dwellingUnits.value != null) defaults.dwellingUnits = prefill.dwellingUnits.value;
+    if (prefill.additionalDwellingRule.value)
+      defaults.additionalDwellingRule = prefill.additionalDwellingRule.value;
+    defaults.additionalDwellingRequiresConsent = prefill.additionalDwellingRequiresConsent;
+    return defaults;
+  }, [prefill]);
+
   const [answers, setAnswers] = useState<StoredBuildEnvelopeInputs>(() => {
     const stored = readStoredBuildEnvelopeInputs(parcelId);
     const empty = createEmptyBuildEnvelopeInputs(parcelId, null, recordedAreaM2);
     const { ring: _ring, parcelId: _id, ...rest } = empty;
-    return { ...rest, zoneLabel, ...(stored ?? {}), recordedAreaM2 };
+    // Prefill first (single source of truth), then apply any stored user
+    // answers on top — manual overrides always win over a prefilled value.
+    return { ...rest, zoneLabel, ...prefillDefaults(), ...(stored ?? {}), recordedAreaM2 };
   });
 
   useEffect(() => {
     const stored = readStoredBuildEnvelopeInputs(parcelId);
     const empty = createEmptyBuildEnvelopeInputs(parcelId, null, recordedAreaM2);
     const { ring: _ring, parcelId: _id, ...rest } = empty;
-    setAnswers({ ...rest, zoneLabel, ...(stored ?? {}), recordedAreaM2 });
+    setAnswers({ ...rest, zoneLabel, ...prefillDefaults(), ...(stored ?? {}), recordedAreaM2 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcelId, recordedAreaM2, zoneLabel]);
 
   const patch = useCallback(
@@ -132,7 +164,95 @@ export function VacantLandBuildEnvelope({
         {result.stateExplanation}
       </p>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+      {/* Result-first: large parcel + build-envelope visual, satellite beneath. */}
+      <SatelliteParcelMap ring={ring} result={result} className="mt-5" />
+
+      {/* Compact build summary lives right under the visual. */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <SummaryTile
+          label="Erf area"
+          value={result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"}
+          note={result.summary.erfAreaSourceLabel}
+        />
+        <SummaryTile
+          label="Theoretical ground floor"
+          value={
+            result.summary.theoreticalGroundFloorM2 != null
+              ? `${result.summary.theoreticalGroundFloorM2} m²`
+              : "Not available"
+          }
+          note={
+            result.summary.maxCoveragePercent != null
+              ? `At ${result.summary.maxCoveragePercent}% coverage`
+              : "Coverage not confirmed"
+          }
+        />
+        <SummaryTile
+          label="Setback envelope"
+          value={
+            result.summary.setbackEnvelopeAreaM2 != null
+              ? `${result.summary.setbackEnvelopeAreaM2} m²`
+              : "Not available"
+          }
+          note="Area inside all building lines"
+        />
+        <SummaryTile
+          label="Maximum height"
+          value={result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"}
+          note="As recorded above"
+        />
+        <SummaryTile
+          label="Dwelling allowance"
+          value={result.summary.dwellingAllowance}
+          note={result.summary.additionalDwellingRule}
+        />
+        <SummaryTile
+          label="Missing constraints"
+          value={result.missingInformation.length ? `${result.missingInformation.length} item(s)` : "None outstanding"}
+          note={result.missingInformation[0] ?? "All known constraints recorded"}
+        />
+      </div>
+
+      {prefill?.ruleSourceLabel ? (
+        <p className="mt-3 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 text-[12px] leading-5 text-[#0D1B2A]/75">
+          {prefill.ruleSourceLabel}
+        </p>
+      ) : null}
+
+      {/* One Next Best Action */}
+      {prefill?.nextBestAction ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FF6A00]/25 bg-[#FF6A00]/[0.05] px-4 py-3">
+          <div>
+            <div className="text-[12px] font-semibold text-[#0D1B2A]">
+              {prefill.nextBestAction.title}
+            </div>
+            <div className="mt-1 text-[11px] leading-5 text-[#64748B]">
+              {prefill.nextBestAction.detail}
+            </div>
+          </div>
+          {onOpenTab ? (
+            <button
+              type="button"
+              onClick={() => onOpenTab(prefill.nextBestAction!.actionTab)}
+              className="shrink-0 rounded-full bg-[#FF6A00] px-4 py-1.5 text-[11px] font-semibold text-white"
+            >
+              {prefill.nextBestAction.actionLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Collapsed technical detail / manual override surface */}
+      <details className="mt-6 rounded-2xl border border-[#0D1B2A]/10 bg-white">
+        <summary className="cursor-pointer rounded-2xl px-4 py-3 text-[12px] font-semibold text-[#0D1B2A]">
+          Review inputs and technical details
+        </summary>
+        <div className="border-t border-[#0D1B2A]/10 p-4">
+        <p className="mb-3 rounded-xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-3 py-2 text-[11px] leading-5 text-[#64748B]">
+          Review or change assumptions below. Manual entries are always labelled as your own
+          assumption, never as an official rule.
+        </p>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <BuildEnvelopeDiagram result={result} />
 
         <div className="space-y-4">

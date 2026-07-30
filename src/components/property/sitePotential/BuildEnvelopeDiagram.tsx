@@ -7,6 +7,8 @@ interface Props {
   className?: string;
   /** Compact mode drops edge dimension labels and the legend. */
   compact?: boolean;
+  /** Used when overlaid on top of satellite imagery: no fill/border chrome. */
+  transparentBackground?: boolean;
 }
 
 function toPath(points: LocalPoint[]) {
@@ -20,7 +22,12 @@ const EDGE_LABEL: Record<string, string> = {
   rear: "Rear",
 };
 
-export function BuildEnvelopeDiagram({ result, className, compact = false }: Props) {
+export function BuildEnvelopeDiagram({
+  result,
+  className,
+  compact = false,
+  transparentBackground = false,
+}: Props) {
   const view = useMemo(() => {
     const points = result.parcelPolygon;
     if (points.length < 3) return null;
@@ -55,7 +62,14 @@ export function BuildEnvelopeDiagram({ result, className, compact = false }: Pro
   const fontSize = view.scale / 34;
 
   return (
-    <div className={cn("rounded-2xl border border-white/10 bg-[#06152A] p-3", className)}>
+    <div
+      className={cn(
+        transparentBackground
+          ? "p-0"
+          : "rounded-2xl border border-white/10 bg-[#06152A] p-3",
+        className,
+      )}
+    >
       <svg
         viewBox={view.viewBox}
         className="h-auto w-full"
@@ -79,7 +93,7 @@ export function BuildEnvelopeDiagram({ result, className, compact = false }: Pro
         <path
           d={toPath(result.parcelPolygon)}
           fill="#0EA5B7"
-          fillOpacity={0.07}
+          fillOpacity={transparentBackground ? 0.16 : 0.07}
           stroke="#22D3EE"
           strokeWidth={stroke * 1.6}
         />
