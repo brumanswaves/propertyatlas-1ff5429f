@@ -84,12 +84,25 @@ function emptyCollection() {
   return { type: "FeatureCollection" as const, features: [] };
 }
 
-export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelMapProps) {
+export function SatelliteParcelMap({
+  ring,
+  result,
+  className,
+  onRoadsDetected,
+  selectableEdges = false,
+  highlightEdgeIndex = null,
+  onEdgeSelect,
+}: SatelliteParcelMapProps) {
   const [mounted, setMounted] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
+  const roadsCallbackRef = useRef(onRoadsDetected);
+  const edgeSelectRef = useRef(onEdgeSelect);
+  roadsCallbackRef.current = onRoadsDetected;
+  edgeSelectRef.current = onEdgeSelect;
+
 
   useEffect(() => {
     setMounted(true);
