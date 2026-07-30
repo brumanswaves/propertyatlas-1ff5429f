@@ -87,7 +87,13 @@ export interface BuildEnvelopeResult {
    * Maximum coverage footprint, always reported separately from the setback
    * envelope. Only an area is trustworthy, so no dimensions are emitted.
    */
-  coverageFootprint: { areaM2: number; polygon: LocalPoint[] } | null;
+  coverageFootprint: {
+    areaM2: number;
+    polygon: LocalPoint[];
+    /** Illustrative split of the same maximum, never a design. */
+    allocation: { mainM2: number; additionalM2: number; totalM2: number };
+  } | null;
+
   secondDwelling: { label: string; requiresConsent: boolean } | null;
   summary: BuildEnvelopeSummary;
   missingInformation: string[];
