@@ -32,6 +32,16 @@ import {
   toggleSavedLocalProvider,
   type SavedLocalProvider,
 } from "@/lib/localServices/savedProviders";
+import {
+  buildCustomServiceCategory,
+  customServiceGoogleMapsUrl,
+  customServiceResultsHeading,
+  isCustomServiceCategoryId,
+  MAX_CUSTOM_SERVICE_QUERY_LENGTH,
+  readRecentCustomServiceSearches,
+  recordRecentCustomServiceSearch,
+  sanitizeCustomServiceQuery,
+} from "@/lib/localServices/customServiceSearch";
 import { cn } from "@/lib/utils";
 import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
 import { vendorRoleForLocalServiceCategory } from "@/lib/vendors/localServiceRoleMap";
@@ -309,8 +319,16 @@ export function LocalPropertyTeam({
   const [activeCategoryId, setActiveCategoryId] = useState(
     activeCategories[0]?.id ?? "estate-agents",
   );
-  const activeCategory =
+  const presetCategory =
     activeCategories.find((category) => category.id === activeCategoryId) ?? activeCategories[0];
+  const [customCategory, setCustomCategory] = useState<LocalServiceCategory | null>(null);
+  const [customInput, setCustomInput] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [recentCustomSearches, setRecentCustomSearches] = useState<string[]>(() =>
+    readRecentCustomServiceSearches(parcel.id),
+  );
+  const activeCategory = customCategory ?? presetCategory;
+  const isCustomActive = Boolean(customCategory);
   const [searches, setSearches] = useState<Record<string, SearchState>>({});
   const [savedProviders, setSavedProviders] = useState<SavedLocalProvider[]>(() =>
     readSavedLocalProviders(parcel.id),
@@ -340,6 +358,10 @@ export function LocalPropertyTeam({
     setActiveGroupId(nextGroup);
     setActiveCategoryId(nextCategory);
     setSearches({});
+    setCustomCategory(null);
+    setCustomInput("");
+    setCustomError(null);
+    setRecentCustomSearches(readRecentCustomServiceSearches(parcel.id));
     setSavedProviders(readSavedLocalProviders(parcel.id));
     activeRequestRef.current?.controller.abort();
     activeRequestRef.current = null;
@@ -359,7 +381,7 @@ export function LocalPropertyTeam({
   const hasMarketAddress = Boolean(marketAddressLabel);
   const fallbackUrl =
     activeCategory && hasMarketAddress
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeCategory.searchQuery} near ${marketAddressLabel}`)}`
+      ? customServiceGoogleMapsUrl(activeCategory.searchQuery, marketAddressLabel)
       : null;
   const locationLabel = marketAddressLabel || "Property address not set";
   const stateLabel =
@@ -373,6 +395,7 @@ export function LocalPropertyTeam({
     activeRequestRef.current?.controller.abort();
     activeRequestRef.current = null;
     setSearches({});
+    setCustomCategory(null);
   }, [parcel.id, marketAddressLabel]);
 
   async function searchCategory(category: LocalServiceCategory, widerArea = false) {
@@ -411,6 +434,7 @@ export function LocalPropertyTeam({
         signal: controller.signal,
         body: JSON.stringify({
           serviceCategory: category.id,
+          customQuery: isCustomServiceCategoryId(category.id) ? category.searchQuery : undefined,
           parcelId: parcel.id,
           confirmedAddress: marketAddressLabel,
           latitude: marketAddress?.lat ?? null,
@@ -506,6 +530,7 @@ export function LocalPropertyTeam({
   }
 
   function chooseGroup(groupId: LocalServiceGroup["id"]) {
+    setCustomCategory(null);
     setActiveGroupId(groupId);
     const category = categoriesForGroup(groupId, propertyState)[0];
     if (category) {
@@ -515,8 +540,25 @@ export function LocalPropertyTeam({
   }
 
   function chooseCategory(category: LocalServiceCategory) {
+    setCustomCategory(null);
     setActiveCategoryId(category.id);
     if (hasMarketAddress) void searchCategory(category, false);
+  }
+
+  function runCustomSearch(rawQuery: string) {
+    const category = buildCustomServiceCategory(rawQuery);
+    if (!category) {
+      setCustomError(
+        `Enter the service you need, for example "security company" (up to ${MAX_CUSTOM_SERVICE_QUERY_LENGTH} characters).`,
+      );
+      return;
+    }
+    setCustomError(null);
+    setCustomInput(category.searchQuery);
+    setCustomCategory(category);
+    setRecentCustomSearches(recordRecentCustomServiceSearch(parcel.id, category.searchQuery));
+    if (hasMarketAddress) void searchCategory(category, false);
+    else onOpenMarket();
   }
 
   function toggleSaved(provider: LocalProvider) {
@@ -524,6 +566,7 @@ export function LocalPropertyTeam({
   }
 
   function providerToVendorInput(provider: LocalProvider, category: LocalServiceCategory) {
+    const custom = isCustomServiceCategoryId(category.id);
     return {
       name: provider.name,
       company: null,
@@ -532,8 +575,8 @@ export function LocalPropertyTeam({
       email: null,
       website: provider.website ?? provider.websiteUrl ?? null,
       serviceArea: provider.address,
-      source: "Google search",
-      notes: null,
+      source: custom ? `Google search - ${category.label}` : "Google search",
+      notes: custom ? `Found via custom search: ${category.label}` : null,
       originPlaceId: provider.placeId,
     };
   }
@@ -629,6 +672,11 @@ export function LocalPropertyTeam({
         updatedAt: new Date().toISOString(),
       }) : null}
       parcelLabel={parcelTeamLabel}
+      defaultScopeOfWork={
+        assigningProviderCategory && isCustomServiceCategoryId(assigningProviderCategory.id)
+          ? assigningProviderCategory.label
+          : null
+      }
       onClose={() => {
         setAssigningProvider(null);
         setAssigningProviderCategory(null);
@@ -776,9 +824,13 @@ export function LocalPropertyTeam({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                Top local Google results
+                {isCustomActive ? "Your search" : "Top local Google results"}
               </p>
-              <h4 className="text-base font-semibold text-[#0D1B2A]">{activeCategory.label}</h4>
+              <h4 className="text-base font-semibold text-[#0D1B2A]">
+                {isCustomActive
+                  ? customServiceResultsHeading(activeCategory.searchQuery)
+                  : activeCategory.label}
+              </h4>
               <p className="mt-1 max-w-3xl text-xs leading-5 text-[#0D1B2A]/62">
                 {activeCategory.reason[propertyState]}
               </p>
