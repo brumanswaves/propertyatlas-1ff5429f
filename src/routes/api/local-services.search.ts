@@ -96,10 +96,28 @@ export async function handleLocalServicesSearchRequest(request: Request) {
   }
 
   const categoryId = cleanText(body.serviceCategory ?? body.categoryId, 80);
-  const category = LOCAL_SERVICE_CATEGORIES.find((item) => item.id === categoryId);
+  const rawCustomQuery = cleanText(body.customQuery, 160);
+  const isCustomSearch = Boolean(rawCustomQuery) || isCustomServiceCategoryId(categoryId);
+  let category: LocalServiceCategory | undefined;
+  if (isCustomSearch) {
+    category = buildCustomServiceCategory(rawCustomQuery) ?? undefined;
+    if (!category) {
+      return json(
+        {
+          success: false,
+          code: "invalid_query",
+          error: "Enter the service you are looking for.",
+        },
+        400,
+      );
+    }
+  } else {
+    category = LOCAL_SERVICE_CATEGORIES.find((item) => item.id === categoryId);
+  }
   if (!category) {
     return json({ success: false, code: "invalid_category", error: "Unknown service category." }, 400);
   }
+
 
   const address = cleanText(body.confirmedAddress ?? body.address, 240);
   if (!address) {
