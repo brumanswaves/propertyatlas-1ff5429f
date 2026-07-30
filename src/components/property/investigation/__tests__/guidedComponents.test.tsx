@@ -145,4 +145,39 @@ describe("guided investigation components", () => {
     expect(html).not.toContain("Analyse listing");
     expect(html).not.toContain("Run calculator");
   });
+
+  it("does not render the shared Continue control as a Step 1 bypass before confirmation", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(
+      {
+        ...facts(),
+        identityConfirmed: false,
+        identityChecked: false,
+      },
+      workspace,
+    );
+    const confirmStep = steps.find((step) => step.id === "confirm-property");
+    if (!confirmStep) throw new Error("Expected confirm-property step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={confirmStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <ConfirmPropertyStep
+          parcel={parcel()}
+          workspaceState={workspace}
+          onConfirm={noop}
+          onFlagUncertain={noop}
+          onBackToMap={noop}
+        />
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Yes, this is the correct erf");
+    expect(html).not.toContain("Continue");
+  });
 });

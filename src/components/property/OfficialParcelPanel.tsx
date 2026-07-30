@@ -2181,7 +2181,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     .join(" / ");
 
   return (
-    <aside className="pointer-events-auto fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
+    <aside className="pointer-events-auto fixed inset-0 z-[80] h-[100dvh] overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
+      {expertWorkspaceOpen && (
       <nav className="hidden absolute inset-y-0 left-0 z-40 w-64 overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0D1B2A] p-4 text-white md:flex md:flex-col [scrollbar-width:thin]">
         <div className="mb-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#FFB86B]">
@@ -2345,8 +2346,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </div>
         </div>
       </nav>
+      )}
 
-      <header className="sticky top-0 z-30 flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-4 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:ml-64 md:px-7">
+      <header
+        className={cn(
+          "sticky top-0 z-30 flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#0D1B2A]/10 bg-[#fbf8f1]/95 px-4 pb-3 pt-4 shadow-sm backdrop-blur max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-7",
+          expertWorkspaceOpen ? "md:ml-64" : "",
+        )}
+      >
         <div className="min-w-0">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
             Erf Workbench
@@ -2439,7 +2446,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
       <div
         ref={scrollRef}
-        className="scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8 md:ml-64"
+        className={cn(
+          "scrollbar-thin relative h-[calc(100dvh-5.25rem)] min-h-0 overflow-y-auto overscroll-contain pb-8",
+          expertWorkspaceOpen ? "md:ml-64" : "",
+        )}
       >
         {!isInvestigation && (
           <>
