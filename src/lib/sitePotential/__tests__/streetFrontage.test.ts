@@ -43,7 +43,7 @@ function padroneCrescent() {
   return {
     name: "Padrone Crescent",
     layerId: "road-street",
-    coordinates: [at(-8, 1), at(6, -5), at(16, -6)] as Array<[number, number]>,
+    coordinates: [at(-4, 3.4), at(8, -2)] as Array<[number, number]>,
   };
 }
 
@@ -137,7 +137,7 @@ describe("detectStreetFrontage", () => {
       savedStreetName: null,
       roads: [
         { name: "First Road", layerId: "road-street", coordinates: [at(-8, -5), at(38, -5)] },
-        { name: "Second Road", layerId: "road-street", coordinates: [at(-5, -8), at(-5, 28)] },
+        { name: "Second Road", layerId: "road-street", coordinates: [at(-4, -8), at(-4, 28)] },
       ],
     });
 
