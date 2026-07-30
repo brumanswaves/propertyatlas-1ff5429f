@@ -7,6 +7,7 @@ import {
   polygonCentroid,
   type BuildEnvelopeResult,
 } from "@/lib/sitePotential/buildEnvelope";
+import { selectRoadLayerIds, type RoadLineInput } from "@/lib/sitePotential/streetFrontage";
 
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 
@@ -19,6 +20,10 @@ import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
  * a floating SVG on top of the map, so the outlines cannot drift out of
  * alignment when the map is panned or zoomed.
  *
+ * The map is also the source of road evidence for street-frontage detection:
+ * rendered road lines near the parcel are handed back to the caller, which
+ * scores them deterministically. The map never decides the frontage itself.
+ *
  * Mapbox is imported client-side only. Missing token, missing geometry, a
  * failed style load or a thrown import all fall back to the clean
  * deterministic diagram rather than an empty dark block.
@@ -28,6 +33,13 @@ export interface SatelliteParcelMapProps {
   ring: Array<[number, number]> | null;
   result: BuildEnvelopeResult;
   className?: string;
+  /** Rendered road lines near the parcel, for street-frontage detection. */
+  onRoadsDetected?: (roads: RoadLineInput[]) => void;
+  /** When true, every parcel edge becomes clickable on the satellite map. */
+  selectableEdges?: boolean;
+  /** Edge currently highlighted while the user picks the street frontage. */
+  highlightEdgeIndex?: number | null;
+  onEdgeSelect?: (edgeIndex: number) => void;
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
@@ -39,7 +51,9 @@ const SRC = {
   streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
   coverageLabel: "site-potential-coverage-label",
+  edges: "site-potential-edges",
 } as const;
+
 
 
 function ringBounds(ring: Array<[number, number]>) {
