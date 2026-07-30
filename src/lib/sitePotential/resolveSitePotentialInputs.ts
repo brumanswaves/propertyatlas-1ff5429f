@@ -21,7 +21,14 @@ import type { StoredBuildEnvelopeInputs } from "./buildEnvelopeStore";
 import type { PilotPlanningRecord } from "./pilotPlanningRecords";
 import type { SitePotentialRulePrefill } from "./planningRuleAdapter";
 
-export type SitePotentialFieldOrigin = "document" | "user" | "pilot" | "registry" | "unknown";
+export type SitePotentialFieldOrigin =
+  | "document"
+  | "user"
+  | "map_road"
+  | "pilot"
+  | "registry"
+  | "unknown";
+
 
 export interface ResolvedSitePotentialField<T> {
   value: T | null;
