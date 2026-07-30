@@ -78,7 +78,8 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     id: "sg-diagram",
     label: "Add SG diagram",
     shortLabel: "SG",
-    description: "Attach a readable subject SG diagram when the guided upload moves here.",
+    description:
+      "Download, upload and verify a readable SG diagram that matches the selected erf.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["sg-servitudes"],
     relatedTaskIds: ["add-sg-diagram"],
