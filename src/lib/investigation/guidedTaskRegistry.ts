@@ -23,6 +23,7 @@ export interface InvestigationFacts {
   sgDiagramSearchable: boolean;
   sgDiagramParentLineageOnly: boolean;
   sgDiagramCount: number;
+  usableSubjectSgDiagramCount: number;
   zoningConfirmedByDocument: boolean;
   zoningRegistryPublished: boolean;
   zoningWorkingAssumption: boolean;
@@ -36,6 +37,10 @@ export interface InvestigationFacts {
   hasChosenScenario: boolean;
   siteConceptCount: number;
   siteDesignSelected: boolean;
+  usableTopographySurveyCount: number;
+  sitePhotoCount: number;
+  existingHousePhotoCount: number;
+  vendorAssignmentCount: number;
   siteSkipped: boolean;
   reportStarted: boolean;
 }

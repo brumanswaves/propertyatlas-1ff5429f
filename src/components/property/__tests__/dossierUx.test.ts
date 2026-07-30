@@ -336,7 +336,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Source quality");
     expect(panel).toContain("Township / area");
     expect(panel).toContain("User checked, not legally verified");
-    expect(panel).toContain("research\n            progress, not legal verification");
+    expect(panel).toContain("Recording a check is research");
+    expect(panel).toContain("progress, not legal verification");
     expect(panel).toContain("erfstoep.identityCheck.");
     expect(panel).toContain("openedSourceIds");
     expect(panel).toContain("reviewedSourceIds");
@@ -449,6 +450,9 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Investigation progress");
     expect(reportBuilder).toContain("buildPropertyInvestigation");
     expect(reportBuilder).toContain("GuidedEvidenceTaskCard");
+    expect(reportBuilder).toContain("useVendorWorkspace");
+    expect(reportBuilder).toContain("vendorAssignmentCount");
+    expect(reportBuilder).toContain("vendorWorkspace.loading ? 0");
     expect(reportBuilder).toContain("What Easy Erf knows");
     expect(reportBuilder).toContain("Open investigation tools");
     expect(reportBuilder).toContain('role="progressbar"');
@@ -534,6 +538,16 @@ describe("official dossier UX guardrails", () => {
     expect(panel).not.toContain("bg-[radial-gradient");
     expect(panel).toContain("selectWorkbenchTab");
     expect(panel).toContain("border-b border-[#0D1B2A]/10");
+  });
+
+  it("keeps the Investigation current task as the only solid orange CTA", () => {
+    const planTable = read("src/components/property/investigation/InvestigationPlanTable.tsx");
+    const taskCard = read("src/components/property/investigation/GuidedEvidenceTaskCard.tsx");
+
+    expect(taskCard).toContain("bg-[#FF6A00]");
+    expect(planTable).toContain("isNext");
+    expect(planTable).toContain("border border-[#FF6A00]/45 bg-white text-[#0D1B2A]");
+    expect(planTable).not.toContain('? "bg-[#FF6A00] text-white');
   });
 
   it("marks source actions checked in local session state", () => {

@@ -113,7 +113,7 @@ function PlanRow({
           className={cn(
             "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full px-4 py-2 text-[14px] font-semibold transition md:self-auto",
             isNext
-              ? "bg-[#FF6A00] text-white hover:brightness-105"
+              ? "border border-[#FF6A00]/45 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/70 hover:bg-[#FFF7ED]"
               : "border border-[#0D1B2A]/12 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/40",
           )}
         >

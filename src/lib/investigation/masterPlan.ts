@@ -246,23 +246,37 @@ export function buildMasterInvestigationPlan(
   });
 
   // 4. SG, title restrictions & servitudes ------------------------------------
+  const sgAndTitleComplete = facts.sgDiagramSearchable && facts.titleDeedSearchable;
+  const sgServitudesPartial =
+    facts.sgDiagramSearchable ||
+    facts.titleDeedSearchable ||
+    facts.paidReportSearchable ||
+    facts.sgDiagramParentLineageOnly;
+  const sgServitudesEvidenceCount =
+    (facts.sgDiagramSearchable ? 1 : 0) + (facts.titleDeedSearchable ? 1 : 0);
   rows.push({
     id: "sg-servitudes",
     title: "SG diagram & servitudes",
     importance: "required",
-    status: facts.sgDiagramSearchable
-      ? "partial"
-      : facts.sgDiagramParentLineageOnly
-        ? "partial"
-        : "not_started",
-    summary: facts.sgDiagramSearchable
-      ? "An identity-matched SG diagram is readable. Registered servitudes are still unconfirmed."
-      : facts.sgDiagramParentLineageOnly
-        ? "The diagram on file belongs to the parent property, so it gives context only."
-        : "No Surveyor-General diagram has been attached for this erf.",
-    missingItem: facts.sgDiagramSearchable
-      ? "Subject-specific servitude confirmation from the title deed"
-      : "The Surveyor-General diagram for this erf",
+    status: sgAndTitleComplete ? "complete" : sgServitudesPartial ? "partial" : "not_started",
+    summary: sgAndTitleComplete
+      ? "A readable subject SG diagram and readable subject title deed support this row."
+      : facts.sgDiagramSearchable
+        ? "An identity-matched SG diagram is readable. Title conditions and servitudes still need deed confirmation."
+        : facts.sgDiagramParentLineageOnly
+          ? "The diagram on file belongs to the parent property, so it gives context only."
+          : facts.paidReportSearchable
+            ? "A paid report adds context, but it is not a certified title deed or SG diagram."
+            : facts.titleDeedSearchable
+              ? "A readable subject title deed is on file, but the subject SG diagram is still missing."
+              : "No Surveyor-General diagram has been attached for this erf.",
+    missingItem: sgAndTitleComplete
+      ? null
+      : facts.sgDiagramSearchable
+        ? "Readable subject title deed confirming title conditions and servitudes"
+        : facts.titleDeedSearchable
+          ? "The Surveyor-General diagram for this erf"
+          : "The Surveyor-General diagram and readable subject title deed for this erf",
     whyItMatters: "Boundaries, dimensions and registered servitudes come from these records.",
     completionCriteria:
       "An identity-matched SG diagram is readable and title conditions have been reviewed.",
@@ -271,8 +285,8 @@ export function buildMasterInvestigationPlan(
     targetTab: "research",
     targetAnchorId: "sg-diagram-evidence",
     taskId: "add-sg-diagram",
-    supportedEvidenceCount: facts.sgDiagramCount,
-    requiredEvidenceCount: 1,
+    supportedEvidenceCount: sgServitudesEvidenceCount,
+    requiredEvidenceCount: 2,
     conflicts: extentConflicts,
   });
 
@@ -308,26 +322,31 @@ export function buildMasterInvestigationPlan(
   });
 
   // 6. Site conditions ----------------------------------------------------------
-  const siteConditionsSupported = facts.siteConceptCount > 0 || facts.sgDiagramSearchable;
+  const sitePhotoContextCount = facts.sitePhotoCount + facts.existingHousePhotoCount;
+  const siteConditionsComplete = facts.usableTopographySurveyCount > 0;
+  const siteConditionsPartial = sitePhotoContextCount > 0;
   rows.push({
     id: "site-conditions",
     title: "Site conditions",
     importance: "recommended",
-    status: siteConditionsSupported ? "partial" : "not_started",
-    summary: siteConditionsSupported
-      ? "Some site context is recorded. Slope and ground conditions are still unmeasured."
-      : "Slope, access and ground conditions have not been recorded for this erf.",
-    missingItem:
-      siteState === "vacant_land"
+    status: siteConditionsComplete ? "complete" : siteConditionsPartial ? "partial" : "not_started",
+    summary: siteConditionsComplete
+      ? "A usable topographical survey is on file for this erf."
+      : siteConditionsPartial
+        ? "Site photos provide visual context, but slope, access, drainage and ground conditions are still unmeasured."
+        : "Slope, access, drainage and ground conditions have not been recorded for this erf.",
+    missingItem: siteConditionsComplete
+      ? null
+      : siteState === "vacant_land"
         ? "A topographical survey for the site"
-        : "A site condition check or survey",
+        : "A site inspection or topographical survey",
     whyItMatters: "Slope and ground conditions change what is buildable and what it costs.",
     completionCriteria: "A survey or recorded site assessment is attached to this erf.",
     reportSections: ["Site conditions", "Site Potential"],
     actionLabel: "Open Site Potential",
     targetTab: "site-potential",
     taskId: null,
-    supportedEvidenceCount: siteConditionsSupported ? 1 : 0,
+    supportedEvidenceCount: facts.usableTopographySurveyCount + sitePhotoContextCount,
     requiredEvidenceCount: 1,
     conflicts: [],
   });
@@ -430,16 +449,24 @@ export function buildMasterInvestigationPlan(
     id: "local-team",
     title: "Local property team",
     importance: "optional",
-    status: "not_started",
-    summary: "No professionals have been assigned to this erf yet.",
-    missingItem: "A conveyancer, surveyor or building professional",
+    status: facts.vendorAssignmentCount > 0 ? "complete" : "not_started",
+    summary:
+      facts.vendorAssignmentCount > 0
+        ? `${facts.vendorAssignmentCount} ${
+            facts.vendorAssignmentCount === 1 ? "professional" : "professionals"
+          } ${
+            facts.vendorAssignmentCount === 1 ? "is" : "are"
+          } assigned to this erf.`
+        : "No professionals have been assigned to this erf yet.",
+    missingItem:
+      facts.vendorAssignmentCount > 0 ? null : "A conveyancer, surveyor or building professional",
     whyItMatters: "Some checks can only be closed out by a professional in the area.",
     completionCriteria: "At least one professional is saved against this erf.",
     reportSections: ["Local services"],
     actionLabel: "Find professionals",
     targetTab: "local-services",
     taskId: null,
-    supportedEvidenceCount: 0,
+    supportedEvidenceCount: facts.vendorAssignmentCount,
     requiredEvidenceCount: 1,
     conflicts: [],
   });
@@ -514,7 +541,7 @@ export function calculatePlanReadiness(
   const conclusion = !dependableStandardReport
     ? "Required checks are still outstanding, so treat this report as an early read."
     : requiredComplete === requiredRows.length
-      ? "Every required check is complete. This report is dependable for a Standard decision."
+      ? "Every required check is supported for a Standard report. This is not legal certification."
       : "The required checks are underway but not all confirmed. The report is usable with named gaps.";
 
   return {
