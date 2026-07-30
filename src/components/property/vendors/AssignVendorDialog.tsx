@@ -21,12 +21,21 @@ import type {
 interface Props {
   vendor: Vendor | null;
   existingAssignment?: VendorAssignment | null;
+  /** Prefilled scope, e.g. the custom service label the vendor was found under. */
+  defaultScopeOfWork?: string | null;
   parcelLabel: string;
   onClose: () => void;
   onAssign: (input: VendorAssignmentInput & { roleOnProperty: VendorRole }) => Promise<void> | void;
 }
 
-export function AssignVendorDialog({ vendor, existingAssignment, parcelLabel, onClose, onAssign }: Props) {
+export function AssignVendorDialog({
+  vendor,
+  existingAssignment,
+  defaultScopeOfWork,
+  parcelLabel,
+  onClose,
+  onAssign,
+}: Props) {
   const [roleOnProperty, setRoleOnProperty] = useState<VendorRole>("other");
   const [status, setStatus] = useState<VendorAssignmentStatus>("considering");
   const [scopeOfWork, setScopeOfWork] = useState("");
@@ -41,13 +50,13 @@ export function AssignVendorDialog({ vendor, existingAssignment, parcelLabel, on
     if (!vendor) return;
     setRoleOnProperty(existingAssignment?.roleOnProperty ?? vendor.role);
     setStatus(existingAssignment?.status ?? "considering");
-    setScopeOfWork(existingAssignment?.scopeOfWork ?? "");
+    setScopeOfWork(existingAssignment?.scopeOfWork ?? defaultScopeOfWork ?? "");
     setQuoteAmount(existingAssignment?.quoteAmount != null ? String(existingAssignment.quoteAmount) : "");
     setQuoteDate(existingAssignment?.quoteDate ?? "");
     setQuoteNotes(existingAssignment?.quoteNotes ?? "");
     setNextFollowUpDate(existingAssignment?.nextFollowUpDate ?? "");
     setPropertyNotes(existingAssignment?.propertyNotes ?? "");
-  }, [vendor, existingAssignment]);
+  }, [vendor, existingAssignment, defaultScopeOfWork]);
 
   if (!vendor) return null;
 
