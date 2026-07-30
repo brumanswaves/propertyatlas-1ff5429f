@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils";
 import {
   localPolygonToWgs84,
   localToWgs84,
+  polygonCentroid,
   type BuildEnvelopeResult,
 } from "@/lib/sitePotential/buildEnvelope";
+
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 
 /**
@@ -34,8 +36,11 @@ const SRC = {
   parcel: "site-potential-parcel",
   street: "site-potential-street",
   setback: "site-potential-setback",
+  streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
+  coverageLabel: "site-potential-coverage-label",
 } as const;
+
 
 function ringBounds(ring: Array<[number, number]>) {
   const lngs = ring.map((p) => p[0]);
@@ -97,21 +102,37 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
       result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
         ? polygonFeature(localPolygonToWgs84(result.coverageFootprint.polygon, projection))
         : null;
-    const street = result.streetEdge
-      ? {
-          type: "Feature" as const,
-          properties: {},
-          geometry: {
-            type: "LineString" as const,
-            coordinates: [
-              localToWgs84(result.streetEdge.a, projection),
-              localToWgs84(result.streetEdge.b, projection),
-            ],
-          },
-        }
+    const line = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+      type: "Feature" as const,
+      properties: {},
+      geometry: {
+        type: "LineString" as const,
+        coordinates: [localToWgs84(a, projection), localToWgs84(b, projection)],
+      },
+    });
+    const street = result.streetEdge ? line(result.streetEdge.a, result.streetEdge.b) : null;
+    const streetLine = result.streetEdge?.setbackLine
+      ? line(result.streetEdge.setbackLine.a, result.streetEdge.setbackLine.b)
       : null;
-    return { parcel, setback, coverage, street };
+    const coverageLabel =
+      result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
+        ? {
+            type: "Feature" as const,
+            properties: {
+              label: `MAX COVERAGE · ${result.coverageFootprint.areaM2} m²`,
+            },
+            geometry: {
+              type: "Point" as const,
+              coordinates: localToWgs84(
+                polygonCentroid(result.coverageFootprint.polygon),
+                projection,
+              ),
+            },
+          }
+        : null;
+    return { parcel, setback, coverage, street, streetLine, coverageLabel };
   }, [result]);
+
 
   const fit = useCallback(() => {
     const map = mapRef.current;
@@ -155,19 +176,30 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
               map.addSource(id, { type: "geojson", data: emptyCollection() });
             }
           }
-          // Coverage footprint (warm fill) sits lowest, then the setback
-          // envelope, then the street edge, then the parcel boundary on top.
-          map.addLayer({
-            id: `${SRC.coverage}-fill`,
-            type: "fill",
-            source: SRC.coverage,
-            paint: { "fill-color": "#FF6A00", "fill-opacity": 0.28 },
-          });
+          // Setback envelope (light green) sits lowest, then the salmon
+          // maximum-coverage polygon, then the building lines, then the street
+          // frontage and the parcel boundary on top.
           map.addLayer({
             id: `${SRC.setback}-fill`,
             type: "fill",
             source: SRC.setback,
-            paint: { "fill-color": "#22C55E", "fill-opacity": 0.16 },
+            paint: { "fill-color": "#4ADE80", "fill-opacity": 0.18 },
+          });
+          map.addLayer({
+            id: `${SRC.coverage}-fill`,
+            type: "fill",
+            source: SRC.coverage,
+            paint: { "fill-color": "#FB7185", "fill-opacity": 0.35 },
+          });
+          map.addLayer({
+            id: `${SRC.coverage}-line`,
+            type: "line",
+            source: SRC.coverage,
+            paint: {
+              "line-color": "#EF4444",
+              "line-width": 2,
+              "line-dasharray": [2, 1.4],
+            },
           });
           map.addLayer({
             id: `${SRC.setback}-line`,
@@ -177,6 +209,16 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
               "line-color": "#22C55E",
               "line-width": 2,
               "line-dasharray": [2, 1.5],
+            },
+          });
+          map.addLayer({
+            id: `${SRC.streetLine}-line`,
+            type: "line",
+            source: SRC.streetLine,
+            paint: {
+              "line-color": "#38BDF8",
+              "line-width": 3,
+              "line-dasharray": [3, 1.6],
             },
           });
           map.addLayer({
@@ -191,8 +233,26 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
             source: SRC.parcel,
             paint: { "line-color": "#22D3EE", "line-width": 2.5 },
           });
+          map.addLayer({
+            id: `${SRC.coverageLabel}-symbol`,
+            type: "symbol",
+            source: SRC.coverageLabel,
+            layout: {
+              "text-field": ["get", "label"],
+              "text-size": 12,
+              "text-letter-spacing": 0.08,
+              "text-allow-overlap": true,
+            },
+            paint: {
+              "text-color": "#FFFFFF",
+              "text-halo-color": "#7F1D1D",
+              "text-halo-width": 1.4,
+            },
+          });
+          map.resize();
           setMapReady(true);
         });
+
 
         map.on("error", (event) => {
           // Style/tile/auth failures must degrade to the deterministic diagram
@@ -233,7 +293,21 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
     set(SRC.setback, geo.setback);
     set(SRC.coverage, geo.coverage);
     set(SRC.street, geo.street);
+    set(SRC.streetLine, geo.streetLine);
+    set(SRC.coverageLabel, geo.coverageLabel);
   }, [geo, mapReady]);
+
+  // The satellite canvas must always fill its frame, including after the
+  // enclosing disclosure opens or the layout reflows.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.resize();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [mapReady]);
 
   const showFallback = !mounted || !TOKEN || !hasGeometry || mapFailed || !geo;
 
@@ -248,11 +322,12 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-white/10 bg-[#06152A]",
+        "relative h-[380px] overflow-hidden rounded-2xl border border-white/10 bg-[#06152A] sm:h-[520px]",
         className,
       )}
     >
-      <div ref={containerRef} className="h-[340px] w-full sm:h-[420px]" />
+      {/* The canvas fills the entire frame: no legend or footer inside it. */}
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" />
       {!mapReady && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[#06152A]/60 text-xs text-white/70">
           Loading satellite imagery…
@@ -261,8 +336,9 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
       <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
         <LegendChip color="#22D3EE" label="Erf boundary" />
         <LegendChip color="#FF6A00" label="Street frontage" />
-        <LegendChip color="#22C55E" label="Inside building lines" />
-        <LegendChip color="#FF6A00" label="Max coverage" faded />
+        <LegendChip color="#38BDF8" label="Street building line" />
+        <LegendChip color="#22C55E" label="Side / rear building line" />
+        <LegendChip color="#FB7185" label="Max coverage" />
       </div>
       <button
         type="button"
@@ -272,13 +348,10 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
         <Maximize2 className="h-3.5 w-3.5" />
         Fit parcel
       </button>
-      {/* Static outline kept for print output; the map canvas does not print. */}
-      <div className="hidden print:block">
-        <BuildEnvelopeDiagram result={result} />
-      </div>
     </div>
   );
 }
+
 
 function LegendChip({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (

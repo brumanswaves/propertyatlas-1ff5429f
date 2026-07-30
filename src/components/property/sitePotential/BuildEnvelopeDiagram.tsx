@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { BuildEnvelopeResult, LocalPoint } from "@/lib/sitePotential/buildEnvelope";
+import {
+  polygonCentroid,
+  type BuildEnvelopeResult,
+  type LocalPoint,
+} from "@/lib/sitePotential/buildEnvelope";
+
 
 interface Props {
   result: BuildEnvelopeResult;
@@ -60,6 +65,11 @@ export function BuildEnvelopeDiagram({
 
   const stroke = view.scale / 260;
   const fontSize = view.scale / 34;
+  const coverageCentre = result.coverageFootprint
+    ? polygonCentroid(result.coverageFootprint.polygon)
+    : null;
+
+
 
   return (
     <div
@@ -98,7 +108,20 @@ export function BuildEnvelopeDiagram({
           strokeWidth={stroke * 1.6}
         />
 
-        {/* Setback lines */}
+        {/* Buildable envelope, light green */}
+        {result.envelopePolygon ? (
+          <path
+            d={toPath(result.envelopePolygon)}
+            fill="#4ADE80"
+            fillOpacity={0.18}
+            stroke="#22C55E"
+            strokeOpacity={0.85}
+            strokeWidth={stroke}
+            strokeDasharray={`${stroke * 4} ${stroke * 2}`}
+          />
+        ) : null}
+
+        {/* Building lines: blue for the street line, green for side / rear */}
         {result.edges.map((edge) =>
           edge.setbackLine ? (
             <line
@@ -107,35 +130,40 @@ export function BuildEnvelopeDiagram({
               y1={edge.setbackLine.a.y}
               x2={edge.setbackLine.b.x}
               y2={edge.setbackLine.b.y}
-              stroke="#FFFFFF"
-              strokeOpacity={0.35}
-              strokeWidth={stroke}
-              strokeDasharray={`${stroke * 3} ${stroke * 3}`}
+              stroke={edge.kind === "street" ? "#38BDF8" : "#22C55E"}
+              strokeOpacity={0.9}
+              strokeWidth={edge.kind === "street" ? stroke * 1.4 : stroke}
+              strokeDasharray={`${stroke * 3} ${stroke * 2}`}
             />
           ) : null,
         )}
 
-        {/* Buildable envelope */}
-        {result.envelopePolygon ? (
-          <path
-            d={toPath(result.envelopePolygon)}
-            fill="#22D3EE"
-            fillOpacity={0.14}
-            stroke="#22D3EE"
-            strokeOpacity={0.7}
-            strokeWidth={stroke}
-            strokeDasharray={`${stroke * 4} ${stroke * 2}`}
-          />
-        ) : null}
-
-        {/* Maximum coverage footprint, drawn separately from the envelope */}
+        {/* Maximum coverage area, salmon fill with a red dashed outline */}
         {result.coverageFootprint ? (
-          <path
-            d={toPath(result.coverageFootprint.polygon)}
-            fill="url(#erf-coverage-hatch)"
-            stroke="#FF6A00"
-            strokeWidth={stroke * 1.2}
-          />
+          <>
+            <path
+              d={toPath(result.coverageFootprint.polygon)}
+              fill="#FB7185"
+              fillOpacity={0.35}
+              stroke="#EF4444"
+              strokeWidth={stroke * 1.2}
+              strokeDasharray={`${stroke * 3} ${stroke * 2}`}
+            />
+            <text
+              x={coverageCentre?.x ?? 0}
+              y={coverageCentre?.y ?? 0}
+              fill="#FFFFFF"
+              fontSize={fontSize * 0.95}
+              fontWeight={700}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              paintOrder="stroke"
+              stroke="#7F1D1D"
+              strokeWidth={fontSize / 5}
+            >
+              {`MAX COVERAGE · ${result.coverageFootprint.areaM2} m²`}
+            </text>
+          </>
         ) : null}
 
         {/* Street edge emphasis */}
@@ -150,6 +178,7 @@ export function BuildEnvelopeDiagram({
             strokeLinecap="round"
           />
         ) : null}
+
 
         {/* Dimensions, only when the boundary was confirmed */}
         {!compact && result.showsDimensions
@@ -180,11 +209,13 @@ export function BuildEnvelopeDiagram({
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-white/65">
           <LegendSwatch color="#22D3EE" label="Parcel boundary" />
           <LegendSwatch color="#FF6A00" label={result.streetEdge ? "Street boundary" : "Street boundary not set"} />
-          <LegendSwatch color="#FFFFFF" dashed label="Building lines" />
-          <LegendSwatch color="#22D3EE" faded label="Buildable envelope" />
-          <LegendSwatch color="#FF6A00" faded label="Maximum coverage footprint" />
+          <LegendSwatch color="#38BDF8" dashed label="Street building line" />
+          <LegendSwatch color="#22C55E" dashed label="Side / rear building line" />
+          <LegendSwatch color="#4ADE80" faded label="Inside building lines" />
+          <LegendSwatch color="#FB7185" label="Maximum coverage area" />
         </div>
       )}
+
       {compact ? null : (
         <p className="mt-2 text-[11px] leading-5 text-white/50">
           {result.showsDimensions

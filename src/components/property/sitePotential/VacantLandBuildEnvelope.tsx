@@ -276,11 +276,50 @@ export function VacantLandBuildEnvelope({
             />
           </dl>
 
+          {result.summary.maxHeightM != null ? (
+            <div className="mt-4 rounded-xl border border-[#0D1B2A]/10 bg-white p-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                Height limit
+              </div>
+              <div className="mt-2 flex items-end gap-3">
+                <div className="flex h-16 w-8 items-end overflow-hidden rounded-md bg-[#E2E8F0]">
+                  <div
+                    className="w-full rounded-md bg-[#FF6A00]"
+                    style={{
+                      height: `${Math.max(12, Math.min(100, (result.summary.maxHeightM / 12) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="pb-1 text-[12px] leading-5 text-[#0D1B2A]/70">
+                  <span className="font-semibold text-[#0D1B2A]">
+                    {result.summary.maxHeightM} m
+                  </span>{" "}
+                  maximum height to the top of the roof.
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
             Based on: {resolved.ruleSourceLabel}
           </p>
         </div>
       </div>
+
+      {result.coverageFootprint ? (
+        <div className="mt-4 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3">
+          <div className="text-[12px] font-semibold text-[#0D1B2A]">
+            Maximum permitted coverage: {result.coverageFootprint.areaM2} m²
+          </div>
+          <p className="mt-1 text-[11px] leading-5 text-[#64748B]">
+            {result.secondDwelling
+              ? `Example split if an additional dwelling is relevant: approximately ${result.coverageFootprint.allocation.mainM2} m² main dwelling plus up to approximately ${result.coverageFootprint.allocation.additionalM2} m² additional dwelling. The total never exceeds ${result.coverageFootprint.areaM2} m².`
+              : "This is allowed ground-floor area only, not a building design or an approved position."}{" "}
+            This is an illustrative allocation, not an approved design.
+          </p>
+        </div>
+      ) : null}
+
 
       {/* One Next Best Action */}
       {prefill?.nextBestAction ? (

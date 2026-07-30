@@ -87,7 +87,13 @@ export interface BuildEnvelopeResult {
    * Maximum coverage footprint, always reported separately from the setback
    * envelope. Only an area is trustworthy, so no dimensions are emitted.
    */
-  coverageFootprint: { areaM2: number; polygon: LocalPoint[] } | null;
+  coverageFootprint: {
+    areaM2: number;
+    polygon: LocalPoint[];
+    /** Illustrative split of the same maximum, never a design. */
+    allocation: { mainM2: number; additionalM2: number; totalM2: number };
+  } | null;
+
   secondDwelling: { label: string; requiresConsent: boolean } | null;
   summary: BuildEnvelopeSummary;
   missingInformation: string[];
@@ -284,31 +290,66 @@ function classifyEdges(
   return kinds;
 }
 
-function coverageRectangle(
+/** Scale a polygon about its centroid. Area scales with factor². */
+export function scalePolygonAboutCentroid(polygon: LocalPoint[], factor: number): LocalPoint[] {
+  const c = polygonCentroid(polygon);
+  return polygon.map((p) => ({
+    x: c.x + (p.x - c.x) * factor,
+    y: c.y + (p.y - c.y) * factor,
+  }));
+}
+
+/**
+ * Deterministically fit the maximum-coverage polygon INSIDE the setback
+ * envelope by insetting the envelope around its centroid until its area equals
+ * the target coverage area. This preserves the parcel/envelope orientation and
+ * shape instead of drawing an arbitrary axis-aligned box, and it can never
+ * exceed the envelope because the scale factor is capped at 1.
+ */
+export function fitCoveragePolygonInEnvelope(
   envelope: LocalPoint[],
   targetAreaM2: number,
 ): LocalPoint[] | null {
-  if (envelope.length < 3 || targetAreaM2 <= 0) return null;
-  const xs = envelope.map((p) => p.x);
-  const ys = envelope.map((p) => p.y);
-  const width = Math.max(...xs) - Math.min(...xs);
-  const height = Math.max(...ys) - Math.min(...ys);
-  if (width <= 0 || height <= 0) return null;
-  const aspect = width / height;
-  let rectHeight = Math.sqrt(targetAreaM2 / aspect);
-  let rectWidth = rectHeight * aspect;
-  // Never draw a coverage footprint larger than the setback envelope bbox.
-  const scale = Math.min(1, width / rectWidth, height / rectHeight);
-  rectWidth *= scale;
-  rectHeight *= scale;
-  const centre = polygonCentroid(envelope);
-  return [
-    { x: centre.x - rectWidth / 2, y: centre.y - rectHeight / 2 },
-    { x: centre.x + rectWidth / 2, y: centre.y - rectHeight / 2 },
-    { x: centre.x + rectWidth / 2, y: centre.y + rectHeight / 2 },
-    { x: centre.x - rectWidth / 2, y: centre.y + rectHeight / 2 },
-  ];
+  if (envelope.length < 3 || !Number.isFinite(targetAreaM2) || targetAreaM2 <= 0) return null;
+  const envelopeArea = polygonAreaM2(envelope);
+  if (envelopeArea <= 0) return null;
+  if (targetAreaM2 >= envelopeArea) return envelope.map((p) => ({ ...p }));
+
+  // Binary search on the inset factor. Area is monotonic in the factor.
+  let low = 0;
+  let high = 1;
+  let best = envelope.map((p) => ({ ...p }));
+  for (let i = 0; i < 60; i += 1) {
+    const mid = (low + high) / 2;
+    const candidate = scalePolygonAboutCentroid(envelope, mid);
+    const area = polygonAreaM2(candidate);
+    if (area > targetAreaM2) {
+      high = mid;
+    } else {
+      low = mid;
+      best = candidate;
+    }
+    if (Math.abs(area - targetAreaM2) < 1e-6) {
+      best = candidate;
+      break;
+    }
+  }
+  return best;
 }
+
+/**
+ * Illustrative allocation of the permitted coverage between the main dwelling
+ * and an additional dwelling. It is a split of the same maximum, so the total
+ * can never exceed the permitted coverage area.
+ */
+export function coverageAllocationFor(
+  coverageAreaM2: number,
+): { mainM2: number; additionalM2: number; totalM2: number } {
+  const additional = round(Math.min(45, coverageAreaM2 * 0.15));
+  const main = round(coverageAreaM2 - additional);
+  return { mainM2: main, additionalM2: additional, totalM2: round(main + additional) };
+}
+
 
 const STATE_LABEL: Record<BuildEnvelopeState, string> = {
   verified: "Verified Site Potential",
@@ -425,9 +466,16 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
   let coverageFootprint: BuildEnvelopeResult["coverageFootprint"] = null;
   if (envelopePolygon && theoreticalGroundFloorM2 != null) {
     const cappedArea = Math.min(theoreticalGroundFloorM2, setbackEnvelopeAreaM2 ?? Infinity);
-    const polygon = coverageRectangle(envelopePolygon, cappedArea);
-    if (polygon) coverageFootprint = { areaM2: round(cappedArea), polygon };
+    const polygon = fitCoveragePolygonInEnvelope(envelopePolygon, cappedArea);
+    if (polygon) {
+      coverageFootprint = {
+        areaM2: round(cappedArea),
+        polygon,
+        allocation: coverageAllocationFor(round(cappedArea)),
+      };
+    }
   }
+
 
   const knownConstraints: string[] = [];
   if (input.servitudeNotes) knownConstraints.push(input.servitudeNotes);
