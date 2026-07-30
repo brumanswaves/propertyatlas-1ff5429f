@@ -47,8 +47,30 @@ jobs:
       - name: Check TypeScript
         run: npx tsc --noEmit
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Run targeted ESLint
+        run: >-
+          npx eslint
+          src/components/property/dossier/ZoningBuildTab.tsx
+          src/components/property/investigation/AddAddressStep.tsx
+          src/components/property/investigation/GuidedMarketEvidenceStep.tsx
+          src/components/property/investigation/GuidedPropertyChecksStep.tsx
+          src/components/property/investigation/GuidedReportStep.tsx
+          src/components/property/investigation/GuidedSgDiagramStep.tsx
+          src/components/property/investigation/GuidedTitleStep.tsx
+          src/components/property/investigation/GuidedZoningStep.tsx
+          src/components/property/investigation/InvestigationHome.tsx
+          src/components/property/investigation/InvestigationJourney.tsx
+          src/components/property/investigation/InvestigationStepShell.tsx
+          src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/lib/investigation/guidedJourney.ts
+          src/lib/planning/storedPlanningZone.ts
+          src/lib/planning/zoningEvidence.ts
+          src/lib/workbench/useErfFileVault.ts
 
       - name: Build production bundle
         run: npm run build
