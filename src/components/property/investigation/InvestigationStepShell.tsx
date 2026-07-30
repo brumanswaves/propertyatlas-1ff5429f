@@ -27,8 +27,9 @@ export function InvestigationStepShell({
 }: InvestigationStepShellProps) {
   const previous = steps[step.index - 2] ?? null;
   const next = steps[step.index] ?? null;
-  const isPreview = step.id !== "confirm-property";
-  const canUseSharedContinue = step.id !== "confirm-property";
+  const isLiveGuidedStep = step.id === "confirm-property" || step.id === "add-address";
+  const isPreview = !isLiveGuidedStep;
+  const canUseSharedContinue = !isLiveGuidedStep;
 
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_22px_56px_-42px_rgba(13,27,42,0.5)] md:p-6">
