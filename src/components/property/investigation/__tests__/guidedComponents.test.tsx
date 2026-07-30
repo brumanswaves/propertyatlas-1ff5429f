@@ -126,12 +126,12 @@ describe("guided investigation components", () => {
   it("renders future steps as preview shells with no fake action button", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
-    const titleStep = steps.find((step) => step.id === "title");
-    if (!titleStep) throw new Error("Expected title step");
+    const zoningStep = steps.find((step) => step.id === "zoning");
+    if (!zoningStep) throw new Error("Expected zoning step");
 
     const html = renderToStaticMarkup(
       <InvestigationStepShell
-        step={titleStep}
+        step={zoningStep}
         steps={steps}
         onSelectStep={noop}
         onSkipStep={noop}
@@ -141,7 +141,7 @@ describe("guided investigation components", () => {
 
     expect(html).toContain("This guided action is coming in a later build phase.");
     expect(html).toContain("Open full research workspace");
-    expect(html).not.toContain("Upload title deed");
+    expect(html).not.toContain("Confirm zoning document");
     expect(html).not.toContain("Analyse listing");
     expect(html).not.toContain("Run calculator");
   });
@@ -193,6 +193,34 @@ describe("guided investigation components", () => {
     );
 
     expect(html).toContain("Guided SG diagram upload");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
+  });
+
+  it("renders title as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(
+      { ...facts(), marketAddressSaved: true, sgDiagramSearchable: true },
+      workspace,
+    );
+    const titleStep = steps.find((step) => step.id === "title");
+    if (!titleStep) throw new Error("Expected title step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={titleStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <div>Guided title evidence upload</div>
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Guided title evidence upload");
     expect(html).toContain("Back");
     expect(html).toContain("Skip for now");
     expect(html).not.toContain("This guided action is coming in a later build phase.");
