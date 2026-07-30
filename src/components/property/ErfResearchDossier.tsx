@@ -2018,33 +2018,24 @@ function StoepAiReportView({
             )}
           </section>
 
-          {/* SITE POTENTIAL */}
+          {/* SITE POTENTIAL — calculated capacity and the saved concept together */}
           <ReportSitePotentialSection
             anchorId="report-site"
-            hasConcept={Boolean(selectedDesign)}
-            skipped={sitePotentialSkipped}
-            conceptName={
-              selectedDesign
-                ? siteProject.project?.selected_style
-                  ? `Selected concept — ${siteProject.project.selected_style}`
-                  : "Selected property concept"
-                : null
+            panel={sitePotentialPanel}
+            capacityVisual={
+              heroEnvelope ? (
+                <BuildEnvelopeDiagram result={heroEnvelope} className="border-0" />
+              ) : undefined
             }
-            rationale={
-              selectedDesign
-                ? "Concept selected from the saved Site Potential project and linked to the Erf File Vault."
-                : null
+            conceptVisual={
+              selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined
             }
-            projectStatus={sitePotentialReportModeLabel(selectedSiteMode)}
-            brief={siteProject.project?.design_brief || null}
-            conceptAssetId={selectedDesign?.id ?? null}
-            disclaimer={SITE_POTENTIAL_DISCLAIMER}
-            visual={selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined}
             onOpenSitePotential={() => onSelectView?.("site-potential")}
             onOpenSourceFile={
               selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
             }
           />
+
         </>
       ),
       market: (
