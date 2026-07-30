@@ -34,7 +34,8 @@ export function InvestigationStepShell({
     step.id === "title" ||
     step.id === "zoning" ||
     step.id === "property-checks" ||
-    step.id === "market";
+    step.id === "market" ||
+    step.id === "report";
   const isPreview = !isLiveGuidedStep;
   const canUseSharedContinue = !isLiveGuidedStep;
 
