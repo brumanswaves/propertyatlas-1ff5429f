@@ -2367,14 +2367,7 @@ function StoepAiReportView({
             )}
           </section>
 
-          <ReportGroupHeading
-            letter="E"
-            anchorId="report-group-next"
-            title="What happens next"
-            intro="Open uncertainties, the due-diligence plan and every source behind this report."
-          />
-
-          {/* RISK REGISTER */}
+              {/* RISK REGISTER */}
           <section
             id="report-risk"
             className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
@@ -2446,17 +2439,23 @@ function StoepAiReportView({
             }}
           />
 
-          {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
-          <ReportChangeTrackingSection
-            comparison={snapshotComparison}
-            snapshots={reportSnapshots}
-            message={snapshotMessage}
-            clearRequested={clearSnapshotsRequested}
-            onSave={handleSaveReportSnapshot}
-            onRequestClear={() => setClearSnapshotsRequested(true)}
-            onCancelClear={() => setClearSnapshotsRequested(false)}
-            onConfirmClear={handleClearReportSnapshots}
+              {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
+              <ReportChangeTrackingSection
+                comparison={snapshotComparison}
+                snapshots={reportSnapshots}
+                message={snapshotMessage}
+                clearRequested={clearSnapshotsRequested}
+                onSave={handleSaveReportSnapshot}
+                onRequestClear={() => setClearSnapshotsRequested(true)}
+                onCancelClear={() => setClearSnapshotsRequested(false)}
+                onConfirmClear={handleClearReportSnapshots}
           />
+            </div>
+          </details>
+
+
+            </div>
+          </details>
 
           <section className="report-section report-no-print mt-1 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
