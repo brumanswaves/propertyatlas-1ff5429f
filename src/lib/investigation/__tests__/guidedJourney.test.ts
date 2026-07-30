@@ -112,6 +112,26 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("title");
   });
 
+  it("marks title complete only for searchable subject title evidence and advances to zoning", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({
+        identityConfirmed: true,
+        identityChecked: true,
+        marketAddressSaved: true,
+        sgDiagramSearchable: true,
+        titleDeedSearchable: true,
+      }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "title")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("zoning");
+  });
+
   it("uses Add address, not Market, as the guided identity confirmation next step", () => {
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
