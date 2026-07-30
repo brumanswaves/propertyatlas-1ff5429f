@@ -21,6 +21,10 @@ import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
 import { AskEasyErfPanel } from "@/components/property/dossier/AskEasyErfPanel";
 import type { DossierView } from "@/components/property/dossier/reportViews";
 import { buildPropertyInvestigation } from "@/lib/investigation/propertyInvestigation";
+import {
+  buildMasterInvestigationPlan,
+  type InvestigationPlanRow,
+} from "@/lib/investigation/masterPlan";
 import type {
   GuidedEvidenceTask,
   InvestigationFinding,
@@ -28,6 +32,9 @@ import type {
 } from "@/lib/investigation/types";
 import { MESSAGE_TONE } from "./investigationTone";
 import { GuidedEvidenceTaskCard } from "./GuidedEvidenceTaskCard";
+import { InvestigationPlanTable } from "./InvestigationPlanTable";
+import { ReportReadinessPanel } from "./ReportReadinessPanel";
+
 
 /**
  * Investigation Home: the default screen after an erf is selected.
@@ -158,6 +165,34 @@ export function InvestigationHome({
       }),
     [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
   );
+
+  const plan = useMemo(
+    () =>
+      buildMasterInvestigationPlan({
+        parcel,
+        workspaceState,
+        assets,
+        savedEvidence: evidence,
+        planning,
+        scenarioCount: scenarios.length,
+        chosenScenarioId: chosenScenario?.id ?? null,
+        skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+        startedAt: workspaceState.investigation.startedAt,
+        contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          explanation: item.explanation,
+          displayedValues: item.displayedValues,
+          targetTab: item.targetTab ?? null,
+        })),
+      }),
+    [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
+  );
+
+  function runPlanRow(row: InvestigationPlanRow) {
+    onSelectView(row.targetTab as DossierView, { anchorId: row.targetAnchorId });
+  }
+
 
   const askPayload = useMemo(
     () =>
@@ -317,7 +352,18 @@ export function InvestigationHome({
         </section>
       )}
 
-      {/* D. Three facts + one "still needed" line */}
+      {/* D. The whole roadmap, always visible */}
+      <InvestigationPlanTable plan={plan} onRowAction={runPlanRow} />
+
+      {/* E. Live report preview */}
+      <ReportReadinessPanel
+        plan={plan}
+        report={report}
+        onOpenReport={() => onSelectView("stoep-report")}
+      />
+
+      {/* F. Three facts + one "still needed" line */}
+
       <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 md:p-5">
         <h3 className="text-sm font-semibold tracking-tight text-[#0D1B2A]">What Easy Erf knows</h3>
         <ul className="mt-3 divide-y divide-[#0D1B2A]/8">
