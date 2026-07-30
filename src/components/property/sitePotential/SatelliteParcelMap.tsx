@@ -1,21 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
+import {
+  localPolygonToWgs84,
+  localToWgs84,
+  type BuildEnvelopeResult,
+} from "@/lib/sitePotential/buildEnvelope";
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 
 /**
  * Satellite-backed parcel visual for Site Potential.
  *
- * Reuses the same Mapbox stack/token already used by Easy Erf (see
- * `src/components/map/MapCanvas.tsx`). The satellite imagery renders
- * BENEATH the deterministic parcel/setback/envelope overlay produced by
- * `BuildEnvelopeDiagram`; nothing here generates or infers geometry.
+ * Every overlay is a real georeferenced Mapbox layer built from the same
+ * deterministic geometry as the printed diagram, converted back to WGS84 with
+ * the exact inverse of the projection used to compute it. Nothing is drawn as
+ * a floating SVG on top of the map, so the outlines cannot drift out of
+ * alignment when the map is panned or zoomed.
  *
- * Map libraries are loaded client-side only (dynamic import), so SSR never
- * touches `mapbox-gl`. If imagery cannot load — no token, no network, no
- * geometry — this falls back to the clean parcel-outline SVG rather than an
- * empty dark block.
+ * Mapbox is imported client-side only. Missing token, missing geometry, a
+ * failed style load or a thrown import all fall back to the clean
+ * deterministic diagram rather than an empty dark block.
  */
 
 export interface SatelliteParcelMapProps {
@@ -26,6 +30,13 @@ export interface SatelliteParcelMapProps {
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 
+const SRC = {
+  parcel: "site-potential-parcel",
+  street: "site-potential-street",
+  setback: "site-potential-setback",
+  coverage: "site-potential-coverage",
+} as const;
+
 function ringBounds(ring: Array<[number, number]>) {
   const lngs = ring.map((p) => p[0]);
   const lats = ring.map((p) => p[1]);
@@ -33,24 +44,25 @@ function ringBounds(ring: Array<[number, number]>) {
   const maxLng = Math.max(...lngs);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
-  const lngSpan = Math.max(maxLng - minLng, 0.00003);
-  const latSpan = Math.max(maxLat - minLat, 0.00003);
-  const padLng = lngSpan * 0.18;
-  const padLat = latSpan * 0.18;
-  const latMid = (minLat + maxLat) / 2;
-  const cos = Math.max(Math.cos((latMid * Math.PI) / 180), 0.15);
-  const paddedLngSpan = lngSpan + padLng * 2;
-  const paddedLatSpan = latSpan + padLat * 2;
-  // Aspect matches the equirectangular projection used by the deterministic
-  // diagram, so the overlay lines up with the imagery beneath it.
-  const aspect = (paddedLngSpan * cos) / paddedLatSpan;
+  const padLng = Math.max((maxLng - minLng) * 0.25, 0.00004);
+  const padLat = Math.max((maxLat - minLat) * 0.25, 0.00004);
+  return [
+    [minLng - padLng, minLat - padLat],
+    [maxLng + padLng, maxLat + padLat],
+  ] as [[number, number], [number, number]];
+}
+
+function polygonFeature(coords: Array<[number, number]>) {
+  const ring = coords.length && coords[0] !== coords[coords.length - 1] ? [...coords, coords[0]] : coords;
   return {
-    bounds: [
-      [minLng - padLng, minLat - padLat],
-      [maxLng + padLng, maxLat + padLat],
-    ] as [[number, number], [number, number]],
-    aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 1,
+    type: "Feature" as const,
+    properties: {},
+    geometry: { type: "Polygon" as const, coordinates: [ring] },
   };
+}
+
+function emptyCollection() {
+  return { type: "FeatureCollection" as const, features: [] };
 }
 
 export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelMapProps) {
@@ -59,15 +71,55 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
   const [mapFailed, setMapFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
-  const fitRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const hasGeometry = Boolean(ring && ring.length >= 3);
-  const bounds = hasGeometry ? ringBounds(ring as Array<[number, number]>) : null;
+  const bounds = useMemo(
+    () => (hasGeometry ? ringBounds(ring as Array<[number, number]>) : null),
+    [hasGeometry, ring],
+  );
 
+  /** Deterministic geometry converted back to real-world coordinates. */
+  const geo = useMemo(() => {
+    const projection = result.projection;
+    if (!projection) return null;
+    const parcel = result.parcelPolygon.length >= 3
+      ? polygonFeature(localPolygonToWgs84(result.parcelPolygon, projection))
+      : null;
+    const setback =
+      result.envelopePolygon && result.envelopePolygon.length >= 3
+        ? polygonFeature(localPolygonToWgs84(result.envelopePolygon, projection))
+        : null;
+    const coverage =
+      result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
+        ? polygonFeature(localPolygonToWgs84(result.coverageFootprint.polygon, projection))
+        : null;
+    const street = result.streetEdge
+      ? {
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              localToWgs84(result.streetEdge.a, projection),
+              localToWgs84(result.streetEdge.b, projection),
+            ],
+          },
+        }
+      : null;
+    return { parcel, setback, coverage, street };
+  }, [result]);
+
+  const fit = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+    map.fitBounds(bounds, { padding: 24, animate: false });
+  }, [bounds]);
+
+  // Create the map once the container, token and geometry are all present.
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return;
     if (!TOKEN || !bounds || !containerRef.current) {
@@ -88,24 +140,69 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
         map = new mapboxgl.Map({
           container: containerRef.current,
           style: "mapbox://styles/mapbox/satellite-streets-v12",
+          bounds,
+          fitBoundsOptions: { padding: 24, animate: false },
           interactive: true,
           attributionControl: false,
         });
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
         map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-        const fit = () => {
-          if (!map) return;
-          map.fitBounds(bounds.bounds, { padding: 0, animate: false });
-        };
-        fitRef.current = fit;
-        map.on("load", () => {
-          if (cancelled) return;
-          fit();
+
+        map.on("style.load", () => {
+          if (cancelled || !map) return;
+          for (const id of Object.values(SRC)) {
+            if (!map.getSource(id)) {
+              map.addSource(id, { type: "geojson", data: emptyCollection() });
+            }
+          }
+          // Coverage footprint (warm fill) sits lowest, then the setback
+          // envelope, then the street edge, then the parcel boundary on top.
+          map.addLayer({
+            id: `${SRC.coverage}-fill`,
+            type: "fill",
+            source: SRC.coverage,
+            paint: { "fill-color": "#FF6A00", "fill-opacity": 0.28 },
+          });
+          map.addLayer({
+            id: `${SRC.setback}-fill`,
+            type: "fill",
+            source: SRC.setback,
+            paint: { "fill-color": "#22C55E", "fill-opacity": 0.16 },
+          });
+          map.addLayer({
+            id: `${SRC.setback}-line`,
+            type: "line",
+            source: SRC.setback,
+            paint: {
+              "line-color": "#22C55E",
+              "line-width": 2,
+              "line-dasharray": [2, 1.5],
+            },
+          });
+          map.addLayer({
+            id: `${SRC.street}-line`,
+            type: "line",
+            source: SRC.street,
+            paint: { "line-color": "#FF6A00", "line-width": 4 },
+          });
+          map.addLayer({
+            id: `${SRC.parcel}-line`,
+            type: "line",
+            source: SRC.parcel,
+            paint: { "line-color": "#22D3EE", "line-width": 2.5 },
+          });
           setMapReady(true);
         });
-        map.on("error", () => {
-          if (!cancelled) setMapFailed(true);
+
+        map.on("error", (event) => {
+          // Style/tile/auth failures must degrade to the deterministic diagram
+          // instead of leaving a blank canvas behind the overlay.
+          const message = String((event as { error?: { message?: string } })?.error?.message ?? "");
+          if (!cancelled && /token|unauthor|style|401|403|404/i.test(message)) {
+            setMapFailed(true);
+          }
         });
+
         mapRef.current = map;
       } catch {
         if (!cancelled) setMapFailed(true);
@@ -114,13 +211,31 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
 
     return () => {
       cancelled = true;
+      setMapReady(false);
       map?.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, TOKEN, bounds?.bounds.toString()]);
+  }, [mounted, bounds?.toString()]);
 
-  const showFallback = !mounted || !TOKEN || !hasGeometry || mapFailed;
+  // Keep the georeferenced overlays in sync with the deterministic result.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !geo) return;
+    const set = (id: string, feature: GeoJSON.Feature | null) => {
+      const source = map.getSource(id) as import("mapbox-gl").GeoJSONSource | undefined;
+      if (!source) return;
+      source.setData(
+        feature ? { type: "FeatureCollection", features: [feature] } : emptyCollection(),
+      );
+    };
+    set(SRC.parcel, geo.parcel);
+    set(SRC.setback, geo.setback);
+    set(SRC.coverage, geo.coverage);
+    set(SRC.street, geo.street);
+  }, [geo, mapReady]);
+
+  const showFallback = !mounted || !TOKEN || !hasGeometry || mapFailed || !geo;
 
   if (showFallback) {
     return (
@@ -131,29 +246,27 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
   }
 
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border border-white/10 bg-[#06152A]", className)}>
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: bounds ? `${bounds.aspect} / 1` : "1 / 1" }}
-      >
-        <div ref={containerRef} className="absolute inset-0" aria-hidden="true" />
-        {/* Deterministic overlay drawn on top of the satellite imagery. */}
-        <div className="pointer-events-none absolute inset-0">
-          <BuildEnvelopeDiagram
-            result={result}
-            className="h-full border-none bg-transparent"
-            transparentBackground
-          />
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-white/10 bg-[#06152A]",
+        className,
+      )}
+    >
+      <div ref={containerRef} className="h-[340px] w-full sm:h-[420px]" />
+      {!mapReady && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[#06152A]/60 text-xs text-white/70">
+          Loading satellite imagery…
         </div>
-        {!mapReady && (
-          <div className="absolute inset-0 grid place-items-center bg-[#06152A]/60 text-xs text-white/70">
-            Loading satellite imagery…
-          </div>
-        )}
+      )}
+      <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
+        <LegendChip color="#22D3EE" label="Erf boundary" />
+        <LegendChip color="#FF6A00" label="Street frontage" />
+        <LegendChip color="#22C55E" label="Inside building lines" />
+        <LegendChip color="#FF6A00" label="Max coverage" faded />
       </div>
       <button
         type="button"
-        onClick={() => fitRef.current()}
+        onClick={fit}
         className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-[#06152A]/80 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur hover:bg-[#06152A]"
       >
         <Maximize2 className="h-3.5 w-3.5" />
@@ -164,5 +277,17 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
         <BuildEnvelopeDiagram result={result} />
       </div>
     </div>
+  );
+}
+
+function LegendChip({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#06152A]/70 px-2 py-1 backdrop-blur">
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: color, opacity: faded ? 0.5 : 1 }}
+      />
+      {label}
+    </span>
   );
 }

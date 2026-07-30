@@ -1360,6 +1360,10 @@ export function SitePotentialTab({
           recordedAreaM2={recordedAreaM2}
           zoneLabel={planningAssessment.zone?.name ?? null}
           assessment={planningAssessment}
+          // A document only counts as a rule source when it actually supplied
+          // the confirmed zone for this erf.
+          documentRuleEvidence={Boolean(documentZone && manualZoneCode)}
+          lpiCode={parcel.lpi ?? null}
           onOpenTab={onOpenTab}
         />
       )}
