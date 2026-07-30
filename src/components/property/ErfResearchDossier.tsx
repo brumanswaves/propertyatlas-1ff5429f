@@ -1500,14 +1500,23 @@ function StoepAiReportView({
    */
   const heroEnvelope = useMemo(() => {
     if (!parcelRing || parcelRing.length < 3) return null;
-    const stored = readStoredBuildEnvelopeInputs(parcel.id);
-    const base = createEmptyBuildEnvelopeInputs(
-      parcel.id,
-      parcelRing,
-      canonicalAreaM2(parcel.rawProperties),
-    );
+    const polygon = projectRingToLocalMetres(parcelRing);
+    const edgeLengths = polygon.map((a, index) => {
+      const b = polygon[(index + 1) % polygon.length];
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    });
+    const resolved = resolveSitePotentialInputs({
+      overrides: readStoredBuildEnvelopeInputs(parcel.id),
+      pilot: findPilotPlanningRecord({ parcelId: parcel.id, lpiCode: parcel.lpi ?? null }),
+      edgeLengths,
+      recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
+    });
 
-    return calculateBuildEnvelope(stored ? { ...base, ...stored, ring: parcelRing } : base);
+    return calculateBuildEnvelope({
+      ...resolved.answers,
+      parcelId: parcel.id,
+      ring: parcelRing,
+    });
   }, [parcel, parcelRing]);
 
   const reportHero = useMemo(
