@@ -247,9 +247,64 @@ export function VacantLandBuildEnvelope({
         </p>
       )}
 
+      {/* Street frontage: confirmation prompt sits directly above the map. */}
+      {(() => {
+        const confirmed = overrides.streetEdgeIndex != null;
+        const needsPick =
+          pickingFrontage || (!confirmed && detection.requiresConfirmation && roads !== null);
+        return (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3">
+            <div className="text-[12px] leading-5 text-[#0D1B2A]">
+              {needsPick ? (
+                <span className="font-semibold">
+                  Which side faces the street? Click the road-facing boundary on the map.
+                </span>
+              ) : confirmed ? (
+                <span>
+                  <span className="font-semibold">Street frontage · confirmed by you</span>
+                  {savedStreetName ? ` · ${savedStreetName}` : ""}
+                </span>
+              ) : detection.edgeIndex != null ? (
+                <span>
+                  <span className="font-semibold">
+                    Likely street frontage · detected from map
+                  </span>
+                  {detection.roadName ? ` · ${detection.roadName}` : ""}
+                </span>
+              ) : (
+                <span className="text-[#64748B]">
+                  Street frontage not detected yet from map road geometry.
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPickingFrontage((value) => !value)}
+              className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
+            >
+              {needsPick ? "Cancel" : "Change"}
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Result first: large satellite visual, compact build summary beside it. */}
-      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <SatelliteParcelMap ring={ring} result={result} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <SatelliteParcelMap
+          ring={ring}
+          result={result}
+          onRoadsDetected={setRoads}
+          selectableEdges={
+            pickingFrontage ||
+            (overrides.streetEdgeIndex == null && detection.requiresConfirmation && roads !== null)
+          }
+          highlightEdgeIndex={answers.streetEdgeIndex ?? detection.edgeIndex ?? null}
+          onEdgeSelect={(edgeIndex) => {
+            patch({ streetEdgeIndex: edgeIndex });
+            setPickingFrontage(false);
+          }}
+        />
+
 
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex items-center justify-between gap-2">
