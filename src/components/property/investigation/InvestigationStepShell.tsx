@@ -28,7 +28,10 @@ export function InvestigationStepShell({
   const previous = steps[step.index - 2] ?? null;
   const next = steps[step.index] ?? null;
   const isLiveGuidedStep =
-    step.id === "confirm-property" || step.id === "add-address" || step.id === "sg-diagram";
+    step.id === "confirm-property" ||
+    step.id === "add-address" ||
+    step.id === "sg-diagram" ||
+    step.id === "title";
   const isPreview = !isLiveGuidedStep;
   const canUseSharedContinue = !isLiveGuidedStep;
 
