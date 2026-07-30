@@ -2433,22 +2433,26 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "investigation" && null}
 
           {tab === "research" && (
-            <>
-              <OfficialIdentityChecklist
-                parcel={normalizedParcel}
-                sourceUrl={sourceUrl}
-                sgDoc={sgDoc}
-                isCsg={isCsg}
-                status={identityStatus}
-                workspaceState={workspaceState}
-                onStatusChange={updateIdentityStatus}
-                onOpenSource={markSourceOpened}
-                onReviewSource={markSourceReviewed}
-                onSgAttachmentCountChange={updateSgAttachmentCount}
-              />
-              <ErfResearchDossier parcel={normalizedParcel} view="research" />
-            </>
+            <OfficialIdentityChecklist
+              parcel={normalizedParcel}
+              sourceUrl={sourceUrl}
+              sgDoc={sgDoc}
+              isCsg={isCsg}
+              status={identityStatus}
+              workspaceState={workspaceState}
+              onStatusChange={updateIdentityStatus}
+              onOpenSource={markSourceOpened}
+              onReviewSource={markSourceReviewed}
+              onSgAttachmentCountChange={updateSgAttachmentCount}
+              onOpenNextAction={() => selectWorkbenchTab("zoning-build", { markStarted: true })}
+              sourcesExtra={
+                <div className="mt-4">
+                  <ErfResearchDossier parcel={normalizedParcel} view="research" />
+                </div>
+              }
+            />
           )}
+
           {tab === "zoning-build" && (
             <ZoningBuildTab
               parcel={normalizedParcel}
