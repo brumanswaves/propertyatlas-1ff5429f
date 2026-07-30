@@ -10,6 +10,7 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
+import { selectedMarketAddress } from "@/features/marketEvidence/addressIntelligence";
 import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
@@ -62,12 +63,16 @@ export function InvestigationHome({
   mapSlot,
 }: InvestigationHomeProps) {
   const { assets } = useErfFileVault(parcel.id);
-  const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
+  const { evidence, marketAddressIntelligence, propertyIdentity } = useSavedMarketEvidence(parcel.id);
   const vendorWorkspace = useVendorWorkspace(parcel.id);
 
   const scenarios = useMemo(() => readStrategyScenarios(parcel.id), [parcel.id]);
   const chosenScenario = useMemo(() => getChosenStrategyScenario(parcel.id), [parcel.id]);
   const strategyWorkspace = useMemo(() => readStrategyWorkspace(parcel.id), [parcel.id]);
+  const savedMarketAddress = useMemo(
+    () => selectedMarketAddress(marketAddressIntelligence),
+    [marketAddressIntelligence],
+  );
 
   const planning = useMemo(() => {
     const signals = derivePlanningEvidenceSignals(assets);
@@ -131,6 +136,7 @@ export function InvestigationHome({
       scenarioCount: scenarios.length,
       chosenScenarioId: chosenScenario?.id ?? null,
       vendorAssignmentCount: vendorWorkspace.loading ? 0 : vendorWorkspace.assignments.length,
+      marketAddressLine: savedMarketAddress?.formattedAddress ?? propertyIdentity?.address ?? null,
       skippedTaskIds: workspaceState.investigation.skippedTaskIds,
       startedAt: workspaceState.investigation.startedAt,
       contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
@@ -147,7 +153,9 @@ export function InvestigationHome({
       evidence,
       parcel,
       planning,
+      propertyIdentity?.address,
       report.evidencePack?.contradictions,
+      savedMarketAddress?.formattedAddress,
       scenarios.length,
       vendorWorkspace.assignments.length,
       vendorWorkspace.loading,
