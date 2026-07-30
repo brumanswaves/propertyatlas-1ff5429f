@@ -126,12 +126,12 @@ describe("guided investigation components", () => {
   it("renders future steps as preview shells with no fake action button", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
-    const sgStep = steps.find((step) => step.id === "sg-diagram");
-    if (!sgStep) throw new Error("Expected SG step");
+    const titleStep = steps.find((step) => step.id === "title");
+    if (!titleStep) throw new Error("Expected title step");
 
     const html = renderToStaticMarkup(
       <InvestigationStepShell
-        step={sgStep}
+        step={titleStep}
         steps={steps}
         onSelectStep={noop}
         onSkipStep={noop}
@@ -141,7 +141,7 @@ describe("guided investigation components", () => {
 
     expect(html).toContain("This guided action is coming in a later build phase.");
     expect(html).toContain("Open full research workspace");
-    expect(html).not.toContain("Upload SG diagram");
+    expect(html).not.toContain("Upload title deed");
     expect(html).not.toContain("Analyse listing");
     expect(html).not.toContain("Run calculator");
   });
@@ -165,6 +165,34 @@ describe("guided investigation components", () => {
     );
 
     expect(html).toContain("Guided working address form");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
+  });
+
+  it("renders SG diagram as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(
+      { ...facts(), marketAddressSaved: true },
+      workspace,
+    );
+    const sgStep = steps.find((step) => step.id === "sg-diagram");
+    if (!sgStep) throw new Error("Expected sg-diagram step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={sgStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <div>Guided SG diagram upload</div>
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Guided SG diagram upload");
     expect(html).toContain("Back");
     expect(html).toContain("Skip for now");
     expect(html).not.toContain("This guided action is coming in a later build phase.");
