@@ -47,6 +47,7 @@ export interface BuildPropertyInvestigationInput {
   planning?: ParcelPlanningAssessment | null;
   scenarioCount?: number;
   chosenScenarioId?: string | null;
+  vendorAssignmentCount?: number;
   marketAddressLine?: string | null;
   skippedTaskIds?: string[];
   /** Contradictions recorded in the PropertyEvidencePack for this parcel. */
@@ -75,6 +76,20 @@ export function deriveInvestigationFacts(
   const paidReports = assets.filter((asset) => asset.asset_category === "paid_report");
   const titleDeeds = assets.filter((asset) => asset.asset_category === "title_deed");
   const plans = assets.filter((asset) => asset.asset_category === "architectural_plan");
+  const topographicalSurveys = assets.filter((asset) => asset.asset_category === "topography");
+  const sitePhotos = assets.filter((asset) => asset.asset_category === "site_photo");
+  const existingHousePhotos = assets.filter(
+    (asset) => asset.asset_category === "existing_house_photo",
+  );
+  const usableSubjectSgDiagrams = sgDiagrams.filter(
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+  );
+  const usableSubjectTitleDeeds = titleDeeds.filter(
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+  );
+  const usableSubjectTopographicalSurveys = topographicalSurveys.filter(
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+  );
 
   const detectionMethod = planning?.detection.method ?? null;
 
@@ -87,21 +102,18 @@ export function deriveInvestigationFacts(
     identityChecked: workspaceState.identityStatus !== "none",
     hasOfficialParcelKey: Boolean(parcel.lpi || parcel.parcelKey),
     hasAreaEvidence: canonicalAreaM2(parcel.rawProperties) != null,
-    sgDiagramSearchable: sgDiagrams.some(
-      (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
-    ),
+    sgDiagramSearchable: usableSubjectSgDiagrams.length > 0,
     sgDiagramParentLineageOnly:
       sgDiagrams.some((asset) => erfAssetIsParentLineageMatch(asset)) &&
-      !sgDiagrams.some(
-        (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
-      ),
+      usableSubjectSgDiagrams.length === 0,
     sgDiagramCount: sgDiagrams.length,
+    usableSubjectSgDiagramCount: usableSubjectSgDiagrams.length,
     zoningConfirmedByDocument:
       detectionMethod === "document_supported" || detectionMethod === "official_polygon",
     zoningRegistryPublished: Boolean(planning?.registryMatched),
     zoningWorkingAssumption: detectionMethod === "manual_selection",
     approvedPlansOnFile: plans.length > 0,
-    titleDeedSearchable: titleDeeds.some((asset) => erfAssetHasSearchableExtraction(asset)),
+    titleDeedSearchable: usableSubjectTitleDeeds.length > 0,
     paidReportSearchable: paidReports.some(
       (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
     ),
@@ -112,6 +124,10 @@ export function deriveInvestigationFacts(
     hasChosenScenario: Boolean(input.chosenScenarioId ?? workspaceState.chosenScenarioId),
     siteConceptCount: workspaceState.sitePotential.conceptCount,
     siteDesignSelected: Boolean(workspaceState.sitePotential.selectedDesignAssetId),
+    usableTopographySurveyCount: usableSubjectTopographicalSurveys.length,
+    sitePhotoCount: sitePhotos.length,
+    existingHousePhotoCount: existingHousePhotos.length,
+    vendorAssignmentCount: Math.max(0, input.vendorAssignmentCount ?? 0),
     siteSkipped:
       workspaceState.sitePotential.skipped ||
       workspaceState.sitePotential.progressState === "skipped",

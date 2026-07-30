@@ -11,6 +11,7 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
+import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
@@ -86,6 +87,7 @@ export function InvestigationHome({
 }: InvestigationHomeProps) {
   const { assets } = useErfFileVault(parcel.id);
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
+  const vendorWorkspace = useVendorWorkspace(parcel.id);
 
   const scenarios = useMemo(() => readStrategyScenarios(parcel.id), [parcel.id]);
   const chosenScenario = useMemo(() => getChosenStrategyScenario(parcel.id), [parcel.id]);
@@ -153,6 +155,7 @@ export function InvestigationHome({
         planning,
         scenarioCount: scenarios.length,
         chosenScenarioId: chosenScenario?.id ?? null,
+        vendorAssignmentCount: vendorWorkspace.loading ? 0 : vendorWorkspace.assignments.length,
         skippedTaskIds: workspaceState.investigation.skippedTaskIds,
         startedAt: workspaceState.investigation.startedAt,
         contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
@@ -163,7 +166,18 @@ export function InvestigationHome({
           targetTab: item.targetTab ?? null,
         })),
       }),
-    [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
+    [
+      assets,
+      chosenScenario,
+      evidence,
+      parcel,
+      planning,
+      report,
+      scenarios.length,
+      vendorWorkspace.assignments.length,
+      vendorWorkspace.loading,
+      workspaceState,
+    ],
   );
 
   const plan = useMemo(
@@ -176,6 +190,7 @@ export function InvestigationHome({
         planning,
         scenarioCount: scenarios.length,
         chosenScenarioId: chosenScenario?.id ?? null,
+        vendorAssignmentCount: vendorWorkspace.loading ? 0 : vendorWorkspace.assignments.length,
         skippedTaskIds: workspaceState.investigation.skippedTaskIds,
         startedAt: workspaceState.investigation.startedAt,
         contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
@@ -186,7 +201,18 @@ export function InvestigationHome({
           targetTab: item.targetTab ?? null,
         })),
       }),
-    [assets, chosenScenario, evidence, parcel, planning, report, scenarios.length, workspaceState],
+    [
+      assets,
+      chosenScenario,
+      evidence,
+      parcel,
+      planning,
+      report,
+      scenarios.length,
+      vendorWorkspace.assignments.length,
+      vendorWorkspace.loading,
+      workspaceState,
+    ],
   );
 
   function runPlanRow(row: InvestigationPlanRow) {
