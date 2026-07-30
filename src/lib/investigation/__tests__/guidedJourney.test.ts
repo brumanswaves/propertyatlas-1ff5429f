@@ -91,6 +91,27 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("sg-diagram");
   });
 
+  it("marks SG complete only for a searchable subject diagram and advances to title", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({
+        identityConfirmed: true,
+        identityChecked: true,
+        marketAddressSaved: true,
+        sgDiagramSearchable: true,
+        sgDiagramCount: 1,
+        usableSubjectSgDiagramCount: 1,
+      }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "sg-diagram")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("title");
+  });
+
   it("uses Add address, not Market, as the guided identity confirmation next step", () => {
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
