@@ -16,6 +16,7 @@ import {
   type StrategySectionModel,
 } from "@/lib/reports/strategySection";
 import { APPENDIX_SCOPE_LABEL, type EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
+import type { SitePotentialReportPanel } from "@/lib/reports/sitePotentialSection";
 
 const FIGURE_KIND_LABEL: Record<MarketFigureKind, string> = {
   evidence_input: "Evidence input",
