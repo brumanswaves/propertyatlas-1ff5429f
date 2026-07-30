@@ -273,8 +273,8 @@ describe("official dossier UX guardrails", () => {
   it("adds a real official identity verification workflow before source links", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
-    expect(panel).toContain("Official parcel identity check");
-    expect(panel).toContain("Easy Erf Steps / Step 1");
+    expect(panel).toContain("Sources and documents");
+    expect(panel).toContain("Evidence strength:");
     expect(panel).toContain("Parcel identity");
     expect(panel).toContain("Official identifiers");
     expect(panel).toContain("Map context");
@@ -336,7 +336,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Source quality");
     expect(panel).toContain("Township / area");
     expect(panel).toContain("User checked, not legally verified");
-    expect(panel).toContain("it is not legal, surveying or ownership verification");
+    expect(panel).toContain("research\n            progress, not legal verification");
     expect(panel).toContain("erfstoep.identityCheck.");
     expect(panel).toContain("openedSourceIds");
     expect(panel).toContain("reviewedSourceIds");
@@ -357,7 +357,7 @@ describe("official dossier UX guardrails", () => {
 
   it("keeps paid providers out of the official identity checklist", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
-    const checklistStart = panel.indexOf("Official parcel identity check");
+    const checklistStart = panel.indexOf("function OfficialIdentityChecklist");
     const checklistEnd = panel.indexOf("function OfficialParcelPanel");
     const checklist = panel.slice(checklistStart, checklistEnd);
 
@@ -449,7 +449,7 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Investigation progress");
     expect(reportBuilder).toContain("buildPropertyInvestigation");
     expect(reportBuilder).toContain("GuidedEvidenceTaskCard");
-    expect(reportBuilder).toContain("What Easy Erf already knows");
+    expect(reportBuilder).toContain("What Easy Erf knows");
     expect(reportBuilder).toContain("Open investigation tools");
     expect(reportBuilder).toContain('role="progressbar"');
     expect(reportBuilder).toContain("investigation.journey.map");
@@ -523,7 +523,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
     expect(panel).toContain("InvestigationHome");
-    expect(reportBuilder).toContain("What Easy Erf already knows");
+    expect(reportBuilder).toContain("What Easy Erf knows");
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");

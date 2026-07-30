@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AREA_UNAVAILABLE_LABEL, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -745,6 +745,8 @@ function OfficialIdentityChecklist({
   onOpenSource,
   onReviewSource,
   onSgAttachmentCountChange,
+  sourcesExtra,
+  onOpenNextAction,
 }: {
   parcel: NormalizedOfficialParcel;
   sourceUrl: string;
@@ -756,6 +758,9 @@ function OfficialIdentityChecklist({
   onOpenSource: (sourceId: string) => void;
   onReviewSource: (sourceId: string) => void;
   onSgAttachmentCountChange: (count: number) => void;
+  /** Full source library, rendered inside the single sources disclosure. */
+  sourcesExtra?: ReactNode;
+  onOpenNextAction?: () => void;
 }) {
   const coordinates = parcel.coordinates
     ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
@@ -896,237 +901,341 @@ function OfficialIdentityChecklist({
     },
   ];
 
+  const identityChips = [
+    parcel.erfNumber ? `Erf ${parcel.erfNumber}` : null,
+    parcel.portion ? `Portion ${parcel.portion}` : null,
+    parcel.suburbOrArea ?? parcel.town ?? null,
+    parcel.municipality ?? null,
+    parcel.lpi ?? parcel.parcelKey ?? null,
+  ].filter((value): value is string => Boolean(value));
+
+  const deedsReviewed = workspaceState.reviewedSourceIds.includes("deeds-registry-guidance");
+  const sgAttached = workspaceState.sgDiagramAttachmentCount > 0;
+  const identityConfirmed = status === "looks_correct";
+
+  const statusItems: Array<{ label: string; value: string; ok: boolean }> = [
+    {
+      label: "Identity",
+      value: IDENTITY_STATUS_LABELS[status],
+      ok: identityConfirmed,
+    },
+    {
+      label: "Ownership / deed",
+      value: deedsReviewed ? "Guidance reviewed" : "Not verified",
+      ok: deedsReviewed,
+    },
+    {
+      label: "SG / extent",
+      value: sgAttached
+        ? `${workspaceState.sgDiagramAttachmentCount} diagram${workspaceState.sgDiagramAttachmentCount === 1 ? "" : "s"} attached`
+        : hasParcelArea
+          ? "Extent recorded, diagram missing"
+          : "Not attached",
+      ok: sgAttached,
+    },
+    {
+      label: "Plans / restrictions",
+      value: "Not confirmed",
+      ok: false,
+    },
+  ];
+  const confirmedCount = statusItems.filter((item) => item.ok).length;
+
   return (
-    <section
-      id="official-identity-check"
-      className="mb-5 rounded-[1.75rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5 text-[#0D1B2A] shadow-[0_20px_55px_-42px_rgba(13,27,42,0.48)]"
-    >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-            Easy Erf Steps / Step 1
+    <section id="official-identity-check" className="mb-5 space-y-4">
+      <section className="rounded-[1.75rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-5 text-[#0D1B2A] shadow-[0_20px_55px_-42px_rgba(13,27,42,0.48)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+              Property &amp; sources
+            </div>
+            <h3 className="mt-1.5 text-2xl font-semibold tracking-tight md:text-3xl">
+              {parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "Selected parcel"}
+              {parcel.suburbOrArea ? `, ${parcel.suburbOrArea}` : ""}
+            </h3>
           </div>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight">
-            Official parcel identity check
-          </h3>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-            Compare these public parcel fields against the official source. Marking this step only
-            records your research progress; it is not legal, surveying or ownership verification.
+          <div className="rounded-full bg-white px-3 py-1 text-[13px] font-bold text-[#0D1B2A] ring-1 ring-[#0D1B2A]/10">
+            {IDENTITY_STATUS_LABELS[status]}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2 text-[13px] font-semibold text-[#0D1B2A]/72">
+          {identityChips.map((chip) => (
+            <span key={chip} className="rounded-full bg-white/80 px-3 py-1">
+              {chip}
+            </span>
+          ))}
+        </div>
+
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {statusItems.map((item) => (
+            <div
+              key={item.label}
+              className={cn(
+                "rounded-2xl border px-4 py-3",
+                item.ok ? "border-emerald-500/25 bg-emerald-50" : "border-[#0D1B2A]/10 bg-white",
+              )}
+            >
+              <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                {item.label}
+              </dt>
+              <dd className="mt-1 text-base font-semibold leading-6 text-[#0D1B2A]">
+                {item.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {identityConfirmed ? (
+            onOpenNextAction ? (
+              <button
+                type="button"
+                onClick={onOpenNextAction}
+                className="inline-flex min-h-11 items-center rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#142941]"
+              >
+                Continue to Zoning &amp; Build
+              </button>
+            ) : null
+          ) : (
+            <button
+              type="button"
+              onClick={() => onStatusChange("looks_correct")}
+              className="inline-flex min-h-11 items-center rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              Confirm identity looks correct
+            </button>
+          )}
+          <p className="text-[13px] leading-6 text-[#64748B]">
+            Evidence strength: {confirmedCount} of 4 checks supported. Recording a check is research
+            progress, not legal verification.
           </p>
         </div>
-        <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0D1B2A] ring-1 ring-[#0D1B2A]/10">
-          {IDENTITY_STATUS_LABELS[status]}
-        </div>
-      </div>
+      </section>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-3">
-        {fieldGroups.map((group) => (
-          <section
-            key={group.title}
-            className="rounded-[1.35rem] border border-[#0D1B2A]/8 bg-white/88 p-4"
-          >
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
-              {group.title}
-            </h4>
-            <dl className="mt-3 grid gap-2">
-              {group.fields.map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/70 p-3"
-                >
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-                    {label}
-                  </dt>
-                  <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ))}
-      </div>
+      <details className="group rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-[#0D1B2A]">Sources and documents</span>
+          <span className="text-xs font-semibold text-[#64748B] group-open:hidden">Show</span>
+          <span className="hidden text-xs font-semibold text-[#64748B] group-open:inline">
+            Hide
+          </span>
+        </summary>
+        <div className="mt-4">
+          <div className="mt-5 grid gap-3 xl:grid-cols-3">
+            {fieldGroups.map((group) => (
+              <section
+                key={group.title}
+                className="rounded-[1.35rem] border border-[#0D1B2A]/8 bg-white/88 p-4"
+              >
+                <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
+                  {group.title}
+                </h4>
+                <dl className="mt-3 grid gap-2">
+                  {group.fields.map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl border border-[#0D1B2A]/8 bg-[#fbf8f1]/70 p-3"
+                    >
+                      <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                        {label}
+                      </dt>
+                      <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+          </div>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-3">
-        {verificationSources.map((source, index) => {
-          const statusLabel = sourceStatus(source);
-          const reviewed = statusLabel === "Reviewed";
-          const opened = statusLabel === "Opened";
-          const unavailable = statusLabel === "Unavailable";
+          <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            {verificationSources.map((source, index) => {
+              const statusLabel = sourceStatus(source);
+              const reviewed = statusLabel === "Reviewed";
+              const opened = statusLabel === "Opened";
+              const unavailable = statusLabel === "Unavailable";
 
-          return (
-            <Fragment key={source.id}>
-              {index === 1 && (
-                <SgDiagramEvidenceSection
-                  parcelId={parcel.id}
-                  sgDoc={sgDoc}
-                  onOpenSource={onOpenSource}
-                  onAttachmentCountChange={onSgAttachmentCountChange}
-                />
+              return (
+                <Fragment key={source.id}>
+                  {index === 1 && (
+                    <SgDiagramEvidenceSection
+                      parcelId={parcel.id}
+                      sgDoc={sgDoc}
+                      onOpenSource={onOpenSource}
+                      onAttachmentCountChange={onSgAttachmentCountChange}
+                    />
+                  )}
+                  <article
+                    className={cn(
+                      "rounded-[1.35rem] border p-4 transition",
+                      reviewed
+                        ? "border-emerald-500/28 bg-emerald-50"
+                        : opened
+                          ? "border-[#FF6A00]/24 bg-[#fff8ec]"
+                          : unavailable
+                            ? "border-[#0D1B2A]/8 bg-white/58"
+                            : "border-[#0D1B2A]/10 bg-white",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-[#0D1B2A]">{source.name}</h4>
+                        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">{source.why}</p>
+                      </div>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                          reviewed
+                            ? "bg-emerald-600 text-white"
+                            : opened
+                              ? "bg-[#FF6A00] text-white"
+                              : unavailable
+                                ? "bg-[#0D1B2A]/8 text-[#0D1B2A]/52"
+                                : "bg-[#0D1B2A]/8 text-[#0D1B2A]/66",
+                        )}
+                      >
+                        {reviewed && <CheckCircle2 className="h-3 w-3" />}
+                        {statusLabel}
+                      </span>
+                    </div>
+                    {source.helper && (
+                      <p className="mt-3 rounded-xl bg-white/72 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/62">
+                        {source.helper}
+                      </p>
+                    )}
+                    {source.copyHelpers && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {source.copyHelpers.map((helper) => (
+                          <button
+                            key={helper.label}
+                            type="button"
+                            disabled={!helper.value}
+                            onClick={() => helper.value && copyText(helper.value, helper.success)}
+                            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Copy className="h-3 w-3" />
+                            {helper.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {source.unavailableReason && (
+                      <p className="mt-3 rounded-xl bg-[#0D1B2A]/5 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+                        {source.unavailableReason}
+                      </p>
+                    )}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {source.href ? (
+                        <a
+                          href={source.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => onOpenSource(source.id)}
+                          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+                        >
+                          {source.actionLabel ?? "Open source"}
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : (
+                        <span className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/52">
+                          Source unavailable
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!source.href}
+                        onClick={() => onReviewSource(source.id)}
+                        className={cn(
+                          "inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+                          reviewed
+                            ? "border-emerald-600 bg-emerald-600 text-white"
+                            : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
+                        )}
+                      >
+                        {reviewed ? "Reviewed" : "Mark reviewed"}
+                      </button>
+                    </div>
+                  </article>
+                </Fragment>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={copyIdentifiers}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
+            >
+              Copy parcel identifiers
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-2 md:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => onStatusChange("checked")}
+              className={cn(
+                "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+                status === "checked"
+                  ? "border-[#FF6A00]/35 bg-[#fff8ec] text-[#0D1B2A]"
+                  : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
               )}
-              <article
+            >
+              {status === "checked" ? "Selected: I checked this source" : "I checked this source"}
+              <span className="mt-1 block text-xs font-medium leading-5 text-[#0D1B2A]/62">
+                Identity evidence started.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onStatusChange("looks_correct")}
+              className={cn(
+                "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+                status === "looks_correct"
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-emerald-500/20 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+              )}
+            >
+              {status === "looks_correct"
+                ? "Selected: Identity looks correct"
+                : "Identity looks correct"}
+              <span
                 className={cn(
-                  "rounded-[1.35rem] border p-4 transition",
-                  reviewed
-                    ? "border-emerald-500/28 bg-emerald-50"
-                    : opened
-                      ? "border-[#FF6A00]/24 bg-[#fff8ec]"
-                      : unavailable
-                        ? "border-[#0D1B2A]/8 bg-white/58"
-                        : "border-[#0D1B2A]/10 bg-white",
+                  "mt-1 block text-xs font-medium leading-5",
+                  status === "looks_correct" ? "text-white/78" : "text-emerald-900/70",
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0D1B2A]">{source.name}</h4>
-                    <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">{source.why}</p>
-                  </div>
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
-                      reviewed
-                        ? "bg-emerald-600 text-white"
-                        : opened
-                          ? "bg-[#FF6A00] text-white"
-                          : unavailable
-                            ? "bg-[#0D1B2A]/8 text-[#0D1B2A]/52"
-                            : "bg-[#0D1B2A]/8 text-[#0D1B2A]/66",
-                    )}
-                  >
-                    {reviewed && <CheckCircle2 className="h-3 w-3" />}
-                    {statusLabel}
-                  </span>
-                </div>
-                {source.helper && (
-                  <p className="mt-3 rounded-xl bg-white/72 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/62">
-                    {source.helper}
-                  </p>
+                User checked, not legally verified.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onStatusChange("uncertain")}
+              className={cn(
+                "rounded-2xl border p-4 text-left text-sm font-semibold transition",
+                status === "uncertain"
+                  ? "border-[#C75A31] bg-[#C75A31] text-white"
+                  : "border-[#C75A31]/20 bg-[#fff1e9] text-[#7A2D12] hover:bg-[#ffe7d8]",
+              )}
+            >
+              {status === "uncertain" ? "Selected: Identity uncertain" : "Identity uncertain"}
+              <span
+                className={cn(
+                  "mt-1 block text-xs font-medium leading-5",
+                  status === "uncertain" ? "text-white/78" : "text-[#7A2D12]/72",
                 )}
-                {source.copyHelpers && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {source.copyHelpers.map((helper) => (
-                      <button
-                        key={helper.label}
-                        type="button"
-                        disabled={!helper.value}
-                        onClick={() => helper.value && copyText(helper.value, helper.success)}
-                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <Copy className="h-3 w-3" />
-                        {helper.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {source.unavailableReason && (
-                  <p className="mt-3 rounded-xl bg-[#0D1B2A]/5 px-3 py-2 text-[11px] leading-5 text-[#0D1B2A]/58">
-                    {source.unavailableReason}
-                  </p>
-                )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {source.href ? (
-                    <a
-                      href={source.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => onOpenSource(source.id)}
-                      className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-                    >
-                      {source.actionLabel ?? "Open source"}
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <span className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/10 bg-white/70 px-4 py-2 text-xs font-semibold text-[#0D1B2A]/52">
-                      Source unavailable
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!source.href}
-                    onClick={() => onReviewSource(source.id)}
-                    className={cn(
-                      "inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
-                      reviewed
-                        ? "border-emerald-600 bg-emerald-600 text-white"
-                        : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
-                    )}
-                  >
-                    {reviewed ? "Reviewed" : "Mark reviewed"}
-                  </button>
-                </div>
-              </article>
-            </Fragment>
-          );
-        })}
-      </div>
+              >
+                Keep verification as the next step.
+              </span>
+            </button>
+          </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={copyIdentifiers}
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]"
-        >
-          Copy parcel identifiers
-        </button>
-      </div>
-
-      <div className="mt-5 grid gap-2 md:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => onStatusChange("checked")}
-          className={cn(
-            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
-            status === "checked"
-              ? "border-[#FF6A00]/35 bg-[#fff8ec] text-[#0D1B2A]"
-              : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fffaf2]",
-          )}
-        >
-          {status === "checked" ? "Selected: I checked this source" : "I checked this source"}
-          <span className="mt-1 block text-xs font-medium leading-5 text-[#0D1B2A]/62">
-            Identity evidence started.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusChange("looks_correct")}
-          className={cn(
-            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
-            status === "looks_correct"
-              ? "border-emerald-600 bg-emerald-600 text-white"
-              : "border-emerald-500/20 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
-          )}
-        >
-          {status === "looks_correct"
-            ? "Selected: Identity looks correct"
-            : "Identity looks correct"}
-          <span
-            className={cn(
-              "mt-1 block text-xs font-medium leading-5",
-              status === "looks_correct" ? "text-white/78" : "text-emerald-900/70",
-            )}
-          >
-            User checked, not legally verified.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusChange("uncertain")}
-          className={cn(
-            "rounded-2xl border p-4 text-left text-sm font-semibold transition",
-            status === "uncertain"
-              ? "border-[#C75A31] bg-[#C75A31] text-white"
-              : "border-[#C75A31]/20 bg-[#fff1e9] text-[#7A2D12] hover:bg-[#ffe7d8]",
-          )}
-        >
-          {status === "uncertain" ? "Selected: Identity uncertain" : "Identity uncertain"}
-          <span
-            className={cn(
-              "mt-1 block text-xs font-medium leading-5",
-              status === "uncertain" ? "text-white/78" : "text-[#7A2D12]/72",
-            )}
-          >
-            Keep verification as the next step.
-          </span>
-        </button>
-      </div>
+          {sourcesExtra}
+        </div>
+      </details>
     </section>
   );
 }
@@ -1676,7 +1785,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return resolved?.areaM2 ?? null;
   }, [selection.properties]);
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
-
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
     const pushKnown = (label: string, value: unknown, source: string) => {
@@ -2323,22 +2431,26 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           {tab === "investigation" && null}
 
           {tab === "research" && (
-            <>
-              <OfficialIdentityChecklist
-                parcel={normalizedParcel}
-                sourceUrl={sourceUrl}
-                sgDoc={sgDoc}
-                isCsg={isCsg}
-                status={identityStatus}
-                workspaceState={workspaceState}
-                onStatusChange={updateIdentityStatus}
-                onOpenSource={markSourceOpened}
-                onReviewSource={markSourceReviewed}
-                onSgAttachmentCountChange={updateSgAttachmentCount}
-              />
-              <ErfResearchDossier parcel={normalizedParcel} view="research" />
-            </>
+            <OfficialIdentityChecklist
+              parcel={normalizedParcel}
+              sourceUrl={sourceUrl}
+              sgDoc={sgDoc}
+              isCsg={isCsg}
+              status={identityStatus}
+              workspaceState={workspaceState}
+              onStatusChange={updateIdentityStatus}
+              onOpenSource={markSourceOpened}
+              onReviewSource={markSourceReviewed}
+              onSgAttachmentCountChange={updateSgAttachmentCount}
+              onOpenNextAction={() => selectWorkbenchTab("zoning-build", { markStarted: true })}
+              sourcesExtra={
+                <div className="mt-4">
+                  <ErfResearchDossier parcel={normalizedParcel} view="research" />
+                </div>
+              }
+            />
           )}
+
           {tab === "zoning-build" && (
             <ZoningBuildTab
               parcel={normalizedParcel}
@@ -2351,7 +2463,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcelRing={parcelRing}
               recordedAreaM2={recordedAreaM2}
               workspaceState={workspaceState}
-
               onUpdateSite={(patch) =>
                 setWorkspacePatch({
                   sitePotential: { ...workspaceState.sitePotential, ...patch },
@@ -2377,7 +2488,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcel={normalizedParcel}
               parcelRing={parcelRing}
               view="stoep-report"
-
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
             />
           )}
