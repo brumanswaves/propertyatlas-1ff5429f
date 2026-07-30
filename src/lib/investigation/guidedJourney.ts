@@ -91,7 +91,8 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     id: "title",
     label: "Check title",
     shortLabel: "Title",
-    description: "Add a readable subject title deed or ownership document when this step is built.",
+    description:
+      "Upload and verify a readable title document, then review extracted deed conditions, servitudes and restrictions.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["ownership", "sg-servitudes"],
     relatedTaskIds: ["add-lightstone-report"],
