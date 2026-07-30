@@ -181,9 +181,7 @@ export function InvestigationHome({
     investigation.journey.find((step) => step.current) ??
     investigation.journey[investigation.journey.length - 1];
   const rewardMessage = investigation.messages.find((message) => message.kind === "reward") ?? null;
-  const supportingMessages = investigation.messages.filter(
-    (message) => message.kind !== "reward",
-  );
+  const supportingMessages = investigation.messages.filter((message) => message.kind !== "reward");
 
   const knownFindings = investigation.latestFindings.filter(
     (finding) => finding.status !== "missing",
@@ -321,9 +319,7 @@ export function InvestigationHome({
 
       {/* D. Three facts + one "still needed" line */}
       <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/92 p-4 md:p-5">
-        <h3 className="text-sm font-semibold tracking-tight text-[#0D1B2A]">
-          What Easy Erf knows
-        </h3>
+        <h3 className="text-sm font-semibold tracking-tight text-[#0D1B2A]">What Easy Erf knows</h3>
         <ul className="mt-3 divide-y divide-[#0D1B2A]/8">
           {topFacts.map((finding) => (
             <li key={finding.id} className="flex flex-wrap items-start gap-3 py-2.5">
@@ -476,6 +472,5 @@ export function InvestigationHome({
     </div>
   );
 }
-
 
 export default InvestigationHome;
