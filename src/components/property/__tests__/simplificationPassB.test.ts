@@ -162,17 +162,20 @@ describe("Investigation screen hierarchy", () => {
   const home = read("src/components/property/investigation/InvestigationHome.tsx");
 
   it("collapses investigation detail and keeps tools available", () => {
-    expect(home).toContain("Investigation detail");
-    expect(home).toContain("Open investigation tools");
+    expect(home).toContain("Investigation detail and master plan");
+    expect(read("src/components/property/investigation/ExpertWorkspaceLauncher.tsx")).toContain(
+      "Open full research workspace",
+    );
     expect(home).not.toContain("<details open");
-    expect(home).toContain("What Easy Erf knows");
-    expect(home).toContain("Still needed:");
-    expect(home).toContain("knownFindings.slice(0, 3)");
+    expect(home).toContain("The guided journey above");
+    expect(home).toContain("buildMasterInvestigationPlan");
+    expect(home).toContain("onOpenExpertWorkspace");
   });
 
-  it("keeps the canonical guided task card and Ask entry point", () => {
-    expect(home).toContain("GuidedEvidenceTaskCard");
-    expect(home).toContain("investigation.nextTask");
+  it("keeps the guided journey and Ask entry point", () => {
+    expect(home).toContain("InvestigationJourney");
+    expect(home).toContain("buildGuidedInvestigationJourney");
+    expect(home).toContain("selectGuidedInvestigationStep");
     expect(home).toContain("AskEasyErfPanel");
   });
 });

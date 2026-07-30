@@ -40,9 +40,11 @@ import {
   readStrategyScenarios,
   updateErfWorkspaceState,
   type ErfWorkspaceIdentityStatus,
+  type InvestigationSnapshot,
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import { InvestigationHome } from "./investigation/InvestigationHome";
+import type { GuidedInvestigationStepId } from "@/lib/investigation/guidedJourney";
 import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
@@ -1669,7 +1671,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     [savedAddressOverride, userAddr],
   );
   useEffect(() => {
-    setTab(readInitialTab());
+    const initialTab = readInitialTab();
+    setTab(initialTab);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [parcelId]);
   useEffect(() => {
@@ -1679,11 +1682,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     const workspace = readErfWorkspaceState(parcelId);
     const legacyIdentityStatus = readIdentityStatus(parcelId);
     const savedScenarioCount = readStrategyScenarios(parcelId).length;
+    const initialTab = readInitialTab();
+    const now = new Date().toISOString();
     const mergedIdentityStatus =
       workspace.identityStatus === "none" && legacyIdentityStatus !== "needs_verification"
         ? identityStatusToWorkspace(legacyIdentityStatus)
         : workspace.identityStatus;
-    const nextWorkspace =
+    let nextWorkspace =
       mergedIdentityStatus === workspace.identityStatus &&
       savedScenarioCount === workspace.strategyScenarioCount
         ? workspace
@@ -1691,6 +1696,23 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             identityStatus: mergedIdentityStatus,
             strategyScenarioCount: savedScenarioCount,
           });
+    const expertFromUrl = initialTab !== "investigation";
+    if (
+      nextWorkspace.investigation.expertWorkspaceOpen !== expertFromUrl ||
+      nextWorkspace.investigation.lastViewedAt == null ||
+      nextWorkspace.investigation.startedAt == null ||
+      (expertFromUrl && nextWorkspace.investigation.lastExpertView !== initialTab)
+    ) {
+      nextWorkspace = updateErfWorkspaceState(parcelId, {
+        investigation: {
+          ...nextWorkspace.investigation,
+          startedAt: nextWorkspace.investigation.startedAt ?? now,
+          lastViewedAt: now,
+          expertWorkspaceOpen: expertFromUrl,
+          lastExpertView: expertFromUrl ? initialTab : nextWorkspace.investigation.lastExpertView,
+        },
+      });
+    }
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
     setShareCopied(false);
@@ -1933,6 +1955,20 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return next;
   }
 
+  function setInvestigationPatch(patch: Partial<InvestigationSnapshot>, dirty = true) {
+    const current = readErfWorkspaceState(parcelId).investigation;
+    const now = new Date().toISOString();
+    return setWorkspacePatch({
+      investigation: {
+        ...current,
+        startedAt: current.startedAt ?? now,
+        lastViewedAt: now,
+        ...patch,
+      },
+      ...(dirty ? { dirty: true } : {}),
+    });
+  }
+
   function addWorkspaceSourceId(key: "openedSourceIds" | "reviewedSourceIds", sourceId: string) {
     const current = workspaceState[key];
     const nextIds = Array.from(new Set([...current, sourceId]));
@@ -1966,22 +2002,66 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
   }
 
-  /** Records that the user chose to skip a guided evidence task. */
-  function skipGuidedTask(taskId: string) {
-    const skippedTaskIds = Array.from(
-      new Set([...workspaceState.investigation.skippedTaskIds, taskId]),
+  function selectGuidedStep(stepId: GuidedInvestigationStepId) {
+    const current = readErfWorkspaceState(parcelId).investigation;
+    const intentionallyVisitedStepIds = Array.from(
+      new Set([...current.intentionallyVisitedStepIds, stepId]),
     );
-    setWorkspacePatch({
-      investigation: { ...workspaceState.investigation, skippedTaskIds },
-      dirty: true,
+    setInvestigationPatch({
+      currentStepId: stepId,
+      intentionallyVisitedStepIds,
+      expertWorkspaceOpen: false,
+      lastMeaningfulActionAt: new Date().toISOString(),
     });
-    setWorkflowFeedback("Task skipped. Easy Erf will suggest the next best evidence action.");
+    setTab("investigation");
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+  }
+
+  function skipGuidedStep(stepId: GuidedInvestigationStepId) {
+    if (stepId === "confirm-property") return;
+    const current = readErfWorkspaceState(parcelId).investigation;
+    const skippedStepIds = Array.from(new Set([...current.skippedStepIds, stepId]));
+    setInvestigationPatch({
+      skippedStepIds,
+      currentStepId: null,
+      lastMeaningfulActionAt: new Date().toISOString(),
+    });
+    setWorkflowFeedback("Step skipped. Easy Erf will move to the next available investigation step.");
+  }
+
+  function returnToGuidedInvestigation() {
+    setInvestigationPatch({
+      expertWorkspaceOpen: false,
+      lastExpertView: tab !== "investigation" ? tab : workspaceState.investigation.lastExpertView,
+    }, false);
+    setTab("investigation");
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+  }
+
+  function openExpertWorkspace(
+    view: DossierView = "research",
+    options?: { anchorId?: string; markStarted?: boolean },
+  ) {
+    selectWorkbenchTab(view as Tab, { ...options, markStarted: options?.markStarted });
   }
 
   function selectWorkbenchTab(
     nextTab: Tab,
     options?: { markStarted?: boolean; anchorId?: string },
   ) {
+    const currentInvestigation = readErfWorkspaceState(parcelId).investigation;
+    if (nextTab === "investigation") {
+      setInvestigationPatch({
+        expertWorkspaceOpen: false,
+        lastExpertView:
+          tab !== "investigation" ? tab : currentInvestigation.lastExpertView,
+      }, false);
+    } else {
+      setInvestigationPatch({
+        expertWorkspaceOpen: true,
+        lastExpertView: nextTab,
+      }, false);
+    }
     if (options?.markStarted) {
       if (nextTab === "listings") {
         setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
@@ -2019,6 +2099,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       }
       scrollRef.current?.scrollTo({ top: 0 });
     });
+  }
+
+  function confirmGuidedIdentity() {
+    updateIdentityStatus("looks_correct");
+    selectGuidedStep("add-address");
+  }
+
+  function flagGuidedIdentityUncertain() {
+    updateIdentityStatus("uncertain");
+    selectGuidedStep("confirm-property");
   }
 
   function updateIdentityStatus(nextStatus: IdentityCheckStatus) {
@@ -2082,6 +2172,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isInvestigation = tab === "investigation";
+  const expertWorkspaceOpen = workspaceState.investigation.expertWorkspaceOpen || !isInvestigation;
   const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
   const pageNextStep = buildWorkbenchPageNextStep(tab, { paidReportCount, workspaceState });
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
@@ -2157,49 +2248,77 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           <X className="h-4 w-4" />
           Back to full map
         </button>
-        <div className="space-y-1">
-          {WORKBENCH_NAV.map((item) => {
-            const active = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => selectWorkbenchTab(item.id)}
-                className={cn(
-                  "flex min-h-11 w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
-                  active
-                    ? "bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)] text-white shadow-[0_16px_36px_-18px_rgba(255,106,0,0.85)] ring-1 ring-[#FFB86B]/35"
-                    : "text-white/72 hover:bg-white/10 hover:text-white",
-                )}
-                aria-current={active ? "page" : undefined}
-              >
-                {item.label}
-                {active && <ChevronRight className="h-4 w-4" />}
-              </button>
-            );
-          })}
-          <div className="mt-2 border-t border-white/10 pt-2">
-            {WORKBENCH_NAV_MORE.map((item) => {
-              const active = tab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectWorkbenchTab(item.id)}
-                  className={cn(
-                    "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
-                    active
-                      ? "bg-white/14 text-white"
-                      : "text-white/58 hover:bg-white/8 hover:text-white",
-                  )}
-                  aria-current={active ? "page" : undefined}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+        {expertWorkspaceOpen ? (
+          <>
+            <button
+              type="button"
+              onClick={returnToGuidedInvestigation}
+              className="mb-4 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-[#FFB86B]/28 bg-[#FF6A00]/14 px-4 py-2 text-xs font-semibold text-[#FFE0BA] transition hover:bg-[#FF6A00]/22"
+            >
+              Return to guided investigation
+            </button>
+            <div className="space-y-1">
+              {WORKBENCH_NAV.map((item) => {
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => selectWorkbenchTab(item.id)}
+                    className={cn(
+                      "flex min-h-11 w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
+                      active
+                        ? "bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)] text-white shadow-[0_16px_36px_-18px_rgba(255,106,0,0.85)] ring-1 ring-[#FFB86B]/35"
+                        : "text-white/72 hover:bg-white/10 hover:text-white",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {item.label}
+                    {active && <ChevronRight className="h-4 w-4" />}
+                  </button>
+                );
+              })}
+              <div className="mt-2 border-t border-white/10 pt-2">
+                {WORKBENCH_NAV_MORE.map((item) => {
+                  const active = tab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectWorkbenchTab(item.id)}
+                      className={cn(
+                        "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
+                        active
+                          ? "bg-white/14 text-white"
+                          : "text-white/58 hover:bg-white/8 hover:text-white",
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
+              Guided mode
+            </div>
+            <p className="mt-2 text-sm leading-6 text-white/72">
+              Follow the eight-step Investigation path first. Expert tools remain available when
+              you need the full workspace.
+            </p>
+            <button
+              type="button"
+              onClick={() => openExpertWorkspace("research")}
+              className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/16"
+            >
+              Open full research workspace
+            </button>
           </div>
-        </div>
+        )}
         <div className="mt-auto rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFB86B]">
             Paid reports
@@ -2283,30 +2402,39 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <span className="sm:hidden">Back to map</span>
           </button>
         </div>
-        <nav
-          className="mobile-workbench-nav -mx-1 flex w-full gap-2 overflow-x-auto pb-1 md:hidden"
-          aria-label="Mobile Workbench navigation"
-        >
-          {[...WORKBENCH_NAV, ...WORKBENCH_NAV_MORE].map((item) => {
-            const active = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => selectWorkbenchTab(item.id)}
-                className={cn(
-                  "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                  active
-                    ? "border-[#FF8A33]/70 bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_55%,#0D1B2A_100%)] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
-                    : "border-[#0D1B2A]/12 bg-white/82 text-[#0D1B2A] hover:bg-white",
-                )}
-                aria-current={active ? "page" : undefined}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+        {expertWorkspaceOpen ? (
+          <nav
+            className="mobile-workbench-nav -mx-1 flex w-full gap-2 overflow-x-auto pb-1 md:hidden"
+            aria-label="Mobile Workbench navigation"
+          >
+            <button
+              type="button"
+              onClick={returnToGuidedInvestigation}
+              className="min-h-10 shrink-0 rounded-full border border-[#FF8A33]/55 bg-[#fff8ec] px-3 py-2 text-xs font-semibold text-[#9A3412]"
+            >
+              Guided
+            </button>
+            {[...WORKBENCH_NAV, ...WORKBENCH_NAV_MORE].map((item) => {
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectWorkbenchTab(item.id)}
+                  className={cn(
+                    "min-h-10 shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                    active
+                      ? "border-[#FF8A33]/70 bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_55%,#0D1B2A_100%)] text-white shadow-[0_12px_28px_-20px_rgba(255,106,0,0.9)]"
+                      : "border-[#0D1B2A]/12 bg-white/82 text-[#0D1B2A] hover:bg-white",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        ) : null}
       </header>
 
       <div
@@ -2373,8 +2501,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <InvestigationHome
               parcel={normalizedParcel}
               workspaceState={workspaceState}
-              onSelectView={(view: DossierView, options?: { anchorId?: string }) =>
-                selectWorkbenchTab(view as Tab, {
+              onConfirmIdentity={confirmGuidedIdentity}
+              onFlagIdentityUncertain={flagGuidedIdentityUncertain}
+              onSelectGuidedStep={selectGuidedStep}
+              onSkipGuidedStep={skipGuidedStep}
+              onOpenExpertWorkspace={(view: DossierView = "research", options) =>
+                openExpertWorkspace(view, {
                   markStarted:
                     view === "listings" ||
                     view === "calculators" ||
@@ -2383,7 +2515,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                   anchorId: options?.anchorId,
                 })
               }
-              onSkipTask={skipGuidedTask}
+              onBackToMap={handleBackToMap}
               mapSlot={
                 <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">

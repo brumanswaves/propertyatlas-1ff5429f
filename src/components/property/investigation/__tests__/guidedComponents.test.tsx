@@ -1,0 +1,148 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { ConfirmPropertyStep } from "@/components/property/investigation/ConfirmPropertyStep";
+import { InvestigationStepNavigator } from "@/components/property/investigation/InvestigationStepNavigator";
+import { InvestigationStepShell } from "@/components/property/investigation/InvestigationStepShell";
+import {
+  buildGuidedInvestigationJourney,
+  GUIDED_INVESTIGATION_STEPS,
+} from "@/lib/investigation/guidedJourney";
+import type { InvestigationFacts } from "@/lib/investigation/guidedTaskRegistry";
+import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+
+const noop = vi.fn();
+
+function parcel(): NormalizedOfficialParcel {
+  return {
+    id: "parcel:erf-1021",
+    source: "csg",
+    sourceLabel: "Chief Surveyor-General",
+    layer: "csg-parcels",
+    erfNumber: 1021,
+    portion: 0,
+    lpi: "C03400140000102100000",
+    parcelKey: "E108C034001400001021000000",
+    objectId: 1021,
+    municipality: "Kouga Local Municipality",
+    province: "Eastern Cape",
+    suburbOrArea: "Sea Vista",
+    town: "St Francis Bay",
+    coordinates: { lng: 24.82, lat: -34.16 },
+    knownFields: [],
+    missingFields: [],
+    rawProperties: { SHAPE_Area: 713 },
+  };
+}
+
+function facts(): InvestigationFacts {
+  return {
+    parcelId: "parcel:erf-1021",
+    identityConfirmed: true,
+    identityUncertain: false,
+    identityChecked: true,
+    hasOfficialParcelKey: true,
+    hasAreaEvidence: true,
+    sgDiagramSearchable: false,
+    sgDiagramParentLineageOnly: false,
+    sgDiagramCount: 0,
+    usableSubjectSgDiagramCount: 0,
+    zoningConfirmedByDocument: false,
+    zoningRegistryPublished: false,
+    zoningWorkingAssumption: false,
+    approvedPlansOnFile: false,
+    titleDeedSearchable: false,
+    paidReportSearchable: false,
+    paidReportCount: 0,
+    marketEvidenceCount: 0,
+    marketAddressSaved: false,
+    scenarioCount: 0,
+    hasChosenScenario: false,
+    siteConceptCount: 0,
+    siteDesignSelected: false,
+    usableTopographySurveyCount: 0,
+    sitePhotoCount: 0,
+    existingHousePhotoCount: 0,
+    vendorAssignmentCount: 0,
+    siteSkipped: false,
+    reportStarted: false,
+  };
+}
+
+describe("guided investigation components", () => {
+  it("renders Step 1 as a direct property confirmation action", () => {
+    const html = renderToStaticMarkup(
+      <ConfirmPropertyStep
+        parcel={parcel()}
+        workspaceState={createEmptyErfWorkspaceState()}
+        mapSlot={<div>Selected erf on the map</div>}
+        onConfirm={noop}
+        onFlagUncertain={noop}
+        onBackToMap={noop}
+      />,
+    );
+
+    expect(html).toContain("Confirm this is the correct erf");
+    expect(html).toContain("Erf number");
+    expect(html).toContain("Township / area");
+    expect(html).toContain("Official source");
+    expect(html).toContain("Selected erf on the map");
+    expect(html).toContain("Yes, this is the correct erf");
+    expect(html).toContain("This may be the wrong erf");
+    expect(html).toContain("bg-[#FF6A00]");
+  });
+
+  it("shows an honest wrong-erf recovery path without routing into expert tools", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "uncertain";
+    const html = renderToStaticMarkup(
+      <ConfirmPropertyStep
+        parcel={parcel()}
+        workspaceState={workspace}
+        onConfirm={noop}
+        onFlagUncertain={noop}
+        onBackToMap={noop}
+      />,
+    );
+
+    expect(html).toContain("You marked this erf as possibly wrong.");
+    expect(html).toContain("Back to map");
+    expect(html).toContain("Search another property");
+  });
+
+  it("renders all eight mobile/desktop steps through the navigator", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(facts(), workspace);
+    const html = renderToStaticMarkup(
+      <InvestigationStepNavigator steps={steps} onSelectStep={noop} />,
+    );
+
+    expect(html).toContain("View all steps");
+    for (const step of GUIDED_INVESTIGATION_STEPS) {
+      expect(html).toContain(step.shortLabel);
+    }
+  });
+
+  it("renders future steps as preview shells with no fake action button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(facts(), workspace);
+    const sgStep = steps.find((step) => step.id === "sg-diagram");
+    if (!sgStep) throw new Error("Expected SG step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={sgStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      />,
+    );
+
+    expect(html).toContain("This guided action is coming in a later build phase.");
+    expect(html).toContain("Open full research workspace");
+    expect(html).not.toContain("Upload SG diagram");
+    expect(html).not.toContain("Analyse listing");
+    expect(html).not.toContain("Run calculator");
+  });
+});

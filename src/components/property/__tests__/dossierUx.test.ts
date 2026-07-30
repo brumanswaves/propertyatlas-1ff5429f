@@ -446,23 +446,29 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Add report documents");
     expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
     expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
-    expect(reportBuilder).toContain("Investigating");
-    expect(reportBuilder).toContain("Investigation progress");
+    expect(reportBuilder).toContain("InvestigationJourney");
+    expect(reportBuilder).toContain("buildGuidedInvestigationJourney");
+    expect(read("src/components/property/investigation/InvestigationProgress.tsx")).toContain(
+      "Guided Investigation",
+    );
     expect(reportBuilder).toContain("buildPropertyInvestigation");
-    expect(reportBuilder).toContain("GuidedEvidenceTaskCard");
+    expect(read("src/components/property/investigation/ConfirmPropertyStep.tsx")).toContain(
+      "Confirm this is the correct erf",
+    );
     expect(reportBuilder).toContain("useVendorWorkspace");
     expect(reportBuilder).toContain("vendorAssignmentCount");
     expect(reportBuilder).toContain("vendorWorkspace.loading ? 0");
-    expect(reportBuilder).toContain("What Easy Erf knows");
-    expect(reportBuilder).toContain("Open investigation tools");
-    expect(reportBuilder).toContain('role="progressbar"');
-    expect(reportBuilder).toContain("investigation.journey.map");
-    expect(reportBuilder).toContain("investigation.latestFindings.map");
-    expect(reportBuilder).toContain("{finding.title}");
-    expect(reportBuilder).toContain("{step.shortLabel}");
-    expect(reportBuilder).toContain("nextTask");
+    expect(reportBuilder).toContain("Investigation detail and master plan");
+    expect(panel).toContain("Open full research workspace");
+    expect(panel).toContain("Return to guided investigation");
+    expect(read("src/components/property/investigation/InvestigationProgress.tsx")).toContain(
+      'role="progressbar"',
+    );
+    expect(read("src/components/property/investigation/InvestigationStepNavigator.tsx")).toContain(
+      "View all steps",
+    );
     expect(reportBuilder).toContain('"stoep-report"');
-    expect(reportBuilder).toContain("Open Easy Erf Report");
+    expect(reportBuilder).toContain("ReportReadinessPanel");
     expect(reportProgress).toContain('title: "Verify the erf"');
     expect(reportProgress).toContain('action: "Check official identity"');
     expect(reportProgress).toContain('tab: "research"');
@@ -527,7 +533,10 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
     expect(panel).toContain("InvestigationHome");
-    expect(reportBuilder).toContain("What Easy Erf knows");
+    expect(reportBuilder).toContain("InvestigationJourney");
+    expect(read("src/components/property/investigation/ConfirmPropertyStep.tsx")).toContain(
+      "Yes, this is the correct erf",
+    );
     expect(panel).toContain("ownership, transfer, and deeds-level context");
     expect(panel).not.toContain("Early consultant-style read only");
     expect(panel).not.toContain("Open full dossier");

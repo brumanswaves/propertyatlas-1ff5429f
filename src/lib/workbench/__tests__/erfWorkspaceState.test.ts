@@ -59,6 +59,38 @@ describe("erfWorkspaceState", () => {
     expect(updated.updatedAt).toEqual(expect.any(String));
   });
 
+  it("coerces legacy investigation snapshots into the versioned guided journey shape", () => {
+    const storage = memoryStorage();
+    const parcelId = "csg:lpi:c03400140000102100000";
+    storage.setItem(
+      erfWorkspaceStateKey(parcelId),
+      JSON.stringify({
+        identityStatus: "looks_correct",
+        investigation: {
+          version: 1,
+          startedAt: "2026-07-30T08:00:00.000Z",
+          skippedTaskIds: ["add-sg-diagram"],
+          currentStepId: "market",
+          intentionallyVisitedStepIds: ["market"],
+          skippedStepIds: ["add-address"],
+          expertWorkspaceOpen: true,
+          lastExpertView: "calculators",
+        },
+      }),
+    );
+
+    expect(readErfWorkspaceState(parcelId, storage).investigation).toMatchObject({
+      version: 2,
+      startedAt: "2026-07-30T08:00:00.000Z",
+      skippedTaskIds: ["add-sg-diagram"],
+      currentStepId: "market",
+      intentionallyVisitedStepIds: ["market"],
+      skippedStepIds: ["add-address"],
+      expertWorkspaceOpen: true,
+      lastExpertView: "calculators",
+    });
+  });
+
   it("starts recommended next step with official identity", () => {
     expect(buildErfWorkspaceNextStep(createEmptyErfWorkspaceState())).toMatchObject({
       title: "Verify the official parcel identity",
