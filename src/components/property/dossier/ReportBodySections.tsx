@@ -16,6 +16,7 @@ import {
   type StrategySectionModel,
 } from "@/lib/reports/strategySection";
 import { APPENDIX_SCOPE_LABEL, type EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
+import type { SitePotentialReportPanel } from "@/lib/reports/sitePotentialSection";
 
 const FIGURE_KIND_LABEL: Record<MarketFigureKind, string> = {
   evidence_input: "Evidence input",
@@ -335,124 +336,136 @@ export function ReportStrategySection({
 export const SITE_POTENTIAL_CONCEPT_LABEL =
   "Conceptual opportunity only — not proof of planning approval, legal buildability or approved building plans.";
 
+function SitePotentialVisualPanel({
+  heading,
+  caption,
+  tone,
+  children,
+}: {
+  heading: string;
+  caption: string;
+  tone: "capacity" | "concept";
+  children: React.ReactNode;
+}) {
+  return (
+    <figure className="report-print-avoid-break overflow-hidden rounded-[1.25rem] border border-[#D9E6F2] bg-[#F7FBFF]">
+      <figcaption className="flex items-center gap-2 border-b border-[#D9E6F2] px-4 py-2.5">
+        <span
+          aria-hidden
+          className={cn(
+            "h-2 w-2 rounded-full",
+            tone === "capacity" ? "bg-[#0EA5E9]" : "bg-[#FF6A00]",
+          )}
+        />
+        <span className="text-sm font-semibold text-[#0D1B2A]">{heading}</span>
+      </figcaption>
+      <div className="bg-white">{children}</div>
+      <p className="px-4 py-3 text-xs leading-5 text-[#64748B]">{caption}</p>
+    </figure>
+  );
+}
+
 export function ReportSitePotentialSection({
   anchorId,
-  hasConcept,
-  skipped,
-  conceptName,
-  rationale,
-  projectStatus,
-  brief,
-  conceptAssetId,
-  disclaimer,
-  visual,
+  panel,
+  capacityVisual,
+  conceptVisual,
   onOpenSitePotential,
   onOpenSourceFile,
 }: {
   anchorId: string;
-  hasConcept: boolean;
-  skipped: boolean;
-  conceptName: string | null;
-  rationale: string | null;
-  projectStatus: string | null;
-  brief: string | null;
-  conceptAssetId?: string | null;
-  disclaimer: string;
-  visual?: React.ReactNode;
+  panel: SitePotentialReportPanel;
+  capacityVisual?: React.ReactNode;
+  conceptVisual?: React.ReactNode;
   onOpenSitePotential?: () => void;
   onOpenSourceFile?: () => void;
 }) {
+  const showCapacity = panel.hasCapacity && Boolean(capacityVisual);
+  const showConcept = panel.hasConcept && Boolean(conceptVisual);
+  const bothVisuals = showCapacity && showConcept;
+
   return (
     <section id={anchorId} className={sectionShell()}>
-      <ReportSectionTitleBlock
-        eyebrow="Site Potential"
-        title={hasConcept ? conceptName || "Selected property concept" : "No concept selected yet"}
-      />
-      {hasConcept ? (
-        <>
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="overflow-hidden rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF]">
-              {visual}
+      <ReportSectionTitleBlock eyebrow="Site Potential" title={panel.title} />
+      <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">{panel.lede}</p>
+
+      {panel.metrics.length > 0 && (
+        <div className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+          {panel.metrics.map((metric) => (
+            <div key={metric.id}>
+              <p className="text-sm text-[#64748B]">{metric.label}</p>
+              <p className="mt-0.5 text-2xl font-semibold leading-tight tracking-tight text-[#0D1B2A]">
+                {metric.value}
+              </p>
+              {metric.note && <p className="mt-0.5 text-xs text-[#64748B]">{metric.note}</p>}
             </div>
-            <div className="rounded-[1.25rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
-              <dl className="grid gap-4 text-sm">
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    Project status
-                  </dt>
-                  <dd className="mt-1 text-[#0D1B2A]/85">
-                    {projectStatus ?? "Status not recorded"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    Rationale
-                  </dt>
-                  <dd className="mt-1 text-[#0D1B2A]/85">
-                    {rationale ?? "No rationale saved for this concept."}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                    Brief summary
-                  </dt>
-                  <dd className="mt-1 text-[#0D1B2A]/85">
-                    {brief ?? "No design brief saved yet."}
-                  </dd>
-                </div>
-                {conceptAssetId && (
-                  <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                      Stable asset ID
-                    </dt>
-                    <dd className="mt-1 break-all font-mono text-xs text-[#0D1B2A]/70">
-                      {conceptAssetId}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-              <div className="report-no-print mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={onOpenSitePotential}
-                  className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
-                >
-                  Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-                {onOpenSourceFile && (
-                  <button
-                    type="button"
-                    onClick={onOpenSourceFile}
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
-                  >
-                    Open source file <ExternalLink className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-          <p className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] px-4 py-3 text-xs leading-5 text-[#B24A00]">
-            {SITE_POTENTIAL_CONCEPT_LABEL} {disclaimer}
-          </p>
-        </>
-      ) : (
-        <div className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
-          <p className="text-sm leading-6 text-[#0D1B2A]/75">
-            {skipped
-              ? "Site Potential has been skipped for this report."
-              : "No Site Potential concept has been selected yet, so this section carries no visual."}
-          </p>
-          {!skipped && (
-            <button
-              type="button"
-              onClick={onOpenSitePotential}
-              className="report-no-print mt-3 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+          ))}
+        </div>
+      )}
+
+      {(showCapacity || showConcept) && (
+        <div
+          className={cn(
+            "report-print-single-column mt-5 grid gap-5",
+            bothVisuals && "lg:grid-cols-2",
+          )}
+        >
+          {showCapacity && (
+            <SitePotentialVisualPanel
+              heading={panel.capacityHeading}
+              caption={panel.capacityCaption}
+              tone="capacity"
             >
-              Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+              {capacityVisual}
+            </SitePotentialVisualPanel>
+          )}
+          {showConcept && (
+            <SitePotentialVisualPanel
+              heading={panel.conceptHeading}
+              caption={panel.conceptCaption}
+              tone="concept"
+            >
+              {conceptVisual}
+            </SitePotentialVisualPanel>
           )}
         </div>
       )}
+
+      {(panel.conceptName || panel.brief) && (
+        <div className="mt-4 text-sm leading-6 text-[#0D1B2A]/80">
+          {panel.conceptName && <span className="font-semibold">{panel.conceptName}. </span>}
+          {panel.brief}
+        </div>
+      )}
+
+      {panel.emptyMessage && (
+        <div className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+          <p className="text-sm leading-6 text-[#0D1B2A]/75">{panel.emptyMessage}</p>
+        </div>
+      )}
+
+      <div className="report-no-print mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onOpenSitePotential}
+          className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
+        >
+          Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+        {onOpenSourceFile && (
+          <button
+            type="button"
+            onClick={onOpenSourceFile}
+            className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#F7FBFF]"
+          >
+            Open source file <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <p className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] px-4 py-3 text-xs leading-5 text-[#B24A00]">
+        {panel.disclaimer}
+      </p>
     </section>
   );
 }
