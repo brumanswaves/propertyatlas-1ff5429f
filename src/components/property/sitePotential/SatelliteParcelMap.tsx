@@ -412,7 +412,32 @@ export function SatelliteParcelMap({
     set(SRC.street, geo.street);
     set(SRC.streetLine, geo.streetLine);
     set(SRC.coverageLabel, geo.coverageLabel);
+    const edgeSource = map.getSource(SRC.edges) as
+      | import("mapbox-gl").GeoJSONSource
+      | undefined;
+    edgeSource?.setData(geo.edges);
   }, [geo, mapReady]);
+
+  // Edge-picking mode: only visible and clickable while the caller asks for a
+  // street-frontage confirmation.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (!map.getLayer(`${SRC.edges}-line`) || !map.getLayer(`${SRC.edges}-hit`)) return;
+    map.setPaintProperty(`${SRC.edges}-line`, "line-opacity", selectableEdges ? 0.95 : 0);
+    map.setPaintProperty(`${SRC.edges}-line`, "line-color", [
+      "case",
+      ["==", ["get", "edgeIndex"], highlightEdgeIndex ?? -1],
+      "#FF6A00",
+      "#FACC15",
+    ]);
+    map.setLayoutProperty(
+      `${SRC.edges}-hit`,
+      "visibility",
+      selectableEdges ? "visible" : "none",
+    );
+  }, [highlightEdgeIndex, mapReady, selectableEdges]);
+
 
   // The satellite canvas must always fill its frame, including after the
   // enclosing disclosure opens or the layout reflows.
