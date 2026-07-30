@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Info, Ruler, RotateCcw } from "lucide-react";
+import { Info, Ruler, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   calculateBuildEnvelope,
-  createEmptyBuildEnvelopeInputs,
+  projectRingToLocalMetres,
   type BuildEnvelopeInputs,
   type BuildEnvelopeResult,
   type BuildEnvelopeRuleSource,
@@ -12,8 +12,10 @@ import {
   clearStoredBuildEnvelopeInputs,
   readStoredBuildEnvelopeInputs,
   writeStoredBuildEnvelopeInputs,
-  type StoredBuildEnvelopeInputs,
+  type StoredBuildEnvelopeOverrides,
 } from "@/lib/sitePotential/buildEnvelopeStore";
+import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
+import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import { SatelliteParcelMap } from "./SatelliteParcelMap";
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
@@ -29,6 +31,13 @@ export interface VacantLandBuildEnvelopeProps {
   onResultChange?: (result: BuildEnvelopeResult) => void;
   /** Same planning assessment that powers Zoning & Build — single source of truth. */
   assessment?: ParcelPlanningAssessment | null;
+  /**
+   * True only when a property-matched zoning document actually supplied the
+   * zone and the numeric controls.
+   */
+  documentRuleEvidence?: boolean;
+  /** Canonical LPI code, used to match a property-specific pilot record. */
+  lpiCode?: string | null;
   onOpenTab?: (tab: string) => void;
 }
 
@@ -43,7 +52,7 @@ const RULE_SOURCE_OPTIONS: Array<{ id: BuildEnvelopeRuleSource; label: string; b
   {
     id: "document",
     label: "Zoning document",
-    body: "You have a zoning certificate or scheme extract for this erf.",
+    body: "A zoning certificate for this erf supplied these numbers.",
   },
   {
     id: "registry",
@@ -71,50 +80,52 @@ export function VacantLandBuildEnvelope({
   zoneLabel = null,
   onResultChange,
   assessment = null,
+  documentRuleEvidence = false,
+  lpiCode = null,
   onOpenTab,
 }: VacantLandBuildEnvelopeProps) {
   const prefill = useMemo(
     () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
     [assessment],
   );
-  const prefillDefaults = useCallback((): Partial<StoredBuildEnvelopeInputs> => {
-    if (!prefill) return {};
-    const defaults: Partial<StoredBuildEnvelopeInputs> = {};
-    if (prefill.ruleSource) defaults.ruleSource = prefill.ruleSource;
-    if (prefill.zone.value) defaults.zoneLabel = prefill.zone.value;
-    if (prefill.streetSetbackM.value != null) defaults.streetSetbackM = prefill.streetSetbackM.value;
-    if (prefill.sideSetbackM.value != null) defaults.sideSetbackM = prefill.sideSetbackM.value;
-    if (prefill.rearSetbackM.value != null) defaults.rearSetbackM = prefill.rearSetbackM.value;
-    if (prefill.maxCoveragePercent.value != null)
-      defaults.maxCoveragePercent = prefill.maxCoveragePercent.value;
-    if (prefill.maxHeightM.value != null) defaults.maxHeightM = prefill.maxHeightM.value;
-    if (prefill.dwellingUnits.value != null) defaults.dwellingUnits = prefill.dwellingUnits.value;
-    if (prefill.additionalDwellingRule.value)
-      defaults.additionalDwellingRule = prefill.additionalDwellingRule.value;
-    defaults.additionalDwellingRequiresConsent = prefill.additionalDwellingRequiresConsent;
-    return defaults;
-  }, [prefill]);
+  const pilot = useMemo(
+    () => findPilotPlanningRecord({ parcelId, lpiCode }),
+    [parcelId, lpiCode],
+  );
 
-  const [answers, setAnswers] = useState<StoredBuildEnvelopeInputs>(() => {
-    const stored = readStoredBuildEnvelopeInputs(parcelId);
-    const empty = createEmptyBuildEnvelopeInputs(parcelId, null, recordedAreaM2);
-    const { ring: _ring, parcelId: _id, ...rest } = empty;
-    // Prefill first (single source of truth), then apply any stored user
-    // answers on top — manual overrides always win over a prefilled value.
-    return { ...rest, zoneLabel, ...prefillDefaults(), ...(stored ?? {}), recordedAreaM2 };
-  });
+  /** Only fields the user actually touched. Never seeded from a prefill. */
+  const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
+    () => readStoredBuildEnvelopeInputs(parcelId) ?? {},
+  );
 
   useEffect(() => {
-    const stored = readStoredBuildEnvelopeInputs(parcelId);
-    const empty = createEmptyBuildEnvelopeInputs(parcelId, null, recordedAreaM2);
-    const { ring: _ring, parcelId: _id, ...rest } = empty;
-    setAnswers({ ...rest, zoneLabel, ...prefillDefaults(), ...(stored ?? {}), recordedAreaM2 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parcelId, recordedAreaM2, zoneLabel]);
+    setOverrides(readStoredBuildEnvelopeInputs(parcelId) ?? {});
+  }, [parcelId]);
+
+  const edgeLengths = useMemo(() => {
+    const polygon = ring ? projectRingToLocalMetres(ring) : [];
+    return polygon.map((a, index) => {
+      const b = polygon[(index + 1) % polygon.length];
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    });
+  }, [ring]);
+
+  const resolved = useMemo(
+    () =>
+      resolveSitePotentialInputs({
+        overrides,
+        prefill,
+        pilot,
+        documentRuleEvidence,
+        edgeLengths,
+        recordedAreaM2,
+      }),
+    [overrides, prefill, pilot, documentRuleEvidence, edgeLengths, recordedAreaM2],
+  );
 
   const patch = useCallback(
-    (next: Partial<StoredBuildEnvelopeInputs>) => {
-      setAnswers((current) => {
+    (next: StoredBuildEnvelopeOverrides) => {
+      setOverrides((current) => {
         const merged = { ...current, ...next };
         writeStoredBuildEnvelopeInputs(parcelId, merged);
         return merged;
@@ -123,9 +134,17 @@ export function VacantLandBuildEnvelope({
     [parcelId],
   );
 
+  const answers = resolved.answers;
+
   const inputs = useMemo<BuildEnvelopeInputs>(
-    () => ({ ...answers, parcelId, ring, recordedAreaM2 }),
-    [answers, parcelId, ring, recordedAreaM2],
+    () => ({
+      ...answers,
+      zoneLabel: answers.zoneLabel ?? zoneLabel,
+      parcelId,
+      ring,
+      recordedAreaM2: answers.recordedAreaM2 ?? recordedAreaM2,
+    }),
+    [answers, parcelId, ring, recordedAreaM2, zoneLabel],
   );
 
   const result = useMemo(() => calculateBuildEnvelope(inputs), [inputs]);
@@ -135,6 +154,7 @@ export function VacantLandBuildEnvelope({
   }, [onResultChange, result]);
 
   const edgeOptions = result.parcelPolygon.map((_, index) => index);
+  const coverageAreaM2 = result.summary.theoreticalGroundFloorM2;
 
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
@@ -165,69 +185,102 @@ export function VacantLandBuildEnvelope({
         {result.stateExplanation}
       </p>
 
-      {/* Result-first: large parcel + build-envelope visual, satellite beneath. */}
-      <SatelliteParcelMap ring={ring} result={result} className="mt-5" />
-
-      {/* Compact build summary lives right under the visual. */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryTile
-          label="Erf area"
-          value={result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"}
-          note={result.summary.erfAreaSourceLabel}
-        />
-        <SummaryTile
-          label="Theoretical ground floor"
-          value={
-            result.summary.theoreticalGroundFloorM2 != null
-              ? `${result.summary.theoreticalGroundFloorM2} m²`
-              : "Not available"
-          }
-          note={
-            result.summary.maxCoveragePercent != null
-              ? `At ${result.summary.maxCoveragePercent}% coverage`
-              : "Coverage not confirmed"
-          }
-        />
-        <SummaryTile
-          label="Setback envelope"
-          value={
-            result.summary.setbackEnvelopeAreaM2 != null
-              ? `${result.summary.setbackEnvelopeAreaM2} m²`
-              : "Not available"
-          }
-          note="Area inside all building lines"
-        />
-        <SummaryTile
-          label="Maximum height"
-          value={result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"}
-          note="As recorded above"
-        />
-        <SummaryTile
-          label="Dwelling allowance"
-          value={result.summary.dwellingAllowance}
-          note={result.summary.additionalDwellingRule}
-        />
-        <SummaryTile
-          label="Missing constraints"
-          value={result.missingInformation.length ? `${result.missingInformation.length} item(s)` : "None outstanding"}
-          note={result.missingInformation[0] ?? "All known constraints recorded"}
-        />
-        <SummaryTile
-          label="Indicative upper floor"
-          value={
-            result.summary.indicativeUpperFloorM2 != null
-              ? `${result.summary.indicativeUpperFloorM2} m²`
-              : "Not available"
-          }
-          note="Only shown when the height allowance supports a second storey"
-        />
-      </div>
-
-      {prefill?.ruleSourceLabel ? (
-        <p className="mt-3 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 text-[12px] leading-5 text-[#0D1B2A]/75">
-          {prefill.ruleSourceLabel}
+      {resolved.invalidatedStoredDocumentSource && (
+        <p className="mt-3 rounded-2xl border border-[#FF6A00]/25 bg-[#FF6A00]/[0.06] px-4 py-3 text-[12px] leading-5 text-[#9a3412]">
+          A previously stored “Zoning document” selection was ignored: no property-matched zoning
+          document has supplied the zone and numeric controls for this erf.
         </p>
-      ) : null}
+      )}
+
+      {/* Result first: large satellite visual, compact build summary beside it. */}
+      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <SatelliteParcelMap ring={ring} result={result} />
+
+        <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+              Build summary
+            </div>
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                STATE_TONE[result.state],
+              )}
+            >
+              {resolved.ruleStatus === "verified"
+                ? "Verified"
+                : resolved.ruleStatus === "estimated"
+                  ? "Estimated"
+                  : "Incomplete"}
+            </span>
+          </div>
+
+          <dl className="mt-3 divide-y divide-[#0D1B2A]/8">
+            <SummaryRow
+              label="Site area"
+              value={
+                result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"
+              }
+              note={result.summary.erfAreaSourceLabel}
+            />
+            <SummaryRow
+              label="Maximum coverage"
+              value={
+                result.summary.maxCoveragePercent != null
+                  ? `${result.summary.maxCoveragePercent}%${
+                      coverageAreaM2 != null ? ` · ${coverageAreaM2} m²` : ""
+                    }`
+                  : "Not confirmed"
+              }
+              note={resolved.fields.maxCoveragePercent.provenance}
+            />
+            <SummaryRow
+              label="Maximum height"
+              value={
+                result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"
+              }
+              note={resolved.fields.maxHeightM.provenance}
+            />
+            <SummaryRow
+              label="Street building line"
+              value={answers.streetSetbackM != null ? `${answers.streetSetbackM} m` : "Not confirmed"}
+              note={
+                answers.streetName
+                  ? `${answers.streetName} frontage · ${resolved.fields.streetSetbackM.provenance}`
+                  : resolved.fields.streetSetbackM.provenance
+              }
+            />
+            <SummaryRow
+              label="Side building lines"
+              value={answers.sideSetbackM != null ? `${answers.sideSetbackM} m` : "Not confirmed"}
+              note={resolved.fields.sideSetbackM.provenance}
+            />
+            <SummaryRow
+              label="Rear building line"
+              value={answers.rearSetbackM != null ? `${answers.rearSetbackM} m` : "Not confirmed"}
+              note={resolved.fields.rearSetbackM.provenance}
+            />
+            <SummaryRow
+              label="Dwellings allowed"
+              value={result.summary.dwellingAllowance}
+              note={result.summary.additionalDwellingRule}
+            />
+            <SummaryRow
+              label="Setback envelope"
+              value={
+                result.summary.setbackEnvelopeAreaM2 != null
+                  ? `${result.summary.setbackEnvelopeAreaM2} m²`
+                  : "Not available"
+              }
+              note="Area inside all building lines, shown separately from the coverage footprint."
+            />
+          </dl>
+
+          <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
+            Based on: {resolved.ruleSourceLabel}
+          </p>
+        </div>
+      </div>
 
       {/* One Next Best Action */}
       {prefill?.nextBestAction ? (
@@ -258,182 +311,192 @@ export function VacantLandBuildEnvelope({
           Review inputs and technical details
         </summary>
         <div className="border-t border-[#0D1B2A]/10 p-4">
-        <p className="mb-3 rounded-xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-3 py-2 text-[11px] leading-5 text-[#64748B]">
-          Review or change assumptions below. Manual entries are always labelled as your own
-          assumption, never as an official rule.
-        </p>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-        <BuildEnvelopeDiagram result={result} />
+          <p className="mb-3 rounded-xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-3 py-2 text-[11px] leading-5 text-[#64748B]">
+            Fields are filled automatically from the planning rules resolved for this erf. Anything
+            you change here is stored as your own assumption and always overrides the prefill.
+          </p>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+            <BuildEnvelopeDiagram result={result} />
 
-        <div className="space-y-4">
-          {/* Step 1 — boundary */}
-          <Step index={1} title="Confirm the parcel boundary">
-            <label className="flex items-start gap-2 text-[12px] text-[#0D1B2A]/80">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={answers.boundaryConfirmed}
-                disabled={result.parcelPolygon.length < 3}
-                onChange={(event) => patch({ boundaryConfirmed: event.target.checked })}
-              />
-              <span>
-                The outline shown matches the erf I am investigating. Dimensions stay hidden until
-                this is confirmed.
-              </span>
-            </label>
-          </Step>
+            <div className="space-y-4">
+              {/* Step 1 — boundary */}
+              <Step index={1} title="Confirm the parcel boundary">
+                <label className="flex items-start gap-2 text-[12px] text-[#0D1B2A]/80">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={answers.boundaryConfirmed}
+                    disabled={result.parcelPolygon.length < 3}
+                    onChange={(event) => patch({ boundaryConfirmed: event.target.checked })}
+                  />
+                  <span>
+                    The outline shown matches the erf I am investigating. Dimensions stay hidden
+                    until this is confirmed.
+                  </span>
+                </label>
+              </Step>
 
-          {/* Step 2 — street edge */}
-          <Step index={2} title="Which boundary faces the street?">
-            <div className="flex flex-wrap gap-2">
-              {edgeOptions.map((index) => {
-                const edge = result.edges[index];
-                const active = answers.streetEdgeIndex === index;
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => patch({ streetEdgeIndex: index })}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                      active
-                        ? "border-[#FF6A00] bg-[#FF6A00]/10 text-[#9a3412]"
-                        : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
-                    )}
-                  >
-                    Boundary {index + 1}
-                    {result.showsDimensions ? ` · ${edge?.lengthM ?? 0} m` : ""}
-                  </button>
-                );
-              })}
-              {edgeOptions.length === 0 && (
-                <p className="text-[12px] text-[#64748B]">
-                  No boundary geometry is loaded for this erf.
+              {/* Step 2 — street edge */}
+              <Step index={2} title="Which boundary faces the street?">
+                <div className="flex flex-wrap gap-2">
+                  {edgeOptions.map((index) => {
+                    const edge = result.edges[index];
+                    const active = answers.streetEdgeIndex === index;
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => patch({ streetEdgeIndex: index })}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
+                          active
+                            ? "border-[#FF6A00] bg-[#FF6A00]/10 text-[#9a3412]"
+                            : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
+                        )}
+                      >
+                        Boundary {index + 1}
+                        {result.showsDimensions ? ` · ${edge?.lengthM ?? 0} m` : ""}
+                      </button>
+                    );
+                  })}
+                  {edgeOptions.length === 0 && (
+                    <p className="text-[12px] text-[#64748B]">
+                      No boundary geometry is loaded for this erf.
+                    </p>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-[#64748B]">
+                  {resolved.fields.streetEdgeIndex.provenance}
                 </p>
-              )}
-            </div>
-            <input
-              type="text"
-              value={answers.streetName ?? ""}
-              onChange={(event) => patch({ streetName: event.target.value || null })}
-              placeholder="Street name (optional)"
-              className="mt-3 w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
-            />
-          </Step>
-
-          {/* Step 3 — rule source */}
-          <Step index={3} title="Where do the build rules come from?">
-            <div className="grid gap-2">
-              {RULE_SOURCE_OPTIONS.map((option) => {
-                const active = answers.ruleSource === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => patch({ ruleSource: option.id })}
-                    className={cn(
-                      "rounded-xl border px-3 py-2 text-left transition",
-                      active
-                        ? "border-[#FF6A00] bg-[#FF6A00]/[0.06]"
-                        : "border-[#0D1B2A]/12 bg-white hover:border-[#0D1B2A]/25",
-                    )}
-                  >
-                    <span className="block text-[12px] font-semibold text-[#0D1B2A]">
-                      {option.label}
-                    </span>
-                    <span className="block text-[11px] text-[#64748B]">{option.body}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <input
-              type="text"
-              value={answers.zoneLabel ?? ""}
-              onChange={(event) => patch({ zoneLabel: event.target.value || null })}
-              placeholder="Zone (e.g. Residential 1)"
-              className="mt-3 w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
-            />
-          </Step>
-
-          {/* Step 4 — building lines */}
-          <Step index={4} title="Building lines">
-            <div className="grid grid-cols-3 gap-2">
-              <NumberField
-                label="Street (m)"
-                value={answers.streetSetbackM}
-                onChange={(value) => patch({ streetSetbackM: value })}
-              />
-              <NumberField
-                label="Side (m)"
-                value={answers.sideSetbackM}
-                onChange={(value) => patch({ sideSetbackM: value })}
-              />
-              <NumberField
-                label="Rear (m)"
-                value={answers.rearSetbackM}
-                onChange={(value) => patch({ rearSetbackM: value })}
-              />
-            </div>
-          </Step>
-
-          {/* Step 5 — bulk */}
-          <Step index={5} title="Coverage and height">
-            <div className="grid grid-cols-2 gap-2">
-              <NumberField
-                label="Max coverage (%)"
-                value={answers.maxCoveragePercent}
-                onChange={(value) => patch({ maxCoveragePercent: value })}
-              />
-              <NumberField
-                label="Max height (m)"
-                value={answers.maxHeightM}
-                onChange={(value) => patch({ maxHeightM: value })}
-              />
-            </div>
-          </Step>
-
-          {/* Step 6 — dwellings */}
-          <Step index={6} title="Dwelling units">
-            <div className="grid gap-2">
-              <NumberField
-                label="Primary dwelling units"
-                value={answers.dwellingUnits}
-                onChange={(value) => patch({ dwellingUnits: value })}
-              />
-              <input
-                type="text"
-                value={answers.additionalDwellingRule ?? ""}
-                onChange={(event) =>
-                  patch({ additionalDwellingRule: event.target.value || null })
-                }
-                placeholder="Additional dwelling rule (e.g. one second dwelling permitted)"
-                className="w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
-              />
-              <label className="flex items-center gap-2 text-[12px] text-[#0D1B2A]/80">
                 <input
-                  type="checkbox"
-                  checked={answers.additionalDwellingRequiresConsent}
-                  onChange={(event) =>
-                    patch({ additionalDwellingRequiresConsent: event.target.checked })
-                  }
+                  type="text"
+                  value={answers.streetName ?? ""}
+                  onChange={(event) => patch({ streetName: event.target.value || null })}
+                  placeholder="Street name (optional)"
+                  className="mt-3 w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
                 />
-                Additional dwelling requires municipal consent
-              </label>
-            </div>
-          </Step>
+              </Step>
 
-          {/* Step 7 — constraints */}
-          <Step index={7} title="Servitudes and exclusion areas">
-            <textarea
-              value={answers.servitudeNotes ?? ""}
-              onChange={(event) => patch({ servitudeNotes: event.target.value || null })}
-              rows={2}
-              placeholder="Record any registered servitude, easement or no-build area you have confirmed."
-              className="w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
-            />
-          </Step>
-        </div>
-        </div>
+              {/* Step 3 — rule source */}
+              <Step index={3} title="Where do the build rules come from?">
+                <div className="grid gap-2">
+                  {RULE_SOURCE_OPTIONS.map((option) => {
+                    const active = answers.ruleSource === option.id;
+                    const disabled = option.id === "document" && !documentRuleEvidence;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => patch({ ruleSource: option.id })}
+                        className={cn(
+                          "rounded-xl border px-3 py-2 text-left transition",
+                          active
+                            ? "border-[#FF6A00] bg-[#FF6A00]/[0.06]"
+                            : "border-[#0D1B2A]/12 bg-white hover:border-[#0D1B2A]/25",
+                          disabled && "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <span className="block text-[12px] font-semibold text-[#0D1B2A]">
+                          {option.label}
+                        </span>
+                        <span className="block text-[11px] text-[#64748B]">
+                          {disabled
+                            ? "Unavailable: no property-matched zoning document has supplied rules."
+                            : option.body}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  value={answers.zoneLabel ?? ""}
+                  onChange={(event) => patch({ zoneLabel: event.target.value || null })}
+                  placeholder="Zone (e.g. Residential 1)"
+                  className="mt-3 w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
+                />
+              </Step>
+
+              {/* Step 4 — building lines */}
+              <Step index={4} title="Building lines">
+                <div className="grid grid-cols-3 gap-2">
+                  <NumberField
+                    label="Street (m)"
+                    value={answers.streetSetbackM}
+                    onChange={(value) => patch({ streetSetbackM: value })}
+                  />
+                  <NumberField
+                    label="Side (m)"
+                    value={answers.sideSetbackM}
+                    onChange={(value) => patch({ sideSetbackM: value })}
+                  />
+                  <NumberField
+                    label="Rear (m)"
+                    value={answers.rearSetbackM}
+                    onChange={(value) => patch({ rearSetbackM: value })}
+                  />
+                </div>
+              </Step>
+
+              {/* Step 5 — bulk */}
+              <Step index={5} title="Coverage and height">
+                <div className="grid grid-cols-2 gap-2">
+                  <NumberField
+                    label="Max coverage (%)"
+                    value={answers.maxCoveragePercent}
+                    onChange={(value) => patch({ maxCoveragePercent: value })}
+                  />
+                  <NumberField
+                    label="Max height (m)"
+                    value={answers.maxHeightM}
+                    onChange={(value) => patch({ maxHeightM: value })}
+                  />
+                </div>
+              </Step>
+
+              {/* Step 6 — dwellings */}
+              <Step index={6} title="Dwelling units">
+                <div className="grid gap-2">
+                  <NumberField
+                    label="Primary dwelling units"
+                    value={answers.dwellingUnits}
+                    onChange={(value) => patch({ dwellingUnits: value })}
+                  />
+                  <input
+                    type="text"
+                    value={answers.additionalDwellingRule ?? ""}
+                    onChange={(event) =>
+                      patch({ additionalDwellingRule: event.target.value || null })
+                    }
+                    placeholder="Additional dwelling rule (e.g. one second dwelling permitted)"
+                    className="w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
+                  />
+                  <label className="flex items-center gap-2 text-[12px] text-[#0D1B2A]/80">
+                    <input
+                      type="checkbox"
+                      checked={answers.additionalDwellingRequiresConsent}
+                      onChange={(event) =>
+                        patch({ additionalDwellingRequiresConsent: event.target.checked })
+                      }
+                    />
+                    Additional dwelling requires municipal consent
+                  </label>
+                </div>
+              </Step>
+
+              {/* Step 7 — constraints */}
+              <Step index={7} title="Servitudes and exclusion areas">
+                <textarea
+                  value={answers.servitudeNotes ?? ""}
+                  onChange={(event) => patch({ servitudeNotes: event.target.value || null })}
+                  rows={2}
+                  placeholder="Record any registered servitude, easement or no-build area you have confirmed."
+                  className="w-full rounded-xl border border-[#0D1B2A]/15 px-3 py-2 text-[12px] text-[#0D1B2A]"
+                />
+              </Step>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -452,7 +515,7 @@ export function VacantLandBuildEnvelope({
         <div className="mt-4 rounded-2xl border border-[#0D1B2A]/12 bg-[#F7FBFF] p-4">
           <div className="flex items-center gap-2 text-[12px] font-semibold text-[#0D1B2A]">
             <Info className="h-4 w-4 text-[#FF6A00]" />
-            Still needed before this can be verified
+            Still to confirm for this erf
           </div>
           <ul className="mt-2 grid gap-1 text-[12px] text-[#0D1B2A]/75 sm:grid-cols-2">
             {result.missingInformation.map((item) => (
@@ -470,25 +533,16 @@ export function VacantLandBuildEnvelope({
         </ul>
       )}
 
-      {result.sources.length > 0 && (
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[#64748B]">
-          <CheckCircle2 className="h-3.5 w-3.5 text-[#16a34a]" />
-          Based on: {result.sources.join(", ")}
-        </p>
-      )}
-
       <button
         type="button"
         onClick={() => {
           clearStoredBuildEnvelopeInputs(parcelId);
-          const empty = createEmptyBuildEnvelopeInputs(parcelId, null, recordedAreaM2);
-          const { ring: _ring, parcelId: _id, ...rest } = empty;
-          setAnswers(rest);
+          setOverrides({});
         }}
         className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
       >
         <RotateCcw className="h-3.5 w-3.5" />
-        Reset these answers
+        Reset my answers
       </button>
     </section>
   );
@@ -539,14 +593,14 @@ function NumberField({
   );
 }
 
-function SummaryTile({ label, value, note }: { label: string; value: string; note: string }) {
+function SummaryRow({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
-      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-        {label}
+    <div className="py-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="text-[11px] font-semibold text-[#64748B]">{label}</dt>
+        <dd className="text-right text-[13px] font-semibold text-[#0D1B2A]">{value}</dd>
       </div>
-      <div className="mt-1 text-[16px] font-semibold text-[#0D1B2A]">{value}</div>
-      <div className="mt-1 text-[11px] leading-4 text-[#64748B]">{note}</div>
+      {note ? <p className="mt-0.5 text-[10px] leading-4 text-[#64748B]">{note}</p> : null}
     </div>
   );
 }
