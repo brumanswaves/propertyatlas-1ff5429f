@@ -15,6 +15,7 @@ import {
   type StoredBuildEnvelopeInputs,
 } from "@/lib/sitePotential/buildEnvelopeStore";
 import { SatelliteParcelMap } from "./SatelliteParcelMap";
+import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
 
@@ -210,6 +211,15 @@ export function VacantLandBuildEnvelope({
           label="Missing constraints"
           value={result.missingInformation.length ? `${result.missingInformation.length} item(s)` : "None outstanding"}
           note={result.missingInformation[0] ?? "All known constraints recorded"}
+        />
+        <SummaryTile
+          label="Indicative upper floor"
+          value={
+            result.summary.indicativeUpperFloorM2 != null
+              ? `${result.summary.indicativeUpperFloorM2} m²`
+              : "Not available"
+          }
+          note="Only shown when the height allowance supports a second storey"
         />
       </div>
 
@@ -423,57 +433,9 @@ export function VacantLandBuildEnvelope({
             />
           </Step>
         </div>
-      </div>
-
-      {/* Deterministic summary */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryTile
-          label="Erf area"
-          value={result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"}
-          note={result.summary.erfAreaSourceLabel}
-        />
-        <SummaryTile
-          label="Theoretical ground floor"
-          value={
-            result.summary.theoreticalGroundFloorM2 != null
-              ? `${result.summary.theoreticalGroundFloorM2} m²`
-              : "Not available"
-          }
-          note={
-            result.summary.maxCoveragePercent != null
-              ? `At ${result.summary.maxCoveragePercent}% coverage`
-              : "Coverage not confirmed"
-          }
-        />
-        <SummaryTile
-          label="Setback envelope"
-          value={
-            result.summary.setbackEnvelopeAreaM2 != null
-              ? `${result.summary.setbackEnvelopeAreaM2} m²`
-              : "Not available"
-          }
-          note="Area inside all building lines"
-        />
-        <SummaryTile
-          label="Maximum height"
-          value={result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"}
-          note="As recorded above"
-        />
-        <SummaryTile
-          label="Dwelling allowance"
-          value={result.summary.dwellingAllowance}
-          note={result.summary.additionalDwellingRule}
-        />
-        <SummaryTile
-          label="Indicative upper floor"
-          value={
-            result.summary.indicativeUpperFloorM2 != null
-              ? `${result.summary.indicativeUpperFloorM2} m²`
-              : "Not available"
-          }
-          note="Only shown when the height allowance supports a second storey"
-        />
-      </div>
+        </div>
+        </div>
+      </details>
 
       {result.summary.knownConstraints.length > 0 && (
         <ul className="mt-4 space-y-1 text-[12px] text-[#0D1B2A]/80">
