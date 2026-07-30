@@ -308,16 +308,25 @@ export function detectStreetFrontage(args: DetectStreetFrontageArgs): StreetFron
     let bestSegment: (typeof roadSegments)[number] | null = null;
     let bestPoint: LocalPoint | null = null;
 
+    let bestAlignment = 90;
     for (const segment of roadSegments) {
       const measured = segmentSegmentDistance(a, b, segment.a, segment.b);
       const nameBonus = streetNamesMatch(segment.name, args.savedStreetName) ? 0.001 : 0;
       const effective = measured.distance - nameBonus;
-      if (effective < bestDistance) {
-        bestDistance = effective;
+      const alignment = parallelDifference(edgeAngle, angleDeg(segment.a, segment.b));
+      // Ties on distance are broken by parallel alignment, so a road running
+      // alongside the edge always beats one merely crossing near its corner.
+      const closer =
+        effective < bestDistance - 0.05 ||
+        (Math.abs(effective - bestDistance) <= 0.05 && alignment < bestAlignment);
+      if (closer) {
+        bestDistance = Math.min(bestDistance, effective);
+        bestAlignment = alignment;
         bestSegment = segment;
         bestPoint = measured.point;
       }
     }
+
 
     const distanceM = Math.max(0, bestDistance);
     const alignmentDeg = bestSegment
