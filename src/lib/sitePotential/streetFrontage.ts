@@ -126,7 +126,8 @@ export function streetNamesMatch(
 
 /* -------------------------------- layers -------------------------------- */
 
-const ROAD_LAYER_HINT = /(road|street|motorway|trunk|primary|secondary|tertiary|residential|service|track|link|path)/i;
+const ROAD_LAYER_HINT =
+  /(road|street|motorway|trunk|primary|secondary|tertiary|residential|service|track|link|path)/i;
 const NON_ROAD_LAYER_HINT =
   /(parcel|contour|water|waterway|admin|boundary|building|landuse|landcover|poi|place|label|shield|aeroway|rail|ferry|hillshade|site-potential)/i;
 
@@ -297,7 +298,8 @@ export function detectStreetFrontage(args: DetectStreetFrontageArgs): StreetFron
       method: "none",
       candidates: [],
       requiresConfirmation: true,
-      reason: "No road geometry is available for this parcel, so the street boundary must be confirmed by you.",
+      reason:
+        "No road geometry is available for this parcel, so the street boundary must be confirmed by you.",
     };
   }
 
@@ -326,7 +328,6 @@ export function detectStreetFrontage(args: DetectStreetFrontageArgs): StreetFron
         bestPoint = measured.point;
       }
     }
-
 
     const distanceM = Math.max(0, bestDistance);
     const alignmentDeg = bestSegment

@@ -16,10 +16,7 @@ import {
 } from "@/lib/sitePotential/buildEnvelopeStore";
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
-import {
-  detectStreetFrontage,
-  type RoadLineInput,
-} from "@/lib/sitePotential/streetFrontage";
+import { detectStreetFrontage, type RoadLineInput } from "@/lib/sitePotential/streetFrontage";
 import { writeStoredStreetFrontageDetection } from "@/lib/sitePotential/streetFrontageStore";
 import { SatelliteParcelMap } from "./SatelliteParcelMap";
 
@@ -94,10 +91,7 @@ export function VacantLandBuildEnvelope({
     () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
     [assessment],
   );
-  const pilot = useMemo(
-    () => findPilotPlanningRecord({ parcelId, lpiCode }),
-    [parcelId, lpiCode],
-  );
+  const pilot = useMemo(() => findPilotPlanningRecord({ parcelId, lpiCode }), [parcelId, lpiCode]);
 
   /** Only fields the user actually touched. Never seeded from a prefill. */
   const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
@@ -166,17 +160,8 @@ export function VacantLandBuildEnvelope({
               }
             : null,
       }),
-    [
-      overrides,
-      prefill,
-      pilot,
-      documentRuleEvidence,
-      edgeLengths,
-      recordedAreaM2,
-      detection,
-    ],
+    [overrides, prefill, pilot, documentRuleEvidence, edgeLengths, recordedAreaM2, detection],
   );
-
 
   const patch = useCallback(
     (next: StoredBuildEnvelopeOverrides) => {
@@ -266,9 +251,7 @@ export function VacantLandBuildEnvelope({
                 </span>
               ) : detection.edgeIndex != null ? (
                 <span>
-                  <span className="font-semibold">
-                    Likely street frontage · detected from map
-                  </span>
+                  <span className="font-semibold">Likely street frontage · detected from map</span>
                   {detection.roadName ? ` · ${detection.roadName}` : ""}
                 </span>
               ) : (
@@ -305,7 +288,6 @@ export function VacantLandBuildEnvelope({
           }}
         />
 
-
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
@@ -329,7 +311,9 @@ export function VacantLandBuildEnvelope({
             <SummaryRow
               label="Site area"
               value={
-                result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"
+                result.summary.erfAreaM2 != null
+                  ? `${result.summary.erfAreaM2} m²`
+                  : "Not available"
               }
               note={result.summary.erfAreaSourceLabel}
             />
@@ -347,13 +331,17 @@ export function VacantLandBuildEnvelope({
             <SummaryRow
               label="Maximum height"
               value={
-                result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"
+                result.summary.maxHeightM != null
+                  ? `${result.summary.maxHeightM} m`
+                  : "Not confirmed"
               }
               note={resolved.fields.maxHeightM.provenance}
             />
             <SummaryRow
               label="Street building line"
-              value={answers.streetSetbackM != null ? `${answers.streetSetbackM} m` : "Not confirmed"}
+              value={
+                answers.streetSetbackM != null ? `${answers.streetSetbackM} m` : "Not confirmed"
+              }
               note={
                 answers.streetName
                   ? `${answers.streetName} frontage · ${resolved.fields.streetSetbackM.provenance}`
@@ -429,7 +417,6 @@ export function VacantLandBuildEnvelope({
           </p>
         </div>
       ) : null}
-
 
       {/* One Next Best Action */}
       {prefill?.nextBestAction ? (

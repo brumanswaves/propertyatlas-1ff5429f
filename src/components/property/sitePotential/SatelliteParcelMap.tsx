@@ -54,8 +54,6 @@ const SRC = {
   edges: "site-potential-edges",
 } as const;
 
-
-
 function ringBounds(ring: Array<[number, number]>) {
   const lngs = ring.map((p) => p[0]);
   const lats = ring.map((p) => p[1]);
@@ -72,7 +70,8 @@ function ringBounds(ring: Array<[number, number]>) {
 }
 
 function polygonFeature(coords: Array<[number, number]>) {
-  const ring = coords.length && coords[0] !== coords[coords.length - 1] ? [...coords, coords[0]] : coords;
+  const ring =
+    coords.length && coords[0] !== coords[coords.length - 1] ? [...coords, coords[0]] : coords;
   return {
     type: "Feature" as const,
     properties: {},
@@ -103,7 +102,6 @@ export function SatelliteParcelMap({
   roadsCallbackRef.current = onRoadsDetected;
   edgeSelectRef.current = onEdgeSelect;
 
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -118,9 +116,10 @@ export function SatelliteParcelMap({
   const geo = useMemo(() => {
     const projection = result.projection;
     if (!projection) return null;
-    const parcel = result.parcelPolygon.length >= 3
-      ? polygonFeature(localPolygonToWgs84(result.parcelPolygon, projection))
-      : null;
+    const parcel =
+      result.parcelPolygon.length >= 3
+        ? polygonFeature(localPolygonToWgs84(result.parcelPolygon, projection))
+        : null;
     const setback =
       result.envelopePolygon && result.envelopePolygon.length >= 3
         ? polygonFeature(localPolygonToWgs84(result.envelopePolygon, projection))
@@ -173,8 +172,6 @@ export function SatelliteParcelMap({
     };
     return { parcel, setback, coverage, street, streetLine, coverageLabel, edges };
   }, [result]);
-
-
 
   const fit = useCallback(() => {
     const map = mapRef.current;
@@ -359,17 +356,14 @@ export function SatelliteParcelMap({
                   (feature.properties?.name_en as string | undefined) ??
                   null,
                 layerId: feature.layer?.id ?? null,
-                coordinates: (
-                  feature.geometry as GeoJSON.LineString | GeoJSON.MultiLineString
-                ).coordinates as RoadLineInput["coordinates"],
+                coordinates: (feature.geometry as GeoJSON.LineString | GeoJSON.MultiLineString)
+                  .coordinates as RoadLineInput["coordinates"],
               }));
             roadsCallbackRef.current(roads);
           } catch {
             roadsCallbackRef.current([]);
           }
         });
-
-
 
         map.on("error", (event) => {
           // Style/tile/auth failures must degrade to the deterministic diagram
@@ -412,9 +406,7 @@ export function SatelliteParcelMap({
     set(SRC.street, geo.street);
     set(SRC.streetLine, geo.streetLine);
     set(SRC.coverageLabel, geo.coverageLabel);
-    const edgeSource = map.getSource(SRC.edges) as
-      | import("mapbox-gl").GeoJSONSource
-      | undefined;
+    const edgeSource = map.getSource(SRC.edges) as import("mapbox-gl").GeoJSONSource | undefined;
     edgeSource?.setData(geo.edges);
   }, [geo, mapReady]);
 
@@ -431,13 +423,8 @@ export function SatelliteParcelMap({
       "#FF6A00",
       "#FACC15",
     ]);
-    map.setLayoutProperty(
-      `${SRC.edges}-hit`,
-      "visibility",
-      selectableEdges ? "visible" : "none",
-    );
+    map.setLayoutProperty(`${SRC.edges}-hit`, "visibility", selectableEdges ? "visible" : "none");
   }, [highlightEdgeIndex, mapReady, selectableEdges]);
-
 
   // The satellite canvas must always fill its frame, including after the
   // enclosing disclosure opens or the layout reflows.
@@ -493,7 +480,6 @@ export function SatelliteParcelMap({
     </div>
   );
 }
-
 
 function LegendChip({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (

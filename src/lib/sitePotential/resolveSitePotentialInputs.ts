@@ -29,7 +29,6 @@ export type SitePotentialFieldOrigin =
   | "registry"
   | "unknown";
 
-
 export interface ResolvedSitePotentialField<T> {
   value: T | null;
   origin: SitePotentialFieldOrigin;
@@ -110,7 +109,8 @@ function field<T>(
     return { value: documentValue, origin: "document", provenance: documentProvenance };
   }
   if (usable(userValue)) return { value: userValue, origin: "user", provenance: USER_PROVENANCE };
-  if (usable(packValue)) return { value: packValue, origin: packOrigin, provenance: packProvenance };
+  if (usable(packValue))
+    return { value: packValue, origin: packOrigin, provenance: packProvenance };
   return { value: null, origin: "unknown", provenance: UNKNOWN_PROVENANCE };
 }
 
@@ -122,8 +122,7 @@ export function resolveSitePotentialInputs(
   const pilot = args.pilot ?? null;
 
   // (C)/(D) A stored "document" choice only survives with real document rules.
-  const documentBacked =
-    Boolean(args.documentRuleEvidence) && prefill?.ruleSource === "document";
+  const documentBacked = Boolean(args.documentRuleEvidence) && prefill?.ruleSource === "document";
   const invalidatedStoredDocumentSource = stored.ruleSource === "document" && !documentBacked;
 
   const documentProvenance = prefill?.ruleSourceLabel ?? "Zoning document attached to this erf.";
@@ -137,7 +136,7 @@ export function resolveSitePotentialInputs(
   // The registry pack is only usable as a fallback when it is not the document.
   const pack = prefill && prefill.ruleSource ? prefill : null;
 
-  const pick = <T,>(
+  const pick = <T>(
     docValue: T | null | undefined,
     userValue: T | null | undefined,
     pilotValue: T | null | undefined,
@@ -228,12 +227,9 @@ export function resolveSitePotentialInputs(
     documentProvenance,
     stored.streetName,
     detected?.roadName ?? pilot?.streetName ?? null,
-    detected?.roadName
-      ? detectedProvenance
-      : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
+    detected?.roadName ? detectedProvenance : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
     detected?.roadName ? "map_road" : "pilot",
   );
-
 
   const resolvedFields = {
     zoneLabel,

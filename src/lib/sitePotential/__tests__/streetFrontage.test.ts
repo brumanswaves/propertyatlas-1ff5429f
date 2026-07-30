@@ -136,7 +136,7 @@ describe("detectStreetFrontage", () => {
       ring: rectangleRing(),
       savedStreetName: null,
       roads: [
-        { name: "First Road", layerId: "road-street", coordinates: [at(-8, -5), at(38, -5)],  },
+        { name: "First Road", layerId: "road-street", coordinates: [at(-8, -5), at(38, -5)] },
         { name: "Second Road", layerId: "road-street", coordinates: [at(-5, -8), at(-5, 28)] },
       ],
     });
@@ -161,7 +161,11 @@ describe("detectStreetFrontage", () => {
       savedStreetName: "Padrone Crescent",
       confirmedEdgeIndex: 2,
       roads: [
-        { name: "Padrone Crescent", layerId: "road-street", coordinates: [at(-10, -5), at(40, -5)] },
+        {
+          name: "Padrone Crescent",
+          layerId: "road-street",
+          coordinates: [at(-10, -5), at(40, -5)],
+        },
       ],
     });
 
