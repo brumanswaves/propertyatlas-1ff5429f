@@ -184,28 +184,39 @@ export function resolveSitePotentialInputs(
     pack?.additionalDwellingRule.value ?? null,
   );
 
+  const detected = args.detectedStreetEdge ?? null;
   const pilotStreetEdgeIndex =
     pilot?.streetFrontageLengthRangeM && args.edgeLengths?.length
       ? pickStreetEdgeIndexByLength(args.edgeLengths, pilot.streetFrontageLengthRangeM)
       : null;
+  // Map road evidence outranks the prototype record, so a stale pilot edge is
+  // never retained once the rendered road points at a different boundary.
+  const detectedProvenance = detected?.roadName
+    ? `Likely street frontage detected from map road geometry (${detected.roadName}). Not confirmed by you.`
+    : "Likely street frontage detected from map road geometry. Not confirmed by you.";
   const streetEdgeIndex = field<number>(
     null,
     documentProvenance,
     stored.streetEdgeIndex,
-    pilotStreetEdgeIndex,
-    pilot
-      ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
-      : UNKNOWN_PROVENANCE,
-    "pilot",
+    detected?.edgeIndex ?? pilotStreetEdgeIndex,
+    detected?.edgeIndex != null
+      ? detectedProvenance
+      : pilot
+        ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
+        : UNKNOWN_PROVENANCE,
+    detected?.edgeIndex != null ? "map_road" : "pilot",
   );
   const streetName = field<string>(
     null,
     documentProvenance,
     stored.streetName,
-    pilot?.streetName ?? null,
-    pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE,
-    "pilot",
+    detected?.roadName ?? pilot?.streetName ?? null,
+    detected?.roadName
+      ? detectedProvenance
+      : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
+    detected?.roadName ? "map_road" : "pilot",
   );
+
 
   const resolvedFields = {
     zoneLabel,
