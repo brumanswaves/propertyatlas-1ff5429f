@@ -122,6 +122,24 @@ describe("guided investigation journey registry", () => {
     ).toBe("add-address");
   });
 
+  it("allows backward navigation to a completed earlier step", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.investigation.currentStepId = "confirm-property";
+    workspace.investigation.intentionallyVisitedStepIds = ["confirm-property"];
+    const confirmedFacts = facts({ identityConfirmed: true, identityChecked: true });
+
+    expect(selectGuidedInvestigationStep(confirmedFacts, workspace.investigation)).toBe(
+      "confirm-property",
+    );
+
+    const journey = buildGuidedInvestigationJourney(confirmedFacts, workspace);
+    expect(journey.find((step) => step.id === "confirm-property")).toMatchObject({
+      complete: true,
+      current: true,
+    });
+    expect(journey.find((step) => step.id === "add-address")?.current).toBe(false);
+  });
+
   it("only allows known step ids to drive the current step", () => {
     const workspace = createEmptyErfWorkspaceState();
     workspace.investigation.currentStepId = "research" as GuidedInvestigationStepId;
