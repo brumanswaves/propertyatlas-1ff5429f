@@ -5,7 +5,7 @@ import {
   selectRoadLayerIds,
   streetNamesMatch,
 } from "../streetFrontage";
-import { calculateBuildEnvelope } from "../buildEnvelope";
+import { calculateBuildEnvelope, type BuildEnvelopeInputs } from "../buildEnvelope";
 
 /** Base point near Jeffreys Bay so the local projection stays realistic. */
 const LAT0 = -34.0489;
@@ -43,7 +43,7 @@ function padroneCrescent() {
   return {
     name: "Padrone Crescent",
     layerId: "road-street",
-    coordinates: [at(-6, 0), at(11, -7), at(30, -3)] as Array<[number, number]>,
+    coordinates: [at(-8, 1), at(6, -5), at(16, -6)] as Array<[number, number]>,
   };
 }
 
@@ -188,19 +188,27 @@ describe("detectStreetFrontage", () => {
 
 describe("frontage changes recompute setbacks", () => {
   it("moves the street setback when the street edge index changes", () => {
-    const base = {
+    const base: Omit<BuildEnvelopeInputs, "streetEdgeIndex"> = {
       parcelId: "erf-1570",
       ring: erf1570Ring(),
+      boundaryConfirmed: true,
+      streetName: "Padrone Crescent",
+      ruleSource: "municipal_scheme",
       zoneLabel: "Residential 1",
       streetSetbackM: 3,
       sideSetbackM: 2,
       rearSetbackM: 3,
-      coveragePercent: 50,
+      maxCoveragePercent: 50,
+      maxHeightM: 8,
+      dwellingUnits: 1,
+      additionalDwellingRule: null,
+      additionalDwellingRequiresConsent: false,
+      servitudeNotes: null,
       recordedAreaM2: 619,
     };
 
-    const onEdgeZero = calculateBuildEnvelope({ ...base, streetEdgeIndex: 0 } as never);
-    const onEdgeTwo = calculateBuildEnvelope({ ...base, streetEdgeIndex: 2 } as never);
+    const onEdgeZero = calculateBuildEnvelope({ ...base, streetEdgeIndex: 0 });
+    const onEdgeTwo = calculateBuildEnvelope({ ...base, streetEdgeIndex: 2 });
 
     expect(onEdgeZero.streetEdge).not.toBeNull();
     expect(onEdgeTwo.streetEdge).not.toBeNull();
