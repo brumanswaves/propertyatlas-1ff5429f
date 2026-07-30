@@ -2090,56 +2090,63 @@ function StoepAiReportView({
           />
         </>
       ),
-      context: (
+      context: null,
+      next: (
         <>
           <ReportGroupHeading
-            letter="D"
-            anchorId="report-group-context"
-            title="Physical & ownership context"
-            intro="Conditions, services, running costs and surroundings supported by evidence."
+            letter="E"
+            anchorId="report-group-next"
+            title="Risks & next actions"
+            intro="The top open risks, what to verify next, and one place to go deeper."
+          />
+
+          <ReportStillToVerifySection
+            anchorId="report-still-to-verify"
+            summary={stillToVerify}
+            onOpenDisclosure={() => {
+              const el = document.getElementById("report-due-diligence");
+              if (el instanceof HTMLDetailsElement) el.open = true;
+              el?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
           />
 
           <details
+            id="report-due-diligence"
             className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5"
-            open={!isGroupCollapsedByDefault(composition, "context")}
           >
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
-              Show physical, municipal and location context
+              Full due diligence &amp; evidence
               <span className="ml-2 text-xs font-normal text-[#64748B]">
-                Conditions, services, running costs and surroundings
+                Confidence engine, complete risk register, due-diligence plan, evidence appendix and change history
               </span>
             </summary>
             <div className="mt-4 space-y-5">
+
               {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-              <ReportContextSection
-                anchorId="report-site-risk"
-                eyebrow="Site, Environmental & Physical Risk"
-                title="Physical and environmental conditions supported by evidence"
-                model={siteRiskSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
+                            <ReportContextSection
+                              anchorId="report-site-risk"
+                              eyebrow="Site, Environmental & Physical Risk"
+                              title="Physical and environmental conditions supported by evidence"
+                              model={siteRiskSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
 
               {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-              <ReportMunicipalSection
-                anchorId="report-municipal"
-                model={municipalSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
+                            <ReportMunicipalSection
+                              anchorId="report-municipal"
+                              model={municipalSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
 
               {/* LOCATION & LIFESTYLE */}
-              <ReportContextSection
-                anchorId="report-location"
-                eyebrow="Location & Lifestyle"
-                title="Where this erf sits, and what is actually known about it"
-                model={locationSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
-            </div>
-          </details>
-        </>
-      ),
-      next: (
-        <>
+                            <ReportContextSection
+                              anchorId="report-location"
+                              eyebrow="Location & Lifestyle"
+                              title="Where this erf sits, and what is actually known about it"
+                              model={locationSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
+
           {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
           <section
             id="report-brief"
