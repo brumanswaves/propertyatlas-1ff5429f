@@ -136,8 +136,8 @@ describe("detectStreetFrontage", () => {
       ring: rectangleRing(),
       savedStreetName: null,
       roads: [
-        { name: "First Road", layerId: "road-street", coordinates: [at(-8, -5), at(38, -5)] },
-        { name: "Second Road", layerId: "road-street", coordinates: [at(-4, -8), at(-4, 28)] },
+        { name: "First Road", layerId: "road-street", coordinates: [at(-8, -5), at(38, -5)],  },
+        { name: "Second Road", layerId: "road-street", coordinates: [at(-5, -8), at(-5, 28)] },
       ],
     });
 
