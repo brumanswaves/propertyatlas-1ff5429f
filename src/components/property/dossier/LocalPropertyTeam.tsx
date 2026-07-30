@@ -173,11 +173,17 @@ function ProviderCard({
   category,
   saved,
   onToggleSaved,
+  isVendorSaved,
+  onSaveVendor,
+  onAddToProperty,
 }: {
   provider: LocalProvider;
   category: LocalServiceCategory;
   saved: boolean;
   onToggleSaved: () => void;
+  isVendorSaved: boolean;
+  onSaveVendor: () => void;
+  onAddToProperty: () => void;
 }) {
   const distance = formatDistance(provider.distanceKm);
   return (
@@ -261,6 +267,24 @@ function ProviderCard({
           Directions <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 border-t border-[#D9E6F2] pt-3">
+        <button
+          type="button"
+          onClick={onSaveVendor}
+          disabled={isVendorSaved}
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <BookmarkPlus className="h-3.5 w-3.5" /> {isVendorSaved ? "Saved vendor" : "Save vendor"}
+        </button>
+        <button
+          type="button"
+          onClick={onAddToProperty}
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#ff7d1f]"
+        >
+          <ClipboardList className="h-3.5 w-3.5" /> Add to this property
+        </button>
+      </div>
     </article>
   );
 }
@@ -299,6 +323,15 @@ export function LocalPropertyTeam({
     controller: AbortController;
   } | null>(null);
   const requestSequenceRef = useRef(0);
+
+  const vendorWorkspace = useVendorWorkspace(parcel.id);
+  const [activeLibraryTab, setActiveLibraryTab] = useState<"search" | "my-vendors" | "add-manual">(
+    "search",
+  );
+  const [assigningProvider, setAssigningProvider] = useState<LocalProvider | null>(null);
+  const [assigningProviderCategory, setAssigningProviderCategory] = useState<LocalServiceCategory | null>(
+    null,
+  );
 
   useEffect(() => {
     const nextGroups = orderedLocalServiceGroups(propertyState);
