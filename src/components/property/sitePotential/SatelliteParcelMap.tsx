@@ -176,19 +176,30 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
               map.addSource(id, { type: "geojson", data: emptyCollection() });
             }
           }
-          // Coverage footprint (warm fill) sits lowest, then the setback
-          // envelope, then the street edge, then the parcel boundary on top.
-          map.addLayer({
-            id: `${SRC.coverage}-fill`,
-            type: "fill",
-            source: SRC.coverage,
-            paint: { "fill-color": "#FF6A00", "fill-opacity": 0.28 },
-          });
+          // Setback envelope (light green) sits lowest, then the salmon
+          // maximum-coverage polygon, then the building lines, then the street
+          // frontage and the parcel boundary on top.
           map.addLayer({
             id: `${SRC.setback}-fill`,
             type: "fill",
             source: SRC.setback,
-            paint: { "fill-color": "#22C55E", "fill-opacity": 0.16 },
+            paint: { "fill-color": "#4ADE80", "fill-opacity": 0.18 },
+          });
+          map.addLayer({
+            id: `${SRC.coverage}-fill`,
+            type: "fill",
+            source: SRC.coverage,
+            paint: { "fill-color": "#FB7185", "fill-opacity": 0.35 },
+          });
+          map.addLayer({
+            id: `${SRC.coverage}-line`,
+            type: "line",
+            source: SRC.coverage,
+            paint: {
+              "line-color": "#EF4444",
+              "line-width": 2,
+              "line-dasharray": [2, 1.4],
+            },
           });
           map.addLayer({
             id: `${SRC.setback}-line`,
@@ -198,6 +209,16 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
               "line-color": "#22C55E",
               "line-width": 2,
               "line-dasharray": [2, 1.5],
+            },
+          });
+          map.addLayer({
+            id: `${SRC.streetLine}-line`,
+            type: "line",
+            source: SRC.streetLine,
+            paint: {
+              "line-color": "#38BDF8",
+              "line-width": 3,
+              "line-dasharray": [3, 1.6],
             },
           });
           map.addLayer({
@@ -212,8 +233,26 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
             source: SRC.parcel,
             paint: { "line-color": "#22D3EE", "line-width": 2.5 },
           });
+          map.addLayer({
+            id: `${SRC.coverageLabel}-symbol`,
+            type: "symbol",
+            source: SRC.coverageLabel,
+            layout: {
+              "text-field": ["get", "label"],
+              "text-size": 12,
+              "text-letter-spacing": 0.08,
+              "text-allow-overlap": true,
+            },
+            paint: {
+              "text-color": "#FFFFFF",
+              "text-halo-color": "#7F1D1D",
+              "text-halo-width": 1.4,
+            },
+          });
+          map.resize();
           setMapReady(true);
         });
+
 
         map.on("error", (event) => {
           // Style/tile/auth failures must degrade to the deterministic diagram
