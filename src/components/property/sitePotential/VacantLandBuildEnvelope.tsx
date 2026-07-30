@@ -110,6 +110,38 @@ export function VacantLandBuildEnvelope({
     });
   }, [ring]);
 
+  /** Road lines rendered by the satellite map near this parcel. */
+  const [roads, setRoads] = useState<RoadLineInput[] | null>(null);
+  const [pickingFrontage, setPickingFrontage] = useState(false);
+
+  const savedStreetName = overrides.streetName ?? pilot?.streetName ?? null;
+
+  /**
+   * Deterministic frontage detection from real road geometry. A user-confirmed
+   * edge short-circuits scoring inside the detector itself.
+   */
+  const detection = useMemo(
+    () =>
+      detectStreetFrontage({
+        ring,
+        roads: roads ?? [],
+        savedStreetName,
+        confirmedEdgeIndex: overrides.streetEdgeIndex ?? null,
+      }),
+    [ring, roads, savedStreetName, overrides.streetEdgeIndex],
+  );
+
+  // Detection evidence is audited separately from the confirmed answer.
+  useEffect(() => {
+    if (detection.method !== "map_road_match") return;
+    writeStoredStreetFrontageDetection(parcelId, {
+      edgeIndex: detection.edgeIndex,
+      roadName: detection.roadName,
+      confidence: detection.confidence,
+      method: detection.method,
+    });
+  }, [detection, parcelId]);
+
   const resolved = useMemo(
     () =>
       resolveSitePotentialInputs({
@@ -119,9 +151,26 @@ export function VacantLandBuildEnvelope({
         documentRuleEvidence,
         edgeLengths,
         recordedAreaM2,
+        detectedStreetEdge:
+          detection.method === "map_road_match" && detection.edgeIndex != null
+            ? {
+                edgeIndex: detection.edgeIndex,
+                roadName: detection.roadName,
+                confidence: detection.confidence,
+              }
+            : null,
       }),
-    [overrides, prefill, pilot, documentRuleEvidence, edgeLengths, recordedAreaM2],
+    [
+      overrides,
+      prefill,
+      pilot,
+      documentRuleEvidence,
+      edgeLengths,
+      recordedAreaM2,
+      detection,
+    ],
   );
+
 
   const patch = useCallback(
     (next: StoredBuildEnvelopeOverrides) => {
