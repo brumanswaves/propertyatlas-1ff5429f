@@ -44,6 +44,7 @@ interface SearchRequestBody {
   address?: unknown;
   confirmedAddress?: unknown;
   query?: unknown;
+  customQuery?: unknown;
   latitude?: unknown;
   longitude?: unknown;
   widerArea?: unknown;
@@ -182,7 +183,9 @@ export async function handleLocalServicesSearchRequest(request: Request) {
   const seenPlaceIds = new Set<string>();
   const seenBusinessKeys = new Set<string>();
   let queriesAttempted = 0;
-  const includeServiceAreaBusinesses = includePureServiceAreaBusinesses(category);
+  const includeServiceAreaBusinesses = isCustomSearch
+    ? true
+    : includePureServiceAreaBusinesses(category);
   const origin = hasCoordinates ? { lat: latitude, lng: longitude } : null;
 
   for (const textQuery of serverQueries) {
