@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { BuildEnvelopeResult, LocalPoint } from "@/lib/sitePotential/buildEnvelope";
+import {
+  polygonCentroid,
+  type BuildEnvelopeResult,
+  type LocalPoint,
+} from "@/lib/sitePotential/buildEnvelope";
+
 
 interface Props {
   result: BuildEnvelopeResult;
