@@ -745,6 +745,8 @@ function OfficialIdentityChecklist({
   onOpenSource,
   onReviewSource,
   onSgAttachmentCountChange,
+  sourcesExtra,
+  onOpenNextAction,
 }: {
   parcel: NormalizedOfficialParcel;
   sourceUrl: string;
@@ -756,6 +758,9 @@ function OfficialIdentityChecklist({
   onOpenSource: (sourceId: string) => void;
   onReviewSource: (sourceId: string) => void;
   onSgAttachmentCountChange: (count: number) => void;
+  /** Full source library, rendered inside the single sources disclosure. */
+  sourcesExtra?: ReactNode;
+  onOpenNextAction?: () => void;
 }) {
   const coordinates = parcel.coordinates
     ? `${parcel.coordinates.lat.toFixed(6)}, ${parcel.coordinates.lng.toFixed(6)}`
