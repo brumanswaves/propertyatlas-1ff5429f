@@ -141,8 +141,9 @@ describe("satellite map frame", () => {
     expect(source).toMatch(/absolute inset-0 h-full w-full/);
     expect(source).toMatch(/h-\[380px\][^"]*sm:h-\[520px\]/);
     expect(source).not.toMatch(/h-\[340px\]/);
-    // The only static diagram left is the fallback, never a footer under the map.
-    expect(source.match(/BuildEnvelopeDiagram/g)?.length).toBe(2);
+    // Only the import plus the single fallback render — no footer diagram.
+    expect(source.match(/BuildEnvelopeDiagram/g)?.length).toBe(3);
+
   });
 
   it("keeps a clean deterministic diagram fallback when satellite fails", () => {
