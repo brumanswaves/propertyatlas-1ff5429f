@@ -6,7 +6,6 @@ import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
   buildAddressCandidate,
-  buildInitialAddressCandidate,
   googleMapsPointUrl,
   reverseGeocodeAddressCandidates,
   selectedMarketAddress,
@@ -46,6 +45,32 @@ function uniqueCandidates(candidates: Array<AddressCandidate | null>) {
   });
 }
 
+function buildParcelAddressSuggestion(parcel: NormalizedOfficialParcel): AddressCandidate | null {
+  const field = parcel.knownFields.find((item) => {
+    const addressLike = /address|display title/i.test(item.label);
+    const userManaged = /user|market/i.test(`${item.label} ${item.source}`);
+    return addressLike && !userManaged && Boolean(item.value?.trim());
+  });
+  if (!field) return null;
+
+  const municipal = /municipal|kouga/i.test(field.source);
+  return buildAddressCandidate({
+    id: municipal ? "municipal-address-suggestion" : "official-parcel-address-suggestion",
+    formattedAddress: field.value,
+    suburb: parcel.suburbOrArea,
+    town: parcel.town,
+    municipality: parcel.municipality,
+    province: parcel.province,
+    lat: parcel.coordinates?.lat ?? null,
+    lng: parcel.coordinates?.lng ?? null,
+    source: municipal ? "municipal_record" : "official_parcel",
+    confidence: "medium",
+    reason: municipal
+      ? "Address-like text found in the municipal parcel context. Verify it before saving."
+      : "Address-like text found in the official parcel context. Verify it before saving.",
+  });
+}
+
 export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
   const {
     loading,
@@ -53,7 +78,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
     saveMarketAddressIntelligence,
   } = useSavedMarketEvidence(parcel.id);
   const savedAddress = selectedMarketAddress(marketAddressIntelligence);
-  const officialSuggestion = useMemo(() => buildInitialAddressCandidate(parcel), [parcel]);
+  const officialSuggestion = useMemo(() => buildParcelAddressSuggestion(parcel), [parcel]);
   const [mapSuggestions, setMapSuggestions] = useState<AddressCandidate[]>([]);
   const [streetAddress, setStreetAddress] = useState("");
   const [suburb, setSuburb] = useState("");
@@ -69,7 +94,14 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
     setTown(savedAddress?.town ?? parcel.town ?? "");
     setProvince(savedAddress?.province ?? parcel.province ?? "");
     setNotes(marketAddressIntelligence?.notes ?? "");
-  }, [marketAddressIntelligence?.notes, parcel.id, parcel.province, parcel.suburbOrArea, parcel.town, savedAddress]);
+  }, [
+    marketAddressIntelligence?.notes,
+    parcel.id,
+    parcel.province,
+    parcel.suburbOrArea,
+    parcel.town,
+    savedAddress,
+  ]);
 
   const suggestions = useMemo(
     () => uniqueCandidates([officialSuggestion, ...mapSuggestions]),
@@ -160,7 +192,6 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
         marketAddressSaved: true,
         dirty: true,
       });
-      toast.success("Address saved. Next step: Add SG diagram.");
       onContinue();
     } finally {
       setSaving(false);
@@ -195,7 +226,9 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="md:col-span-2">
-            <span className="text-xs font-semibold text-[#0D1B2A]">Street address or location label</span>
+            <span className="text-xs font-semibold text-[#0D1B2A]">
+              Street address or location label
+            </span>
             <input
               value={streetAddress}
               onChange={(event) => setStreetAddress(event.target.value)}
@@ -259,7 +292,11 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               onClick={() => void findMapSuggestions()}
               className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {resolving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
+              {resolving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <MapPin className="h-3.5 w-3.5" />
+              )}
               Find from map
             </button>
             {mapsUrl && (
@@ -299,7 +336,8 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
           </div>
         ) : (
           <p className="mt-3 text-sm text-[#0D1B2A]/58">
-            No address suggestion is available yet. Enter the working address manually or use the map.
+            No address suggestion is available yet. Enter the working address manually or use the
+            map.
           </p>
         )}
       </section>
