@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils";
 import {
   localPolygonToWgs84,
   localToWgs84,
+  polygonCentroid,
   type BuildEnvelopeResult,
 } from "@/lib/sitePotential/buildEnvelope";
+
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 
 /**
