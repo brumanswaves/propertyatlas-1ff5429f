@@ -16,7 +16,13 @@ import {
 } from "@/lib/sitePotential/buildEnvelopeStore";
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import {
+  detectStreetFrontage,
+  type RoadLineInput,
+} from "@/lib/sitePotential/streetFrontage";
+import { writeStoredStreetFrontageDetection } from "@/lib/sitePotential/streetFrontageStore";
 import { SatelliteParcelMap } from "./SatelliteParcelMap";
+
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
