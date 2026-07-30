@@ -567,6 +567,76 @@ export function LocalPropertyTeam({
     await vendorWorkspace.assignVendor(vendor.id, input);
   }
 
+  const parcelTeamLabel =
+    marketAddressLabel ||
+    (parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "This property");
+
+  const myPropertyTeamSection = (
+    <MyPropertyTeam
+      parcelLabel={parcelTeamLabel}
+      vendors={vendorWorkspace.directory}
+      assignments={vendorWorkspace.assignments}
+      onUpdateAssignment={(assignmentId, patch) =>
+        void vendorWorkspace.updateAssignment(assignmentId, patch)
+      }
+      onRemoveAssignment={(assignmentId) => void vendorWorkspace.removeFromProperty(assignmentId)}
+      onOpenSearch={() => setActiveLibraryTab("search")}
+      onOpenLibrary={() => setActiveLibraryTab("add-manual")}
+    />
+  );
+
+  const libraryTabs = (
+    <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Vendor workspace areas">
+      {[
+        { id: "search" as const, label: "Search local professionals" },
+        { id: "my-vendors" as const, label: `My vendors (${vendorWorkspace.directory.length})` },
+        { id: "add-manual" as const, label: "Add vendor manually" },
+      ].map((tabItem) => (
+        <button
+          key={tabItem.id}
+          type="button"
+          onClick={() => setActiveLibraryTab(tabItem.id)}
+          className={cn(
+            "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition",
+            activeLibraryTab === tabItem.id
+              ? "border-[#0D1B2A] bg-[#0D1B2A] text-white"
+              : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]",
+          )}
+        >
+          {tabItem.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const assignDialog = (
+    <AssignVendorDialog
+      vendor={assigningProvider ? (providerVendorForAssign ?? {
+        id: "__pending__",
+        name: assigningProvider.name,
+        company: null,
+        role: assigningProviderCategory
+          ? vendorRoleForLocalServiceCategory(assigningProviderCategory.id)
+          : "other",
+        phone: assigningProvider.phone,
+        email: null,
+        website: assigningProvider.website ?? assigningProvider.websiteUrl ?? null,
+        serviceArea: assigningProvider.address,
+        source: "Google search",
+        notes: null,
+        originPlaceId: assigningProvider.placeId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }) : null}
+      parcelLabel={parcelTeamLabel}
+      onClose={() => {
+        setAssigningProvider(null);
+        setAssigningProviderCategory(null);
+      }}
+      onAssign={handleAssignProviderVendor}
+    />
+  );
+
   if (marketAddressLoading) {
     return (
       <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
@@ -749,6 +819,9 @@ export function LocalPropertyTeam({
                     category={activeCategory}
                     saved={savedProviders.some((item) => item.placeId === provider.placeId)}
                     onToggleSaved={() => toggleSaved(provider)}
+                    isVendorSaved={isProviderSaved(provider)}
+                    onSaveVendor={() => void handleSaveVendorFromProvider(provider, activeCategory)}
+                    onAddToProperty={() => openAssignForProvider(provider, activeCategory)}
                   />
                 ))}
               </div>
