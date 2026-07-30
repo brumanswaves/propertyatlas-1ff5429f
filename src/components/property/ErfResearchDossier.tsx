@@ -1541,6 +1541,18 @@ function StoepAiReportView({
     selectedSiteMode === "skipped" ||
     workspaceState.sitePotential.skipped ||
     workspaceState.sitePotential.progressState === "skipped";
+  const sitePotentialPanel = useMemo(
+    () =>
+      buildSitePotentialReportPanel({
+        envelope: heroEnvelope,
+        hasConceptImage: Boolean(selectedDesign),
+        conceptStyle: siteProject.project?.selected_style ?? null,
+        brief: siteProject.project?.design_brief ?? null,
+        skipped: sitePotentialSkipped,
+        disclaimer: SITE_POTENTIAL_DISCLAIMER,
+      }),
+    [heroEnvelope, selectedDesign, siteProject.project, sitePotentialSkipped],
+  );
   const notesRequestRef = useRef(0);
   const [reportNotes, setReportNotes] = useState<PropertyNotes | null>(null);
 
