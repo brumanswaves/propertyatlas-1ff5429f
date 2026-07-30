@@ -103,12 +103,14 @@ import {
   buildLocationLifestyleSectionModel,
   buildMunicipalServicesSectionModel,
   buildSiteRiskSectionModel,
+  buildStillToVerifySummary,
 } from "@/lib/reports/contextSections";
 import { buildSgSectionModel } from "@/lib/reports/sgSection";
 import {
   ReportContextSection,
   ReportMunicipalSection,
   ReportSgLineageSection,
+  ReportStillToVerifySection,
 } from "@/components/property/dossier/ReportContextSections";
 import { buildStrategySectionModel } from "@/lib/reports/strategySection";
 import { buildEvidenceAppendixRows } from "@/lib/reports/evidenceAppendix";
@@ -1651,6 +1653,11 @@ function StoepAiReportView({
       }),
     [report.evidencePack, report.identity, report.market.subjectListing],
   );
+  const stillToVerify = useMemo(
+    () => buildStillToVerifySummary([siteRiskSection, municipalSection, locationSection]),
+    [siteRiskSection, municipalSection, locationSection],
+  );
+
   const appendixRows = useMemo(
     () =>
       buildEvidenceAppendixRows({
@@ -1915,17 +1922,6 @@ function StoepAiReportView({
             onOpenReports={() => onSelectView?.("reports")}
           />
 
-          {/* SG / LINEAGE EVIDENCE */}
-          <ReportSgLineageSection
-            anchorId="report-sg-evidence"
-            model={sgSection}
-            onOpenAsset={(assetId) => {
-              const asset = fileVault.assets.find((file) => file.id === assetId);
-              if (asset) void openVaultAsset(asset);
-            }}
-            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-          />
-
           <ReportFindingsBlock
             anchorId="report-sg-findings"
             eyebrow="SG findings"
@@ -2011,25 +2007,6 @@ function StoepAiReportView({
             )}
           </section>
 
-          {/* ZONING & BUILD — published rules stay separated from confirmed rights */}
-          <section
-            id="report-zoning-build"
-            className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-          >
-            <ReportSectionTitle
-              eyebrow="Zoning & Build"
-              title="What the published planning rules allow, and what is still unconfirmed"
-              intro="Published municipal rules are general rules for the matched zone. They are not confirmed rights for this erf until zoning, title conditions, servitudes, departures and approved plans have been checked."
-            />
-            <div className="mt-4">
-              <ZoningBuildTab
-                parcel={parcel}
-                compact
-                onOpenTab={(next) => onSelectView?.(routeTabFor(next))}
-              />
-            </div>
-          </section>
-
           {/* SITE POTENTIAL */}
           <ReportSitePotentialSection
             anchorId="report-site"
@@ -2083,56 +2060,94 @@ function StoepAiReportView({
           />
         </>
       ),
-      context: (
+      context: null,
+      next: (
         <>
           <ReportGroupHeading
-            letter="D"
-            anchorId="report-group-context"
-            title="Physical & ownership context"
-            intro="Conditions, services, running costs and surroundings supported by evidence."
+            letter="E"
+            anchorId="report-group-next"
+            title="Risks & next actions"
+            intro="The top open risks, what to verify next, and one place to go deeper."
+          />
+
+          <ReportStillToVerifySection
+            anchorId="report-still-to-verify"
+            summary={stillToVerify}
+            onOpenDisclosure={() => {
+              const el = document.getElementById("report-due-diligence");
+              if (el instanceof HTMLDetailsElement) el.open = true;
+              el?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
           />
 
           <details
-            className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5"
-            open={!isGroupCollapsedByDefault(composition, "context")}
+            id="report-due-diligence"
+            open={printOnly || undefined}
+            className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 report-print-appendix"
           >
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
-              Show physical, municipal and location context
+              Full due diligence &amp; evidence
               <span className="ml-2 text-xs font-normal text-[#64748B]">
-                Conditions, services, running costs and surroundings
+                Confidence engine, complete risk register, due-diligence plan, evidence appendix and change history
               </span>
             </summary>
             <div className="mt-4 space-y-5">
-              {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-              <ReportContextSection
-                anchorId="report-site-risk"
-                eyebrow="Site, Environmental & Physical Risk"
-                title="Physical and environmental conditions supported by evidence"
-                model={siteRiskSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+
+              {/* SG / LINEAGE EVIDENCE — detailed rows & filenames live behind this disclosure */}
+              <ReportSgLineageSection
+                anchorId="report-sg-evidence"
+                model={sgSection}
+                onOpenAsset={(assetId) => {
+                  const asset = fileVault.assets.find((file) => file.id === assetId);
+                  if (asset) void openVaultAsset(asset);
+                }}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
               />
+
+              {/* ZONING & BUILD — detailed published-rule clauses live behind this disclosure */}
+              <section
+                id="report-zoning-build"
+                className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+              >
+                <ReportSectionTitle
+                  eyebrow="Zoning & Build"
+                  title="What the published planning rules allow, and what is still unconfirmed"
+                  intro="Published municipal rules are general rules for the matched zone. They are not confirmed rights for this erf until zoning, title conditions, servitudes, departures and approved plans have been checked."
+                />
+                <div className="mt-4">
+                  <ZoningBuildTab
+                    parcel={parcel}
+                    compact
+                    onOpenTab={(next) => onSelectView?.(routeTabFor(next))}
+                  />
+                </div>
+              </section>
+
+              {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
+                            <ReportContextSection
+                              anchorId="report-site-risk"
+                              eyebrow="Site, Environmental & Physical Risk"
+                              title="Physical and environmental conditions supported by evidence"
+                              model={siteRiskSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
 
               {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-              <ReportMunicipalSection
-                anchorId="report-municipal"
-                model={municipalSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
+                            <ReportMunicipalSection
+                              anchorId="report-municipal"
+                              model={municipalSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
 
               {/* LOCATION & LIFESTYLE */}
-              <ReportContextSection
-                anchorId="report-location"
-                eyebrow="Location & Lifestyle"
-                title="Where this erf sits, and what is actually known about it"
-                model={locationSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
-            </div>
-          </details>
-        </>
-      ),
-      next: (
-        <>
+                            <ReportContextSection
+                              anchorId="report-location"
+                              eyebrow="Location & Lifestyle"
+                              title="Where this erf sits, and what is actually known about it"
+                              model={locationSection}
+                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+                            />
+
           {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
           <section
             id="report-brief"
@@ -2152,46 +2167,36 @@ function StoepAiReportView({
               <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
             ) : (
               <div className="mt-6 space-y-5">
-                <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
-                  <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                      Overall verdict
+                <article className="report-decision-hero rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
+                      style={{
+                        background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
+                      }}
+                      aria-label={`Evidence confidence ${decision.confidencePercent}%`}
+                    >
+                      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#0D1B2A]">
+                        {decision.confidencePercent}%
+                      </span>
                     </div>
-                    <h3 className="mt-3 text-3xl font-semibold tracking-tight">
-                      {decisionVerdictLabel(decision.verdict)}
-                    </h3>
-                    <div className="mt-4 flex items-center gap-4">
-                      <div
-                        className="grid h-24 w-24 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
-                        style={{
-                          background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
-                        }}
-                        aria-label={`Evidence confidence ${decision.confidencePercent}%`}
-                      >
-                        <span className="grid h-20 w-20 place-items-center rounded-full bg-[#0D1B2A]">
-                          {decision.confidencePercent}%
-                        </span>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                        Evidence-grounded interpretation
                       </div>
-                      <p className="text-xs leading-5 text-white/68">
-                        Evidence confidence measures completeness and recorded-risk coverage. It is
-                        not a property-quality score, valuation confidence, or purchase
-                        recommendation.
+                      <p className="mt-2 max-w-4xl text-sm leading-6 text-white/82">
+                        {decision.summary}
                       </p>
                     </div>
-                  </article>
-                  <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                      Evidence-grounded interpretation
-                    </div>
-                    <p className="mt-3 max-w-4xl text-base leading-7 text-white/82">
-                      {decision.summary}
-                    </p>
-                    <p className="mt-3 text-xs leading-5 text-white/58">
-                      This interpretation is assembled from official, uploaded, user-confirmed,
-                      market, and saved workspace data. It is not labelled human verified.
-                    </p>
-                  </article>
-                </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-white/58">
+                    Evidence confidence measures completeness and recorded-risk coverage — it is not
+                    a property-quality score, valuation confidence, or purchase recommendation. This
+                    interpretation is assembled from official, uploaded, user-confirmed, market, and
+                    saved workspace data; it is not labelled human verified. The single overall
+                    verdict for this erf is shown once, in the report opening above.
+                  </p>
+                </article>
 
                 <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
                   <div className="flex flex-wrap items-end justify-between gap-3">
@@ -2210,38 +2215,36 @@ function StoepAiReportView({
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
                     {decision.confidenceCategories.map((category) => (
-                      <details
+                      <div
                         key={category.id}
-                        className="group rounded-2xl border border-[#D9E6F2] bg-white p-3 open:border-[#FF6A00]/35"
+                        className="rounded-2xl border border-[#D9E6F2] bg-white p-3"
                       >
-                        <summary className="cursor-pointer list-none">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-[#0D1B2A]">
-                              {category.label}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                                readinessStroke(category.state),
-                              )}
-                            >
-                              {readinessLabel(category.state)}
-                            </span>
-                          </div>
-                          <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
-                            {category.score}
-                          </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
-                            <div
-                              className="h-full rounded-full bg-[#FF6A00]"
-                              style={{ width: `${category.score}%` }}
-                            />
-                          </div>
-                        </summary>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-[#0D1B2A]">
+                            {category.label}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                              readinessStroke(category.state),
+                            )}
+                          >
+                            {readinessLabel(category.state)}
+                          </span>
+                        </div>
+                        <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
+                          {category.score}
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
+                          <div
+                            className="h-full rounded-full bg-[#FF6A00]"
+                            style={{ width: `${category.score}%` }}
+                          />
+                        </div>
                         <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
                           {category.explanation}
                         </p>
-                      </details>
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -2363,14 +2366,7 @@ function StoepAiReportView({
             )}
           </section>
 
-          <ReportGroupHeading
-            letter="E"
-            anchorId="report-group-next"
-            title="What happens next"
-            intro="Open uncertainties, the due-diligence plan and every source behind this report."
-          />
-
-          {/* RISK REGISTER */}
+              {/* RISK REGISTER */}
           <section
             id="report-risk"
             className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
@@ -2442,17 +2438,19 @@ function StoepAiReportView({
             }}
           />
 
-          {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
-          <ReportChangeTrackingSection
-            comparison={snapshotComparison}
-            snapshots={reportSnapshots}
-            message={snapshotMessage}
-            clearRequested={clearSnapshotsRequested}
-            onSave={handleSaveReportSnapshot}
-            onRequestClear={() => setClearSnapshotsRequested(true)}
-            onCancelClear={() => setClearSnapshotsRequested(false)}
-            onConfirmClear={handleClearReportSnapshots}
-          />
+              {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
+              <ReportChangeTrackingSection
+                comparison={snapshotComparison}
+                snapshots={reportSnapshots}
+                message={snapshotMessage}
+                clearRequested={clearSnapshotsRequested}
+                onSave={handleSaveReportSnapshot}
+                onRequestClear={() => setClearSnapshotsRequested(true)}
+                onCancelClear={() => setClearSnapshotsRequested(false)}
+                onConfirmClear={handleClearReportSnapshots}
+              />
+            </div>
+          </details>
 
           <section className="report-section report-no-print mt-1 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">

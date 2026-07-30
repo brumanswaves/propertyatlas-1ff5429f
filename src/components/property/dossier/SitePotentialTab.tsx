@@ -37,6 +37,13 @@ import {
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
 import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
+import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
+import {
+  findMunicipalityPlanningRegistry,
+} from "@/lib/planning/municipalityPlanningRegistry";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
+import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import {
@@ -56,6 +63,8 @@ export interface SitePotentialTabProps {
   workspaceState: ErfWorkspaceState;
   onUpdateSite: (patch: Partial<SitePotentialSnapshot>) => void;
   onExploreReport?: () => void;
+  /** Lets the vacant-land next-best-action jump straight to another workbench tab. */
+  onOpenTab?: (tab: string) => void;
 }
 
 
@@ -513,6 +522,7 @@ export function SitePotentialTab({
   workspaceState,
   onUpdateSite,
   onExploreReport,
+  onOpenTab,
 }: SitePotentialTabProps) {
 
   const site = workspaceState.sitePotential;
@@ -543,6 +553,40 @@ export function SitePotentialTab({
   const lastPackProgressSignatureRef = useRef<string | null>(null);
 
   const vault = useErfFileVault(parcel.id, VAULT_CATEGORIES);
+
+  // Same planning assessment that powers Zoning & Build — single source of
+  // truth for the vacant-land build-rule prefill below.
+  const planningSignals = useMemo(
+    () => derivePlanningEvidenceSignals(vault.assets),
+    [vault.assets],
+  );
+  const manualZoneCode = useMemo(() => readStoredPlanningZone(parcel.id), [parcel.id]);
+  const documentZone = useMemo(() => {
+    if (!planningSignals.zoningCertificateUploaded) return null;
+    return vault.assets.find((asset) => asset.asset_category === "zoning_document") ?? null;
+  }, [vault.assets, planningSignals.zoningCertificateUploaded]);
+  const planningAssessment = useMemo(
+    () =>
+      buildParcelPlanningAssessment({
+        parcelId: parcel.id,
+        municipality: parcel.municipality ?? null,
+        locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
+        erfAreaM2: canonicalAreaM2(parcel.rawProperties),
+        manualZoneCode,
+        documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
+        documentZoneAssetId: documentZone?.id ?? null,
+        observedZoneLabel:
+          typeof parcel.rawProperties?.ZONING_DES === "string"
+            ? parcel.rawProperties.ZONING_DES
+            : typeof parcel.rawProperties?.ZONING === "string"
+              ? parcel.rawProperties.ZONING
+              : null,
+        hasParcelPolygon: Boolean(parcel.rawProperties),
+        hasStreetEdgeReference: false,
+        evidence: planningSignals,
+      }),
+    [documentZone, manualZoneCode, parcel, planningSignals],
+  );
   const allGeneratedDesigns = vault.assets.filter(
     (asset) => asset.asset_category === "generated_design",
   );
@@ -1314,6 +1358,9 @@ export function SitePotentialTab({
           parcelLabel={parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "this erf"}
           ring={parcelRing}
           recordedAreaM2={recordedAreaM2}
+          zoneLabel={planningAssessment.zone?.name ?? null}
+          assessment={planningAssessment}
+          onOpenTab={onOpenTab}
         />
       )}
 

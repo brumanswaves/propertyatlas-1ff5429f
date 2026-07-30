@@ -33,6 +33,14 @@ import {
   type SavedLocalProvider,
 } from "@/lib/localServices/savedProviders";
 import { cn } from "@/lib/utils";
+import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
+import { vendorRoleForLocalServiceCategory } from "@/lib/vendors/localServiceRoleMap";
+import type { VendorAssignmentInput, VendorRole } from "@/lib/vendors/types";
+import { MyPropertyTeam } from "@/components/property/vendors/MyPropertyTeam";
+import { VendorLibraryPanel } from "@/components/property/vendors/VendorLibraryPanel";
+import { ManualVendorForm } from "@/components/property/vendors/ManualVendorForm";
+import { AssignVendorDialog } from "@/components/property/vendors/AssignVendorDialog";
+import { BookmarkPlus, ClipboardList } from "lucide-react";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
@@ -165,11 +173,17 @@ function ProviderCard({
   category,
   saved,
   onToggleSaved,
+  isVendorSaved,
+  onSaveVendor,
+  onAddToProperty,
 }: {
   provider: LocalProvider;
   category: LocalServiceCategory;
   saved: boolean;
   onToggleSaved: () => void;
+  isVendorSaved: boolean;
+  onSaveVendor: () => void;
+  onAddToProperty: () => void;
 }) {
   const distance = formatDistance(provider.distanceKm);
   return (
@@ -253,6 +267,24 @@ function ProviderCard({
           Directions <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 border-t border-[#D9E6F2] pt-3">
+        <button
+          type="button"
+          onClick={onSaveVendor}
+          disabled={isVendorSaved}
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <BookmarkPlus className="h-3.5 w-3.5" /> {isVendorSaved ? "Saved vendor" : "Save vendor"}
+        </button>
+        <button
+          type="button"
+          onClick={onAddToProperty}
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#ff7d1f]"
+        >
+          <ClipboardList className="h-3.5 w-3.5" /> Add to this property
+        </button>
+      </div>
     </article>
   );
 }
@@ -291,6 +323,15 @@ export function LocalPropertyTeam({
     controller: AbortController;
   } | null>(null);
   const requestSequenceRef = useRef(0);
+
+  const vendorWorkspace = useVendorWorkspace(parcel.id);
+  const [activeLibraryTab, setActiveLibraryTab] = useState<"search" | "my-vendors" | "add-manual">(
+    "search",
+  );
+  const [assigningProvider, setAssigningProvider] = useState<LocalProvider | null>(null);
+  const [assigningProviderCategory, setAssigningProviderCategory] = useState<LocalServiceCategory | null>(
+    null,
+  );
 
   useEffect(() => {
     const nextGroups = orderedLocalServiceGroups(propertyState);
@@ -482,6 +523,120 @@ export function LocalPropertyTeam({
     setSavedProviders(toggleSavedLocalProvider(parcel.id, provider));
   }
 
+  function providerToVendorInput(provider: LocalProvider, category: LocalServiceCategory) {
+    return {
+      name: provider.name,
+      company: null,
+      role: vendorRoleForLocalServiceCategory(category.id),
+      phone: provider.phone,
+      email: null,
+      website: provider.website ?? provider.websiteUrl ?? null,
+      serviceArea: provider.address,
+      source: "Google search",
+      notes: null,
+      originPlaceId: provider.placeId,
+    };
+  }
+
+  async function handleSaveVendorFromProvider(provider: LocalProvider, category: LocalServiceCategory) {
+    await vendorWorkspace.saveVendor(providerToVendorInput(provider, category));
+  }
+
+  function isProviderSaved(provider: LocalProvider) {
+    return vendorWorkspace.directory.some((vendor) => vendor.originPlaceId === provider.placeId);
+  }
+
+  function openAssignForProvider(provider: LocalProvider, category: LocalServiceCategory) {
+    setAssigningProvider(provider);
+    setAssigningProviderCategory(category);
+  }
+
+  const providerVendorForAssign = assigningProvider
+    ? (vendorWorkspace.directory.find((vendor) => vendor.originPlaceId === assigningProvider.placeId) ??
+      null)
+    : null;
+
+  async function handleAssignProviderVendor(input: VendorAssignmentInput & { roleOnProperty: VendorRole }) {
+    if (!assigningProvider || !assigningProviderCategory) return;
+    let vendor = providerVendorForAssign;
+    if (!vendor) {
+      vendor = await vendorWorkspace.saveVendor(
+        providerToVendorInput(assigningProvider, assigningProviderCategory),
+      );
+    }
+    await vendorWorkspace.assignVendor(vendor.id, input);
+  }
+
+  const parcelTeamLabel =
+    marketAddressLabel ||
+    (parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "This property");
+
+  const myPropertyTeamSection = (
+    <MyPropertyTeam
+      parcelLabel={parcelTeamLabel}
+      vendors={vendorWorkspace.directory}
+      assignments={vendorWorkspace.assignments}
+      onUpdateAssignment={(assignmentId, patch) =>
+        void vendorWorkspace.updateAssignment(assignmentId, patch)
+      }
+      onRemoveAssignment={(assignmentId) => void vendorWorkspace.removeFromProperty(assignmentId)}
+      onOpenSearch={() => setActiveLibraryTab("search")}
+      onOpenLibrary={() => setActiveLibraryTab("add-manual")}
+    />
+  );
+
+  const libraryTabs = (
+    <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Vendor workspace areas">
+      {[
+        { id: "search" as const, label: "Search local professionals" },
+        { id: "my-vendors" as const, label: `My vendors (${vendorWorkspace.directory.length})` },
+        { id: "add-manual" as const, label: "Add vendor manually" },
+      ].map((tabItem) => (
+        <button
+          key={tabItem.id}
+          type="button"
+          onClick={() => setActiveLibraryTab(tabItem.id)}
+          className={cn(
+            "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition",
+            activeLibraryTab === tabItem.id
+              ? "border-[#0D1B2A] bg-[#0D1B2A] text-white"
+              : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]",
+          )}
+        >
+          {tabItem.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const assignDialog = (
+    <AssignVendorDialog
+      vendor={assigningProvider ? (providerVendorForAssign ?? {
+        id: "__pending__",
+        name: assigningProvider.name,
+        company: null,
+        role: assigningProviderCategory
+          ? vendorRoleForLocalServiceCategory(assigningProviderCategory.id)
+          : "other",
+        phone: assigningProvider.phone,
+        email: null,
+        website: assigningProvider.website ?? assigningProvider.websiteUrl ?? null,
+        serviceArea: assigningProvider.address,
+        source: "Google search",
+        notes: null,
+        originPlaceId: assigningProvider.placeId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }) : null}
+      parcelLabel={parcelTeamLabel}
+      onClose={() => {
+        setAssigningProvider(null);
+        setAssigningProviderCategory(null);
+      }}
+      onAssign={handleAssignProviderVendor}
+    />
+  );
+
   if (marketAddressLoading) {
     return (
       <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
@@ -519,6 +674,20 @@ export function LocalPropertyTeam({
   }
 
   return (
+    <div className="space-y-5">
+      {myPropertyTeamSection}
+      {libraryTabs}
+      {activeLibraryTab === "my-vendors" ? (
+        <VendorLibraryPanel
+          parcelLabel={parcelTeamLabel}
+          vendors={vendorWorkspace.directory}
+          assignments={vendorWorkspace.assignments}
+          onAssignVendor={(vendorId, input) => void vendorWorkspace.assignVendor(vendorId, input)}
+          onDeleteVendor={(vendorId) => vendorWorkspace.deleteVendor(vendorId, true)}
+        />
+      ) : activeLibraryTab === "add-manual" ? (
+        <ManualVendorForm onSave={(input) => void vendorWorkspace.saveVendor(input)} />
+      ) : (
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -664,6 +833,9 @@ export function LocalPropertyTeam({
                     category={activeCategory}
                     saved={savedProviders.some((item) => item.placeId === provider.placeId)}
                     onToggleSaved={() => toggleSaved(provider)}
+                    isVendorSaved={isProviderSaved(provider)}
+                    onSaveVendor={() => void handleSaveVendorFromProvider(provider, activeCategory)}
+                    onAddToProperty={() => openAssignForProvider(provider, activeCategory)}
                   />
                 ))}
               </div>
@@ -729,6 +901,9 @@ export function LocalPropertyTeam({
         a provider.
       </div>
     </section>
+      )}
+      {assignDialog}
+    </div>
   );
 }
 

@@ -15,6 +15,7 @@ import {
   type MunicipalSectionModel,
 } from "@/lib/reports/contextSections";
 import type { SgSectionModel } from "@/lib/reports/sgSection";
+import type { StillToVerifySummary } from "@/lib/reports/contextSections";
 
 function sectionShell(extra?: string) {
   return cn(
@@ -256,6 +257,52 @@ export function ReportSgLineageSection({
           className="report-no-print mt-5 inline-flex min-h-9 items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
         >
           Manage diagrams in the Erf File <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </section>
+  );
+}
+
+
+export function ReportStillToVerifySection({
+  anchorId,
+  summary,
+  onOpenDisclosure,
+}: {
+  anchorId: string;
+  summary: StillToVerifySummary;
+  onOpenDisclosure?: () => void;
+}) {
+  return (
+    <section id={anchorId} className={sectionShell()}>
+      <ReportSectionTitleBlock
+        eyebrow="Still to verify"
+        title={
+          summary.count
+            ? `${summary.count} item(s) still need verification`
+            : "Nothing outstanding across the tracked context checks"
+        }
+      />
+      {summary.topItems.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {summary.topItems.map((item) => (
+            <li
+              key={item.id}
+              className="rounded-2xl border border-[#F59E0B]/40 bg-[#FFFBEB] p-4 text-sm leading-6 text-[#0D1B2A]/80"
+            >
+              <span className="font-semibold text-[#0D1B2A]">{item.label}</span> — {item.action}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-4 text-sm leading-6 text-[#0D1B2A]/70">{summary.action}</p>
+      {summary.count > summary.topItems.length && (
+        <button
+          type="button"
+          onClick={onOpenDisclosure}
+          className="report-no-print mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#B24A00]"
+        >
+          See all {summary.count} outstanding item(s) in the full due diligence area
         </button>
       )}
     </section>
