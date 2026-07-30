@@ -203,7 +203,6 @@ interface Props {
   onSelectView?: (view: DossierView) => void;
 }
 
-
 export type { DossierView } from "@/components/property/dossier/reportViews";
 
 const DOSSIER_STATUSES = [
@@ -467,7 +466,6 @@ export function ErfResearchDossier({
   view = "overview",
   onSelectView,
 }: Props) {
-
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel).filter(
@@ -624,7 +622,9 @@ export function ErfResearchDossier({
   }
 
   if (view === "stoep-report") {
-    return <StoepAiReportView parcel={parcel} parcelRing={parcelRing} onSelectView={onSelectView} />;
+    return (
+      <StoepAiReportView parcel={parcel} parcelRing={parcelRing} onSelectView={onSelectView} />
+    );
   }
 
   return (
@@ -1459,7 +1459,6 @@ async function openVaultAsset(file: ErfAsset) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-
 function StoepAiReportView({
   parcel,
   parcelRing = null,
@@ -1469,7 +1468,6 @@ function StoepAiReportView({
   parcelRing?: Array<[number, number]> | null;
   onSelectView?: (view: DossierView) => void;
 }) {
-
   const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
@@ -2034,7 +2032,6 @@ function StoepAiReportView({
               selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
             }
           />
-
         </>
       ),
       market: (
@@ -2089,11 +2086,11 @@ function StoepAiReportView({
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
               Full due diligence &amp; evidence
               <span className="ml-2 text-xs font-normal text-[#64748B]">
-                Confidence engine, complete risk register, due-diligence plan, evidence appendix and change history
+                Confidence engine, complete risk register, due-diligence plan, evidence appendix and
+                change history
               </span>
             </summary>
             <div className="mt-4 space-y-5">
-
               {/* SG / LINEAGE EVIDENCE — detailed rows & filenames live behind this disclosure */}
               <ReportSgLineageSection
                 anchorId="report-sg-evidence"
@@ -2125,319 +2122,323 @@ function StoepAiReportView({
               </section>
 
               {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-                            <ReportContextSection
-                              anchorId="report-site-risk"
-                              eyebrow="Site, Environmental & Physical Risk"
-                              title="Physical and environmental conditions supported by evidence"
-                              model={siteRiskSection}
-                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-                            />
+              <ReportContextSection
+                anchorId="report-site-risk"
+                eyebrow="Site, Environmental & Physical Risk"
+                title="Physical and environmental conditions supported by evidence"
+                model={siteRiskSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
 
               {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-                            <ReportMunicipalSection
-                              anchorId="report-municipal"
-                              model={municipalSection}
-                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-                            />
+              <ReportMunicipalSection
+                anchorId="report-municipal"
+                model={municipalSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
 
               {/* LOCATION & LIFESTYLE */}
-                            <ReportContextSection
-                              anchorId="report-location"
-                              eyebrow="Location & Lifestyle"
-                              title="Where this erf sits, and what is actually known about it"
-                              model={locationSection}
-                              onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-                            />
+              <ReportContextSection
+                anchorId="report-location"
+                eyebrow="Location & Lifestyle"
+                title="Where this erf sits, and what is actually known about it"
+                model={locationSection}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+              />
 
-          {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
-          <section
-            id="report-brief"
-            className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
-          >
-            <ReportSectionTitle
-              eyebrow="Decision Detail"
-              title="Evidence readiness behind the decision"
-              intro="The headline decision is in the report opening. This section shows how that decision was reached: confidence by category, what is known, what is still needed, contradictions and the saved evidence chronology."
-            />
-            <div className="mt-4">
-              <ReportViewActiveLabel mode={decisionMode} />
-            </div>
+              {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
+              <section
+                id="report-brief"
+                className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)] scroll-mt-24"
+              >
+                <ReportSectionTitle
+                  eyebrow="Decision Detail"
+                  title="Evidence readiness behind the decision"
+                  intro="The headline decision is in the report opening. This section shows how that decision was reached: confidence by category, what is known, what is still needed, contradictions and the saved evidence chronology."
+                />
+                <div className="mt-4">
+                  <ReportViewActiveLabel mode={decisionMode} />
+                </div>
 
-            {/* EXECUTIVE DECISION BRIEF */}
-            {decisionMode === "investor" ? (
-              <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
-            ) : (
-              <div className="mt-6 space-y-5">
-                <article className="report-decision-hero rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
-                      style={{
-                        background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
-                      }}
-                      aria-label={`Evidence confidence ${decision.confidencePercent}%`}
-                    >
-                      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#0D1B2A]">
-                        {decision.confidencePercent}%
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                        Evidence-grounded interpretation
-                      </div>
-                      <p className="mt-2 max-w-4xl text-sm leading-6 text-white/82">
-                        {decision.summary}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs leading-5 text-white/58">
-                    Evidence confidence measures completeness and recorded-risk coverage — it is not
-                    a property-quality score, valuation confidence, or purchase recommendation. This
-                    interpretation is assembled from official, uploaded, user-confirmed, market, and
-                    saved workspace data; it is not labelled human verified. The single overall
-                    verdict for this erf is shown once, in the report opening above.
-                  </p>
-                </article>
-
-                <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
-                  <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-                        Property IQ / Confidence Engine
-                      </div>
-                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                        Why the report confidence exists
-                      </h3>
-                    </div>
-                    <p className="max-w-xl text-xs leading-5 text-[#64748B]">
-                      Each category is scored from the recorded evidence state. Open a row to see
-                      the reason behind the score.
-                    </p>
-                  </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-                    {decision.confidenceCategories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="rounded-2xl border border-[#D9E6F2] bg-white p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-[#0D1B2A]">
-                            {category.label}
+                {/* EXECUTIVE DECISION BRIEF */}
+                {decisionMode === "investor" ? (
+                  <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
+                ) : (
+                  <div className="mt-6 space-y-5">
+                    <article className="report-decision-hero rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
+                          style={{
+                            background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
+                          }}
+                          aria-label={`Evidence confidence ${decision.confidencePercent}%`}
+                        >
+                          <span className="grid h-16 w-16 place-items-center rounded-full bg-[#0D1B2A]">
+                            {decision.confidencePercent}%
                           </span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                            Evidence-grounded interpretation
+                          </div>
+                          <p className="mt-2 max-w-4xl text-sm leading-6 text-white/82">
+                            {decision.summary}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-white/58">
+                        Evidence confidence measures completeness and recorded-risk coverage — it is
+                        not a property-quality score, valuation confidence, or purchase
+                        recommendation. This interpretation is assembled from official, uploaded,
+                        user-confirmed, market, and saved workspace data; it is not labelled human
+                        verified. The single overall verdict for this erf is shown once, in the
+                        report opening above.
+                      </p>
+                    </article>
+
+                    <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                            Property IQ / Confidence Engine
+                          </div>
+                          <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
+                            Why the report confidence exists
+                          </h3>
+                        </div>
+                        <p className="max-w-xl text-xs leading-5 text-[#64748B]">
+                          Each category is scored from the recorded evidence state. Open a row to
+                          see the reason behind the score.
+                        </p>
+                      </div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                        {decision.confidenceCategories.map((category) => (
+                          <div
+                            key={category.id}
+                            className="rounded-2xl border border-[#D9E6F2] bg-white p-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-[#0D1B2A]">
+                                {category.label}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                                  readinessStroke(category.state),
+                                )}
+                              >
+                                {readinessLabel(category.state)}
+                              </span>
+                            </div>
+                            <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
+                              {category.score}
+                            </div>
+                            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
+                              <div
+                                className="h-full rounded-full bg-[#FF6A00]"
+                                style={{ width: `${category.score}%` }}
+                              />
+                            </div>
+                            <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
+                              {category.explanation}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <DecisionListPanel
+                        title="What Easy Erf knows"
+                        items={decision.known}
+                        empty="No structured facts are strong enough to list yet."
+                      />
+                      <DecisionListPanel
+                        title="What Easy Erf still needs"
+                        items={decision.stillNeeded}
+                        empty="No immediate evidence gaps were generated from the current structured state."
+                        footnote="Completing these items may improve report confidence."
+                      />
+                    </div>
+
+                    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+                      <ReportSectionTitle
+                        eyebrow="Contradictions"
+                        title="Conflicting structured evidence"
+                      />
+                      {decision.contradictions.length ? (
+                        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                          {decision.contradictions.map((item) => (
+                            <article
+                              key={item.id}
+                              className="rounded-2xl border border-[#F59E0B]/35 bg-[#fffbeb] p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                                    severityTone(item.severity),
+                                  )}
+                                >
+                                  {item.severity}
+                                </span>
+                                <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
+                              </div>
+                              <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">
+                                {item.explanation}
+                              </p>
+                              <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
+                                {item.evidence.map((line) => (
+                                  <li key={line}>- {line}</li>
+                                ))}
+                              </ul>
+                              <p className="mt-3 text-xs font-semibold text-[#92400E]">
+                                Next action: {item.nextAction}
+                              </p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/72">
+                          No direct contradictions were detected in the currently available
+                          structured evidence.
+                          <span className="mt-1 block text-xs text-[#64748B]">
+                            Missing evidence is not proof that no conflict exists.
+                          </span>
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+                      <ReportSectionTitle
+                        eyebrow="Immediate next actions"
+                        title="Move the report forward"
+                      />
+                      {decision.immediateActions.length ? (
+                        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                          {decision.immediateActions.map((action, index) => (
+                            <button
+                              key={`${index}-${action.label}`}
+                              type="button"
+                              onClick={() => onSelectView?.(routeTabFor(action.tab))}
+                              className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
+                            >
+                              <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+                                Action {index + 1}
+                              </span>
+                              <span className="mt-1 flex items-center justify-between gap-2">
+                                {action.label}
+                                <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-sm text-[#0D1B2A]/66">
+                          No immediate action is generated from the current structured evidence.
+                        </p>
+                      )}
+                    </section>
+
+                    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+                      <ReportSectionTitle
+                        eyebrow="Decision Matrix"
+                        title="Key questions and answers"
+                      />
+                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {decision.matrix.map((row) => (
+                          <DecisionMatrixCard key={row.id} row={row} />
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
+                      <ReportSectionTitle
+                        eyebrow="Evidence Timeline"
+                        title="Saved evidence chronology"
+                      />
+                      <ol className="mt-4 space-y-3">
+                        {decision.timeline.map((item) => (
+                          <EvidenceTimelineRow key={item.id} item={item} />
+                        ))}
+                      </ol>
+                    </section>
+                  </div>
+                )}
+              </section>
+
+              {/* RISK REGISTER */}
+              <section
+                id="report-risk"
+                className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+              >
+                <ReportSectionTitle
+                  eyebrow="Risk & Actions"
+                  title="Evidence gaps and open uncertainties"
+                />
+                {report.risks.length === 0 ? (
+                  <p className="mt-3 text-sm text-[#0D1B2A]/70">
+                    No blocking risks identified in current evidence. Continue to verify sources.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {report.risks.map((r) => (
+                      <li
+                        key={r.id}
+                        className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
                               "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                              readinessStroke(category.state),
+                              r.severity === "high"
+                                ? "bg-[#dc2626] text-white"
+                                : r.severity === "medium"
+                                  ? "bg-[#F59E0B] text-[#0D1B2A]"
+                                  : "bg-[#D9E6F2] text-[#0D1B2A]",
                             )}
                           >
-                            {readinessLabel(category.state)}
+                            {r.severity}
                           </span>
+                          <span className="font-semibold text-[#0D1B2A]">{r.title}</span>
                         </div>
-                        <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
-                          {category.score}
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
-                          <div
-                            className="h-full rounded-full bg-[#FF6A00]"
-                            style={{ width: `${category.score}%` }}
-                          />
-                        </div>
-                        <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
-                          {category.explanation}
-                        </p>
-                      </div>
+                        <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/70">{r.why}</p>
+                        <p className="mt-1 text-[11px] text-[#64748B]">Evidence: {r.evidence}</p>
+                        <button
+                          type="button"
+                          onClick={() => onSelectView?.(routeTabFor(r.actionTab))}
+                          className="report-no-print mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+                        >
+                          {r.nextAction} <ArrowRight className="h-3 w-3" />
+                        </button>
+                      </li>
                     ))}
-                  </div>
-                </section>
+                  </ul>
+                )}
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <DecisionListPanel
-                    title="What Easy Erf knows"
-                    items={decision.known}
-                    empty="No structured facts are strong enough to list yet."
+                <div className="mt-5 border-t border-[#0D1B2A]/10 pt-4">
+                  <ReportSectionTitle
+                    eyebrow="Due diligence plan"
+                    title="Open actions ranked by priority"
                   />
-                  <DecisionListPanel
-                    title="What Easy Erf still needs"
-                    items={decision.stillNeeded}
-                    empty="No immediate evidence gaps were generated from the current structured state."
-                    footnote="Completing these items may improve report confidence."
+                  <ReportActionPlan
+                    actions={reportDoc.actions.filter((action) => action.status !== "completed")}
+                    onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
                   />
                 </div>
+              </section>
 
-                <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-                  <ReportSectionTitle
-                    eyebrow="Contradictions"
-                    title="Conflicting structured evidence"
-                  />
-                  {decision.contradictions.length ? (
-                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                      {decision.contradictions.map((item) => (
-                        <article
-                          key={item.id}
-                          className="rounded-2xl border border-[#F59E0B]/35 bg-[#fffbeb] p-4"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={cn(
-                                "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                                severityTone(item.severity),
-                              )}
-                            >
-                              {item.severity}
-                            </span>
-                            <h4 className="font-semibold text-[#0D1B2A]">{item.title}</h4>
-                          </div>
-                          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/72">
-                            {item.explanation}
-                          </p>
-                          <ul className="mt-3 space-y-1 rounded-2xl border border-[#0D1B2A]/10 bg-white px-3 py-2 text-xs text-[#0D1B2A]/70">
-                            {item.evidence.map((line) => (
-                              <li key={line}>- {line}</li>
-                            ))}
-                          </ul>
-                          <p className="mt-3 text-xs font-semibold text-[#92400E]">
-                            Next action: {item.nextAction}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/72">
-                      No direct contradictions were detected in the currently available structured
-                      evidence.
-                      <span className="mt-1 block text-xs text-[#64748B]">
-                        Missing evidence is not proof that no conflict exists.
-                      </span>
-                    </div>
-                  )}
-                </section>
-
-                <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
-                  <ReportSectionTitle
-                    eyebrow="Immediate next actions"
-                    title="Move the report forward"
-                  />
-                  {decision.immediateActions.length ? (
-                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-                      {decision.immediateActions.map((action, index) => (
-                        <button
-                          key={`${index}-${action.label}`}
-                          type="button"
-                          onClick={() => onSelectView?.(routeTabFor(action.tab))}
-                          className="report-no-print rounded-2xl border border-[#FF6A00]/20 bg-white p-3 text-left text-sm font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/45 hover:bg-[#fffaf2]"
-                        >
-                          <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-                            Action {index + 1}
-                          </span>
-                          <span className="mt-1 flex items-center justify-between gap-2">
-                            {action.label}
-                            <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white px-3 py-2 text-sm text-[#0D1B2A]/66">
-                      No immediate action is generated from the current structured evidence.
-                    </p>
-                  )}
-                </section>
-
-                <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-                  <ReportSectionTitle eyebrow="Decision Matrix" title="Key questions and answers" />
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {decision.matrix.map((row) => (
-                      <DecisionMatrixCard key={row.id} row={row} />
-                    ))}
-                  </div>
-                </section>
-
-                <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-                  <ReportSectionTitle
-                    eyebrow="Evidence Timeline"
-                    title="Saved evidence chronology"
-                  />
-                  <ol className="mt-4 space-y-3">
-                    {decision.timeline.map((item) => (
-                      <EvidenceTimelineRow key={item.id} item={item} />
-                    ))}
-                  </ol>
-                </section>
-              </div>
-            )}
-          </section>
-
-              {/* RISK REGISTER */}
-          <section
-            id="report-risk"
-            className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-          >
-            <ReportSectionTitle
-              eyebrow="Risk & Actions"
-              title="Evidence gaps and open uncertainties"
-            />
-            {report.risks.length === 0 ? (
-              <p className="mt-3 text-sm text-[#0D1B2A]/70">
-                No blocking risks identified in current evidence. Continue to verify sources.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {report.risks.map((r) => (
-                  <li
-                    key={r.id}
-                    className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3 text-sm"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                          r.severity === "high"
-                            ? "bg-[#dc2626] text-white"
-                            : r.severity === "medium"
-                              ? "bg-[#F59E0B] text-[#0D1B2A]"
-                              : "bg-[#D9E6F2] text-[#0D1B2A]",
-                        )}
-                      >
-                        {r.severity}
-                      </span>
-                      <span className="font-semibold text-[#0D1B2A]">{r.title}</span>
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/70">{r.why}</p>
-                    <p className="mt-1 text-[11px] text-[#64748B]">Evidence: {r.evidence}</p>
-                    <button
-                      type="button"
-                      onClick={() => onSelectView?.(routeTabFor(r.actionTab))}
-                      className="report-no-print mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
-                    >
-                      {r.nextAction} <ArrowRight className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="mt-5 border-t border-[#0D1B2A]/10 pt-4">
-              <ReportSectionTitle
-                eyebrow="Due diligence plan"
-                title="Open actions ranked by priority"
+              {/* EVIDENCE & DOCUMENTS APPENDIX */}
+              <ReportEvidenceAppendix
+                anchorId="report-documents"
+                rows={appendixRows}
+                completenessPercent={report.documents.completenessPercent}
+                onOpenAsset={(assetId) => {
+                  const asset = fileVault.assets.find((file) => file.id === assetId);
+                  if (asset) void openVaultAsset(asset);
+                }}
               />
-              <ReportActionPlan
-                actions={reportDoc.actions.filter((action) => action.status !== "completed")}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-              />
-            </div>
-          </section>
-
-          {/* EVIDENCE & DOCUMENTS APPENDIX */}
-          <ReportEvidenceAppendix
-            anchorId="report-documents"
-            rows={appendixRows}
-            completenessPercent={report.documents.completenessPercent}
-            onOpenAsset={(assetId) => {
-              const asset = fileVault.assets.find((file) => file.id === assetId);
-              if (asset) void openVaultAsset(asset);
-            }}
-          />
 
               {/* CHANGE TRACKING — a secondary supporting section, never part of the opening */}
               <ReportChangeTrackingSection
@@ -2498,7 +2499,6 @@ function StoepAiReportView({
             ) : undefined
           }
           heroCaption={reportHero.kind === "neutral_card" ? null : reportHero.caption}
-
           modeSlot={<ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />}
           askSlot={
             <AskEasyErfPanel

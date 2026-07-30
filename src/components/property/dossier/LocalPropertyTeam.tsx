@@ -347,9 +347,8 @@ export function LocalPropertyTeam({
     "search",
   );
   const [assigningProvider, setAssigningProvider] = useState<LocalProvider | null>(null);
-  const [assigningProviderCategory, setAssigningProviderCategory] = useState<LocalServiceCategory | null>(
-    null,
-  );
+  const [assigningProviderCategory, setAssigningProviderCategory] =
+    useState<LocalServiceCategory | null>(null);
 
   useEffect(() => {
     const nextGroups = orderedLocalServiceGroups(propertyState);
@@ -581,7 +580,10 @@ export function LocalPropertyTeam({
     };
   }
 
-  async function handleSaveVendorFromProvider(provider: LocalProvider, category: LocalServiceCategory) {
+  async function handleSaveVendorFromProvider(
+    provider: LocalProvider,
+    category: LocalServiceCategory,
+  ) {
     await vendorWorkspace.saveVendor(providerToVendorInput(provider, category));
   }
 
@@ -595,11 +597,14 @@ export function LocalPropertyTeam({
   }
 
   const providerVendorForAssign = assigningProvider
-    ? (vendorWorkspace.directory.find((vendor) => vendor.originPlaceId === assigningProvider.placeId) ??
-      null)
+    ? (vendorWorkspace.directory.find(
+        (vendor) => vendor.originPlaceId === assigningProvider.placeId,
+      ) ?? null)
     : null;
 
-  async function handleAssignProviderVendor(input: VendorAssignmentInput & { roleOnProperty: VendorRole }) {
+  async function handleAssignProviderVendor(
+    input: VendorAssignmentInput & { roleOnProperty: VendorRole },
+  ) {
     if (!assigningProvider || !assigningProviderCategory) return;
     let vendor = providerVendorForAssign;
     if (!vendor) {
@@ -611,8 +616,7 @@ export function LocalPropertyTeam({
   }
 
   const parcelTeamLabel =
-    marketAddressLabel ||
-    (parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "This property");
+    marketAddressLabel || (parcel.erfNumber ? `Erf ${parcel.erfNumber}` : "This property");
 
   const myPropertyTeamSection = (
     <MyPropertyTeam
@@ -654,23 +658,27 @@ export function LocalPropertyTeam({
 
   const assignDialog = (
     <AssignVendorDialog
-      vendor={assigningProvider ? (providerVendorForAssign ?? {
-        id: "__pending__",
-        name: assigningProvider.name,
-        company: null,
-        role: assigningProviderCategory
-          ? vendorRoleForLocalServiceCategory(assigningProviderCategory.id)
-          : "other",
-        phone: assigningProvider.phone,
-        email: null,
-        website: assigningProvider.website ?? assigningProvider.websiteUrl ?? null,
-        serviceArea: assigningProvider.address,
-        source: "Google search",
-        notes: null,
-        originPlaceId: assigningProvider.placeId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }) : null}
+      vendor={
+        assigningProvider
+          ? (providerVendorForAssign ?? {
+              id: "__pending__",
+              name: assigningProvider.name,
+              company: null,
+              role: assigningProviderCategory
+                ? vendorRoleForLocalServiceCategory(assigningProviderCategory.id)
+                : "other",
+              phone: assigningProvider.phone,
+              email: null,
+              website: assigningProvider.website ?? assigningProvider.websiteUrl ?? null,
+              serviceArea: assigningProvider.address,
+              source: "Google search",
+              notes: null,
+              originPlaceId: assigningProvider.placeId,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            })
+          : null
+      }
       parcelLabel={parcelTeamLabel}
       defaultScopeOfWork={
         assigningProviderCategory && isCustomServiceCategoryId(assigningProviderCategory.id)
@@ -736,278 +744,280 @@ export function LocalPropertyTeam({
       ) : activeLibraryTab === "add-manual" ? (
         <ManualVendorForm onSave={(input) => void vendorWorkspace.saveVendor(input)} />
       ) : (
-    <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h3 className="text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-            Find local help for this erf
-          </h3>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#0D1B2A]/68">
-            Up to three Google results near the confirmed Market address.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66 lg:max-w-sm">
-          <div className="font-semibold text-[#0D1B2A]">Searching around</div>
-          <div className="mt-1">{locationLabel}</div>
-          <button
-            type="button"
-            onClick={onOpenMarket}
-            className="mt-2 font-semibold text-[#B24A00] underline underline-offset-2"
-          >
-            Change address in Market
-          </button>
-          <div className="mt-2">
-            {stateLabel} - {savedProviders.length} provider{savedProviders.length === 1 ? "" : "s"}{" "}
-            saved
-          </div>
-        </div>
-      </div>
-
-      <form
-        className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          runCustomSearch(customInput);
-        }}
-      >
-        <label
-          htmlFor="custom-service-query"
-          className="text-sm font-semibold text-[#0D1B2A]"
-        >
-          What service do you need?
-        </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <input
-            id="custom-service-query"
-            type="text"
-            value={customInput}
-            maxLength={MAX_CUSTOM_SERVICE_QUERY_LENGTH}
-            onChange={(event) => {
-              setCustomInput(event.target.value);
-              if (customError) setCustomError(null);
-            }}
-            placeholder="Try security company, home staging, pool maintenance..."
-            className="min-h-11 w-full rounded-full border border-[#0D1B2A]/12 bg-white px-4 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/50"
-          />
-          <button
-            type="submit"
-            disabled={!sanitizeCustomServiceQuery(customInput) || currentSearch.loading}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-5 text-sm font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Search className="h-4 w-4" /> Search nearby
-          </button>
-        </div>
-        {customError && (
-          <p className="mt-2 text-xs font-semibold text-[#B24A00]">{customError}</p>
-        )}
-        {recentCustomSearches.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-              Recent
-            </span>
-            {recentCustomSearches.map((entry) => (
-              <button
-                key={entry}
-                type="button"
-                onClick={() => runCustomSearch(entry)}
-                className="inline-flex min-h-8 items-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
-              >
-                {entry}
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/60">
-          Searched around the saved Market address, never the erf number.
-        </p>
-      </form>
-
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
-        {groups.map((group) => {
-          const active = group.id === activeGroupId;
-          const Icon = groupIcon(group.id);
-          return (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => chooseGroup(group.id)}
-              className={cn(
-                "min-w-[16rem] rounded-2xl border p-4 text-left transition lg:min-w-0",
-                active
-                  ? "border-[#FF6A00]/40 bg-[#fff8ec] shadow-[0_14px_34px_-28px_rgba(255,106,0,0.7)]"
-                  : "border-[#D9E6F2] bg-[#F7FBFF] hover:border-[#0D1B2A]/20 hover:bg-white",
-              )}
-              aria-pressed={active}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
-                  <Icon className="h-4 w-4" /> {group.label}
-                </div>
-                <ChevronRight className={cn("h-4 w-4", active && "text-[#FF6A00]")} />
-              </div>
-              <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/60">{group.description}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Local service categories">
-        {activeCategories.map((category) => {
-          const active = category.id === activeCategory?.id;
-          const Icon = categoryIcon(category.id);
-          return (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => chooseCategory(category)}
-              className={cn(
-                "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition",
-                active
-                  ? "border-[#0D1B2A] bg-[#0D1B2A] text-white"
-                  : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" /> {category.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {activeCategory && (
-        <section className="mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-                {isCustomActive ? "Your search" : "Top local Google results"}
-              </p>
-              <h4 className="text-base font-semibold text-[#0D1B2A]">
-                {isCustomActive
-                  ? customServiceResultsHeading(activeCategory.searchQuery)
-                  : activeCategory.label}
-              </h4>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-[#0D1B2A]/62">
-                {activeCategory.reason[propertyState]}
+              <h3 className="text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+                Find local help for this erf
+              </h3>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#0D1B2A]/68">
+                Up to three Google results near the confirmed Market address.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+
+            <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66 lg:max-w-sm">
+              <div className="font-semibold text-[#0D1B2A]">Searching around</div>
+              <div className="mt-1">{locationLabel}</div>
               <button
                 type="button"
-                disabled={currentSearch.loading}
-                onClick={() => void searchCategory(activeCategory, false)}
-                className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-wait disabled:opacity-60"
+                onClick={onOpenMarket}
+                className="mt-2 font-semibold text-[#B24A00] underline underline-offset-2"
               >
-                {currentSearch.loading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Search className="h-3.5 w-3.5" />
-                )}
-                {currentSearch.loaded ? "Refresh nearby results" : "Find nearby providers"}
+                Change address in Market
               </button>
-              {fallbackUrl && (
-                <a
-                  href={fallbackUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
-                >
-                  Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
-              {currentSearch.loading && (
-                <button
-                  type="button"
-                  onClick={cancelSearch}
-                  className="inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
-                >
-                  Cancel
-                </button>
-              )}
+              <div className="mt-2">
+                {stateLabel} - {savedProviders.length} provider
+                {savedProviders.length === 1 ? "" : "s"} saved
+              </div>
             </div>
           </div>
 
-          {currentSearch.loading ? (
-            <div className="mt-4 flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-[#D9E6F2] bg-white text-sm text-[#0D1B2A]/60">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finding local providers
+          <form
+            className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              runCustomSearch(customInput);
+            }}
+          >
+            <label htmlFor="custom-service-query" className="text-sm font-semibold text-[#0D1B2A]">
+              What service do you need?
+            </label>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                id="custom-service-query"
+                type="text"
+                value={customInput}
+                maxLength={MAX_CUSTOM_SERVICE_QUERY_LENGTH}
+                onChange={(event) => {
+                  setCustomInput(event.target.value);
+                  if (customError) setCustomError(null);
+                }}
+                placeholder="Try security company, home staging, pool maintenance..."
+                className="min-h-11 w-full rounded-full border border-[#0D1B2A]/12 bg-white px-4 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/50"
+              />
+              <button
+                type="submit"
+                disabled={!sanitizeCustomServiceQuery(customInput) || currentSearch.loading}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-5 text-sm font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Search className="h-4 w-4" /> Search nearby
+              </button>
             </div>
-          ) : currentSearch.providers.length ? (
-            <>
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                {currentSearch.providers.slice(0, 3).map((provider) => (
-                  <ProviderCard
-                    key={provider.placeId}
-                    provider={provider}
-                    category={activeCategory}
-                    saved={savedProviders.some((item) => item.placeId === provider.placeId)}
-                    onToggleSaved={() => toggleSaved(provider)}
-                    isVendorSaved={isProviderSaved(provider)}
-                    onSaveVendor={() => void handleSaveVendorFromProvider(provider, activeCategory)}
-                    onAddToProperty={() => openAssignForProvider(provider, activeCategory)}
-                  />
+            {customError && (
+              <p className="mt-2 text-xs font-semibold text-[#B24A00]">{customError}</p>
+            )}
+            {recentCustomSearches.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                  Recent
+                </span>
+                {recentCustomSearches.map((entry) => (
+                  <button
+                    key={entry}
+                    type="button"
+                    onClick={() => runCustomSearch(entry)}
+                    className="inline-flex min-h-8 items-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
+                  >
+                    {entry}
+                  </button>
                 ))}
               </div>
-              <p className="mt-3 text-[11px] font-medium text-[#64748B]">
-                Results provided by Google Maps.{" "}
-                {currentSearch.radiusKm ? `Search radius: ${currentSearch.radiusKm} km.` : null}
-              </p>
-              <GooglePlacesAttribution providers={currentSearch.providers.slice(0, 3)} />
-            </>
-          ) : currentSearch.loaded ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
-              <p>
-                {currentSearch.error
-                  ? currentSearch.error
-                  : "No matching Google providers were found in this search area."}
-              </p>
-              {!currentSearch.error && (
-                <p className="mt-1 text-xs text-[#0D1B2A]/54">
-                  Service-area businesses may not always appear near the property pin. Try the wider
-                  area or open this search in Google Maps.
-                </p>
-              )}
-              {!currentSearch.error && currentSearch.queriesAttempted ? (
-                <p className="mt-1 text-[11px] text-[#64748B]">
-                  Checked {currentSearch.queriesAttempted} Google search{" "}
-                  {currentSearch.queriesAttempted === 1 ? "variant" : "variants"}
-                  {currentSearch.radiusKm ? ` within ${currentSearch.radiusKm} km` : ""}.
-                </p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={currentSearch.loading || currentSearch.widerArea}
-                  onClick={() => void searchCategory(activeCategory, true)}
-                  className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941] disabled:opacity-50"
-                >
-                  Try wider area
-                </button>
-                {fallbackUrl && (
-                  <a
-                    href={fallbackUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
-                  >
-                    Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
-              Search only when you need this category. Easy Erf will show up to three genuine Google
-              business results or an honest fallback.
-            </div>
-          )}
-        </section>
-      )}
+            )}
+            <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/60">
+              Searched around the saved Market address, never the erf number.
+            </p>
+          </form>
 
-      <div className="mt-5 rounded-2xl border border-[#FF6A00]/20 bg-[#fff8ec] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66">
-        Results are sourced from Google and have not been independently vetted or endorsed by Easy
-        Erf. Confirm credentials, registration, insurance, pricing, and references before appointing
-        a provider.
-      </div>
-    </section>
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
+            {groups.map((group) => {
+              const active = group.id === activeGroupId;
+              const Icon = groupIcon(group.id);
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => chooseGroup(group.id)}
+                  className={cn(
+                    "min-w-[16rem] rounded-2xl border p-4 text-left transition lg:min-w-0",
+                    active
+                      ? "border-[#FF6A00]/40 bg-[#fff8ec] shadow-[0_14px_34px_-28px_rgba(255,106,0,0.7)]"
+                      : "border-[#D9E6F2] bg-[#F7FBFF] hover:border-[#0D1B2A]/20 hover:bg-white",
+                  )}
+                  aria-pressed={active}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
+                      <Icon className="h-4 w-4" /> {group.label}
+                    </div>
+                    <ChevronRight className={cn("h-4 w-4", active && "text-[#FF6A00]")} />
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/60">{group.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            className="mt-5 flex gap-2 overflow-x-auto pb-1"
+            aria-label="Local service categories"
+          >
+            {activeCategories.map((category) => {
+              const active = category.id === activeCategory?.id;
+              const Icon = categoryIcon(category.id);
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => chooseCategory(category)}
+                  className={cn(
+                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition",
+                    active
+                      ? "border-[#0D1B2A] bg-[#0D1B2A] text-white"
+                      : "border-[#0D1B2A]/10 bg-white text-[#0D1B2A] hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" /> {category.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {activeCategory && (
+            <section className="mt-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                    {isCustomActive ? "Your search" : "Top local Google results"}
+                  </p>
+                  <h4 className="text-base font-semibold text-[#0D1B2A]">
+                    {isCustomActive
+                      ? customServiceResultsHeading(activeCategory.searchQuery)
+                      : activeCategory.label}
+                  </h4>
+                  <p className="mt-1 max-w-3xl text-xs leading-5 text-[#0D1B2A]/62">
+                    {activeCategory.reason[propertyState]}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={currentSearch.loading}
+                    onClick={() => void searchCategory(activeCategory, false)}
+                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {currentSearch.loading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Search className="h-3.5 w-3.5" />
+                    )}
+                    {currentSearch.loaded ? "Refresh nearby results" : "Find nearby providers"}
+                  </button>
+                  {fallbackUrl && (
+                    <a
+                      href={fallbackUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
+                    >
+                      Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {currentSearch.loading && (
+                    <button
+                      type="button"
+                      onClick={cancelSearch}
+                      className="inline-flex min-h-9 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {currentSearch.loading ? (
+                <div className="mt-4 flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-[#D9E6F2] bg-white text-sm text-[#0D1B2A]/60">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finding local providers
+                </div>
+              ) : currentSearch.providers.length ? (
+                <>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    {currentSearch.providers.slice(0, 3).map((provider) => (
+                      <ProviderCard
+                        key={provider.placeId}
+                        provider={provider}
+                        category={activeCategory}
+                        saved={savedProviders.some((item) => item.placeId === provider.placeId)}
+                        onToggleSaved={() => toggleSaved(provider)}
+                        isVendorSaved={isProviderSaved(provider)}
+                        onSaveVendor={() =>
+                          void handleSaveVendorFromProvider(provider, activeCategory)
+                        }
+                        onAddToProperty={() => openAssignForProvider(provider, activeCategory)}
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-3 text-[11px] font-medium text-[#64748B]">
+                    Results provided by Google Maps.{" "}
+                    {currentSearch.radiusKm ? `Search radius: ${currentSearch.radiusKm} km.` : null}
+                  </p>
+                  <GooglePlacesAttribution providers={currentSearch.providers.slice(0, 3)} />
+                </>
+              ) : currentSearch.loaded ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
+                  <p>
+                    {currentSearch.error
+                      ? currentSearch.error
+                      : "No matching Google providers were found in this search area."}
+                  </p>
+                  {!currentSearch.error && (
+                    <p className="mt-1 text-xs text-[#0D1B2A]/54">
+                      Service-area businesses may not always appear near the property pin. Try the
+                      wider area or open this search in Google Maps.
+                    </p>
+                  )}
+                  {!currentSearch.error && currentSearch.queriesAttempted ? (
+                    <p className="mt-1 text-[11px] text-[#64748B]">
+                      Checked {currentSearch.queriesAttempted} Google search{" "}
+                      {currentSearch.queriesAttempted === 1 ? "variant" : "variants"}
+                      {currentSearch.radiusKm ? ` within ${currentSearch.radiusKm} km` : ""}.
+                    </p>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={currentSearch.loading || currentSearch.widerArea}
+                      onClick={() => void searchCategory(activeCategory, true)}
+                      className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941] disabled:opacity-50"
+                    >
+                      Try wider area
+                    </button>
+                    {fallbackUrl && (
+                      <a
+                        href={fallbackUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
+                      >
+                        Open this search in Google Maps <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-dashed border-[#D9E6F2] bg-white px-4 py-4 text-sm leading-6 text-[#0D1B2A]/62">
+                  Search only when you need this category. Easy Erf will show up to three genuine
+                  Google business results or an honest fallback.
+                </div>
+              )}
+            </section>
+          )}
+
+          <div className="mt-5 rounded-2xl border border-[#FF6A00]/20 bg-[#fff8ec] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66">
+            Results are sourced from Google and have not been independently vetted or endorsed by
+            Easy Erf. Confirm credentials, registration, insurance, pricing, and references before
+            appointing a provider.
+          </div>
+        </section>
       )}
       {assignDialog}
     </div>

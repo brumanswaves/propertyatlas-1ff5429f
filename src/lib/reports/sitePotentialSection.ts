@@ -123,7 +123,7 @@ export function buildSitePotentialReportPanel(input: {
         ? `Selected concept — ${input.conceptStyle}`
         : "Selected property concept"
       : null,
-    brief: hasConcept ? (input.brief?.trim() || null) : null,
+    brief: hasConcept ? input.brief?.trim() || null : null,
     metrics,
     disclaimer: `Theoretical and estimated. Not approved plans. ${input.disclaimer}`.trim(),
     emptyMessage:

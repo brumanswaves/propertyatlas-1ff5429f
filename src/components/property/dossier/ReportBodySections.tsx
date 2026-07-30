@@ -470,7 +470,6 @@ export function ReportSitePotentialSection({
   );
 }
 
-
 /* ---------------------------------------------------------------- appendix */
 
 const READ_STATE_TONE: Record<EvidenceAppendixRow["readState"], string> = {
