@@ -11,6 +11,7 @@ import { ConfirmPropertyStep } from "./ConfirmPropertyStep";
 import { ExpertWorkspaceLauncher } from "./ExpertWorkspaceLauncher";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
+import { GuidedZoningStep } from "./GuidedZoningStep";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { InvestigationStepNavigator } from "./InvestigationStepNavigator";
 import { InvestigationStepShell } from "./InvestigationStepShell";
@@ -72,6 +73,8 @@ export function InvestigationJourney({
             onContinue={() => onSelectStep("zoning")}
             onOpenPaidReports={() => onOpenExpertWorkspace("reports")}
           />
+        ) : activeStep.id === "zoning" ? (
+          <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
         ) : null}
       </InvestigationStepShell>
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/82 p-4">
