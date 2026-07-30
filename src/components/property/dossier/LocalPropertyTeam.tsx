@@ -33,6 +33,14 @@ import {
   type SavedLocalProvider,
 } from "@/lib/localServices/savedProviders";
 import { cn } from "@/lib/utils";
+import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
+import { vendorRoleForLocalServiceCategory } from "@/lib/vendors/localServiceRoleMap";
+import type { VendorAssignmentInput, VendorRole } from "@/lib/vendors/types";
+import { MyPropertyTeam } from "@/components/property/vendors/MyPropertyTeam";
+import { VendorLibraryPanel } from "@/components/property/vendors/VendorLibraryPanel";
+import { ManualVendorForm } from "@/components/property/vendors/ManualVendorForm";
+import { AssignVendorDialog } from "@/components/property/vendors/AssignVendorDialog";
+import { BookmarkPlus, ClipboardList } from "lucide-react";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
