@@ -5,7 +5,13 @@ import {
   localServiceSearchQueries,
   type LocalProvider,
   type LocalProviderAttribution,
+  type LocalServiceCategory,
 } from "@/lib/localServices/catalog";
+import {
+  buildCustomServiceCategory,
+  isCustomServiceCategoryId,
+} from "@/lib/localServices/customServiceSearch";
+
 
 const DEFAULT_RADIUS_KM = 15;
 const WIDE_RADIUS_KM = 35;
@@ -38,6 +44,7 @@ interface SearchRequestBody {
   address?: unknown;
   confirmedAddress?: unknown;
   query?: unknown;
+  customQuery?: unknown;
   latitude?: unknown;
   longitude?: unknown;
   widerArea?: unknown;
@@ -90,10 +97,28 @@ export async function handleLocalServicesSearchRequest(request: Request) {
   }
 
   const categoryId = cleanText(body.serviceCategory ?? body.categoryId, 80);
-  const category = LOCAL_SERVICE_CATEGORIES.find((item) => item.id === categoryId);
+  const rawCustomQuery = cleanText(body.customQuery, 160);
+  const isCustomSearch = Boolean(rawCustomQuery) || isCustomServiceCategoryId(categoryId);
+  let category: LocalServiceCategory | undefined;
+  if (isCustomSearch) {
+    category = buildCustomServiceCategory(rawCustomQuery) ?? undefined;
+    if (!category) {
+      return json(
+        {
+          success: false,
+          code: "invalid_query",
+          error: "Enter the service you are looking for.",
+        },
+        400,
+      );
+    }
+  } else {
+    category = LOCAL_SERVICE_CATEGORIES.find((item) => item.id === categoryId);
+  }
   if (!category) {
     return json({ success: false, code: "invalid_category", error: "Unknown service category." }, 400);
   }
+
 
   const address = cleanText(body.confirmedAddress ?? body.address, 240);
   if (!address) {
@@ -158,7 +183,9 @@ export async function handleLocalServicesSearchRequest(request: Request) {
   const seenPlaceIds = new Set<string>();
   const seenBusinessKeys = new Set<string>();
   let queriesAttempted = 0;
-  const includeServiceAreaBusinesses = includePureServiceAreaBusinesses(category);
+  const includeServiceAreaBusinesses = isCustomSearch
+    ? true
+    : includePureServiceAreaBusinesses(category);
   const origin = hasCoordinates ? { lat: latitude, lng: longitude } : null;
 
   for (const textQuery of serverQueries) {
