@@ -670,10 +670,26 @@ export function LocalPropertyTeam({
           </button>
         </div>
       </section>
+        )}
+      </div>
     );
   }
 
   return (
+    <div className="space-y-5">
+      {myPropertyTeamSection}
+      {libraryTabs}
+      {activeLibraryTab === "my-vendors" ? (
+        <VendorLibraryPanel
+          parcelLabel={parcelTeamLabel}
+          vendors={vendorWorkspace.directory}
+          assignments={vendorWorkspace.assignments}
+          onAssignVendor={(vendorId, input) => vendorWorkspace.assignVendor(vendorId, input)}
+          onDeleteVendor={(vendorId) => vendorWorkspace.deleteVendor(vendorId, true)}
+        />
+      ) : activeLibraryTab === "add-manual" ? (
+        <ManualVendorForm onSave={(input) => vendorWorkspace.saveVendor(input)} />
+      ) : (
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -887,6 +903,9 @@ export function LocalPropertyTeam({
         a provider.
       </div>
     </section>
+      )}
+      {assignDialog}
+    </div>
   );
 }
 
