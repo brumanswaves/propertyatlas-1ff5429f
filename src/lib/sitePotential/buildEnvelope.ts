@@ -117,19 +117,77 @@ function normalizeRing(ring: Array<[number, number]>): Array<[number, number]> {
   return out;
 }
 
+/**
+ * Origin of the local equirectangular projection used for the envelope maths.
+ * Retaining it lets every local-metre polygon be converted back to WGS84 so
+ * map layers land in the correct geographic position.
+ */
+export interface LocalProjection {
+  lat0: number;
+  lng0: number;
+  cos: number;
+}
+
+export function ringProjection(ring: Array<[number, number]>): LocalProjection | null {
+  const points = normalizeRing(ring);
+  if (points.length < 3) return null;
+  const lat0 = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+  const lng0 = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+  return { lat0, lng0, cos: Math.cos((lat0 * Math.PI) / 180) };
+}
+
 /** Equirectangular projection around the ring centroid. Accurate at erf scale. */
 export function projectRingToLocalMetres(ring: Array<[number, number]>): LocalPoint[] {
   const points = normalizeRing(ring);
-  if (points.length < 3) return [];
-  const lat0 = points.reduce((sum, p) => sum + p[1], 0) / points.length;
-  const lng0 = points.reduce((sum, p) => sum + p[0], 0) / points.length;
-  const cos = Math.cos((lat0 * Math.PI) / 180);
+  const projection = ringProjection(ring);
+  if (!projection) return [];
   return points.map((p) => ({
-    x: (p[0] - lng0) * EARTH_M_PER_DEG * cos,
+    x: (p[0] - projection.lng0) * EARTH_M_PER_DEG * projection.cos,
     // Flip so that increasing y renders downwards in SVG space.
-    y: -(p[1] - lat0) * EARTH_M_PER_DEG,
+    y: -(p[1] - projection.lat0) * EARTH_M_PER_DEG,
   }));
 }
+
+/** Exact inverse of `projectRingToLocalMetres` for a single point. */
+export function localToWgs84(point: LocalPoint, projection: LocalProjection): [number, number] {
+  const cos = projection.cos || 1;
+  return [
+    projection.lng0 + point.x / (EARTH_M_PER_DEG * cos),
+    projection.lat0 - point.y / EARTH_M_PER_DEG,
+  ];
+}
+
+export function localPolygonToWgs84(
+  polygon: LocalPoint[],
+  projection: LocalProjection,
+): Array<[number, number]> {
+  return polygon.map((point) => localToWgs84(point, projection));
+}
+
+/**
+ * Picks the boundary that faces the street from a set of edge lengths, using a
+ * known frontage length range (e.g. a surveyed street frontage). Returns null
+ * when no edge falls inside the range, so nothing is guessed.
+ */
+export function pickStreetEdgeIndexByLength(
+  lengths: number[],
+  range: [number, number],
+): number | null {
+  const [min, max] = range[0] <= range[1] ? range : [range[1], range[0]];
+  const mid = (min + max) / 2;
+  let best: number | null = null;
+  let bestDelta = Infinity;
+  lengths.forEach((length, index) => {
+    if (!Number.isFinite(length) || length < min || length > max) return;
+    const delta = Math.abs(length - mid);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      best = index;
+    }
+  });
+  return best;
+}
+
 
 export function polygonAreaM2(polygon: LocalPoint[]): number {
   if (polygon.length < 3) return 0;
