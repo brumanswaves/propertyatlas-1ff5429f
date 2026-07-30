@@ -448,7 +448,7 @@ describe("PropertyIntelligenceReport view (source-level)", () => {
 
   it("renders the Phase 2 Executive Decision Brief from decision intelligence", () => {
     expect(source).toContain("buildDecisionIntelligence(report)");
-    expect(source).toContain("Overall verdict");
+    expect(source).toContain("Decision snapshot");
     expect(source).toContain('return "Proceed"');
     expect(source).toContain('return "Proceed with conditions"');
     expect(source).toContain('return "Investigate further"');

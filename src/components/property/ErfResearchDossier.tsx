@@ -2215,38 +2215,36 @@ function StoepAiReportView({
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
                     {decision.confidenceCategories.map((category) => (
-                      <details
+                      <div
                         key={category.id}
-                        className="group rounded-2xl border border-[#D9E6F2] bg-white p-3 open:border-[#FF6A00]/35"
+                        className="rounded-2xl border border-[#D9E6F2] bg-white p-3"
                       >
-                        <summary className="cursor-pointer list-none">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-[#0D1B2A]">
-                              {category.label}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
-                                readinessStroke(category.state),
-                              )}
-                            >
-                              {readinessLabel(category.state)}
-                            </span>
-                          </div>
-                          <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
-                            {category.score}
-                          </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
-                            <div
-                              className="h-full rounded-full bg-[#FF6A00]"
-                              style={{ width: `${category.score}%` }}
-                            />
-                          </div>
-                        </summary>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-[#0D1B2A]">
+                            {category.label}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+                              readinessStroke(category.state),
+                            )}
+                          >
+                            {readinessLabel(category.state)}
+                          </span>
+                        </div>
+                        <div className="mt-3 text-2xl font-semibold text-[#0D1B2A]">
+                          {category.score}
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D9E6F2]">
+                          <div
+                            className="h-full rounded-full bg-[#FF6A00]"
+                            style={{ width: `${category.score}%` }}
+                          />
+                        </div>
                         <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/66">
                           {category.explanation}
                         </p>
-                      </details>
+                      </div>
                     ))}
                   </div>
                 </section>

@@ -394,7 +394,7 @@ describe("Report concision (dossier source)", () => {
 
     // None of these deep markers may also appear outside the disclosure.
     const outside = source.slice(0, start) + source.slice(end);
-    for (const marker of ["ReportSgLineageSection", 'id="report-zoning-build"', "ReportEvidenceAppendix", "ReportChangeTrackingSection"]) {
+    for (const marker of ["<ReportSgLineageSection", 'id="report-zoning-build"', "<ReportEvidenceAppendix", "<ReportChangeTrackingSection"]) {
       expect(outside).not.toContain(marker);
     }
   });
