@@ -8,7 +8,11 @@ import {
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import { planningZoneStorageKey, readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
+import {
+  PLANNING_ZONE_UPDATED_EVENT,
+  readStoredPlanningZone,
+  writeStoredPlanningZone,
+} from "@/lib/planning/storedPlanningZone";
 import { ZoningBuildPanel } from "./ZoningBuildPanel";
 
 /**
@@ -30,18 +34,19 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setManualZoneCode(readStoredPlanningZone(parcel.id));
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      if (detail?.parcelId && detail.parcelId !== parcel.id) return;
+      setManualZoneCode(readStoredPlanningZone(parcel.id));
+    };
+    sync();
+    window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
   }, [parcel.id]);
 
   const selectZone = useCallback(
     (code: string | null) => {
-      setManualZoneCode(code);
-      try {
-        if (code) window.localStorage.setItem(planningZoneStorageKey(parcel.id), code);
-        else window.localStorage.removeItem(planningZoneStorageKey(parcel.id));
-      } catch {
-        /* storage is best-effort only */
-      }
+      setManualZoneCode(writeStoredPlanningZone(parcel.id, code));
     },
     [parcel.id],
   );
