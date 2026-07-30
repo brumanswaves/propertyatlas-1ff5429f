@@ -739,18 +739,14 @@ export function LocalPropertyTeam({
     <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-            <MapPin className="h-3.5 w-3.5" /> Local Property Team
-          </div>
-          <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+          <h3 className="text-2xl font-semibold tracking-tight text-[#0D1B2A]">
             Find local help for this erf
           </h3>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-            Choose the service you need and Easy Erf will return up to three relevant Google results
-            around the confirmed Market address. Results are not based on the erf number or parcel
-            label.
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#0D1B2A]/68">
+            Up to three Google results near the confirmed Market address.
           </p>
         </div>
+
         <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-xs leading-5 text-[#0D1B2A]/66 lg:max-w-sm">
           <div className="font-semibold text-[#0D1B2A]">Searching around</div>
           <div className="mt-1">{locationLabel}</div>
