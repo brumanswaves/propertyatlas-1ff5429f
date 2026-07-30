@@ -100,21 +100,37 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
       result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
         ? polygonFeature(localPolygonToWgs84(result.coverageFootprint.polygon, projection))
         : null;
-    const street = result.streetEdge
-      ? {
-          type: "Feature" as const,
-          properties: {},
-          geometry: {
-            type: "LineString" as const,
-            coordinates: [
-              localToWgs84(result.streetEdge.a, projection),
-              localToWgs84(result.streetEdge.b, projection),
-            ],
-          },
-        }
+    const line = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+      type: "Feature" as const,
+      properties: {},
+      geometry: {
+        type: "LineString" as const,
+        coordinates: [localToWgs84(a, projection), localToWgs84(b, projection)],
+      },
+    });
+    const street = result.streetEdge ? line(result.streetEdge.a, result.streetEdge.b) : null;
+    const streetLine = result.streetEdge?.setbackLine
+      ? line(result.streetEdge.setbackLine.a, result.streetEdge.setbackLine.b)
       : null;
-    return { parcel, setback, coverage, street };
+    const coverageLabel =
+      result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
+        ? {
+            type: "Feature" as const,
+            properties: {
+              label: `MAX COVERAGE · ${result.coverageFootprint.areaM2} m²`,
+            },
+            geometry: {
+              type: "Point" as const,
+              coordinates: localToWgs84(
+                polygonCentroid(result.coverageFootprint.polygon),
+                projection,
+              ),
+            },
+          }
+        : null;
+    return { parcel, setback, coverage, street, streetLine, coverageLabel };
   }, [result]);
+
 
   const fit = useCallback(() => {
     const map = mapRef.current;
