@@ -72,11 +72,8 @@ function buildParcelAddressSuggestion(parcel: NormalizedOfficialParcel): Address
 }
 
 export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
-  const {
-    loading,
-    marketAddressIntelligence,
-    saveMarketAddressIntelligence,
-  } = useSavedMarketEvidence(parcel.id);
+  const { loading, marketAddressIntelligence, saveMarketAddressIntelligence } =
+    useSavedMarketEvidence(parcel.id);
   const savedAddress = selectedMarketAddress(marketAddressIntelligence);
   const officialSuggestion = useMemo(() => buildParcelAddressSuggestion(parcel), [parcel]);
   const [mapSuggestions, setMapSuggestions] = useState<AddressCandidate[]>([]);
@@ -109,7 +106,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
   );
   const mapsUrl = googleMapsPointUrl(parcel.coordinates ?? null);
 
-  function useSuggestion(candidate: AddressCandidate) {
+  function applySuggestion(candidate: AddressCandidate) {
     setStreetAddress(candidate.formattedAddress);
     setSuburb(candidate.suburb ?? parcel.suburbOrArea ?? "");
     setTown(candidate.town ?? parcel.town ?? "");
@@ -319,7 +316,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               <button
                 key={candidate.id}
                 type="button"
-                onClick={() => useSuggestion(candidate)}
+                onClick={() => applySuggestion(candidate)}
                 className="rounded-xl border border-[#0D1B2A]/10 bg-white p-3 text-left transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf4]"
               >
                 <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">

@@ -49,9 +49,7 @@ export function InvestigationStepShell({
           <h3 className="mt-1 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
             {step.label}
           </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
-            {step.description}
-          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">{step.description}</p>
         </div>
         <span
           className={cn(

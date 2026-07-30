@@ -26,16 +26,14 @@ export function GuidedReportStep({ plan, report, onOpenReport }: GuidedReportSte
               Review what Easy Erf can support today
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              The report is available even when evidence is missing. Supported findings, assumptions,
-              contradictions, and unresolved gaps remain labelled so the report does not invent ownership,
-              zoning, value, compliance, or development rights.
+              The report is available even when evidence is missing. Supported findings,
+              assumptions, contradictions, and unresolved gaps remain labelled so the report does
+              not invent ownership, zoning, value, compliance, or development rights.
             </p>
           </div>
           <span
             className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-              hasMaterialGaps
-                ? "bg-amber-100 text-amber-900"
-                : "bg-emerald-100 text-emerald-800"
+              hasMaterialGaps ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"
             }`}
           >
             {hasMaterialGaps ? (
@@ -97,10 +95,12 @@ export function GuidedReportStep({ plan, report, onOpenReport }: GuidedReportSte
         <div className="flex gap-3">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#FFB86B]" />
           <div>
-            <h4 className="text-sm font-semibold">Opening the report completes the guided journey</h4>
+            <h4 className="text-sm font-semibold">
+              Opening the report completes the guided journey
+            </h4>
             <p className="mt-1 text-sm leading-6 text-white/70">
-              You can return to any earlier step, add stronger evidence, and reopen the report. The report
-              will update from the same saved erf file without deleting later work.
+              You can return to any earlier step, add stronger evidence, and reopen the report. The
+              report will update from the same saved erf file without deleting later work.
             </p>
           </div>
         </div>

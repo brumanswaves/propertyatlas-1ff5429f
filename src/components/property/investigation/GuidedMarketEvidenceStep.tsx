@@ -1,20 +1,10 @@
 import { useMemo, useState } from "react";
-import {
-  BarChart3,
-  ExternalLink,
-  Home,
-  Loader2,
-  Scale,
-  Trash2,
-} from "lucide-react";
+import { BarChart3, ExternalLink, Home, Loader2, Scale, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { ListingUrlImporter } from "@/features/marketEvidence/listingImporter/ListingUrlImporter";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
-import {
-  RELATIONSHIP_LABELS,
-  type SavedMarketEvidence,
-} from "@/features/marketEvidence/types";
+import { RELATIONSHIP_LABELS, type SavedMarketEvidence } from "@/features/marketEvidence/types";
 import { cn } from "@/lib/utils";
 
 interface GuidedMarketEvidenceStepProps {
@@ -49,16 +39,8 @@ function safeHost(url: string) {
   }
 }
 
-export function GuidedMarketEvidenceStep({
-  parcel,
-  onContinue,
-}: GuidedMarketEvidenceStepProps) {
-  const {
-    loading,
-    evidence,
-    upsertEvidence,
-    deleteEvidence,
-  } = useSavedMarketEvidence(parcel.id);
+export function GuidedMarketEvidenceStep({ parcel, onContinue }: GuidedMarketEvidenceStepProps) {
+  const { loading, evidence, upsertEvidence, deleteEvidence } = useSavedMarketEvidence(parcel.id);
   const [mode, setMode] = useState<MarketImportMode>("active_listing");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -95,17 +77,16 @@ export function GuidedMarketEvidenceStep({
               Paste a listing URL and review what Easy Erf captures
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Save the active listing for this erf separately from comparable evidence. Easy Erf imports
-              available listing facts for your review, but it does not treat a portal asking price as a
-              valuation or claim that a hidden-address listing automatically matches this erf.
+              Save the active listing for this erf separately from comparable evidence. Easy Erf
+              imports available listing facts for your review, but it does not treat a portal asking
+              price as a valuation or claim that a hidden-address listing automatically matches this
+              erf.
             </p>
           </div>
           <span
             className={cn(
               "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-              canContinue
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-slate-100 text-slate-700",
+              canContinue ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700",
             )}
           >
             <BarChart3 className="h-3.5 w-3.5" />
@@ -133,8 +114,8 @@ export function GuidedMarketEvidenceStep({
               Active listing for this erf
             </div>
             <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-              Use this only for the listing you believe belongs to the selected property. Your save is an
-              explicit attachment decision, not an automatic cadastral match.
+              Use this only for the listing you believe belongs to the selected property. Your save
+              is an explicit attachment decision, not an automatic cadastral match.
             </p>
           </button>
           <button
@@ -152,8 +133,8 @@ export function GuidedMarketEvidenceStep({
               Comparable listing or sale
             </div>
             <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-              Save a nearby or similar property as market evidence. Review size, location, condition, and
-              property type before relying on it as a comparison.
+              Save a nearby or similar property as market evidence. Review size, location,
+              condition, and property type before relying on it as a comparison.
             </p>
           </button>
         </div>
@@ -186,8 +167,8 @@ export function GuidedMarketEvidenceStep({
           <div>
             <h4 className="text-sm font-semibold text-[#0D1B2A]">Saved market evidence</h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              Active listings stay separate from comparable calculations. Saved comps are evidence inputs,
-              not a formal valuation.
+              Active listings stay separate from comparable calculations. Saved comps are evidence
+              inputs, not a formal valuation.
             </p>
           </div>
           <div className="flex gap-2 text-xs font-semibold text-[#64748B]">
@@ -291,8 +272,11 @@ function EvidenceCard({
             </span>
           </div>
           <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/60">
-            {[item.propertyType, item.landSizeM2 ? `${item.landSizeM2.toLocaleString()} m² land` : null,
-              item.buildingSizeM2 ? `${item.buildingSizeM2.toLocaleString()} m² building` : null]
+            {[
+              item.propertyType,
+              item.landSizeM2 ? `${item.landSizeM2.toLocaleString()} m² land` : null,
+              item.buildingSizeM2 ? `${item.buildingSizeM2.toLocaleString()} m² building` : null,
+            ]
               .filter(Boolean)
               .join(" · ") || "Review the source for missing property details."}
           </p>
@@ -313,7 +297,11 @@ function EvidenceCard({
             onClick={onDelete}
             className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-red-300/50 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-800 disabled:opacity-60"
           >
-            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+            {deleting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
             Remove
           </button>
         </div>

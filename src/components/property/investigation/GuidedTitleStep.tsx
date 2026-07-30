@@ -14,10 +14,7 @@ import {
 import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { GOVZA_DEEDS_GUIDANCE_URL } from "@/lib/external-urls";
-import {
-  dispatchErfFileVaultUpdated,
-  useErfFileVault,
-} from "@/lib/workbench/useErfFileVault";
+import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
@@ -56,11 +53,7 @@ function isUsableSubjectTitle(asset: ErfAsset) {
   );
 }
 
-export function GuidedTitleStep({
-  parcel,
-  onContinue,
-  onOpenPaidReports,
-}: GuidedTitleStepProps) {
+export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: GuidedTitleStepProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["title_deed"]);
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
@@ -80,8 +73,7 @@ export function GuidedTitleStep({
         )
         .filter(
           (claim) =>
-            claim.scope === "subject" &&
-            (claim.domain === "deeds" || claim.domain === "ownership"),
+            claim.scope === "subject" && (claim.domain === "deeds" || claim.domain === "ownership"),
         )
         .slice(0, 12),
     [usableTitles],
@@ -89,7 +81,9 @@ export function GuidedTitleStep({
 
   async function readTitle(asset: ErfAsset, retry = false) {
     if (!isExtractableErfAsset(asset)) {
-      toast.error("This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+      toast.error(
+        "This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.",
+      );
       return;
     }
 
@@ -107,7 +101,9 @@ export function GuidedTitleStep({
         return;
       }
       if (result.identityMatchStatus === "mismatch") {
-        toast.error("This title document appears to describe a different property and was rejected.");
+        toast.error(
+          "This title document appears to describe a different property and was rejected.",
+        );
         return;
       }
       if (result.claimCount === 0) {
@@ -179,7 +175,9 @@ export function GuidedTitleStep({
       await vault.remove(asset);
       toast.success("Title document removed from this erf file.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The title document could not be removed.");
+      toast.error(
+        error instanceof Error ? error.message : "The title document could not be removed.",
+      );
     } finally {
       setRemovingAssetId(null);
     }
@@ -198,8 +196,8 @@ export function GuidedTitleStep({
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
               Upload the title deed or a title document for this erf. Easy Erf reads document-backed
-              ownership and deed claims, including title conditions, servitudes, easements, rights of
-              way, endorsements and restrictions when they are stated in the file.
+              ownership and deed claims, including title conditions, servitudes, easements, rights
+              of way, endorsements and restrictions when they are stated in the file.
             </p>
           </div>
           <span
@@ -236,8 +234,8 @@ export function GuidedTitleStep({
               Get or understand the title record
             </div>
             <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-              Use official deeds guidance to understand the registry process. Easy Erf does not claim
-              that free public guidance verifies ownership or replaces a conveyancer.
+              Use official deeds guidance to understand the registry process. Easy Erf does not
+              claim that free public guidance verifies ownership or replaces a conveyancer.
             </p>
             <a
               href={GOVZA_DEEDS_GUIDANCE_URL}
@@ -256,7 +254,8 @@ export function GuidedTitleStep({
             </div>
             <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
               Lightstone or WinDeed can add ownership, transfer and deeds-level context. A provider
-              report is a confidence upgrade, but it does not automatically replace the actual title deed.
+              report is a confidence upgrade, but it does not automatically replace the actual title
+              deed.
             </p>
             <button
               type="button"
@@ -293,7 +292,8 @@ export function GuidedTitleStep({
 
         {!vault.signedIn && (
           <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. You can still open the official guidance or skip this step for now.
+            Sign in before uploading. You can still open the official guidance or skip this step for
+            now.
           </p>
         )}
         {vault.uploadState && (
@@ -464,8 +464,8 @@ export function GuidedTitleStep({
             </dl>
           ) : (
             <p className="mt-3 text-sm text-emerald-950/70">
-              The title document matched this erf, but no ownership or deed-condition claims were extracted.
-              Review the original file directly.
+              The title document matched this erf, but no ownership or deed-condition claims were
+              extracted. Review the original file directly.
             </p>
           )}
         </section>

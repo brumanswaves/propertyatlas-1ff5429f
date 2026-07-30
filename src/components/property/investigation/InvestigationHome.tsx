@@ -68,7 +68,9 @@ export function InvestigationHome({
   mapSlot,
 }: InvestigationHomeProps) {
   const { assets } = useErfFileVault(parcel.id);
-  const { evidence, marketAddressIntelligence, propertyIdentity } = useSavedMarketEvidence(parcel.id);
+  const { evidence, marketAddressIntelligence, propertyIdentity } = useSavedMarketEvidence(
+    parcel.id,
+  );
   const vendorWorkspace = useVendorWorkspace(parcel.id);
 
   const scenarios = useMemo(() => readStrategyScenarios(parcel.id), [parcel.id]);
@@ -173,10 +175,7 @@ export function InvestigationHome({
     ],
   );
 
-  const facts = useMemo(
-    () => deriveInvestigationFacts(investigationInput),
-    [investigationInput],
-  );
+  const facts = useMemo(() => deriveInvestigationFacts(investigationInput), [investigationInput]);
   const guidedSteps = useMemo(
     () => buildGuidedInvestigationJourney(facts, workspaceState),
     [facts, workspaceState],
@@ -244,8 +243,8 @@ export function InvestigationHome({
         </summary>
         <div className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[#0D1B2A]/66">
-            The full plan remains available as a reference. Opening a row uses the expert
-            workspace and does not overwrite the guided resume step.
+            The full plan remains available as a reference. Opening a row uses the expert workspace
+            and does not overwrite the guided resume step.
           </p>
           <InvestigationPlanTable plan={plan} onRowAction={openPlanRow} />
           <ReportReadinessPanel

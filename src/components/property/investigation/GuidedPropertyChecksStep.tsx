@@ -17,10 +17,7 @@ import {
   findMunicipalityPlanningRegistry,
   planningSourcesFor,
 } from "@/lib/planning/municipalityPlanningRegistry";
-import {
-  dispatchErfFileVaultUpdated,
-  useErfFileVault,
-} from "@/lib/workbench/useErfFileVault";
+import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset, ErfAssetCategory } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
@@ -53,7 +50,8 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
   {
     id: "approved_plans",
     label: "Approved municipal plans",
-    helper: "Upload the approved plan set, not a sales plan, concept drawing, or unapproved architect sketch.",
+    helper:
+      "Upload the approved plan set, not a sales plan, concept drawing, or unapproved architect sketch.",
     category: "architectural_plan",
     assetType: "approved_building_plan",
     sourceLabel: "User identified as approved municipal building plans",
@@ -62,7 +60,8 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
   {
     id: "existing_house_photo",
     label: "Photos of existing buildings",
-    helper: "Photograph every structure, addition, garage, flatlet, deck, pool enclosure, and outbuilding.",
+    helper:
+      "Photograph every structure, addition, garage, flatlet, deck, pool enclosure, and outbuilding.",
     category: "existing_house_photo",
     assetType: "existing_building_photo",
     sourceLabel: "User uploaded photo of an existing building or improvement",
@@ -71,7 +70,8 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
   {
     id: "site_photo",
     label: "Site and boundary photos",
-    helper: "Show access, slope, retaining walls, visible services, boundaries, vegetation, and neighbouring levels.",
+    helper:
+      "Show access, slope, retaining walls, visible services, boundaries, vegetation, and neighbouring levels.",
     category: "site_photo",
     assetType: "site_condition_photo",
     sourceLabel: "User uploaded site or boundary photo",
@@ -80,7 +80,8 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
   {
     id: "topography",
     label: "Topographic or land survey",
-    helper: "Upload a survey tied to this erf. Easy Erf will read it and check the property identity.",
+    helper:
+      "Upload a survey tied to this erf. Easy Erf will read it and check the property identity.",
     category: "topography",
     assetType: "topographical_survey",
     sourceLabel: "User uploaded topographic or land survey",
@@ -135,7 +136,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
 
-  const selectedOption = EVIDENCE_OPTIONS.find((option) => option.id === evidenceKind) ?? EVIDENCE_OPTIONS[0];
+  const selectedOption =
+    EVIDENCE_OPTIONS.find((option) => option.id === evidenceKind) ?? EVIDENCE_OPTIONS[0];
   const approvedPlans = vault.assets.filter(isApprovedPlan);
   const existingBuildingPhotos = vault.assets.filter(
     (asset) => asset.asset_category === "existing_house_photo",
@@ -160,7 +162,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             .filter(
               (source) =>
                 source.status === "active" &&
-                (source.sourceType === "planning_register" || source.sourceType === "land_use_scheme"),
+                (source.sourceType === "planning_register" ||
+                  source.sourceType === "land_use_scheme"),
             )
             .slice(0, 3)
         : [],
@@ -169,7 +172,9 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
 
   async function readTopography(asset: ErfAsset, retry = false) {
     if (!isExtractableErfAsset(asset)) {
-      toast.error("This survey file cannot be read automatically. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+      toast.error(
+        "This survey file cannot be read automatically. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.",
+      );
       return;
     }
     setReadingAssetId(asset.id);
@@ -226,7 +231,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
         if (!result.ok) {
           if (result.reason === "too_large") toast.error(`${file.name} is too large.`);
           else if (result.reason === "empty_file") toast.error(`${file.name} is empty.`);
-          else toast.error(`${file.name} is not a supported file type for ${selectedOption.label}.`);
+          else
+            toast.error(`${file.name} is not a supported file type for ${selectedOption.label}.`);
           continue;
         }
         uploadedAssets.push(result.asset);
@@ -270,9 +276,9 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
               Check for unapproved or irregular improvements
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Add approved municipal plans, photos of every existing structure, site photos, or a matched survey.
-              Easy Erf can organize the evidence, but an architect, surveyor, or municipality must compare what
-              exists with what was approved.
+              Add approved municipal plans, photos of every existing structure, site photos, or a
+              matched survey. Easy Erf can organize the evidence, but an architect, surveyor, or
+              municipality must compare what exists with what was approved.
             </p>
           </div>
           <span
@@ -308,11 +314,13 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
             <div>
-              <h4 className="text-sm font-semibold text-amber-950">Potential irregular-building risk is unresolved</h4>
+              <h4 className="text-sm font-semibold text-amber-950">
+                Potential irregular-building risk is unresolved
+              </h4>
               <p className="mt-1 text-sm leading-6 text-amber-950/78">
-                Photos show existing improvements, but no file has been identified as approved municipal plans.
-                This does not prove the buildings are illegal. It means Easy Erf cannot yet compare the visible
-                structures with an approved plan set.
+                Photos show existing improvements, but no file has been identified as approved
+                municipal plans. This does not prove the buildings are illegal. It means Easy Erf
+                cannot yet compare the visible structures with an approved plan set.
               </p>
             </div>
           </div>
@@ -387,7 +395,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
         </div>
         {!vault.signedIn ? (
           <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. You can skip this step until the plans, photos, or survey are available.
+            Sign in before uploading. You can skip this step until the plans, photos, or survey are
+            available.
           </p>
         ) : null}
         {vault.uploadState ? (
@@ -421,7 +430,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
           <div>
             <h4 className="text-sm font-semibold text-[#0D1B2A]">Property-check evidence</h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              Plans are user-classified until confirmed by the municipality. Surveys must be readable and matched.
+              Plans are user-classified until confirmed by the municipality. Surveys must be
+              readable and matched.
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
@@ -442,7 +452,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
               const reading = readingAssetId === asset.id;
               const removing = removingAssetId === asset.id;
               const usableSurvey = isUsableTopography(asset);
-              const wrongSurvey = asset.asset_category === "topography" && identityStatus === "mismatch";
+              const wrongSurvey =
+                asset.asset_category === "topography" && identityStatus === "mismatch";
               const retry =
                 extractionStatus === "failed" ||
                 extractionStatus === "partial" ||
@@ -491,7 +502,8 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                       </div>
                       {wrongSurvey ? (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
-                          This survey appears to describe a different property and is not used for this erf.
+                          This survey appears to describe a different property and is not used for
+                          this erf.
                         </p>
                       ) : null}
                     </div>
@@ -506,7 +518,11 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                           onClick={() => void readTopography(asset, retry)}
                           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 disabled:opacity-60"
                         >
-                          {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                          {reading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          )}
                           {reading ? "Reading" : retry ? "Retry reading" : "Read survey"}
                         </button>
                       ) : null}
@@ -524,7 +540,11 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                         onClick={() => void removeAsset(asset)}
                         className="inline-flex min-h-10 items-center gap-2 rounded-full border border-red-300/50 bg-white px-3 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-50 disabled:opacity-60"
                       >
-                        {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        {removing ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
                         Remove
                       </button>
                     </div>
@@ -534,7 +554,9 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             })}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-[#0D1B2A]/58">No property-check evidence has been added yet.</p>
+          <p className="mt-4 text-sm text-[#0D1B2A]/58">
+            No property-check evidence has been added yet.
+          </p>
         )}
       </section>
 

@@ -53,10 +53,7 @@ describe("guided market evidence", () => {
 
   it("marks market complete after evidence is saved and advances to report", () => {
     const workspace = createEmptyErfWorkspaceState();
-    const journey = buildGuidedInvestigationJourney(
-      facts({ marketEvidenceCount: 1 }),
-      workspace,
-    );
+    const journey = buildGuidedInvestigationJourney(facts({ marketEvidenceCount: 1 }), workspace);
 
     expect(journey.find((step) => step.id === "market")).toMatchObject({
       complete: true,

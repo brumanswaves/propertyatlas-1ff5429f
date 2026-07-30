@@ -29,10 +29,7 @@ import {
   isReadableMatchedZoningDocument,
   isUsableSubjectZoningDocument,
 } from "@/lib/planning/zoningEvidence";
-import {
-  dispatchErfFileVaultUpdated,
-  useErfFileVault,
-} from "@/lib/workbench/useErfFileVault";
+import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
@@ -116,7 +113,10 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   }, [parcel.id]);
 
   const usableDocuments = useMemo(
-    () => (selectedZone ? vault.assets.filter((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) : []),
+    () =>
+      selectedZone
+        ? vault.assets.filter((asset) => isUsableSubjectZoningDocument(asset, selectedZone))
+        : [],
     [selectedZone, vault.assets],
   );
   const canContinue = usableDocuments.length > 0;
@@ -141,7 +141,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
 
   async function readZoningDocument(asset: ErfAsset, retry = false) {
     if (!isExtractableErfAsset(asset)) {
-      toast.error("This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+      toast.error(
+        "This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.",
+      );
       return;
     }
 
@@ -159,11 +161,15 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         return;
       }
       if (result.identityMatchStatus === "mismatch") {
-        toast.error("This zoning document appears to describe a different property and was rejected.");
+        toast.error(
+          "This zoning document appears to describe a different property and was rejected.",
+        );
         return;
       }
       if (result.claimCount === 0) {
-        toast.warning("The document was saved, but Easy Erf could not read a zoning statement from it.");
+        toast.warning(
+          "The document was saved, but Easy Erf could not read a zoning statement from it.",
+        );
         return;
       }
       if (result.identityMatchStatus !== "matched") {
@@ -171,9 +177,13 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         return;
       }
 
-      toast.success("Zoning document read and matched. Confirm the selected zone agrees with the extracted statement.");
+      toast.success(
+        "Zoning document read and matched. Confirm the selected zone agrees with the extracted statement.",
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The zoning document could not be read.");
+      toast.error(
+        error instanceof Error ? error.message : "The zoning document could not be read.",
+      );
     } finally {
       setReadingAssetId(null);
     }
@@ -231,7 +241,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       await vault.remove(asset);
       toast.success("Zoning document removed from this erf file.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The zoning document could not be removed.");
+      toast.error(
+        error instanceof Error ? error.message : "The zoning document could not be removed.",
+      );
     } finally {
       setRemovingAssetId(null);
     }
@@ -249,9 +261,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
               Confirm the zoning stated for this erf
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Choose the zoning stated by the municipal record, then attach that record. Easy Erf only
-              completes this step when the document is readable, matches the selected erf, and states a
-              zoning that agrees with your selection.
+              Choose the zoning stated by the municipal record, then attach that record. Easy Erf
+              only completes this step when the document is readable, matches the selected erf, and
+              states a zoning that agrees with your selection.
             </p>
           </div>
           <span
@@ -283,7 +295,10 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
-            <label className="block text-xs font-semibold text-[#0D1B2A]" htmlFor="guided-zone-code">
+            <label
+              className="block text-xs font-semibold text-[#0D1B2A]"
+              htmlFor="guided-zone-code"
+            >
               Zoning stated by the document
             </label>
             <select
@@ -302,8 +317,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             </select>
             {!registry ? (
               <p className="mt-2 text-xs leading-5 text-amber-800">
-                Easy Erf does not yet have a reviewed zoning registry for {parcel.municipality ?? "this municipality"}.
-                Keep the official record attached and skip this step until its zoning list is supported.
+                Easy Erf does not yet have a reviewed zoning registry for{" "}
+                {parcel.municipality ?? "this municipality"}. Keep the official record attached and
+                skip this step until its zoning list is supported.
               </p>
             ) : null}
             {selectedZone ? (
@@ -312,14 +328,15 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                   Working selection: {selectedZone.code} · {selectedZone.name}
                 </div>
                 <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
-                  This selection is not proof by itself. The attached property-specific record must state the
-                  same zoning before the step completes.
+                  This selection is not proof by itself. The attached property-specific record must
+                  state the same zoning before the step completes.
                 </p>
                 {selectedZone.status !== "active" ? (
                   <p className="mt-2 text-xs font-medium leading-5 text-amber-900">
-                    Easy Erf’s numeric controls for this zone remain review-required general-rule candidates.
-                    A confirmed zone does not automatically confirm height, coverage, building lines, consent
-                    uses, departures, title restrictions, or approved development rights.
+                    Easy Erf’s numeric controls for this zone remain review-required general-rule
+                    candidates. A confirmed zone does not automatically confirm height, coverage,
+                    building lines, consent uses, departures, title restrictions, or approved
+                    development rights.
                   </p>
                 ) : null}
               </div>
@@ -332,9 +349,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
               Official planning sources
             </div>
             <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-              Use the municipal planning page or document library to obtain a zoning certificate, zoning
-              extract, or other erf-specific record. General scheme documents explain rules but do not prove
-              the zoning of this erf.
+              Use the municipal planning page or document library to obtain a zoning certificate,
+              zoning extract, or other erf-specific record. General scheme documents explain rules
+              but do not prove the zoning of this erf.
             </p>
             {sources.length ? (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -352,7 +369,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-xs text-[#0D1B2A]/58">No reviewed municipal source links are registered yet.</p>
+              <p className="mt-3 text-xs text-[#0D1B2A]/58">
+                No reviewed municipal source links are registered yet.
+              </p>
             )}
           </div>
         </div>
@@ -381,7 +400,8 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         </div>
         {!vault.signedIn ? (
           <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. You can still open the official sources and skip this step for now.
+            Sign in before uploading. You can still open the official sources and skip this step for
+            now.
           </p>
         ) : null}
         {vault.uploadState ? (
@@ -401,7 +421,8 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
           <div>
             <h4 className="text-sm font-semibold text-[#0D1B2A]">Attached zoning records</h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              Uploading is not enough. Identity, readability, and the zoning statement must all agree.
+              Uploading is not enough. Identity, readability, and the zoning statement must all
+              agree.
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
@@ -419,8 +440,12 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             {vault.assets.map((asset) => {
               const extractionStatus = erfAssetExtractionStatus(asset);
               const identityStatus = erfAssetIdentityMatchStatus(asset);
-              const supportingClaim = selectedZone ? findSupportingZoningClaim(asset, selectedZone) : null;
-              const usable = Boolean(selectedZone && isUsableSubjectZoningDocument(asset, selectedZone));
+              const supportingClaim = selectedZone
+                ? findSupportingZoningClaim(asset, selectedZone)
+                : null;
+              const usable = Boolean(
+                selectedZone && isUsableSubjectZoningDocument(asset, selectedZone),
+              );
               const readableMatched = isReadableMatchedZoningDocument(asset);
               const claims = zoningClaims(asset);
               const reading = readingAssetId === asset.id;
@@ -431,7 +456,8 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                 extractionStatus === "unsupported" ||
                 extractionStatus === "not_started" ||
                 identityStatus === "unverified";
-              const conflict = readableMatched && Boolean(selectedZone) && claims.length > 0 && !supportingClaim;
+              const conflict =
+                readableMatched && Boolean(selectedZone) && claims.length > 0 && !supportingClaim;
 
               return (
                 <article
@@ -464,7 +490,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                                 : "bg-amber-200 text-amber-950",
                           )}
                         >
-                          {reading ? "Reading document" : usable ? "Selected zoning supported" : erfAssetExtractionLabel(asset)}
+                          {reading
+                            ? "Reading document"
+                            : usable
+                              ? "Selected zoning supported"
+                              : erfAssetExtractionLabel(asset)}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
                           Identity: {identityStatus ?? "not checked"}
@@ -472,13 +502,15 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                       </div>
                       {identityStatus === "mismatch" ? (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
-                          This document appears to describe a different property. It cannot support zoning for this erf.
+                          This document appears to describe a different property. It cannot support
+                          zoning for this erf.
                         </p>
                       ) : null}
                       {conflict ? (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
-                          The extracted zoning does not agree with {selectedZone?.code} · {selectedZone?.name}. Correct the
-                          selection or obtain the correct property record before continuing.
+                          The extracted zoning does not agree with {selectedZone?.code} ·{" "}
+                          {selectedZone?.name}. Correct the selection or obtain the correct property
+                          record before continuing.
                         </p>
                       ) : null}
                       {erfAssetIdentityMatchReason(asset) ? (
@@ -489,14 +521,21 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                       {claims.length ? (
                         <div className="mt-3 grid gap-2">
                           {claims.slice(0, 5).map((claim, index) => (
-                            <div key={`${claim.key}-${claim.page ?? "page"}-${index}`} className="rounded-lg bg-white/78 p-2.5">
+                            <div
+                              key={`${claim.key}-${claim.page ?? "page"}-${index}`}
+                              className="rounded-lg bg-white/78 p-2.5"
+                            >
                               <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B]">
                                 {claim.label} · {claim.confidence}
                                 {claim.page ? ` · Page ${claim.page}` : ""}
                               </div>
-                              <div className="mt-1 text-sm font-semibold text-[#0D1B2A]">{claim.value}</div>
+                              <div className="mt-1 text-sm font-semibold text-[#0D1B2A]">
+                                {claim.value}
+                              </div>
                               {claim.quote ? (
-                                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">“{claim.quote}”</p>
+                                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
+                                  “{claim.quote}”
+                                </p>
                               ) : null}
                             </div>
                           ))}
@@ -511,7 +550,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                           onClick={() => void readZoningDocument(asset, retry)}
                           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 disabled:opacity-60"
                         >
-                          {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                          {reading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          )}
                           {reading ? "Reading" : retry ? "Retry reading" : "Read document"}
                         </button>
                       ) : null}
@@ -529,7 +572,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                         onClick={() => void removeDocument(asset)}
                         className="inline-flex min-h-10 items-center gap-2 rounded-full border border-red-300/50 bg-white px-3 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-50 disabled:opacity-60"
                       >
-                        {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        {removing ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
                         Remove
                       </button>
                     </div>
@@ -539,7 +586,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             })}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-[#0D1B2A]/58">No zoning document has been uploaded yet.</p>
+          <p className="mt-4 text-sm text-[#0D1B2A]/58">
+            No zoning document has been uploaded yet.
+          </p>
         )}
       </section>
 
@@ -550,12 +599,15 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             Document-backed planning details
           </div>
           <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-            These values were read from the attached record. They remain document-derived evidence, not a legal
-            opinion or approval to build.
+            These values were read from the attached record. They remain document-derived evidence,
+            not a legal opinion or approval to build.
           </p>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             {extractedPlanningClaims.map((claim, index) => (
-              <div key={`${claim.assetId}-${claim.key}-${index}`} className="rounded-xl border border-[#0D1B2A]/8 bg-white p-3">
+              <div
+                key={`${claim.assetId}-${claim.key}-${index}`}
+                className="rounded-xl border border-[#0D1B2A]/8 bg-white p-3"
+              >
                 <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B]">
                   {claim.label} · {claim.confidence}
                   {claim.page ? ` · Page ${claim.page}` : ""}

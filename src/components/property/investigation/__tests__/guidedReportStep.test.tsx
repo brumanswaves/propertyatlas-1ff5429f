@@ -53,10 +53,7 @@ describe("guided report review", () => {
 
   it("marks the final step complete after the report is opened", () => {
     const workspace = createEmptyErfWorkspaceState();
-    const journey = buildGuidedInvestigationJourney(
-      facts({ reportStarted: true }),
-      workspace,
-    );
+    const journey = buildGuidedInvestigationJourney(facts({ reportStarted: true }), workspace);
 
     expect(journey.find((step) => step.id === "report")).toMatchObject({
       complete: true,

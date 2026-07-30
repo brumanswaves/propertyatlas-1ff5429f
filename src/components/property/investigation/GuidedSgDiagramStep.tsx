@@ -13,10 +13,7 @@ import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { CSG_VIEWER_URL } from "@/lib/external-urls";
-import {
-  dispatchErfFileVaultUpdated,
-  useErfFileVault,
-} from "@/lib/workbench/useErfFileVault";
+import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
@@ -50,9 +47,7 @@ function formatDate(value: string) {
 }
 
 function isUsableSubjectDiagram(asset: ErfAsset) {
-  return (
-    erfAssetHasSearchableExtraction(asset) && erfAssetIdentityMatchStatus(asset) === "matched"
-  );
+  return erfAssetHasSearchableExtraction(asset) && erfAssetIdentityMatchStatus(asset) === "matched";
 }
 
 export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepProps) {
@@ -88,7 +83,9 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
 
   async function readDiagram(asset: ErfAsset, retry = false) {
     if (!isExtractableErfAsset(asset)) {
-      toast.error("This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.");
+      toast.error(
+        "This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.",
+      );
       return;
     }
 
@@ -106,15 +103,21 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
         return;
       }
       if (result.identityMatchStatus === "mismatch") {
-        toast.error("This diagram appears to describe a different property. It was not accepted for this erf.");
+        toast.error(
+          "This diagram appears to describe a different property. It was not accepted for this erf.",
+        );
         return;
       }
       if (result.claimCount === 0) {
-        toast.warning("The file was saved, but Easy Erf could not read usable diagram details yet.");
+        toast.warning(
+          "The file was saved, but Easy Erf could not read usable diagram details yet.",
+        );
         return;
       }
       if (result.identityMatchStatus !== "matched") {
-        toast.warning("The diagram was read, but its identity still needs confirmation before this step is complete.");
+        toast.warning(
+          "The diagram was read, but its identity still needs confirmation before this step is complete.",
+        );
         return;
       }
 
@@ -234,24 +237,35 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <ol className="grid gap-3 md:grid-cols-3">
           <li className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">1. Open</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
+              1. Open
+            </div>
             <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">Find the official diagram</p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              Use the prepared SG document list when available. Otherwise open the CSG Property Viewer.
+              Use the prepared SG document list when available. Otherwise open the CSG Property
+              Viewer.
             </p>
           </li>
           <li className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">2. Download</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
+              2. Download
+            </div>
             <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">Save the diagram file</p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              Download the subject erf diagram as a PDF or image. Do not use a neighbouring erf diagram.
+              Download the subject erf diagram as a PDF or image. Do not use a neighbouring erf
+              diagram.
             </p>
           </li>
           <li className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">3. Upload</div>
-            <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">Easy Erf reads and checks it</p>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF6A00]">
+              3. Upload
+            </div>
+            <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">
+              Easy Erf reads and checks it
+            </p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              The file stays in your private Erf File Vault and is checked against this parcel identity.
+              The file stays in your private Erf File Vault and is checked against this parcel
+              identity.
             </p>
           </li>
         </ol>
@@ -290,15 +304,15 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
 
         {!sgDocument.shown && (
           <p className="mt-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
-            A direct SG document link could not be built from this parcel record. The CSG viewer will
-            open instead. Search using Erf {parcel.erfNumber ?? "number not available"}, portion {parcel.portion ?? 0},
-            and the parcel identifiers shown in Step 1.
+            A direct SG document link could not be built from this parcel record. The CSG viewer
+            will open instead. Search using Erf {parcel.erfNumber ?? "number not available"},
+            portion {parcel.portion ?? 0}, and the parcel identifiers shown in Step 1.
           </p>
         )}
         {!vault.signedIn && (
           <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. Official links remain available, and you can skip this step until
-            you are ready to store the diagram securely.
+            Sign in before uploading. Official links remain available, and you can skip this step
+            until you are ready to store the diagram securely.
           </p>
         )}
         {vault.uploadState && (
@@ -385,8 +399,8 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
                       </div>
                       {identityStatus === "mismatch" && (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
-                          This document appears to describe a different property. Its contents are not
-                          used as evidence for this erf.
+                          This document appears to describe a different property. Its contents are
+                          not used as evidence for this erf.
                         </p>
                       )}
                     </div>
