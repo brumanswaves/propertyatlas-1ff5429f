@@ -336,7 +336,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Source quality");
     expect(panel).toContain("Township / area");
     expect(panel).toContain("User checked, not legally verified");
-    expect(panel).toContain("it is not legal, surveying or ownership verification");
+    expect(panel).toContain("research\n            progress, not legal verification");
     expect(panel).toContain("erfstoep.identityCheck.");
     expect(panel).toContain("openedSourceIds");
     expect(panel).toContain("reviewedSourceIds");
