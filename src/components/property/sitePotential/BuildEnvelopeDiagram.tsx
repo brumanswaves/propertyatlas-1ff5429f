@@ -213,8 +213,9 @@ export function BuildEnvelopeDiagram({
           <LegendSwatch color="#22C55E" dashed label="Side / rear building line" />
           <LegendSwatch color="#4ADE80" faded label="Inside building lines" />
           <LegendSwatch color="#FB7185" label="Maximum coverage area" />
-
+        </div>
       )}
+
       {compact ? null : (
         <p className="mt-2 text-[11px] leading-5 text-white/50">
           {result.showsDimensions
