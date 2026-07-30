@@ -66,13 +66,13 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     label: "Add address",
     shortLabel: "Address",
     description:
-      "Save a working address for this erf. The direct address action moves into Investigation in the next build phase.",
+      "Save the working address used for maps and market searches. It stays separate from the official erf identity.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["identity"],
     relatedTaskIds: [],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: () => false,
+    isComplete: (facts) => facts.marketAddressSaved,
   },
   {
     id: "sg-diagram",
