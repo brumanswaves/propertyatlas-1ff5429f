@@ -146,6 +146,31 @@ describe("guided investigation components", () => {
     expect(html).not.toContain("Run calculator");
   });
 
+  it("renders Add address as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(facts(), workspace);
+    const addressStep = steps.find((step) => step.id === "add-address");
+    if (!addressStep) throw new Error("Expected add-address step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={addressStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <div>Guided working address form</div>
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Guided working address form");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
+  });
+
   it("does not render the shared Continue control as a Step 1 bypass before confirmation", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(
