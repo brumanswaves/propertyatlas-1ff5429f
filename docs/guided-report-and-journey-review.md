@@ -75,26 +75,19 @@ At every step confirm:
 
 ## Automated verification before merge
 
-Run after the stacked branches are consolidated or retargeted:
+Run against the consolidated integration PR:
 
 1. Focused Guided journey, component, zoning, property-check, market, and report tests.
 2. Existing listing importer, extraction, file-vault, planning, report, and market-summary tests.
 3. Full Vitest suite.
 4. TypeScript check.
-5. Targeted ESLint for all changed files.
+5. Targeted ESLint for every TypeScript file changed by the Guided integration.
 6. Production build.
 7. Git diff and generated-file checks.
 8. Interactive desktop and mobile pass through all eight steps.
 
-## Merge order
+Repository-wide ESLint currently exposes unrelated legacy formatting debt, so the integration workflow intentionally lints the changed Guided files rather than treating pre-existing errors as failures in this PR.
 
-Merge or retarget the stack in order:
+## Integration review
 
-1. Back navigation
-2. Add address
-3. Add SG diagram
-4. Check title
-5. Confirm zoning
-6. Property checks
-7. Market evidence
-8. Review report
+PR #53 is the single draft integration PR against `main`. Earlier stacked PRs #46 through #52 are superseded and closed. Keep PR #53 in draft until automated verification and the interactive desktop and mobile pass are complete.
