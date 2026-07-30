@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: guided-integration-${{ github.event.pull_request.number || github.ref }}
@@ -19,10 +19,8 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Check out pull request branch
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -32,50 +30,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
-      - name: Normalize Guided integration files
-        run: |
-          perl -0pi -e 's/function useSuggestion\(/function applySuggestion\(/g; s/useSuggestion\(candidate\)/applySuggestion(candidate)/g' src/components/property/investigation/AddAddressStep.tsx
-          npx prettier --write \
-            src/components/property/dossier/ZoningBuildTab.tsx \
-            src/components/property/investigation/AddAddressStep.tsx \
-            src/components/property/investigation/GuidedMarketEvidenceStep.tsx \
-            src/components/property/investigation/GuidedPropertyChecksStep.tsx \
-            src/components/property/investigation/GuidedReportStep.tsx \
-            src/components/property/investigation/GuidedSgDiagramStep.tsx \
-            src/components/property/investigation/GuidedTitleStep.tsx \
-            src/components/property/investigation/GuidedZoningStep.tsx \
-            src/components/property/investigation/InvestigationHome.tsx \
-            src/components/property/investigation/InvestigationJourney.tsx \
-            src/components/property/investigation/InvestigationStepShell.tsx \
-            src/components/property/investigation/__tests__/guidedComponents.test.tsx \
-            src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx \
-            src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx \
-            src/components/property/investigation/__tests__/guidedReportStep.test.tsx \
-            src/components/property/investigation/__tests__/guidedZoningStep.test.tsx \
-            src/lib/investigation/__tests__/guidedJourney.test.ts \
-            src/lib/investigation/guidedJourney.ts \
-            src/lib/planning/storedPlanningZone.ts \
-            src/lib/planning/zoningEvidence.ts \
-            src/lib/workbench/useErfFileVault.ts
-
-      - name: Commit mechanical formatting fixes
-        run: |
-          if git diff --quiet; then
-            echo "Guided files already normalized."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            src/components/property/dossier/ZoningBuildTab.tsx \
-            src/components/property/investigation \
-            src/lib/investigation \
-            src/lib/planning/storedPlanningZone.ts \
-            src/lib/planning/zoningEvidence.ts \
-            src/lib/workbench/useErfFileVault.ts
-          git commit -m "Format guided integration files"
-          git push
 
       - name: Run focused Guided tests
         run: >-
