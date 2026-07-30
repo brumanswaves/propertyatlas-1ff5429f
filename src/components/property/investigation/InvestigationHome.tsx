@@ -218,6 +218,8 @@ export function InvestigationHome({
       <InvestigationJourney
         parcel={parcel}
         workspaceState={workspaceState}
+        plan={plan}
+        report={report}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}
