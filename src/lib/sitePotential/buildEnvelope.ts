@@ -460,9 +460,16 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
   let coverageFootprint: BuildEnvelopeResult["coverageFootprint"] = null;
   if (envelopePolygon && theoreticalGroundFloorM2 != null) {
     const cappedArea = Math.min(theoreticalGroundFloorM2, setbackEnvelopeAreaM2 ?? Infinity);
-    const polygon = coverageRectangle(envelopePolygon, cappedArea);
-    if (polygon) coverageFootprint = { areaM2: round(cappedArea), polygon };
+    const polygon = fitCoveragePolygonInEnvelope(envelopePolygon, cappedArea);
+    if (polygon) {
+      coverageFootprint = {
+        areaM2: round(cappedArea),
+        polygon,
+        allocation: coverageAllocationFor(round(cappedArea)),
+      };
+    }
   }
+
 
   const knownConstraints: string[] = [];
   if (input.servitudeNotes) knownConstraints.push(input.servitudeNotes);
