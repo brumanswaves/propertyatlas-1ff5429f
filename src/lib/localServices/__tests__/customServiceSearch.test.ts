@@ -93,9 +93,7 @@ describe("custom service category", () => {
     expect(customServiceResultsHeading("security company")).toBe(
       "Security companies near this property",
     );
-    expect(customServiceResultsHeading("home staging")).toBe(
-      "Home stagings near this property",
-    );
+    expect(customServiceResultsHeading("home staging")).toBe("Home stagings near this property");
   });
 
   it("builds a Google Maps fallback anchored to the saved address, not the erf", () => {
@@ -165,7 +163,12 @@ describe("server custom service search", () => {
     process.env.GOOGLE_PLACES_API_KEY = "server-secret";
     for (const customQuery of ["   ", "!!!", "\n"]) {
       const response = await handleLocalServicesSearchRequest(
-        request({ parcelId: "parcel-1", customQuery, confirmedAddress: ADDRESS, serviceCategory: "custom:x" }),
+        request({
+          parcelId: "parcel-1",
+          customQuery,
+          confirmedAddress: ADDRESS,
+          serviceCategory: "custom:x",
+        }),
       );
       expect(response.status).toBe(400);
       expect((await response.json()).code).toBe("invalid_query");
