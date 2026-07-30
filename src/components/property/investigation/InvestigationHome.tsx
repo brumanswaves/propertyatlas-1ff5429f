@@ -14,7 +14,12 @@ import { selectedMarketAddress } from "@/features/marketEvidence/addressIntellig
 import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import {
+  findMunicipalityPlanningRegistry,
+  findZone,
+} from "@/lib/planning/municipalityPlanningRegistry";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
+import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
@@ -75,11 +80,16 @@ export function InvestigationHome({
   );
 
   const planning = useMemo(() => {
-    const signals = derivePlanningEvidenceSignals(assets);
     const manualZoneCode = readStoredPlanningZone(parcel.id);
-    const documentZone = signals.zoningCertificateUploaded
-      ? (assets.find((asset) => asset.asset_category === "zoning_document") ?? null)
+    const registry = findMunicipalityPlanningRegistry(parcel.municipality ?? null);
+    const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
+    const documentZone = selectedZone
+      ? (assets.find((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) ?? null)
       : null;
+    const signals = derivePlanningEvidenceSignals(assets, {
+      zoningCertificateUploaded: Boolean(documentZone),
+    });
+
     return buildParcelPlanningAssessment({
       parcelId: parcel.id,
       municipality: parcel.municipality ?? null,
