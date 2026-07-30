@@ -2166,46 +2166,36 @@ function StoepAiReportView({
               <InvestorDecisionBrief data={investorMode} onSelectView={onSelectView} />
             ) : (
               <div className="mt-6 space-y-5">
-                <div className="report-decision-hero grid gap-4 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white lg:grid-cols-[260px_1fr]">
-                  <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                      Overall verdict
+                <article className="report-decision-hero rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
+                      style={{
+                        background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
+                      }}
+                      aria-label={`Evidence confidence ${decision.confidencePercent}%`}
+                    >
+                      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#0D1B2A]">
+                        {decision.confidencePercent}%
+                      </span>
                     </div>
-                    <h3 className="mt-3 text-3xl font-semibold tracking-tight">
-                      {decisionVerdictLabel(decision.verdict)}
-                    </h3>
-                    <div className="mt-4 flex items-center gap-4">
-                      <div
-                        className="grid h-24 w-24 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
-                        style={{
-                          background: `conic-gradient(#FF6A00 ${decision.confidencePercent}%, rgba(255,255,255,0.16) 0)`,
-                        }}
-                        aria-label={`Evidence confidence ${decision.confidencePercent}%`}
-                      >
-                        <span className="grid h-20 w-20 place-items-center rounded-full bg-[#0D1B2A]">
-                          {decision.confidencePercent}%
-                        </span>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+                        Evidence-grounded interpretation
                       </div>
-                      <p className="text-xs leading-5 text-white/68">
-                        Evidence confidence measures completeness and recorded-risk coverage. It is
-                        not a property-quality score, valuation confidence, or purchase
-                        recommendation.
+                      <p className="mt-2 max-w-4xl text-sm leading-6 text-white/82">
+                        {decision.summary}
                       </p>
                     </div>
-                  </article>
-                  <article className="rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-                      Evidence-grounded interpretation
-                    </div>
-                    <p className="mt-3 max-w-4xl text-base leading-7 text-white/82">
-                      {decision.summary}
-                    </p>
-                    <p className="mt-3 text-xs leading-5 text-white/58">
-                      This interpretation is assembled from official, uploaded, user-confirmed,
-                      market, and saved workspace data. It is not labelled human verified.
-                    </p>
-                  </article>
-                </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-white/58">
+                    Evidence confidence measures completeness and recorded-risk coverage — it is not
+                    a property-quality score, valuation confidence, or purchase recommendation. This
+                    interpretation is assembled from official, uploaded, user-confirmed, market, and
+                    saved workspace data; it is not labelled human verified. The single overall
+                    verdict for this erf is shown once, in the report opening above.
+                  </p>
+                </article>
 
                 <section className="rounded-[1.5rem] border border-[#D9E6F2] bg-[#F7FBFF] p-5">
                   <div className="flex flex-wrap items-end justify-between gap-3">
