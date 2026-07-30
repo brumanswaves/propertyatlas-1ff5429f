@@ -59,7 +59,10 @@ export function BuildEnvelopeDiagram({
   }
 
   const stroke = view.scale / 260;
-  const fontSize = view.scale / 34;
+  const coverageCentre = result.coverageFootprint
+    ? polygonCentroid(result.coverageFootprint.polygon)
+    : null;
+
 
   return (
     <div
