@@ -7,6 +7,7 @@ import {
   polygonCentroid,
   type BuildEnvelopeResult,
 } from "@/lib/sitePotential/buildEnvelope";
+import { selectRoadLayerIds, type RoadLineInput } from "@/lib/sitePotential/streetFrontage";
 
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 
@@ -19,6 +20,10 @@ import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
  * a floating SVG on top of the map, so the outlines cannot drift out of
  * alignment when the map is panned or zoomed.
  *
+ * The map is also the source of road evidence for street-frontage detection:
+ * rendered road lines near the parcel are handed back to the caller, which
+ * scores them deterministically. The map never decides the frontage itself.
+ *
  * Mapbox is imported client-side only. Missing token, missing geometry, a
  * failed style load or a thrown import all fall back to the clean
  * deterministic diagram rather than an empty dark block.
@@ -28,6 +33,13 @@ export interface SatelliteParcelMapProps {
   ring: Array<[number, number]> | null;
   result: BuildEnvelopeResult;
   className?: string;
+  /** Rendered road lines near the parcel, for street-frontage detection. */
+  onRoadsDetected?: (roads: RoadLineInput[]) => void;
+  /** When true, every parcel edge becomes clickable on the satellite map. */
+  selectableEdges?: boolean;
+  /** Edge currently highlighted while the user picks the street frontage. */
+  highlightEdgeIndex?: number | null;
+  onEdgeSelect?: (edgeIndex: number) => void;
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
@@ -39,8 +51,8 @@ const SRC = {
   streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
   coverageLabel: "site-potential-coverage-label",
+  edges: "site-potential-edges",
 } as const;
-
 
 function ringBounds(ring: Array<[number, number]>) {
   const lngs = ring.map((p) => p[0]);
@@ -58,7 +70,8 @@ function ringBounds(ring: Array<[number, number]>) {
 }
 
 function polygonFeature(coords: Array<[number, number]>) {
-  const ring = coords.length && coords[0] !== coords[coords.length - 1] ? [...coords, coords[0]] : coords;
+  const ring =
+    coords.length && coords[0] !== coords[coords.length - 1] ? [...coords, coords[0]] : coords;
   return {
     type: "Feature" as const,
     properties: {},
@@ -70,12 +83,24 @@ function emptyCollection() {
   return { type: "FeatureCollection" as const, features: [] };
 }
 
-export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelMapProps) {
+export function SatelliteParcelMap({
+  ring,
+  result,
+  className,
+  onRoadsDetected,
+  selectableEdges = false,
+  highlightEdgeIndex = null,
+  onEdgeSelect,
+}: SatelliteParcelMapProps) {
   const [mounted, setMounted] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
+  const roadsCallbackRef = useRef(onRoadsDetected);
+  const edgeSelectRef = useRef(onEdgeSelect);
+  roadsCallbackRef.current = onRoadsDetected;
+  edgeSelectRef.current = onEdgeSelect;
 
   useEffect(() => {
     setMounted(true);
@@ -91,9 +116,10 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
   const geo = useMemo(() => {
     const projection = result.projection;
     if (!projection) return null;
-    const parcel = result.parcelPolygon.length >= 3
-      ? polygonFeature(localPolygonToWgs84(result.parcelPolygon, projection))
-      : null;
+    const parcel =
+      result.parcelPolygon.length >= 3
+        ? polygonFeature(localPolygonToWgs84(result.parcelPolygon, projection))
+        : null;
     const setback =
       result.envelopePolygon && result.envelopePolygon.length >= 3
         ? polygonFeature(localPolygonToWgs84(result.envelopePolygon, projection))
@@ -130,9 +156,22 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
             },
           }
         : null;
-    return { parcel, setback, coverage, street, streetLine, coverageLabel };
+    const edges = {
+      type: "FeatureCollection" as const,
+      features: result.parcelPolygon.map((a, index) => {
+        const b = result.parcelPolygon[(index + 1) % result.parcelPolygon.length];
+        return {
+          type: "Feature" as const,
+          properties: { edgeIndex: index },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [localToWgs84(a, projection), localToWgs84(b, projection)],
+          },
+        };
+      }),
+    };
+    return { parcel, setback, coverage, street, streetLine, coverageLabel, edges };
   }, [result]);
-
 
   const fit = useCallback(() => {
     const map = mapRef.current;
@@ -249,10 +288,82 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
               "text-halo-width": 1.4,
             },
           });
+          // Clickable parcel edges for street-frontage confirmation. Hidden
+          // (fully transparent, non-interactive) until the caller asks for it.
+          map.addLayer({
+            id: `${SRC.edges}-hit`,
+            type: "line",
+            source: SRC.edges,
+            paint: { "line-color": "#FFFFFF", "line-opacity": 0, "line-width": 22 },
+          });
+          map.addLayer({
+            id: `${SRC.edges}-line`,
+            type: "line",
+            source: SRC.edges,
+            paint: {
+              "line-color": [
+                "case",
+                ["==", ["get", "edgeIndex"], ["literal", -1]],
+                "#FF6A00",
+                "#FACC15",
+              ],
+              "line-opacity": 0,
+              "line-width": 4,
+              "line-dasharray": [2, 1.4],
+            },
+          });
+          map.on("click", `${SRC.edges}-hit`, (event) => {
+            const feature = event.features?.[0];
+            const index = feature?.properties?.edgeIndex;
+            if (typeof index === "number") edgeSelectRef.current?.(index);
+          });
+          map.on("mouseenter", `${SRC.edges}-hit`, () => {
+            map!.getCanvas().style.cursor = "pointer";
+          });
+          map.on("mouseleave", `${SRC.edges}-hit`, () => {
+            map!.getCanvas().style.cursor = "";
+          });
           map.resize();
           setMapReady(true);
         });
 
+        // Real road geometry near the parcel, handed to the deterministic
+        // detector. The map is evidence, never the decision-maker.
+        map.once("idle", () => {
+          if (cancelled || !map || !roadsCallbackRef.current) return;
+          try {
+            const layerIds = selectRoadLayerIds(
+              (map.getStyle()?.layers ?? []) as Array<{
+                id: string;
+                type: string;
+                "source-layer"?: string;
+              }>,
+            ).filter((id) => map!.getLayer(id));
+            if (!layerIds.length) {
+              roadsCallbackRef.current([]);
+              return;
+            }
+            const features = map.queryRenderedFeatures(undefined, { layers: layerIds });
+            const roads: RoadLineInput[] = features
+              .filter(
+                (feature) =>
+                  feature.geometry?.type === "LineString" ||
+                  feature.geometry?.type === "MultiLineString",
+              )
+              .map((feature) => ({
+                name:
+                  (feature.properties?.name as string | undefined) ??
+                  (feature.properties?.name_en as string | undefined) ??
+                  null,
+                layerId: feature.layer?.id ?? null,
+                coordinates: (feature.geometry as GeoJSON.LineString | GeoJSON.MultiLineString)
+                  .coordinates as RoadLineInput["coordinates"],
+              }));
+            roadsCallbackRef.current(roads);
+          } catch {
+            roadsCallbackRef.current([]);
+          }
+        });
 
         map.on("error", (event) => {
           // Style/tile/auth failures must degrade to the deterministic diagram
@@ -295,7 +406,25 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
     set(SRC.street, geo.street);
     set(SRC.streetLine, geo.streetLine);
     set(SRC.coverageLabel, geo.coverageLabel);
+    const edgeSource = map.getSource(SRC.edges) as import("mapbox-gl").GeoJSONSource | undefined;
+    edgeSource?.setData(geo.edges);
   }, [geo, mapReady]);
+
+  // Edge-picking mode: only visible and clickable while the caller asks for a
+  // street-frontage confirmation.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (!map.getLayer(`${SRC.edges}-line`) || !map.getLayer(`${SRC.edges}-hit`)) return;
+    map.setPaintProperty(`${SRC.edges}-line`, "line-opacity", selectableEdges ? 0.95 : 0);
+    map.setPaintProperty(`${SRC.edges}-line`, "line-color", [
+      "case",
+      ["==", ["get", "edgeIndex"], highlightEdgeIndex ?? -1],
+      "#FF6A00",
+      "#FACC15",
+    ]);
+    map.setLayoutProperty(`${SRC.edges}-hit`, "visibility", selectableEdges ? "visible" : "none");
+  }, [highlightEdgeIndex, mapReady, selectableEdges]);
 
   // The satellite canvas must always fill its frame, including after the
   // enclosing disclosure opens or the layout reflows.
@@ -351,7 +480,6 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
     </div>
   );
 }
-
 
 function LegendChip({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (

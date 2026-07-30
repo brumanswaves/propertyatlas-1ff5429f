@@ -21,7 +21,13 @@ import type { StoredBuildEnvelopeInputs } from "./buildEnvelopeStore";
 import type { PilotPlanningRecord } from "./pilotPlanningRecords";
 import type { SitePotentialRulePrefill } from "./planningRuleAdapter";
 
-export type SitePotentialFieldOrigin = "document" | "user" | "pilot" | "registry" | "unknown";
+export type SitePotentialFieldOrigin =
+  | "document"
+  | "user"
+  | "map_road"
+  | "pilot"
+  | "registry"
+  | "unknown";
 
 export interface ResolvedSitePotentialField<T> {
   value: T | null;
@@ -47,6 +53,16 @@ export interface ResolveSitePotentialInputsArgs {
   documentRuleEvidence?: boolean;
   /** Edge lengths of the real parcel ring, used for street-edge selection. */
   edgeLengths?: number[];
+  /**
+   * Automatic street-frontage detection from real map road geometry. Ranks
+   * above the prototype pilot record and below an explicit user confirmation.
+   */
+  detectedStreetEdge?: {
+    edgeIndex: number | null;
+    roadName: string | null;
+    confidence: number;
+  } | null;
+
   recordedAreaM2?: number | null;
 }
 
@@ -93,7 +109,8 @@ function field<T>(
     return { value: documentValue, origin: "document", provenance: documentProvenance };
   }
   if (usable(userValue)) return { value: userValue, origin: "user", provenance: USER_PROVENANCE };
-  if (usable(packValue)) return { value: packValue, origin: packOrigin, provenance: packProvenance };
+  if (usable(packValue))
+    return { value: packValue, origin: packOrigin, provenance: packProvenance };
   return { value: null, origin: "unknown", provenance: UNKNOWN_PROVENANCE };
 }
 
@@ -105,8 +122,7 @@ export function resolveSitePotentialInputs(
   const pilot = args.pilot ?? null;
 
   // (C)/(D) A stored "document" choice only survives with real document rules.
-  const documentBacked =
-    Boolean(args.documentRuleEvidence) && prefill?.ruleSource === "document";
+  const documentBacked = Boolean(args.documentRuleEvidence) && prefill?.ruleSource === "document";
   const invalidatedStoredDocumentSource = stored.ruleSource === "document" && !documentBacked;
 
   const documentProvenance = prefill?.ruleSourceLabel ?? "Zoning document attached to this erf.";
@@ -120,7 +136,7 @@ export function resolveSitePotentialInputs(
   // The registry pack is only usable as a fallback when it is not the document.
   const pack = prefill && prefill.ruleSource ? prefill : null;
 
-  const pick = <T,>(
+  const pick = <T>(
     docValue: T | null | undefined,
     userValue: T | null | undefined,
     pilotValue: T | null | undefined,
@@ -184,27 +200,35 @@ export function resolveSitePotentialInputs(
     pack?.additionalDwellingRule.value ?? null,
   );
 
+  const detected = args.detectedStreetEdge ?? null;
   const pilotStreetEdgeIndex =
     pilot?.streetFrontageLengthRangeM && args.edgeLengths?.length
       ? pickStreetEdgeIndexByLength(args.edgeLengths, pilot.streetFrontageLengthRangeM)
       : null;
+  // Map road evidence outranks the prototype record, so a stale pilot edge is
+  // never retained once the rendered road points at a different boundary.
+  const detectedProvenance = detected?.roadName
+    ? `Likely street frontage detected from map road geometry (${detected.roadName}). Not confirmed by you.`
+    : "Likely street frontage detected from map road geometry. Not confirmed by you.";
   const streetEdgeIndex = field<number>(
     null,
     documentProvenance,
     stored.streetEdgeIndex,
-    pilotStreetEdgeIndex,
-    pilot
-      ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
-      : UNKNOWN_PROVENANCE,
-    "pilot",
+    detected?.edgeIndex ?? pilotStreetEdgeIndex,
+    detected?.edgeIndex != null
+      ? detectedProvenance
+      : pilot
+        ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
+        : UNKNOWN_PROVENANCE,
+    detected?.edgeIndex != null ? "map_road" : "pilot",
   );
   const streetName = field<string>(
     null,
     documentProvenance,
     stored.streetName,
-    pilot?.streetName ?? null,
-    pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE,
-    "pilot",
+    detected?.roadName ?? pilot?.streetName ?? null,
+    detected?.roadName ? detectedProvenance : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
+    detected?.roadName ? "map_road" : "pilot",
   );
 
   const resolvedFields = {

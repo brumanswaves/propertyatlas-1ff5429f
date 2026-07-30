@@ -16,7 +16,10 @@ import {
 } from "@/lib/sitePotential/buildEnvelopeStore";
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import { detectStreetFrontage, type RoadLineInput } from "@/lib/sitePotential/streetFrontage";
+import { writeStoredStreetFrontageDetection } from "@/lib/sitePotential/streetFrontageStore";
 import { SatelliteParcelMap } from "./SatelliteParcelMap";
+
 import { BuildEnvelopeDiagram } from "./BuildEnvelopeDiagram";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
@@ -88,10 +91,7 @@ export function VacantLandBuildEnvelope({
     () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
     [assessment],
   );
-  const pilot = useMemo(
-    () => findPilotPlanningRecord({ parcelId, lpiCode }),
-    [parcelId, lpiCode],
-  );
+  const pilot = useMemo(() => findPilotPlanningRecord({ parcelId, lpiCode }), [parcelId, lpiCode]);
 
   /** Only fields the user actually touched. Never seeded from a prefill. */
   const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
@@ -110,6 +110,38 @@ export function VacantLandBuildEnvelope({
     });
   }, [ring]);
 
+  /** Road lines rendered by the satellite map near this parcel. */
+  const [roads, setRoads] = useState<RoadLineInput[] | null>(null);
+  const [pickingFrontage, setPickingFrontage] = useState(false);
+
+  const savedStreetName = overrides.streetName ?? pilot?.streetName ?? null;
+
+  /**
+   * Deterministic frontage detection from real road geometry. A user-confirmed
+   * edge short-circuits scoring inside the detector itself.
+   */
+  const detection = useMemo(
+    () =>
+      detectStreetFrontage({
+        ring,
+        roads: roads ?? [],
+        savedStreetName,
+        confirmedEdgeIndex: overrides.streetEdgeIndex ?? null,
+      }),
+    [ring, roads, savedStreetName, overrides.streetEdgeIndex],
+  );
+
+  // Detection evidence is audited separately from the confirmed answer.
+  useEffect(() => {
+    if (detection.method !== "map_road_match") return;
+    writeStoredStreetFrontageDetection(parcelId, {
+      edgeIndex: detection.edgeIndex,
+      roadName: detection.roadName,
+      confidence: detection.confidence,
+      method: detection.method,
+    });
+  }, [detection, parcelId]);
+
   const resolved = useMemo(
     () =>
       resolveSitePotentialInputs({
@@ -119,8 +151,16 @@ export function VacantLandBuildEnvelope({
         documentRuleEvidence,
         edgeLengths,
         recordedAreaM2,
+        detectedStreetEdge:
+          detection.method === "map_road_match" && detection.edgeIndex != null
+            ? {
+                edgeIndex: detection.edgeIndex,
+                roadName: detection.roadName,
+                confidence: detection.confidence,
+              }
+            : null,
       }),
-    [overrides, prefill, pilot, documentRuleEvidence, edgeLengths, recordedAreaM2],
+    [overrides, prefill, pilot, documentRuleEvidence, edgeLengths, recordedAreaM2, detection],
   );
 
   const patch = useCallback(
@@ -192,9 +232,61 @@ export function VacantLandBuildEnvelope({
         </p>
       )}
 
+      {/* Street frontage: confirmation prompt sits directly above the map. */}
+      {(() => {
+        const confirmed = overrides.streetEdgeIndex != null;
+        const needsPick =
+          pickingFrontage || (!confirmed && detection.requiresConfirmation && roads !== null);
+        return (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3">
+            <div className="text-[12px] leading-5 text-[#0D1B2A]">
+              {needsPick ? (
+                <span className="font-semibold">
+                  Which side faces the street? Click the road-facing boundary on the map.
+                </span>
+              ) : confirmed ? (
+                <span>
+                  <span className="font-semibold">Street frontage · confirmed by you</span>
+                  {savedStreetName ? ` · ${savedStreetName}` : ""}
+                </span>
+              ) : detection.edgeIndex != null ? (
+                <span>
+                  <span className="font-semibold">Likely street frontage · detected from map</span>
+                  {detection.roadName ? ` · ${detection.roadName}` : ""}
+                </span>
+              ) : (
+                <span className="text-[#64748B]">
+                  Street frontage not detected yet from map road geometry.
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPickingFrontage((value) => !value)}
+              className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
+            >
+              {needsPick ? "Cancel" : "Change"}
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Result first: large satellite visual, compact build summary beside it. */}
-      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <SatelliteParcelMap ring={ring} result={result} />
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <SatelliteParcelMap
+          ring={ring}
+          result={result}
+          onRoadsDetected={setRoads}
+          selectableEdges={
+            pickingFrontage ||
+            (overrides.streetEdgeIndex == null && detection.requiresConfirmation && roads !== null)
+          }
+          highlightEdgeIndex={answers.streetEdgeIndex ?? detection.edgeIndex ?? null}
+          onEdgeSelect={(edgeIndex) => {
+            patch({ streetEdgeIndex: edgeIndex });
+            setPickingFrontage(false);
+          }}
+        />
 
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
           <div className="flex items-center justify-between gap-2">
@@ -219,7 +311,9 @@ export function VacantLandBuildEnvelope({
             <SummaryRow
               label="Site area"
               value={
-                result.summary.erfAreaM2 != null ? `${result.summary.erfAreaM2} m²` : "Not available"
+                result.summary.erfAreaM2 != null
+                  ? `${result.summary.erfAreaM2} m²`
+                  : "Not available"
               }
               note={result.summary.erfAreaSourceLabel}
             />
@@ -237,13 +331,17 @@ export function VacantLandBuildEnvelope({
             <SummaryRow
               label="Maximum height"
               value={
-                result.summary.maxHeightM != null ? `${result.summary.maxHeightM} m` : "Not confirmed"
+                result.summary.maxHeightM != null
+                  ? `${result.summary.maxHeightM} m`
+                  : "Not confirmed"
               }
               note={resolved.fields.maxHeightM.provenance}
             />
             <SummaryRow
               label="Street building line"
-              value={answers.streetSetbackM != null ? `${answers.streetSetbackM} m` : "Not confirmed"}
+              value={
+                answers.streetSetbackM != null ? `${answers.streetSetbackM} m` : "Not confirmed"
+              }
               note={
                 answers.streetName
                   ? `${answers.streetName} frontage · ${resolved.fields.streetSetbackM.provenance}`
@@ -319,7 +417,6 @@ export function VacantLandBuildEnvelope({
           </p>
         </div>
       ) : null}
-
 
       {/* One Next Best Action */}
       {prefill?.nextBestAction ? (
