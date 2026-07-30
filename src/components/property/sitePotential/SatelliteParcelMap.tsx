@@ -34,8 +34,11 @@ const SRC = {
   parcel: "site-potential-parcel",
   street: "site-potential-street",
   setback: "site-potential-setback",
+  streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
+  coverageLabel: "site-potential-coverage-label",
 } as const;
+
 
 function ringBounds(ring: Array<[number, number]>) {
   const lngs = ring.map((p) => p[0]);
