@@ -157,8 +157,23 @@ export function SatelliteParcelMap({
             },
           }
         : null;
-    return { parcel, setback, coverage, street, streetLine, coverageLabel };
+    const edges = {
+      type: "FeatureCollection" as const,
+      features: result.parcelPolygon.map((a, index) => {
+        const b = result.parcelPolygon[(index + 1) % result.parcelPolygon.length];
+        return {
+          type: "Feature" as const,
+          properties: { edgeIndex: index },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [localToWgs84(a, projection), localToWgs84(b, projection)],
+          },
+        };
+      }),
+    };
+    return { parcel, setback, coverage, street, streetLine, coverageLabel, edges };
   }, [result]);
+
 
 
   const fit = useCallback(() => {
