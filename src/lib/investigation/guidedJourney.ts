@@ -196,8 +196,7 @@ export function selectGuidedInvestigationStep(
     if (
       definition &&
       definition.isApplicable(facts) &&
-      prerequisitesMet(definition, completeIds, skippedIds) &&
-      !definition.isComplete(facts)
+      prerequisitesMet(definition, completeIds, skippedIds)
     ) {
       return currentStepId;
     }
