@@ -11,6 +11,7 @@ import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelope
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import { selectReportHero } from "@/lib/reports/reportHero";
+import { buildSitePotentialReportPanel } from "@/lib/reports/sitePotentialSection";
 import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
 
 import {
