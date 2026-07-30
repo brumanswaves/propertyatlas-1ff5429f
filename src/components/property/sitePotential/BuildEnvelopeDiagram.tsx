@@ -209,10 +209,11 @@ export function BuildEnvelopeDiagram({
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-white/65">
           <LegendSwatch color="#22D3EE" label="Parcel boundary" />
           <LegendSwatch color="#FF6A00" label={result.streetEdge ? "Street boundary" : "Street boundary not set"} />
-          <LegendSwatch color="#FFFFFF" dashed label="Building lines" />
-          <LegendSwatch color="#22D3EE" faded label="Buildable envelope" />
-          <LegendSwatch color="#FF6A00" faded label="Maximum coverage footprint" />
-        </div>
+          <LegendSwatch color="#38BDF8" dashed label="Street building line" />
+          <LegendSwatch color="#22C55E" dashed label="Side / rear building line" />
+          <LegendSwatch color="#4ADE80" faded label="Inside building lines" />
+          <LegendSwatch color="#FB7185" label="Maximum coverage area" />
+
       )}
       {compact ? null : (
         <p className="mt-2 text-[11px] leading-5 text-white/50">
