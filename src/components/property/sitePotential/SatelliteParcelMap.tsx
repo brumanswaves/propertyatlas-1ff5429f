@@ -291,9 +291,84 @@ export function SatelliteParcelMap({
               "text-halo-width": 1.4,
             },
           });
+          // Clickable parcel edges for street-frontage confirmation. Hidden
+          // (fully transparent, non-interactive) until the caller asks for it.
+          map.addLayer({
+            id: `${SRC.edges}-hit`,
+            type: "line",
+            source: SRC.edges,
+            paint: { "line-color": "#FFFFFF", "line-opacity": 0, "line-width": 22 },
+          });
+          map.addLayer({
+            id: `${SRC.edges}-line`,
+            type: "line",
+            source: SRC.edges,
+            paint: {
+              "line-color": [
+                "case",
+                ["==", ["get", "edgeIndex"], ["literal", -1]],
+                "#FF6A00",
+                "#FACC15",
+              ],
+              "line-opacity": 0,
+              "line-width": 4,
+              "line-dasharray": [2, 1.4],
+            },
+          });
+          map.on("click", `${SRC.edges}-hit`, (event) => {
+            const feature = event.features?.[0];
+            const index = feature?.properties?.edgeIndex;
+            if (typeof index === "number") edgeSelectRef.current?.(index);
+          });
+          map.on("mouseenter", `${SRC.edges}-hit`, () => {
+            map!.getCanvas().style.cursor = "pointer";
+          });
+          map.on("mouseleave", `${SRC.edges}-hit`, () => {
+            map!.getCanvas().style.cursor = "";
+          });
           map.resize();
           setMapReady(true);
         });
+
+        // Real road geometry near the parcel, handed to the deterministic
+        // detector. The map is evidence, never the decision-maker.
+        map.once("idle", () => {
+          if (cancelled || !map || !roadsCallbackRef.current) return;
+          try {
+            const layerIds = selectRoadLayerIds(
+              (map.getStyle()?.layers ?? []) as Array<{
+                id: string;
+                type: string;
+                "source-layer"?: string;
+              }>,
+            ).filter((id) => map!.getLayer(id));
+            if (!layerIds.length) {
+              roadsCallbackRef.current([]);
+              return;
+            }
+            const features = map.queryRenderedFeatures(undefined, { layers: layerIds });
+            const roads: RoadLineInput[] = features
+              .filter(
+                (feature) =>
+                  feature.geometry?.type === "LineString" ||
+                  feature.geometry?.type === "MultiLineString",
+              )
+              .map((feature) => ({
+                name:
+                  (feature.properties?.name as string | undefined) ??
+                  (feature.properties?.name_en as string | undefined) ??
+                  null,
+                layerId: feature.layer?.id ?? null,
+                coordinates: (
+                  feature.geometry as GeoJSON.LineString | GeoJSON.MultiLineString
+                ).coordinates as RoadLineInput["coordinates"],
+              }));
+            roadsCallbackRef.current(roads);
+          } catch {
+            roadsCallbackRef.current([]);
+          }
+        });
+
 
 
         map.on("error", (event) => {
