@@ -6,6 +6,7 @@ import type {
   GuidedInvestigationStepId,
 } from "@/lib/investigation/guidedJourney";
 import type { DossierView } from "@/components/property/dossier/reportViews";
+import { AddAddressStep } from "./AddAddressStep";
 import { ConfirmPropertyStep } from "./ConfirmPropertyStep";
 import { ExpertWorkspaceLauncher } from "./ExpertWorkspaceLauncher";
 import { InvestigationProgress } from "./InvestigationProgress";
@@ -59,6 +60,8 @@ export function InvestigationJourney({
             onFlagUncertain={onFlagIdentityUncertain}
             onBackToMap={onBackToMap}
           />
+        ) : activeStep.id === "add-address" ? (
+          <AddAddressStep parcel={parcel} onContinue={() => onSelectStep("sg-diagram")} />
         ) : null}
       </InvestigationStepShell>
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/82 p-4">
