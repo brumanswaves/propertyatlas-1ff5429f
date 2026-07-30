@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleLocalServicesSearchRequest } from "@/routes/api/local-services.search";
 import {
