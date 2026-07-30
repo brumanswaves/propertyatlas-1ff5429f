@@ -54,6 +54,16 @@ export interface ResolveSitePotentialInputsArgs {
   documentRuleEvidence?: boolean;
   /** Edge lengths of the real parcel ring, used for street-edge selection. */
   edgeLengths?: number[];
+  /**
+   * Automatic street-frontage detection from real map road geometry. Ranks
+   * above the prototype pilot record and below an explicit user confirmation.
+   */
+  detectedStreetEdge?: {
+    edgeIndex: number | null;
+    roadName: string | null;
+    confidence: number;
+  } | null;
+
   recordedAreaM2?: number | null;
 }
 
