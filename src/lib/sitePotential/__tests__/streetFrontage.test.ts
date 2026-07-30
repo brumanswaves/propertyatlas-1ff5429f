@@ -193,7 +193,7 @@ describe("frontage changes recompute setbacks", () => {
       ring: erf1570Ring(),
       boundaryConfirmed: true,
       streetName: "Padrone Crescent",
-      ruleSource: "municipal_scheme",
+      ruleSource: "registry",
       zoneLabel: "Residential 1",
       streetSetbackM: 3,
       sideSetbackM: 2,
