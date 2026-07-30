@@ -18,6 +18,9 @@ export type GuidedInvestigationStepStatus =
   | "blocked"
   | "skipped";
 
+export const GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE =
+  "Identity confirmed. Next step: Add address.";
+
 export interface GuidedInvestigationStepDefinition {
   id: GuidedInvestigationStepId;
   label: string;

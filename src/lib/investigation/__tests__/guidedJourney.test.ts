@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGuidedInvestigationJourney,
+  GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE,
   GUIDED_INVESTIGATION_STEPS,
   selectGuidedInvestigationStep,
   type GuidedInvestigationStepId,
@@ -74,6 +75,11 @@ describe("guided investigation journey registry", () => {
         workspace.investigation,
       ),
     ).toBe("add-address");
+  });
+
+  it("uses Add address, not Market, as the guided identity confirmation next step", () => {
+    expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
+    expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
   });
 
   it("keeps skipped distinct from complete and recommends the next unskipped step", () => {

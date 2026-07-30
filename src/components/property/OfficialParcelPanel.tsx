@@ -44,7 +44,10 @@ import {
   type ErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import { InvestigationHome } from "./investigation/InvestigationHome";
-import type { GuidedInvestigationStepId } from "@/lib/investigation/guidedJourney";
+import {
+  GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE,
+  type GuidedInvestigationStepId,
+} from "@/lib/investigation/guidedJourney";
 import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
@@ -2102,7 +2105,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function confirmGuidedIdentity() {
-    updateIdentityStatus("looks_correct");
+    updateIdentityStatus("looks_correct", GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
     selectGuidedStep("add-address");
   }
 
@@ -2111,7 +2114,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     selectGuidedStep("confirm-property");
   }
 
-  function updateIdentityStatus(nextStatus: IdentityCheckStatus) {
+  function updateIdentityStatus(nextStatus: IdentityCheckStatus, feedbackMessage?: string) {
     setIdentityStatus(nextStatus);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(identityStatusKey(parcelId), nextStatus);
@@ -2121,11 +2124,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       dirty: true,
     });
     const message =
-      nextStatus === "checked"
+      feedbackMessage ??
+      (nextStatus === "checked"
         ? "Official identity evidence started. Next: mark a source reviewed or confirm the identity."
         : nextStatus === "looks_correct"
           ? "Identity marked as looking correct. Next: build market evidence."
-          : "Identity marked uncertain. Resolve identity before using market or strategy tools.";
+          : "Identity marked uncertain. Resolve identity before using market or strategy tools.");
     setWorkflowFeedback(message);
     toast.success(message);
   }
