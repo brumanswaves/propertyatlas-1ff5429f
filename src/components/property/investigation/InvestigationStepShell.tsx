@@ -32,7 +32,8 @@ export function InvestigationStepShell({
     step.id === "add-address" ||
     step.id === "sg-diagram" ||
     step.id === "title" ||
-    step.id === "zoning";
+    step.id === "zoning" ||
+    step.id === "property-checks";
   const isPreview = !isLiveGuidedStep;
   const canUseSharedContinue = !isLiveGuidedStep;
 
