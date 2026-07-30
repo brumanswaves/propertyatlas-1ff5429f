@@ -123,27 +123,28 @@ describe("guided investigation components", () => {
     }
   });
 
-  it("renders future steps as preview shells with no fake action button", () => {
+  it("treats every registered journey step as live with no preview or shared bypass", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
-    const zoningStep = steps.find((step) => step.id === "zoning");
-    if (!zoningStep) throw new Error("Expected zoning step");
 
-    const html = renderToStaticMarkup(
-      <InvestigationStepShell
-        step={zoningStep}
-        steps={steps}
-        onSelectStep={noop}
-        onSkipStep={noop}
-        onOpenExpertWorkspace={noop}
-      />,
-    );
+    for (const step of steps) {
+      const html = renderToStaticMarkup(
+        <InvestigationStepShell
+          step={step}
+          steps={steps}
+          onSelectStep={noop}
+          onSkipStep={noop}
+          onOpenExpertWorkspace={noop}
+        >
+          <div>{step.label} guided action</div>
+        </InvestigationStepShell>,
+      );
 
-    expect(html).toContain("This guided action is coming in a later build phase.");
-    expect(html).toContain("Open full research workspace");
-    expect(html).not.toContain("Confirm zoning document");
-    expect(html).not.toContain("Analyse listing");
-    expect(html).not.toContain("Run calculator");
+      expect(html).toContain(`${step.label} guided action`);
+      expect(html).not.toContain("This guided action is coming in a later build phase.");
+      expect(html).not.toContain("Open full research workspace");
+      expect(html).not.toContain(">Continue<");
+    }
   });
 
   it("renders Add address as a live step without a preview or bypass Continue button", () => {
