@@ -768,6 +768,65 @@ export function LocalPropertyTeam({
         </div>
       </div>
 
+      <form
+        className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          runCustomSearch(customInput);
+        }}
+      >
+        <label
+          htmlFor="custom-service-query"
+          className="text-sm font-semibold text-[#0D1B2A]"
+        >
+          What service do you need?
+        </label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <input
+            id="custom-service-query"
+            type="text"
+            value={customInput}
+            maxLength={MAX_CUSTOM_SERVICE_QUERY_LENGTH}
+            onChange={(event) => {
+              setCustomInput(event.target.value);
+              if (customError) setCustomError(null);
+            }}
+            placeholder="Try security company, home staging, pool maintenance..."
+            className="min-h-11 w-full rounded-full border border-[#0D1B2A]/12 bg-white px-4 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/50"
+          />
+          <button
+            type="submit"
+            disabled={!sanitizeCustomServiceQuery(customInput) || currentSearch.loading}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#FF6A00] px-5 text-sm font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Search className="h-4 w-4" /> Search nearby
+          </button>
+        </div>
+        {customError && (
+          <p className="mt-2 text-xs font-semibold text-[#B24A00]">{customError}</p>
+        )}
+        {recentCustomSearches.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+              Recent
+            </span>
+            {recentCustomSearches.map((entry) => (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => runCustomSearch(entry)}
+                className="inline-flex min-h-8 items-center rounded-full border border-[#0D1B2A]/10 bg-white px-3 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 hover:bg-[#fff8ec]"
+              >
+                {entry}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/60">
+          Searched around the saved Market address, never the erf number.
+        </p>
+      </form>
+
       <div className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
         {groups.map((group) => {
           const active = group.id === activeGroupId;
