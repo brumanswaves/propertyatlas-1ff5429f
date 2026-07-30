@@ -343,7 +343,7 @@ export function SatelliteParcelMap({
               roadsCallbackRef.current([]);
               return;
             }
-            const features = map.queryRenderedFeatures(undefined, { layers: layerIds });
+            const features = map.queryRenderedFeatures({ layers: layerIds });
             const roads: RoadLineInput[] = features
               .filter(
                 (feature) =>

@@ -178,14 +178,18 @@ describe("investigation surface guardrails", () => {
     expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("handleBackToMap");
     expect(panel).toContain("Back to full map");
-    expect(home).toContain("Open investigation tools");
+    expect(home).toContain("InvestigationJourney");
+    expect(home).toContain("Investigation detail and master plan");
+    expect(panel).toContain("Open full research workspace");
+    expect(panel).toContain("Return to guided investigation");
     expect(home).toContain("stoep-report");
     expect(home).toContain("AskEasyErfPanel");
   });
 
   it("renders deterministic messages instead of a blank chatbot", () => {
     const home = read("src/components/property/investigation/InvestigationHome.tsx");
-    expect(home).toContain("supportingMessages.map");
+    expect(home).toContain("buildGuidedInvestigationJourney");
+    expect(home).toContain("buildPropertyInvestigation");
     expect(home).not.toContain("assistantMessages");
   });
 });

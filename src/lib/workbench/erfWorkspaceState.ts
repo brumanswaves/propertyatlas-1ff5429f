@@ -56,20 +56,32 @@ export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
  * from real evidence, never persisted here.
  */
 export interface InvestigationSnapshot {
-  version: 1;
+  version: 2;
   startedAt: string | null;
   lastViewedAt: string | null;
   skippedTaskIds: string[];
   acknowledgedTaskIds: string[];
+  currentStepId: string | null;
+  intentionallyVisitedStepIds: string[];
+  skippedStepIds: string[];
+  lastMeaningfulActionAt: string | null;
+  expertWorkspaceOpen: boolean;
+  lastExpertView: string | null;
 }
 
 export function createEmptyInvestigationSnapshot(): InvestigationSnapshot {
   return {
-    version: 1,
+    version: 2,
     startedAt: null,
     lastViewedAt: null,
     skippedTaskIds: [],
     acknowledgedTaskIds: [],
+    currentStepId: null,
+    intentionallyVisitedStepIds: [],
+    skippedStepIds: [],
+    lastMeaningfulActionAt: null,
+    expertWorkspaceOpen: false,
+    lastExpertView: null,
   };
 }
 
@@ -80,11 +92,18 @@ function coerceInvestigation(value: unknown): InvestigationSnapshot {
   const ids = (list: unknown) =>
     Array.isArray(list) ? list.filter((id): id is string => typeof id === "string") : [];
   return {
-    version: 1,
+    version: 2,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : null,
     lastViewedAt: typeof raw.lastViewedAt === "string" ? raw.lastViewedAt : null,
     skippedTaskIds: ids(raw.skippedTaskIds),
     acknowledgedTaskIds: ids(raw.acknowledgedTaskIds),
+    currentStepId: typeof raw.currentStepId === "string" ? raw.currentStepId : null,
+    intentionallyVisitedStepIds: ids(raw.intentionallyVisitedStepIds),
+    skippedStepIds: ids(raw.skippedStepIds),
+    lastMeaningfulActionAt:
+      typeof raw.lastMeaningfulActionAt === "string" ? raw.lastMeaningfulActionAt : null,
+    expertWorkspaceOpen: Boolean(raw.expertWorkspaceOpen),
+    lastExpertView: typeof raw.lastExpertView === "string" ? raw.lastExpertView : null,
   };
 }
 
