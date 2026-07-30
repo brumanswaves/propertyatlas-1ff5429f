@@ -5,7 +5,13 @@ import {
   localServiceSearchQueries,
   type LocalProvider,
   type LocalProviderAttribution,
+  type LocalServiceCategory,
 } from "@/lib/localServices/catalog";
+import {
+  buildCustomServiceCategory,
+  isCustomServiceCategoryId,
+} from "@/lib/localServices/customServiceSearch";
+
 
 const DEFAULT_RADIUS_KM = 15;
 const WIDE_RADIUS_KM = 35;
