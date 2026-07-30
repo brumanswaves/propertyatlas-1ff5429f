@@ -11,20 +11,15 @@ import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePoten
 import type { SitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 
 function prefillField<T>(value: T | null) {
-  return {
-    value,
-    status: "estimated" as const,
-    sourceLabel: "Kouga Land Use Scheme 2021",
-    note: null,
-  };
+  return { value, provenance: null };
 }
 
 function registryPrefill(
-  overrides: Partial<Record<string, unknown>> = {},
+  overrides: Partial<SitePotentialRulePrefill> = {},
 ): SitePotentialRulePrefill {
   return {
     ruleSource: "registry",
-    ruleSourceStatus: "zone_candidate",
+    ruleSourceStatus: "estimated",
     ruleSourceLabel: "Published municipal rule candidate — property zoning not confirmed.",
     zone: prefillField("Residential 1"),
     streetSetbackM: prefillField(4.5),
@@ -37,8 +32,8 @@ function registryPrefill(
     additionalDwellingRequiresConsent: true,
     guidelineNotes: [],
     nextBestAction: null,
-    ...(overrides as object),
-  } as SitePotentialRulePrefill;
+    ...overrides,
+  };
 }
 
 /** Rectangle with a 17.5 m short edge and ~619 m² extent (Erf 1570 shape). */
