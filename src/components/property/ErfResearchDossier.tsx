@@ -2449,9 +2449,9 @@ function StoepAiReportView({
                 onRequestClear={() => setClearSnapshotsRequested(true)}
                 onCancelClear={() => setClearSnapshotsRequested(false)}
                 onConfirmClear={handleClearReportSnapshots}
-          />
-
-
+              />
+            </div>
+          </details>
 
           <section className="report-section report-no-print mt-1 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
