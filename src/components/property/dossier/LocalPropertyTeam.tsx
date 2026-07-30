@@ -523,6 +523,50 @@ export function LocalPropertyTeam({
     setSavedProviders(toggleSavedLocalProvider(parcel.id, provider));
   }
 
+  function providerToVendorInput(provider: LocalProvider, category: LocalServiceCategory) {
+    return {
+      name: provider.name,
+      company: null,
+      role: vendorRoleForLocalServiceCategory(category.id),
+      phone: provider.phone,
+      email: null,
+      website: provider.website ?? provider.websiteUrl ?? null,
+      serviceArea: provider.address,
+      source: "Google search",
+      notes: null,
+      originPlaceId: provider.placeId,
+    };
+  }
+
+  async function handleSaveVendorFromProvider(provider: LocalProvider, category: LocalServiceCategory) {
+    await vendorWorkspace.saveVendor(providerToVendorInput(provider, category));
+  }
+
+  function isProviderSaved(provider: LocalProvider) {
+    return vendorWorkspace.directory.some((vendor) => vendor.originPlaceId === provider.placeId);
+  }
+
+  function openAssignForProvider(provider: LocalProvider, category: LocalServiceCategory) {
+    setAssigningProvider(provider);
+    setAssigningProviderCategory(category);
+  }
+
+  const providerVendorForAssign = assigningProvider
+    ? (vendorWorkspace.directory.find((vendor) => vendor.originPlaceId === assigningProvider.placeId) ??
+      null)
+    : null;
+
+  async function handleAssignProviderVendor(input: VendorAssignmentInput & { roleOnProperty: VendorRole }) {
+    if (!assigningProvider || !assigningProviderCategory) return;
+    let vendor = providerVendorForAssign;
+    if (!vendor) {
+      vendor = await vendorWorkspace.saveVendor(
+        providerToVendorInput(assigningProvider, assigningProviderCategory),
+      );
+    }
+    await vendorWorkspace.assignVendor(vendor.id, input);
+  }
+
   if (marketAddressLoading) {
     return (
       <section className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-[0_18px_45px_-36px_rgba(13,27,42,0.42)]">
