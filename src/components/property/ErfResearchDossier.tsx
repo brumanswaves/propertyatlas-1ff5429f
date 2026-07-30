@@ -1922,17 +1922,6 @@ function StoepAiReportView({
             onOpenReports={() => onSelectView?.("reports")}
           />
 
-          {/* SG / LINEAGE EVIDENCE */}
-          <ReportSgLineageSection
-            anchorId="report-sg-evidence"
-            model={sgSection}
-            onOpenAsset={(assetId) => {
-              const asset = fileVault.assets.find((file) => file.id === assetId);
-              if (asset) void openVaultAsset(asset);
-            }}
-            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-          />
-
           <ReportFindingsBlock
             anchorId="report-sg-findings"
             eyebrow="SG findings"
@@ -2018,25 +2007,6 @@ function StoepAiReportView({
             )}
           </section>
 
-          {/* ZONING & BUILD — published rules stay separated from confirmed rights */}
-          <section
-            id="report-zoning-build"
-            className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
-          >
-            <ReportSectionTitle
-              eyebrow="Zoning & Build"
-              title="What the published planning rules allow, and what is still unconfirmed"
-              intro="Published municipal rules are general rules for the matched zone. They are not confirmed rights for this erf until zoning, title conditions, servitudes, departures and approved plans have been checked."
-            />
-            <div className="mt-4">
-              <ZoningBuildTab
-                parcel={parcel}
-                compact
-                onOpenTab={(next) => onSelectView?.(routeTabFor(next))}
-              />
-            </div>
-          </section>
-
           {/* SITE POTENTIAL */}
           <ReportSitePotentialSection
             anchorId="report-site"
@@ -2112,7 +2082,8 @@ function StoepAiReportView({
 
           <details
             id="report-due-diligence"
-            className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5"
+            open={printOnly || undefined}
+            className="report-disclosure group rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 report-print-appendix"
           >
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
               Full due diligence &amp; evidence
@@ -2121,6 +2092,36 @@ function StoepAiReportView({
               </span>
             </summary>
             <div className="mt-4 space-y-5">
+
+              {/* SG / LINEAGE EVIDENCE — detailed rows & filenames live behind this disclosure */}
+              <ReportSgLineageSection
+                anchorId="report-sg-evidence"
+                model={sgSection}
+                onOpenAsset={(assetId) => {
+                  const asset = fileVault.assets.find((file) => file.id === assetId);
+                  if (asset) void openVaultAsset(asset);
+                }}
+                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+              />
+
+              {/* ZONING & BUILD — detailed published-rule clauses live behind this disclosure */}
+              <section
+                id="report-zoning-build"
+                className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 scroll-mt-24"
+              >
+                <ReportSectionTitle
+                  eyebrow="Zoning & Build"
+                  title="What the published planning rules allow, and what is still unconfirmed"
+                  intro="Published municipal rules are general rules for the matched zone. They are not confirmed rights for this erf until zoning, title conditions, servitudes, departures and approved plans have been checked."
+                />
+                <div className="mt-4">
+                  <ZoningBuildTab
+                    parcel={parcel}
+                    compact
+                    onOpenTab={(next) => onSelectView?.(routeTabFor(next))}
+                  />
+                </div>
+              </section>
 
               {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
                             <ReportContextSection

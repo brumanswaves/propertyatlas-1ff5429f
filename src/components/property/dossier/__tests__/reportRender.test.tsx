@@ -361,3 +361,58 @@ describe("Report view selector (rendered)", () => {
     expect(investor.verdictHeading).not.toBe(standard.verdictHeading);
   });
 });
+
+describe("Report concision (dossier source)", () => {
+  const source = readFileSync(resolve(__dirname, "../../ErfResearchDossier.tsx"), "utf8");
+
+  it("exposes exactly five primary destinations by default in both lenses", () => {
+    for (const mode of ["standard", "investor"] as const) {
+      expect(buildReportComposition(mode).destinations).toHaveLength(5);
+    }
+  });
+
+  it("keeps every deep evidence block behind exactly one disclosure", () => {
+    const disclosureMatches = source.match(/<details\s*\n\s*id="report-due-diligence"/g) ?? [];
+    expect(disclosureMatches).toHaveLength(1);
+
+    const start = source.indexOf('id="report-due-diligence"');
+    const end = source.indexOf("</details>", start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const inside = source.slice(start, end);
+
+    for (const marker of [
+      "ReportSgLineageSection",
+      'id="report-zoning-build"',
+      "Decision Detail",
+      'id="report-risk"',
+      "ReportEvidenceAppendix",
+      "ReportChangeTrackingSection",
+    ]) {
+      expect(inside).toContain(marker);
+    }
+
+    // None of these deep markers may also appear outside the disclosure.
+    const outside = source.slice(0, start) + source.slice(end);
+    for (const marker of ["ReportSgLineageSection", 'id="report-zoning-build"', "ReportEvidenceAppendix", "ReportChangeTrackingSection"]) {
+      expect(outside).not.toContain(marker);
+    }
+  });
+
+  it("replaces repeated unknown-only context with a single still-to-verify summary", () => {
+    expect(source.match(/<ReportStillToVerifySection/g) ?? []).toHaveLength(1);
+  });
+
+  it("shows technical evidence in a separated appendix in print mode", () => {
+    expect(source).toContain('open={printOnly || undefined}');
+  });
+
+  it("makes Standard and Investor compositions genuinely differ", () => {
+    const standard = buildReportComposition("standard");
+    const investor = buildReportComposition("investor");
+    expect(investor.groupOrder).not.toEqual(standard.groupOrder);
+    expect(investor.destinations.map((d) => d.id)).not.toEqual(
+      standard.destinations.map((d) => d.id),
+    );
+  });
+});
