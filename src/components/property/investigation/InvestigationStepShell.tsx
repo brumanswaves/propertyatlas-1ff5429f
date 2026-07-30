@@ -31,7 +31,8 @@ export function InvestigationStepShell({
     step.id === "confirm-property" ||
     step.id === "add-address" ||
     step.id === "sg-diagram" ||
-    step.id === "title";
+    step.id === "title" ||
+    step.id === "zoning";
   const isPreview = !isLiveGuidedStep;
   const canUseSharedContinue = !isLiveGuidedStep;
 
