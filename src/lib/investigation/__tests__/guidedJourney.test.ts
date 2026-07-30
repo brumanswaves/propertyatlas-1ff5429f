@@ -77,6 +77,20 @@ describe("guided investigation journey registry", () => {
     ).toBe("add-address");
   });
 
+  it("marks Add address complete and advances to SG after an address is saved", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({ identityConfirmed: true, identityChecked: true, marketAddressSaved: true }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "add-address")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("sg-diagram");
+  });
+
   it("uses Add address, not Market, as the guided identity confirmation next step", () => {
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
