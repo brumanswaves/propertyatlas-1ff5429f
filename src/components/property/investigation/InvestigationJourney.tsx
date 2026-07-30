@@ -9,6 +9,7 @@ import type { DossierView } from "@/components/property/dossier/reportViews";
 import { AddAddressStep } from "./AddAddressStep";
 import { ConfirmPropertyStep } from "./ConfirmPropertyStep";
 import { ExpertWorkspaceLauncher } from "./ExpertWorkspaceLauncher";
+import { GuidedMarketEvidenceStep } from "./GuidedMarketEvidenceStep";
 import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
@@ -78,6 +79,8 @@ export function InvestigationJourney({
           <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
         ) : activeStep.id === "property-checks" ? (
           <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />
+        ) : activeStep.id === "market" ? (
+          <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("report")} />
         ) : null}
       </InvestigationStepShell>
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white/82 p-4">
