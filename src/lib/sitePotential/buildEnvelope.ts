@@ -77,6 +77,8 @@ export interface BuildEnvelopeResult {
   stateExplanation: string;
   /** Parcel ring projected to local metres, y already flipped for SVG use. */
   parcelPolygon: LocalPoint[];
+  /** Projection origin, so local-metre polygons can be mapped back to WGS84. */
+  projection: LocalProjection | null;
   edges: BuildEnvelopeEdge[];
   streetEdge: BuildEnvelopeEdge | null;
   /** Setback-constrained envelope. Null when it cannot be computed honestly. */
@@ -486,6 +488,7 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
     stateLabel: STATE_LABEL[state],
     stateExplanation,
     parcelPolygon,
+    projection: input.ring ? ringProjection(input.ring) : null,
     edges,
     streetEdge: edges.find((edge) => edge.kind === "street") ?? null,
     envelopePolygon: state === "more_information_required" ? null : envelopePolygon,
