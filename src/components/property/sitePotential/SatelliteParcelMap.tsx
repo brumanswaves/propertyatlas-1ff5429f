@@ -293,7 +293,21 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
     set(SRC.setback, geo.setback);
     set(SRC.coverage, geo.coverage);
     set(SRC.street, geo.street);
+    set(SRC.streetLine, geo.streetLine);
+    set(SRC.coverageLabel, geo.coverageLabel);
   }, [geo, mapReady]);
+
+  // The satellite canvas must always fill its frame, including after the
+  // enclosing disclosure opens or the layout reflows.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.resize();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [mapReady]);
 
   const showFallback = !mounted || !TOKEN || !hasGeometry || mapFailed || !geo;
 
@@ -308,11 +322,12 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-white/10 bg-[#06152A]",
+        "relative h-[380px] overflow-hidden rounded-2xl border border-white/10 bg-[#06152A] sm:h-[520px]",
         className,
       )}
     >
-      <div ref={containerRef} className="h-[340px] w-full sm:h-[420px]" />
+      {/* The canvas fills the entire frame: no legend or footer inside it. */}
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" />
       {!mapReady && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-[#06152A]/60 text-xs text-white/70">
           Loading satellite imagery…
@@ -321,8 +336,9 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
       <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
         <LegendChip color="#22D3EE" label="Erf boundary" />
         <LegendChip color="#FF6A00" label="Street frontage" />
-        <LegendChip color="#22C55E" label="Inside building lines" />
-        <LegendChip color="#FF6A00" label="Max coverage" faded />
+        <LegendChip color="#38BDF8" label="Street building line" />
+        <LegendChip color="#22C55E" label="Side / rear building line" />
+        <LegendChip color="#FB7185" label="Max coverage" />
       </div>
       <button
         type="button"
@@ -332,13 +348,10 @@ export function SatelliteParcelMap({ ring, result, className }: SatelliteParcelM
         <Maximize2 className="h-3.5 w-3.5" />
         Fit parcel
       </button>
-      {/* Static outline kept for print output; the map canvas does not print. */}
-      <div className="hidden print:block">
-        <BuildEnvelopeDiagram result={result} />
-      </div>
     </div>
   );
 }
+
 
 function LegendChip({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (
