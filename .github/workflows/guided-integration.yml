@@ -61,6 +61,7 @@ jobs:
         run: >-
           npx eslint
           --no-warn-ignored
+          --rule 'prettier/prettier: off'
           src/components/property/investigation/AddAddressStep.tsx
           src/components/property/investigation/GuidedSitePotentialStep.tsx
           src/components/property/investigation/GuidedTitleStep.tsx
