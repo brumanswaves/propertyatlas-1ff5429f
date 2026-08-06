@@ -353,12 +353,14 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
               const usable = isUsableSubjectDiagram(asset);
               const reading = readingAssetId === asset.id;
               const removing = removingAssetId === asset.id;
+              const parentLineageContext = identityStatus === "parent_lineage_match";
               const retry =
-                extractionStatus === "failed" ||
-                extractionStatus === "partial" ||
-                extractionStatus === "unsupported" ||
-                extractionStatus === "not_started" ||
-                identityStatus === "unverified";
+                !parentLineageContext &&
+                (extractionStatus === "failed" ||
+                  extractionStatus === "partial" ||
+                  extractionStatus === "unsupported" ||
+                  extractionStatus === "not_started" ||
+                  identityStatus === "unverified");
 
               return (
                 <article
@@ -403,9 +405,18 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
                           not used as evidence for this erf.
                         </p>
                       )}
+                      {parentLineageContext && (
+                        <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
+                          This General Plan is useful context for a parent property, but it is not a
+                          readable subject SG diagram for this erf.
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {isExtractableErfAsset(asset) && !usable && identityStatus !== "mismatch" && (
+                      {isExtractableErfAsset(asset) &&
+                      !usable &&
+                      identityStatus !== "mismatch" &&
+                      !parentLineageContext ? (
                         <button
                           type="button"
                           disabled={reading}
@@ -419,7 +430,7 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
                           )}
                           {reading ? "Reading" : retry ? "Retry reading" : "Read diagram"}
                         </button>
-                      )}
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => void vault.open(asset)}

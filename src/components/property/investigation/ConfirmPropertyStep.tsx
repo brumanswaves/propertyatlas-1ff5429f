@@ -98,11 +98,14 @@ export function ConfirmPropertyStep({
           ["Extent", formatArea(parcel)],
           ["Official source", valueOrMissing(parcel.sourceLabel)],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-[1rem] border border-[#0D1B2A]/10 bg-[#F8FAFC] p-3">
+          <div
+            key={label}
+            className="min-w-0 rounded-[1rem] border border-[#0D1B2A]/10 bg-[#F8FAFC] p-3"
+          >
             <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
               {label}
             </dt>
-            <dd className="mt-1 text-sm font-semibold text-[#0D1B2A]">{value}</dd>
+            <dd className="mt-1 break-words text-sm font-semibold text-[#0D1B2A]">{value}</dd>
           </div>
         ))}
       </dl>
@@ -114,10 +117,10 @@ export function ConfirmPropertyStep({
           Advanced parcel details
         </summary>
         <div className="mt-3 grid gap-2 text-sm text-[#0D1B2A]/70 md:grid-cols-2">
-          <div>Latitude: {formatCoordinate(parcel.coordinates?.lat)}</div>
-          <div>Longitude: {formatCoordinate(parcel.coordinates?.lng)}</div>
-          <div>LPI: {valueOrMissing(parcel.lpi)}</div>
-          <div>Parcel key: {valueOrMissing(parcel.parcelKey)}</div>
+          <div className="break-words">Latitude: {formatCoordinate(parcel.coordinates?.lat)}</div>
+          <div className="break-words">Longitude: {formatCoordinate(parcel.coordinates?.lng)}</div>
+          <div className="break-words">LPI: {valueOrMissing(parcel.lpi)}</div>
+          <div className="break-words">Parcel key: {valueOrMissing(parcel.parcelKey)}</div>
         </div>
       </details>
 

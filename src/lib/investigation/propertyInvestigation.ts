@@ -8,6 +8,7 @@ import {
   erfAssetIdentityMatchStatus,
   erfAssetIsParentLineageMatch,
 } from "@/lib/evidence/extractionMetadata";
+import { isVerifiedMunicipalApprovedPlan } from "@/lib/evidence/planApprovalMetadata";
 import { canonicalAreaM2, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
 import {
   buildCanonicalNextAction,
@@ -76,6 +77,7 @@ export function deriveInvestigationFacts(
   const paidReports = assets.filter((asset) => asset.asset_category === "paid_report");
   const titleDeeds = assets.filter((asset) => asset.asset_category === "title_deed");
   const plans = assets.filter((asset) => asset.asset_category === "architectural_plan");
+  const verifiedApprovedPlans = plans.filter(isVerifiedMunicipalApprovedPlan);
   const topographicalSurveys = assets.filter((asset) => asset.asset_category === "topography");
   const sitePhotos = assets.filter((asset) => asset.asset_category === "site_photo");
   const existingHousePhotos = assets.filter(
@@ -112,7 +114,7 @@ export function deriveInvestigationFacts(
       detectionMethod === "document_supported" || detectionMethod === "official_polygon",
     zoningRegistryPublished: Boolean(planning?.registryMatched),
     zoningWorkingAssumption: detectionMethod === "manual_selection",
-    approvedPlansOnFile: plans.length > 0,
+    approvedPlansOnFile: verifiedApprovedPlans.length > 0,
     titleDeedSearchable: usableSubjectTitleDeeds.length > 0,
     paidReportSearchable: paidReports.some(
       (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),

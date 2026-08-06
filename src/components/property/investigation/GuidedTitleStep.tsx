@@ -372,7 +372,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                                 : "bg-amber-200 text-amber-950",
                           )}
                         >
-                          {reading ? "Reading document" : erfAssetExtractionLabel(asset)}
+                          {reading ? "Reading document" : erfAssetExtractionLabel(asset, "title")}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
                           Identity: {identityStatus ?? "not checked"}

@@ -222,7 +222,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="md:col-span-2">
+          <label className="min-w-0 md:col-span-2">
             <span className="text-xs font-semibold text-[#0D1B2A]">
               Street address or location label
             </span>
@@ -233,7 +233,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10"
             />
           </label>
-          <label>
+          <label className="min-w-0">
             <span className="text-xs font-semibold text-[#0D1B2A]">Suburb or local area</span>
             <input
               value={suburb}
@@ -241,7 +241,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10"
             />
           </label>
-          <label>
+          <label className="min-w-0">
             <span className="text-xs font-semibold text-[#0D1B2A]">Town</span>
             <input
               value={town}
@@ -249,7 +249,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10"
             />
           </label>
-          <label>
+          <label className="min-w-0">
             <span className="text-xs font-semibold text-[#0D1B2A]">Province</span>
             <input
               value={province}
@@ -257,7 +257,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10"
             />
           </label>
-          <label className="md:col-span-2">
+          <label className="min-w-0 md:col-span-2">
             <span className="text-xs font-semibold text-[#0D1B2A]">Address note, optional</span>
             <textarea
               value={notes}
@@ -317,15 +317,15 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
                 key={candidate.id}
                 type="button"
                 onClick={() => applySuggestion(candidate)}
-                className="rounded-xl border border-[#0D1B2A]/10 bg-white p-3 text-left transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf4]"
+                className="min-w-0 rounded-xl border border-[#0D1B2A]/10 bg-white p-3 text-left transition hover:border-[#FF6A00]/35 hover:bg-[#fffaf4]"
               >
                 <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
                   {sourceLabel(candidate.source)} · {candidate.confidence}
                 </span>
-                <span className="mt-1 block text-sm font-semibold text-[#0D1B2A]">
+                <span className="mt-1 block break-words text-sm font-semibold text-[#0D1B2A]">
                   {candidate.formattedAddress}
                 </span>
-                <span className="mt-1 block text-xs leading-5 text-[#0D1B2A]/60">
+                <span className="mt-1 block break-words text-xs leading-5 text-[#0D1B2A]/60">
                   {candidate.reason}
                 </span>
               </button>

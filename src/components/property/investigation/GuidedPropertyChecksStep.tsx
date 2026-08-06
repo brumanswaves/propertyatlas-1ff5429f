@@ -27,6 +27,11 @@ import {
   erfAssetIdentityMatchStatus,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
+import {
+  isUserIdentifiedPlan,
+  isVerifiedMunicipalApprovedPlan,
+  planApprovalStatusLabel,
+} from "@/lib/evidence/planApprovalMetadata";
 import { cn } from "@/lib/utils";
 
 interface GuidedPropertyChecksStepProps {
@@ -54,7 +59,7 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
       "Upload the approved plan set, not a sales plan, concept drawing, or unapproved architect sketch.",
     category: "architectural_plan",
     assetType: "approved_building_plan",
-    sourceLabel: "User identified as approved municipal building plans",
+    sourceLabel: "User identified municipal plan file, approval not verified",
     accept: ".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff",
   },
   {
@@ -101,11 +106,7 @@ function formatDate(value: string) {
 }
 
 function isApprovedPlan(asset: ErfAsset) {
-  if (asset.asset_category !== "architectural_plan") return false;
-  const text = [asset.asset_type, asset.source_label ?? "", asset.original_file_name]
-    .join(" ")
-    .toLowerCase();
-  return text.includes("approved") || text.includes("municipal plan");
+  return isVerifiedMunicipalApprovedPlan(asset);
 }
 
 function isUsableTopography(asset: ErfAsset) {
@@ -117,7 +118,7 @@ function isUsableTopography(asset: ErfAsset) {
 }
 
 function categoryLabel(asset: ErfAsset) {
-  if (isApprovedPlan(asset)) return "Approved plans supplied";
+  if (asset.asset_category === "architectural_plan") return planApprovalStatusLabel(asset);
   if (asset.asset_category === "existing_house_photo") return "Existing building photo";
   if (asset.asset_category === "site_photo") return "Site photo";
   if (asset.asset_category === "topography") return "Topographic survey";
@@ -138,18 +139,23 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
 
   const selectedOption =
     EVIDENCE_OPTIONS.find((option) => option.id === evidenceKind) ?? EVIDENCE_OPTIONS[0];
+  const planFiles = vault.assets.filter((asset) => asset.asset_category === "architectural_plan");
   const approvedPlans = vault.assets.filter(isApprovedPlan);
+  const userIdentifiedPlans = vault.assets.filter(isUserIdentifiedPlan);
   const existingBuildingPhotos = vault.assets.filter(
     (asset) => asset.asset_category === "existing_house_photo",
   );
   const sitePhotos = vault.assets.filter((asset) => asset.asset_category === "site_photo");
   const usableTopography = vault.assets.filter(isUsableTopography);
   const canContinue =
-    approvedPlans.length > 0 ||
+    planFiles.length > 0 ||
     existingBuildingPhotos.length > 0 ||
     sitePhotos.length > 0 ||
     usableTopography.length > 0;
-  const irregularBuildingRisk = existingBuildingPhotos.length > 0 && approvedPlans.length === 0;
+  const plansNeedVerification = planFiles.length > 0 && approvedPlans.length === 0;
+  const irregularBuildingRisk =
+    (existingBuildingPhotos.length > 0 || userIdentifiedPlans.length > 0) &&
+    approvedPlans.length === 0;
 
   const registry = useMemo(
     () => findMunicipalityPlanningRegistry(parcel.municipality ?? null),
@@ -226,6 +232,9 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             source: "guided-property-checks-step",
             evidenceKind: selectedOption.id,
             userClassification: true,
+            ...(selectedOption.id === "approved_plans"
+              ? { planApprovalStatus: "user_identified" }
+              : {}),
           },
         });
         if (!result.ok) {
@@ -302,7 +311,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             )}
             {canContinue
               ? irregularBuildingRisk
-                ? "Evidence added · plans still missing"
+                ? "Evidence added, approval still unverified"
                 : "Property evidence added"
               : "No property evidence added"}
           </span>
@@ -318,9 +327,9 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                 Potential irregular-building risk is unresolved
               </h4>
               <p className="mt-1 text-sm leading-6 text-amber-950/78">
-                Photos show existing improvements, but no file has been identified as approved
-                municipal plans. This does not prove the buildings are illegal. It means Easy Erf
-                cannot yet compare the visible structures with an approved plan set.
+                Photos or user-identified plan files are stored, but no file has verified municipal
+                approval metadata yet. This does not prove the buildings are illegal. It means Easy
+                Erf cannot yet compare the visible structures with a confirmed approved plan set.
               </p>
             </div>
           </div>
@@ -411,9 +420,10 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
         ) : null}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
-          ["Approved plans", approvedPlans.length],
+          ["Verified approvals", approvedPlans.length],
+          ["User-identified plans", userIdentifiedPlans.length],
           ["Building photos", existingBuildingPhotos.length],
           ["Site photos", sitePhotos.length],
           ["Matched surveys", usableTopography.length],
@@ -482,7 +492,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                         {formatFileSize(asset.size_bytes)} · Uploaded {formatDate(asset.created_at)}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/72">
+                        <span className="break-words rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/72">
                           {categoryLabel(asset)}
                         </span>
                         {asset.asset_category === "topography" ? (
@@ -504,6 +514,12 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
                           This survey appears to describe a different property and is not used for
                           this erf.
+                        </p>
+                      ) : null}
+                      {asset.asset_category === "architectural_plan" && plansNeedVerification ? (
+                        <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
+                          This file is stored as a user-identified plan. Municipal approval has not
+                          been verified, so the approved-plan warning remains open.
                         </p>
                       ) : null}
                     </div>

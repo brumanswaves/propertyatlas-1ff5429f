@@ -17,7 +17,7 @@ function asset(partial: Partial<ErfAsset>): ErfAsset {
     size_bytes: 1000,
     checksum_sha256: null,
     status: partial.status ?? "ready",
-    metadata: {},
+    metadata: partial.metadata ?? {},
     local_migration_fingerprint: null,
     created_at: "2026-07-29T00:00:00Z",
     updated_at: "2026-07-29T00:00:00Z",
@@ -55,19 +55,33 @@ describe("planning evidence signals", () => {
     expect(extracted.sgDiagramSearchable).toBe(true);
   });
 
-  it("detects zoning certificates and approved plans from category or label", () => {
+  it("detects zoning certificates and approved plans from explicit metadata only", () => {
     const signals = derivePlanningEvidenceSignals([
       asset({ asset_category: "zoning_document" }),
       asset({
         id: "a2",
         asset_category: "architectural_plan",
         source_label: "Approved municipal plan set",
+        metadata: { planApprovalStatus: "verified_municipal_approval" },
       }),
       asset({ id: "a3", original_file_name: "occupancy certificate 1570.pdf" }),
     ]);
     expect(signals.zoningCertificateUploaded).toBe(true);
     expect(signals.approvedBuildingPlansUploaded).toBe(true);
     expect(signals.occupancyCertificateUploaded).toBe(true);
+  });
+
+  it("does not infer plan approval from filename, source label or category", () => {
+    const signals = derivePlanningEvidenceSignals([
+      asset({
+        id: "TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT",
+        asset_category: "architectural_plan",
+        source_label: "Approved municipal plan set",
+        original_file_name: "approved-plans-test-fixture.pdf",
+        metadata: { planApprovalStatus: "user_identified" },
+      }),
+    ]);
+    expect(signals.approvedBuildingPlansUploaded).toBe(false);
   });
 
   it("never infers servitude, overlay or departure confirmation from a file", () => {
