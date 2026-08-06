@@ -1,13 +1,22 @@
 import type { ReactNode } from "react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import type { MasterInvestigationPlan } from "@/lib/investigation/masterPlan";
+import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";
 import type {
   GuidedInvestigationStep,
   GuidedInvestigationStepId,
 } from "@/lib/investigation/guidedJourney";
 import type { DossierView } from "@/components/property/dossier/reportViews";
+import { AddAddressStep } from "./AddAddressStep";
 import { ConfirmPropertyStep } from "./ConfirmPropertyStep";
 import { ExpertWorkspaceLauncher } from "./ExpertWorkspaceLauncher";
+import { GuidedMarketEvidenceStep } from "./GuidedMarketEvidenceStep";
+import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
+import { GuidedReportStep } from "./GuidedReportStep";
+import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
+import { GuidedTitleStep } from "./GuidedTitleStep";
+import { GuidedZoningStep } from "./GuidedZoningStep";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { InvestigationStepNavigator } from "./InvestigationStepNavigator";
 import { InvestigationStepShell } from "./InvestigationStepShell";
@@ -15,6 +24,8 @@ import { InvestigationStepShell } from "./InvestigationStepShell";
 interface InvestigationJourneyProps {
   parcel: NormalizedOfficialParcel;
   workspaceState: ErfWorkspaceState;
+  plan: MasterInvestigationPlan;
+  report: ReportViewModel;
   steps: GuidedInvestigationStep[];
   activeStep: GuidedInvestigationStep;
   mapSlot?: ReactNode;
@@ -29,6 +40,8 @@ interface InvestigationJourneyProps {
 export function InvestigationJourney({
   parcel,
   workspaceState,
+  plan,
+  report,
   steps,
   activeStep,
   mapSlot,
@@ -58,6 +71,28 @@ export function InvestigationJourney({
             onConfirm={onConfirmIdentity}
             onFlagUncertain={onFlagIdentityUncertain}
             onBackToMap={onBackToMap}
+          />
+        ) : activeStep.id === "add-address" ? (
+          <AddAddressStep parcel={parcel} onContinue={() => onSelectStep("sg-diagram")} />
+        ) : activeStep.id === "sg-diagram" ? (
+          <GuidedSgDiagramStep parcel={parcel} onContinue={() => onSelectStep("title")} />
+        ) : activeStep.id === "title" ? (
+          <GuidedTitleStep
+            parcel={parcel}
+            onContinue={() => onSelectStep("zoning")}
+            onOpenPaidReports={() => onOpenExpertWorkspace("reports")}
+          />
+        ) : activeStep.id === "zoning" ? (
+          <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
+        ) : activeStep.id === "property-checks" ? (
+          <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />
+        ) : activeStep.id === "market" ? (
+          <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("report")} />
+        ) : activeStep.id === "report" ? (
+          <GuidedReportStep
+            plan={plan}
+            report={report}
+            onOpenReport={() => onOpenExpertWorkspace("stoep-report")}
           />
         ) : null}
       </InvestigationStepShell>

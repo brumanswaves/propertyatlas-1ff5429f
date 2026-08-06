@@ -436,6 +436,7 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportBuilder = read("src/components/property/investigation/InvestigationHome.tsx");
     const reportProgress = read("src/lib/workbench/reportProgress.ts");
+    const tabProgress = read("src/lib/workbench/workbenchTabProgress.ts");
     const workspace = read("src/lib/workbench/erfWorkspaceState.ts");
 
     expect(panel).toContain("ownership, transfer, and deeds-level context");
@@ -504,7 +505,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain(
       "Identity marked uncertain. Resolve identity before using market or strategy tools.",
     );
-    expect(panel).toContain(
+    expect(tabProgress).toContain(
       "Market step started. Save a listing, comp, address or note to move toward Strategy.",
     );
     expect(panel).toContain("Buy a report");
@@ -527,9 +528,12 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("readErfWorkspaceState");
     expect(panel).toContain("updateErfWorkspaceState");
     expect(panel).toContain("buildWorkbenchPageNextStep");
-    expect(panel).toContain("marketEvidenceStarted: true");
-    expect(panel).toContain("calculatorStarted: true");
-    expect(panel).toContain("reportStarted: true");
+    expect(panel).toContain("workspaceProgressPatchForStartedTab");
+    expect(tabProgress).toContain("marketEvidenceStarted: true");
+    expect(tabProgress).toContain("calculatorStarted: true");
+    expect(tabProgress).toContain('case "reports":');
+    expect(tabProgress).toContain('case "stoep-report":');
+    expect(tabProgress).toContain("reportStarted: true");
     expect(panel).toContain("Working address");
     expect(panel).toContain("User supplied market address");
     expect(panel).toContain("InvestigationHome");

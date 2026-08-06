@@ -10,10 +10,16 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
+import { selectedMarketAddress } from "@/features/marketEvidence/addressIntelligence";
 import { useVendorWorkspace } from "@/lib/vendors/useVendorWorkspace";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import {
+  findMunicipalityPlanningRegistry,
+  findZone,
+} from "@/lib/planning/municipalityPlanningRegistry";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
+import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
@@ -62,19 +68,30 @@ export function InvestigationHome({
   mapSlot,
 }: InvestigationHomeProps) {
   const { assets } = useErfFileVault(parcel.id);
-  const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
+  const { evidence, marketAddressIntelligence, propertyIdentity } = useSavedMarketEvidence(
+    parcel.id,
+  );
   const vendorWorkspace = useVendorWorkspace(parcel.id);
 
   const scenarios = useMemo(() => readStrategyScenarios(parcel.id), [parcel.id]);
   const chosenScenario = useMemo(() => getChosenStrategyScenario(parcel.id), [parcel.id]);
   const strategyWorkspace = useMemo(() => readStrategyWorkspace(parcel.id), [parcel.id]);
+  const savedMarketAddress = useMemo(
+    () => selectedMarketAddress(marketAddressIntelligence),
+    [marketAddressIntelligence],
+  );
 
   const planning = useMemo(() => {
-    const signals = derivePlanningEvidenceSignals(assets);
     const manualZoneCode = readStoredPlanningZone(parcel.id);
-    const documentZone = signals.zoningCertificateUploaded
-      ? (assets.find((asset) => asset.asset_category === "zoning_document") ?? null)
+    const registry = findMunicipalityPlanningRegistry(parcel.municipality ?? null);
+    const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
+    const documentZone = selectedZone
+      ? (assets.find((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) ?? null)
       : null;
+    const signals = derivePlanningEvidenceSignals(assets, {
+      zoningCertificateUploaded: Boolean(documentZone),
+    });
+
     return buildParcelPlanningAssessment({
       parcelId: parcel.id,
       municipality: parcel.municipality ?? null,
@@ -131,6 +148,7 @@ export function InvestigationHome({
       scenarioCount: scenarios.length,
       chosenScenarioId: chosenScenario?.id ?? null,
       vendorAssignmentCount: vendorWorkspace.loading ? 0 : vendorWorkspace.assignments.length,
+      marketAddressLine: savedMarketAddress?.formattedAddress ?? propertyIdentity?.address ?? null,
       skippedTaskIds: workspaceState.investigation.skippedTaskIds,
       startedAt: workspaceState.investigation.startedAt,
       contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
@@ -147,7 +165,9 @@ export function InvestigationHome({
       evidence,
       parcel,
       planning,
+      propertyIdentity?.address,
       report.evidencePack?.contradictions,
+      savedMarketAddress?.formattedAddress,
       scenarios.length,
       vendorWorkspace.assignments.length,
       vendorWorkspace.loading,
@@ -155,10 +175,7 @@ export function InvestigationHome({
     ],
   );
 
-  const facts = useMemo(
-    () => deriveInvestigationFacts(investigationInput),
-    [investigationInput],
-  );
+  const facts = useMemo(() => deriveInvestigationFacts(investigationInput), [investigationInput]);
   const guidedSteps = useMemo(
     () => buildGuidedInvestigationJourney(facts, workspaceState),
     [facts, workspaceState],
@@ -200,6 +217,8 @@ export function InvestigationHome({
       <InvestigationJourney
         parcel={parcel}
         workspaceState={workspaceState}
+        plan={plan}
+        report={report}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}
@@ -224,8 +243,8 @@ export function InvestigationHome({
         </summary>
         <div className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[#0D1B2A]/66">
-            The full plan remains available as a reference. Opening a row uses the expert
-            workspace and does not overwrite the guided resume step.
+            The full plan remains available as a reference. Opening a row uses the expert workspace
+            and does not overwrite the guided resume step.
           </p>
           <InvestigationPlanTable plan={plan} onRowAction={openPlanRow} />
           <ReportReadinessPanel

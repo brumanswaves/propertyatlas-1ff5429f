@@ -123,11 +123,63 @@ describe("guided investigation components", () => {
     }
   });
 
-  it("renders future steps as preview shells with no fake action button", () => {
+  it("treats every registered journey step as live with no preview or shared bypass", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
+
+    for (const step of steps) {
+      const html = renderToStaticMarkup(
+        <InvestigationStepShell
+          step={step}
+          steps={steps}
+          onSelectStep={noop}
+          onSkipStep={noop}
+          onOpenExpertWorkspace={noop}
+        >
+          <div>{step.label} guided action</div>
+        </InvestigationStepShell>,
+      );
+
+      expect(html).toContain(`${step.label} guided action`);
+      expect(html).not.toContain("This guided action is coming in a later build phase.");
+      expect(html).not.toContain("Open full research workspace");
+      expect(html).not.toContain(">Continue<");
+    }
+  });
+
+  it("renders Add address as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(facts(), workspace);
+    const addressStep = steps.find((step) => step.id === "add-address");
+    if (!addressStep) throw new Error("Expected add-address step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={addressStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <div>Guided working address form</div>
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Guided working address form");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
+  });
+
+  it("renders SG diagram as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(
+      { ...facts(), marketAddressSaved: true },
+      workspace,
+    );
     const sgStep = steps.find((step) => step.id === "sg-diagram");
-    if (!sgStep) throw new Error("Expected SG step");
+    if (!sgStep) throw new Error("Expected sg-diagram step");
 
     const html = renderToStaticMarkup(
       <InvestigationStepShell
@@ -136,14 +188,44 @@ describe("guided investigation components", () => {
         onSelectStep={noop}
         onSkipStep={noop}
         onOpenExpertWorkspace={noop}
-      />,
+      >
+        <div>Guided SG diagram upload</div>
+      </InvestigationStepShell>,
     );
 
-    expect(html).toContain("This guided action is coming in a later build phase.");
-    expect(html).toContain("Open full research workspace");
-    expect(html).not.toContain("Upload SG diagram");
-    expect(html).not.toContain("Analyse listing");
-    expect(html).not.toContain("Run calculator");
+    expect(html).toContain("Guided SG diagram upload");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
+  });
+
+  it("renders title as a live step without a preview or bypass Continue button", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const steps = buildGuidedInvestigationJourney(
+      { ...facts(), marketAddressSaved: true, sgDiagramSearchable: true },
+      workspace,
+    );
+    const titleStep = steps.find((step) => step.id === "title");
+    if (!titleStep) throw new Error("Expected title step");
+
+    const html = renderToStaticMarkup(
+      <InvestigationStepShell
+        step={titleStep}
+        steps={steps}
+        onSelectStep={noop}
+        onSkipStep={noop}
+        onOpenExpertWorkspace={noop}
+      >
+        <div>Guided title evidence upload</div>
+      </InvestigationStepShell>,
+    );
+
+    expect(html).toContain("Guided title evidence upload");
+    expect(html).toContain("Back");
+    expect(html).toContain("Skip for now");
+    expect(html).not.toContain("This guided action is coming in a later build phase.");
+    expect(html).not.toContain(">Continue<");
   });
 
   it("does not render the shared Continue control as a Step 1 bypass before confirmation", () => {

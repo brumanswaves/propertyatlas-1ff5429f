@@ -248,6 +248,41 @@ describe("master investigation plan", () => {
     expect(sg.supportedEvidenceCount).toBe(0);
   });
 
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: report readiness reopens after verified plan evidence is removed", () => {
+    const userIdentifiedPlan = asset("architectural_plan", {
+      source_label: "User identified as approved municipal building plans",
+      original_file_name: "approved-building-plan-test-fixture.pdf",
+      metadata: { planApprovalStatus: "user_identified" },
+    });
+    const verifiedPlan = asset("architectural_plan", {
+      source_label: "Municipal building-control record",
+      original_file_name: "municipal-approved-plan-test-fixture.pdf",
+      metadata: { planApprovalStatus: "verified_municipal_approval" },
+    });
+
+    const withUserIdentifiedOnly = buildMasterInvestigationPlan(
+      makeInput({ assets: [userIdentifiedPlan] }),
+    );
+    const withVerifiedPlan = buildMasterInvestigationPlan(
+      makeInput({ assets: [userIdentifiedPlan, verifiedPlan] }),
+    );
+    const afterRemoval = buildMasterInvestigationPlan(makeInput({ assets: [userIdentifiedPlan] }));
+
+    expect(row(withUserIdentifiedOnly.rows, "buildings-plans")).toMatchObject({
+      status: "not_started",
+      missingItem: "Verified municipal approval metadata for the plan file",
+    });
+    expect(row(withVerifiedPlan.rows, "buildings-plans")).toMatchObject({
+      status: "complete",
+      missingItem: null,
+    });
+    expect(row(afterRemoval.rows, "buildings-plans")).toMatchObject({
+      status: "not_started",
+      missingItem: "Verified municipal approval metadata for the plan file",
+    });
+    expect(withVerifiedPlan.readiness.percent).toBeGreaterThan(afterRemoval.readiness.percent);
+  });
+
   it("does not let generated Site Potential concepts advance Site conditions", () => {
     const workspaceState = createEmptyErfWorkspaceState();
     workspaceState.sitePotential.conceptCount = 2;

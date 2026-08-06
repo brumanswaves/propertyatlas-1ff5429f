@@ -66,19 +66,19 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     label: "Add address",
     shortLabel: "Address",
     description:
-      "Save a working address for this erf. The direct address action moves into Investigation in the next build phase.",
+      "Save the working address used for maps and market searches. It stays separate from the official erf identity.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["identity"],
     relatedTaskIds: [],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: () => false,
+    isComplete: (facts) => facts.marketAddressSaved,
   },
   {
     id: "sg-diagram",
     label: "Add SG diagram",
     shortLabel: "SG",
-    description: "Attach a readable subject SG diagram when the guided upload moves here.",
+    description: "Download, upload and verify a readable SG diagram that matches the selected erf.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["sg-servitudes"],
     relatedTaskIds: ["add-sg-diagram"],
@@ -90,7 +90,8 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     id: "title",
     label: "Check title",
     shortLabel: "Title",
-    description: "Add a readable subject title deed or ownership document when this step is built.",
+    description:
+      "Upload and verify a readable title document, then review extracted deed conditions, servitudes and restrictions.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["ownership", "sg-servitudes"],
     relatedTaskIds: ["add-lightstone-report"],
@@ -196,8 +197,7 @@ export function selectGuidedInvestigationStep(
     if (
       definition &&
       definition.isApplicable(facts) &&
-      prerequisitesMet(definition, completeIds, skippedIds) &&
-      !definition.isComplete(facts)
+      prerequisitesMet(definition, completeIds, skippedIds)
     ) {
       return currentStepId;
     }

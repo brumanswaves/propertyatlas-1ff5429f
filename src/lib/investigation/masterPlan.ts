@@ -304,14 +304,15 @@ export function buildMasterInvestigationPlan(
     summary: !buildingsApplicable
       ? "You recorded this erf as vacant land, so approved plans do not apply yet."
       : facts.approvedPlansOnFile
-        ? "Approved building plans are on file for this erf."
-        : "No approved building plans have been added for this erf.",
+        ? "A plan file with verified municipal approval metadata is on file for this erf."
+        : "No plan file has verified municipal approval metadata for this erf.",
     missingItem:
       !buildingsApplicable || facts.approvedPlansOnFile
         ? null
-        : "Municipally approved building plans",
-    whyItMatters: "Approved plans are the only reliable record of what was legally built.",
-    completionCriteria: "Approved plans for this erf are uploaded to the Erf File Vault.",
+        : "Verified municipal approval metadata for the plan file",
+    whyItMatters: "Municipally approved plans are the only reliable record of what was legally built.",
+    completionCriteria:
+      "A plan file for this erf has verified municipal approval metadata in the Erf File Vault.",
     reportSections: ["Buildings", "Zoning & build"],
     actionLabel: facts.approvedPlansOnFile ? "View plans" : "Request plans",
     targetTab: "reports",

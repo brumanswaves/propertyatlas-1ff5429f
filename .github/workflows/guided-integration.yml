@@ -1,0 +1,76 @@
+name: Guided integration verification
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guided-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run focused Guided tests
+        run: >-
+          npx vitest run
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+
+      - name: Run full test suite
+        run: npx vitest run
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run targeted ESLint
+        run: >-
+          npx eslint
+          src/components/property/dossier/ZoningBuildTab.tsx
+          src/components/property/investigation/AddAddressStep.tsx
+          src/components/property/investigation/GuidedMarketEvidenceStep.tsx
+          src/components/property/investigation/GuidedPropertyChecksStep.tsx
+          src/components/property/investigation/GuidedReportStep.tsx
+          src/components/property/investigation/GuidedSgDiagramStep.tsx
+          src/components/property/investigation/GuidedTitleStep.tsx
+          src/components/property/investigation/GuidedZoningStep.tsx
+          src/components/property/investigation/InvestigationHome.tsx
+          src/components/property/investigation/InvestigationJourney.tsx
+          src/components/property/investigation/InvestigationStepShell.tsx
+          src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/lib/investigation/guidedJourney.ts
+          src/lib/planning/storedPlanningZone.ts
+          src/lib/planning/zoningEvidence.ts
+          src/lib/workbench/useErfFileVault.ts
+
+      - name: Build production bundle
+        run: npm run build

@@ -137,6 +137,17 @@ describe("erfFileVault", () => {
     expect(grouped["Generated concepts"]).toHaveLength(1);
   });
 
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: keeps Guided and Expert vault refreshes parcel-scoped", () => {
+    const hook = read("src/lib/workbench/useErfFileVault.ts");
+    const sgStep = read("src/components/property/investigation/GuidedSgDiagramStep.tsx");
+    const titleStep = read("src/components/property/investigation/GuidedTitleStep.tsx");
+
+    expect(hook).toContain("ERF_FILE_VAULT_UPDATED_EVENT");
+    expect(hook).toContain("detail?.parcelId !== parcelId");
+    expect(sgStep).toContain("dispatchErfFileVaultUpdated(parcel.id)");
+    expect(titleStep).toContain("dispatchErfFileVaultUpdated(parcel.id)");
+  });
+
   it("creates idempotent migration fingerprints from legacy local attachments", () => {
     expect(
       localAttachmentMigrationFingerprint({

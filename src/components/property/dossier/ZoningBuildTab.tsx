@@ -3,12 +3,18 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import {
   findMunicipalityPlanningRegistry,
+  findZone,
   listZones,
 } from "@/lib/planning/municipalityPlanningRegistry";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import { planningZoneStorageKey, readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
+import {
+  PLANNING_ZONE_UPDATED_EVENT,
+  readStoredPlanningZone,
+  writeStoredPlanningZone,
+} from "@/lib/planning/storedPlanningZone";
 import { ZoningBuildPanel } from "./ZoningBuildPanel";
 
 /**
@@ -30,18 +36,19 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setManualZoneCode(readStoredPlanningZone(parcel.id));
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      if (detail?.parcelId && detail.parcelId !== parcel.id) return;
+      setManualZoneCode(readStoredPlanningZone(parcel.id));
+    };
+    sync();
+    window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
   }, [parcel.id]);
 
   const selectZone = useCallback(
     (code: string | null) => {
-      setManualZoneCode(code);
-      try {
-        if (code) window.localStorage.setItem(planningZoneStorageKey(parcel.id), code);
-        else window.localStorage.removeItem(planningZoneStorageKey(parcel.id));
-      } catch {
-        /* storage is best-effort only */
-      }
+      setManualZoneCode(writeStoredPlanningZone(parcel.id, code));
     },
     [parcel.id],
   );
@@ -56,13 +63,25 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
       registry ? listZones(registry).map((zone) => ({ code: zone.code, name: zone.name })) : [],
     [registry],
   );
+  const selectedZone = useMemo(
+    () => (registry ? findZone(registry, manualZoneCode) : null),
+    [manualZoneCode, registry],
+  );
 
-  const signals = useMemo(() => derivePlanningEvidenceSignals(assets), [assets]);
-
-  const documentZone = useMemo(() => {
-    if (!signals.zoningCertificateUploaded) return null;
-    return assets.find((asset) => asset.asset_category === "zoning_document") ?? null;
-  }, [assets, signals.zoningCertificateUploaded]);
+  const documentZone = useMemo(
+    () =>
+      selectedZone
+        ? (assets.find((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) ?? null)
+        : null,
+    [assets, selectedZone],
+  );
+  const signals = useMemo(
+    () =>
+      derivePlanningEvidenceSignals(assets, {
+        zoningCertificateUploaded: Boolean(documentZone),
+      }),
+    [assets, documentZone],
+  );
 
   const assessment = useMemo(
     () =>
@@ -72,8 +91,6 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
         locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
         erfAreaM2: canonicalAreaM2(parcel.rawProperties),
         manualZoneCode,
-        // A zoning certificate only supports the zone the user selected; the
-        // document is never parsed into a zone code here.
         documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
         documentZoneAssetId: documentZone?.id ?? null,
         observedZoneLabel:

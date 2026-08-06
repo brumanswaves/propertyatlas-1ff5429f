@@ -123,9 +123,12 @@ export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
  * `variant` only changes the noun, so Sources can say "diagram" where the
  * Reports tab says "report" without a second status vocabulary.
  */
-export function erfAssetExtractionLabel(asset: MetadataBearer, variant: "report" | "diagram" = "report") {
-  const noun = variant === "diagram" ? "diagram" : "report";
-  const Noun = variant === "diagram" ? "Diagram" : "Report";
+export function erfAssetExtractionLabel(
+  asset: MetadataBearer,
+  variant: "report" | "diagram" | "title" = "report",
+) {
+  const noun = variant === "diagram" ? "diagram" : variant === "title" ? "title document" : "report";
+  const Noun = variant === "diagram" ? "Diagram" : variant === "title" ? "Title document" : "Report";
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
   if (identity === "unverified") return `${Noun} could not be matched to this erf`;

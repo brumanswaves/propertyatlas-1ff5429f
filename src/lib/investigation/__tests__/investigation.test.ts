@@ -10,6 +10,7 @@ import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import { deriveInvestigationFacts } from "@/lib/investigation/propertyInvestigation";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -42,6 +43,29 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     now: new Date("2026-07-29T00:00:00Z"),
     ...overrides,
   } as Parameters<typeof buildPropertyInvestigation>[0];
+}
+
+function evidenceAsset(partial: Partial<ErfAsset>): ErfAsset {
+  return {
+    id: "TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT",
+    user_id: "user-1",
+    parcel_id: "parcel:erf-1570",
+    asset_category: "architectural_plan",
+    asset_type: "approved_building_plan",
+    source_label: "User identified as approved municipal building plans",
+    storage_bucket: "erf-files",
+    storage_path: "user-1/parcel:erf-1570/architectural_plan/test-fixture.pdf",
+    original_file_name: "approved-plans-test-fixture.pdf",
+    mime_type: "application/pdf",
+    size_bytes: 1234,
+    checksum_sha256: null,
+    status: "uploaded_reference_only",
+    metadata: {},
+    local_migration_fingerprint: null,
+    created_at: "2026-07-31T08:00:00.000Z",
+    updated_at: "2026-07-31T08:00:00.000Z",
+    ...partial,
+  };
 }
 
 describe("investigation model", () => {
@@ -120,6 +144,30 @@ describe("investigation model", () => {
 
     expect(second.nextAction?.id).not.toBe("confirm-property-identity");
     expect(second.nextTask?.id).toBe(second.nextAction?.id);
+  });
+
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plan files do not complete approved-plan facts", () => {
+    const userIdentified = deriveInvestigationFacts(
+      baseInput({
+        assets: [
+          evidenceAsset({
+            metadata: { planApprovalStatus: "user_identified" },
+          }),
+        ],
+      }),
+    );
+    const verified = deriveInvestigationFacts(
+      baseInput({
+        assets: [
+          evidenceAsset({
+            metadata: { planApprovalStatus: "verified_municipal_approval" },
+          }),
+        ],
+      }),
+    );
+
+    expect(userIdentified.approvedPlansOnFile).toBe(false);
+    expect(verified.approvedPlansOnFile).toBe(true);
   });
 
   it("shows the same top action in the report opening as in the investigation panel", () => {

@@ -17,6 +17,17 @@ export interface VaultUploadState {
   label: string;
 }
 
+export const ERF_FILE_VAULT_UPDATED_EVENT = "erfstoep:file-vault-updated";
+
+export function dispatchErfFileVaultUpdated(parcelId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(ERF_FILE_VAULT_UPDATED_EVENT, {
+      detail: { parcelId },
+    }),
+  );
+}
+
 export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[]) {
   const { user } = useAuth();
   const categoryFilter = categories?.join("|") ?? "";
@@ -51,6 +62,17 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    function refreshFromVaultEvent(event: Event) {
+      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      if (detail?.parcelId !== parcelId) return;
+      void refresh();
+    }
+
+    window.addEventListener(ERF_FILE_VAULT_UPDATED_EVENT, refreshFromVaultEvent);
+    return () => window.removeEventListener(ERF_FILE_VAULT_UPDATED_EVENT, refreshFromVaultEvent);
+  }, [parcelId, refresh]);
+
   const upload = useCallback(
     async (input: Omit<UploadErfAssetInput, "parcelId" | "onProgress">) => {
       if (!user) throw new Error("Sign in to upload files to the Erf File Vault.");
@@ -64,6 +86,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
         });
         if (!result.ok) return result;
         await refresh();
+        dispatchErfFileVaultUpdated(parcelId);
         return result;
       } finally {
         setUploadState(null);
@@ -76,8 +99,9 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     async (asset: ErfAsset) => {
       await deleteErfAsset(asset);
       await refresh();
+      dispatchErfFileVaultUpdated(parcelId);
     },
-    [refresh],
+    [parcelId, refresh],
   );
 
   const open = useCallback(async (asset: ErfAsset) => {
@@ -90,6 +114,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     const result = await migrateLocalWorkspaceAttachmentsToVault(parcelId);
     setMigration(result);
     await refresh();
+    dispatchErfFileVaultUpdated(parcelId);
     return result;
   }, [parcelId, refresh, user]);
 

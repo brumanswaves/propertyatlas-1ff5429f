@@ -77,6 +77,61 @@ describe("guided investigation journey registry", () => {
     ).toBe("add-address");
   });
 
+  it("marks Add address complete and advances to SG after an address is saved", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({ identityConfirmed: true, identityChecked: true, marketAddressSaved: true }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "add-address")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("sg-diagram");
+  });
+
+  it("marks SG complete only for a searchable subject diagram and advances to title", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({
+        identityConfirmed: true,
+        identityChecked: true,
+        marketAddressSaved: true,
+        sgDiagramSearchable: true,
+        sgDiagramCount: 1,
+        usableSubjectSgDiagramCount: 1,
+      }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "sg-diagram")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("title");
+  });
+
+  it("marks title complete only for searchable subject title evidence and advances to zoning", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({
+        identityConfirmed: true,
+        identityChecked: true,
+        marketAddressSaved: true,
+        sgDiagramSearchable: true,
+        titleDeedSearchable: true,
+      }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "title")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(journey.find((step) => step.current)?.id).toBe("zoning");
+  });
+
   it("uses Add address, not Market, as the guided identity confirmation next step", () => {
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
@@ -120,6 +175,24 @@ describe("guided investigation journey registry", () => {
         workspace.investigation,
       ),
     ).toBe("add-address");
+  });
+
+  it("allows backward navigation to a completed earlier step", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.investigation.currentStepId = "confirm-property";
+    workspace.investigation.intentionallyVisitedStepIds = ["confirm-property"];
+    const confirmedFacts = facts({ identityConfirmed: true, identityChecked: true });
+
+    expect(selectGuidedInvestigationStep(confirmedFacts, workspace.investigation)).toBe(
+      "confirm-property",
+    );
+
+    const journey = buildGuidedInvestigationJourney(confirmedFacts, workspace);
+    expect(journey.find((step) => step.id === "confirm-property")).toMatchObject({
+      complete: true,
+      current: true,
+    });
+    expect(journey.find((step) => step.id === "add-address")?.current).toBe(false);
   });
 
   it("only allows known step ids to drive the current step", () => {

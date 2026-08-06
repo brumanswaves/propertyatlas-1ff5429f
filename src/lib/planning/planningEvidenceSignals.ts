@@ -1,4 +1,5 @@
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { isVerifiedMunicipalApprovedPlan } from "@/lib/evidence/planApprovalMetadata";
 import type { ParcelPlanningEvidenceSignals } from "./parcelPlanningAssessment";
 
 /**
@@ -51,13 +52,7 @@ export function derivePlanningEvidenceSignals(
     if (asset.asset_category === "zoning_document" || text.includes("zoning certificate")) {
       signals.zoningCertificateUploaded = true;
     }
-    if (
-      asset.asset_category === "architectural_plan" &&
-      (text.includes("approved") || text.includes("municipal plan"))
-    ) {
-      signals.approvedBuildingPlansUploaded = true;
-    }
-    if (text.includes("approved building plan") || text.includes("approved plans")) {
+    if (isVerifiedMunicipalApprovedPlan(asset)) {
       signals.approvedBuildingPlansUploaded = true;
     }
     if (asset.asset_category === "title_deed" && isSearchable(asset)) {

@@ -61,6 +61,10 @@ import {
   erfAssetIdentityMatchStatus,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
+import {
+  workflowFeedbackForStartedTab,
+  workspaceProgressPatchForStartedTab,
+} from "@/lib/workbench/workbenchTabProgress";
 
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
@@ -2066,30 +2070,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       }, false);
     }
     if (options?.markStarted) {
-      if (nextTab === "listings") {
-        setWorkspacePatch({ marketEvidenceStarted: true, dirty: true });
-        setWorkflowFeedback(
-          "Market step started. Save a listing, comp, address or note to move toward Strategy.",
-        );
-      }
-      if (nextTab === "calculators") {
-        setWorkspacePatch({ calculatorStarted: true, dirty: true });
-        setWorkflowFeedback(
-          "Strategy Lab started. Calculator outputs are estimates from your assumptions.",
-        );
-      }
-      if (nextTab === "reports") {
-        setWorkspacePatch({ reportStarted: true, dirty: true });
-        setWorkflowFeedback(
-          "Paid Reports opened. These are optional confidence upgrades, not required to continue.",
-        );
-      }
-      if (nextTab === "stoep-report") {
-        setWorkspacePatch({ reportStarted: true, dirty: true });
-        setWorkflowFeedback(
-          "Easy Erf Report opened. It assembles saved evidence and assumptions without fake data.",
-        );
-      }
+      const progressPatch = workspaceProgressPatchForStartedTab(nextTab);
+      const feedback = workflowFeedbackForStartedTab(nextTab);
+      if (progressPatch) setWorkspacePatch(progressPatch);
+      if (feedback) setWorkflowFeedback(feedback);
     }
     setTab(nextTab);
     requestAnimationFrame(() => {

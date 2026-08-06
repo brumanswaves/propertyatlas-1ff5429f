@@ -132,6 +132,18 @@ describe("erf asset extraction client", () => {
         metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractedClaims: [validClaim] },
       }),
     ).toBe("Report searchable");
+    expect(
+      erfAssetExtractionLabel(
+        {
+          metadata: {
+            extractionStatus: "ready",
+            identityMatchStatus: "matched",
+            extractedClaims: [validClaim],
+          },
+        },
+        "title",
+      ),
+    ).toBe("Title document searchable");
     expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "mismatch" } })).toBe("Wrong property report");
     expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "unverified" } })).toBe(
       "Report could not be matched to this erf",
