@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: guided-integration-${{ github.event.pull_request.head.sha || github.sha }}
+  group: guided-integration-${{ github.run_number == 24 && 'e5c4b662f4d52c622cf12a4d86ddd085615a0c96' || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
