@@ -34,6 +34,8 @@ jobs:
       - name: Run focused Guided tests
         run: >-
           npx vitest run
+          src/features/marketEvidence/__tests__/addressSuggestions.test.ts
+          src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
           src/lib/investigation/__tests__/guidedJourney.test.ts
           src/components/property/investigation/__tests__/guidedComponents.test.tsx
           src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
@@ -50,27 +52,27 @@ jobs:
       - name: Run targeted ESLint
         run: >-
           npx eslint
-          src/components/property/dossier/ZoningBuildTab.tsx
+          --no-warn-ignored
           src/components/property/investigation/AddAddressStep.tsx
-          src/components/property/investigation/GuidedMarketEvidenceStep.tsx
-          src/components/property/investigation/GuidedPropertyChecksStep.tsx
-          src/components/property/investigation/GuidedReportStep.tsx
-          src/components/property/investigation/GuidedSgDiagramStep.tsx
+          src/components/property/investigation/GuidedSitePotentialStep.tsx
           src/components/property/investigation/GuidedTitleStep.tsx
           src/components/property/investigation/GuidedZoningStep.tsx
-          src/components/property/investigation/InvestigationHome.tsx
           src/components/property/investigation/InvestigationJourney.tsx
           src/components/property/investigation/InvestigationStepShell.tsx
-          src/components/property/investigation/__tests__/guidedComponents.test.tsx
-          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
-          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
-          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
-          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
-          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/features/marketEvidence/addressIntelligence.ts
+          src/features/marketEvidence/hooks/useAddressSuggestions.ts
+          src/features/marketEvidence/types.ts
+          src/features/marketEvidence/__tests__/addressSuggestions.test.ts
           src/lib/investigation/guidedJourney.ts
-          src/lib/planning/storedPlanningZone.ts
-          src/lib/planning/zoningEvidence.ts
-          src/lib/workbench/useErfFileVault.ts
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
+          supabase/functions/_shared/erfExtractionMedia.ts
+          supabase/functions/_shared/generalPlanSubjectEvidence.ts
+          supabase/functions/extract-erf-asset/index.ts
+          supabase/functions/extract-erf-asset/tiffDecode.ts
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Check patch whitespace
+        run: git diff --check HEAD^ HEAD
