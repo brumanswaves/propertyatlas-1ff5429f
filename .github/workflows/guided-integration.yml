@@ -45,6 +45,7 @@ jobs:
           src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
           src/lib/investigation/__tests__/guidedJourney.test.ts
           src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx
           src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
           src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
           src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
@@ -69,6 +70,7 @@ jobs:
           src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
           src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
           src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+          src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx
           src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
           src/features/marketEvidence/addressIntelligence.ts
           src/features/marketEvidence/hooks/useAddressSuggestions.ts
