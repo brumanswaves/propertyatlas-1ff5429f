@@ -4,17 +4,19 @@ import { cn } from "@/lib/utils";
 
 interface GuidedSitePotentialStepProps {
   workspaceState: ErfWorkspaceState;
+  stepSkipped?: boolean;
   onOpenSitePotential: () => void;
   onContinue: () => void;
 }
 
 export function GuidedSitePotentialStep({
   workspaceState,
+  stepSkipped = false,
   onOpenSitePotential,
   onContinue,
 }: GuidedSitePotentialStepProps) {
   const site = workspaceState.sitePotential;
-  const skipped = site.skipped || site.progressState === "skipped";
+  const skipped = stepSkipped || site.skipped || site.progressState === "skipped";
   const designSelected = Boolean(site.selectedDesignAssetId);
   const conceptCount = site.conceptCount;
   const complete = designSelected || skipped;
@@ -86,6 +88,13 @@ export function GuidedSitePotentialStep({
           <p className="mt-4 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
             Concepts have been generated, but none is selected yet. Open Site Potential and choose a
             preferred concept, or use Skip for now to continue without one.
+          </p>
+        ) : null}
+
+        {skipped ? (
+          <p className="mt-4 rounded-xl border border-emerald-300/45 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950">
+            You skipped Site Potential for now. You can still open it, create or select a concept,
+            and add that concept to the report later.
           </p>
         ) : null}
 
