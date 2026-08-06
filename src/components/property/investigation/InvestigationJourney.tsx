@@ -15,6 +15,7 @@ import { GuidedMarketEvidenceStep } from "./GuidedMarketEvidenceStep";
 import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
 import { GuidedReportStep } from "./GuidedReportStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
+import { GuidedSitePotentialStep } from "./GuidedSitePotentialStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
 import { InvestigationProgress } from "./InvestigationProgress";
@@ -85,7 +86,16 @@ export function InvestigationJourney({
         ) : activeStep.id === "zoning" ? (
           <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
         ) : activeStep.id === "property-checks" ? (
-          <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />
+          <GuidedPropertyChecksStep
+            parcel={parcel}
+            onContinue={() => onSelectStep("site-potential")}
+          />
+        ) : activeStep.id === "site-potential" ? (
+          <GuidedSitePotentialStep
+            workspaceState={workspaceState}
+            onOpenSitePotential={() => onOpenExpertWorkspace("site-potential")}
+            onContinue={() => onSelectStep("market")}
+          />
         ) : activeStep.id === "market" ? (
           <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("report")} />
         ) : activeStep.id === "report" ? (
