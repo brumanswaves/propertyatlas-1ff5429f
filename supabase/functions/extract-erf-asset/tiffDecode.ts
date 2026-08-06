@@ -1,20 +1,10 @@
 /**
  * Deno-only TIFF rasteriser for Surveyor-General diagrams.
  *
- * Pure JavaScript on purpose: Supabase Edge Functions run on Deno with no
- * native addons, so Sharp/libvips/ImageMagick are unavailable.
- *
- * Real SG diagrams are CCITT Group 4 bilevel scans of 70-120 megapixels. Two
- * things make those readable inside an Edge Function's small CPU and memory
- * budget:
- *   1. the G4 stream is decoded to run lengths and box-averaged straight into
- *      the reduced page, so the full-size image is never materialised;
- *   2. the reduced page is written as an 8-bit greyscale PNG using the
- *      runtime's native deflate, which is far cheaper than a JS encoder.
- * Anything that is not bilevel G4 falls back to UTIF + UPNG.
- *
- * Nothing here is persisted: converted bytes exist only for the duration of
- * one model call.
+ * Real SG diagrams are often 70 to 120 megapixel CCITT Group 4 scans. Bilevel
+ * pages are decoded to run lengths and accumulated directly into reduced PNGs,
+ * so a full-size RGBA image is never materialised. Dense plans receive one
+ * overview plus a bounded set of overlapping detail tiles.
  */
 // @ts-expect-error npm: specifiers are resolved by Deno at deploy time.
 import UTIF from "npm:utif2@4.1.0";
@@ -24,20 +14,21 @@ import UPNG from "npm:upng-js@2.1.0";
 import {
   ERF_NORMALIZED_IMAGE_MIME,
   ERF_TIFF_MAX_BILEVEL_EDGE_PX,
+  ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
   type NormalizedExtractionPage,
   checkConvertedByteBudget,
   checkTiffPageBudget,
   checkTiffPixelBudget,
+  planDenseSheetTiles,
   planTiffPageScale,
 } from "../_shared/erfExtractionMedia.ts";
 
 export interface TiffNormalizationResult {
   pages: NormalizedExtractionPage[];
-  /** Pages present in the source file, even if some were skipped. */
   sourcePageCount: number;
-  /** Honest, user-safe note when the conversion was partial. */
   warning: string | null;
   downscaled: boolean;
+  detailTileCount: number;
 }
 
 export class TiffNormalizationError extends Error {
@@ -55,10 +46,6 @@ function toBase64(bytes: Uint8Array) {
   }
   return btoa(binary);
 }
-
-/* ------------------------------------------------------------------ *
- * Minimal greyscale PNG writer (native deflate)
- * ------------------------------------------------------------------ */
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -87,11 +74,12 @@ function pngChunk(type: string, data: Uint8Array) {
 }
 
 async function deflate(bytes: Uint8Array) {
-  const stream = new Blob([bytes as unknown as BlobPart]).stream().pipeThrough(new CompressionStream("deflate"));
+  const stream = new Blob([bytes as unknown as BlobPart])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-/** 8-bit greyscale PNG, filter type 0 on every row. */
 async function encodeGrayPng(gray: Uint8Array, width: number, height: number) {
   const raw = new Uint8Array((width + 1) * height);
   for (let y = 0; y < height; y += 1) {
@@ -104,8 +92,8 @@ async function encodeGrayPng(gray: Uint8Array, width: number, height: number) {
   const ihdrView = new DataView(ihdr.buffer);
   ihdrView.setUint32(0, width);
   ihdrView.setUint32(4, height);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 0; // colour type: greyscale
+  ihdr[8] = 8;
+  ihdr[9] = 0;
 
   const signature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   const chunks = [
@@ -124,10 +112,6 @@ async function encodeGrayPng(gray: Uint8Array, width: number, height: number) {
   return png;
 }
 
-/* ------------------------------------------------------------------ *
- * CCITT Group 4 -> reduced greyscale
- * ------------------------------------------------------------------ */
-
 type G4Ifd = {
   t256?: number[];
   t257?: number[];
@@ -145,18 +129,19 @@ function tag(ifd: G4Ifd, key: keyof G4Ifd) {
   return Array.isArray(value) && value.length > 0 ? Number(value[0]) : null;
 }
 
-/**
- * Decode one G4 strip, accumulating black-pixel coverage into `ink`.
- *
- * Runs, not pixels, come out of the decoder, so the cost is proportional to
- * the drawing's line work rather than to its pixel count.
- */
+interface DecodeRegion {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 function decodeG4Strip(
   data: Uint8Array,
   byteOffset: number,
   byteLength: number,
   width: number,
-  height: number,
+  region: DecodeRegion,
   stripRows: number,
   yBase: number,
   lsbFirst: boolean,
@@ -179,20 +164,24 @@ function decodeG4Strip(
   let toRead = 0;
   let runLength = 0;
   let y = 0;
+  const regionHeight = Math.max(1, region.y1 - region.y0);
 
   const addRun = (from: number, to: number, clr: number) => {
     if (clr !== 1) return;
-    const start = Math.max(0, from);
-    const stop = Math.min(width, to);
+    const absY = y + yBase;
+    if (absY < region.y0 || absY >= region.y1) return;
+    const start = Math.max(region.x0, from);
+    const stop = Math.min(region.x1, to);
     if (stop <= start) return;
-    const dstY = Math.min(dstHeight - 1, Math.floor(((y + yBase) * dstHeight) / height));
+    const dstY = Math.min(
+      dstHeight - 1,
+      Math.floor(((absY - region.y0) * dstHeight) / regionHeight),
+    );
     const rowBase = dstY * dstWidth;
     for (let x = start; x < stop; x += 1) ink[rowBase + colBin[x]] += 1;
   };
 
   while (bitOffset < endBit && y < stripRows) {
-    // b1: first changing element on the reference line right of a0 with the
-    // opposite colour; b2: the one after it.
     let b1 = width;
     let b2 = width;
     for (let i = 0; i < ref.length; i += 1) {
@@ -204,7 +193,9 @@ function decodeG4Strip(
     }
 
     const byte = data[bitOffset >>> 3] ?? 0;
-    const bit = lsbFirst ? (byte >>> (bitOffset & 7)) & 1 : (byte >>> (7 - (bitOffset & 7))) & 1;
+    const bit = lsbFirst
+      ? (byte >>> (bitOffset & 7)) & 1
+      : (byte >>> (7 - (bitOffset & 7))) & 1;
     bitOffset += 1;
     word += bit;
 
@@ -262,8 +253,16 @@ async function convertBilevelPage(
   ifd: G4Ifd,
   width: number,
   height: number,
+  options: { region?: DecodeRegion; maxEdgePx?: number } = {},
 ) {
-  const plan = planTiffPageScale(width, height, ERF_TIFF_MAX_BILEVEL_EDGE_PX);
+  const region: DecodeRegion = options.region ?? { x0: 0, y0: 0, x1: width, y1: height };
+  const regionWidth = Math.max(1, region.x1 - region.x0);
+  const regionHeight = Math.max(1, region.y1 - region.y0);
+  const plan = planTiffPageScale(
+    regionWidth,
+    regionHeight,
+    options.maxEdgePx ?? ERF_TIFF_MAX_BILEVEL_EDGE_PX,
+  );
   const offsets = ifd.t273 ?? [];
   const counts = ifd.t279 ?? [];
   if (offsets.length === 0 || counts.length !== offsets.length) {
@@ -271,12 +270,14 @@ async function convertBilevelPage(
   }
   const rowsPerStrip = tag(ifd, "t278") ?? height;
   const lsbFirst = (tag(ifd, "t266") ?? 1) === 2;
-  // PhotometricInterpretation 0 (WhiteIsZero) is the G4 norm: a set bit is ink.
   const whiteIsZero = (tag(ifd, "t262") ?? 0) === 0;
 
   const colBin = new Int32Array(width);
   for (let x = 0; x < width; x += 1) {
-    colBin[x] = Math.min(plan.width - 1, Math.floor((x * plan.width) / width));
+    colBin[x] = Math.min(
+      plan.width - 1,
+      Math.max(0, Math.floor(((x - region.x0) * plan.width) / regionWidth)),
+    );
   }
 
   const ink = new Float32Array(plan.width * plan.height);
@@ -288,7 +289,7 @@ async function convertBilevelPage(
       offsets[strip],
       counts[strip],
       width,
-      height,
+      region,
       stripRows,
       decodedRows,
       lsbFirst,
@@ -300,7 +301,7 @@ async function convertBilevelPage(
     decodedRows += stripRows;
   }
 
-  const cellArea = (width / plan.width) * (height / plan.height);
+  const cellArea = (regionWidth / plan.width) * (regionHeight / plan.height);
   const gray = new Uint8Array(plan.width * plan.height);
   for (let i = 0; i < gray.length; i += 1) {
     const coverage = Math.min(1, (ink[i] / cellArea) * 1.6);
@@ -311,7 +312,6 @@ async function convertBilevelPage(
   return { png: await encodeGrayPng(gray, plan.width, plan.height), plan };
 }
 
-/** Nearest-neighbour RGBA downscale. Keeps hard cadastral line work crisp. */
 function resizeRgba(
   rgba: Uint8Array,
   srcWidth: number,
@@ -335,18 +335,15 @@ function resizeRgba(
   return out;
 }
 
-/**
- * Decodes every page of a TIFF to PNG, in order, within the safety budgets.
- * Throws TiffNormalizationError when the file is corrupt or unreadable —
- * failing honestly is required, guessing is not acceptable.
- */
 export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNormalizationResult> {
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   let ifds: unknown[];
   try {
     ifds = UTIF.decode(buffer);
-  } catch (_error) {
-    throw new TiffNormalizationError("This TIFF could not be read. It may be corrupted or in an unsupported format.");
+  } catch {
+    throw new TiffNormalizationError(
+      "This TIFF could not be read. It may be corrupted or in an unsupported format.",
+    );
   }
   if (!Array.isArray(ifds) || ifds.length === 0) {
     throw new TiffNormalizationError("This TIFF contains no readable pages.");
@@ -361,6 +358,7 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
   const pages: NormalizedExtractionPage[] = [];
   let totalBytes = 0;
   let downscaled = false;
+  let detailTileCount = 0;
 
   for (let index = 0; index < usable.length; index += 1) {
     const ifd = usable[index] as G4Ifd & { width?: number; height?: number };
@@ -417,14 +415,44 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
       break;
     }
     totalBytes += png.byteLength;
-
     pages.push({
       pageNumber: index + 1,
       mimeType: ERF_NORMALIZED_IMAGE_MIME,
       base64: toBase64(png),
       width: planWidth,
       height: planHeight,
+      detail: null,
     });
+
+    if (!isBilevelG4) continue;
+    for (const tile of planDenseSheetTiles(srcWidth, srcHeight)) {
+      try {
+        const converted = await convertBilevelPage(bytes, ifd, srcWidth, srcHeight, {
+          region: { x0: tile.x0, y0: tile.y0, x1: tile.x1, y1: tile.y1 },
+          maxEdgePx: ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
+        });
+        const tileBudget = checkConvertedByteBudget(
+          converted.png.byteLength,
+          totalBytes + converted.png.byteLength,
+        );
+        if (!tileBudget.ok) {
+          warnings.push(tileBudget.message);
+          break;
+        }
+        totalBytes += converted.png.byteLength;
+        detailTileCount += 1;
+        pages.push({
+          pageNumber: index + 1,
+          mimeType: ERF_NORMALIZED_IMAGE_MIME,
+          base64: toBase64(converted.png),
+          width: converted.plan.width,
+          height: converted.plan.height,
+          detail: tile,
+        });
+      } catch {
+        warnings.push(`One detail crop on page ${index + 1} could not be converted.`);
+      }
+    }
   }
 
   if (pages.length === 0) {
@@ -436,7 +464,8 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
   return {
     pages,
     sourcePageCount,
-    warning: warnings.length > 0 ? warnings.join(" ") : null,
+    warning: warnings.length > 0 ? Array.from(new Set(warnings)).join(" ") : null,
     downscaled,
+    detailTileCount,
   };
 }
