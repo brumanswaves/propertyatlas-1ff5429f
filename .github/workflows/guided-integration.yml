@@ -15,48 +15,51 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
       - name: Check out repository with built-in Git
-        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           git init .
-          git remote add origin "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git"
-          $ref = if ($env:GITHUB_HEAD_REF) { $env:GITHUB_HEAD_REF } else { $env:GITHUB_REF_NAME }
-          git fetch --no-tags --depth=1 origin $ref
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git fetch --no-tags --depth=1 origin "${REF}"
           git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
 
       - name: Confirm built-in Node.js
-        shell: pwsh
         run: |
           node --version
           npm --version
 
       - name: Install dependencies
-        shell: pwsh
-        run: npm.cmd install --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Run focused Guided tests
-        shell: pwsh
-        run: npx.cmd vitest run src/features/marketEvidence/__tests__/addressSuggestions.test.ts src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts src/lib/investigation/__tests__/guidedJourney.test.ts src/components/property/investigation/__tests__/guidedComponents.test.tsx src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx src/components/property/investigation/__tests__/guidedZoningStep.test.tsx src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+        run: >-
+          npx vitest run
+          src/features/marketEvidence/__tests__/addressSuggestions.test.ts
+          src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
 
       - name: Run full test suite
-        shell: pwsh
-        run: npx.cmd vitest run
+        run: npx vitest run
 
       - name: Check TypeScript
-        shell: pwsh
-        run: npx.cmd tsc --noEmit
+        run: npx tsc --noEmit
 
       - name: Run targeted ESLint
-        shell: pwsh
         run: >-
-          npx.cmd eslint
+          npx eslint
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           src/components/property/investigation/AddAddressStep.tsx
@@ -83,9 +86,7 @@ jobs:
           supabase/functions/extract-erf-asset/tiffDecode.ts
 
       - name: Build production bundle
-        shell: pwsh
-        run: npm.cmd run build
+        run: npm run build
 
       - name: Check patch whitespace
-        shell: pwsh
         run: git diff --check origin/main...HEAD
