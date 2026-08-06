@@ -93,6 +93,7 @@ export function InvestigationJourney({
         ) : activeStep.id === "site-potential" ? (
           <GuidedSitePotentialStep
             workspaceState={workspaceState}
+            stepSkipped={activeStep.skipped}
             onOpenSitePotential={() => onOpenExpertWorkspace("site-potential")}
             onContinue={() => onSelectStep("market")}
           />
