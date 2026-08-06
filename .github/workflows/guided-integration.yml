@@ -61,6 +61,10 @@ jobs:
           src/components/property/investigation/GuidedZoningStep.tsx
           src/components/property/investigation/InvestigationJourney.tsx
           src/components/property/investigation/InvestigationStepShell.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
           src/features/marketEvidence/addressIntelligence.ts
           src/features/marketEvidence/hooks/useAddressSuggestions.ts
           src/features/marketEvidence/types.ts
