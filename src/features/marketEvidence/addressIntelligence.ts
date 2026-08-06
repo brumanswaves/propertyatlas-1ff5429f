@@ -45,6 +45,7 @@ export function parseMarketAddressIntelligence(value: unknown): MarketAddressInt
             item.source === "official_parcel" ||
             item.source === "municipal_record" ||
             item.source === "google_reverse_geocode" ||
+            item.source === "google_forward_geocode" ||
             item.source === "manual_google_maps_whats_here" ||
             item.source === "user_entered"
               ? item.source
@@ -190,6 +191,82 @@ export async function reverseGeocodeAddressCandidates(
           confidence: "medium",
           reason:
             "Google reverse-geocode suggestion from parcel coordinates. Map-derived, not official truth.",
+        }),
+      );
+  } catch {
+    return [];
+  }
+}
+
+interface GoogleGeocodeComponent {
+  long_name?: string;
+  short_name?: string;
+  types?: string[];
+}
+
+interface GoogleGeocodeResult {
+  formatted_address?: string;
+  address_components?: GoogleGeocodeComponent[];
+  geometry?: { location?: { lat?: number; lng?: number } };
+}
+
+function component(result: GoogleGeocodeResult, ...types: string[]): string | null {
+  for (const type of types) {
+    const match = (result.address_components ?? []).find((item) =>
+      (item.types ?? []).includes(type),
+    );
+    if (match?.long_name) return match.long_name;
+  }
+  return null;
+}
+
+export const ADDRESS_SUGGESTION_MIN_QUERY_LENGTH = 3;
+
+export async function forwardGeocodeAddressCandidates(
+  query: string,
+  options: {
+    near?: { lat: number; lng: number } | null;
+    signal?: AbortSignal;
+    limit?: number;
+  } = {},
+): Promise<AddressCandidate[]> {
+  const text = query.trim();
+  if (text.length < ADDRESS_SUGGESTION_MIN_QUERY_LENGTH) return [];
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  if (!key) return [];
+
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", text);
+    url.searchParams.set("components", "country:ZA");
+    url.searchParams.set("key", key);
+    if (options.near) {
+      const { lat, lng } = options.near;
+      const pad = 0.25;
+      url.searchParams.set("bounds", `${lat - pad},${lng - pad}|${lat + pad},${lng + pad}`);
+    }
+    const response = await fetch(url, options.signal ? { signal: options.signal } : undefined);
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { results?: GoogleGeocodeResult[] };
+    return (payload.results ?? [])
+      .filter((result) => Boolean(result.formatted_address))
+      .slice(0, options.limit ?? 5)
+      .map((result, index) =>
+        buildAddressCandidate({
+          id: `google-forward-${index}-${String(result.formatted_address)}`,
+          formattedAddress: String(result.formatted_address),
+          streetNumber: component(result, "street_number"),
+          streetName: component(result, "route"),
+          suburb: component(result, "sublocality_level_1", "sublocality", "neighborhood"),
+          town: component(result, "locality", "postal_town"),
+          province: component(result, "administrative_area_level_1"),
+          postalCode: component(result, "postal_code"),
+          lat: result.geometry?.location?.lat ?? null,
+          lng: result.geometry?.location?.lng ?? null,
+          source: "google_forward_geocode",
+          confidence: "medium",
+          reason:
+            "Google address suggestion for what you typed. Check it before saving; it is not official parcel data.",
         }),
       );
   } catch {
