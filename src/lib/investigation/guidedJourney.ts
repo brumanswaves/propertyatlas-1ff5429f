@@ -8,6 +8,7 @@ export type GuidedInvestigationStepId =
   | "title"
   | "zoning"
   | "property-checks"
+  | "site-potential"
   | "market"
   | "report";
 
@@ -78,7 +79,7 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     id: "sg-diagram",
     label: "Add SG diagram",
     shortLabel: "SG",
-    description: "Download, upload and verify a readable SG diagram that matches the selected erf.",
+    description: "Download, upload and verify readable cadastral evidence for the selected erf.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["sg-servitudes"],
     relatedTaskIds: ["add-sg-diagram"],
@@ -91,25 +92,26 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     label: "Check title",
     shortLabel: "Title",
     description:
-      "Upload and verify a readable title document, then review extracted deed conditions, servitudes and restrictions.",
+      "Add a matched title deed or paid property report, then review the ownership and deeds evidence it contains.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["ownership", "sg-servitudes"],
     relatedTaskIds: ["add-lightstone-report"],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: (facts) => facts.titleDeedSearchable,
+    isComplete: (facts) => facts.titleDeedSearchable || facts.paidReportSearchable,
   },
   {
     id: "zoning",
     label: "Confirm zoning",
     shortLabel: "Zoning",
-    description: "Confirm the erf-specific zoning with a supporting document.",
+    description:
+      "Save a working zoning selection, then strengthen it with an erf-specific municipal record when available.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["zoning"],
     relatedTaskIds: ["confirm-zoning"],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: (facts) => facts.zoningConfirmedByDocument,
+    isComplete: (facts) => facts.zoningConfirmedByDocument || facts.zoningWorkingAssumption,
   },
   {
     id: "property-checks",
@@ -125,6 +127,19 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
       facts.approvedPlansOnFile ||
       facts.usableTopographySurveyCount > 0 ||
       facts.sitePhotoCount + facts.existingHousePhotoCount > 0,
+  },
+  {
+    id: "site-potential",
+    label: "Site Potential",
+    shortLabel: "Potential",
+    description:
+      "Explore an illustrative property concept and select one for the report, or skip this optional step.",
+    prerequisites: ["confirm-property"],
+    masterPlanRowIds: ["site-potential"],
+    relatedTaskIds: ["review-site-potential"],
+    canSkip: true,
+    isApplicable: () => true,
+    isComplete: (facts) => facts.siteDesignSelected || facts.siteSkipped,
   },
   {
     id: "market",
