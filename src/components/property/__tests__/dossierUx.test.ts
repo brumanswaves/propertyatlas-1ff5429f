@@ -125,15 +125,17 @@ describe("official dossier UX guardrails", () => {
     const home = read("src/routes/index.tsx");
     const map = read("src/components/map/MapCanvas.tsx");
     const search = read("src/components/map/SearchBar.tsx");
+    const resultAction = read("src/components/map/officialSearchResultAction.ts");
 
     expect(search).toContain("onHighlightOfficialFromSearch");
     expect(search).toContain("onLocateAddress");
     expect(search).toContain("onHighlightOfficialFromSearch?.(officialMatch)");
-    expect(search).toContain("shouldOpenOfficialWorkbenchDirectly");
-    expect(search).toContain('result.confidence === "exact_official_match"');
-    expect(search).toContain("selectOfficialErfResult(result)");
-    expect(search).toContain("openOfficialWorkbench(result)");
-    expect(search).toContain("event.stopPropagation()");
+    expect(resultAction).toContain("shouldOpenOfficialWorkbenchDirectly");
+    expect(resultAction).toContain('result.confidence === "exact_official_match"');
+    expect(search).toContain("selectOfficialErfResult(selectedResult");
+    expect(resultAction).toContain("actions.openOfficialWorkbench(result)");
+    expect(search).toContain('role="group"');
+    expect(search).not.toContain("event.stopPropagation()");
     expect(search).toContain("onOpenOfficialWorkbench?.(result)");
     expect(home).toContain("handleOfficialSearchHighlight");
     expect(home).toContain("Click the highlighted erf to open the Workbench.");

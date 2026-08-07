@@ -58,6 +58,16 @@ const anotherErf962: Feature<Polygon> = {
   },
 };
 
+const erf1570: Feature<Polygon> = {
+  ...erf962,
+  properties: {
+    ...erf962.properties,
+    PARCEL_NO: "1570",
+    ID: "C03400140000157000000",
+    PRCL_KEY: "E108C034001400001570000000",
+  },
+};
+
 const parcelIndex = buildOfficialParcelIndex([
   { layer: "csg-parcels", feature: anotherErf962 },
   { layer: "csg-parcels", feature: erf962 },
@@ -102,12 +112,58 @@ describe("official parcel search", () => {
   it("returns multiple erf-only candidates but ranks erf plus town context first", () => {
     const erfOnly = searchOfficialParcels("Erf 962", parcelIndex);
     expect(erfOnly).toHaveLength(2);
+    expect(erfOnly.every((result) => result.confidence === "likely_nearby_parcel")).toBe(true);
     expect(searchOfficialParcels("Erf 962 Sea Vista", parcelIndex)[0].fields.town).toBe(
       "Sea Vista",
     );
     expect(searchOfficialParcels("8 Harbour Road St Francis Bay", parcelIndex)[0].fields.lpi).toBe(
       "c03400140000096200000",
     );
+  });
+
+  it("promotes erf and portion with compatible area context to an exact official match", () => {
+    expect(searchOfficialParcels("Erf 962 portion 0 Sea Vista", parcelIndex)[0]).toMatchObject({
+      confidence: "exact_official_match",
+      matchReason: "Official erf and portion match",
+      fields: { lpi: "c03400140000096200000" },
+    });
+  });
+
+  it("promotes a single unambiguous erf and portion result", () => {
+    expect(
+      searchOfficialParcels("Erf 962 portion 0 Saint Francis Bay", [parcelIndex[1]])[0],
+    ).toMatchObject({
+      confidence: "exact_official_match",
+      matchReason: "Official erf and portion match",
+    });
+  });
+
+  it("opens the Erf 1570 acceptance query as an exact official match", () => {
+    const [result] = searchOfficialParcels(
+      "Erf 1570 portion 0 Saint Francis Bay",
+      buildOfficialParcelIndex([{ layer: "csg-parcels", feature: erf1570 }]),
+    );
+
+    expect(result).toMatchObject({
+      confidence: "exact_official_match",
+      matchReason: "Official erf and portion match",
+      fields: {
+        erf: "1570",
+        portion: "0",
+        lpi: "c03400140000157000000",
+        parcelKey: "e108c034001400001570000000",
+      },
+    });
+  });
+
+  it("does not promote multiple ambiguous erf and portion candidates", () => {
+    const results = searchOfficialParcels("Erf 962 portion 0 Eastern Cape", [
+      parcelIndex[1],
+      { ...parcelIndex[0], province: "Eastern Cape" },
+    ]);
+
+    expect(results).toHaveLength(2);
+    expect(results.every((result) => result.confidence === "likely_nearby_parcel")).toBe(true);
   });
 
   it("prefers loaded map area context for erf-only searches", () => {

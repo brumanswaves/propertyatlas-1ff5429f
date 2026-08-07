@@ -23,6 +23,7 @@ import {
   isAddressAutocompleteConfigured,
   type AddressAutocompleteSuggestion,
 } from "@/lib/search/addressAutocomplete";
+import { selectOfficialErfResult } from "@/components/map/officialSearchResultAction";
 
 interface Props {
   officialParcels?: IndexedOfficialParcel[];
@@ -96,8 +97,77 @@ function resultMeta(result: PropertySearchResult): string {
     .join(" • ");
 }
 
-function shouldOpenOfficialWorkbenchDirectly(result: PropertySearchResult) {
-  return result.confidence === "exact_official_match" && Boolean(result.parcel);
+interface OfficialParcelSearchResultRowProps {
+  result: PropertySearchResult;
+  onSelect: (result: PropertySearchResult) => void;
+  onHighlight: (result: PropertySearchResult) => void;
+  onOpenWorkbench: (result: PropertySearchResult) => void;
+}
+
+export function OfficialParcelSearchResultRow({
+  result,
+  onSelect,
+  onHighlight,
+  onOpenWorkbench,
+}: OfficialParcelSearchResultRowProps) {
+  const title = resultTitle(result);
+  return (
+    <div
+      role="group"
+      aria-label={`${title} official search result`}
+      className="border-t border-[#0D1B2A]/8"
+    >
+      <button
+        type="button"
+        onClick={() => onSelect(result)}
+        aria-label={`Open ${title}`}
+        className="block w-full px-4 pt-3 text-left hover:bg-[#f8f3ea]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-semibold text-[#0D1B2A]">{title}</div>
+            <div className="text-xs text-[#0D1B2A]/62">
+              {resultMeta(result) || resultArea(result) || result.subtitle}
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-[#174634]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#174634]">
+            Official
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-[#0D1B2A]/64">
+          <span>{confidenceLabel(result.confidence)}</span>
+          <span aria-hidden="true">-</span>
+          <span>{result.matchReason}</span>
+          <span aria-hidden="true">-</span>
+          <span>Source: {result.sourceLabel}</span>
+        </div>
+        <div className="mt-2 grid gap-1 text-[11px] text-[#0D1B2A]/58 sm:grid-cols-2">
+          {result.fields.lpi && <span>LPI: {result.fields.lpi}</span>}
+          {result.fields.parcelKey && <span>Parcel key: {result.fields.parcelKey}</span>}
+          {result.fields.municipality && (
+            <span>Municipality: {result.fields.municipality}</span>
+          )}
+          {result.fields.province && <span>Province: {result.fields.province}</span>}
+        </div>
+      </button>
+      <div className="flex flex-wrap gap-2 px-4 pb-3 pt-3">
+        <button
+          type="button"
+          onClick={() => onHighlight(result)}
+          className="rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-bold text-white hover:bg-[#142941]"
+        >
+          Highlight erf on map
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenWorkbench(result)}
+          className="rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
+        >
+          Open Workbench
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function SearchBar({
@@ -285,14 +355,6 @@ export function SearchBar({
   function openOfficialWorkbench(result: PropertySearchResult) {
     onOpenOfficialWorkbench?.(result);
     clearAll();
-  }
-
-  function selectOfficialErfResult(result: PropertySearchResult) {
-    if (shouldOpenOfficialWorkbenchDirectly(result)) {
-      openOfficialWorkbench(result);
-      return;
-    }
-    highlightResult(result);
   }
 
   function clearAll() {
@@ -767,61 +829,18 @@ export function SearchBar({
                 </div>
               )}
               {erfResults.map((result) => (
-                <button
+                <OfficialParcelSearchResultRow
                   key={result.id}
-                  type="button"
-                  onClick={() => selectOfficialErfResult(result)}
-                  className="block w-full border-t border-[#0D1B2A]/8 px-4 py-3 text-left hover:bg-[#f8f3ea]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-[#0D1B2A]">{resultTitle(result)}</div>
-                      <div className="text-xs text-[#0D1B2A]/62">
-                        {resultMeta(result) || resultArea(result) || result.subtitle}
-                      </div>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-[#174634]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#174634]">
-                      Official
-                    </span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-[#0D1B2A]/64">
-                    <span>{confidenceLabel(result.confidence)}</span>
-                    <span aria-hidden="true">-</span>
-                    <span>{result.matchReason}</span>
-                    <span aria-hidden="true">-</span>
-                    <span>Source: {result.sourceLabel}</span>
-                  </div>
-                  <div className="mt-2 grid gap-1 text-[11px] text-[#0D1B2A]/58 sm:grid-cols-2">
-                    {result.fields.lpi && <span>LPI: {result.fields.lpi}</span>}
-                    {result.fields.parcelKey && <span>Parcel key: {result.fields.parcelKey}</span>}
-                    {result.fields.municipality && (
-                      <span>Municipality: {result.fields.municipality}</span>
-                    )}
-                    {result.fields.province && <span>Province: {result.fields.province}</span>}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        highlightResult(result);
-                      }}
-                      className="rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-bold text-white hover:bg-[#142941]"
-                    >
-                      Highlight erf on map
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openOfficialWorkbench(result);
-                      }}
-                      className="rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
-                    >
-                      Open Workbench
-                    </button>
-                  </div>
-                </button>
+                  result={result}
+                  onSelect={(selectedResult) =>
+                    selectOfficialErfResult(selectedResult, {
+                      openOfficialWorkbench,
+                      highlightResult,
+                    })
+                  }
+                  onHighlight={highlightResult}
+                  onOpenWorkbench={openOfficialWorkbench}
+                />
               ))}
             </div>
           )}
