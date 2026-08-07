@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AREA_UNAVAILABLE_LABEL,
   canonicalAreaM2,
@@ -55,6 +55,7 @@ import {
   type ErfWorkspaceIdentityStatus,
   type InvestigationSnapshot,
   type ErfWorkspaceState,
+  type SitePotentialSnapshot,
 } from "@/lib/workbench/erfWorkspaceState";
 import { InvestigationHome } from "./investigation/InvestigationHome";
 import {
@@ -2056,6 +2057,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     return next;
   }
 
+  const updateSitePotentialSnapshot = useCallback(
+    (patch: Partial<SitePotentialSnapshot>) => {
+      const current = readErfWorkspaceState(parcelId).sitePotential;
+      const next = updateErfWorkspaceState(parcelId, {
+        sitePotential: { ...current, ...patch },
+        dirty: true,
+      });
+      setWorkspaceState(next);
+      return next;
+    },
+    [parcelId],
+  );
+
   function setInvestigationPatch(patch: Partial<InvestigationSnapshot>, dirty = true) {
     const current = readErfWorkspaceState(parcelId).investigation;
     const now = new Date().toISOString();
@@ -2750,12 +2764,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcelRing={parcelRing}
               recordedAreaM2={recordedAreaM2}
               workspaceState={workspaceState}
-              onUpdateSite={(patch) =>
-                setWorkspacePatch({
-                  sitePotential: { ...workspaceState.sitePotential, ...patch },
-                  dirty: true,
-                })
-              }
+              onUpdateSite={updateSitePotentialSnapshot}
               onExploreReport={() => selectWorkbenchTab("stoep-report", { markStarted: true })}
               onOpenTab={(next) => selectWorkbenchTab(next as Tab, { markStarted: true })}
             />

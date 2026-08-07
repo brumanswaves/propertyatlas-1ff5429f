@@ -36,6 +36,7 @@ import {
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
+import { buildSyncedSitePotentialSnapshot } from "@/lib/sitePotential/sitePotentialSnapshotSync";
 import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import {
@@ -526,6 +527,34 @@ export function SitePotentialTab({
 }: SitePotentialTabProps) {
 
   const site = workspaceState.sitePotential;
+  const currentSiteSnapshot = useMemo<SitePotentialSnapshot>(
+    () => ({
+      mode: site.mode,
+      skipped: site.skipped,
+      photoCount: site.photoCount,
+      planCount: site.planCount,
+      conceptCount: site.conceptCount,
+      preferredConceptId: site.preferredConceptId,
+      selectedDesignAssetId: site.selectedDesignAssetId,
+      imageRightsConfirmed: site.imageRightsConfirmed,
+      rightsConfirmedAt: site.rightsConfirmedAt,
+      progressState: site.progressState,
+      projectId: site.projectId,
+    }),
+    [
+      site.conceptCount,
+      site.imageRightsConfirmed,
+      site.mode,
+      site.photoCount,
+      site.planCount,
+      site.preferredConceptId,
+      site.progressState,
+      site.projectId,
+      site.rightsConfirmedAt,
+      site.selectedDesignAssetId,
+      site.skipped,
+    ],
+  );
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const topographyInputRef = useRef<HTMLInputElement | null>(null);
   const planInputRef = useRef<HTMLInputElement | null>(null);
@@ -628,6 +657,11 @@ export function SitePotentialTab({
   const packCompletedCount = packStatus?.completedCount ?? generatedDesigns.length;
   const packRequestedCount = packStatus?.requestedCount ?? SITE_POTENTIAL_PACK_SIZE;
   const activePackProjectState = packProgressState(packStatus);
+  const projectId = project?.id ?? null;
+  const projectMode = project?.mode ?? null;
+  const projectGenerationStatus = project?.generation_status ?? null;
+  const projectSelectedDesignAssetId = project?.selected_design_asset_id ?? null;
+  const projectRightsConfirmedAt = project?.rights_confirmed_at ?? null;
   const packProcessing = shouldPollPackStatus(packStatus);
   const runtimeProgress = buildSitePotentialRuntimeProgress(
     packStatus,
@@ -900,30 +934,33 @@ export function SitePotentialTab({
   }, [activeDesignPackId, packStatus, project?.id, refreshPackStatus]);
 
   useEffect(() => {
-    onUpdateSite({
-      projectId: project?.id ?? null,
+    if (projectState.loading) return;
+    const next = buildSyncedSitePotentialSnapshot(currentSiteSnapshot, {
+      projectId,
       photoCount: sitePhotos.length,
       planCount: supportingFiles.length,
       conceptCount: packCompletedCount,
-      selectedDesignAssetId: project?.selected_design_asset_id ?? null,
-      preferredConceptId: project?.selected_design_asset_id ?? null,
-      mode: project?.mode ?? site.mode,
-      skipped: project?.generation_status === "skipped" || project?.mode === "skipped",
+      selectedDesignAssetId: projectSelectedDesignAssetId,
+      mode: projectMode,
+      generationStatus: projectGenerationStatus,
       imageRightsConfirmed: rightsConfirmed,
-      rightsConfirmedAt: project?.rights_confirmed_at ?? null,
-      progressState:
-        activePackProjectState ??
-        project?.generation_status ??
-        (packCompletedCount >= SITE_POTENTIAL_PACK_SIZE ? "concepts_ready" : site.progressState),
+      rightsConfirmedAt: projectRightsConfirmedAt,
+      activePackProjectState,
     });
+    if (!next) return;
+    onUpdateSite(next);
   }, [
     activePackProjectState,
+    currentSiteSnapshot,
     onUpdateSite,
     packCompletedCount,
-    project,
+    projectState.loading,
+    projectGenerationStatus,
+    projectId,
+    projectMode,
+    projectRightsConfirmedAt,
+    projectSelectedDesignAssetId,
     rightsConfirmed,
-    site.mode,
-    site.progressState,
     sitePhotos.length,
     supportingFiles.length,
   ]);
