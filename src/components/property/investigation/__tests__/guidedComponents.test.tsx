@@ -110,7 +110,7 @@ describe("guided investigation components", () => {
     expect(html).toContain("Search another property");
   });
 
-  it("renders all eight mobile/desktop steps through the navigator", () => {
+  it("renders the canonical journey count through the navigator", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
     const html = renderToStaticMarkup(
@@ -118,6 +118,7 @@ describe("guided investigation components", () => {
     );
 
     expect(html).toContain("View all steps");
+    expect(html).toContain(`${GUIDED_INVESTIGATION_STEPS.length}-step path`);
     for (const step of GUIDED_INVESTIGATION_STEPS) {
       expect(html).toContain(step.shortLabel);
     }

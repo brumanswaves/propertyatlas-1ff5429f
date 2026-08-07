@@ -6,6 +6,7 @@ import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
 import {
   ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   buildAskEasyErfSelectedEvidencePayload,
+  calibrateAskEasyErfAnswerConfidence,
   hasAskEasyErfPackEvidence,
   hasEnoughAskEasyErfSelectedEvidence,
   suggestedAskEasyErfQuestions,
@@ -140,7 +141,13 @@ export function AskEasyErfPanel({
       });
       if (!isCurrentRequest()) return;
       if (result.success) {
-        setAnswer(result.answer);
+        setAnswer(
+          calibrateAskEasyErfAnswerConfidence({
+            answer: result.answer,
+            selectedEvidence,
+            readinessPercent: suggestionPayload.decision.confidencePercent,
+          }),
+        );
         setError(null);
       } else {
         setAnswer(null);

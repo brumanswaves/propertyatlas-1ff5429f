@@ -25,6 +25,7 @@ import { buildPublicResearchSources } from "@/lib/research/publicSourceRegistry"
 import {
   claimNumericValue,
   deedExtentClaim,
+  isActualUploadedOwnershipSource,
   redactPersonalIdentifiers,
 } from "@/lib/reports/reportFindings";
 
@@ -517,11 +518,7 @@ function buildRegisteredExtent(pack: PropertyEvidencePack): PropertyIdentityDisp
 }
 
 function buildOwnershipFromPack(pack: PropertyEvidencePack, fallbackAssets: ErfAsset[]): OwnershipView {
-  const uploaded = pack.sources.filter(
-    (source) =>
-      source.kind === "uploaded_document" &&
-      (source.authorityType === "paid_provider" || /lightstone|windeed|title deed/i.test(source.label)),
-  );
+  const uploaded = pack.sources.filter(isActualUploadedOwnershipSource);
   const owners = ownershipDetails(pack, "ownership", OWNERSHIP_DISPLAY_KEYS);
   const titleDeed = ownershipDetails(pack, "deeds", DEED_DISPLAY_KEYS);
   const wrongProperty = pack.contradictions.some((item) => item.id.startsWith("document-property-mismatch-"));

@@ -39,7 +39,7 @@ export interface SitePotentialReportPanel {
 export const SITE_POTENTIAL_REPORT_TITLE = "What could potentially be built here?";
 
 export const SITE_POTENTIAL_CAPACITY_CAPTION =
-  "Calculated from official parcel geometry and the planning rules recorded for this erf.";
+  "Calculated from parcel geometry and recorded rule inputs. Unverified controls are shown as working assumptions, not official property rights.";
 
 export const SITE_POTENTIAL_CONCEPT_CAPTION =
   "AI concept visualisation saved to this erf. An interpretation, not a photograph or approved plan.";
@@ -57,12 +57,18 @@ export function buildSitePotentialMetrics(
   const metrics: SitePotentialMetric[] = [];
 
   const coverageArea = m2(s.theoreticalGroundFloorM2);
+  const estimatedRules = envelope.state !== "verified";
   if (coverageArea) {
     metrics.push({
       id: "coverage",
-      label: "Maximum coverage",
+      label: estimatedRules ? "Coverage working assumption" : "Maximum verified coverage",
       value: coverageArea,
-      note: s.maxCoveragePercent != null ? `${s.maxCoveragePercent}% of erf` : undefined,
+      note:
+        s.maxCoveragePercent != null
+          ? estimatedRules
+            ? `Working assumption: ${s.maxCoveragePercent}% of erf. Property-specific planning controls not yet verified.`
+            : `${s.maxCoveragePercent}% of erf`
+          : undefined,
     });
   }
   const erfArea = m2(s.erfAreaM2);

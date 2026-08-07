@@ -195,6 +195,7 @@ function applyUserData(
 
 export function useSavedMarketEvidence(parcelId: string) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [savedPropertyExists, setSavedPropertyExists] = useState(false);
   const [userData, setUserData] = useState<Record<string, unknown>>({});
   const [evidence, setEvidence] = useState<SavedMarketEvidence[]>([]);
@@ -224,7 +225,7 @@ export function useSavedMarketEvidence(parcelId: string) {
       setPropertyIdentity,
       setMarketAddressIntelligence,
     });
-    if (!user) {
+    if (!userId) {
       setLoading(false);
       return;
     }
@@ -232,7 +233,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     supabase
       .from("saved_properties")
       .select("user_data")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("parcel_id", parcelId)
       .maybeSingle()
       .then(({ data }) => {
@@ -253,7 +254,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     return () => {
       alive = false;
     };
-  }, [parcelId, user]);
+  }, [parcelId, userId]);
 
   useEffect(() => {
     function refresh(event: Event) {
@@ -276,7 +277,7 @@ export function useSavedMarketEvidence(parcelId: string) {
 
   async function persistUserData(patch: Record<string, unknown>) {
     const nextUserData = { ...userData, ...patch };
-    if (!user) {
+    if (!userId) {
       writeLocalUserData(parcelId, nextUserData);
       applyUserData(parcelId, nextUserData, {
         setUserData,

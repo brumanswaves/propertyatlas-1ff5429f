@@ -143,5 +143,12 @@ describe("pilot parcel registry", () => {
     expect(generated.records.some((record) => record.erf === "1021")).toBe(true);
     expect(generated.records.some((record) => record.erf === "3131")).toBe(true);
     expect(generated.records.some((record) => record.erf === "3838")).toBe(true);
+    expect(generated.records.some((record) => record.erf === "1570")).toBe(true);
+    expect(
+      generated.records.some((record) => record.lpi === "C03400140000157000000"),
+    ).toBe(true);
+    expect(
+      generated.records.some((record) => record.parcelKey === "E108C034001400001570000000"),
+    ).toBe(true);
   });
 });

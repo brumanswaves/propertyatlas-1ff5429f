@@ -91,6 +91,7 @@ export interface AddressSearchTarget {
 export interface SearchHighlightOfficialParcel {
   id: string;
   title: string;
+  confidence?: "exact_official_match" | "address_inside_official_parcel" | "likely_nearby_parcel" | "address_only" | "no_match";
   layer: OfficialFeatureLayer;
   properties: Record<string, unknown>;
   lngLat: [number, number];

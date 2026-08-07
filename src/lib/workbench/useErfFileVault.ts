@@ -30,6 +30,7 @@ export function dispatchErfFileVaultUpdated(parcelId: string) {
 
 export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[]) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const categoryFilter = categories?.join("|") ?? "";
   const [assets, setAssets] = useState<ErfAsset[]>([]);
   const [loading, setLoading] = useState(Boolean(user));
@@ -38,7 +39,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
   const [migration, setMigration] = useState<VaultMigrationResult | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setAssets([]);
       setLoading(false);
       return;
@@ -56,7 +57,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     } finally {
       setLoading(false);
     }
-  }, [categoryFilter, parcelId, user]);
+  }, [categoryFilter, parcelId, userId]);
 
   useEffect(() => {
     void refresh();
@@ -75,7 +76,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
 
   const upload = useCallback(
     async (input: Omit<UploadErfAssetInput, "parcelId" | "onProgress">) => {
-      if (!user) throw new Error("Sign in to upload files to the Erf File Vault.");
+      if (!userId) throw new Error("Sign in to upload files to the Erf File Vault.");
       setError(null);
       setUploadState({ progress: 0, label: "Preparing upload" });
       try {
@@ -92,7 +93,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
         setUploadState(null);
       }
     },
-    [parcelId, refresh, user],
+    [parcelId, refresh, userId],
   );
 
   const remove = useCallback(
@@ -110,13 +111,13 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
   }, []);
 
   const migrateLocalAttachments = useCallback(async () => {
-    if (!user) return null;
+    if (!userId) return null;
     const result = await migrateLocalWorkspaceAttachmentsToVault(parcelId);
     setMigration(result);
     await refresh();
     dispatchErfFileVaultUpdated(parcelId);
     return result;
-  }, [parcelId, refresh, user]);
+  }, [parcelId, refresh, userId]);
 
   return {
     assets,
@@ -124,7 +125,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     error,
     uploadState,
     migration,
-    signedIn: Boolean(user),
+    signedIn: Boolean(userId),
     refresh,
     upload,
     remove,

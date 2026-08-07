@@ -114,12 +114,13 @@ export function buildSelectedDesignDeletionPatch(
 
 export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfAsset[] = []) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [project, setProject] = useState<SitePotentialProject | null>(null);
   const [loading, setLoading] = useState(Boolean(user));
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setProject(null);
       setLoading(false);
       return;
@@ -134,7 +135,7 @@ export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfA
     } finally {
       setLoading(false);
     }
-  }, [parcelId, user]);
+  }, [parcelId, userId]);
 
   useEffect(() => {
     void refresh();
@@ -159,7 +160,7 @@ export function useSitePotentialProject(parcelId: string, generatedDesigns: ErfA
     selectedDesign,
     loading,
     error,
-    signedIn: Boolean(user),
+    signedIn: Boolean(userId),
     refresh,
     save,
   };

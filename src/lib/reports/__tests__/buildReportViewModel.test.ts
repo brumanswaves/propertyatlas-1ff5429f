@@ -75,6 +75,7 @@ describe("buildReportViewModel", () => {
     expect(vm.ownership.hasUploadedReport).toBe(false);
     expect(vm.ownership.isVerified).toBe(false);
     expect(vm.ownership.message).toMatch(/not verified/i);
+    expect(vm.ownership.message).not.toMatch(/uploaded but not readable/i);
     expect(vm.ownership.uploadedReportNames).toHaveLength(0);
     const readiness = vm.brief.categories.find((c) => c.id === "ownership");
     expect(readiness?.state).not.toBe("confirmed");

@@ -12,8 +12,8 @@ import type {
   EvidenceContradiction,
   EvidenceDomain,
   EvidenceDomainState,
-
   EvidenceGap,
+  EvidenceSourceReference,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
 
@@ -186,6 +186,24 @@ function hasQualifiedSupport(
       ids.has(source.id) &&
       authorities.includes(source.authorityType) &&
       !WEAK_SOURCE_QUALITIES.includes(source.sourceQuality),
+  );
+}
+
+export function isActualUploadedOwnershipSource(source: EvidenceSourceReference): boolean {
+  if (source.kind !== "uploaded_document") return false;
+  if (!source.assetId || !source.fileName) return false;
+  if (
+    source.status === "failed" ||
+    source.status === "unavailable" ||
+    source.status === "excluded"
+  ) {
+    return false;
+  }
+  if (source.asset?.category === "paid_report" || source.asset?.category === "title_deed") {
+    return true;
+  }
+  return /lightstone|windeed|title deed|deeds report/i.test(
+    `${source.label} ${source.fileName}`,
   );
 }
 
@@ -419,9 +437,7 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
   // 6. Ownership ------------------------------------------------------------
   const ownershipClaims = supported(claimsFor(pack, "ownership", OWNERSHIP_CLAIM_KEYS));
   const ownershipGap = gapById("ownership-not-verified");
-  const paidReportSources = pack.sources.filter(
-    (source) => source.asset?.category === "paid_report" || source.authorityType === "paid_provider",
-  );
+  const paidReportSources = pack.sources.filter(isActualUploadedOwnershipSource);
   if (ownershipClaims.length) {
     add({
       id: "finding-ownership",
