@@ -144,6 +144,46 @@ describe("strategy section model", () => {
     expect(model.assumptions.map((f) => f.label)).toContain("Renovation cost");
   });
 
+  it("keeps saved development calculator outputs available to the report", () => {
+    const developmentScenario = {
+      ...scenario,
+      label: "Development to sell scenario",
+      strategy: "development_sell",
+      inputs: {
+        landCost: "1175000",
+        buildCostPerM2: "12000",
+        buildAreaM2: "309.35",
+        municipalPlanningFees: "85000",
+        contingencyPercent: "10",
+        exitSellingCosts: "180000",
+      },
+      summary: [
+        { label: "Maximum justified offer", value: "R 925,000" },
+        { label: "Residual land value", value: "R 810,000" },
+        { label: "Downside profit", value: "R -220,000" },
+        { label: "Build cost method", value: "Area x rate" },
+      ],
+    };
+
+    const model = buildStrategySectionModel({ chosen: developmentScenario, scenarioCount: 1 });
+
+    expect(model.maximumJustifiedPrice?.label).toBe("Maximum justified offer");
+    expect(model.maximumJustifiedPrice?.value).toBe("R 925,000");
+    expect(model.headline.map((item) => item.label)).toEqual([
+      "Residual land value",
+      "Downside profit",
+      "Build cost method",
+    ]);
+    expect(model.assumptions.map((item) => item.label)).toEqual(
+      expect.arrayContaining([
+        "Land cost",
+        "Build cost per m2",
+        "Build area m2",
+        "Municipal planning fees",
+      ]),
+    );
+  });
+
   it("returns an honest empty state with no chosen scenario", () => {
     const model = buildStrategySectionModel({ chosen: null, scenarioCount: 0 });
     expect(model.hasScenario).toBe(false);

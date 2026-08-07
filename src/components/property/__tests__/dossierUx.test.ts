@@ -625,8 +625,22 @@ describe("official dossier UX guardrails", () => {
 
     expect(dossier).toContain("Listings & Comps");
     expect(dossier).toContain("<StrategyLab");
+    expect(dossier).toContain("parcel={parcel}");
     expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
     expect(strategyLab).toContain("Every input autosaves as a draft for this erf");
+    expect(strategyLab).toContain("Deal Snapshot");
+    expect(strategyLab).toContain("Property-derived inputs");
+    expect(strategyLab).toContain("What Easy Erf can safely prefill");
+    expect(strategyLab).toContain("Derived from working assumption");
+    expect(strategyLab).toContain("Market context");
+    expect(strategyLab).toContain("Maximum justified offer");
+    expect(strategyLab).toContain("Residual land value");
+    expect(strategyLab).toContain("Sensitivity");
+    expect(strategyLab).toContain("Formula details");
+    expect(strategyLab).toContain("calculateMaximumOffer");
+    expect(strategyLab).toContain("calculateResidualLandValue");
+    expect(strategyLab).toContain("calculateDevelopmentSensitivity");
+    expect(strategyLab).toContain("buildStrategyPropertyInputFacts");
     expect(strategyLab).toContain("Buy and hold rental");
     expect(strategyLab).toContain("Development to rent");
     expect(strategyLab).toContain("STR / Airbnb");

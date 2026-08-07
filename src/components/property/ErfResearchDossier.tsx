@@ -610,13 +610,14 @@ export function ErfResearchDossier({
 
   if (view === "calculators") {
     return (
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <SectionTitle>Strategy</SectionTitle>
-        <StrategyLab
-          parcelId={parcel.id}
-          defaultPrice={extractDefaultPrice(parcel)}
-          onOpenReport={() => onSelectView?.("stoep-report")}
-        />
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <SectionTitle>Strategy</SectionTitle>
+          <StrategyLab
+            parcel={parcel}
+            parcelId={parcel.id}
+            defaultPrice={extractDefaultPrice(parcel)}
+            onOpenReport={() => onSelectView?.("stoep-report")}
+          />
       </section>
     );
   }
