@@ -4,6 +4,7 @@ import {
   buildStrategyPropertyInputFacts,
   strategyDefaultsFromPropertyFacts,
 } from "../strategyInputs";
+import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 
 function parcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -47,10 +48,25 @@ describe("strategy property-derived inputs", () => {
   it("keeps working coverage and footprint clearly marked as assumptions", () => {
     const facts = buildStrategyPropertyInputFacts({
       parcel: parcel(),
-      buildEnvelopeOverrides: {
-        maxCoveragePercent: 50,
-        ruleSource: "manual",
-      },
+      resolvedSitePotentialInputs: resolveSitePotentialInputs({
+        overrides: {
+          boundaryConfirmed: false,
+          streetEdgeIndex: null,
+          streetName: null,
+          ruleSource: "manual",
+          zoneLabel: null,
+          streetSetbackM: null,
+          sideSetbackM: null,
+          rearSetbackM: null,
+          maxHeightM: null,
+          dwellingUnits: null,
+          additionalDwellingRule: null,
+          additionalDwellingRequiresConsent: true,
+          servitudeNotes: null,
+          recordedAreaM2: null,
+          maxCoveragePercent: 50,
+        },
+      }),
     });
     const coverage = facts.find((item) => item.key === "coveragePercent");
     const footprint = facts.find((item) => item.key === "theoreticalFootprintM2");
@@ -59,7 +75,7 @@ describe("strategy property-derived inputs", () => {
     expect(coverage).toMatchObject({
       value: 50,
       state: "working_assumption",
-      source: "Working planning assumption",
+      source: "Entered by you. Treated as your own assumption, not an official rule.",
     });
     expect(coverage?.warning).toContain("not an approved building right");
     expect(footprint).toMatchObject({
@@ -67,7 +83,47 @@ describe("strategy property-derived inputs", () => {
       state: "derived_from_working_assumption",
     });
     expect(footprint?.evidence).toContain("618.7 m² × 50% = 309.35 m²");
-    expect(defaults.buildAreaM2).toBe("309.35");
+    expect(defaults.theoreticalFootprintM2).toBe("309.35");
+    expect(defaults.buildAreaM2).toBeUndefined();
+    expect(defaults.floorAreaM2).toBeUndefined();
+  });
+
+  it("does not treat a stale document rule source as verified planning evidence", () => {
+    const facts = buildStrategyPropertyInputFacts({
+      parcel: parcel(),
+      resolvedSitePotentialInputs: resolveSitePotentialInputs({
+        overrides: {
+          boundaryConfirmed: false,
+          streetEdgeIndex: null,
+          streetName: null,
+          ruleSource: "document",
+          zoneLabel: null,
+          streetSetbackM: null,
+          sideSetbackM: null,
+          rearSetbackM: null,
+          maxHeightM: null,
+          dwellingUnits: null,
+          additionalDwellingRule: null,
+          additionalDwellingRequiresConsent: true,
+          servitudeNotes: null,
+          recordedAreaM2: null,
+          maxCoveragePercent: 50,
+        },
+      }),
+    });
+    const coverage = facts.find((item) => item.key === "coveragePercent");
+    const footprint = facts.find((item) => item.key === "theoreticalFootprintM2");
+
+    expect(coverage).toMatchObject({
+      value: 50,
+      state: "working_assumption",
+    });
+    expect(coverage?.source).not.toContain("document");
+    expect(coverage?.evidence).toContain("not yet verified");
+    expect(footprint).toMatchObject({
+      value: 309.35,
+      state: "derived_from_working_assumption",
+    });
   });
 
   it("allows a Site Potential concept to prefill build area without claiming approval", () => {

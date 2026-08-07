@@ -1,6 +1,6 @@
 import { resolveParcelArea } from "@/lib/evidence/parcelArea";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
-import type { StoredBuildEnvelopeOverrides } from "@/lib/sitePotential/buildEnvelopeStore";
+import type { ResolvedSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 
 export type StrategyInputState =
   | "verified_property"
@@ -46,7 +46,7 @@ function fact(input: StrategyInputFact): StrategyInputFact {
 
 export function buildStrategyPropertyInputFacts(input: {
   parcel: NormalizedOfficialParcel;
-  buildEnvelopeOverrides?: StoredBuildEnvelopeOverrides | null;
+  resolvedSitePotentialInputs?: ResolvedSitePotentialInputs | null;
   sitePotentialDraft?: SitePotentialStrategyDraftLike | null;
 }): StrategyInputFact[] {
   const area = resolveParcelArea(input.parcel.rawProperties as Record<string, unknown> | null);
@@ -82,10 +82,13 @@ export function buildStrategyPropertyInputFacts(input: {
     }),
   ];
 
-  const coverage = numeric(input.buildEnvelopeOverrides?.maxCoveragePercent);
-  const ruleSource = input.buildEnvelopeOverrides?.ruleSource ?? null;
+  const resolvedCoverage = input.resolvedSitePotentialInputs?.fields.maxCoveragePercent ?? null;
+  const coverage = numeric(resolvedCoverage?.value);
+  const ruleStatus = input.resolvedSitePotentialInputs?.ruleStatus ?? "more_information_required";
+  const ruleSource = input.resolvedSitePotentialInputs?.ruleSource ?? null;
+  const coverageOrigin = resolvedCoverage?.origin ?? "unknown";
   const coverageState: StrategyInputState =
-    ruleSource === "document"
+    ruleStatus === "verified" && coverageOrigin === "document" && ruleSource === "document"
       ? "verified_property"
       : coverage != null
         ? "working_assumption"
@@ -99,21 +102,19 @@ export function buildStrategyPropertyInputFacts(input: {
       source:
         coverage == null
           ? "No coverage rule recorded"
-          : ruleSource === "document"
-            ? "Uploaded planning document"
-            : ruleSource === "registry"
-              ? "Published planning registry"
-              : "Working planning assumption",
+          : resolvedCoverage?.provenance ??
+            input.resolvedSitePotentialInputs?.ruleSourceLabel ??
+            "Working planning assumption",
       state: coverageState,
       editable: true,
       evidence:
         coverage == null
           ? "Coverage must be added before Easy Erf can derive a footprint."
-          : ruleSource === "document"
+          : coverageState === "verified_property"
             ? "Coverage was recorded from a property-specific document."
             : "Property-specific planning controls are not yet verified.",
       warning:
-        coverage != null && ruleSource !== "document"
+        coverage != null && coverageState !== "verified_property"
           ? "Treat this as a working assumption, not an approved building right."
           : null,
       originalPropertyValue: coverage,
@@ -188,7 +189,7 @@ export function strategyDefaultsFromPropertyFacts(
     if (value != null) defaults[key] = String(value);
   }
   const buildArea =
-    byKey.sitePotentialBuildAreaM2?.value ?? byKey.theoreticalFootprintM2?.value ?? null;
+    byKey.sitePotentialBuildAreaM2?.value ?? null;
   if (buildArea != null) {
     defaults.buildAreaM2 = String(buildArea);
     defaults.floorAreaM2 = String(buildArea);

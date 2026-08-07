@@ -304,6 +304,26 @@ export function calculateDevelopmentToSell(input: DevelopmentToSellInputs) {
   };
 }
 
+export interface DevelopmentCashRequiredInputs {
+  landCost: number;
+  acquisitionCostsExcludingPurchase: number;
+  professionalFees: number;
+  municipalPlanningFees: number;
+  contingency: number;
+  holdingFinanceCosts: number;
+}
+
+export function calculateDevelopmentCashRequired(input: DevelopmentCashRequiredInputs) {
+  return roundMoney(
+    input.landCost +
+      input.acquisitionCostsExcludingPurchase +
+      input.professionalFees +
+      input.municipalPlanningFees +
+      input.contingency +
+      input.holdingFinanceCosts,
+  );
+}
+
 export interface BuildCostInputs {
   directBuildCost: number;
   buildAreaM2: number;
@@ -363,15 +383,35 @@ export function calculateMaximumOffer(input: MaximumOfferInputs) {
     input.holdingFinanceCosts +
     input.acquisitionCostsExcludingPurchase +
     input.contingency;
-  const returnTargetProfit =
-    fixedCostsBeforeLand * percent(input.targetReturnOnCostPercent ?? 0);
-  const marginTargetProfit = input.expectedSaleValue * percent(input.targetMarginOnRevenuePercent ?? 0);
-  const requiredProfit = Math.max(0, input.requiredProfit, returnTargetProfit, marginTargetProfit);
-  const maximumPurchasePrice = netExpectedSaleProceeds - fixedCostsBeforeLand - requiredProfit;
+  const fixedProjectCostBeforeLand = fixedCostsBeforeLand + input.sellingCosts;
+  const targetReturn = percent(input.targetReturnOnCostPercent ?? 0);
+  const targetMargin = percent(input.targetMarginOnRevenuePercent ?? 0);
+  const directProfitCandidate =
+    input.requiredProfit > 0
+      ? input.expectedSaleValue - fixedProjectCostBeforeLand - input.requiredProfit
+      : Infinity;
+  const marginCandidate =
+    targetMargin > 0
+      ? input.expectedSaleValue - fixedProjectCostBeforeLand - input.expectedSaleValue * targetMargin
+      : Infinity;
+  const returnCandidate =
+    targetReturn > 0
+      ? input.expectedSaleValue / (1 + targetReturn) - fixedProjectCostBeforeLand
+      : Infinity;
+  const fallbackCandidate = input.expectedSaleValue - fixedProjectCostBeforeLand;
+  const maximumPurchasePrice = Math.min(
+    directProfitCandidate,
+    marginCandidate,
+    returnCandidate,
+    fallbackCandidate,
+  );
+  const requiredProfit =
+    input.expectedSaleValue - fixedProjectCostBeforeLand - maximumPurchasePrice;
 
   return {
     netExpectedSaleProceeds: roundMoney(netExpectedSaleProceeds),
     fixedCostsBeforeLand: roundMoney(fixedCostsBeforeLand),
+    fixedProjectCostBeforeLand: roundMoney(fixedProjectCostBeforeLand),
     requiredProfit: roundMoney(requiredProfit),
     maximumPurchasePrice: roundMoney(maximumPurchasePrice),
     isSupportable: maximumPurchasePrice > 0,

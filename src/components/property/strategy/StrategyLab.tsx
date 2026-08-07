@@ -9,6 +9,7 @@ import {
   calculateBrrrr,
   calculateBuildCost,
   calculateBuyHold,
+  calculateDevelopmentCashRequired,
   calculateDevelopmentSensitivity,
   calculateDevelopmentToRent,
   calculateDevelopmentToSell,
@@ -19,13 +20,29 @@ import {
   calculateShortTermRental,
 } from "@/lib/research/calculators";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
+import {
+  findMunicipalityPlanningRegistry,
+  findZone,
+} from "@/lib/planning/municipalityPlanningRegistry";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
+import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import {
+  PLANNING_ZONE_UPDATED_EVENT,
+  readStoredPlanningZone,
+} from "@/lib/planning/storedPlanningZone";
+import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import {
   buildStrategyPropertyInputFacts,
   strategyDefaultsFromPropertyFacts,
   type StrategyInputFact,
 } from "@/lib/research/strategyInputs";
 import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
+import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
+import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import { cn } from "@/lib/utils";
+import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import {
   createEmptyStrategyWorkspace,
@@ -65,6 +82,14 @@ interface StrategyOption {
   description: string;
   bestFor: string;
   keyOutput: string;
+}
+
+interface DealSnapshotModel {
+  eyebrow: string;
+  summary: string;
+  uncertainty: string;
+  items: [string, string][];
+  emphasis: [string, string][];
 }
 
 interface SitePotentialStrategyDraft {
@@ -330,6 +355,192 @@ function selectedStrategyId(scenario: ErfStrategyScenario | null): StrategyType 
     : "buy_hold";
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function deriveStrategyBuildAreaM2(input: {
+  explicitBuildAreaM2: number;
+  explicitFloorAreaM2: number;
+  coverageFootprintM2: number;
+  numberOfFloors: number;
+}) {
+  const derivedTotalFloorAreaM2 =
+    input.coverageFootprintM2 > 0 && input.numberOfFloors > 0
+      ? input.coverageFootprintM2 * input.numberOfFloors
+      : 0;
+  return {
+    coverageFootprintM2: input.coverageFootprintM2,
+    derivedTotalFloorAreaM2,
+    buildAreaM2:
+      input.explicitBuildAreaM2 || input.explicitFloorAreaM2 || derivedTotalFloorAreaM2,
+    method: input.explicitBuildAreaM2
+      ? "explicit_build_area"
+      : input.explicitFloorAreaM2
+        ? "explicit_floor_area"
+        : derivedTotalFloorAreaM2
+          ? "coverage_footprint_x_floors"
+          : "missing",
+  };
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildDealSnapshot(input: {
+  active: StrategyType;
+  rental: ReturnType<typeof calculateBuyHold>;
+  flip: ReturnType<typeof calculateFlip>;
+  developmentSell: ReturnType<typeof calculateDevelopmentToSell>;
+  developmentRent: ReturnType<typeof calculateDevelopmentToRent>;
+  str: ReturnType<typeof calculateShortTermRental>;
+  brrrr: ReturnType<typeof calculateBrrrr>;
+  bond: ReturnType<typeof calculateBond>;
+  landBankHoldingCost: number;
+  acquisition: ReturnType<typeof calculateAcquisition>;
+  buildCostModel: ReturnType<typeof calculateBuildCost>;
+  maximumOffer: ReturnType<typeof calculateMaximumOffer>;
+  residualLandValue: ReturnType<typeof calculateResidualLandValue>;
+  developmentSensitivity: ReturnType<typeof calculateDevelopmentSensitivity>;
+  developmentCashRequired: number;
+  biggestUncertainty: string;
+}): DealSnapshotModel {
+  switch (input.active) {
+    case "buy_hold":
+      return {
+        eyebrow: "Rental hold",
+        summary: "Cash flow, NOI and yield from the saved rental assumptions.",
+        uncertainty: "rent support, vacancy and operating costs",
+        items: [
+          ["Monthly cash flow", formatRand(input.rental.cashFlowAfterDebt)],
+          ["Monthly NOI", formatRand(input.rental.monthlyNoi)],
+          ["Net yield", formatPercent(input.rental.netYield)],
+          ["Cash-on-cash", formatPercent(input.rental.cashOnCashReturn)],
+          ["Break-even rent", formatRand(input.rental.breakEvenRent)],
+          ["Loan amount", formatRand(input.acquisition.loanAmount)],
+        ],
+        emphasis: [["Cash required", formatRandOrMissing(input.acquisition.totalCashRequired)]],
+      };
+    case "flip":
+      return {
+        eyebrow: "Flip / resale",
+        summary: "Renovation, holding and resale outputs for a short-term project.",
+        uncertainty: "renovation budget, holding duration and resale evidence",
+        items: [
+          ["Net profit", formatRand(input.flip.profit)],
+          ["Return on cost", formatPercent(input.flip.roi)],
+          ["Annualised ROI", formatPercent(input.flip.annualizedRoi)],
+          ["Project cost", formatRand(input.flip.totalProjectCost)],
+          ["Delay sensitivity", formatRand(input.flip.delaySensitivity)],
+          ["Required resale for target", formatRand(input.flip.requiredResalePriceForTargetProfit)],
+        ],
+        emphasis: [["Cash required", formatRandOrMissing(input.acquisition.totalCashRequired)]],
+      };
+    case "development_sell":
+      return {
+        eyebrow: "Development to sell",
+        summary: "Land, build, GDV, max-offer and sensitivity outputs.",
+        uncertainty: input.biggestUncertainty,
+        items: [
+          ["Land / purchase price", formatRandOrMissing(input.developmentSell.costStack.landCost)],
+          ["Acquisition costs", formatRandOrMissing(input.developmentSell.costStack.acquisitionCosts)],
+          ["Build cost", formatRandOrMissing(input.buildCostModel.selectedBuildCost)],
+          ["Professional fees", formatRandOrMissing(input.developmentSell.costStack.professionalFees)],
+          ["Municipal / planning fees", formatRandOrMissing(input.developmentSell.costStack.municipalPlanningFees)],
+          ["Contingency", formatRandOrMissing(input.developmentSell.costStack.contingencyAmount)],
+          ["Finance / holding", formatRandOrMissing(input.developmentSell.costStack.holdingCost)],
+          ["Exit / selling costs", formatRandOrMissing(input.developmentSell.costStack.sellingCosts)],
+          ["Total project cost", formatRandOrMissing(input.developmentSell.totalProjectCost)],
+          ["Expected GDV", formatRandOrMissing(input.developmentSell.breakEvenSalePrice + input.developmentSell.netProfit)],
+          ["Profit", formatRand(input.developmentSell.netProfit)],
+          ["Return on cost", formatPercentOrMissing(input.developmentSell.returnOnCost)],
+          ["Margin", formatPercentOrMissing(input.developmentSell.margin)],
+          ["Break-even sale price", formatRandOrMissing(input.developmentSell.breakEvenSalePrice)],
+          ["Cash required", formatRandOrMissing(input.developmentCashRequired)],
+          ["Downside profit", formatRand(input.developmentSensitivity.downside.netProfit)],
+        ],
+        emphasis: [
+          ["Maximum justified offer", formatRand(input.maximumOffer.maximumPurchasePrice)],
+          ["Residual land value", formatRand(input.residualLandValue.residualLandValue)],
+        ],
+      };
+    case "development_rent":
+      return {
+        eyebrow: "Development to rent",
+        summary: "Completed rental yield and cash flow after development costs.",
+        uncertainty: "rent support, operating costs and development cost evidence",
+        items: [
+          ["Project cost", formatRand(input.developmentRent.totalProjectCost)],
+          ["Monthly NOI", formatRand(input.developmentRent.monthlyNetOperatingIncome)],
+          ["Monthly cash flow", formatRand(input.developmentRent.monthlyCashFlow)],
+          ["Gross yield", formatPercent(input.developmentRent.grossYield)],
+          ["Net yield", formatPercent(input.developmentRent.netYield)],
+          ["Break-even rent", formatRand(input.developmentRent.breakEvenRent)],
+        ],
+        emphasis: [["Holding cost", formatRand(input.developmentRent.totalHoldingCost)]],
+      };
+    case "str_airbnb":
+      return {
+        eyebrow: "Short-term rental",
+        summary: "Booked nights, revenue, costs and occupancy stress points.",
+        uncertainty: "seasonality, letting rules and actual occupancy",
+        items: [
+          ["Booked nights", String(input.str.bookedNights)],
+          ["Accommodation revenue", formatRand(input.str.grossAccommodationRevenue)],
+          ["Operating cost", formatRand(input.str.monthlyOperatingCost)],
+          ["Monthly net income", formatRand(input.str.monthlyNetIncome)],
+          ["Cash flow", formatRand(input.str.monthlyCashFlow)],
+          ["Break-even occupancy", formatPercent(input.str.breakEvenOccupancy)],
+        ],
+        emphasis: [["Cash-on-cash", formatPercent(input.str.cashOnCashReturn)]],
+      };
+    case "brrrr":
+      return {
+        eyebrow: "BRRRR",
+        summary: "Refinance proceeds, cash left in the deal and rental debt coverage.",
+        uncertainty: "after-repair value, refinance LTV and stabilised rent",
+        items: [
+          ["Refinance loan", formatRand(input.brrrr.refinanceLoanAmount)],
+          ["Cash returned", formatRand(input.brrrr.cashReturned)],
+          ["Cash left in deal", formatRand(input.brrrr.cashLeftInDeal)],
+          ["Equity created", formatRand(input.brrrr.equityCreated)],
+          ["DSCR", input.brrrr.dscr.toFixed(2)],
+        ],
+        emphasis: [["Cash-on-cash", formatPercent(input.brrrr.cashOnCashReturn)]],
+      };
+    case "bond":
+      return {
+        eyebrow: "Bond / finance",
+        summary: "Debt service, interest cost and rental stress points.",
+        uncertainty: "interest rate, loan amount and reliable NOI",
+        items: [
+          ["Monthly bond payment", formatRand(input.bond.monthlyBondPayment)],
+          ["Annual debt service", formatRand(input.bond.annualDebtService)],
+          ["Total interest", formatRand(input.bond.totalInterest)],
+          ["DSCR", input.bond.dscr.toFixed(2)],
+          ["Break-even occupancy", formatPercent(input.bond.breakEvenOccupancy)],
+        ],
+        emphasis: [["Loan amount", formatRandOrMissing(input.acquisition.loanAmount)]],
+      };
+    case "land_bank":
+      return {
+        eyebrow: "Land bank",
+        summary: "Holding cost and future-value target for vacant-land optionality.",
+        uncertainty: "holding period, future planning rights and exit demand",
+        items: [
+          ["Holding cost", formatRand(input.landBankHoldingCost)],
+          ["Cash required", formatRandOrMissing(input.acquisition.totalCashRequired)],
+        ],
+        emphasis: [["Future value target", "Set in assumptions"]],
+      };
+    case "custom":
+      return {
+        eyebrow: "Custom scenario",
+        summary: "Custom assumptions are saved for the report without pretending the model knows the strategy.",
+        uncertainty: "custom assumptions need manual review",
+        items: [
+          ["Cash required", formatRandOrMissing(input.acquisition.totalCashRequired)],
+        ],
+        emphasis: [["Custom upside", "Set in assumptions"]],
+      };
+  }
+}
+
 function readSitePotentialStrategyDraft(parcelId: string): SitePotentialStrategyDraft | null {
   if (typeof window === "undefined") return null;
   try {
@@ -377,12 +588,32 @@ export function StrategyLab({
 }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const { assets } = useErfFileVault(parcelId);
+  const [manualZoneCode, setManualZoneCode] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : readStoredPlanningZone(parcelId),
+  );
+  useEffect(() => {
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      if (detail?.parcelId && detail.parcelId !== parcelId) return;
+      setManualZoneCode(readStoredPlanningZone(parcelId));
+    };
+    sync();
+    window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
+  }, [parcelId]);
+
   const initialWorkspace = readStrategyWorkspace(parcelId);
   const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
   const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
+  const initialResolvedSitePotentialInputs = resolveSitePotentialInputs({
+    overrides: initialBuildEnvelopeOverrides,
+    pilot: findPilotPlanningRecord({ parcelId, lpiCode: parcel.lpi ?? null }),
+    recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
+  });
   const initialPropertyFacts = buildStrategyPropertyInputFacts({
     parcel,
-    buildEnvelopeOverrides: initialBuildEnvelopeOverrides,
+    resolvedSitePotentialInputs: initialResolvedSitePotentialInputs,
     sitePotentialDraft: initialSitePotentialDraft,
   });
   const initialPropertyDefaults = strategyDefaultsFromPropertyFacts(initialPropertyFacts);
@@ -412,14 +643,83 @@ export function StrategyLab({
   const latestWorkspaceRef = useRef(initialWorkspace);
   defaultPriceRef.current = defaultPrice;
   const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
+  const planningRegistry = useMemo(
+    () => findMunicipalityPlanningRegistry(parcel.municipality ?? null),
+    [parcel.municipality],
+  );
+  const selectedZone = useMemo(
+    () => (planningRegistry ? findZone(planningRegistry, manualZoneCode) : null),
+    [manualZoneCode, planningRegistry],
+  );
+  const documentZone = useMemo(
+    () =>
+      selectedZone
+        ? (assets.find((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) ?? null)
+        : null,
+    [assets, selectedZone],
+  );
+  const planningSignals = useMemo(
+    () =>
+      derivePlanningEvidenceSignals(assets, {
+        zoningCertificateUploaded: Boolean(documentZone),
+      }),
+    [assets, documentZone],
+  );
+  const planningAssessment = useMemo(
+    () =>
+      buildParcelPlanningAssessment({
+        parcelId,
+        municipality: parcel.municipality ?? null,
+        locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
+        erfAreaM2: canonicalAreaM2(parcel.rawProperties),
+        manualZoneCode,
+        documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
+        documentZoneAssetId: documentZone?.id ?? null,
+        observedZoneLabel:
+          typeof parcel.rawProperties?.ZONING_DES === "string"
+            ? parcel.rawProperties.ZONING_DES
+            : typeof parcel.rawProperties?.ZONING === "string"
+              ? parcel.rawProperties.ZONING
+              : null,
+        hasParcelPolygon: Boolean(parcel.rawProperties),
+        hasStreetEdgeReference: false,
+        evidence: planningSignals,
+      }),
+    [documentZone, manualZoneCode, parcel, parcelId, planningSignals],
+  );
+  const sitePotentialRulePrefill = useMemo(
+    () => buildSitePotentialRulePrefill(planningAssessment),
+    [planningAssessment],
+  );
+  const pilotPlanningRecord = useMemo(
+    () => findPilotPlanningRecord({ parcelId, lpiCode: parcel.lpi ?? null }),
+    [parcel.lpi, parcelId],
+  );
+  const resolvedSitePotentialInputs = useMemo(
+    () =>
+      resolveSitePotentialInputs({
+        overrides: buildEnvelopeOverrides,
+        prefill: sitePotentialRulePrefill,
+        pilot: pilotPlanningRecord,
+        documentRuleEvidence: Boolean(documentZone),
+        recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
+      }),
+    [
+      buildEnvelopeOverrides,
+      documentZone,
+      parcel.rawProperties,
+      pilotPlanningRecord,
+      sitePotentialRulePrefill,
+    ],
+  );
   const propertyInputFacts = useMemo(
     () =>
       buildStrategyPropertyInputFacts({
         parcel,
-        buildEnvelopeOverrides,
+        resolvedSitePotentialInputs,
         sitePotentialDraft,
       }),
-    [buildEnvelopeOverrides, parcel, sitePotentialDraft],
+    [parcel, resolvedSitePotentialInputs, sitePotentialDraft],
   );
   const propertyDefaults = useMemo(
     () => strategyDefaultsFromPropertyFacts(propertyInputFacts),
@@ -434,7 +734,13 @@ export function StrategyLab({
     const nextPropertyDefaults = strategyDefaultsFromPropertyFacts(
       buildStrategyPropertyInputFacts({
         parcel,
-        buildEnvelopeOverrides: nextBuildEnvelopeOverrides,
+        resolvedSitePotentialInputs: resolveSitePotentialInputs({
+          overrides: nextBuildEnvelopeOverrides,
+          prefill: sitePotentialRulePrefill,
+          pilot: pilotPlanningRecord,
+          documentRuleEvidence: Boolean(documentZone),
+          recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
+        }),
         sitePotentialDraft: nextSitePotentialDraft,
       }),
     );
@@ -456,7 +762,20 @@ export function StrategyLab({
     setSaveError(null);
     setLastSavedAt(null);
     setSaveStatus(userId ? "loading" : "offline");
-  }, [parcel, parcelId, userId]);
+  }, [documentZone, parcel, parcelId, pilotPlanningRecord, sitePotentialRulePrefill, userId]);
+
+  useEffect(() => {
+    setValues((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const [key, value] of Object.entries(propertyDefaults)) {
+        if (next[key]?.trim()) continue;
+        next[key] = value;
+        changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [propertyDefaults]);
 
   useEffect(() => {
     const queue = createStrategyCloudSaveQueue({
@@ -643,13 +962,31 @@ export function StrategyLab({
     targetProfit: 0,
     targetRoiPercent: 20,
   });
-  const buildAreaM2 = n("buildAreaM2") || n("floorAreaM2") || n("theoreticalFootprintM2");
+  const coverageFootprintM2 = n("theoreticalFootprintM2");
+  const buildArea = deriveStrategyBuildAreaM2({
+    explicitBuildAreaM2: n("buildAreaM2"),
+    explicitFloorAreaM2: n("floorAreaM2"),
+    coverageFootprintM2,
+    numberOfFloors: n("numberOfFloors"),
+  });
+  const buildAreaM2 = buildArea.buildAreaM2;
   const buildCostModel = calculateBuildCost({
     directBuildCost: n("buildCost"),
     buildAreaM2,
     buildRatePerM2: n("buildCostPerM2"),
   });
   const effectiveBuildCost = buildCostModel.selectedBuildCost;
+  const developmentContingencyAmount = effectiveBuildCost * (n("contingencyPercent") / 100);
+  const developmentHoldingCost = n("developmentDurationMonths") * n("monthlyHoldingCost");
+  const developmentCashRequired =
+    calculateDevelopmentCashRequired({
+      landCost: n("landCost"),
+      acquisitionCostsExcludingPurchase,
+      professionalFees: n("professionalFees"),
+      municipalPlanningFees: n("municipalPlanningFees"),
+      contingency: developmentContingencyAmount,
+      holdingFinanceCosts: developmentHoldingCost,
+    });
   const developmentSell = calculateDevelopmentToSell({
     landCost: n("landCost"),
     buildCost: effectiveBuildCost,
@@ -661,7 +998,7 @@ export function StrategyLab({
     exitSellingCosts: n("exitSellingCosts") + n("sellingCosts"),
     expectedSaleValue: n("expectedSaleValue"),
     acquisitionCosts: acquisitionCostsExcludingPurchase,
-    cashInvested: acquisition.totalCashRequired,
+    cashInvested: developmentCashRequired,
     buildAreaM2,
   });
   const maximumOffer = calculateMaximumOffer({
@@ -708,7 +1045,7 @@ export function StrategyLab({
     expectedSaleValue: n("expectedSaleValue"),
     acquisitionCosts: acquisitionCostsExcludingPurchase,
     buildAreaM2,
-    cashInvested: acquisition.totalCashRequired,
+    cashInvested: developmentCashRequired,
     buildCostDownsidePercent: n("downsideBuildCostPercent"),
     gdvDownsidePercent: n("downsideGdvPercent"),
     durationDownsideMonths: n("downsideDurationMonths"),
@@ -785,6 +1122,24 @@ export function StrategyLab({
     buildCostModel.missingAssumptions[0] ??
     maximumOffer.missingAssumptions[0] ??
     "market support, planning controls and cost evidence";
+  const dealSnapshot = buildDealSnapshot({
+    active,
+    rental,
+    flip,
+    developmentSell,
+    developmentRent,
+    str,
+    brrrr,
+    bond,
+    landBankHoldingCost,
+    acquisition,
+    buildCostModel,
+    maximumOffer,
+    residualLandValue,
+    developmentSensitivity,
+    developmentCashRequired,
+    biggestUncertainty,
+  });
 
   const summary = (() => {
     switch (active) {
@@ -1043,13 +1398,7 @@ export function StrategyLab({
 
       <DealSnapshotPanel
         activeLabel={activeOption.label}
-        acquisition={acquisition}
-        developmentSell={developmentSell}
-        buildCostModel={buildCostModel}
-        maximumOffer={maximumOffer}
-        residualLandValue={residualLandValue}
-        sensitivity={developmentSensitivity}
-        biggestUncertainty={biggestUncertainty}
+        snapshot={dealSnapshot}
       />
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
@@ -1497,42 +1846,11 @@ function fieldGroupsFor(strategy: StrategyType): FieldGroupModel[] {
 
 function DealSnapshotPanel({
   activeLabel,
-  acquisition,
-  developmentSell,
-  buildCostModel,
-  maximumOffer,
-  residualLandValue,
-  sensitivity,
-  biggestUncertainty,
+  snapshot,
 }: {
   activeLabel: string;
-  acquisition: ReturnType<typeof calculateAcquisition>;
-  developmentSell: ReturnType<typeof calculateDevelopmentToSell>;
-  buildCostModel: ReturnType<typeof calculateBuildCost>;
-  maximumOffer: ReturnType<typeof calculateMaximumOffer>;
-  residualLandValue: ReturnType<typeof calculateResidualLandValue>;
-  sensitivity: ReturnType<typeof calculateDevelopmentSensitivity>;
-  biggestUncertainty: string;
+  snapshot: DealSnapshotModel;
 }) {
-  const items = [
-    ["Land / purchase price", formatRandOrMissing(developmentSell.costStack.landCost)],
-    ["Acquisition costs", formatRandOrMissing(developmentSell.costStack.acquisitionCosts)],
-    ["Build cost", formatRandOrMissing(buildCostModel.selectedBuildCost)],
-    ["Professional fees", formatRandOrMissing(developmentSell.costStack.professionalFees)],
-    ["Municipal / planning fees", formatRandOrMissing(developmentSell.costStack.municipalPlanningFees)],
-    ["Contingency", formatRandOrMissing(developmentSell.costStack.contingencyAmount)],
-    ["Finance / holding", formatRandOrMissing(developmentSell.costStack.holdingCost)],
-    ["Exit / selling costs", formatRandOrMissing(developmentSell.costStack.sellingCosts)],
-    ["Total project cost", formatRandOrMissing(developmentSell.totalProjectCost)],
-    ["Expected GDV", formatRandOrMissing(developmentSell.breakEvenSalePrice + developmentSell.netProfit)],
-    ["Profit", formatRand(developmentSell.netProfit)],
-    ["Return on cost", formatPercentOrMissing(developmentSell.returnOnCost)],
-    ["Margin", formatPercentOrMissing(developmentSell.margin)],
-    ["Break-even sale price", formatRandOrMissing(developmentSell.breakEvenSalePrice)],
-    ["Cash required", formatRandOrMissing(acquisition.totalCashRequired)],
-    ["Downside profit", formatRand(sensitivity.downside.netProfit)],
-  ];
-
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4 shadow-[0_18px_60px_-48px_rgba(13,27,42,0.55)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1544,32 +1862,29 @@ function DealSnapshotPanel({
             {activeLabel} decision frame
           </h4>
           <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/64">
-            Inputs remain editable assumptions until supported by evidence. Easy Erf does the
-            arithmetic here; it does not let AI invent financial figures.
+            {snapshot.summary} Inputs remain editable assumptions until supported by evidence.
+            Easy Erf does the arithmetic here; it does not let AI invent financial figures.
           </p>
         </div>
         <div className="rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] px-4 py-3 text-xs text-[#7C2D12]">
           <div className="font-bold uppercase tracking-[0.14em]">Biggest uncertainty</div>
           <div className="mt-1 text-sm font-semibold normal-case tracking-normal text-[#0D1B2A]">
-            {biggestUncertainty}
+            {snapshot.uncertainty}
           </div>
         </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {items.map(([label, value]) => (
+        {snapshot.items.map(([label, value]) => (
           <ResultTile key={label} label={label} value={value} />
         ))}
       </div>
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        <ResultTile
-          label="Maximum justified offer"
-          value={formatRand(maximumOffer.maximumPurchasePrice)}
-        />
-        <ResultTile
-          label="Residual land value"
-          value={formatRand(residualLandValue.residualLandValue)}
-        />
-      </div>
+      {snapshot.emphasis.length > 0 && (
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          {snapshot.emphasis.map(([label, value]) => (
+            <ResultTile key={label} label={label} value={value} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

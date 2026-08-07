@@ -7,6 +7,7 @@ import {
   calculateBuildCost,
   calculateBuyHold,
   calculateDevelopment,
+  calculateDevelopmentCashRequired,
   calculateDevelopmentSensitivity,
   calculateDevelopmentToRent,
   calculateDevelopmentToSell,
@@ -222,9 +223,52 @@ describe("residential investment calculators", () => {
 
     expect(result.netExpectedSaleProceeds).toBe(5_750_000);
     expect(result.fixedCostsBeforeLand).toBe(4_660_000);
-    expect(result.requiredProfit).toBe(559_200);
-    expect(result.maximumPurchasePrice).toBe(530_800);
+    expect(result.fixedProjectCostBeforeLand).toBe(4_810_000);
+    expect(result.requiredProfit).toBe(632_143);
+    expect(result.maximumPurchasePrice).toBe(457_857);
     expect(result.missingAssumptions).toEqual([]);
+
+    const pluggedBack = calculateDevelopmentToSell({
+      landCost: result.maximumPurchasePrice,
+      buildCost: 3_500_000,
+      professionalFees: 420_000,
+      municipalPlanningFees: 120_000,
+      contingencyPercent: 10,
+      developmentDurationMonths: 10,
+      monthlyHoldingCost: 18_000,
+      exitSellingCosts: 150_000,
+      expectedSaleValue: 5_900_000,
+      acquisitionCosts: 90_000,
+    });
+    expect(pluggedBack.returnOnCost).toBeCloseTo(0.12, 4);
+  });
+
+  it("calculates development cash required from development fields only", () => {
+    const cashRequired = calculateDevelopmentCashRequired({
+      landCost: 900_000,
+      acquisitionCostsExcludingPurchase: 75_000,
+      professionalFees: 220_000,
+      municipalPlanningFees: 80_000,
+      contingency: 300_000,
+      holdingFinanceCosts: 150_000,
+    });
+
+    const result = calculateDevelopmentToSell({
+      landCost: 900_000,
+      buildCost: 3_000_000,
+      professionalFees: 220_000,
+      municipalPlanningFees: 80_000,
+      contingencyPercent: 10,
+      developmentDurationMonths: 10,
+      monthlyHoldingCost: 15_000,
+      exitSellingCosts: 120_000,
+      expectedSaleValue: 5_200_000,
+      acquisitionCosts: 75_000,
+      cashInvested: cashRequired,
+    });
+
+    expect(cashRequired).toBe(1_725_000);
+    expect(result.returnOnInvestedCash).toBeCloseTo(355_000 / 1_725_000, 4);
   });
 
   it("calculates residual land value from GDV less development deductions", () => {
