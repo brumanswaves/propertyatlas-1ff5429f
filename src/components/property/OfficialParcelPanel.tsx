@@ -1,5 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AREA_UNAVAILABLE_LABEL, formatAreaM2WithUnit } from "@/lib/evidence/parcelArea";
+import {
+  AREA_UNAVAILABLE_LABEL,
+  canonicalAreaM2,
+  formatAreaM2WithUnit,
+} from "@/lib/evidence/parcelArea";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
@@ -26,6 +30,14 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveParcelArea } from "@/lib/evidence/parcelArea";
 import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
+import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
+import {
+  findMunicipalityPlanningRegistry,
+  findZone,
+} from "@/lib/planning/municipalityPlanningRegistry";
+import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
+import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -37,6 +49,7 @@ import {
 import { buildSgDocumentUrl, type SgDocumentResult } from "@/lib/research/sgDocument";
 import {
   readErfWorkspaceState,
+  getChosenStrategyScenario,
   readStrategyScenarios,
   updateErfWorkspaceState,
   type ErfWorkspaceIdentityStatus,
@@ -51,8 +64,11 @@ import {
 import {
   buildCanonicalNextAction,
   GUIDED_TASK_DEFINITIONS,
-  type InvestigationFacts,
 } from "@/lib/investigation/guidedTaskRegistry";
+import {
+  deriveInvestigationFacts,
+  type BuildPropertyInvestigationInput,
+} from "@/lib/investigation/propertyInvestigation";
 import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
@@ -108,6 +124,18 @@ function normalizeKouga(p: Record<string, unknown>) {
     shapeArea: p.Shape__Area,
     shapeLength: p.Shape__Length,
   };
+}
+
+function firstStringProperty(
+  properties: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = properties[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
 }
 
 type Tab =
@@ -215,66 +243,11 @@ interface WorkbenchNextStepModel {
   markStarted?: boolean;
 }
 
-function hasParcelAreaEvidence(parcel: NormalizedOfficialParcel): boolean {
-  return parcel.knownFields.some((field) =>
-    /\b(area|extent|geometry area|erf size)\b/i.test(field.label),
-  );
-}
-
-function buildWorkbenchInvestigationFacts(
-  parcel: NormalizedOfficialParcel,
-  workspaceState: ErfWorkspaceState,
-  paidReportCount: number,
-): InvestigationFacts {
-  const identityConfirmed =
-    workspaceState.identityStatus === "checked" ||
-    workspaceState.identityStatus === "looks_correct";
-
-  return {
-    parcelId: parcel.id,
-    identityConfirmed,
-    identityUncertain: workspaceState.identityStatus === "uncertain",
-    identityChecked: workspaceState.identityStatus !== "none",
-    hasOfficialParcelKey: Boolean(parcel.lpi || parcel.parcelKey),
-    hasAreaEvidence: hasParcelAreaEvidence(parcel),
-    sgDiagramSearchable: workspaceState.sgDiagramAttachmentCount > 0,
-    sgDiagramParentLineageOnly: false,
-    sgDiagramCount: workspaceState.sgDiagramAttachmentCount,
-    usableSubjectSgDiagramCount: workspaceState.sgDiagramAttachmentCount,
-    zoningConfirmedByDocument: false,
-    zoningRegistryPublished: false,
-    zoningWorkingAssumption: false,
-    approvedPlansOnFile: false,
-    titleDeedSearchable: false,
-    paidReportSearchable: false,
-    paidReportCount,
-    marketEvidenceCount: workspaceState.marketEvidenceStarted ? 1 : 0,
-    marketAddressSaved: workspaceState.marketAddressSaved,
-    scenarioCount: workspaceState.strategyScenarioCount,
-    hasChosenScenario: Boolean(workspaceState.chosenScenarioId),
-    siteConceptCount: workspaceState.sitePotential.conceptCount,
-    siteDesignSelected: Boolean(
-      workspaceState.sitePotential.selectedDesignAssetId ||
-        workspaceState.sitePotential.preferredConceptId,
-    ),
-    usableTopographySurveyCount: 0,
-    sitePhotoCount: workspaceState.sitePotential.photoCount,
-    existingHousePhotoCount: 0,
-    vendorAssignmentCount: 0,
-    siteSkipped:
-      workspaceState.sitePotential.skipped ||
-      workspaceState.sitePotential.mode === "skipped" ||
-      workspaceState.sitePotential.progressState === "skipped",
-    reportStarted: workspaceState.reportStarted,
-  };
-}
-
 function buildCanonicalWorkbenchNextStep(
-  parcel: NormalizedOfficialParcel,
-  opts: { paidReportCount: number; workspaceState: ErfWorkspaceState },
+  input: BuildPropertyInvestigationInput,
 ): WorkbenchNextStepModel | null {
-  const facts = buildWorkbenchInvestigationFacts(parcel, opts.workspaceState, opts.paidReportCount);
-  const next = buildCanonicalNextAction(facts, opts.workspaceState.investigation.skippedTaskIds);
+  const facts = deriveInvestigationFacts(input);
+  const next = buildCanonicalNextAction(facts, input.workspaceState.investigation.skippedTaskIds);
   if (!next) return null;
   const definition = GUIDED_TASK_DEFINITIONS.find((task) => task.id === next.id);
 
@@ -296,9 +269,10 @@ function buildWorkbenchPageNextStep(
     paidReportCount: number;
     workspaceState: ErfWorkspaceState;
     parcel: NormalizedOfficialParcel;
+    investigationInput: BuildPropertyInvestigationInput;
   },
 ): WorkbenchNextStepModel {
-  const canonicalStep = buildCanonicalWorkbenchNextStep(opts.parcel, opts);
+  const canonicalStep = buildCanonicalWorkbenchNextStep(opts.investigationInput);
   if (canonicalStep) return canonicalStep;
 
   switch (tab) {
@@ -1740,6 +1714,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const [lng, lat] = selection.lngLat;
   const objectId =
     selection.properties.OBJECTID ?? selection.properties.ObjectID ?? selection.properties.objectid;
+  const selectedMunicipality = firstStringProperty(selection.properties, [
+    "MUNICIPALITY",
+    "MUNICIPAL",
+    "MUN_NAME",
+    "MUNIC_NAME",
+    "LOCAL_MUNICIPALITY",
+    "LOCAL_MUNIC",
+  ]);
   const parcelId = buildOfficialParcelId({
     source: isCsg ? "csg" : "kouga",
     layer: selection.layer,
@@ -1748,13 +1730,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     parcelKey: csg?.parcelKey,
     erfNumber: csg?.erfNumber,
     portion: csg?.portion ?? 0,
-    municipality: "Kouga Local Municipality",
+    municipality: selectedMunicipality,
     province: csg?.province ?? "Eastern Cape",
     lng: csg?.longitude ?? lng,
     lat: csg?.latitude ?? lat,
   });
   const {
     loading: marketAddressLoading,
+    evidence: savedMarketEvidence,
     propertyIdentity,
     marketAddressIntelligence,
   } = useSavedMarketEvidence(parcelId);
@@ -1764,6 +1747,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     readErfWorkspaceState(parcelId),
   );
   const [paidReportCount, setPaidReportCount] = useState(0);
+  const erfFileVault = useErfFileVault(parcelId);
   const paidReportVault = useErfFileVault(parcelId, ["paid_report"]);
   const [shareCopied, setShareCopied] = useState(false);
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
@@ -1882,14 +1866,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         portion: csg?.portion,
         minorRegion: csg?.minorRegion,
         majorRegion: csg?.majorRegion,
-        municipality: "Kouga Local Municipality",
+        municipality: selectedMunicipality ?? undefined,
         province: csg?.province ?? "Eastern Cape",
         latitude: csg?.latitude ?? lat,
         longitude: csg?.longitude ?? lng,
         geo,
         user: canonicalUserAddress,
       }),
-    [csg, canonicalUserAddress, geo, lat, lng],
+    [csg, canonicalUserAddress, geo, lat, lng, selectedMunicipality],
   );
 
   const sourceUrl = isCsg ? CSG_VIEWER_URL : KOUGA_PUBLIC_MAP_URL;
@@ -1968,7 +1952,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       lpi: csg?.lpi ?? null,
       parcelKey: csg?.parcelKey ?? null,
       objectId: objectId as string | number | null | undefined,
-      municipality: "Kouga Local Municipality",
+      municipality: selectedMunicipality,
       province: csg?.province ?? canonicalUserAddress?.province ?? "Eastern Cape",
       suburbOrArea:
         canonicalUserAddress?.suburb ?? csg?.minorRegion ?? resolved.displaySubtitle ?? null,
@@ -1994,6 +1978,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     resolved.displaySubtitle,
     selection.layer,
     selection.properties,
+    selectedMunicipality,
     isCsg,
     canonicalUserAddress,
   ]);
@@ -2027,7 +2012,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         portion: csg?.portion ?? null,
         lpi: csg?.lpi ?? null,
         parcelKey: csg?.parcelKey ?? null,
-        municipality: "Kouga Local Municipality",
+        municipality: normalizedParcel.municipality ?? null,
         province: csg?.province ?? null,
         town: csg?.majorRegion ?? null,
         majorRegion: csg?.majorRegion ?? null,
@@ -2267,6 +2252,64 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     onClose();
   }
 
+  const planningAssessment = useMemo(() => {
+    const manualZoneCode = readStoredPlanningZone(normalizedParcel.id);
+    const registry = findMunicipalityPlanningRegistry(normalizedParcel.municipality ?? null);
+    const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
+    const documentZone = selectedZone
+      ? (erfFileVault.assets.find((asset) => isUsableSubjectZoningDocument(asset, selectedZone)) ??
+        null)
+      : null;
+    const signals = derivePlanningEvidenceSignals(erfFileVault.assets, {
+      zoningCertificateUploaded: Boolean(documentZone),
+    });
+
+    return buildParcelPlanningAssessment({
+      parcelId: normalizedParcel.id,
+      municipality: normalizedParcel.municipality ?? null,
+      locationHints: [
+        normalizedParcel.suburbOrArea,
+        normalizedParcel.town,
+        normalizedParcel.municipality,
+        normalizedParcel.province,
+      ],
+      erfAreaM2: canonicalAreaM2(normalizedParcel.rawProperties),
+      manualZoneCode,
+      documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
+      documentZoneAssetId: documentZone?.id ?? null,
+      hasParcelPolygon: Boolean(normalizedParcel.rawProperties),
+      evidence: signals,
+    });
+  }, [erfFileVault.assets, normalizedParcel]);
+
+  const strategyScenarios = useMemo(() => readStrategyScenarios(parcelId), [parcelId]);
+  const chosenScenario = useMemo(() => getChosenStrategyScenario(parcelId), [parcelId]);
+  const workbenchInvestigationInput = useMemo<BuildPropertyInvestigationInput>(
+    () => ({
+      parcel: normalizedParcel,
+      workspaceState,
+      assets: erfFileVault.assets,
+      savedEvidence: savedMarketEvidence,
+      planning: planningAssessment,
+      scenarioCount: strategyScenarios.length,
+      chosenScenarioId: chosenScenario?.id ?? null,
+      marketAddressLine: savedMarketAddress?.formattedAddress ?? propertyIdentity?.address ?? null,
+      skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+      startedAt: workspaceState.investigation.startedAt,
+    }),
+    [
+      chosenScenario?.id,
+      erfFileVault.assets,
+      normalizedParcel,
+      planningAssessment,
+      propertyIdentity?.address,
+      savedMarketAddress?.formattedAddress,
+      savedMarketEvidence,
+      strategyScenarios.length,
+      workspaceState,
+    ],
+  );
+
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isInvestigation = tab === "investigation";
   const expertWorkspaceOpen = workspaceState.investigation.expertWorkspaceOpen || !isInvestigation;
@@ -2275,6 +2318,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     paidReportCount,
     workspaceState,
     parcel: normalizedParcel,
+    investigationInput: workbenchInvestigationInput,
   });
   const fileArea = normalizedParcel.suburbOrArea ?? normalizedParcel.town ?? "Area not confirmed";
   const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
