@@ -96,6 +96,10 @@ function resultMeta(result: PropertySearchResult): string {
     .join(" • ");
 }
 
+function shouldOpenOfficialWorkbenchDirectly(result: PropertySearchResult) {
+  return result.confidence === "exact_official_match" && Boolean(result.parcel);
+}
+
 export function SearchBar({
   officialParcels = [],
   onOpenOfficialWorkbench,
@@ -277,6 +281,19 @@ export function SearchBar({
     if (!selectedOfficeHasLoadedCoverage) return [];
     return Array.from(new Set([...context.townshipOptions, ...context.municipalityOptions]));
   }, [context.municipalityOptions, context.townshipOptions, selectedOfficeHasLoadedCoverage]);
+
+  function openOfficialWorkbench(result: PropertySearchResult) {
+    onOpenOfficialWorkbench?.(result);
+    clearAll();
+  }
+
+  function selectOfficialErfResult(result: PropertySearchResult) {
+    if (shouldOpenOfficialWorkbenchDirectly(result)) {
+      openOfficialWorkbench(result);
+      return;
+    }
+    highlightResult(result);
+  }
 
   function clearAll() {
     setOpen(false);
@@ -753,7 +770,7 @@ export function SearchBar({
                 <button
                   key={result.id}
                   type="button"
-                  onClick={() => highlightResult(result)}
+                  onClick={() => selectOfficialErfResult(result)}
                   className="block w-full border-t border-[#0D1B2A]/8 px-4 py-3 text-left hover:bg-[#f8f3ea]"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -797,8 +814,7 @@ export function SearchBar({
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        onOpenOfficialWorkbench?.(result);
-                        clearAll();
+                        openOfficialWorkbench(result);
                       }}
                       className="rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-bold text-[#0D1B2A] hover:bg-[#fbf8f1]"
                     >

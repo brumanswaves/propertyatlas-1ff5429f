@@ -121,7 +121,7 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("{showHomeMapStatusCard && (");
   });
 
-  it("keeps search highlight separate from immediate Workbench opening", () => {
+  it("opens exact official search results through the canonical Workbench path", () => {
     const home = read("src/routes/index.tsx");
     const map = read("src/components/map/MapCanvas.tsx");
     const search = read("src/components/map/SearchBar.tsx");
@@ -129,13 +129,19 @@ describe("official dossier UX guardrails", () => {
     expect(search).toContain("onHighlightOfficialFromSearch");
     expect(search).toContain("onLocateAddress");
     expect(search).toContain("onHighlightOfficialFromSearch?.(officialMatch)");
-    expect(search).not.toContain("onOpenOfficialWorkbench?.(officialMatch)");
+    expect(search).toContain("shouldOpenOfficialWorkbenchDirectly");
+    expect(search).toContain('result.confidence === "exact_official_match"');
+    expect(search).toContain("selectOfficialErfResult(result)");
+    expect(search).toContain("openOfficialWorkbench(result)");
     expect(search).toContain("event.stopPropagation()");
     expect(search).toContain("onOpenOfficialWorkbench?.(result)");
     expect(home).toContain("handleOfficialSearchHighlight");
     expect(home).toContain("Click the highlighted erf to open the Workbench.");
     expect(home).toContain("Boundary highlight unavailable until the layer loads.");
+    expect(home).toContain("This is still an exact official match");
+    expect(home).not.toContain("nearby official parcel outline");
     expect(map).toContain("searchHighlightOfficialParcel");
+    expect(map).toContain("confidence?:");
     expect(map).toContain("findMatchingSearchHighlightFeature");
     expect(map).toContain("searchHighlightMarkerRef");
     expect(map).toContain("map.fitBounds(searchHighlightOfficialParcel.bounds");
@@ -374,6 +380,10 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("WORKBENCH_SECTIONS");
     expect(panel).toContain("Current erf file");
     expect(panel).toContain("buildWorkbenchIdentityLine");
+    expect(panel).toContain("CSG region:");
+    expect(panel).toContain("Municipality:");
+    expect(panel).toContain("CSG registration region");
+    expect(panel).toContain("CSG township / minor region");
     expect(panel).toContain(
       "Working address is stored separately from the official parcel identity.",
     );
@@ -432,6 +442,24 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("sticky top-0 z-30");
   });
 
+  it("keeps signed-in workspace effects keyed by stable user id", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const vault = read("src/lib/workbench/useErfFileVault.ts");
+    const market = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
+    const sitePotential = read("src/lib/sitePotential/sitePotentialService.ts");
+    const vendors = read("src/lib/vendors/useVendorWorkspace.ts");
+
+    for (const source of [panel, vault, market, sitePotential, vendors]) {
+      expect(source).toContain("user?.id ?? null");
+      expect(source).not.toContain("[user, parcelId]");
+    }
+    expect(panel).toContain("[user?.id, parcelId]");
+    expect(vault).toContain("[categoryFilter, parcelId, userId]");
+    expect(market).toContain("[parcelId, userId]");
+    expect(sitePotential).toContain("[parcelId, userId]");
+    expect(vendors).toContain("[parcelId, userId]");
+  });
+
   it("surfaces Easy Erf intelligence immediately on official map click", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const reportBuilder = read("src/components/property/investigation/InvestigationHome.tsx");
@@ -486,6 +514,20 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('tab: siteMissing ? "site-potential" : "stoep-report"');
     expect(panel).toContain("WorkbenchNextStep");
     expect(panel).toContain("Next best step");
+    expect(panel).toContain("buildCanonicalNextAction");
+    expect(panel).toContain("GUIDED_TASK_DEFINITIONS");
+    expect(panel).toContain("deriveInvestigationFacts");
+    expect(panel).toContain("BuildPropertyInvestigationInput");
+    expect(panel).not.toContain("buildWorkbenchInvestigationFacts");
+    expect(panel).not.toContain("zoningConfirmedByDocument: false");
+    expect(panel).not.toContain("zoningRegistryPublished: false");
+    expect(panel).not.toContain("zoningWorkingAssumption: false");
+    expect(panel).not.toContain("approvedPlansOnFile: false");
+    expect(panel).not.toContain("titleDeedSearchable: false");
+    expect(panel).not.toContain("paidReportSearchable: false");
+    expect(panel).not.toContain("usableTopographySurveyCount: 0");
+    expect(panel).not.toContain("existingHousePhotoCount: 0");
+    expect(panel).not.toContain('municipality: "Kouga Local Municipality"');
     expect(panel).toContain("Review uploaded files");
     expect(panel).toContain("paidReportCount > 0");
     expect(panel).not.toContain("Mini report");

@@ -29,7 +29,9 @@ export function InvestigationStepNavigator({
     >
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
         <h3 className="text-sm font-semibold tracking-tight text-[#0D1B2A]">View all steps</h3>
-        <span className="text-[11px] font-semibold text-[#64748B]">8-step path</span>
+        <span className="text-[11px] font-semibold text-[#64748B]">
+          {steps.length}-step path
+        </span>
       </div>
       <ol className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] md:grid md:grid-cols-4 md:overflow-visible [&::-webkit-scrollbar]:hidden">
         {steps.map((step) => {

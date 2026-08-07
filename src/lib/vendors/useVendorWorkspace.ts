@@ -31,6 +31,7 @@ import {
 
 export function useVendorWorkspace(parcelId: string) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [directory, setDirectory] = useState<Vendor[]>([]);
   const [assignments, setAssignments] = useState<VendorAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export function useVendorWorkspace(parcelId: string) {
     let alive = true;
     setLoading(true);
     (async () => {
-      if (!user) {
+      if (!userId) {
         if (!alive) return;
         setDirectory(readLocalVendorDirectory());
         setAssignments(readLocalVendorAssignments(parcelId));
@@ -52,8 +53,8 @@ export function useVendorWorkspace(parcelId: string) {
         return;
       }
       const [remoteDirectory, remoteAssignments] = await Promise.all([
-        fetchRemoteVendorDirectory(user.id).catch(() => readLocalVendorDirectory()),
-        fetchRemoteVendorAssignments(parcelId, user.id).catch(() =>
+        fetchRemoteVendorDirectory(userId).catch(() => readLocalVendorDirectory()),
+        fetchRemoteVendorAssignments(parcelId, userId).catch(() =>
           readLocalVendorAssignments(parcelId),
         ),
       ]);
@@ -65,7 +66,7 @@ export function useVendorWorkspace(parcelId: string) {
     return () => {
       alive = false;
     };
-  }, [parcelId, user]);
+  }, [parcelId, userId]);
 
   const persistDirectory = useCallback(async (next: Vendor[]) => {
     setDirectory(next);

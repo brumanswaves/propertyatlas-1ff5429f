@@ -318,15 +318,23 @@ export function VacantLandBuildEnvelope({
               note={result.summary.erfAreaSourceLabel}
             />
             <SummaryRow
-              label="Maximum coverage"
+              label={
+                resolved.ruleStatus === "verified"
+                  ? "Maximum verified coverage"
+                  : "Coverage working assumption"
+              }
               value={
                 result.summary.maxCoveragePercent != null
-                  ? `${result.summary.maxCoveragePercent}%${
+                  ? `${resolved.ruleStatus === "verified" ? "" : "Working assumption: "}${result.summary.maxCoveragePercent}%${
                       coverageAreaM2 != null ? ` · ${coverageAreaM2} m²` : ""
                     }`
                   : "Not confirmed"
               }
-              note={resolved.fields.maxCoveragePercent.provenance}
+              note={
+                resolved.ruleStatus === "verified"
+                  ? resolved.fields.maxCoveragePercent.provenance
+                  : `${resolved.fields.maxCoveragePercent.provenance} Property-specific planning controls not yet verified.`
+              }
             />
             <SummaryRow
               label="Maximum height"
@@ -407,9 +415,15 @@ export function VacantLandBuildEnvelope({
       {result.coverageFootprint ? (
         <div className="mt-4 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3">
           <div className="text-[12px] font-semibold text-[#0D1B2A]">
-            Maximum permitted coverage: {result.coverageFootprint.areaM2} m²
+            {resolved.ruleStatus === "verified"
+              ? "Maximum verified coverage"
+              : "Derived footprint from working assumption"}
+            : {result.coverageFootprint.areaM2} m²
           </div>
           <p className="mt-1 text-[11px] leading-5 text-[#64748B]">
+            {resolved.ruleStatus === "verified"
+              ? null
+              : "Coverage is using unverified planning-control assumptions. It is not an official property right or approval. "}
             {result.secondDwelling
               ? `Example split if an additional dwelling is relevant: approximately ${result.coverageFootprint.allocation.mainM2} m² main dwelling plus up to approximately ${result.coverageFootprint.allocation.additionalM2} m² additional dwelling. The total never exceeds ${result.coverageFootprint.areaM2} m².`
               : "This is allowed ground-floor area only, not a building design or an approved position."}{" "}

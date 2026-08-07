@@ -11,6 +11,7 @@ import {
   ASK_EASY_ERF_MAX_QUESTION_CHARACTERS,
   buildAskEasyErfEvidencePayload,
   buildAskEasyErfSelectedEvidencePayload,
+  calibrateAskEasyErfAnswerConfidence,
   hasAskEasyErfPackEvidence,
   hasEnoughAskEasyErfEvidence,
   hasEnoughAskEasyErfSelectedEvidence,
@@ -690,6 +691,76 @@ describe("Ask Easy Erf evidence payload", () => {
       label: "Easy Erf system-generated missing-information state",
     });
     expect(validateAskEasyErfSelectedEvidencePayload(gapOnly)).not.toBeNull();
+  });
+
+  it("does not display high answer confidence for low-readiness gap-only evidence", () => {
+    const pack = buildEvidencePackFixture();
+    const gapOnly = buildAskEasyErfSelectedEvidencePayload({
+      pack: { ...pack, claims: [], contradictions: [], sources: [] },
+      question: "Can I rely on this erf file?",
+    });
+
+    const calibrated = calibrateAskEasyErfAnswerConfidence({
+      answer: {
+        answer: "The erf file has major evidence gaps.",
+        confidence: "high",
+        evidenceReferences: [
+          {
+            ref: gapOnly.sources[0]?.ref,
+            label: "Missing evidence",
+            sourceType: "missing",
+          },
+        ],
+        unknowns: ["Ownership", "Planning controls"],
+        nextAction: "Add evidence",
+      },
+      selectedEvidence: gapOnly,
+      readinessPercent: 30,
+    });
+
+    expect(calibrated.confidence).toBe("low");
+  });
+
+  it("preserves high answer confidence when the answer cites reviewed official evidence", () => {
+    const selected = selectedFixture("What is the official parcel identity?");
+    const official = selected.sources.find((source) => source.sourceType === "official");
+    if (!official) throw new Error("Expected official selected evidence source");
+    const claim = selected.claims.find((item) => item.sourceRefs.includes(official.ref));
+
+    const calibrated = calibrateAskEasyErfAnswerConfidence({
+      answer: {
+        answer: "The official parcel identifiers are available.",
+        confidence: "high",
+        evidenceReferences: [
+          {
+            ref: official.ref,
+            label: official.label,
+            sourceType: "official",
+            status: official.status,
+          },
+        ],
+        unknowns: [],
+        nextAction: null,
+      },
+      selectedEvidence: {
+        ...selected,
+        sources: [{ ...official, status: "reviewed" }],
+        claims: claim
+          ? [
+              {
+                ...claim,
+                status: "supported",
+                confidence: "high",
+                sourceRefs: [official.ref],
+              },
+            ]
+          : [],
+        gaps: [],
+      },
+      readinessPercent: 30,
+    });
+
+    expect(calibrated.confidence).toBe("high");
   });
 
   it("uses broad risk fallback for important contradictions and blocking gaps", () => {

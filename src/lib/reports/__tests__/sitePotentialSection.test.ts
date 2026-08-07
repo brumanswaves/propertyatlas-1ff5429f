@@ -60,12 +60,28 @@ describe("buildSitePotentialReportPanel", () => {
       hasConceptImage: false,
     });
     expect(panel.metrics.map((metric) => metric.label)).toEqual([
-      "Maximum coverage",
+      "Coverage working assumption",
       "Erf extent",
       "Maximum height",
       "Dwellings",
     ]);
-    expect(panel.metrics[0]).toMatchObject({ value: "310 m²", note: "50% of erf" });
+    expect(panel.metrics[0]).toMatchObject({
+      value: "310 m²",
+      note: "Working assumption: 50% of erf. Property-specific planning controls not yet verified.",
+    });
+  });
+
+  it("labels verified coverage differently from unverified working assumptions", () => {
+    const panel = buildSitePotentialReportPanel({
+      ...base,
+      envelope: envelope({ state: "verified" }),
+      hasConceptImage: false,
+    });
+
+    expect(panel.metrics[0]).toMatchObject({
+      label: "Maximum verified coverage",
+      note: "50% of erf",
+    });
   });
 
   it("falls back to capacity only when no concept was selected", () => {

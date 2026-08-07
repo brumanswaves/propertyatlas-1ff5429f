@@ -279,6 +279,7 @@ function AtlasHome() {
     setSearchHighlight({
       id: parcel.id,
       title: result.title,
+      confidence: result.confidence,
       layer: parcel.layer,
       properties: parcel.properties,
       lngLat,
@@ -377,7 +378,9 @@ function AtlasHome() {
             {searchHighlightStatus === "highlighted"
               ? "Click the highlighted erf to open the Workbench."
               : searchHighlightStatus === "fallback"
-                ? "Boundary highlight unavailable until the layer loads. Click the nearby official parcel outline to open the Workbench."
+                ? searchHighlight.confidence === "exact_official_match"
+                  ? "Boundary highlight unavailable until the layer loads. This is still an exact official match; open the Workbench from the search result or click the matching official parcel outline when visible."
+                  : "Boundary highlight unavailable until the layer loads. Click the matching official parcel outline to open the Workbench."
                 : "Easy Erf is matching the result to the rendered official parcel outline. If the boundary is still loading, the map will keep a marker at the official parcel context."}
           </p>
           <button

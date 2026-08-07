@@ -11,6 +11,8 @@ import { deriveInvestigationFacts } from "@/lib/investigation/propertyInvestigat
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
+import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -65,6 +67,81 @@ function evidenceAsset(partial: Partial<ErfAsset>): ErfAsset {
     created_at: "2026-07-31T08:00:00.000Z",
     updated_at: "2026-07-31T08:00:00.000Z",
     ...partial,
+  };
+}
+
+function searchableSubjectAsset(
+  category: ErfAsset["asset_category"],
+  partial: Partial<ErfAsset> = {},
+): ErfAsset {
+  return evidenceAsset({
+    id: `asset-${category}`,
+    asset_category: category,
+    asset_type: category,
+    status: "ready",
+    metadata: { extractionStatus: "ready", identityMatchStatus: "matched" },
+    ...partial,
+  });
+}
+
+function verifiedPlanningAssessment(): ParcelPlanningAssessment {
+  return {
+    parcelId: "parcel:erf-1570",
+    municipality: "Kouga",
+    planningArea: "Cape St Francis",
+    registryMatched: true,
+    detection: {
+      method: "document_supported",
+      zoneCode: "SR1",
+      zoneName: "Single Residential",
+      confidence: "high",
+      suppliedBy: "Uploaded zoning certificate",
+      supportingAssetId: "asset-zoning_document",
+      statement: "Zoning certificate supports Single Residential zoning.",
+    },
+    zone: null,
+    publishedRules: [],
+    verifiedRights: [],
+    possibleRestrictions: [],
+    guidelines: [],
+    overlays: [],
+    envelope: {
+      erfAreaM2: 619,
+      coveragePercent: null,
+      theoreticalGroundFloorM2: null,
+      heightLimitM: null,
+      setbackConstrainedM2: null,
+      setbackCalculationSkippedReason: null,
+      confidence: "high",
+      missingConstraints: [],
+      caveat: "Test fixture planning assessment.",
+    },
+    riskFlags: [],
+    checklist: [],
+    actions: [],
+    missingEvidence: [],
+    sources: [],
+    permittedUseSummary: "Single residential use recorded in the test fixture.",
+    headlineWarning: "Test fixture only.",
+    assessedAt: "2026-07-31T08:00:00.000Z",
+  };
+}
+
+function savedComparableEvidence(): SavedMarketEvidence {
+  return {
+    id: "market-evidence-1",
+    parcelId: "parcel:erf-1570",
+    sourceUrl: "https://www.property24.com/for-sale/example",
+    sourcePortal: "Property24",
+    title: "Comparable listing",
+    askingPrice: 1500000,
+    propertyType: "Vacant land",
+    relationship: "same_suburb_comp",
+    confidence: "medium",
+    includeInSummary: true,
+    listingRole: "comparable_evidence",
+    savedAt: "2026-07-31T08:00:00.000Z",
+    updatedAt: "2026-07-31T08:00:00.000Z",
   };
 }
 
@@ -144,6 +221,74 @@ describe("investigation model", () => {
 
     expect(second.nextAction?.id).not.toBe("confirm-property-identity");
     expect(second.nextTask?.id).toBe(second.nextAction?.id);
+  });
+
+  it("advances the canonical next action from recorded workspace, vault, planning and market evidence", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const actionFrom = (
+      overrides: Partial<Parameters<typeof deriveInvestigationFacts>[0]> = {},
+    ) => {
+      const input = baseInput({
+        workspaceState: workspace,
+        ...overrides,
+      });
+      return buildCanonicalNextAction(deriveInvestigationFacts(input), [])?.id;
+    };
+
+    expect(actionFrom()).toBe("add-sg-diagram");
+
+    const sgDiagram = searchableSubjectAsset("sg_diagram");
+    expect(actionFrom({ assets: [sgDiagram] })).toBe("confirm-zoning");
+
+    const approvedPlan = evidenceAsset({
+      id: "asset-approved-plan",
+      metadata: { planApprovalStatus: "verified_municipal_approval" },
+    });
+    const marketEvidence = savedComparableEvidence();
+    expect(
+      actionFrom({
+        assets: [sgDiagram, approvedPlan],
+        planning: verifiedPlanningAssessment(),
+        savedEvidence: [marketEvidence],
+      }),
+    ).toBe("add-lightstone-report");
+
+    const paidReport = searchableSubjectAsset("paid_report");
+    expect(
+      actionFrom({
+        assets: [sgDiagram, approvedPlan, paidReport],
+        planning: verifiedPlanningAssessment(),
+        savedEvidence: [marketEvidence],
+      }),
+    ).toBe("review-site-potential");
+
+    const facts = deriveInvestigationFacts(
+      baseInput({
+        workspaceState: workspace,
+        assets: [
+          sgDiagram,
+          approvedPlan,
+          paidReport,
+          searchableSubjectAsset("title_deed"),
+          searchableSubjectAsset("topography"),
+          evidenceAsset({
+            id: "asset-existing-house-photo",
+            asset_category: "existing_house_photo",
+          }),
+        ],
+        planning: verifiedPlanningAssessment(),
+        savedEvidence: [marketEvidence],
+      }),
+    );
+
+    expect(facts.zoningConfirmedByDocument).toBe(true);
+    expect(facts.zoningRegistryPublished).toBe(true);
+    expect(facts.approvedPlansOnFile).toBe(true);
+    expect(facts.titleDeedSearchable).toBe(true);
+    expect(facts.paidReportSearchable).toBe(true);
+    expect(facts.usableTopographySurveyCount).toBe(1);
+    expect(facts.existingHousePhotoCount).toBe(1);
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plan files do not complete approved-plan facts", () => {

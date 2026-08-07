@@ -79,6 +79,52 @@ export interface AskEasyErfAnswer {
   nextAction: string | null;
 }
 
+export function calibrateAskEasyErfAnswerConfidence({
+  answer,
+  selectedEvidence,
+  readinessPercent,
+}: {
+  answer: AskEasyErfAnswer;
+  selectedEvidence: AskEasyErfSelectedEvidencePayload;
+  readinessPercent: number;
+}): AskEasyErfAnswer {
+  if (answer.confidence !== "high") return answer;
+
+  const citedRefs = new Set(
+    answer.evidenceReferences
+      .map((reference) => reference.ref)
+      .filter((ref): ref is string => Boolean(ref)),
+  );
+  const citedSources = selectedEvidence.sources.filter((source) => citedRefs.has(source.ref));
+  const citedClaims = selectedEvidence.claims.filter((claim) =>
+    claim.sourceRefs.some((ref) => citedRefs.has(ref)),
+  );
+  const hasStrongCitedSource = citedSources.some(
+    (source) =>
+      (source.sourceType === "official" || source.sourceType === "user_confirmed") &&
+      (source.status === "reviewed" || source.status === "ready" || source.status === "uploaded"),
+  );
+  const hasSupportedCitedClaim = citedClaims.some(
+    (claim) =>
+      claim.status === "supported" &&
+      (claim.confidence === "high" || claim.confidence === "medium" || claim.userConfirmed),
+  );
+  const blockingGapCount = selectedEvidence.gaps.filter(
+    (gap) => gap.blocking || gap.importance === "high",
+  ).length;
+
+  if (hasStrongCitedSource || hasSupportedCitedClaim) {
+    return readinessPercent < 35 && blockingGapCount > citedClaims.length
+      ? { ...answer, confidence: "medium" }
+      : answer;
+  }
+
+  return {
+    ...answer,
+    confidence: readinessPercent < 45 || blockingGapCount > 0 ? "low" : "medium",
+  };
+}
+
 export interface AskEasyErfAssetSummary {
   id: string;
   parcelId: string;
