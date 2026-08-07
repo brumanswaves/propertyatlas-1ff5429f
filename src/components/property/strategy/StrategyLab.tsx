@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -7,13 +7,26 @@ import {
   calculateAcquisition,
   calculateBond,
   calculateBrrrr,
+  calculateBuildCost,
   calculateBuyHold,
+  calculateDevelopmentSensitivity,
   calculateDevelopmentToRent,
   calculateDevelopmentToSell,
   calculateFlip,
+  calculateMaximumOffer,
+  calculatePricePerM2,
+  calculateResidualLandValue,
   calculateShortTermRental,
 } from "@/lib/research/calculators";
+import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import {
+  buildStrategyPropertyInputFacts,
+  strategyDefaultsFromPropertyFacts,
+  type StrategyInputFact,
+} from "@/lib/research/strategyInputs";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
 import { cn } from "@/lib/utils";
+import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import {
   createEmptyStrategyWorkspace,
   mergeStrategyWorkspaces,
@@ -33,6 +46,7 @@ import {
   createStrategyCloudSaveQueue,
   type StrategyCloudSaveQueue,
 } from "@/lib/workbench/strategyCloudSaveQueue";
+import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 
 type StrategyType =
   | "buy_hold"
@@ -138,9 +152,13 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
   },
 ];
 
-function strategyDefaults(defaultPrice: number): Record<string, string> {
+function strategyDefaults(
+  defaultPrice: number,
+  propertyDefaults: Record<string, string> = {},
+): Record<string, string> {
   const price = defaultPrice > 0 ? String(defaultPrice) : "";
   return {
+    ...propertyDefaults,
     purchasePrice: price,
     transferDuty: "",
     transferCosts: "",
@@ -177,11 +195,23 @@ function strategyDefaults(defaultPrice: number): Record<string, string> {
     sellingCosts: "",
     landCost: price,
     buildCost: "",
+    buildAreaM2: propertyDefaults.buildAreaM2 ?? "",
+    buildCostPerM2: "",
+    floorAreaM2: propertyDefaults.floorAreaM2 ?? propertyDefaults.buildAreaM2 ?? "",
+    numberOfFloors: "1",
     professionalFees: "",
     municipalPlanningFees: "",
     developmentDurationMonths: "12",
     exitSellingCosts: "",
     expectedSaleValue: "",
+    requiredProfit: "",
+    targetReturnPercent: "15",
+    targetMarginPercent: "",
+    downsideBuildCostPercent: "15",
+    downsideGdvPercent: "10",
+    downsideDurationMonths: "3",
+    upsideBuildCostPercent: "5",
+    upsideGdvPercent: "10",
     expectedMonthlyRent: "",
     operatingExpenses: "",
     averageDailyRate: "",
@@ -222,8 +252,24 @@ function formatRand(value: number) {
   }).format(Math.round(Number.isFinite(value) ? value : 0));
 }
 
+function formatRandOrMissing(value: number) {
+  return Number.isFinite(value) && value > 0 ? formatRand(value) : "Missing";
+}
+
 function formatPercent(value: number) {
   return `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`;
+}
+
+function formatPercentOrMissing(value: number) {
+  return Number.isFinite(value) && value > 0 ? formatPercent(value) : "Missing";
+}
+
+function formatNumber(value: number, suffix = "") {
+  if (!Number.isFinite(value) || value <= 0) return "Missing";
+  const formatted = value.toLocaleString("en-ZA", {
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  });
+  return `${formatted}${suffix}`;
 }
 
 function formatSaveTime(value: string | null) {
@@ -259,6 +305,24 @@ function saveStatusCopy(status: StrategySaveStatus, lastSavedAt: string | null) 
 function optionFor(id: StrategyType) {
   return STRATEGY_OPTIONS.find((option) => option.id === id) ?? STRATEGY_OPTIONS[0];
 }
+
+const INPUT_STATE_LABEL: Record<StrategyInputFact["state"], string> = {
+  verified_property: "Verified / official",
+  working_property: "Working property value",
+  working_assumption: "Working assumption",
+  derived_from_working_assumption: "Derived from working assumption",
+  concept_assumption: "Concept assumption",
+  missing_value: "Missing",
+};
+
+const INPUT_STATE_TONE: Record<StrategyInputFact["state"], string> = {
+  verified_property: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  working_property: "border-sky-200 bg-sky-50 text-sky-800",
+  working_assumption: "border-amber-200 bg-amber-50 text-amber-800",
+  derived_from_working_assumption: "border-amber-200 bg-amber-50 text-amber-800",
+  concept_assumption: "border-purple-200 bg-purple-50 text-purple-800",
+  missing_value: "border-slate-200 bg-slate-50 text-slate-600",
+};
 
 function selectedStrategyId(scenario: ErfStrategyScenario | null): StrategyType {
   return STRATEGY_OPTIONS.some((option) => option.id === scenario?.strategy)
@@ -301,10 +365,12 @@ async function activeSupabaseUserMatches(expectedUserId: string | null) {
 }
 
 export function StrategyLab({
+  parcel,
   parcelId,
   defaultPrice,
   onOpenReport,
 }: {
+  parcel: NormalizedOfficialParcel;
   parcelId: string;
   defaultPrice: number;
   onOpenReport?: () => void;
@@ -312,20 +378,31 @@ export function StrategyLab({
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const initialWorkspace = readStrategyWorkspace(parcelId);
+  const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
+  const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
+  const initialPropertyFacts = buildStrategyPropertyInputFacts({
+    parcel,
+    buildEnvelopeOverrides: initialBuildEnvelopeOverrides,
+    sitePotentialDraft: initialSitePotentialDraft,
+  });
+  const initialPropertyDefaults = strategyDefaultsFromPropertyFacts(initialPropertyFacts);
   const [active, setActive] = useState<StrategyType>(() =>
     STRATEGY_OPTIONS.some((option) => option.id === initialWorkspace.activeStrategy)
       ? (initialWorkspace.activeStrategy as StrategyType)
       : "buy_hold",
   );
   const [values, setValues] = useState(() => ({
-    ...strategyDefaults(defaultPrice),
+    ...strategyDefaults(defaultPrice, initialPropertyDefaults),
     ...initialWorkspace.draftInputs,
   }));
   const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
   const [chosenScenario, setChosenScenario] = useState(() => getChosenStrategyScenario(parcelId));
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
-    readSitePotentialStrategyDraft(parcelId),
+    initialSitePotentialDraft,
+  );
+  const [buildEnvelopeOverrides, setBuildEnvelopeOverrides] = useState(
+    () => initialBuildEnvelopeOverrides,
   );
   const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(userId ? "loading" : "offline");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -334,10 +411,33 @@ export function StrategyLab({
   const cloudSaveQueueRef = useRef<StrategyCloudSaveQueue | null>(null);
   const latestWorkspaceRef = useRef(initialWorkspace);
   defaultPriceRef.current = defaultPrice;
+  const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
+  const propertyInputFacts = useMemo(
+    () =>
+      buildStrategyPropertyInputFacts({
+        parcel,
+        buildEnvelopeOverrides,
+        sitePotentialDraft,
+      }),
+    [buildEnvelopeOverrides, parcel, sitePotentialDraft],
+  );
+  const propertyDefaults = useMemo(
+    () => strategyDefaultsFromPropertyFacts(propertyInputFacts),
+    [propertyInputFacts],
+  );
 
   useEffect(() => {
     const workspace = readStrategyWorkspace(parcelId);
     const chosen = getChosenStrategyScenario(parcelId);
+    const nextSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
+    const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
+    const nextPropertyDefaults = strategyDefaultsFromPropertyFacts(
+      buildStrategyPropertyInputFacts({
+        parcel,
+        buildEnvelopeOverrides: nextBuildEnvelopeOverrides,
+        sitePotentialDraft: nextSitePotentialDraft,
+      }),
+    );
     setSavedScenarios(workspace.scenarios);
     setChosenScenario(chosen);
     setActive(
@@ -345,14 +445,18 @@ export function StrategyLab({
         ? (workspace.activeStrategy as StrategyType)
         : selectedStrategyId(chosen),
     );
-    setValues({ ...strategyDefaults(defaultPriceRef.current), ...workspace.draftInputs });
+    setValues({
+      ...strategyDefaults(defaultPriceRef.current, nextPropertyDefaults),
+      ...workspace.draftInputs,
+    });
     setShowChosenState(Boolean(chosen));
-    setSitePotentialDraft(readSitePotentialStrategyDraft(parcelId));
+    setSitePotentialDraft(nextSitePotentialDraft);
+    setBuildEnvelopeOverrides(nextBuildEnvelopeOverrides);
     latestWorkspaceRef.current = workspace;
     setSaveError(null);
     setLastSavedAt(null);
     setSaveStatus(userId ? "loading" : "offline");
-  }, [parcelId, userId]);
+  }, [parcel, parcelId, userId]);
 
   useEffect(() => {
     const queue = createStrategyCloudSaveQueue({
@@ -430,7 +534,10 @@ export function StrategyLab({
             ? (merged.activeStrategy as StrategyType)
             : selectedStrategyId(chosen),
         );
-        setValues({ ...strategyDefaults(defaultPriceRef.current), ...merged.draftInputs });
+        setValues({
+          ...strategyDefaults(defaultPriceRef.current, propertyDefaults),
+          ...merged.draftInputs,
+        });
         setShowChosenState(Boolean(chosen));
         latestWorkspaceRef.current = merged;
         const cloudMissing = !remote && Boolean(local.draftUpdatedAt || local.scenarios.length);
@@ -447,7 +554,7 @@ export function StrategyLab({
     return () => {
       alive = false;
     };
-  }, [parcelId, queueCloudSave, userId]);
+  }, [parcelId, propertyDefaults, queueCloudSave, userId]);
 
   function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
     const workspace = saveStrategyDraft(parcelId, {
@@ -490,6 +597,14 @@ export function StrategyLab({
     furnitureBudget: n("furnishingSetupCost"),
     cashBuffer: n("otherAcquisitionCosts"),
   });
+  const acquisitionCostsExcludingPurchase =
+    n("transferDuty") +
+    n("transferCosts") +
+    n("bondCosts") +
+    n("attorneyFees") +
+    n("inspectionCosts") +
+    n("financeFees") +
+    n("otherAcquisitionCosts");
   const rental = calculateBuyHold({
     purchasePrice: n("purchasePrice"),
     totalCashInvested: acquisition.totalCashRequired || n("deposit"),
@@ -528,9 +643,16 @@ export function StrategyLab({
     targetProfit: 0,
     targetRoiPercent: 20,
   });
+  const buildAreaM2 = n("buildAreaM2") || n("floorAreaM2") || n("theoreticalFootprintM2");
+  const buildCostModel = calculateBuildCost({
+    directBuildCost: n("buildCost"),
+    buildAreaM2,
+    buildRatePerM2: n("buildCostPerM2"),
+  });
+  const effectiveBuildCost = buildCostModel.selectedBuildCost;
   const developmentSell = calculateDevelopmentToSell({
     landCost: n("landCost"),
-    buildCost: n("buildCost"),
+    buildCost: effectiveBuildCost,
     professionalFees: n("professionalFees"),
     municipalPlanningFees: n("municipalPlanningFees"),
     contingencyPercent: n("contingencyPercent"),
@@ -538,10 +660,64 @@ export function StrategyLab({
     monthlyHoldingCost: n("monthlyHoldingCost"),
     exitSellingCosts: n("exitSellingCosts") + n("sellingCosts"),
     expectedSaleValue: n("expectedSaleValue"),
+    acquisitionCosts: acquisitionCostsExcludingPurchase,
+    cashInvested: acquisition.totalCashRequired,
+    buildAreaM2,
+  });
+  const maximumOffer = calculateMaximumOffer({
+    expectedSaleValue: n("expectedSaleValue"),
+    sellingCosts: n("exitSellingCosts") + n("sellingCosts"),
+    buildCosts: effectiveBuildCost,
+    professionalFees: n("professionalFees"),
+    municipalPlanningFees: n("municipalPlanningFees"),
+    holdingFinanceCosts: developmentSell.totalHoldingCost,
+    acquisitionCostsExcludingPurchase,
+    contingency: developmentSell.contingencyAmount,
+    requiredProfit: n("requiredProfit"),
+    targetReturnOnCostPercent: n("targetReturnPercent"),
+    targetMarginOnRevenuePercent: n("targetMarginPercent"),
+  });
+  const residualLandValue = calculateResidualLandValue({
+    expectedGdv: n("expectedSaleValue"),
+    sellingCosts: n("exitSellingCosts") + n("sellingCosts"),
+    requiredDeveloperProfit: maximumOffer.requiredProfit || n("requiredProfit"),
+    constructionCost: effectiveBuildCost,
+    professionalFees: n("professionalFees"),
+    municipalPlanningCosts: n("municipalPlanningFees"),
+    contingency: developmentSell.contingencyAmount,
+    financeHoldingCosts: developmentSell.totalHoldingCost,
+    otherDevelopmentCosts: acquisitionCostsExcludingPurchase,
+  });
+  const pricePerM2 = calculatePricePerM2({
+    landPurchasePrice: n("landCost") || n("purchasePrice"),
+    erfAreaM2: n("erfAreaM2"),
+    buildCost: effectiveBuildCost,
+    buildAreaM2,
+    completedValue: n("expectedSaleValue") || n("expectedResalePrice"),
+    completedAreaM2: n("floorAreaM2") || buildAreaM2,
+  });
+  const developmentSensitivity = calculateDevelopmentSensitivity({
+    landCost: n("landCost"),
+    buildCost: effectiveBuildCost,
+    professionalFees: n("professionalFees"),
+    municipalPlanningFees: n("municipalPlanningFees"),
+    contingencyPercent: n("contingencyPercent"),
+    developmentDurationMonths: n("developmentDurationMonths"),
+    monthlyHoldingCost: n("monthlyHoldingCost"),
+    exitSellingCosts: n("exitSellingCosts") + n("sellingCosts"),
+    expectedSaleValue: n("expectedSaleValue"),
+    acquisitionCosts: acquisitionCostsExcludingPurchase,
+    buildAreaM2,
+    cashInvested: acquisition.totalCashRequired,
+    buildCostDownsidePercent: n("downsideBuildCostPercent"),
+    gdvDownsidePercent: n("downsideGdvPercent"),
+    durationDownsideMonths: n("downsideDurationMonths"),
+    buildCostUpsidePercent: n("upsideBuildCostPercent"),
+    gdvUpsidePercent: n("upsideGdvPercent"),
   });
   const developmentRent = calculateDevelopmentToRent({
     landCost: n("landCost"),
-    buildCost: n("buildCost"),
+    buildCost: effectiveBuildCost,
     professionalFees: n("professionalFees"),
     municipalPlanningFees: n("municipalPlanningFees"),
     contingencyPercent: n("contingencyPercent"),
@@ -590,6 +766,25 @@ export function StrategyLab({
   });
   const landBankHoldingCost =
     n("holdingMonths") * (n("monthlyHoldingCost") + n("monthlyRates") + n("monthlyLevies"));
+  const comparableEvidence = savedMarketEvidence.filter(
+    (item) =>
+      item.includeInSummary &&
+      item.listingRole !== "subject_active_listing" &&
+      item.relationship !== "target_asset",
+  );
+  const subjectListing = savedMarketEvidence.find(
+    (item) => item.listingRole === "subject_active_listing",
+  );
+  const averageComparablePrice =
+    comparableEvidence.length > 0
+      ? comparableEvidence.reduce((sum, item) => sum + (item.askingPrice ?? 0), 0) /
+        comparableEvidence.length
+      : 0;
+  const biggestUncertainty =
+    developmentSell.missingAssumptions[0] ??
+    buildCostModel.missingAssumptions[0] ??
+    maximumOffer.missingAssumptions[0] ??
+    "market support, planning controls and cost evidence";
 
   const summary = (() => {
     switch (active) {
@@ -610,9 +805,13 @@ export function StrategyLab({
       case "development_sell":
         return [
           ["Net profit", formatRand(developmentSell.netProfit)],
-          ["Margin", formatPercent(developmentSell.margin)],
           ["Return on cost", formatPercent(developmentSell.returnOnCost)],
+          ["Margin on revenue", formatPercent(developmentSell.margin)],
           ["Break-even sale price", formatRand(developmentSell.breakEvenSalePrice)],
+          ["Maximum justified offer", formatRand(maximumOffer.maximumPurchasePrice)],
+          ["Residual land value", formatRand(residualLandValue.residualLandValue)],
+          ["Downside profit", formatRand(developmentSensitivity.downside.netProfit)],
+          ["Build cost method", buildCostModel.method === "calculated" ? "Area x rate" : "Direct input"],
         ];
       case "development_rent":
         return [
@@ -683,7 +882,7 @@ export function StrategyLab({
   }
 
   function reset() {
-    const next = strategyDefaults(defaultPrice);
+    const next = strategyDefaults(defaultPrice, propertyDefaults);
     setValues(next);
     persistDraft(active, next);
     setShowChosenState(false);
@@ -691,6 +890,7 @@ export function StrategyLab({
 
   function applySitePotentialDraft() {
     if (!sitePotentialDraft) return;
+    const conceptBuildable = toNumber(sitePotentialDraft.buildableSqm);
     const notes = [
       sitePotentialDraft.conceptTitle
         ? `Site Potential concept: ${sitePotentialDraft.conceptTitle}`
@@ -704,6 +904,12 @@ export function StrategyLab({
     setActive(nextActive);
     const next = {
       ...values,
+      ...(conceptBuildable > 0
+        ? {
+            buildAreaM2: String(conceptBuildable),
+            floorAreaM2: String(conceptBuildable),
+          }
+        : {}),
       customNotes: [values.customNotes, ...notes].filter(Boolean).join("\n"),
     };
     setValues(next);
@@ -834,6 +1040,26 @@ export function StrategyLab({
           </div>
         </section>
       )}
+
+      <DealSnapshotPanel
+        activeLabel={activeOption.label}
+        acquisition={acquisition}
+        developmentSell={developmentSell}
+        buildCostModel={buildCostModel}
+        maximumOffer={maximumOffer}
+        residualLandValue={residualLandValue}
+        sensitivity={developmentSensitivity}
+        biggestUncertainty={biggestUncertainty}
+      />
+
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <PropertyInputFactsPanel facts={propertyInputFacts} values={values} />
+        <MarketContextPanel
+          subjectListing={subjectListing}
+          comparableCount={comparableEvidence.length}
+          averageComparablePrice={averageComparablePrice}
+        />
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {STRATEGY_OPTIONS.map((option) => (
@@ -967,6 +1193,17 @@ export function StrategyLab({
               Use this scenario in report
             </button>
           </section>
+          {active === "development_sell" && (
+            <>
+              <SensitivityPanel sensitivity={developmentSensitivity} />
+              <FormulaPanel
+                buildCostModel={buildCostModel}
+                maximumOffer={maximumOffer}
+                residualLandValue={residualLandValue}
+                pricePerM2={pricePerM2}
+              />
+            </>
+          )}
         </div>
       </section>
 
@@ -1073,29 +1310,80 @@ function fieldGroupsFor(strategy: StrategyType): FieldGroupModel[] {
     case "development_sell":
       return [
         {
-          title: "Development",
-          helper: "Model land, build, professional, municipal and holding assumptions.",
+          title: "Property and build envelope",
+          helper:
+            "Area and coverage may be prefilled from evidence, but editable draft values remain assumptions.",
+          fields: [
+            ["Erf area m2", "erfAreaM2"],
+            ["Coverage percent", "coveragePercent"],
+            ["Derived footprint m2", "theoreticalFootprintM2"],
+            ["Build area m2", "buildAreaM2"],
+            ["Floor area m2", "floorAreaM2"],
+            ["Number of floors", "numberOfFloors"],
+          ],
+        },
+        {
+          title: "Development costs",
+          helper: "Use either a direct build cost or build area x rate, plus professional and planning costs.",
           fields: [
             ["Land cost", "landCost"],
-            ["Build cost", "buildCost"],
+            ["Direct build cost", "buildCost"],
+            ["Build cost per m2", "buildCostPerM2"],
             ["Professional fees", "professionalFees"],
             ["Municipal / planning fees", "municipalPlanningFees"],
             ["Contingency percent", "contingencyPercent"],
+            ["Transfer duty", "transferDuty"],
+            ["Transfer costs", "transferCosts"],
+            ["Bond costs", "bondCosts"],
+            ["Attorney / conveyancer fees", "attorneyFees"],
+          ],
+        },
+        {
+          title: "Timing, sale and target",
+          helper: "Set the resale value, exit costs and the return hurdle for max-offer and residual land value.",
+          fields: [
             ["Development duration months", "developmentDurationMonths"],
             ["Monthly holding cost", "monthlyHoldingCost"],
             ["Exit / selling costs", "exitSellingCosts"],
             ["Expected sale value", "expectedSaleValue"],
+            ["Required profit", "requiredProfit"],
+            ["Target return on cost percent", "targetReturnPercent"],
+            ["Target margin on revenue percent", "targetMarginPercent"],
+          ],
+        },
+        {
+          title: "Sensitivity",
+          helper: "Stress the deal with build-cost, value and duration changes.",
+          fields: [
+            ["Downside build cost percent", "downsideBuildCostPercent"],
+            ["Downside GDV percent", "downsideGdvPercent"],
+            ["Downside duration months", "downsideDurationMonths"],
+            ["Upside build cost percent", "upsideBuildCostPercent"],
+            ["Upside GDV percent", "upsideGdvPercent"],
           ],
         },
       ];
     case "development_rent":
       return [
         {
+          title: "Property and build envelope",
+          helper:
+            "Use verified area where available, and keep unverified coverage/build area as assumptions.",
+          fields: [
+            ["Erf area m2", "erfAreaM2"],
+            ["Coverage percent", "coveragePercent"],
+            ["Derived footprint m2", "theoreticalFootprintM2"],
+            ["Build area m2", "buildAreaM2"],
+            ["Floor area m2", "floorAreaM2"],
+          ],
+        },
+        {
           title: "Development",
           helper: "Include development duration and monthly holding cost before rent starts.",
           fields: [
             ["Land cost", "landCost"],
-            ["Build cost", "buildCost"],
+            ["Direct build cost", "buildCost"],
+            ["Build cost per m2", "buildCostPerM2"],
             ["Professional fees", "professionalFees"],
             ["Municipal / planning fees", "municipalPlanningFees"],
             ["Contingency percent", "contingencyPercent"],
@@ -1205,6 +1493,253 @@ function fieldGroupsFor(strategy: StrategyType): FieldGroupModel[] {
         },
       ];
   }
+}
+
+function DealSnapshotPanel({
+  activeLabel,
+  acquisition,
+  developmentSell,
+  buildCostModel,
+  maximumOffer,
+  residualLandValue,
+  sensitivity,
+  biggestUncertainty,
+}: {
+  activeLabel: string;
+  acquisition: ReturnType<typeof calculateAcquisition>;
+  developmentSell: ReturnType<typeof calculateDevelopmentToSell>;
+  buildCostModel: ReturnType<typeof calculateBuildCost>;
+  maximumOffer: ReturnType<typeof calculateMaximumOffer>;
+  residualLandValue: ReturnType<typeof calculateResidualLandValue>;
+  sensitivity: ReturnType<typeof calculateDevelopmentSensitivity>;
+  biggestUncertainty: string;
+}) {
+  const items = [
+    ["Land / purchase price", formatRandOrMissing(developmentSell.costStack.landCost)],
+    ["Acquisition costs", formatRandOrMissing(developmentSell.costStack.acquisitionCosts)],
+    ["Build cost", formatRandOrMissing(buildCostModel.selectedBuildCost)],
+    ["Professional fees", formatRandOrMissing(developmentSell.costStack.professionalFees)],
+    ["Municipal / planning fees", formatRandOrMissing(developmentSell.costStack.municipalPlanningFees)],
+    ["Contingency", formatRandOrMissing(developmentSell.costStack.contingencyAmount)],
+    ["Finance / holding", formatRandOrMissing(developmentSell.costStack.holdingCost)],
+    ["Exit / selling costs", formatRandOrMissing(developmentSell.costStack.sellingCosts)],
+    ["Total project cost", formatRandOrMissing(developmentSell.totalProjectCost)],
+    ["Expected GDV", formatRandOrMissing(developmentSell.breakEvenSalePrice + developmentSell.netProfit)],
+    ["Profit", formatRand(developmentSell.netProfit)],
+    ["Return on cost", formatPercentOrMissing(developmentSell.returnOnCost)],
+    ["Margin", formatPercentOrMissing(developmentSell.margin)],
+    ["Break-even sale price", formatRandOrMissing(developmentSell.breakEvenSalePrice)],
+    ["Cash required", formatRandOrMissing(acquisition.totalCashRequired)],
+    ["Downside profit", formatRand(sensitivity.downside.netProfit)],
+  ];
+
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4 shadow-[0_18px_60px_-48px_rgba(13,27,42,0.55)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+            Deal Snapshot
+          </div>
+          <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">
+            {activeLabel} decision frame
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/64">
+            Inputs remain editable assumptions until supported by evidence. Easy Erf does the
+            arithmetic here; it does not let AI invent financial figures.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] px-4 py-3 text-xs text-[#7C2D12]">
+          <div className="font-bold uppercase tracking-[0.14em]">Biggest uncertainty</div>
+          <div className="mt-1 text-sm font-semibold normal-case tracking-normal text-[#0D1B2A]">
+            {biggestUncertainty}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {items.map(([label, value]) => (
+          <ResultTile key={label} label={label} value={value} />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <ResultTile
+          label="Maximum justified offer"
+          value={formatRand(maximumOffer.maximumPurchasePrice)}
+        />
+        <ResultTile
+          label="Residual land value"
+          value={formatRand(residualLandValue.residualLandValue)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function PropertyInputFactsPanel({
+  facts,
+  values,
+}: {
+  facts: StrategyInputFact[];
+  values: Record<string, string>;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        Property-derived inputs
+      </div>
+      <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">
+        What Easy Erf can safely prefill
+      </h4>
+      <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/64">
+        These values come from the selected parcel, planning assumptions or a selected Site
+        Potential concept. User edits stay as Strategy draft assumptions and do not overwrite the
+        official parcel record.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {facts.map((fact) => {
+          const draftValue = values[fact.key];
+          const draftChanged =
+            draftValue?.trim() &&
+            fact.originalPropertyValue != null &&
+            Number(draftValue) !== fact.originalPropertyValue;
+          return (
+            <article key={fact.key} className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[#0D1B2A]">{fact.label}</div>
+                  <div className="mt-1 text-xl font-bold tabular-nums text-[#0D1B2A]">
+                    {fact.value == null ? "Not yet verified" : formatNumber(fact.value, ` ${fact.unit}`)}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                    INPUT_STATE_TONE[fact.state],
+                  )}
+                >
+                  {INPUT_STATE_LABEL[fact.state]}
+                </span>
+              </div>
+              <div className="mt-3 text-xs leading-5 text-[#0D1B2A]/62">
+                <div>Source: {fact.source}</div>
+                <div>{fact.evidence}</div>
+                {draftChanged && (
+                  <div className="mt-1 font-semibold text-[#B24A00]">
+                    Draft override: {draftValue} {fact.unit}
+                  </div>
+                )}
+                {fact.warning && (
+                  <div className="mt-1 font-semibold text-[#B24A00]">{fact.warning}</div>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MarketContextPanel({
+  subjectListing,
+  comparableCount,
+  averageComparablePrice,
+}: {
+  subjectListing: SavedMarketEvidence | undefined;
+  comparableCount: number;
+  averageComparablePrice: number;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        Market context
+      </div>
+      <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">
+        Saved evidence, not an automatic valuation
+      </h4>
+      <div className="mt-4 grid gap-2">
+        <ResultTile
+          label="Active listing for this erf"
+          value={subjectListing?.askingPrice ? formatRand(subjectListing.askingPrice) : "Not saved"}
+        />
+        <ResultTile label="Comparable evidence" value={`${comparableCount} saved`} />
+        <ResultTile
+          label="Average comparable asking price"
+          value={averageComparablePrice > 0 ? formatRand(averageComparablePrice) : "Not enough data"}
+        />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/60">
+        Asking prices and comparable evidence help frame the decision, but they are not verified
+        valuations. Save supporting evidence before relying on market outputs.
+      </p>
+    </section>
+  );
+}
+
+function SensitivityPanel({
+  sensitivity,
+}: {
+  sensitivity: ReturnType<typeof calculateDevelopmentSensitivity>;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        Sensitivity
+      </div>
+      <h4 className="mt-1 text-sm font-semibold text-[#0D1B2A]">Red / base / green outcome</h4>
+      <div className="mt-3 grid gap-2">
+        <ResultTile label="Downside profit" value={formatRand(sensitivity.downside.netProfit)} />
+        <ResultTile label="Base profit" value={formatRand(sensitivity.base.netProfit)} />
+        <ResultTile label="Upside profit" value={formatRand(sensitivity.upside.netProfit)} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#0D1B2A]/60">
+        Downside: {sensitivity.assumptions.downside}. Upside: {sensitivity.assumptions.upside}.
+      </p>
+    </section>
+  );
+}
+
+function FormulaPanel({
+  buildCostModel,
+  maximumOffer,
+  residualLandValue,
+  pricePerM2,
+}: {
+  buildCostModel: ReturnType<typeof calculateBuildCost>;
+  maximumOffer: ReturnType<typeof calculateMaximumOffer>;
+  residualLandValue: ReturnType<typeof calculateResidualLandValue>;
+  pricePerM2: ReturnType<typeof calculatePricePerM2>;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+        Formula details
+      </div>
+      <h4 className="mt-1 text-sm font-semibold text-[#0D1B2A]">How the core figures are derived</h4>
+      <div className="mt-3 space-y-2 text-xs leading-5 text-[#0D1B2A]/66">
+        <p>{buildCostModel.equation}</p>
+        <p>
+          Maximum offer subtracts build, professional, planning, holding, acquisition, contingency
+          and required profit from expected sale proceeds.
+        </p>
+        <p>
+          Residual land value: GDV less selling costs, target profit, build and other development
+          costs = {formatRand(residualLandValue.residualLandValue)}.
+        </p>
+      </div>
+      <div className="mt-3 grid gap-2">
+        <ResultTile label="Land price / erf m2" value={formatRand(pricePerM2.landPricePerErfM2)} />
+        <ResultTile label="Build cost / build m2" value={formatRand(pricePerM2.buildCostPerBuildM2)} />
+        <ResultTile
+          label="Completed value / m2"
+          value={formatRand(pricePerM2.completedValuePerM2)}
+        />
+        <ResultTile
+          label="Fixed costs before land"
+          value={formatRand(maximumOffer.fixedCostsBeforeLand)}
+        />
+      </div>
+    </section>
+  );
 }
 
 function FieldGroup({

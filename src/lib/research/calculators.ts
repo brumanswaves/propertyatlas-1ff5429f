@@ -248,16 +248,26 @@ export interface DevelopmentToSellInputs {
   monthlyHoldingCost: number;
   exitSellingCosts: number;
   expectedSaleValue: number;
+  acquisitionCosts?: number;
+  cashInvested?: number;
+  buildAreaM2?: number;
 }
 
 export function calculateDevelopmentToSell(input: DevelopmentToSellInputs) {
+  const acquisitionCosts = Math.max(0, input.acquisitionCosts ?? 0);
   const baseCost =
-    input.landCost + input.buildCost + input.professionalFees + input.municipalPlanningFees;
+    input.landCost +
+    acquisitionCosts +
+    input.buildCost +
+    input.professionalFees +
+    input.municipalPlanningFees;
   const contingencyAmount = input.buildCost * percent(input.contingencyPercent);
   const totalHoldingCost =
     Math.max(0, input.developmentDurationMonths) * Math.max(0, input.monthlyHoldingCost);
   const totalProjectCost = baseCost + contingencyAmount + totalHoldingCost + input.exitSellingCosts;
   const netProfit = input.expectedSaleValue - totalProjectCost;
+  const cashInvested = Math.max(0, input.cashInvested ?? 0);
+  const buildAreaM2 = Math.max(0, input.buildAreaM2 ?? 0);
   const missingAssumptions = [
     input.landCost > 0 ? null : "land cost",
     input.buildCost > 0 ? null : "build cost",
@@ -272,12 +282,200 @@ export function calculateDevelopmentToSell(input: DevelopmentToSellInputs) {
     netProfit: roundMoney(netProfit),
     margin: input.expectedSaleValue > 0 ? netProfit / input.expectedSaleValue : 0,
     returnOnCost: totalProjectCost > 0 ? netProfit / totalProjectCost : 0,
+    returnOnInvestedCash: cashInvested > 0 ? netProfit / cashInvested : 0,
     breakEvenSalePrice: roundMoney(totalProjectCost),
+    breakEvenSalePricePerM2: buildAreaM2 > 0 ? roundMoney(totalProjectCost / buildAreaM2) : 0,
+    profitPerM2: buildAreaM2 > 0 ? roundMoney(netProfit / buildAreaM2) : 0,
+    costStack: {
+      landCost: roundMoney(input.landCost),
+      acquisitionCosts: roundMoney(acquisitionCosts),
+      buildCost: roundMoney(input.buildCost),
+      professionalFees: roundMoney(input.professionalFees),
+      municipalPlanningFees: roundMoney(input.municipalPlanningFees),
+      contingencyAmount: roundMoney(contingencyAmount),
+      holdingCost: roundMoney(totalHoldingCost),
+      sellingCosts: roundMoney(input.exitSellingCosts),
+    },
     missingAssumptions,
     riskNotes: [
       "Needs verification: zoning, bulk, services, professional fees and build cost assumptions.",
       "This is a planning scenario, not a valuation guarantee.",
     ],
+  };
+}
+
+export interface BuildCostInputs {
+  directBuildCost: number;
+  buildAreaM2: number;
+  buildRatePerM2: number;
+  useCalculatedBuildCost?: boolean;
+}
+
+export function calculateBuildCost(input: BuildCostInputs) {
+  const calculatedBuildCost =
+    input.buildAreaM2 > 0 && input.buildRatePerM2 > 0
+      ? input.buildAreaM2 * input.buildRatePerM2
+      : 0;
+  const usesCalculated =
+    input.useCalculatedBuildCost === true ||
+    (input.directBuildCost <= 0 && calculatedBuildCost > 0);
+  const selectedBuildCost = usesCalculated ? calculatedBuildCost : Math.max(0, input.directBuildCost);
+
+  return {
+    selectedBuildCost: roundMoney(selectedBuildCost),
+    calculatedBuildCost: roundMoney(calculatedBuildCost),
+    directBuildCost: roundMoney(input.directBuildCost),
+    buildCostPerM2:
+      input.buildAreaM2 > 0 && selectedBuildCost > 0 ? roundMoney(selectedBuildCost / input.buildAreaM2) : 0,
+    method: usesCalculated ? "calculated" : "direct",
+    equation:
+      calculatedBuildCost > 0
+        ? `${input.buildAreaM2} m² × ${formatZAR(input.buildRatePerM2)}/m² = ${formatZAR(calculatedBuildCost)}`
+        : "Build area and build rate are required for calculated build cost.",
+    missingAssumptions: [
+      selectedBuildCost > 0 ? null : "build cost",
+      usesCalculated && input.buildAreaM2 <= 0 ? "build area" : null,
+      usesCalculated && input.buildRatePerM2 <= 0 ? "build rate per m²" : null,
+    ].filter((item): item is string => Boolean(item)),
+  };
+}
+
+export interface MaximumOfferInputs {
+  expectedSaleValue: number;
+  sellingCosts: number;
+  buildCosts: number;
+  professionalFees: number;
+  municipalPlanningFees: number;
+  holdingFinanceCosts: number;
+  acquisitionCostsExcludingPurchase: number;
+  contingency: number;
+  requiredProfit: number;
+  targetReturnOnCostPercent?: number;
+  targetMarginOnRevenuePercent?: number;
+}
+
+export function calculateMaximumOffer(input: MaximumOfferInputs) {
+  const netExpectedSaleProceeds = input.expectedSaleValue - input.sellingCosts;
+  const fixedCostsBeforeLand =
+    input.buildCosts +
+    input.professionalFees +
+    input.municipalPlanningFees +
+    input.holdingFinanceCosts +
+    input.acquisitionCostsExcludingPurchase +
+    input.contingency;
+  const returnTargetProfit =
+    fixedCostsBeforeLand * percent(input.targetReturnOnCostPercent ?? 0);
+  const marginTargetProfit = input.expectedSaleValue * percent(input.targetMarginOnRevenuePercent ?? 0);
+  const requiredProfit = Math.max(0, input.requiredProfit, returnTargetProfit, marginTargetProfit);
+  const maximumPurchasePrice = netExpectedSaleProceeds - fixedCostsBeforeLand - requiredProfit;
+
+  return {
+    netExpectedSaleProceeds: roundMoney(netExpectedSaleProceeds),
+    fixedCostsBeforeLand: roundMoney(fixedCostsBeforeLand),
+    requiredProfit: roundMoney(requiredProfit),
+    maximumPurchasePrice: roundMoney(maximumPurchasePrice),
+    isSupportable: maximumPurchasePrice > 0,
+    missingAssumptions: [
+      input.expectedSaleValue > 0 ? null : "expected sale value",
+      input.buildCosts > 0 ? null : "build costs",
+      requiredProfit > 0 ? null : "required profit or target return",
+    ].filter((item): item is string => Boolean(item)),
+  };
+}
+
+export interface ResidualLandValueInputs {
+  expectedGdv: number;
+  sellingCosts: number;
+  requiredDeveloperProfit: number;
+  constructionCost: number;
+  professionalFees: number;
+  municipalPlanningCosts: number;
+  contingency: number;
+  financeHoldingCosts: number;
+  otherDevelopmentCosts: number;
+}
+
+export function calculateResidualLandValue(input: ResidualLandValueInputs) {
+  const deductions =
+    input.sellingCosts +
+    input.requiredDeveloperProfit +
+    input.constructionCost +
+    input.professionalFees +
+    input.municipalPlanningCosts +
+    input.contingency +
+    input.financeHoldingCosts +
+    input.otherDevelopmentCosts;
+  const residualLandValue = input.expectedGdv - deductions;
+
+  return {
+    deductions: roundMoney(deductions),
+    residualLandValue: roundMoney(residualLandValue),
+    isPositive: residualLandValue > 0,
+    missingAssumptions: [
+      input.expectedGdv > 0 ? null : "GDV",
+      input.constructionCost > 0 ? null : "construction cost",
+      input.requiredDeveloperProfit > 0 ? null : "required developer profit",
+    ].filter((item): item is string => Boolean(item)),
+  };
+}
+
+export interface PricePerM2Inputs {
+  landPurchasePrice: number;
+  erfAreaM2: number;
+  buildCost: number;
+  buildAreaM2: number;
+  completedValue: number;
+  completedAreaM2: number;
+}
+
+export function calculatePricePerM2(input: PricePerM2Inputs) {
+  return {
+    landPricePerErfM2:
+      input.landPurchasePrice > 0 && input.erfAreaM2 > 0
+        ? roundMoney(input.landPurchasePrice / input.erfAreaM2)
+        : 0,
+    buildCostPerBuildM2:
+      input.buildCost > 0 && input.buildAreaM2 > 0
+        ? roundMoney(input.buildCost / input.buildAreaM2)
+        : 0,
+    completedValuePerM2:
+      input.completedValue > 0 && input.completedAreaM2 > 0
+        ? roundMoney(input.completedValue / input.completedAreaM2)
+        : 0,
+  };
+}
+
+export interface DevelopmentSensitivityInputs extends DevelopmentToSellInputs {
+  buildCostDownsidePercent?: number;
+  gdvDownsidePercent?: number;
+  durationDownsideMonths?: number;
+  buildCostUpsidePercent?: number;
+  gdvUpsidePercent?: number;
+}
+
+export function calculateDevelopmentSensitivity(input: DevelopmentSensitivityInputs) {
+  const base = calculateDevelopmentToSell(input);
+  const downside = calculateDevelopmentToSell({
+    ...input,
+    buildCost: input.buildCost * (1 + percent(input.buildCostDownsidePercent ?? 15)),
+    expectedSaleValue: input.expectedSaleValue * (1 - percent(input.gdvDownsidePercent ?? 10)),
+    developmentDurationMonths:
+      input.developmentDurationMonths + Math.max(0, input.durationDownsideMonths ?? 3),
+  });
+  const upside = calculateDevelopmentToSell({
+    ...input,
+    buildCost: input.buildCost * (1 - percent(input.buildCostUpsidePercent ?? 5)),
+    expectedSaleValue: input.expectedSaleValue * (1 + percent(input.gdvUpsidePercent ?? 10)),
+  });
+
+  return {
+    base,
+    downside,
+    upside,
+    assumptions: {
+      downside: `Build cost +${input.buildCostDownsidePercent ?? 15}%, GDV -${input.gdvDownsidePercent ?? 10}%, duration +${input.durationDownsideMonths ?? 3} months`,
+      upside: `Build cost -${input.buildCostUpsidePercent ?? 5}%, GDV +${input.gdvUpsidePercent ?? 10}%`,
+    },
   };
 }
 

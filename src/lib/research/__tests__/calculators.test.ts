@@ -4,11 +4,16 @@ import {
   calculateAcquisition,
   calculateBond,
   calculateBrrrr,
+  calculateBuildCost,
   calculateBuyHold,
   calculateDevelopment,
+  calculateDevelopmentSensitivity,
   calculateDevelopmentToRent,
   calculateDevelopmentToSell,
   calculateFlip,
+  calculateMaximumOffer,
+  calculatePricePerM2,
+  calculateResidualLandValue,
   calculateScenarioComparison,
   calculateShortTermRental,
 } from "../calculators";
@@ -160,6 +165,9 @@ describe("residential investment calculators", () => {
       monthlyHoldingCost: 18_000,
       exitSellingCosts: 150_000,
       expectedSaleValue: 5_900_000,
+      acquisitionCosts: 0,
+      buildAreaM2: 250,
+      cashInvested: 1_000_000,
     });
 
     expect(result.contingencyAmount).toBe(350_000);
@@ -168,7 +176,120 @@ describe("residential investment calculators", () => {
     expect(result.netProfit).toBe(180_000);
     expect(result.margin).toBeCloseTo(0.0305, 3);
     expect(result.returnOnCost).toBeCloseTo(0.0315, 3);
+    expect(result.returnOnInvestedCash).toBeCloseTo(0.18);
     expect(result.breakEvenSalePrice).toBe(5_720_000);
+    expect(result.breakEvenSalePricePerM2).toBe(22_880);
+    expect(result.profitPerM2).toBe(720);
+    expect(result.costStack.buildCost).toBe(3_500_000);
+  });
+
+  it("calculates build cost from area and rate without destroying the direct-cost override", () => {
+    const calculated = calculateBuildCost({
+      directBuildCost: 3_000_000,
+      buildAreaM2: 250,
+      buildRatePerM2: 14_000,
+      useCalculatedBuildCost: true,
+    });
+    const direct = calculateBuildCost({
+      directBuildCost: 3_000_000,
+      buildAreaM2: 250,
+      buildRatePerM2: 14_000,
+      useCalculatedBuildCost: false,
+    });
+
+    expect(calculated.selectedBuildCost).toBe(3_500_000);
+    expect(calculated.directBuildCost).toBe(3_000_000);
+    expect(calculated.method).toBe("calculated");
+    expect(calculated.equation).toContain("250 m²");
+    expect(direct.selectedBuildCost).toBe(3_000_000);
+    expect(direct.buildCostPerM2).toBe(12_000);
+  });
+
+  it("calculates maximum offer without using a generic 70 percent rule", () => {
+    const result = calculateMaximumOffer({
+      expectedSaleValue: 5_900_000,
+      sellingCosts: 150_000,
+      buildCosts: 3_500_000,
+      professionalFees: 420_000,
+      municipalPlanningFees: 120_000,
+      holdingFinanceCosts: 180_000,
+      acquisitionCostsExcludingPurchase: 90_000,
+      contingency: 350_000,
+      requiredProfit: 500_000,
+      targetReturnOnCostPercent: 12,
+      targetMarginOnRevenuePercent: 0,
+    });
+
+    expect(result.netExpectedSaleProceeds).toBe(5_750_000);
+    expect(result.fixedCostsBeforeLand).toBe(4_660_000);
+    expect(result.requiredProfit).toBe(559_200);
+    expect(result.maximumPurchasePrice).toBe(530_800);
+    expect(result.missingAssumptions).toEqual([]);
+  });
+
+  it("calculates residual land value from GDV less development deductions", () => {
+    const result = calculateResidualLandValue({
+      expectedGdv: 6_200_000,
+      sellingCosts: 180_000,
+      requiredDeveloperProfit: 650_000,
+      constructionCost: 3_500_000,
+      professionalFees: 420_000,
+      municipalPlanningCosts: 120_000,
+      contingency: 350_000,
+      financeHoldingCosts: 180_000,
+      otherDevelopmentCosts: 40_000,
+    });
+
+    expect(result.deductions).toBe(5_440_000);
+    expect(result.residualLandValue).toBe(760_000);
+    expect(result.isPositive).toBe(true);
+  });
+
+  it("calculates price-per-square-metre metrics with honest zero fallbacks", () => {
+    expect(
+      calculatePricePerM2({
+        landPurchasePrice: 1_175_000,
+        erfAreaM2: 618.7,
+        buildCost: 3_500_000,
+        buildAreaM2: 309.35,
+        completedValue: 5_900_000,
+        completedAreaM2: 309.35,
+      }),
+    ).toEqual({
+      landPricePerErfM2: 1_899,
+      buildCostPerBuildM2: 11_314,
+      completedValuePerM2: 19_072,
+    });
+
+    expect(
+      calculatePricePerM2({
+        landPurchasePrice: 1_175_000,
+        erfAreaM2: 0,
+        buildCost: 0,
+        buildAreaM2: 0,
+        completedValue: 0,
+        completedAreaM2: 0,
+      }).landPricePerErfM2,
+    ).toBe(0);
+  });
+
+  it("calculates deterministic base, downside and upside development sensitivity", () => {
+    const result = calculateDevelopmentSensitivity({
+      landCost: 1_000_000,
+      buildCost: 3_000_000,
+      professionalFees: 300_000,
+      municipalPlanningFees: 100_000,
+      contingencyPercent: 10,
+      developmentDurationMonths: 12,
+      monthlyHoldingCost: 20_000,
+      exitSellingCosts: 150_000,
+      expectedSaleValue: 5_500_000,
+    });
+
+    expect(result.base.netProfit).toBe(410_000);
+    expect(result.downside.netProfit).toBeLessThan(result.base.netProfit);
+    expect(result.upside.netProfit).toBeGreaterThan(result.base.netProfit);
+    expect(result.assumptions.downside).toContain("Build cost +15%");
   });
 
   it("calculates development-to-rent yield and cash flow", () => {
