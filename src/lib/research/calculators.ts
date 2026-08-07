@@ -307,6 +307,7 @@ export function calculateDevelopmentToSell(input: DevelopmentToSellInputs) {
 export interface DevelopmentCashRequiredInputs {
   landCost: number;
   acquisitionCostsExcludingPurchase: number;
+  buildCost: number;
   professionalFees: number;
   municipalPlanningFees: number;
   contingency: number;
@@ -317,6 +318,7 @@ export function calculateDevelopmentCashRequired(input: DevelopmentCashRequiredI
   return roundMoney(
     input.landCost +
       input.acquisitionCostsExcludingPurchase +
+      input.buildCost +
       input.professionalFees +
       input.municipalPlanningFees +
       input.contingency +

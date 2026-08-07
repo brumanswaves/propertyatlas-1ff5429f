@@ -247,6 +247,7 @@ describe("residential investment calculators", () => {
     const cashRequired = calculateDevelopmentCashRequired({
       landCost: 900_000,
       acquisitionCostsExcludingPurchase: 75_000,
+      buildCost: 3_000_000,
       professionalFees: 220_000,
       municipalPlanningFees: 80_000,
       contingency: 300_000,
@@ -267,8 +268,8 @@ describe("residential investment calculators", () => {
       cashInvested: cashRequired,
     });
 
-    expect(cashRequired).toBe(1_725_000);
-    expect(result.returnOnInvestedCash).toBeCloseTo(355_000 / 1_725_000, 4);
+    expect(cashRequired).toBe(4_725_000);
+    expect(result.returnOnInvestedCash).toBeCloseTo(355_000 / 4_725_000, 4);
   });
 
   it("calculates residual land value from GDV less development deductions", () => {

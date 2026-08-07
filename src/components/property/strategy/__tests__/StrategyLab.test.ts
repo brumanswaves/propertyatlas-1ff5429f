@@ -65,6 +65,7 @@ function baseSnapshotInputs() {
   const developmentCashRequired = calculateDevelopmentCashRequired({
     landCost: 1_000_000,
     acquisitionCostsExcludingPurchase: 100_000,
+    buildCost: buildCostModel.selectedBuildCost,
     professionalFees: 350_000,
     municipalPlanningFees: 80_000,
     contingency: 360_000,

@@ -982,6 +982,7 @@ export function StrategyLab({
     calculateDevelopmentCashRequired({
       landCost: n("landCost"),
       acquisitionCostsExcludingPurchase,
+      buildCost: effectiveBuildCost,
       professionalFees: n("professionalFees"),
       municipalPlanningFees: n("municipalPlanningFees"),
       contingency: developmentContingencyAmount,
