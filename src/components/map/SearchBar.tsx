@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, LocateFixed, MapPin, Search, X } from "lucide-react";
 import {
+  mergeOfficialParcelSearchResults,
   parsePropertyQuery,
   searchByCoordinate,
   searchOfficialParcels,
@@ -303,27 +304,11 @@ export function SearchBar({
     const loaded = searchOfficialParcels(submittedErfQuery, officialParcels, {
       loadedAreaTerms: context.loadedAreaTerms,
     });
-    const exactIds = new Set<string>();
-    const exact = [...pilot, ...loaded].filter((result) => {
-      if (result.confidence !== "exact_official_match") return false;
-      if (exactIds.has(result.id)) return false;
-      exactIds.add(result.id);
-      return true;
-    });
-    const seen = new Set(exact.map((result) => result.id));
-    const withoutSeen = (result: PropertySearchResult) => {
-      if (seen.has(result.id)) return false;
-      seen.add(result.id);
-      return true;
-    };
-    const ordered = [
-      ...exact,
-      ...pilot.filter((result) => result.confidence !== "exact_official_match").filter(withoutSeen),
-      ...loaded
-        .filter((result) => result.confidence !== "exact_official_match")
-        .filter(withoutSeen),
-      ...providerErfResults.filter(withoutSeen),
-    ];
+    const ordered = mergeOfficialParcelSearchResults(submittedErfQuery, [
+      pilot,
+      loaded,
+      providerErfResults,
+    ]);
     if (parsed.lpi || parsed.parcelKey) return ordered.slice(0, 8);
     return ordered.slice(0, 12);
   }, [

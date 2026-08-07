@@ -124,6 +124,7 @@ describe("official parcel search", () => {
   it("promotes erf and portion with compatible area context to an exact official match", () => {
     expect(searchOfficialParcels("Erf 962 portion 0 Sea Vista", parcelIndex)[0]).toMatchObject({
       confidence: "exact_official_match",
+      exactMatchBasis: "erf_portion_area",
       matchReason: "Official erf and portion match",
       fields: { lpi: "c03400140000096200000" },
     });

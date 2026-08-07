@@ -3,7 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { OfficialParcelSearchResultRow } from "@/components/map/SearchBar";
 import { selectOfficialErfResult } from "@/components/map/officialSearchResultAction";
-import type { PropertySearchResult } from "@/lib/search/propertySearch";
+import { buildOfficialParcelIndex } from "@/lib/search/officialParcelIndex";
+import {
+  mergeOfficialParcelSearchResults,
+  searchOfficialParcels,
+  type PropertySearchResult,
+} from "@/lib/search/propertySearch";
 
 const exactResult: PropertySearchResult = {
   id: "csg:lpi:c03400140000157000000",
@@ -96,5 +101,66 @@ describe("official search result markup", () => {
 
     expect(openOfficialWorkbench).toHaveBeenCalledWith(exactResult);
     expect(highlightResult).not.toHaveBeenCalled();
+  });
+
+  it("does not preserve subset singleton exactness across ambiguous combined sources", () => {
+    const feature = (id: string, town: string, longitude: number) => ({
+      layer: "csg-parcels" as const,
+      feature: {
+        type: "Feature" as const,
+        properties: {
+          PARCEL_NO: "962",
+          PORTION: "0",
+          ID: id,
+          MIN_REGION: town,
+          MUNICIPALITY: "Kouga",
+          PROVINCE: "Eastern Cape",
+        },
+        geometry: { type: "Point" as const, coordinates: [longitude, -34.16] },
+      },
+    });
+    const [candidateA, candidateB] = buildOfficialParcelIndex([
+      feature("C03400140000096200000", "Sea Vista", 24.82),
+      feature("C03400030000096200000", "Cape St Francis", 24.83),
+    ]);
+    const query = "Erf 962 portion 0";
+    const pilotResults = searchOfficialParcels(query, [candidateA, candidateB]);
+    const loadedResults = searchOfficialParcels(query, [candidateA]);
+
+    expect(loadedResults[0].exactMatchBasis).toBe("erf_portion_singleton");
+    expect(loadedResults[0].confidence).toBe("exact_official_match");
+
+    const combined = mergeOfficialParcelSearchResults(query, [pilotResults, loadedResults]);
+
+    expect(combined).toHaveLength(2);
+    expect(combined.every((result) => result.confidence === "likely_nearby_parcel")).toBe(true);
+  });
+
+  it("preserves compatible area-context exactness across combined sources", () => {
+    const seaVista = {
+      ...exactResult.parcel!,
+      id: "sea-vista-962",
+      erf: "962",
+      portion: "0",
+      town: "Sea Vista",
+      displayAreaLabel: "Sea Vista, Kouga, Eastern Cape",
+    };
+    const capeStFrancis = {
+      ...seaVista,
+      id: "cape-st-francis-962",
+      town: "Cape St Francis",
+      displayAreaLabel: "Cape St Francis, Kouga, Eastern Cape",
+    };
+    const query = "Erf 962 portion 0 Sea Vista";
+    const pilotResults = searchOfficialParcels(query, [seaVista, capeStFrancis]);
+    const loadedResults = searchOfficialParcels(query, [seaVista]);
+
+    const combined = mergeOfficialParcelSearchResults(query, [pilotResults, loadedResults]);
+
+    expect(combined[0]).toMatchObject({
+      id: "sea-vista-962",
+      confidence: "exact_official_match",
+      exactMatchBasis: "erf_portion_area",
+    });
   });
 });
