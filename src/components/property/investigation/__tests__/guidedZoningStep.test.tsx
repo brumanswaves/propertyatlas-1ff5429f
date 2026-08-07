@@ -84,7 +84,7 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
     usableSubjectSgDiagramCount: 1,
     zoningConfirmedByDocument: false,
     zoningRegistryPublished: true,
-    zoningWorkingAssumption: true,
+    zoningWorkingAssumption: false,
     approvedPlansOnFile: false,
     titleDeedSearchable: true,
     paidReportSearchable: false,
@@ -112,7 +112,7 @@ describe("guided zoning evidence gate", () => {
     expect(zoningClaimSupportsZone("Business Zone 1", zone)).toBe(false);
   });
 
-  it("requires readable, identity-matched evidence that states the selected zone", () => {
+  it("requires readable, identity-matched evidence to call zoning document-backed", () => {
     const supporting = asset();
     expect(findSupportingZoningClaim(supporting, zone)?.value).toBe("Residential Zone 1");
     expect(isUsableSubjectZoningDocument(supporting, zone)).toBe(true);
@@ -151,12 +151,12 @@ describe("guided zoning evidence gate", () => {
     ).toBe(false);
   });
 
-  it("advances from zoning to property checks only after document confirmation", () => {
+  it("stays on zoning before a selection, then advances with an unverified working zoning", () => {
     const workspace = createEmptyErfWorkspaceState();
     expect(selectGuidedInvestigationStep(facts(), workspace.investigation)).toBe("zoning");
 
     const journey = buildGuidedInvestigationJourney(
-      facts({ zoningConfirmedByDocument: true, zoningWorkingAssumption: false }),
+      facts({ zoningWorkingAssumption: true, zoningConfirmedByDocument: false }),
       workspace,
     );
     expect(journey.find((step) => step.id === "zoning")).toMatchObject({
@@ -166,7 +166,17 @@ describe("guided zoning evidence gate", () => {
     expect(journey.find((step) => step.current)?.id).toBe("property-checks");
   });
 
-  it("renders zoning as a live step with Back and Skip but no bypass Continue", () => {
+  it("also advances when the selected zoning is document-backed", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      facts({ zoningConfirmedByDocument: true, zoningWorkingAssumption: false }),
+      workspace,
+    );
+    expect(journey.find((step) => step.id === "zoning")?.complete).toBe(true);
+    expect(journey.find((step) => step.current)?.id).toBe("property-checks");
+  });
+
+  it("renders zoning as a live step with Back and Skip but no shared bypass Continue", () => {
     const workspace = createEmptyErfWorkspaceState();
     const steps = buildGuidedInvestigationJourney(facts(), workspace);
     const zoningStep = steps.find((step) => step.id === "zoning");

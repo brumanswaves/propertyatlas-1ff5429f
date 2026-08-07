@@ -1,12 +1,5 @@
-// Erf document extraction.
-//
-// Browser -> this function with the signed-in user's Supabase access token.
-// The token is verified against Supabase Auth; the asset owner is then checked
-// against the verified user id. No user id is ever trusted from the body.
-// A server-to-server caller may present ASK_EASY_ERF_FN_SECRET (or the
-// service-role key) for backfill and fixtures; that never weakens user auth.
-//
-// OPENAI_API_KEY and SUPABASE_SERVICE_ROLE_KEY never leave this function.
+// Erf document extraction. Browser requests use the signed-in user's token;
+// service credentials and document bytes never leave this Edge Function.
 import {
   ERF_EXTRACTION_LOCK_TTL_MS,
   ERF_EXTRACTION_MAX_FILE_BYTES,
@@ -42,7 +35,10 @@ import {
   isTiffExtractionMimeType,
   type NormalizedExtractionPage,
 } from "../_shared/erfExtractionMedia.ts";
-
+import {
+  applyGeneralPlanSubjectClaimPolicy,
+  evaluateGeneralPlanSubjectMatch,
+} from "../_shared/generalPlanSubjectEvidence.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -63,7 +59,6 @@ function json(payload: unknown, status: number) {
 }
 
 function log(stage: string, requestId: string, extra: Record<string, unknown> = {}) {
-  // Only safe stage/status metadata. Never keys, tokens or document content.
   console.log(JSON.stringify({ fn: "extract-erf-asset", stage, requestId, ...extra }));
 }
 
@@ -80,7 +75,9 @@ const serviceKey = () => (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim(
 async function verifyUserToken(token: string): Promise<{ userId: string } | null> {
   const url = supabaseUrl();
   const anonKey =
-    Deno.env.get("SUPABASE_ANON_KEY")?.trim() || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() || "";
+    Deno.env.get("SUPABASE_ANON_KEY")?.trim() ||
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() ||
+    "";
   if (!url || !anonKey) return null;
   try {
     const response = await fetch(`${url}/auth/v1/user`, {
@@ -120,26 +117,24 @@ async function loadAsset(assetId: string): Promise<AssetRow | null> {
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
 
-/**
- * Writes a metadata patch and reports whether the write actually landed.
- * A silent failure here would let the caller pretend success, so every call
- * site must check the boolean.
- */
 async function patchAssetMetadata(asset: AssetRow, patch: Partial<ErfExtractionMetadataPatch>) {
   const key = serviceKey();
   if (!key) return false;
   const metadata = { ...(asset.metadata ?? {}), ...patch };
   try {
-    const response = await fetch(`${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}`, {
-      method: "PATCH",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
+    const response = await fetch(
+      `${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ metadata, updated_at: new Date().toISOString() }),
       },
-      body: JSON.stringify({ metadata, updated_at: new Date().toISOString() }),
-    });
+    );
     if (response.ok) asset.metadata = metadata;
     return response.ok;
   } catch {
@@ -147,11 +142,6 @@ async function patchAssetMetadata(asset: AssetRow, patch: Partial<ErfExtractionM
   }
 }
 
-/**
- * Atomic claim: PATCH only succeeds when `updated_at` still equals the value we
- * read, so two concurrent requests can never both take the processing lock and
- * call OpenAI. No migration required.
- */
 async function claimProcessingLock(asset: AssetRow, requestId: string) {
   const key = serviceKey();
   if (!key) return false;
@@ -166,9 +156,7 @@ async function claimProcessingLock(asset: AssetRow, requestId: string) {
   };
   try {
     const response = await fetch(
-      `${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}&updated_at=eq.${encodeURIComponent(
-        asset.updated_at,
-      )}`,
+      `${supabaseUrl()}/rest/v1/erf_assets?id=eq.${encodeURIComponent(asset.id)}&updated_at=eq.${encodeURIComponent(asset.updated_at)}`,
       {
         method: "PATCH",
         headers: {
@@ -204,11 +192,6 @@ function lockIsFresh(metadata: Record<string, unknown> | null) {
   return Number.isFinite(started) && Date.now() - started < ERF_EXTRACTION_LOCK_TTL_MS;
 }
 
-/**
- * Builds the expected parcel identity entirely server-side: the canonical LPI
- * from the parcel id plus whatever the owner's saved_properties row already
- * knows. Nothing about identity is accepted from the browser.
- */
 async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentity> {
   const expected: ErfExpectedIdentity = {
     parcelId: asset.parcel_id,
@@ -226,11 +209,14 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
     if (!response.ok) return expected;
     const rows = (await response.json().catch(() => null)) as Array<{ user_data?: unknown }> | null;
     const userData = (rows?.[0]?.user_data ?? null) as Record<string, unknown> | null;
-    const parcel = (userData?.parcel ?? userData?.officialParcel ?? userData) as Record<string, unknown> | null;
+    const parcel = (userData?.parcel ?? userData?.officialParcel ?? userData) as Record<
+      string,
+      unknown
+    > | null;
     if (!parcel || typeof parcel !== "object") return expected;
     const pick = (...keys: string[]) => {
-      for (const k of keys) {
-        const value = parcel[k];
+      for (const keyName of keys) {
+        const value = parcel[keyName];
         if (typeof value === "string" && value.trim()) return value;
         if (typeof value === "number") return String(value);
       }
@@ -251,14 +237,6 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
   }
 }
 
-/**
- * Cadastral lineage already proven for THIS parcel by an identity-matched
- * document on the same erf (e.g. a deeds report stating
- * `Erf 1570 [PTN OF 1496-GP12252]`).
- *
- * Without such a record a general plan of another erf stays a plain mismatch,
- * so parent-plan acceptance can never be reached by the uploaded plan alone.
- */
 async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLineage | null> {
   const key = serviceKey();
   if (!key) return null;
@@ -284,7 +262,6 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
       if (metadata.identityMatchStatus !== "matched") continue;
       const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
       const fromLineage = raw && typeof raw === "object" ? raw : null;
-      // Fall back to the legal-description token the matched document stated.
       const identityRaw = metadata.extractedIdentity as Record<string, unknown> | null | undefined;
       const parsed = parseLegalPortionToken(
         identityRaw && typeof identityRaw === "object" ? identityRaw.portionNumber : null,
@@ -298,11 +275,14 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
         (typeof fromLineage?.generalPlanReference === "string" && fromLineage.generalPlanReference
           ? fromLineage.generalPlanReference
           : parsed.generalPlanReference) ??
-        extractGeneralPlanReference(typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null);
+        extractGeneralPlanReference(
+          typeof fromLineage?.lineage === "string" ? fromLineage.lineage : null,
+        );
       return {
         parentErfNumber,
         generalPlanReference,
-        sourceLabel: row.source_label || row.original_file_name || "an identity-matched document on this erf",
+        sourceLabel:
+          row.source_label || row.original_file_name || "an identity-matched document on this erf",
       };
     }
   } catch {
@@ -310,8 +290,6 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
   }
   return null;
 }
-
-
 
 async function downloadAsset(asset: AssetRow): Promise<Uint8Array | null> {
   const key = serviceKey();
@@ -342,14 +320,17 @@ function toBase64(bytes: Uint8Array) {
 
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
-
   const fail = (code: ErfExtractionFailureCode, error: string, status: number) =>
     json({ success: false, code, error: `${error} (ref ${requestId})`, requestId }, status);
 
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (request.method !== "POST") return fail("INVALID_REQUEST", "Method not allowed.", 405);
 
-  const presented = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const presented = (request.headers.get("authorization") ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   if (!presented) return fail("AUTH_REQUIRED", "Sign in is required.", 401);
 
   const internalSecrets = [
@@ -384,7 +365,8 @@ Deno.serve(async (request: Request) => {
     body = null;
   }
   const assetId = typeof body?.assetId === "string" ? body.assetId.trim() : "";
-  const expectedParcelId = typeof body?.expectedParcelId === "string" ? body.expectedParcelId.trim() : "";
+  const expectedParcelId =
+    typeof body?.expectedParcelId === "string" ? body.expectedParcelId.trim() : "";
   const retryRequested = body?.retry === true;
   if (!/^[0-9a-f-]{36}$/i.test(assetId)) {
     return fail("INVALID_REQUEST", "A valid assetId is required.", 400);
@@ -403,8 +385,6 @@ Deno.serve(async (request: Request) => {
     log("forbidden", requestId);
     return fail("FORBIDDEN", "That file does not belong to this account.", 403);
   }
-
-  // Parcel binding: refuse before any download or model call.
   if (expectedParcelId !== asset.parcel_id) {
     log("parcel_binding_rejected", requestId);
     return fail("PARCEL_MISMATCH", "That document does not belong to the selected erf.", 409);
@@ -435,7 +415,6 @@ Deno.serve(async (request: Request) => {
   const currentStatus = metadataString(asset.metadata, "extractionStatus");
   const currentIdentity = metadataString(asset.metadata, "identityMatchStatus");
   const currentVersion = Number(asset.metadata?.extractionVersion ?? 0);
-
   if (lockIsFresh(asset.metadata)) {
     log("already_processing", requestId);
     return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
@@ -484,7 +463,11 @@ Deno.serve(async (request: Request) => {
     return finish(
       "unsupported",
       { extractionError: "This file type cannot be read automatically." },
-      { success: false, code: "UNSUPPORTED_FILE_TYPE", error: "This file type cannot be read automatically." },
+      {
+        success: false,
+        code: "UNSUPPORTED_FILE_TYPE",
+        error: "This file type cannot be read automatically.",
+      },
       200,
     );
   }
@@ -492,7 +475,11 @@ Deno.serve(async (request: Request) => {
     return finish(
       "unsupported",
       { extractionError: "This file is too large to read automatically." },
-      { success: false, code: "FILE_TOO_LARGE", error: "This file is too large to read automatically." },
+      {
+        success: false,
+        code: "FILE_TOO_LARGE",
+        error: "This file is too large to read automatically.",
+      },
       200,
     );
   }
@@ -507,12 +494,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const expectedIdentity = await loadExpectedIdentity(asset);
-  // Only SG diagrams can ever be accepted as parent-plan context, so the
-  // lineage lookup is skipped entirely for every other category.
   const knownLineage = isSgDiagramCategory(asset.asset_category)
     ? await loadKnownParcelLineage(asset)
     : null;
-
   const bytes = await downloadAsset(asset);
   if (!bytes || bytes.byteLength === 0) {
     log("download_failed", requestId);
@@ -525,17 +509,12 @@ Deno.serve(async (request: Request) => {
   }
 
   const mime = mimeType || "application/pdf";
-
-  // TIFF (the native Surveyor-General diagram format) is never sent to the
-  // model: it is rasterised to PNG pages first, in page order.
   let normalizedPages: NormalizedExtractionPage[] | null = null;
   let normalizationWarning: string | null = null;
   let sourcePageCount: number | null = null;
   let normalizedMime: string | null = null;
   if (isTiffExtractionMimeType(mime)) {
     try {
-      // Imported lazily: the TIFF decoder pulls npm: specifiers that only the
-      // Deno runtime resolves, and non-TIFF uploads must never load it.
       const { normalizeTiffToPngPages } = await import("./tiffDecode.ts");
       const normalized = await normalizeTiffToPngPages(bytes);
       normalizedPages = normalized.pages;
@@ -544,7 +523,8 @@ Deno.serve(async (request: Request) => {
       normalizedMime = ERF_NORMALIZED_IMAGE_MIME;
       log("tiff_normalized", requestId, {
         sourcePageCount: normalized.sourcePageCount,
-        convertedPageCount: normalized.pages.length,
+        convertedImageCount: normalized.pages.length,
+        detailTileCount: normalized.detailTileCount,
         downscaled: normalized.downscaled,
       });
     } catch (error) {
@@ -573,20 +553,22 @@ Deno.serve(async (request: Request) => {
     mimeType: mime,
     dataUrl,
     pages: normalizedPages,
+    subjectErfNumber: expectedIdentity.erfNumber ?? null,
   });
-
-  // Defence in depth: nothing the model cannot accept may leave this function.
   const offendingMime = findUnsupportedContentMime(content);
   if (offendingMime) {
     log("blocked_unsupported_content", requestId);
     return finish(
       "failed",
       { extractionError: "This file type cannot be read automatically." },
-      { success: false, code: "UNSUPPORTED_FILE_TYPE", error: "This file type cannot be read automatically." },
+      {
+        success: false,
+        code: "UNSUPPORTED_FILE_TYPE",
+        error: "This file type cannot be read automatically.",
+      },
       200,
     );
   }
-
 
   const model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
   const controller = new AbortController();
@@ -614,7 +596,6 @@ Deno.serve(async (request: Request) => {
       error?: { type?: string; code?: string };
     } | null;
     log("openai_response", requestId, { status: response.status });
-
     if (!response.ok) {
       console.error(
         JSON.stringify({
@@ -667,26 +648,30 @@ Deno.serve(async (request: Request) => {
       return finish(
         "failed",
         { extractionError: "No readable text was found in this document." },
-        { success: false, code: "NO_READABLE_TEXT", error: "No readable text was found in this document." },
+        {
+          success: false,
+          code: "NO_READABLE_TEXT",
+          error: "No readable text was found in this document.",
+        },
         200,
       );
     }
 
-    // Each source is searched on its own: concatenating them lets a phrase in
-    // one field capture the number printed in the next.
     const documentGeneralPlanReference =
       extractGeneralPlanReference(result.extractedText) ??
       extractGeneralPlanReference(result.summary) ??
       extractGeneralPlanReference(result.documentType) ??
       extractGeneralPlanReference(result.identity.sgCode);
 
-    // Pre-quarantine diagnostics: shape and identity signals only. Never text,
-    // quotes, images, base64, tokens, keys or ownership details.
     log("identity_inputs", requestId, {
       assetId: asset.id,
-      normalizedPageCount: normalizedPages?.length ?? 0,
+      normalizedImageCount: normalizedPages?.length ?? 0,
+      normalizedSourcePageCount: normalizedPages
+        ? new Set(normalizedPages.map((page) => page.pageNumber)).size
+        : 0,
       normalizedPageSizes: (normalizedPages ?? []).map((page) => ({
         page: page.pageNumber,
+        detailTile: page.detail?.index ?? null,
         width: page.width,
         height: page.height,
         bytes: Math.round((page.base64.length * 3) / 4),
@@ -702,21 +687,33 @@ Deno.serve(async (request: Request) => {
       knownGeneralPlanReferencePresent: Boolean(knownLineage?.generalPlanReference),
     });
 
-    const identity = matchDocumentIdentity(expectedIdentity, result.identity, {
+    const baselineIdentity = matchDocumentIdentity(expectedIdentity, result.identity, {
       assetCategory: asset.asset_category,
       documentType: result.documentType,
       documentText: result.extractedText,
       documentGeneralPlanReference,
       knownLineage,
     });
-    const identityMatchStatus: ErfIdentityMatchStatus = identity.status;
-    const isParentLineage = identityMatchStatus === "parent_lineage_match";
-
+    const generalPlanSubject = evaluateGeneralPlanSubjectMatch({
+      expected: expectedIdentity,
+      document: result.identity,
+      assetCategory: asset.asset_category,
+      documentType: result.documentType,
+      documentText: result.extractedText,
+      documentGeneralPlanReference,
+      baseline: baselineIdentity,
+    });
+    const identityMatchStatus: ErfIdentityMatchStatus = generalPlanSubject.matched
+      ? "matched"
+      : baselineIdentity.status;
+    const identityReason = generalPlanSubject.reason ?? baselineIdentity.reason;
+    const isParentLineage = baselineIdentity.status === "parent_lineage_match";
 
     if (identityMatchStatus !== "matched" && !isParentLineage) {
-      // Quarantine: no extracted text, no claims, no document facts retained.
       const message =
-        identityMatchStatus === "mismatch" ? ERF_EXTRACTION_MISMATCH_MESSAGE : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
+        identityMatchStatus === "mismatch"
+          ? ERF_EXTRACTION_MISMATCH_MESSAGE
+          : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
       log("identity_rejected", requestId, { identityMatchStatus });
       return finish(
         "failed",
@@ -724,10 +721,9 @@ Deno.serve(async (request: Request) => {
           extractionModel: model,
           extractionError: message,
           identityMatchStatus,
-          identityMatchReason: identity.reason,
+          identityMatchReason: identityReason,
           extractedIdentity: result.identity,
-          documentLineage: identity.lineage ?? null,
-
+          documentLineage: baselineIdentity.lineage ?? null,
           extractedText: "",
           extractedClaims: [],
           extractedDocumentType: null,
@@ -738,41 +734,56 @@ Deno.serve(async (request: Request) => {
         },
         {
           success: false,
-          code: identityMatchStatus === "mismatch" ? "IDENTITY_MISMATCH" : "IDENTITY_UNVERIFIED",
+          code:
+            identityMatchStatus === "mismatch" ? "IDENTITY_MISMATCH" : "IDENTITY_UNVERIFIED",
           error: message,
           identityMatchStatus,
-          identityMatchReason: identity.reason,
+          identityMatchReason: identityReason,
         },
         200,
       );
     }
 
-    // A parent General Plan may only speak as context: its extent can never
-    // become this erf's area and its notes are demoted to items to confirm.
     const claims = isParentLineage
       ? applyParentLineageClaimPolicy(result.claims, {
           subjectErfNumber: expectedIdentity.erfNumber ?? null,
-          parentErfNumber: identity.lineage?.parentErfNumber ?? null,
-          generalPlanReference: identity.lineage?.generalPlanReference ?? null,
+          parentErfNumber: baselineIdentity.lineage?.parentErfNumber ?? null,
+          generalPlanReference: baselineIdentity.lineage?.generalPlanReference ?? null,
         })
-      : result.claims;
+      : generalPlanSubject.matched
+        ? applyGeneralPlanSubjectClaimPolicy(result.claims, {
+            subjectErfNumber: expectedIdentity.erfNumber,
+            generalPlanReference: generalPlanSubject.generalPlanReference,
+          })
+        : result.claims;
 
+    const normalizedPageCount = normalizedPages
+      ? new Set(normalizedPages.map((page) => page.pageNumber)).size
+      : null;
     const status: ErfExtractionStatus = claims.length > 0 ? "ready" : "partial";
     const combinedWarning =
-      [normalizationWarning, result.warning, isParentLineage ? identity.reason : null]
+      [
+        normalizationWarning,
+        result.warning,
+        isParentLineage || generalPlanSubject.matched ? identityReason : null,
+      ]
         .filter((entry) => Boolean(entry))
         .join(" ") || null;
-    log("extraction_ready", requestId, { status, claimCount: claims.length, identityMatchStatus });
+
+    log("extraction_ready", requestId, {
+      status,
+      claimCount: claims.length,
+      identityMatchStatus,
+      generalPlanSubjectMatch: generalPlanSubject.matched,
+    });
     return finish(
       status,
       {
         identityMatchStatus,
-        identityMatchReason: identity.reason,
+        identityMatchReason: identityReason,
         extractedIdentity: result.identity,
-        documentLineage: identity.lineage ?? null,
-
+        documentLineage: baselineIdentity.lineage ?? null,
         extractionModel: model,
-        // Safe media provenance only: never converted bytes, URLs or tokens.
         originalMimeType: mime,
         normalizedExtractionMimeType: normalizedMime,
         extractionWarning: combinedWarning,
@@ -782,23 +793,24 @@ Deno.serve(async (request: Request) => {
         extractedProvider: result.provider,
         extractedDocumentDate: result.documentDate,
         extractionSummary: result.summary,
-        pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
+        pageCount: result.pageCount ?? normalizedPageCount ?? sourcePageCount,
       },
       {
         success: true,
         identityMatchStatus,
         claimCount: claims.length,
         documentType: result.documentType,
-        pageCount: result.pageCount ?? normalizedPages?.length ?? sourcePageCount,
+        pageCount: result.pageCount ?? normalizedPageCount ?? sourcePageCount,
         warning: combinedWarning,
       },
       200,
     );
-
   } catch (error) {
     const name = error instanceof Error ? error.name : "UnknownError";
     const timedOut = name === "AbortError" || name === "TimeoutError";
-    console.error(JSON.stringify({ fn: "extract-erf-asset", stage: "fetch_error", requestId, errorClass: name }));
+    console.error(
+      JSON.stringify({ fn: "extract-erf-asset", stage: "fetch_error", requestId, errorClass: name }),
+    );
     return finish(
       "failed",
       { extractionError: timedOut ? "Reading this document timed out." : "Reading this document failed." },

@@ -56,7 +56,7 @@ describe("guided property checks", () => {
     ["matched topography", { usableTopographySurveyCount: 1 }],
     ["site photos", { sitePhotoCount: 1 }],
     ["building photos", { existingHousePhotoCount: 1 }],
-  ])("completes with %s and advances to market", (_label, evidence) => {
+  ])("completes with %s and advances to Site Potential", (_label, evidence) => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(facts(evidence), workspace);
 
@@ -64,7 +64,7 @@ describe("guided property checks", () => {
       complete: true,
       status: "complete",
     });
-    expect(journey.find((step) => step.current)?.id).toBe("market");
+    expect(journey.find((step) => step.current)?.id).toBe("site-potential");
   });
 
   it("renders property checks as a live step with no bypass Continue", () => {

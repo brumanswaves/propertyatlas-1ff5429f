@@ -44,8 +44,21 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
   };
 }
 
+function completedThroughPropertyChecks(overrides: Partial<InvestigationFacts> = {}) {
+  return facts({
+    identityConfirmed: true,
+    identityChecked: true,
+    marketAddressSaved: true,
+    sgDiagramSearchable: true,
+    titleDeedSearchable: true,
+    zoningWorkingAssumption: true,
+    sitePhotoCount: 1,
+    ...overrides,
+  });
+}
+
 describe("guided investigation journey registry", () => {
-  it("defines the approved eight-step Phase 1 order", () => {
+  it("defines the approved nine-step order and skip rules", () => {
     expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.id)).toEqual([
       "confirm-property",
       "add-address",
@@ -53,14 +66,33 @@ describe("guided investigation journey registry", () => {
       "title",
       "zoning",
       "property-checks",
+      "site-potential",
       "market",
       "report",
     ]);
-    expect(GUIDED_INVESTIGATION_STEPS).toHaveLength(8);
-    expect(GUIDED_INVESTIGATION_STEPS[0]).toMatchObject({
-      id: "confirm-property",
-      canSkip: false,
-    });
+    expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.label)).toEqual([
+      "Confirm property",
+      "Add address",
+      "Add SG diagram",
+      "Check title",
+      "Confirm zoning",
+      "Property checks",
+      "Site Potential",
+      "Market evidence",
+      "Review report",
+    ]);
+    expect(GUIDED_INVESTIGATION_STEPS).toHaveLength(9);
+    expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.canSkip)).toEqual([
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
   });
 
   it("starts at confirm-property and advances to add-address after identity confirmation", () => {
@@ -91,7 +123,7 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("sg-diagram");
   });
 
-  it("marks SG complete only for a searchable subject diagram and advances to title", () => {
+  it("marks SG complete only for searchable subject cadastral evidence", () => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(
       facts({
@@ -112,7 +144,29 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("title");
   });
 
-  it("marks title complete only for searchable subject title evidence and advances to zoning", () => {
+  it("accepts either a matched title deed or a matched paid report for Check title", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const shared = {
+      identityConfirmed: true,
+      identityChecked: true,
+      marketAddressSaved: true,
+      sgDiagramSearchable: true,
+    };
+
+    for (const evidence of [
+      { titleDeedSearchable: true },
+      { paidReportSearchable: true, paidReportCount: 1 },
+    ]) {
+      const journey = buildGuidedInvestigationJourney(facts({ ...shared, ...evidence }), workspace);
+      expect(journey.find((step) => step.id === "title")).toMatchObject({
+        complete: true,
+        status: "complete",
+      });
+      expect(journey.find((step) => step.current)?.id).toBe("zoning");
+    }
+  });
+
+  it("advances after a working zoning selection without claiming document confirmation", () => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(
       facts({
@@ -120,19 +174,55 @@ describe("guided investigation journey registry", () => {
         identityChecked: true,
         marketAddressSaved: true,
         sgDiagramSearchable: true,
-        titleDeedSearchable: true,
+        paidReportSearchable: true,
+        zoningWorkingAssumption: true,
+        zoningConfirmedByDocument: false,
       }),
       workspace,
     );
 
-    expect(journey.find((step) => step.id === "title")).toMatchObject({
+    expect(journey.find((step) => step.id === "zoning")).toMatchObject({
       complete: true,
       status: "complete",
     });
-    expect(journey.find((step) => step.current)?.id).toBe("zoning");
+    expect(journey.find((step) => step.current)?.id).toBe("property-checks");
   });
 
-  it("uses Add address, not Market, as the guided identity confirmation next step", () => {
+  it("keeps generated Site Potential concepts partial until a concept is selected", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const partial = buildGuidedInvestigationJourney(
+      completedThroughPropertyChecks({ siteConceptCount: 3 }),
+      workspace,
+    );
+
+    expect(partial.find((step) => step.id === "site-potential")).toMatchObject({
+      complete: false,
+      current: true,
+    });
+
+    const selected = buildGuidedInvestigationJourney(
+      completedThroughPropertyChecks({ siteConceptCount: 3, siteDesignSelected: true }),
+      workspace,
+    );
+    expect(selected.find((step) => step.id === "site-potential")).toMatchObject({
+      complete: true,
+      status: "complete",
+    });
+    expect(selected.find((step) => step.current)?.id).toBe("market");
+  });
+
+  it("treats an explicitly skipped Site Potential step as complete for progression", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const journey = buildGuidedInvestigationJourney(
+      completedThroughPropertyChecks({ siteSkipped: true }),
+      workspace,
+    );
+
+    expect(journey.find((step) => step.id === "site-potential")?.complete).toBe(true);
+    expect(journey.find((step) => step.current)?.id).toBe("market");
+  });
+
+  it("uses Add address, not Market, as the identity confirmation next step", () => {
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).toContain("Add address");
     expect(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE).not.toMatch(/\bmarket\b/i);
   });
@@ -153,10 +243,10 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("sg-diagram");
   });
 
-  it("respects intentional revisits without using the last expert tab as guided resume state", () => {
+  it("respects intentional revisits without using the last expert tab as resume state", () => {
     const workspace = createEmptyErfWorkspaceState();
-    workspace.investigation.currentStepId = "market";
-    workspace.investigation.intentionallyVisitedStepIds = ["market"];
+    workspace.investigation.currentStepId = "site-potential";
+    workspace.investigation.intentionallyVisitedStepIds = ["site-potential"];
     workspace.investigation.expertWorkspaceOpen = true;
     workspace.investigation.lastExpertView = "calculators";
 
@@ -165,7 +255,7 @@ describe("guided investigation journey registry", () => {
         facts({ identityConfirmed: true, identityChecked: true }),
         workspace.investigation,
       ),
-    ).toBe("market");
+    ).toBe("site-potential");
 
     workspace.investigation.currentStepId = null;
     workspace.investigation.intentionallyVisitedStepIds = [];

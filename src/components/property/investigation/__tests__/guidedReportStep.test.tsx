@@ -39,14 +39,14 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
     sitePhotoCount: 0,
     existingHousePhotoCount: 0,
     vendorAssignmentCount: 0,
-    siteSkipped: false,
+    siteSkipped: true,
     reportStarted: false,
     ...overrides,
   };
 }
 
 describe("guided report review", () => {
-  it("starts at report after market evidence is complete", () => {
+  it("starts at report after Site Potential and market evidence are resolved", () => {
     const workspace = createEmptyErfWorkspaceState();
     expect(selectGuidedInvestigationStep(facts(), workspace.investigation)).toBe("report");
   });

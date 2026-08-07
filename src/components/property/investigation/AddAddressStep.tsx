@@ -10,6 +10,7 @@ import {
   reverseGeocodeAddressCandidates,
   selectedMarketAddress,
 } from "@/features/marketEvidence/addressIntelligence";
+import { useAddressSuggestions } from "@/features/marketEvidence/hooks/useAddressSuggestions";
 import type { AddressCandidate, MarketAddressIntelligence } from "@/features/marketEvidence/types";
 
 interface AddAddressStepProps {
@@ -25,6 +26,8 @@ function sourceLabel(source: AddressCandidate["source"]) {
       return "Municipal suggestion";
     case "google_reverse_geocode":
       return "Map suggestion";
+    case "google_forward_geocode":
+      return "Address suggestion";
     case "manual_google_maps_whats_here":
       return "Google Maps selection";
     case "user_entered":
@@ -84,8 +87,13 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
   const [notes, setNotes] = useState("");
   const [resolving, setResolving] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Only what the user is actively typing is geocoded, never restored text. */
+  const [typedQuery, setTypedQuery] = useState("");
+  const { suggestions: typedSuggestions, loading: typedSuggestionsLoading } =
+    useAddressSuggestions(typedQuery, { near: parcel.coordinates ?? null });
 
   useEffect(() => {
+    setTypedQuery("");
     setStreetAddress(savedAddress?.formattedAddress ?? "");
     setSuburb(savedAddress?.suburb ?? parcel.suburbOrArea ?? "");
     setTown(savedAddress?.town ?? parcel.town ?? "");
@@ -107,6 +115,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
   const mapsUrl = googleMapsPointUrl(parcel.coordinates ?? null);
 
   function applySuggestion(candidate: AddressCandidate) {
+    setTypedQuery("");
     setStreetAddress(candidate.formattedAddress);
     setSuburb(candidate.suburb ?? parcel.suburbOrArea ?? "");
     setTown(candidate.town ?? parcel.town ?? "");
@@ -228,10 +237,50 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
             </span>
             <input
               value={streetAddress}
-              onChange={(event) => setStreetAddress(event.target.value)}
+              onChange={(event) => {
+                setStreetAddress(event.target.value);
+                setTypedQuery(event.target.value);
+              }}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={typedSuggestions.length > 0}
+              aria-controls="working-address-suggestions"
               placeholder="Example: 12 Majorca Crescent, or vacant erf off Majorca Crescent"
               className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10"
             />
+            {typedQuery.trim().length >= 3 && (
+              <div className="mt-2">
+                {typedSuggestionsLoading && typedSuggestions.length === 0 ? (
+                  <p className="inline-flex items-center gap-2 text-xs text-[#0D1B2A]/60">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Looking up matching addresses…
+                  </p>
+                ) : typedSuggestions.length > 0 ? (
+                  <ul
+                    id="working-address-suggestions"
+                    aria-label="Address suggestions"
+                    className="grid gap-1.5 rounded-xl border border-[#0D1B2A]/10 bg-white p-1.5 shadow-[0_18px_40px_-34px_rgba(13,27,42,0.55)]"
+                  >
+                    {typedSuggestions.map((candidate) => (
+                      <li key={candidate.id}>
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(candidate)}
+                          className="w-full min-w-0 rounded-lg px-3 py-2 text-left text-sm text-[#0D1B2A] transition hover:bg-[#fff5eb]"
+                        >
+                          <span className="block break-words font-semibold">
+                            {candidate.formattedAddress}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-[#0D1B2A]/55">
+                            Suggestion only. Check it before saving.
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            )}
           </label>
           <label className="min-w-0">
             <span className="text-xs font-semibold text-[#0D1B2A]">Suburb or local area</span>

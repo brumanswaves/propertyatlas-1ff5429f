@@ -143,7 +143,7 @@ describe("guided vault evidence steps", () => {
       <GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
     );
 
-    expect(html).toContain("Title document searchable");
+    expect(html).toContain("Matched title deed ready");
     expect(html).not.toContain("Report searchable");
   });
 

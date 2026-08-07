@@ -79,6 +79,7 @@ export type AddressSource =
   | "official_parcel"
   | "municipal_record"
   | "google_reverse_geocode"
+  | "google_forward_geocode"
   | "manual_google_maps_whats_here"
   | "user_entered"
   | "unknown";
