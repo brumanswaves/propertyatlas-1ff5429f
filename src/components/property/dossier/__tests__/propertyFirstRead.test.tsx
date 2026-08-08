@@ -142,6 +142,47 @@ describe("PropertyFirstRead", () => {
     expect(joined).not.toContain("Official property right");
   });
 
+  it("keeps official polygon zoning distinct from document support", () => {
+    const base = props();
+    const planning = {
+      ...base.planning,
+      detection: {
+        ...base.planning.detection,
+        method: "official_polygon" as const,
+        zoneCode: "RES1",
+        zoneName: "Residential Zone 1",
+      },
+    };
+    const input: PropertyFirstReadProps = {
+      ...base,
+      planning,
+      investigationInput: { ...base.investigationInput, planning },
+    };
+    const model = buildPropertyFirstReadModel(input);
+    const zoning = model.evidenceStatuses.find((item) => item.id === "zoning");
+
+    expect(zoning?.status).toBe("Official polygon supported");
+    expect(zoning?.detail).toContain("official planning polygon");
+    expect(`${zoning?.status} ${zoning?.detail}`).not.toContain("Document supported");
+    expect(model.planningRows[0]?.state).toContain("Official polygon supported");
+  });
+
+  it("labels Shape__Area as approximate and retains its warning", () => {
+    const subject = parcel({ rawProperties: { Shape__Area: 812.4 } });
+    const input = props({ parcel: subject });
+    const model = buildPropertyFirstReadModel(input);
+    const markup = renderToStaticMarkup(<PropertyFirstRead {...input} />);
+    const areaFact = model.facts.find((fact) => fact.value.includes("812.4"));
+
+    expect(areaFact).toMatchObject({
+      label: "Approximate parcel area",
+      note: "Approximate map geometry area",
+    });
+    expect(model.area?.warning).toContain("Approximate: derived from projected map geometry");
+    expect(markup).toContain("Approximate: derived from projected map geometry");
+    expect(areaFact?.label).not.toBe("Official cadastral area");
+  });
+
   it("continues an existing Guided investigation without creating a second journey", () => {
     const base = props();
     const startedWorkspace = {

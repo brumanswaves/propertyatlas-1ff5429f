@@ -115,6 +115,13 @@ function areaSourceLabel(area: ResolvedParcelArea): string {
   return "Official source area";
 }
 
+function areaFactLabel(area: ResolvedParcelArea): string {
+  if (area.sourceKind === "verified_extent") return "Registered extent";
+  if (area.sourceKind === "csg_geom_area") return "Official cadastral area";
+  if (area.sourceKind === "shape_area_approximate") return "Approximate parcel area";
+  return "Official parcel area";
+}
+
 function liveAssets(assets: ErfAsset[]): ErfAsset[] {
   return assets.filter(
     (asset) => asset.status !== "deleted" && asset.status !== "archived" && asset.status !== "failed",
@@ -151,7 +158,15 @@ function identityStatus(facts: InvestigationFacts): FirstReadStatus {
   };
 }
 
-function buildEvidenceStatuses(facts: InvestigationFacts): FirstReadStatus[] {
+function buildEvidenceStatuses(
+  facts: InvestigationFacts,
+  planning: ParcelPlanningAssessment,
+): FirstReadStatus[] {
+  const zoningMethod = planning.detection.method;
+  const zoningDocumentSupported = zoningMethod === "document_supported";
+  const zoningOfficialPolygonSupported = zoningMethod === "official_polygon";
+  const zoningSupported = zoningDocumentSupported || zoningOfficialPolygonSupported;
+
   return [
     identityStatus(facts),
     {
@@ -208,19 +223,23 @@ function buildEvidenceStatuses(facts: InvestigationFacts): FirstReadStatus[] {
     {
       id: "zoning",
       label: "Zoning / planning",
-      status: facts.zoningConfirmedByDocument
+      status: zoningDocumentSupported
         ? "Document supported"
-        : facts.zoningWorkingAssumption
-          ? "Working assumption"
-          : facts.zoningRegistryPublished
-            ? "Published context only"
-            : "Not established",
-      detail: facts.zoningConfirmedByDocument
-        ? "A recorded document or official polygon supports the zone."
+        : zoningOfficialPolygonSupported
+          ? "Official polygon supported"
+          : facts.zoningWorkingAssumption
+            ? "Working assumption"
+            : facts.zoningRegistryPublished
+              ? "Published context only"
+              : "Not established",
+      detail: zoningDocumentSupported
+        ? "A recorded document supports the zone."
+        : zoningOfficialPolygonSupported
+          ? "An official planning polygon supports the zone; confirm property-specific restrictions."
         : facts.zoningWorkingAssumption
           ? "The selected zone is an assumption until property-specific evidence is attached."
           : "Published municipal rules do not confirm rights for this erf.",
-      tone: facts.zoningConfirmedByDocument
+      tone: zoningSupported
         ? "supported"
         : facts.zoningWorkingAssumption
           ? "assumption"
@@ -285,11 +304,11 @@ function buildEvidenceStatuses(facts: InvestigationFacts): FirstReadStatus[] {
 }
 
 function planningState(planning: ParcelPlanningAssessment): string {
-  if (
-    planning.detection.method === "document_supported" ||
-    planning.detection.method === "official_polygon"
-  ) {
-    return "Supported zone / confirm restrictions";
+  if (planning.detection.method === "document_supported") {
+    return "Document supported / confirm restrictions";
+  }
+  if (planning.detection.method === "official_polygon") {
+    return "Official polygon supported / confirm restrictions";
   }
   if (planning.detection.method === "manual_selection") return "Working assumption";
   return "Not established";
@@ -364,7 +383,7 @@ export function buildPropertyFirstReadModel({
 
   addFact("Erf", parcel.erfNumber);
   addFact("Portion", parcel.portion);
-  if (area) addFact("Official cadastral area", formatArea(area.areaM2), areaSourceLabel(area));
+  if (area) addFact(areaFactLabel(area), formatArea(area.areaM2), areaSourceLabel(area));
   addFact("LPI", parcel.lpi);
   addFact("Parcel key", parcel.parcelKey);
   addFact("Municipality", parcel.municipality);
@@ -397,7 +416,7 @@ export function buildPropertyFirstReadModel({
       null,
     area,
     facts: factsList,
-    evidenceStatuses: buildEvidenceStatuses(facts),
+    evidenceStatuses: buildEvidenceStatuses(facts, planning),
     planningRows: buildPlanningRows(planning),
     planningSummary:
       planning.detection.method === "not_detected"

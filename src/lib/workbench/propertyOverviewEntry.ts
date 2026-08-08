@@ -78,3 +78,29 @@ export function prepareWorkspaceEntry(args: {
     },
   };
 }
+
+/**
+ * Builds the first explicit investigation write from persisted journey state
+ * while retaining canonical values that were hydrated for the zero-write
+ * overview surface.
+ */
+export function prepareExplicitWorkspaceTransition(args: {
+  persistedWorkspace: ErfWorkspaceState;
+  displayWorkspace: ErfWorkspaceState;
+  investigationPatch: Partial<InvestigationSnapshot>;
+  now: string;
+}): Partial<ErfWorkspaceState> {
+  const { persistedWorkspace, displayWorkspace, investigationPatch, now } = args;
+  const currentInvestigation = persistedWorkspace.investigation;
+
+  return {
+    identityStatus: displayWorkspace.identityStatus,
+    strategyScenarioCount: displayWorkspace.strategyScenarioCount,
+    investigation: {
+      ...currentInvestigation,
+      startedAt: currentInvestigation.startedAt ?? now,
+      lastViewedAt: now,
+      ...investigationPatch,
+    },
+  };
+}

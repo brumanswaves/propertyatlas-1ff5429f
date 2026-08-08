@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyErfWorkspaceState } from "../erfWorkspaceState";
-import { prepareWorkspaceEntry, resolvePropertyEntryTab } from "../propertyOverviewEntry";
+import {
+  prepareExplicitWorkspaceTransition,
+  prepareWorkspaceEntry,
+  resolvePropertyEntryTab,
+} from "../propertyOverviewEntry";
 
 describe("property overview entry", () => {
   it("defaults a normal official parcel open to Overview", () => {
@@ -63,5 +67,37 @@ describe("property overview entry", () => {
     expect(result.displayWorkspace.investigation.currentStepId).toBe("add-address");
     expect(result.displayWorkspace.identityStatus).toBe("checked");
     expect(result.displayWorkspace.strategyScenarioCount).toBe(2);
+  });
+
+  it("keeps hydrated canonical state zero-write until the user enters Guided", () => {
+    const persistedWorkspace = createEmptyErfWorkspaceState();
+    persistedWorkspace.investigation.currentStepId = "add-address";
+    const overview = prepareWorkspaceEntry({
+      workspace: persistedWorkspace,
+      mergedIdentityStatus: "looks_correct",
+      savedScenarioCount: 3,
+      initialTab: "overview",
+      now: "2026-08-08T08:00:00.000Z",
+    });
+
+    expect(overview.persistencePatch).toBeNull();
+    expect(persistedWorkspace.identityStatus).toBe("none");
+    expect(persistedWorkspace.strategyScenarioCount).toBe(0);
+    expect(persistedWorkspace.investigation.startedAt).toBeNull();
+
+    const guidedPatch = prepareExplicitWorkspaceTransition({
+      persistedWorkspace,
+      displayWorkspace: overview.displayWorkspace,
+      investigationPatch: { expertWorkspaceOpen: false },
+      now: "2026-08-08T08:05:00.000Z",
+    });
+
+    expect(guidedPatch.identityStatus).toBe("looks_correct");
+    expect(guidedPatch.strategyScenarioCount).toBe(3);
+    expect(guidedPatch.investigation).toMatchObject({
+      startedAt: "2026-08-08T08:05:00.000Z",
+      currentStepId: "add-address",
+      expertWorkspaceOpen: false,
+    });
   });
 });

@@ -89,6 +89,7 @@ import {
   workspaceProgressPatchForStartedTab,
 } from "@/lib/workbench/workbenchTabProgress";
 import {
+  prepareExplicitWorkspaceTransition,
   prepareWorkspaceEntry,
   resolvePropertyEntryTab,
 } from "@/lib/workbench/propertyOverviewEntry";
@@ -2064,15 +2065,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   );
 
   function setInvestigationPatch(patch: Partial<InvestigationSnapshot>, dirty = true) {
-    const current = readErfWorkspaceState(parcelId).investigation;
+    const persistedWorkspace = readErfWorkspaceState(parcelId);
     const now = new Date().toISOString();
     return setWorkspacePatch({
-      investigation: {
-        ...current,
-        startedAt: current.startedAt ?? now,
-        lastViewedAt: now,
-        ...patch,
-      },
+      ...prepareExplicitWorkspaceTransition({
+        persistedWorkspace,
+        displayWorkspace: workspaceState,
+        investigationPatch: patch,
+        now,
+      }),
       ...(dirty ? { dirty: true } : {}),
     });
   }
