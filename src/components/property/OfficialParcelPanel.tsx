@@ -2350,6 +2350,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         chosenScenario,
         strategyScenarios,
         selectedSiteDesign: overviewSelectedSiteDesign,
+        planningAssessment,
       }),
     [
       chosenScenario,
@@ -2357,6 +2358,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       marketAddressIntelligence,
       normalizedParcel,
       overviewSelectedSiteDesign,
+      planningAssessment,
       savedMarketEvidence,
       strategyScenarios,
       workspaceState,
@@ -2875,7 +2877,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onOpenNextAction={() => selectWorkbenchTab("zoning-build", { markStarted: true })}
               sourcesExtra={
                 <div className="mt-4">
-                  <ErfResearchDossier parcel={normalizedParcel} view="research" />
+                  <ErfResearchDossier
+                    parcel={normalizedParcel}
+                    view="research"
+                    planningAssessment={planningAssessment}
+                  />
                 </div>
               }
             />
@@ -2898,13 +2904,32 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onOpenTab={(next) => selectWorkbenchTab(next as Tab, { markStarted: true })}
             />
           )}
-          {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
-          {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}
-          {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}
+          {tab === "listings" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="listings"
+              planningAssessment={planningAssessment}
+            />
+          )}
+          {tab === "reports" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="reports"
+              planningAssessment={planningAssessment}
+            />
+          )}
+          {tab === "notes" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="notes"
+              planningAssessment={planningAssessment}
+            />
+          )}
           {tab === "calculators" && (
             <ErfResearchDossier
               parcel={normalizedParcel}
               view="calculators"
+              planningAssessment={planningAssessment}
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
             />
           )}
@@ -2913,6 +2938,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcel={normalizedParcel}
               parcelRing={parcelRing}
               view="stoep-report"
+              planningAssessment={planningAssessment}
               onSelectView={(view, options) =>
                 selectWorkbenchTab(view as Tab, {
                   markStarted: true,

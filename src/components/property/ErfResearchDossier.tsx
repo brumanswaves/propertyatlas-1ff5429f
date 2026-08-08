@@ -194,12 +194,14 @@ import {
 } from "@/components/property/dossier/ReportViewSelector";
 
 import { createReportPrintLifecycleController } from "@/lib/reports/reportPrintLifecycle";
+import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
 
 interface Props {
   parcel: NormalizedOfficialParcel;
   /** Official parcel exterior ring, used for the deterministic report hero. */
   parcelRing?: Array<[number, number]> | null;
   view?: DossierView;
+  planningAssessment?: ParcelPlanningAssessment | null;
   onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
 }
 
@@ -464,6 +466,7 @@ export function ErfResearchDossier({
   parcel,
   parcelRing = null,
   view = "overview",
+  planningAssessment = null,
   onSelectView,
 }: Props) {
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
@@ -624,7 +627,12 @@ export function ErfResearchDossier({
 
   if (view === "stoep-report") {
     return (
-      <StoepAiReportView parcel={parcel} parcelRing={parcelRing} onSelectView={onSelectView} />
+      <StoepAiReportView
+        parcel={parcel}
+        parcelRing={parcelRing}
+        planningAssessment={planningAssessment}
+        onSelectView={onSelectView}
+      />
     );
   }
 
@@ -1463,10 +1471,12 @@ async function openVaultAsset(file: ErfAsset) {
 function StoepAiReportView({
   parcel,
   parcelRing = null,
+  planningAssessment,
   onSelectView,
 }: {
   parcel: NormalizedOfficialParcel;
   parcelRing?: Array<[number, number]> | null;
+  planningAssessment?: ParcelPlanningAssessment | null;
   onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
 }) {
   const { user } = useAuth();
@@ -1577,6 +1587,7 @@ function StoepAiReportView({
     strategyWorkspace,
     sitePotentialProject: siteProject.project ?? null,
     siteBrief: siteProject.project?.design_brief ?? null,
+    planningAssessment,
   });
   const decision = buildDecisionIntelligence(report);
   const investorMode = useMemo(

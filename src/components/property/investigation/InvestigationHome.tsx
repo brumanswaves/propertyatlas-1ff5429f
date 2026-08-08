@@ -125,6 +125,7 @@ export function InvestigationHome({
         strategyScenarios: scenarios,
         selectedSiteDesign,
         strategyWorkspace,
+        planningAssessment: planning,
       }),
     [
       assets,
@@ -132,6 +133,7 @@ export function InvestigationHome({
       evidence,
       marketAddressIntelligence,
       parcel,
+      planning,
       scenarios,
       selectedSiteDesign,
       strategyWorkspace,

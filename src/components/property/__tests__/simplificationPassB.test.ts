@@ -194,7 +194,9 @@ describe("Property & Sources screen hierarchy", () => {
   it("preserves every source action behind the sources disclosure", () => {
     expect(panel).toContain("Sources and documents");
     expect(panel).toContain("sourcesExtra");
-    expect(panel).toContain('<ErfResearchDossier parcel={normalizedParcel} view="research" />');
+    expect(panel).toContain("<ErfResearchDossier");
+    expect(panel).toContain('view="research"');
+    expect(panel).toContain("planningAssessment={planningAssessment}");
     expect(panel).toContain("Copy parcel identifiers");
     expect(panel).toContain("SgDiagramEvidenceSection");
     expect(panel).toContain("GOVZA_DEEDS_GUIDANCE_URL");

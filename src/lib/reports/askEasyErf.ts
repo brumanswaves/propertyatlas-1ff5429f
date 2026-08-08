@@ -548,7 +548,9 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
   };
   const inferredDomains = inferAskEasyErfEvidenceDomains(question);
   const isBroadQuestion = isBroadAskEasyErfQuestion(question);
-  const domains = inferredDomains.length ? inferredDomains : isBroadQuestion ? BROAD_FALLBACK_DOMAINS : [];
+  const domains: EvidenceDomain[] = isBroadQuestion
+    ? Array.from(new Set<EvidenceDomain>([...inferredDomains, ...BROAD_FALLBACK_DOMAINS]))
+    : inferredDomains;
   if (!domains.length) {
     return emptySelectedEvidencePayload(input.pack, question, input.now);
   }
