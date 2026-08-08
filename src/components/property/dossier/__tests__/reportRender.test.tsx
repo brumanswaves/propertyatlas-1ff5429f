@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
+import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { buildReportComposition } from "@/lib/reports/reportComposition";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReportOpening } from "../ReportOpening";
 import { ReportViewSelector } from "../ReportViewSelector";
@@ -15,6 +16,8 @@ import {
 } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
+import { GUIDED_TASK_DEFINITIONS } from "@/lib/investigation/guidedTaskRegistry";
 
 const LIGHTSTONE: ErfAsset = evidenceAsset({
   id: "asset-lightstone",
@@ -82,8 +85,53 @@ function buildDoc(assets: ErfAsset[] = []) {
   const pack = buildEvidencePackFixture({ assets, savedMarketEvidence: [] });
   return {
     report,
+    pack,
     doc: composeEasyErfReport({ report, pack, generatedAt: "2026-07-23T10:00:00Z" }),
   };
+}
+
+function buildGuidedActionDoc(identityConfirmed = true) {
+  const { report, pack } = buildDoc();
+  const workspaceState = createEmptyErfWorkspaceState();
+  workspaceState.identityStatus = identityConfirmed ? "looks_correct" : "none";
+  const canonicalNextAction = canonicalReportAction({
+    parcel: evidenceParcel(),
+    workspaceState,
+    assets: [],
+    savedEvidence: [],
+  });
+
+  return composeEasyErfReport({
+    report,
+    pack,
+    canonicalNextAction,
+    generatedAt: "2026-07-23T10:00:00Z",
+  });
+}
+
+type TestElementProps = { children?: ReactNode; onClick?: () => void };
+
+function textContent(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (!isValidElement<TestElementProps>(node)) {
+    return Children.toArray(node).map(textContent).join("");
+  }
+  return textContent(node.props.children);
+}
+
+function findButton(node: ReactNode, label: string): ReactElement<TestElementProps> | null {
+  if (node == null || typeof node === "string" || typeof node === "number" || typeof node === "boolean") {
+    return null;
+  }
+  if (!isValidElement<TestElementProps>(node)) {
+    for (const child of Children.toArray(node)) {
+      const match = findButton(child, label);
+      if (match) return match;
+    }
+    return null;
+  }
+  if (node.type === "button" && textContent(node.props.children).includes(label)) return node;
+  return findButton(node.props.children, label);
 }
 
 describe("ReportOpening (rendered)", () => {
@@ -127,6 +175,52 @@ describe("ReportOpening (rendered)", () => {
       expect(tabs).toContain(doc.nextBestAction.targetTab);
       expect(web).toContain("Take this step");
     }
+  });
+
+  it("renders SG action guidance from the canonical Guided task", () => {
+    const sg = GUIDED_TASK_DEFINITIONS.find((task) => task.id === "add-sg-diagram")!;
+    const actionable = buildGuidedActionDoc();
+    const markup = renderToStaticMarkup(<ReportOpening doc={actionable} />);
+
+    expect(actionable.nextBestAction?.id).toBe("investigation-add-sg-diagram");
+    expect(markup).toContain(sg.title);
+    expect(markup).toContain(sg.whyItMatters);
+    for (const step of sg.steps) expect(markup).toContain(step);
+    expect(markup).toContain(`href="${sg.sourceUrl}"`);
+    expect(markup).toContain(sg.sourceLabel);
+    expect(markup).toContain(sg.primaryActionLabel);
+    expect(actionable.nextBestAction?.targetAnchorId).toBe("sg-diagram-evidence");
+  });
+
+  it("routes the canonical action to its exact Guided tab and anchor", () => {
+    const actionable = buildGuidedActionDoc();
+    const onOpenTab = vi.fn();
+    const tree = ReportOpening({ doc: actionable, onOpenTab });
+    const button = findButton(tree, "Open Sources and add the SG diagram");
+
+    expect(button).not.toBeNull();
+    button?.props.onClick?.();
+    expect(onOpenTab).toHaveBeenCalledWith("research", { anchorId: "sg-diagram-evidence" });
+  });
+
+  it("does not render an external source action when the canonical task has no source URL", () => {
+    const identity = buildGuidedActionDoc(false);
+    const markup = renderToStaticMarkup(<ReportOpening doc={identity} />);
+
+    expect(identity.nextBestAction?.id).toBe("investigation-confirm-property-identity");
+    expect(identity.nextBestAction?.sourceUrl).toBeUndefined();
+    expect(markup).not.toContain('target="_blank"');
+  });
+
+  it("keeps useful canonical guidance in print without interactive action controls", () => {
+    const actionable = buildGuidedActionDoc();
+    const markup = renderToStaticMarkup(<ReportOpening doc={actionable} printOnly />);
+
+    expect(markup).toContain("Why this matters");
+    expect(markup).toContain("How to do it");
+    expect(markup).toContain("Chief Surveyor-General document viewer");
+    expect(markup).not.toContain("<button");
+    expect(markup).not.toContain('target="_blank"');
   });
 
   it("never renders an unsupported metric or glance value as zero", () => {
@@ -305,6 +399,15 @@ describe("Report opening order (dossier source)", () => {
     }
     // A house field may only render when the view model marked it supported.
     expect(source).not.toMatch(/Bedrooms[^]{0,80}\{0\}/);
+  });
+
+  it("forwards the canonical Guided anchor through the dossier to the Workbench", () => {
+    const panel = readFileSync(resolve(__dirname, "../../OfficialParcelPanel.tsx"), "utf8");
+
+    expect(source).toContain(
+      "onOpenTab={(tab, options) => onSelectView?.(routeTabFor(tab), options)}",
+    );
+    expect(panel).toContain("anchorId: options?.anchorId");
   });
 });
 
