@@ -2505,6 +2505,7 @@ function StoepAiReportView({
             <AskEasyErfPanel
               suggestionPayload={askSuggestionPayload}
               evidencePack={report.evidencePack ?? null}
+              canonicalNextAction={reportDoc.nextBestAction}
               decisionMode={decisionMode}
               onSelectView={onSelectView}
             />

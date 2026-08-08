@@ -25,6 +25,7 @@ import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
 import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
 import { AskEasyErfPanel } from "@/components/property/dossier/AskEasyErfPanel";
+import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import type { DossierView } from "@/components/property/dossier/reportViews";
 import {
   buildPropertyInvestigation,
@@ -207,6 +208,10 @@ export function InvestigationHome({
       }),
     [assets, evidence, report, scenarios],
   );
+  const canonicalNextAction = useMemo(
+    () => canonicalReportAction(investigationInput),
+    [investigationInput],
+  );
 
   function openPlanRow(row: InvestigationPlanRow) {
     onOpenExpertWorkspace(row.targetTab as DossierView, { anchorId: row.targetAnchorId });
@@ -257,7 +262,8 @@ export function InvestigationHome({
             maxSuggestions={3}
             suggestionPayload={askPayload}
             evidencePack={report.evidencePack ?? null}
-            onSelectView={(view) => onOpenExpertWorkspace(view)}
+            canonicalNextAction={canonicalNextAction}
+            onSelectView={(view, options) => onOpenExpertWorkspace(view, options)}
           />
           <div className="rounded-[1rem] border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3 text-sm leading-6 text-[#0D1B2A]/66">
             Current legacy investigation status: {investigation.headline}. The guided journey above

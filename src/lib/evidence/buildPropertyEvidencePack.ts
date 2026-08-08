@@ -269,6 +269,7 @@ function addOfficialParcelEvidence(
       updatedAt: input.workspaceState.updatedAt,
       userConfirmed: false,
       excluded: false,
+      warning: resolvedArea.warning,
     });
   }
   const zoningCandidates = isOfficialParcel ? candidates(raw, ZONING_KEYS) : [];

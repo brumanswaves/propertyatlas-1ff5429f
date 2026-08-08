@@ -47,3 +47,13 @@ export function canonicalReportAction(input: BuildPropertyInvestigationInput): R
     contradictionIds: [],
   };
 }
+
+export function canonicalActionNavigation(action: ReportAction): {
+  targetTab: string;
+  targetAnchorId?: string;
+} {
+  return {
+    targetTab: action.targetTab,
+    ...(action.targetAnchorId ? { targetAnchorId: action.targetAnchorId } : {}),
+  };
+}

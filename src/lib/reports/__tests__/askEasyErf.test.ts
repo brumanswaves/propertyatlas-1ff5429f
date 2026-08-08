@@ -26,6 +26,7 @@ import {
   buildEvidencePackFixture,
   evidenceAsset as packAsset,
   evidenceMarket as packMarket,
+  evidenceParcel,
 } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 
 const originalEnv = { ...process.env };
@@ -385,9 +386,12 @@ describe("Ask Easy Erf evidence payload", () => {
 
   it("renders context-aware suggested questions", () => {
     const questions = suggestedAskEasyErfQuestions(payload({ assets: [] }));
-    expect(questions).toContain("Why is ownership still unverified?");
-    expect(questions).toContain("What evidence would improve confidence most?");
-    expect(questions.length).toBeGreaterThanOrEqual(5);
+    expect(questions).toEqual([
+      "What do you know about this erf?",
+      "What is still unconfirmed?",
+      "What does the market evidence show?",
+      "What should I do next?",
+    ]);
   });
 
   it("uses investor suggestions without changing the evidence payload", () => {
@@ -545,6 +549,61 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(inferAskEasyErfEvidenceDomains("Show the Site Potential concept render.")).toEqual([
       "site",
     ]);
+    expect(inferAskEasyErfEvidenceDomains("How big is this erf?")).toEqual([
+      "identity",
+      "address",
+    ]);
+  });
+
+  it("selects canonical CSG area evidence for a basic first-read question", () => {
+    const selected = selectedPayload("How big is this erf?", {
+      parcel: parcel({ rawProperties: { GEOM_AREA: 618.7 } }),
+    });
+    const area = selected.claims.find((claim) => claim.key === "areaM2");
+
+    expect(area).toMatchObject({
+      domain: "identity",
+      value: 618.7,
+      status: "supported",
+    });
+    expect(area?.confidenceReason).toContain("official CSG parcel record");
+    expect(area?.sourceRefs.length).toBeGreaterThan(0);
+  });
+
+  it("retains the approximate-map-area caveat for Shape__Area", () => {
+    const selected = selectedPayload("How big is this property?", {
+      parcel: parcel({ rawProperties: { Shape__Area: 812.4 } }),
+    });
+    const area = selected.claims.find((claim) => claim.key === "areaM2");
+
+    expect(area?.value).toBe(812.4);
+    expect(area?.confidence).toBe("low");
+    expect(area?.confidenceReason).toContain("Approximate: derived from projected map geometry");
+    expect(area?.warning).toContain("Approximate: derived from projected map geometry");
+  });
+
+  it("answers ownership questions with canonical gaps when ownership evidence is absent", () => {
+    const selected = selectedFixture("Do we know who owns this property?", { assets: [] });
+
+    expect(
+      selected.claims.some(
+        (claim) => claim.domain === "ownership" && claim.status === "supported",
+      ),
+    ).toBe(false);
+    expect(
+      selected.gaps.some((gap) => gap.domain === "ownership" || gap.domain === "deeds"),
+    ).toBe(true);
+  });
+
+  it("selects a bounded cross-section for a broad property first-read question", () => {
+    const selected = selectedFixture("What do you know about this property?");
+    const domains = new Set(selected.claims.map((claim) => claim.domain));
+    const usefulDomains = ["planning", "market", "strategy", "site", "documents"] as const;
+
+    expect(domains.has("identity")).toBe(true);
+    expect(usefulDomains.filter((domain) => domains.has(domain)).length).toBeGreaterThanOrEqual(2);
+    expect(selected.claims.length).toBeLessThanOrEqual(selected.limits.maxClaims);
+    expect(selected.selectedText.length).toBeLessThanOrEqual(selected.limits.maxTotalCharacters);
   });
 
   it("recognizes FAR planning intent without treating ordinary distance questions as planning", () => {
@@ -605,13 +664,70 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(selected.gaps.some((gap) => gap.domain === "planning")).toBe(true);
   });
 
+  it("keeps official parcel zoning distinct from document-supported zoning", () => {
+    const official = selectedFixture("What zoning applies?");
+    const officialZoning = official.claims.find(
+      (claim) => claim.domain === "planning" && claim.key === "zoning",
+    );
+    const officialSource = official.sources.find((source) =>
+      officialZoning?.sourceRefs.includes(source.ref),
+    );
+
+    const documentSupported = selectedFixture("What zoning applies?", {
+      parcel: evidenceParcel({ rawProperties: { AREA_M2: 900 } }),
+      assets: [
+        packAsset({
+          id: "zoning-document",
+          asset_category: "zoning_document",
+          source_label: "Zoning certificate",
+          original_file_name: "zoning-certificate.pdf",
+          metadata: {
+            extractionStatus: "ready",
+            identityMatchStatus: "matched",
+            extractedText: "Zoning: Residential 1",
+            extractedClaims: [
+              {
+                domain: "planning",
+                key: "zoning",
+                label: "Zoning",
+                value: "Residential 1",
+                numericValue: null,
+                unit: null,
+                page: 1,
+                quote: "Zoning: Residential 1",
+                confidence: "high",
+              },
+            ],
+          },
+        }),
+      ],
+      selectedSiteDesign: null,
+    });
+    const documentZoning = documentSupported.claims.find(
+      (claim) => claim.domain === "planning" && claim.key === "zoning",
+    );
+    const documentSource = documentSupported.sources.find((source) =>
+      documentZoning?.sourceRefs.includes(source.ref),
+    );
+
+    expect(officialSource?.kind).toBe("official_parcel");
+    expect(officialZoning?.confidenceReason).toContain("official parcel raw properties");
+    expect(documentSource?.kind).toBe("uploaded_document");
+    expect(documentZoning?.confidenceReason).toContain("identity-matched uploaded report");
+  });
+
   it("selects market listing evidence without unrelated notes", () => {
     const selected = selectedFixture("Is the market comparable evidence strong enough?", {
       savedMarketEvidence: [packMarket({ id: "comp-a", title: "Comparable listing" })],
     });
+    const askingPrice = selected.claims.find(
+      (claim) => claim.domain === "market" && claim.key === "askingPrice",
+    );
 
     expect(selected.claims.some((claim) => claim.domain === "market")).toBe(true);
     expect(selected.claims.map((claim) => claim.domain)).not.toContain("notes");
+    expect(askingPrice?.nature).toBe("observation");
+    expect(askingPrice?.confidenceReason).toContain("not valuations");
   });
 
   it("selects Strategy assumptions and calculations without high-confidence identity crowd-out", () => {
@@ -629,10 +745,17 @@ describe("Ask Easy Erf evidence payload", () => {
 
   it("selects Site Potential interpretation without unrelated ownership facts", () => {
     const selected = selectedFixture("What does the Site Potential concept design say?");
+    const conceptClaims = selected.claims.filter((claim) => claim.domain === "site");
 
-    expect(selected.claims.some((claim) => claim.domain === "site")).toBe(true);
+    expect(conceptClaims.length).toBeGreaterThan(0);
     expect(selected.claims.every((claim) => claim.domain === "site")).toBe(true);
     expect(selected.claims.map((claim) => claim.domain)).not.toContain("ownership");
+    expect(
+      conceptClaims.every(
+        (claim) => claim.nature === "interpretation" || claim.nature === "assumption",
+      ),
+    ).toBe(true);
+    expect(conceptClaims.some((claim) => /not prove planning approval|AI interpretation/i.test(claim.confidenceReason))).toBe(true);
   });
 
   it("keeps real source references for official, Strategy, market and contradiction facts", () => {

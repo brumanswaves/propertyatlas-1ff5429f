@@ -83,6 +83,7 @@ export interface PropertyFirstReadProps {
   savedEvidence: SavedMarketEvidence[];
   chosenScenario: ErfStrategyScenario | null;
   mapSlot: ReactNode;
+  askSlot?: ReactNode;
   onInvestigate: () => void;
   onOpenExpertTools: () => void;
 }
@@ -548,6 +549,8 @@ export function PropertyFirstRead(props: PropertyFirstReadProps) {
           </p>
         )}
       </section>
+
+      {props.askSlot}
 
       <section aria-labelledby="evidence-status-heading">
         <div className="flex items-end justify-between gap-4">

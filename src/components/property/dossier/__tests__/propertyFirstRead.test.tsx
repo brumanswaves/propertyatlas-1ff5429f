@@ -73,7 +73,7 @@ function props(overrides: Partial<PropertyFirstReadProps> = {}): PropertyFirstRe
 
 describe("PropertyFirstRead", () => {
   it("renders a canonical property first read without copied showcase values", () => {
-    const input = props();
+    const input = props({ askSlot: <div>Shared Ask Easy Erf panel</div> });
     const model = buildPropertyFirstReadModel(input);
     const markup = renderToStaticMarkup(<PropertyFirstRead {...input} />);
 
@@ -88,6 +88,13 @@ describe("PropertyFirstRead", () => {
     expect(markup).toContain("Evidence status");
     expect(markup).toContain("Planning snapshot");
     expect(markup).toContain("Selected erf map");
+    expect(markup).toContain("Shared Ask Easy Erf panel");
+    expect(markup.indexOf("Shared Ask Easy Erf panel")).toBeGreaterThan(
+      markup.indexOf("Property facts"),
+    );
+    expect(markup.indexOf("Shared Ask Easy Erf panel")).toBeLessThan(
+      markup.indexOf("Evidence status"),
+    );
     expect(markup).not.toContain("Erf 1570");
     expect(markup).not.toContain("618.7 m²");
   });

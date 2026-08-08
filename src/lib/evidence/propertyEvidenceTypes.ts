@@ -265,6 +265,8 @@ export interface BuildPropertyEvidencePackInput {
 export interface EvidenceSelectionRequest {
   question?: string;
   domains?: EvidenceDomain[];
+  /** Keep broad selections representative by taking one ranked claim per domain before filling. */
+  diversifyDomains?: boolean;
   maxClaims?: number;
   maxSourceFragments?: number;
   maxTotalCharacters?: number;
