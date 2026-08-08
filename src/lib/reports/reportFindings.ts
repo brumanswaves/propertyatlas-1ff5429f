@@ -68,6 +68,17 @@ export interface ReportAction {
   completionCriteria: string;
   status: ReportActionStatus;
   targetTab: string;
+  /** Canonical Guided task execution metadata, when this action came from that registry. */
+  actionLabel?: string;
+  estimatedMinutes?: number;
+  steps?: string[];
+  sourceUrl?: string;
+  sourceLabel?: string;
+  extraSources?: Array<{ label: string; url: string }>;
+  requestTemplate?: string;
+  limitations?: string;
+  targetAnchorId?: string;
+  afterCompletion?: string;
   professionalType?: string;
   findingIds: string[];
   gapIds: string[];

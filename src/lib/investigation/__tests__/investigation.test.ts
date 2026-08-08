@@ -325,6 +325,102 @@ describe("investigation model", () => {
     expect(reportAction?.status).toBe("open");
   });
 
+  it("preserves the selected Guided task execution metadata for the report", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const input = baseInput({ workspaceState: workspace });
+    const reportAction = canonicalReportAction(input);
+    const definition = GUIDED_TASK_DEFINITIONS.find((task) => task.id === "add-sg-diagram");
+
+    expect(reportAction?.id).toBe("investigation-add-sg-diagram");
+    expect(reportAction?.title).toBe(definition?.title);
+    expect(reportAction?.reason).toBe(definition?.whyItMatters);
+    expect(reportAction?.actionLabel).toBe(definition?.primaryActionLabel);
+    expect(reportAction?.estimatedMinutes).toBe(definition?.estimatedMinutes);
+    expect(reportAction?.steps).toEqual(definition?.steps);
+    expect(reportAction?.sourceUrl).toBe(definition?.sourceUrl);
+    expect(reportAction?.sourceLabel).toBe(definition?.sourceLabel);
+    expect(reportAction?.targetAnchorId).toBe(definition?.targetAnchorId);
+    expect(reportAction?.afterCompletion).toBe(definition?.afterCompletion);
+    expect(reportAction?.limitations).toBe(definition?.limitations);
+  });
+
+  it("advances the report action when the SG task becomes genuinely complete", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const before = canonicalReportAction(baseInput({ workspaceState: workspace }));
+    const after = canonicalReportAction(
+      baseInput({
+        workspaceState: workspace,
+        assets: [searchableSubjectAsset("sg_diagram")],
+      }),
+    );
+
+    expect(before?.id).toBe("investigation-add-sg-diagram");
+    expect(after?.id).toBe("investigation-confirm-zoning");
+    expect(after?.title).not.toBe(before?.title);
+    expect(after?.sourceUrl).not.toBe(before?.sourceUrl);
+  });
+
+  it("only exposes a request template when the canonical task provides one", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const sgAction = canonicalReportAction(baseInput({ workspaceState: workspace }));
+    const plansAction = canonicalReportAction(
+      baseInput({
+        workspaceState: workspace,
+        assets: [searchableSubjectAsset("sg_diagram")],
+        planning: verifiedPlanningAssessment(),
+      }),
+    );
+
+    expect(sgAction?.requestTemplate).toBeUndefined();
+    expect(plansAction?.id).toBe("investigation-add-approved-plans");
+    expect(plansAction?.requestTemplate).toContain("approved building plans");
+  });
+
+  it("preserves canonical secondary sources and limitations for comparable evidence", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const action = canonicalReportAction(
+      baseInput({
+        workspaceState: workspace,
+        assets: [
+          searchableSubjectAsset("sg_diagram"),
+          evidenceAsset({
+            id: "asset-approved-plan",
+            metadata: { planApprovalStatus: "verified_municipal_approval" },
+          }),
+        ],
+        planning: verifiedPlanningAssessment(),
+      }),
+    );
+    const definition = GUIDED_TASK_DEFINITIONS.find(
+      (task) => task.id === "add-comparable-listing",
+    );
+
+    expect(action?.id).toBe("investigation-add-comparable-listing");
+    expect(action?.extraSources).toEqual(definition?.extraSources);
+    expect(action?.limitations).toBe(definition?.limitations);
+  });
+
+  it("does not mutate evidence facts, readiness or task completion while adapting the action", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const input = baseInput({ workspaceState: workspace });
+    const workspaceBefore = JSON.stringify(workspace);
+    const factsBefore = deriveInvestigationFacts(input);
+    const taskBefore = selectNextGuidedTask(factsBefore, []);
+
+    canonicalReportAction(input);
+
+    const factsAfter = deriveInvestigationFacts(input);
+    expect(JSON.stringify(workspace)).toBe(workspaceBefore);
+    expect(factsAfter).toEqual(factsBefore);
+    expect(selectNextGuidedTask(factsAfter, [])?.id).toBe(taskBefore?.id);
+    expect(taskBefore?.isComplete(factsAfter)).toBe(false);
+  });
+
   it("guides the SG diagram task with numbered steps and the public CSG source", () => {
     const sg = GUIDED_TASK_DEFINITIONS.find((task) => task.id === "add-sg-diagram");
 

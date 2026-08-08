@@ -2784,7 +2784,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcel={normalizedParcel}
               parcelRing={parcelRing}
               view="stoep-report"
-              onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
+              onSelectView={(view, options) =>
+                selectWorkbenchTab(view as Tab, {
+                  markStarted: true,
+                  anchorId: options?.anchorId,
+                })
+              }
             />
           )}
           {tab === "local-services" && (

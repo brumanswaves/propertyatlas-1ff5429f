@@ -200,7 +200,7 @@ interface Props {
   /** Official parcel exterior ring, used for the deterministic report hero. */
   parcelRing?: Array<[number, number]> | null;
   view?: DossierView;
-  onSelectView?: (view: DossierView) => void;
+  onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
 }
 
 export type { DossierView } from "@/components/property/dossier/reportViews";
@@ -1467,7 +1467,7 @@ function StoepAiReportView({
 }: {
   parcel: NormalizedOfficialParcel;
   parcelRing?: Array<[number, number]> | null;
-  onSelectView?: (view: DossierView) => void;
+  onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
 }) {
   const { user } = useAuth();
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
@@ -2491,7 +2491,7 @@ function StoepAiReportView({
           doc={reportDoc}
           printOnly={printOnly}
           onPrint={handlePrint}
-          onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+          onOpenTab={(tab, options) => onSelectView?.(routeTabFor(tab), options)}
           heroSlot={
             reportHero.kind === "site_potential" && selectedDesign ? (
               <SignedAssetPreview asset={selectedDesign} />
