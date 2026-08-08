@@ -12,6 +12,12 @@ export type PropertySearchConfidence =
   | "address_only"
   | "no_match";
 
+export type PropertySearchExactMatchBasis =
+  | "lpi"
+  | "parcel_key"
+  | "erf_portion_area"
+  | "erf_portion_singleton";
+
 export interface ParsedPropertyQuery {
   raw: string;
   normalized: string;
@@ -32,6 +38,7 @@ export interface PropertySearchResult {
   subtitle: string;
   matchReason: string;
   confidence: PropertySearchConfidence;
+  exactMatchBasis?: PropertySearchExactMatchBasis;
   sourceLabel: string;
   fields: {
     erf?: string;
@@ -50,6 +57,7 @@ type Candidate = {
   score: number;
   matchReason: string;
   confidence: PropertySearchConfidence;
+  exactMatchBasis?: PropertySearchExactMatchBasis;
 };
 
 export interface OfficialParcelSearchOptions {
@@ -173,6 +181,29 @@ function parcelText(parcel: IndexedOfficialParcel): string {
   );
 }
 
+function areaTerms(value: string | undefined): string[] {
+  return normalizePropertyText(value)
+    .replace(/\bsaint\b/g, "st")
+    .split(" ")
+    .filter((term) => term === "st" || term.length > 2);
+}
+
+function hasCompatibleAreaContext(
+  parcel: IndexedOfficialParcel,
+  areaText: string | undefined,
+): boolean {
+  const queryTerms = areaTerms(areaText);
+  if (!queryTerms.length) return false;
+  const parcelTerms = new Set(
+    areaTerms(
+      [parcel.town, parcel.municipality, parcel.province, parcel.displayAreaLabel]
+        .filter(Boolean)
+        .join(" "),
+    ),
+  );
+  return queryTerms.every((term) => parcelTerms.has(term));
+}
+
 function scoreParcel(
   parcel: IndexedOfficialParcel,
   parsed: ParsedPropertyQuery,
@@ -181,6 +212,7 @@ function scoreParcel(
   let score = 0;
   let reason = "Possible official parcel match";
   let confidence: PropertySearchConfidence = "likely_nearby_parcel";
+  let exactMatchBasis: PropertySearchExactMatchBasis | undefined;
   const text = parcelText(parcel);
 
   if (parsed.lpi && parcel.lpi === parsed.lpi) {
@@ -189,6 +221,7 @@ function scoreParcel(
       score: 1000,
       matchReason: "Exact CSG LPI match",
       confidence: "exact_official_match",
+      exactMatchBasis: "lpi",
     };
   }
   if (parsed.parcelKey && parcel.parcelKey === parsed.parcelKey) {
@@ -197,6 +230,7 @@ function scoreParcel(
       score: 980,
       matchReason: "Exact CSG parcel key match",
       confidence: "exact_official_match",
+      exactMatchBasis: "parcel_key",
     };
   }
 
@@ -210,19 +244,23 @@ function scoreParcel(
       reason = "Official erf and portion match";
     }
     if (parsed.areaText) {
-      const areaTerms = normalizePropertyText(parsed.areaText)
-        .split(" ")
-        .filter((term) => term.length > 2);
-      const hits = areaTerms.filter((term) => text.includes(term)).length;
+      const queryAreaTerms = areaTerms(parsed.areaText);
+      const hits = queryAreaTerms.filter((term) => text.includes(term)).length;
       score += hits * 45;
-      if (hits > 0) reason = "Official erf match with area context";
+      if (parsed.portion !== undefined && hasCompatibleAreaContext(parcel, parsed.areaText)) {
+        confidence = "exact_official_match";
+        exactMatchBasis = "erf_portion_area";
+        reason = "Official erf and portion match";
+      } else if (hits > 0) {
+        reason = "Official erf match with area context";
+      }
     } else if (options.loadedAreaTerms?.length || options.visibleAreaTerms?.length) {
       const terms = options.loadedAreaTerms ?? options.visibleAreaTerms ?? [];
       const hits = terms.filter((term) => text.includes(term)).length;
       score += hits * 35;
       if (hits > 0) reason = "Official erf match inside loaded map area";
     }
-    return { parcel, score, matchReason: reason, confidence };
+    return { parcel, score, matchReason: reason, confidence, exactMatchBasis };
   }
 
   if (parsed.isAddressLike && parsed.terms.length) {
@@ -256,6 +294,7 @@ export function buildPropertySearchResult(
   parcel: IndexedOfficialParcel,
   matchReason: string,
   confidence: PropertySearchConfidence,
+  exactMatchBasis?: PropertySearchExactMatchBasis,
 ): PropertySearchResult {
   const subject = parcel.erf ? `Erf ${parcel.erf}` : "Official parcel";
   const portion = parcel.portion ? `, Portion ${parcel.portion}` : "";
@@ -266,6 +305,7 @@ export function buildPropertySearchResult(
     subtitle: parcel.displayAreaLabel,
     matchReason,
     confidence,
+    exactMatchBasis,
     sourceLabel: parcel.sourceLabel,
     fields: {
       erf: parcel.erf,
@@ -408,7 +448,88 @@ export function searchOfficialParcels(
   const candidates = parcelIndex
     .map((parcel) => scoreParcel(parcel, parsed, options))
     .filter((candidate): candidate is Candidate => Boolean(candidate));
-  return rankParcelCandidates(candidates, parsed).map((candidate) =>
-    buildPropertySearchResult(candidate.parcel, candidate.matchReason, candidate.confidence),
+  const ranked = rankParcelCandidates(candidates, parsed);
+  if (parsed.erfNumber && parsed.portion !== undefined) {
+    const areaExactMatches = ranked.filter(
+      (candidate) => candidate.confidence === "exact_official_match",
+    );
+    if (ranked.length === 1 && ranked[0].confidence !== "exact_official_match") {
+      ranked[0] = {
+        ...ranked[0],
+        confidence: "exact_official_match",
+        exactMatchBasis: "erf_portion_singleton",
+        matchReason: "Official erf and portion match",
+      };
+    } else if (areaExactMatches.length > 1) {
+      for (const candidate of ranked) {
+        if (candidate.confidence === "exact_official_match") {
+          candidate.confidence = "likely_nearby_parcel";
+          candidate.exactMatchBasis = undefined;
+        }
+      }
+    }
+  }
+  return ranked.map((candidate) =>
+    buildPropertySearchResult(
+      candidate.parcel,
+      candidate.matchReason,
+      candidate.confidence,
+      candidate.exactMatchBasis,
+    ),
+  );
+}
+
+function confidenceRank(confidence: PropertySearchConfidence): number {
+  switch (confidence) {
+    case "exact_official_match":
+      return 4;
+    case "address_inside_official_parcel":
+      return 3;
+    case "likely_nearby_parcel":
+      return 2;
+    case "address_only":
+      return 1;
+    case "no_match":
+      return 0;
+  }
+}
+
+export function mergeOfficialParcelSearchResults(
+  query: string,
+  resultGroups: PropertySearchResult[][],
+): PropertySearchResult[] {
+  const parsed = parsePropertyQuery(query);
+  const combined = resultGroups.flat();
+  const matchingErfPortionIds = new Set(
+    parsed.erfNumber && parsed.portion !== undefined
+      ? combined
+          .filter(
+            (result) =>
+              result.fields.erf === parsed.erfNumber &&
+              (result.fields.portion ?? "0") === parsed.portion,
+          )
+          .map((result) => result.id)
+      : [],
+  );
+  const hasCombinedAmbiguity = matchingErfPortionIds.size > 1;
+  const deduplicated = new Map<string, PropertySearchResult>();
+
+  for (const result of combined) {
+    const resolved =
+      hasCombinedAmbiguity && result.exactMatchBasis === "erf_portion_singleton"
+        ? {
+            ...result,
+            confidence: "likely_nearby_parcel" as const,
+            exactMatchBasis: undefined,
+          }
+        : result;
+    const current = deduplicated.get(resolved.id);
+    if (!current || confidenceRank(resolved.confidence) > confidenceRank(current.confidence)) {
+      deduplicated.set(resolved.id, resolved);
+    }
+  }
+
+  return [...deduplicated.values()].sort(
+    (a, b) => confidenceRank(b.confidence) - confidenceRank(a.confidence),
   );
 }
