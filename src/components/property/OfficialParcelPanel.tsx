@@ -74,6 +74,7 @@ import type { DossierView } from "./dossier/reportViews";
 import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
+import { PropertyFirstRead } from "./dossier/PropertyFirstRead";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
@@ -87,6 +88,11 @@ import {
   workflowFeedbackForStartedTab,
   workspaceProgressPatchForStartedTab,
 } from "@/lib/workbench/workbenchTabProgress";
+import {
+  prepareExplicitWorkspaceTransition,
+  prepareWorkspaceEntry,
+  resolvePropertyEntryTab,
+} from "@/lib/workbench/propertyOverviewEntry";
 
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
@@ -139,7 +145,8 @@ function firstStringProperty(
   return null;
 }
 
-type Tab =
+export type Tab =
+  | "overview"
   | "investigation"
   | "research"
   | "zoning-build"
@@ -172,6 +179,11 @@ const WORKBENCH_NAV_MORE: { id: Tab; label: string }[] = [
 ];
 
 const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidance: string }> = {
+  overview: {
+    title: "Property Overview",
+    subtitle: "A first read of the selected official erf and the evidence already recorded.",
+    guidance: "Opening this overview does not start or advance the investigation.",
+  },
   investigation: {
     title: "Investigation",
     subtitle:
@@ -277,6 +289,13 @@ function buildWorkbenchPageNextStep(
   if (canonicalStep) return canonicalStep;
 
   switch (tab) {
+    case "overview":
+      return {
+        title: "Start the guided investigation",
+        body: "Confirm the selected parcel and work through the evidence in a clear order.",
+        cta: "Investigate this property",
+        tab: "investigation",
+      };
     case "investigation":
       return {
         title: "Verify official sources",
@@ -380,22 +399,12 @@ const ASK_STOEP_PROMPTS: { label: string; tab: Tab }[] = [
 ];
 
 /**
- * Selecting a parcel always opens the Investigation, unless the URL asks for a
- * specific tool explicitly.
+ * Selecting or reopening a parcel starts on a read-only first read. Guided and
+ * expert tools remain explicitly routable.
  */
 function readInitialTab(): Tab {
-  if (typeof window === "undefined") return "investigation";
-  const value = new URLSearchParams(window.location.search).get("tab");
-  if (value === "calc" || value === "calculators") return "calculators";
-  if (value === "site" || value === "site-potential") return "site-potential";
-  if (value === "zoning" || value === "zoning-build") return "zoning-build";
-  if (value === "research" || value === "sources") return "research";
-  if (value === "listings" || value === "market") return "listings";
-  if (value === "reports" || value === "documents") return "reports";
-  if (value === "notes") return "notes";
-  if (value === "local-services") return "local-services";
-  if (value === "stoep-report" || value === "report") return "stoep-report";
-  return "investigation";
+  if (typeof window === "undefined") return "overview";
+  return resolvePropertyEntryTab(window.location.search);
 }
 
 function panelIdentityConfidence(parcel: NormalizedOfficialParcel): string {
@@ -1787,31 +1796,16 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       workspace.identityStatus === "none" && legacyIdentityStatus !== "needs_verification"
         ? identityStatusToWorkspace(legacyIdentityStatus)
         : workspace.identityStatus;
-    let nextWorkspace =
-      mergedIdentityStatus === workspace.identityStatus &&
-      savedScenarioCount === workspace.strategyScenarioCount
-        ? workspace
-        : updateErfWorkspaceState(parcelId, {
-            identityStatus: mergedIdentityStatus,
-            strategyScenarioCount: savedScenarioCount,
-          });
-    const expertFromUrl = initialTab !== "investigation";
-    if (
-      nextWorkspace.investigation.expertWorkspaceOpen !== expertFromUrl ||
-      nextWorkspace.investigation.lastViewedAt == null ||
-      nextWorkspace.investigation.startedAt == null ||
-      (expertFromUrl && nextWorkspace.investigation.lastExpertView !== initialTab)
-    ) {
-      nextWorkspace = updateErfWorkspaceState(parcelId, {
-        investigation: {
-          ...nextWorkspace.investigation,
-          startedAt: nextWorkspace.investigation.startedAt ?? now,
-          lastViewedAt: now,
-          expertWorkspaceOpen: expertFromUrl,
-          lastExpertView: expertFromUrl ? initialTab : nextWorkspace.investigation.lastExpertView,
-        },
-      });
-    }
+    const entry = prepareWorkspaceEntry({
+      workspace,
+      mergedIdentityStatus,
+      savedScenarioCount,
+      initialTab,
+      now,
+    });
+    const nextWorkspace = entry.persistencePatch
+      ? updateErfWorkspaceState(parcelId, entry.persistencePatch)
+      : entry.displayWorkspace;
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
     setShareCopied(false);
@@ -2071,15 +2065,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   );
 
   function setInvestigationPatch(patch: Partial<InvestigationSnapshot>, dirty = true) {
-    const current = readErfWorkspaceState(parcelId).investigation;
+    const persistedWorkspace = readErfWorkspaceState(parcelId);
     const now = new Date().toISOString();
     return setWorkspacePatch({
-      investigation: {
-        ...current,
-        startedAt: current.startedAt ?? now,
-        lastViewedAt: now,
-        ...patch,
-      },
+      ...prepareExplicitWorkspaceTransition({
+        persistedWorkspace,
+        displayWorkspace: workspaceState,
+        investigationPatch: patch,
+        now,
+      }),
       ...(dirty ? { dirty: true } : {}),
     });
   }
@@ -2147,7 +2141,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   function returnToGuidedInvestigation() {
     setInvestigationPatch({
       expertWorkspaceOpen: false,
-      lastExpertView: tab !== "investigation" ? tab : workspaceState.investigation.lastExpertView,
+      lastExpertView:
+        tab !== "investigation" && tab !== "overview"
+          ? tab
+          : workspaceState.investigation.lastExpertView,
     }, false);
     setTab("investigation");
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
@@ -2164,6 +2161,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     nextTab: Tab,
     options?: { markStarted?: boolean; anchorId?: string },
   ) {
+    if (nextTab === "overview") {
+      setTab("overview");
+      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+      return;
+    }
     const currentInvestigation = readErfWorkspaceState(parcelId).investigation;
     if (nextTab === "investigation") {
       setInvestigationPatch({
@@ -2325,8 +2327,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   );
 
   const activeSection = WORKBENCH_SECTIONS[tab];
+  const isOverview = tab === "overview";
   const isInvestigation = tab === "investigation";
-  const expertWorkspaceOpen = workspaceState.investigation.expertWorkspaceOpen || !isInvestigation;
+  const expertWorkspaceOpen = !isOverview && !isInvestigation;
   const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
   const pageNextStep = buildWorkbenchPageNextStep(tab, {
     paidReportCount,
@@ -2515,7 +2518,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       >
         <div className="min-w-0">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6A00]">
-            Erf Workbench
+            {isOverview ? "Property overview" : "Erf Workbench"}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-400">
@@ -2610,7 +2613,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           expertWorkspaceOpen ? "md:ml-64" : "",
         )}
       >
-        {!isInvestigation && (
+        {expertWorkspaceOpen && (
           <>
             <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
@@ -2648,7 +2651,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           </>
         )}
 
-        {!isInvestigation && (
+        {expertWorkspaceOpen && (
           <section className="mx-4 mt-4 rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-5 shadow-[0_18px_48px_-36px_rgba(13,27,42,0.42)] backdrop-blur md:mx-7 md:mt-7 md:p-6">
             <div className="inline-flex items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white ring-1 ring-[#0D1B2A]/10">
               Workbench / {activeSection.title}
@@ -2662,6 +2665,68 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#0D1B2A]/62">
               {activeSection.guidance}
             </p>
+          </section>
+        )}
+
+        {isOverview && (
+          <section className="mx-4 mt-4 md:mx-7 md:mt-7">
+            <PropertyFirstRead
+              parcel={normalizedParcel}
+              displayTitle={resolved.displayTitle}
+              displaySubtitle={resolved.displaySubtitle}
+              workingAddressLine={
+                savedMarketAddress?.formattedAddress ??
+                propertyIdentity?.address ??
+                canonicalUserAddress?.streetName ??
+                null
+              }
+              investigationInput={workbenchInvestigationInput}
+              planning={planningAssessment}
+              assets={erfFileVault.assets}
+              savedEvidence={savedMarketEvidence}
+              chosenScenario={chosenScenario}
+              onInvestigate={returnToGuidedInvestigation}
+              onOpenExpertTools={() => openExpertWorkspace("research")}
+              mapSlot={
+                <section className="h-full rounded-lg border border-white/12 bg-white/95 p-4 text-[#0D1B2A] shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#64748B]">
+                      Selected erf on the map
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBackToMap}
+                        className="rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#142941]"
+                      >
+                        Back to full map
+                      </button>
+                      {selectedErfGoogleMapsUrl && (
+                        <a
+                          href={selectedErfGoogleMapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35"
+                        >
+                          Google Maps
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <SelectedErfMiniMap
+                      coordinates={normalizedParcel.coordinates}
+                      title={resolved.displayTitle}
+                      onBackToMap={handleBackToMap}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-[#0D1B2A]/58">
+                    Map position is approximate context, not a boundary confirmation.
+                  </p>
+                </section>
+              }
+            />
           </section>
         )}
 
@@ -2802,7 +2867,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
 
-          {!isInvestigation && (
+          {expertWorkspaceOpen && (
             <WorkbenchNextStep
               step={pageNextStep}
               onAction={() => {
