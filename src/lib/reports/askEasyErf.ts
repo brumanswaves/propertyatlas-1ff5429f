@@ -231,6 +231,11 @@ const BROAD_QUESTION_PATTERNS = [
   /\bdecision\b/i,
   /\bverdict\b/i,
   /\bfirst read\b/i,
+  /\bwhat do you know about (?:this|the) (?:erf|property)\b/i,
+  /\bwhat (?:is|do we know) about (?:this|the) (?:erf|property)\b/i,
+  /\bwhat is still unconfirmed\b/i,
+  /\bwhat (?:information|evidence) is still missing\b/i,
+  /\bwhat should i do next\b/i,
 ];
 const BROAD_FALLBACK_DOMAINS: EvidenceDomain[] = [
   "identity",
@@ -258,6 +263,9 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
       /\bproperty identity\b/i,
       /\bcoordinates?\b/i,
       /\baddress\b/i,
+      /\b(?:erf|parcel|property) (?:area|size)\b/i,
+      /\bhow (?:big|large) is (?:this|the) (?:erf|parcel|property)\b/i,
+      /\bhow many square metres\b/i,
     ],
   },
   {
@@ -323,6 +331,7 @@ const ASK_EASY_ERF_DOMAIN_KEYWORDS: Array<{
       /\bresale\b/i,
       /\brent\b/i,
       /\bassumptions?\b/i,
+      /\bmy numbers\b/i,
     ],
   },
   {
@@ -539,13 +548,16 @@ export function buildAskEasyErfSelectedEvidencePayload(input: {
   };
   const inferredDomains = inferAskEasyErfEvidenceDomains(question);
   const isBroadQuestion = isBroadAskEasyErfQuestion(question);
-  const domains = inferredDomains.length ? inferredDomains : isBroadQuestion ? BROAD_FALLBACK_DOMAINS : [];
+  const domains: EvidenceDomain[] = isBroadQuestion
+    ? Array.from(new Set<EvidenceDomain>([...inferredDomains, ...BROAD_FALLBACK_DOMAINS]))
+    : inferredDomains;
   if (!domains.length) {
     return emptySelectedEvidencePayload(input.pack, question, input.now);
   }
   const selected = selectPropertyEvidence(input.pack, {
     question,
     domains,
+    diversifyDomains: isBroadQuestion,
     maxClaims: limits.maxClaims,
     maxSourceFragments: limits.maxSourceFragments,
     maxTotalCharacters: limits.maxTotalCharacters,
@@ -744,22 +756,21 @@ export function suggestedAskEasyErfQuestions(
       "How strong is the market support for the exit assumption?",
     ]);
   }
-  const questions: string[] = [];
-  if (!payload.ownership.isVerified) questions.push("Why is ownership still unverified?");
-  if (payload.missingInformation.length) {
-    questions.push("What evidence would improve confidence most?");
-  }
-  if (payload.risks.length) questions.push("What are the biggest risks?");
-  if (payload.market.includedCount < 3) questions.push("Is the Market evidence strong enough?");
-  if (payload.planning.some((field) => !field.value)) {
-    questions.push("What planning information is still missing?");
-  }
-  if (payload.sitePotential.selectedConcept) {
-    questions.push("What does Easy Erf know about development potential?");
-  }
-  questions.push("What should I ask a town planner?");
-  questions.push(`Why is the current verdict "${verdictLabel(payload.decision.verdict)}"?`);
-  return unique(questions);
+  const stateAwareQuestion = payload.strategy.chosen
+    ? "What do my numbers say?"
+    : payload.sitePotential.selectedConcept
+      ? "What does the selected concept assume?"
+      : payload.market.evidenceCount > 0
+        ? "What does the market evidence show?"
+        : !payload.ownership.isVerified
+          ? "Do we know who owns this property?"
+          : "What do we know about zoning?";
+  return unique([
+    "What do you know about this erf?",
+    "What is still unconfirmed?",
+    stateAwareQuestion,
+    "What should I do next?",
+  ]);
 }
 
 export function hasEnoughAskEasyErfEvidence(payload: AskEasyErfEvidencePayload): boolean {

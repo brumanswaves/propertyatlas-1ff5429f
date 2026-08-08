@@ -16,6 +16,8 @@ import {
 } from "@/lib/reports/askEasyErf";
 import type { PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import type { ReportDecisionMode } from "@/lib/reports/reportDecisionMode";
+import type { ReportAction } from "@/lib/reports/reportFindings";
+import { canonicalActionNavigation } from "@/lib/investigation/canonicalNextAction";
 import type { DossierView } from "./reportViews";
 
 /**
@@ -29,6 +31,7 @@ import type { DossierView } from "./reportViews";
 export function AskEasyErfPanel({
   suggestionPayload,
   evidencePack,
+  canonicalNextAction,
   decisionMode,
   onSelectView,
   compact = false,
@@ -36,8 +39,9 @@ export function AskEasyErfPanel({
 }: {
   suggestionPayload: AskEasyErfEvidencePayload;
   evidencePack: PropertyEvidencePack | null;
+  canonicalNextAction?: ReportAction | null;
   decisionMode?: ReportDecisionMode;
-  onSelectView?: (view: DossierView) => void;
+  onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
   /** Compact layout for the Investigation Home; behaviour is unchanged. */
   compact?: boolean;
   maxSuggestions?: number;
@@ -325,6 +329,13 @@ export function AskEasyErfPanel({
 
       {answer && <AskEasyErfAnswerCard answer={answer} />}
 
+      {canonicalNextAction && (
+        <AskEasyErfCanonicalActionCard
+          action={canonicalNextAction}
+          onSelectView={onSelectView}
+        />
+      )}
+
       <p className="mt-5 rounded-2xl border border-[#D9E6F2] bg-white px-4 py-3 text-xs leading-5 text-[#0D1B2A]/62">
         Ask Easy Erf answers are limited to the evidence saved for this property. Missing evidence
         may change the conclusion. Verify legal, planning, engineering and valuation matters with
@@ -390,10 +401,42 @@ function AskEasyErfAnswerCard({ answer }: { answer: AskEasyErfAnswer }) {
           )}
         </div>
       </div>
-      {answer.nextAction && (
-        <p className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] px-4 py-3 text-sm font-semibold text-[#0D1B2A]">
-          Recommended next action: {answer.nextAction}
+    </article>
+  );
+}
+
+export function AskEasyErfCanonicalActionCard({
+  action,
+  onSelectView,
+}: {
+  action: ReportAction;
+  onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
+}) {
+  const target = canonicalActionNavigation(action);
+  return (
+    <article className="mt-5 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C2410C]">
+        Next best step
+      </div>
+      <h4 className="mt-2 text-base font-semibold text-[#0D1B2A]">{action.title}</h4>
+      <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">{action.reason}</p>
+      {action.afterCompletion && (
+        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/58">
+          After completion: {action.afterCompletion}
         </p>
+      )}
+      {onSelectView && (
+        <button
+          type="button"
+          onClick={() =>
+            onSelectView(target.targetTab as DossierView, {
+              anchorId: target.targetAnchorId,
+            })
+          }
+          className="report-no-print mt-4 inline-flex min-h-10 items-center rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142941]"
+        >
+          {action.actionLabel}
+        </button>
       )}
     </article>
   );

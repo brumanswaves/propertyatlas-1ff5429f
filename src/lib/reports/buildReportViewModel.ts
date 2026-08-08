@@ -235,6 +235,7 @@ export interface BuildReportInput {
   strategyWorkspace?: BuildPropertyEvidencePackInput["strategyWorkspace"];
   sitePotentialProject?: BuildPropertyEvidencePackInput["sitePotentialProject"];
   siteBrief?: string | null;
+  planningAssessment?: BuildPropertyEvidencePackInput["planningAssessment"];
   now?: Date;
   disclaimer?: string;
 }
@@ -1027,6 +1028,7 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
       selectedSiteDesign: input.selectedSiteDesign,
       sitePotentialProject: input.sitePotentialProject,
       siteBrief: input.siteBrief,
+      planningAssessment: input.planningAssessment,
       now: input.now,
     });
   const identity = buildIdentityFromPack(evidencePack, input.parcel);

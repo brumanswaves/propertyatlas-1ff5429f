@@ -75,6 +75,7 @@ import { SitePotentialTab } from "./dossier/SitePotentialTab";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
 import { LocalPropertyTeam } from "./dossier/LocalPropertyTeam";
 import { PropertyFirstRead } from "./dossier/PropertyFirstRead";
+import { AskEasyErfPanel } from "./dossier/AskEasyErfPanel";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
@@ -100,6 +101,10 @@ import {
   selectedMarketAddress,
 } from "@/features/marketEvidence/addressIntelligence";
 import { toast } from "sonner";
+import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
+import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
+import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
+import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 
 interface Props {
   selection: OfficialFeatureSelection;
@@ -2325,6 +2330,55 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       workspaceState,
     ],
   );
+  const overviewSelectedSiteDesign = useMemo(
+    () =>
+      erfFileVault.assets.find(
+        (asset) =>
+          asset.id === workspaceState.sitePotential.selectedDesignAssetId &&
+          asset.asset_category === "generated_design",
+      ) ?? null,
+    [erfFileVault.assets, workspaceState.sitePotential.selectedDesignAssetId],
+  );
+  const overviewReport = useMemo(
+    () =>
+      buildReportViewModel({
+        parcel: normalizedParcel,
+        workspaceState,
+        savedEvidence: savedMarketEvidence,
+        marketAddress: marketAddressIntelligence ?? null,
+        assets: erfFileVault.assets,
+        chosenScenario,
+        strategyScenarios,
+        selectedSiteDesign: overviewSelectedSiteDesign,
+        planningAssessment,
+      }),
+    [
+      chosenScenario,
+      erfFileVault.assets,
+      marketAddressIntelligence,
+      normalizedParcel,
+      overviewSelectedSiteDesign,
+      planningAssessment,
+      savedMarketEvidence,
+      strategyScenarios,
+      workspaceState,
+    ],
+  );
+  const overviewAskPayload = useMemo(
+    () =>
+      buildAskEasyErfEvidencePayload({
+        report: overviewReport,
+        decision: buildDecisionIntelligence(overviewReport),
+        assets: erfFileVault.assets,
+        savedEvidence: savedMarketEvidence,
+        strategyScenarios,
+      }),
+    [erfFileVault.assets, overviewReport, savedMarketEvidence, strategyScenarios],
+  );
+  const overviewCanonicalNextAction = useMemo(
+    () => canonicalReportAction(workbenchInvestigationInput),
+    [workbenchInvestigationInput],
+  );
 
   const activeSection = WORKBENCH_SECTIONS[tab];
   const isOverview = tab === "overview";
@@ -2687,6 +2741,18 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               chosenScenario={chosenScenario}
               onInvestigate={returnToGuidedInvestigation}
               onOpenExpertTools={() => openExpertWorkspace("research")}
+              askSlot={
+                <AskEasyErfPanel
+                  compact
+                  maxSuggestions={4}
+                  suggestionPayload={overviewAskPayload}
+                  evidencePack={overviewReport.evidencePack ?? null}
+                  canonicalNextAction={overviewCanonicalNextAction}
+                  onSelectView={(view, options) =>
+                    selectWorkbenchTab(view as Tab, { anchorId: options?.anchorId })
+                  }
+                />
+              }
               mapSlot={
                 <section className="h-full rounded-lg border border-white/12 bg-white/95 p-4 text-[#0D1B2A] shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2811,7 +2877,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onOpenNextAction={() => selectWorkbenchTab("zoning-build", { markStarted: true })}
               sourcesExtra={
                 <div className="mt-4">
-                  <ErfResearchDossier parcel={normalizedParcel} view="research" />
+                  <ErfResearchDossier
+                    parcel={normalizedParcel}
+                    view="research"
+                    planningAssessment={planningAssessment}
+                  />
                 </div>
               }
             />
@@ -2834,13 +2904,32 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               onOpenTab={(next) => selectWorkbenchTab(next as Tab, { markStarted: true })}
             />
           )}
-          {tab === "listings" && <ErfResearchDossier parcel={normalizedParcel} view="listings" />}
-          {tab === "reports" && <ErfResearchDossier parcel={normalizedParcel} view="reports" />}
-          {tab === "notes" && <ErfResearchDossier parcel={normalizedParcel} view="notes" />}
+          {tab === "listings" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="listings"
+              planningAssessment={planningAssessment}
+            />
+          )}
+          {tab === "reports" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="reports"
+              planningAssessment={planningAssessment}
+            />
+          )}
+          {tab === "notes" && (
+            <ErfResearchDossier
+              parcel={normalizedParcel}
+              view="notes"
+              planningAssessment={planningAssessment}
+            />
+          )}
           {tab === "calculators" && (
             <ErfResearchDossier
               parcel={normalizedParcel}
               view="calculators"
+              planningAssessment={planningAssessment}
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
             />
           )}
@@ -2849,6 +2938,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               parcel={normalizedParcel}
               parcelRing={parcelRing}
               view="stoep-report"
+              planningAssessment={planningAssessment}
               onSelectView={(view, options) =>
                 selectWorkbenchTab(view as Tab, {
                   markStarted: true,

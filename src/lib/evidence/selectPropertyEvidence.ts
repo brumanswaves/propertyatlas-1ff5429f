@@ -45,7 +45,11 @@ export function selectPropertyEvidence(
   };
 
   appendLine("Claims");
-  for (const { claim } of scoreClaims(pack, tokens, requestedDomains)) {
+  const scoredClaims = scoreClaims(pack, tokens, requestedDomains);
+  const claimPool = request.diversifyDomains
+    ? diversifyClaimsByDomain(scoredClaims, request.domains ?? [])
+    : scoredClaims;
+  for (const { claim } of claimPool) {
     if (selectedClaims.length >= maxClaims) break;
     const line = renderClaim(claim);
     if (!appendLine(line)) break;
@@ -106,6 +110,27 @@ export function selectPropertyEvidence(
     text: lines.join("\n"),
     truncated,
   };
+}
+
+function diversifyClaimsByDomain<T extends { claim: EvidenceClaim }>(
+  scoredClaims: T[],
+  domains: EvidenceClaim["domain"][],
+): T[] {
+  const selectedIds = new Set<string>();
+  const diversified: T[] = [];
+  for (const domain of domains) {
+    const candidate = scoredClaims.find(
+      ({ claim }) => claim.domain === domain && !selectedIds.has(claim.id),
+    );
+    if (!candidate) continue;
+    selectedIds.add(candidate.claim.id);
+    diversified.push(candidate);
+  }
+  for (const candidate of scoredClaims) {
+    if (selectedIds.has(candidate.claim.id)) continue;
+    diversified.push(candidate);
+  }
+  return diversified;
 }
 
 function scoreClaims(

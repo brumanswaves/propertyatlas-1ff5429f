@@ -118,6 +118,7 @@ export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput)
   addAddressEvidence(pack, input);
   addMarketEvidence(pack, savedMarketEvidence);
   addAssetEvidence(pack, assets, selectedSiteDesign);
+  addPlanningAssessmentEvidence(pack, input, systemSourceId);
   addNotesEvidence(pack, input);
   addStrategyEvidence(pack, strategyWorkspace, strategyScenarios, chosenScenario);
   addSitePotentialEvidence(pack, input, assets, selectedSiteDesign, systemSourceId);
@@ -261,7 +262,7 @@ function addOfficialParcelEvidence(
         : resolvedArea.approximate
         ? (resolvedArea.warning ?? SHAPE_AREA_WARNING)
         : resolvedArea.sourceKind === "csg_geom_area"
-          ? "Registered ground area published directly by the official CSG parcel record (GEOM_AREA, square metres)."
+          ? "Official cadastral area published directly by the CSG parcel record (GEOM_AREA, square metres)."
           : "Explicit square-metre area supplied by the official parcel record.",
       sourceIds: [sourceId],
       locators: [{ fieldPath: `parcel.rawProperties.${resolvedArea.sourceKey}` }],
@@ -269,9 +270,12 @@ function addOfficialParcelEvidence(
       updatedAt: input.workspaceState.updatedAt,
       userConfirmed: false,
       excluded: false,
+      warning: resolvedArea.warning,
     });
   }
-  const zoningCandidates = isOfficialParcel ? candidates(raw, ZONING_KEYS) : [];
+  const zoningCandidates = isOfficialParcel && !input.planningAssessment
+    ? candidates(raw, ZONING_KEYS)
+    : [];
   for (const candidate of zoningCandidates) {
     addClaim(pack, {
       id: claimId("planning", "zoning", candidate.path),
@@ -293,7 +297,9 @@ function addOfficialParcelEvidence(
       excluded: false,
     });
   }
-  for (const [key, label, keys] of isOfficialParcel ? PLANNING_KEYS : []) {
+  for (const [key, label, keys] of isOfficialParcel && !input.planningAssessment
+    ? PLANNING_KEYS
+    : []) {
     for (const candidate of candidates(raw, keys)) {
       addClaim(pack, {
         id: claimId("planning", key, candidate.path),
@@ -340,6 +346,216 @@ function addOfficialParcelEvidence(
       excluded: false,
     });
   }
+}
+
+const CANONICAL_PLANNING_KEYS = new Set([
+  "zoning",
+  "coverage",
+  "far",
+  "height",
+  "setbacks",
+  "permittedUses",
+]);
+
+function addPlanningAssessmentEvidence(
+  pack: MutablePack,
+  input: BuildPropertyEvidencePackInput,
+  systemSourceId: string,
+) {
+  const assessment = input.planningAssessment;
+  if (!assessment || assessment.parcelId !== input.parcel.id) return;
+
+  // The semantic assessment replaces raw aliases and extracted duplicates for
+  // the controls it owns. Other planning evidence remains untouched.
+  pack.claims = pack.claims.filter(
+    (claim) => claim.domain !== "planning" || !CANONICAL_PLANNING_KEYS.has(claim.key),
+  );
+
+  const detection = assessment.detection;
+  if (detection.method === "not_detected") return;
+
+  const detectionSourceId = planningDetectionSourceId(pack, input, systemSourceId);
+  const manual = detection.method === "manual_selection";
+  const zoneValue = detection.zoneName ?? detection.zoneCode;
+  if (zoneValue) {
+    addClaim(pack, {
+      id: `claim-planning-assessment-zoning-${detection.method}`,
+      parcelId: input.parcel.id,
+      domain: "planning",
+      key: "zoning",
+      label: "Zoning",
+      value: zoneValue,
+      normalizedValue: normalizeValue(zoneValue),
+      nature: manual ? "assumption" : "fact",
+      status: manual ? "not_reviewed" : "supported",
+      confidence: manual ? "low" : detection.confidence,
+      confidenceReason: planningDetectionConfidenceReason(input),
+      sourceIds: [detectionSourceId],
+      locators: [planningDetectionLocator(input)],
+      observedAt: input.workspaceState.updatedAt,
+      updatedAt: input.workspaceState.updatedAt,
+      userConfirmed: manual,
+      excluded: false,
+      warning: detection.statement,
+    });
+  }
+
+  for (const rule of assessment.publishedRules) {
+    const key = planningRuleClaimKey(rule.ruleType);
+    if (!key) continue;
+    const sourceId = addPublishedPlanningSource(pack, input, rule.sourceId);
+    addClaim(pack, {
+      id: `claim-planning-assessment-rule-${rule.id}`,
+      parcelId: input.parcel.id,
+      domain: "planning",
+      key,
+      label: rule.label,
+      value: rule.value ?? rule.statement,
+      normalizedValue: rule.value ?? normalizeValue(rule.statement),
+      unit: rule.unit,
+      nature: manual ? "assumption" : "observation",
+      status: manual ? "not_reviewed" : "partial",
+      confidence: manual ? "low" : "medium",
+      confidenceReason: manual
+        ? "Published general rule associated with a manually selected zoning assumption. It is not a verified property right."
+        : "Published general rule associated with the supported zone. Property-specific departures, title conditions and approvals remain unverified.",
+      sourceIds: unique([detectionSourceId, sourceId]),
+      locators: [
+        {
+          fieldPath: `planningAssessment.publishedRules.${rule.id}`,
+          excerpt: rule.statement,
+        },
+      ],
+      observedAt: input.workspaceState.updatedAt,
+      updatedAt: input.workspaceState.updatedAt,
+      userConfirmed: manual,
+      excluded: false,
+      warning: assessment.headlineWarning,
+    });
+  }
+
+  if (assessment.zone?.permittedUses.length) {
+    addClaim(pack, {
+      id: "claim-planning-assessment-permitted-uses",
+      parcelId: input.parcel.id,
+      domain: "planning",
+      key: "permittedUses",
+      label: "Permitted uses",
+      value: assessment.zone.permittedUses.join(", "),
+      normalizedValue: assessment.zone.permittedUses.map(normalizeValue).join("|"),
+      nature: manual ? "assumption" : "observation",
+      status: manual ? "not_reviewed" : "partial",
+      confidence: manual ? "low" : "medium",
+      confidenceReason: manual
+        ? "Published uses for a manually selected zoning assumption. They are not verified property rights."
+        : "Published uses for the supported zone. Property-specific restrictions and approvals remain unverified.",
+      sourceIds: [
+        detectionSourceId,
+        addPublishedPlanningSource(pack, input, assessment.zone.sourceId),
+      ],
+      locators: [{ fieldPath: "planningAssessment.zone.permittedUses" }],
+      observedAt: input.workspaceState.updatedAt,
+      updatedAt: input.workspaceState.updatedAt,
+      userConfirmed: manual,
+      excluded: false,
+      warning: assessment.headlineWarning,
+    });
+  }
+}
+
+function planningDetectionSourceId(
+  pack: MutablePack,
+  input: BuildPropertyEvidencePackInput,
+  systemSourceId: string,
+): string {
+  const detection = input.planningAssessment!.detection;
+  if (detection.method === "document_supported" && detection.supportingAssetId) {
+    const assetSourceId = `asset-${detection.supportingAssetId}`;
+    if (pack.sources.some((source) => source.id === assetSourceId)) return assetSourceId;
+  }
+  if (detection.method === "manual_selection") {
+    return addSource(pack, {
+      id: "planning-manual-selection",
+      parcelId: input.parcel.id,
+      kind: "user_confirmation",
+      label: detection.suppliedBy,
+      authorityType: "user_supplied",
+      sourceQuality: "reference",
+      status: "ready",
+      capturedAt: input.workspaceState.updatedAt,
+      updatedAt: input.workspaceState.updatedAt,
+      locators: [{ fieldPath: "planningAssessment.detection" }],
+      fragments: [detection.statement],
+    });
+  }
+  if (detection.method === "official_polygon") {
+    return addSource(pack, {
+      id: "planning-official-polygon",
+      parcelId: input.parcel.id,
+      kind: "official_portal",
+      label: detection.suppliedBy,
+      authorityType: "official",
+      sourceQuality: "direct",
+      status: "ready",
+      capturedAt: input.workspaceState.updatedAt,
+      updatedAt: input.workspaceState.updatedAt,
+      locators: [{ fieldPath: "planningAssessment.detection" }],
+      fragments: [detection.statement],
+    });
+  }
+  return systemSourceId;
+}
+
+function planningDetectionConfidenceReason(input: BuildPropertyEvidencePackInput): string {
+  const detection = input.planningAssessment!.detection;
+  if (detection.method === "manual_selection") {
+    return "Working zoning assumption selected manually. It is not a verified property right and must be confirmed with the municipality.";
+  }
+  if (detection.method === "official_polygon") {
+    return "Zoning supported by the official planning polygon. Published scheme rules remain general controls, not proof of every property-specific right.";
+  }
+  const asset = (input.assets ?? []).find((item) => item.id === detection.supportingAssetId);
+  return asset
+    ? `Zoning supported by the identity-matched uploaded document ${asset.original_file_name}. Confirm legal reliance with the issuing municipality.`
+    : "Zoning is marked document-supported, but the supporting file is not available in this evidence pack. Confirm it before relying on the value.";
+}
+
+function planningDetectionLocator(input: BuildPropertyEvidencePackInput): EvidenceLocator {
+  const assetId = input.planningAssessment!.detection.supportingAssetId;
+  return assetId
+    ? { assetId, metadataKey: "extractedClaims" }
+    : { fieldPath: "planningAssessment.detection" };
+}
+
+function addPublishedPlanningSource(
+  pack: MutablePack,
+  input: BuildPropertyEvidencePackInput,
+  sourceId: string,
+): string {
+  const source = input.planningAssessment!.sources.find((item) => item.id === sourceId);
+  if (!source) return "system-state";
+  return addSource(pack, {
+    id: `planning-source-${source.id}`,
+    parcelId: input.parcel.id,
+    kind: "municipal_portal",
+    label: source.title,
+    authorityType: source.jurisdiction === "municipal" ? "municipal" : "official",
+    sourceQuality: source.status === "active" ? "strong" : "reference",
+    status: source.status === "active" ? "ready" : "not_opened",
+    url: source.url,
+    capturedAt: input.workspaceState.updatedAt,
+    updatedAt: input.workspaceState.updatedAt,
+    locators: [{ sourceUrl: source.url }],
+    fragments: [source.notes],
+  });
+}
+
+function planningRuleClaimKey(ruleType: string): string | null {
+  if (ruleType === "coverage") return "coverage";
+  if (ruleType === "floor_area_ratio") return "far";
+  if (ruleType === "height") return "height";
+  if (ruleType.includes("building_line")) return "setbacks";
+  return null;
 }
 
 function addResearchSources(pack: MutablePack, input: BuildPropertyEvidencePackInput) {

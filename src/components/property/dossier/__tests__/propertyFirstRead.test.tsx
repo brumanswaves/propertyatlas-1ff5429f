@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import { buildPropertyEvidencePack } from "@/lib/evidence/buildPropertyEvidencePack";
+import { buildAskEasyErfSelectedEvidencePayload } from "@/lib/reports/askEasyErf";
 import {
   buildPropertyFirstReadModel,
   PropertyFirstRead,
@@ -73,7 +75,7 @@ function props(overrides: Partial<PropertyFirstReadProps> = {}): PropertyFirstRe
 
 describe("PropertyFirstRead", () => {
   it("renders a canonical property first read without copied showcase values", () => {
-    const input = props();
+    const input = props({ askSlot: <div>Shared Ask Easy Erf panel</div> });
     const model = buildPropertyFirstReadModel(input);
     const markup = renderToStaticMarkup(<PropertyFirstRead {...input} />);
 
@@ -88,6 +90,13 @@ describe("PropertyFirstRead", () => {
     expect(markup).toContain("Evidence status");
     expect(markup).toContain("Planning snapshot");
     expect(markup).toContain("Selected erf map");
+    expect(markup).toContain("Shared Ask Easy Erf panel");
+    expect(markup.indexOf("Shared Ask Easy Erf panel")).toBeGreaterThan(
+      markup.indexOf("Property facts"),
+    );
+    expect(markup.indexOf("Shared Ask Easy Erf panel")).toBeLessThan(
+      markup.indexOf("Evidence status"),
+    );
     expect(markup).not.toContain("Erf 1570");
     expect(markup).not.toContain("618.7 m²");
   });
@@ -140,6 +149,46 @@ describe("PropertyFirstRead", () => {
     expect(joined).toContain("Working assumption");
     expect(joined).toContain("Working estimate from an unverified coverage assumption");
     expect(joined).not.toContain("Official property right");
+  });
+
+  it("keeps Property First Read and Ask aligned to the same manual planning assumption", () => {
+    const subject = parcel({ municipality: "Kouga Local Municipality" });
+    const planning = buildParcelPlanningAssessment({
+      parcelId: subject.id,
+      municipality: subject.municipality ?? null,
+      locationHints: ["SEA VISTA", "HUMANSDORP"],
+      erfAreaM2: 777.25,
+      manualZoneCode: "RES1",
+      documentZoneCode: null,
+      documentZoneAssetId: null,
+      hasParcelPolygon: true,
+      now: new Date("2026-07-16T08:00:00Z"),
+    });
+    const base = props({ parcel: subject });
+    const input: PropertyFirstReadProps = {
+      ...base,
+      planning,
+      investigationInput: { ...base.investigationInput, planning },
+    };
+    const model = buildPropertyFirstReadModel(input);
+    const pack = buildPropertyEvidencePack({
+      parcel: subject,
+      workspaceState: base.investigationInput.workspaceState,
+      assets: [],
+      planningAssessment: planning,
+      now: new Date("2026-07-16T08:00:00Z"),
+    });
+    const selected = buildAskEasyErfSelectedEvidencePayload({
+      pack,
+      question: "What do we know about zoning?",
+      now: new Date("2026-07-16T08:00:00Z"),
+    });
+    const firstReadZoning = model.evidenceStatuses.find((item) => item.id === "zoning");
+    const askZoning = selected.claims.find((claim) => claim.key === "zoning");
+
+    expect(firstReadZoning?.status).toBe("Working assumption");
+    expect(askZoning).toMatchObject({ nature: "assumption", status: "not_reviewed" });
+    expect(askZoning?.confidenceReason).toContain("Working zoning assumption");
   });
 
   it("keeps official polygon zoning distinct from document support", () => {

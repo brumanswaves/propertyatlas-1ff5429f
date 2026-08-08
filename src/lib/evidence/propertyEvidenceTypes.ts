@@ -16,6 +16,7 @@ import type {
 } from "@/features/marketEvidence/types";
 import type { SitePotentialProject } from "@/lib/sitePotential/types";
 import type { PropertyNotes } from "@/lib/workbench/propertyNotes";
+import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
 
 export type EvidenceDomain =
   | "identity"
@@ -259,12 +260,16 @@ export interface BuildPropertyEvidencePackInput {
   selectedSiteDesign?: ErfAsset | null;
   sitePotentialProject?: SitePotentialProject | null;
   siteBrief?: string | null;
+  /** Canonical semantic planning state. assessedAt is deliberately not fingerprinted. */
+  planningAssessment?: ParcelPlanningAssessment | null;
   now?: Date;
 }
 
 export interface EvidenceSelectionRequest {
   question?: string;
   domains?: EvidenceDomain[];
+  /** Keep broad selections representative by taking one ranked claim per domain before filling. */
+  diversifyDomains?: boolean;
   maxClaims?: number;
   maxSourceFragments?: number;
   maxTotalCharacters?: number;
