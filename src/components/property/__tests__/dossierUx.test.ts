@@ -410,7 +410,12 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Capture your research, questions, and decision notes.");
     expect(panel).toContain('title: "Easy Erf Report"');
     expect(panel).toContain("Assemble the final report from saved identity");
-    expect(panel).toContain("!isInvestigation && (");
+    expect(panel).toContain("expertWorkspaceOpen && (");
+    expect(panel).toContain("<PropertyFirstRead");
+    expect(panel).toContain('const isOverview = tab === "overview"');
+    expect(panel).toContain("resolvePropertyEntryTab(window.location.search)");
+    expect(panel).toContain("onInvestigate={returnToGuidedInvestigation}");
+    expect(panel).toContain('onOpenExpertTools={() => openExpertWorkspace("research")}');
     expect(panel).toContain("<InvestigationHome");
     expect(panel).toContain("parcel={normalizedParcel}");
     expect(panel).toContain("workspaceState={workspaceState}");
