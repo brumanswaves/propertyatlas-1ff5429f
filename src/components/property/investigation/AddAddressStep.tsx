@@ -86,11 +86,15 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
   const [province, setProvince] = useState("");
   const [notes, setNotes] = useState("");
   const [resolving, setResolving] = useState(false);
+  const [mapSuggestionError, setMapSuggestionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   /** Only what the user is actively typing is geocoded, never restored text. */
   const [typedQuery, setTypedQuery] = useState("");
-  const { suggestions: typedSuggestions, loading: typedSuggestionsLoading } =
-    useAddressSuggestions(typedQuery, { near: parcel.coordinates ?? null });
+  const {
+    suggestions: typedSuggestions,
+    loading: typedSuggestionsLoading,
+    error: typedSuggestionsError,
+  } = useAddressSuggestions(typedQuery, { near: parcel.coordinates ?? null });
 
   useEffect(() => {
     setTypedQuery("");
@@ -129,6 +133,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
       return;
     }
     setResolving(true);
+    setMapSuggestionError(null);
     try {
       const next = await reverseGeocodeAddressCandidates(
         parcel.coordinates.lat,
@@ -138,6 +143,13 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
       if (!next.length) {
         toast.message("No map address suggestion was available. Enter the address manually.");
       }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Map address suggestions are temporarily unavailable.";
+      setMapSuggestionError(message);
+      toast.error(message);
     } finally {
       setResolving(false);
     }
@@ -278,6 +290,13 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
                       </li>
                     ))}
                   </ul>
+                ) : typedSuggestionsError ? (
+                  <p
+                    role="status"
+                    className="rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+                  >
+                    {typedSuggestionsError}
+                  </p>
                 ) : null}
               </div>
             )}
@@ -386,6 +405,14 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
             map.
           </p>
         )}
+        {mapSuggestionError ? (
+          <p
+            role="status"
+            className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+          >
+            {mapSuggestionError}
+          </p>
+        ) : null}
       </section>
 
       <div className="flex justify-end">

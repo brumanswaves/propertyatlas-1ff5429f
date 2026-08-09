@@ -31,6 +31,22 @@ export function findMunicipalityPlanningRegistry(
 }
 
 /**
+ * Resolves a canonical municipality only when either the municipality itself
+ * matches or the location hints identify one unique reviewed registry area.
+ * CSG registration regions such as Humansdorp are never treated as a local
+ * municipality merely because they are present.
+ */
+export function resolveMunicipalityPlanningRegistry(
+  municipality: string | null | undefined,
+  locationHints: Array<string | null | undefined>,
+): MunicipalityPlanningRegistryEntry | null {
+  const direct = findMunicipalityPlanningRegistry(municipality);
+  if (direct) return direct;
+  const areaMatches = REGISTRY.filter((entry) => Boolean(matchPlanningArea(entry, locationHints)));
+  return areaMatches.length === 1 ? areaMatches[0] : null;
+}
+
+/**
  * Matches a planning area (suburb/precinct) from any free-text location hints
  * available on the parcel. Returns the registry's canonical spelling.
  */

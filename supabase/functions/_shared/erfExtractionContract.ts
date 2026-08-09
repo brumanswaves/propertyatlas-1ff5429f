@@ -594,6 +594,21 @@ export function parseCanonicalLpi(parcelId: string | null | undefined): string |
   return match ? match[1].toUpperCase() : null;
 }
 
+/** Derives the subject erf and portion encoded by a canonical 21-character LPI. */
+export function expectedIdentityFromCanonicalLpi(
+  parcelId: string | null | undefined,
+): Pick<ErfExpectedIdentity, "lpiCode" | "erfNumber" | "portionNumber"> {
+  const lpiCode = parseCanonicalLpi(parcelId);
+  if (!lpiCode || !/^[A-Z]\d{20}$/.test(lpiCode)) {
+    return { lpiCode, erfNumber: null, portionNumber: null };
+  }
+  return {
+    lpiCode,
+    erfNumber: String(Number(lpiCode.slice(8, 16))),
+    portionNumber: String(Number(lpiCode.slice(16, 21))),
+  };
+}
+
 function normCode(value: unknown): string | null {
   const text = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   return text || null;

@@ -252,7 +252,98 @@ describe("extract-erf-asset concurrency and idempotency", () => {
 });
 
 describe("extract-erf-asset identity gate", () => {
-  it("quarantines a wrong-property document with no text or claims stored", async () => {
+  it("uses upload-bound parcel context before an Erf File bookmark exists", async () => {
+    assetRow = baseAsset({
+      metadata: {
+        expectedIdentityContext: {
+          parcelId: PARCEL_ID,
+          lpiCode: "C03400140000157000000",
+          erfNumber: "1570",
+          portionNumber: "0",
+          municipality: "Kouga Local Municipality",
+          province: "Eastern Cape",
+          town: "St Francis Bay",
+        },
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/rest/v1/saved_properties")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        return fakeFetch(input, init);
+      }),
+    );
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const written = patchCalls.at(-1)!.body.metadata as Record<string, unknown>;
+    expect(written.identityMatchStatus).toBe("matched");
+    expect(openAiCalls).toBe(1);
+  });
+
+  it("preserves readable extraction when identity needs confirmation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes(OPENAI_HOST)) {
+          openAiCalls += 1;
+          return Promise.resolve(
+            jsonResponse({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      identity: { erfNumber: "1570" },
+                      documentType: "Property report",
+                      provider: "Independent provider",
+                      documentDate: null,
+                      pageCount: 2,
+                      summary: "Readable report for Erf 1570; location not printed.",
+                      extractedText: "Erf 1570. Municipal valuation R1 200 000.",
+                      warning: null,
+                      claims: [
+                        {
+                          domain: "valuation",
+                          key: "municipalValue",
+                          label: "Municipal valuation",
+                          value: "R1 200 000",
+                          numericValue: 1200000,
+                          unit: "ZAR",
+                          page: 1,
+                          quote: "Municipal valuation R1 200 000",
+                          confidence: "high",
+                        },
+                      ],
+                    }),
+                  },
+                },
+              ],
+            }),
+          );
+        }
+        return fakeFetch(input, init);
+      }),
+    );
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as {
+      code: string;
+      identityMatchStatus: string;
+      readable: boolean;
+    };
+    expect(payload).toMatchObject({
+      code: "IDENTITY_UNVERIFIED",
+      identityMatchStatus: "unverified",
+      readable: true,
+    });
+    const written = patchCalls.at(-1)!.body.metadata as Record<string, unknown>;
+    expect(written.extractionStatus).toBe("partial");
+    expect(written.extractedText).toContain("Municipal valuation");
+    expect(written.extractedClaims).toHaveLength(1);
+  });
+
+  it("keeps a readable wrong-property result for explanation but does not mark it matched", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -303,17 +394,17 @@ describe("extract-erf-asset identity gate", () => {
     );
 
     const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
-    const payload = (await response.json()) as { code: string; identityMatchStatus: string; error: string };
+    const payload = (await response.json()) as { code: string; identityMatchStatus: string; warning: string; readable: boolean };
     expect(payload.code).toBe("IDENTITY_MISMATCH");
     expect(payload.identityMatchStatus).toBe("mismatch");
-    expect(payload.error).toContain("Document identity does not match the selected parcel.");
+    expect(payload.warning).toContain("Document identity does not match the selected parcel.");
+    expect(payload.readable).toBe(true);
 
     const written = patchCalls.at(-1)!.body.metadata as Record<string, unknown>;
-    expect(written.extractionStatus).toBe("failed");
+    expect(written.extractionStatus).toBe("partial");
     expect(written.identityMatchStatus).toBe("mismatch");
-    expect(written.extractedClaims).toEqual([]);
-    expect(written.extractedText).toBe("");
-    expect(JSON.stringify(written)).not.toContain("Someone Else");
+    expect(written.extractedClaims).toHaveLength(1);
+    expect(written.extractedText).toContain("Potchefstroom");
   });
 
   it("stores a matched document as searchable evidence", async () => {

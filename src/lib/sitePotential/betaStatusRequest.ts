@@ -39,6 +39,18 @@ export const SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE =
 export const SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE =
   "Could not check Site Potential allowance.";
 
+export function sitePotentialGenerationUnavailableReason(status: BetaCreditUiStatus | null) {
+  if (!status?.enabled) return "Site Potential generation is disabled in this environment.";
+  if (status.canGenerate || status.freeEligible) return "Generation is available from the free allowance.";
+  if (status.free && status.free.remaining24Hours <= 0) return "Daily free allowance used.";
+  if (status.free && status.free.remaining7Days <= 0) return "Weekly free allowance used.";
+  if (status.free && status.free.remaining30Days <= 0) return "Monthly free allowance used.";
+  if ((status.purchasedCredits ?? 0) <= 0 && (status.betaCreditsRemaining ?? 0) <= 0) {
+    return "No purchased or beta/test credits are available.";
+  }
+  return "Generation is unavailable for this erf right now.";
+}
+
 export async function loadParcelBetaStatus({
   parcelId,
   signal,

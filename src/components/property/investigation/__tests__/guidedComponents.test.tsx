@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ConfirmPropertyStep } from "@/components/property/investigation/ConfirmPropertyStep";
 import { InvestigationStepNavigator } from "@/components/property/investigation/InvestigationStepNavigator";
 import { InvestigationStepShell } from "@/components/property/investigation/InvestigationStepShell";
+import { GuidedStrategyStep } from "@/components/property/investigation/GuidedStrategyStep";
 import {
   buildGuidedInvestigationJourney,
   GUIDED_INVESTIGATION_STEPS,
@@ -141,7 +142,7 @@ describe("guided investigation components", () => {
         </InvestigationStepShell>,
       );
 
-      expect(html).toContain(`${step.label} guided action`);
+      expect(html).toContain(`${step.label.replace("&", "&amp;")} guided action`);
       expect(html).not.toContain("This guided action is coming in a later build phase.");
       expect(html).not.toContain("Open full research workspace");
       expect(html).not.toContain(">Continue<");
@@ -262,5 +263,28 @@ describe("guided investigation components", () => {
 
     expect(html).toContain("Yes, this is the correct erf");
     expect(html).not.toContain("Continue");
+  });
+
+  it("shows saved Strategy context and continues to Site Potential", () => {
+    const html = renderToStaticMarkup(
+      <GuidedStrategyStep
+        chosenScenario={{
+          id: "scenario-1",
+          parcelId: parcel().id,
+          label: "Development to sell",
+          strategy: "development_sell",
+          inputs: { landCost: "900000" },
+          summary: [{ label: "Projected profit", value: "R 850 000" }],
+          savedAt: "2026-08-08T10:00:00.000Z",
+        }}
+        savedScenarioCount={1}
+        onOpenStrategy={noop}
+        onContinue={noop}
+      />,
+    );
+    expect(html).toContain("Now turn the property evidence into a decision");
+    expect(html).toContain("Development to sell");
+    expect(html).toContain("Projected profit");
+    expect(html).toContain("Continue to Site Potential");
   });
 });

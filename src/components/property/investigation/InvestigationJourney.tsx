@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
-import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import type { ErfStrategyScenario, ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import type { MasterInvestigationPlan } from "@/lib/investigation/masterPlan";
 import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";
 import type {
@@ -16,6 +16,7 @@ import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
 import { GuidedReportStep } from "./GuidedReportStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedSitePotentialStep } from "./GuidedSitePotentialStep";
+import { GuidedStrategyStep } from "./GuidedStrategyStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
 import { InvestigationProgress } from "./InvestigationProgress";
@@ -27,6 +28,8 @@ interface InvestigationJourneyProps {
   workspaceState: ErfWorkspaceState;
   plan: MasterInvestigationPlan;
   report: ReportViewModel;
+  chosenScenario: ErfStrategyScenario | null;
+  savedScenarioCount: number;
   steps: GuidedInvestigationStep[];
   activeStep: GuidedInvestigationStep;
   mapSlot?: ReactNode;
@@ -43,6 +46,8 @@ export function InvestigationJourney({
   workspaceState,
   plan,
   report,
+  chosenScenario,
+  savedScenarioCount,
   steps,
   activeStep,
   mapSlot,
@@ -88,6 +93,15 @@ export function InvestigationJourney({
         ) : activeStep.id === "property-checks" ? (
           <GuidedPropertyChecksStep
             parcel={parcel}
+            onContinue={() => onSelectStep("market")}
+          />
+        ) : activeStep.id === "market" ? (
+          <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("strategy")} />
+        ) : activeStep.id === "strategy" ? (
+          <GuidedStrategyStep
+            chosenScenario={chosenScenario}
+            savedScenarioCount={savedScenarioCount}
+            onOpenStrategy={() => onOpenExpertWorkspace("calculators")}
             onContinue={() => onSelectStep("site-potential")}
           />
         ) : activeStep.id === "site-potential" ? (
@@ -95,10 +109,8 @@ export function InvestigationJourney({
             workspaceState={workspaceState}
             stepSkipped={activeStep.skipped}
             onOpenSitePotential={() => onOpenExpertWorkspace("site-potential")}
-            onContinue={() => onSelectStep("market")}
+            onContinue={() => onSelectStep("report")}
           />
-        ) : activeStep.id === "market" ? (
-          <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("report")} />
         ) : activeStep.id === "report" ? (
           <GuidedReportStep
             plan={plan}

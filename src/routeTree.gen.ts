@@ -46,6 +46,7 @@ import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site
 import { Route as ApiReportsAskEasyErfRouteImport } from './routes/api/reports.ask-easy-erf'
 import { Route as ApiLocalServicesSearchRouteImport } from './routes/api/local-services.search'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
+import { Route as ApiAddressSuggestionsRouteImport } from './routes/api/address.suggestions'
 import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
 
 const WhyRoute = WhyRouteImport.update({
@@ -241,6 +242,11 @@ const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   path: '/api/listings/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAddressSuggestionsRoute = ApiAddressSuggestionsRouteImport.update({
+  id: '/api/address/suggestions',
+  path: '/api/address/suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSitePotentialProcessRoute =
   ApiPublicSitePotentialProcessRouteImport.update({
     id: '/api/public/site-potential/process',
@@ -274,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
+  '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/address/suggestions'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -437,6 +447,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/address/suggestions'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -477,6 +488,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
+    | '/api/address/suggestions'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -516,6 +528,7 @@ export interface RootRouteChildren {
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
+  ApiAddressSuggestionsRoute: typeof ApiAddressSuggestionsRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
   ApiLocalServicesSearchRoute: typeof ApiLocalServicesSearchRoute
   ApiReportsAskEasyErfRoute: typeof ApiReportsAskEasyErfRoute
@@ -792,6 +805,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiListingsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/address/suggestions': {
+      id: '/api/address/suggestions'
+      path: '/api/address/suggestions'
+      fullPath: '/api/address/suggestions'
+      preLoaderRoute: typeof ApiAddressSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/site-potential/process': {
       id: '/api/public/site-potential/process'
       path: '/api/public/site-potential/process'
@@ -838,6 +858,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
+  ApiAddressSuggestionsRoute: ApiAddressSuggestionsRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
   ApiLocalServicesSearchRoute: ApiLocalServicesSearchRoute,
   ApiReportsAskEasyErfRoute: ApiReportsAskEasyErfRoute,

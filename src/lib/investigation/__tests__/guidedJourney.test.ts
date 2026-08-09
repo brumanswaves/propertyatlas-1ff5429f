@@ -58,7 +58,7 @@ function completedThroughPropertyChecks(overrides: Partial<InvestigationFacts> =
 }
 
 describe("guided investigation journey registry", () => {
-  it("defines the approved nine-step order and skip rules", () => {
+  it("defines the approved ten-step order and skip rules", () => {
     expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.id)).toEqual([
       "confirm-property",
       "add-address",
@@ -66,8 +66,9 @@ describe("guided investigation journey registry", () => {
       "title",
       "zoning",
       "property-checks",
-      "site-potential",
       "market",
+      "strategy",
+      "site-potential",
       "report",
     ]);
     expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.label)).toEqual([
@@ -77,13 +78,15 @@ describe("guided investigation journey registry", () => {
       "Check title",
       "Confirm zoning",
       "Property checks",
-      "Site Potential",
       "Market evidence",
+      "Strategy & Calculators",
+      "Site Potential",
       "Review report",
     ]);
-    expect(GUIDED_INVESTIGATION_STEPS).toHaveLength(9);
+    expect(GUIDED_INVESTIGATION_STEPS).toHaveLength(10);
     expect(GUIDED_INVESTIGATION_STEPS.map((step) => step.canSkip)).toEqual([
       false,
+      true,
       true,
       true,
       true,
@@ -188,38 +191,33 @@ describe("guided investigation journey registry", () => {
     expect(journey.find((step) => step.current)?.id).toBe("property-checks");
   });
 
-  it("keeps generated Site Potential concepts partial until a concept is selected", () => {
+  it("places Market and Strategy before Site Potential", () => {
     const workspace = createEmptyErfWorkspaceState();
-    const partial = buildGuidedInvestigationJourney(
-      completedThroughPropertyChecks({ siteConceptCount: 3 }),
-      workspace,
-    );
-
-    expect(partial.find((step) => step.id === "site-potential")).toMatchObject({
-      complete: false,
-      current: true,
-    });
-
-    const selected = buildGuidedInvestigationJourney(
-      completedThroughPropertyChecks({ siteConceptCount: 3, siteDesignSelected: true }),
-      workspace,
-    );
-    expect(selected.find((step) => step.id === "site-potential")).toMatchObject({
-      complete: true,
-      status: "complete",
-    });
-    expect(selected.find((step) => step.current)?.id).toBe("market");
+    expect(buildGuidedInvestigationJourney(completedThroughPropertyChecks(), workspace).find((step) => step.current)?.id).toBe("market");
+    expect(buildGuidedInvestigationJourney(completedThroughPropertyChecks({ marketEvidenceCount: 1 }), workspace).find((step) => step.current)?.id).toBe("strategy");
+    expect(buildGuidedInvestigationJourney(completedThroughPropertyChecks({ marketEvidenceCount: 1, scenarioCount: 1 }), workspace).find((step) => step.current)?.id).toBe("site-potential");
   });
 
   it("treats an explicitly skipped Site Potential step as complete for progression", () => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(
-      completedThroughPropertyChecks({ siteSkipped: true }),
+      completedThroughPropertyChecks({ marketEvidenceCount: 1, scenarioCount: 1, siteSkipped: true }),
       workspace,
     );
 
     expect(journey.find((step) => step.id === "site-potential")?.complete).toBe(true);
-    expect(journey.find((step) => step.current)?.id).toBe("market");
+    expect(journey.find((step) => step.current)?.id).toBe("report");
+  });
+
+  it("completes Strategy from a saved or chosen scenario and permits an explicit skip", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    const shared = completedThroughPropertyChecks({ marketEvidenceCount: 1 });
+    expect(buildGuidedInvestigationJourney(shared, workspace).find((step) => step.current)?.id).toBe("strategy");
+    expect(buildGuidedInvestigationJourney({ ...shared, hasChosenScenario: true }, workspace).find((step) => step.current)?.id).toBe("site-potential");
+    workspace.investigation.skippedStepIds = ["strategy"];
+    const skipped = buildGuidedInvestigationJourney(shared, workspace);
+    expect(skipped.find((step) => step.id === "strategy")).toMatchObject({ status: "skipped", complete: false });
+    expect(skipped.find((step) => step.current)?.id).toBe("site-potential");
   });
 
   it("uses Add address, not Market, as the identity confirmation next step", () => {

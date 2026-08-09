@@ -12,7 +12,7 @@ import {
   type ErfIdentityMatchStatus,
 } from "../../../supabase/functions/_shared/erfExtractionContract";
 
-type MetadataBearer = { metadata?: Record<string, unknown> | null };
+type MetadataBearer = { metadata?: Record<string, unknown> | null; parcel_id?: string | null };
 
 /** Categories whose contents are worth reading into evidence. */
 export const EXTRACTABLE_CATEGORIES = new Set([
@@ -104,6 +104,15 @@ export function erfAssetExtractionError(asset: MetadataBearer): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+export function erfAssetIdentityUserConfirmed(asset: MetadataBearer) {
+  const confirmedParcelId = meta(asset).identityUserConfirmedParcelId;
+  return (
+    meta(asset).identityBinding === "user_confirmed" &&
+    typeof confirmedParcelId === "string" &&
+    (!asset.parcel_id || confirmedParcelId === asset.parcel_id)
+  );
+}
+
 /**
  * The single gate every evidence consumer must use: only an identity-matched
  * (or parent-lineage-matched), ready extraction may contribute searchable
@@ -112,9 +121,12 @@ export function erfAssetExtractionError(asset: MetadataBearer): string | null {
  */
 export function erfAssetHasSearchableExtraction(asset: MetadataBearer) {
   const identity = erfAssetIdentityMatchStatus(asset);
+  const extraction = erfAssetExtractionStatus(asset);
   return (
-    erfAssetExtractionStatus(asset) === "ready" &&
-    (identity === "matched" || identity === "parent_lineage_match")
+    (extraction === "ready" && (identity === "matched" || identity === "parent_lineage_match")) ||
+    ((extraction === "ready" || extraction === "partial") &&
+      identity === "unverified" &&
+      erfAssetIdentityUserConfirmed(asset))
   );
 }
 
@@ -131,7 +143,11 @@ export function erfAssetExtractionLabel(
   const Noun = variant === "diagram" ? "Diagram" : variant === "title" ? "Title document" : "Report";
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
-  if (identity === "unverified") return `${Noun} could not be matched to this erf`;
+  if (identity === "unverified") {
+    return erfAssetIdentityUserConfirmed(asset)
+      ? `${Noun} readable - attached by user`
+      : `${Noun} read successfully - needs confirmation`;
+  }
   if (identity === "parent_lineage_match") {
     const lineage = erfAssetDocumentLineage(asset);
     const parent = lineage?.parentErfNumber ? ` (parent Erf ${lineage.parentErfNumber})` : "";
