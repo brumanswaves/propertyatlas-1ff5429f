@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ERF_EXTRACTION_KEYS,
+  expectedIdentityFromCanonicalLpi,
   matchDocumentIdentity,
   normalizeExtractedClaim,
   normalizeExtractedIdentity,
@@ -33,6 +34,13 @@ const padroneIdentity = normalizeExtractedIdentity({
 });
 
 describe("legal portion token parser", () => {
+  it("derives active erf identity from the canonical LPI without a saved-property bookmark", () => {
+    expect(expectedIdentityFromCanonicalLpi(ERF_1570_PARCEL_ID)).toEqual({
+      lpiCode: "C03400140000157000000",
+      erfNumber: "1570",
+      portionNumber: "0",
+    });
+  });
   it("treats bracketed parent lineage as provenance, not a subject portion", () => {
     const token = parseLegalPortionToken("PTN OF 1496-GP12252");
     expect(token.subjectPortion).toBeNull();

@@ -146,7 +146,7 @@ describe("erf asset extraction client", () => {
     ).toBe("Title document searchable");
     expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "mismatch" } })).toBe("Wrong property report");
     expect(erfAssetExtractionLabel({ metadata: { identityMatchStatus: "unverified" } })).toBe(
-      "Report could not be matched to this erf",
+      "Report read successfully - needs confirmation",
     );
     expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "processing" } })).toBe("Extracting report...");
     expect(erfAssetExtractionLabel({ metadata: { extractionStatus: "failed", extractionError: "Timed out." } })).toBe(

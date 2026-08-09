@@ -104,3 +104,34 @@ export function prepareExplicitWorkspaceTransition(args: {
     },
   };
 }
+
+/**
+ * Confirms identity and advances Guided in one persistence patch. Keeping both
+ * changes together prevents a second transition from rebuilding stale identity
+ * state after the user confirms the parcel.
+ */
+export function prepareGuidedIdentityConfirmationTransition(args: {
+  persistedWorkspace: ErfWorkspaceState;
+  displayWorkspace: ErfWorkspaceState;
+  now: string;
+}): Partial<ErfWorkspaceState> {
+  const { persistedWorkspace, displayWorkspace, now } = args;
+  const currentInvestigation = persistedWorkspace.investigation;
+
+  return {
+    identityStatus: "looks_correct",
+    strategyScenarioCount: displayWorkspace.strategyScenarioCount,
+    dirty: true,
+    investigation: {
+      ...currentInvestigation,
+      startedAt: currentInvestigation.startedAt ?? now,
+      lastViewedAt: now,
+      currentStepId: "add-address",
+      intentionallyVisitedStepIds: Array.from(
+        new Set([...currentInvestigation.intentionallyVisitedStepIds, "add-address"]),
+      ),
+      expertWorkspaceOpen: false,
+      lastMeaningfulActionAt: now,
+    },
+  };
+}

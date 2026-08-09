@@ -6,6 +6,7 @@ import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanni
 import {
   erfAssetHasSearchableExtraction,
   erfAssetIdentityMatchStatus,
+  erfAssetIdentityUserConfirmed,
   erfAssetIsParentLineageMatch,
 } from "@/lib/evidence/extractionMetadata";
 import { isVerifiedMunicipalApprovedPlan } from "@/lib/evidence/planApprovalMetadata";
@@ -61,8 +62,11 @@ function isLive(asset: ErfAsset) {
   return asset.status !== "deleted" && asset.status !== "archived" && asset.status !== "failed";
 }
 
-function isSubjectMatched(asset: ErfAsset) {
-  return erfAssetIdentityMatchStatus(asset) === "matched";
+function isSubjectSupported(asset: ErfAsset) {
+  return (
+    erfAssetIdentityMatchStatus(asset) === "matched" ||
+    erfAssetIdentityUserConfirmed(asset)
+  );
 }
 
 export function deriveInvestigationFacts(
@@ -84,13 +88,13 @@ export function deriveInvestigationFacts(
     (asset) => asset.asset_category === "existing_house_photo",
   );
   const usableSubjectSgDiagrams = sgDiagrams.filter(
-    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
   );
   const usableSubjectTitleDeeds = titleDeeds.filter(
-    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
   );
   const usableSubjectTopographicalSurveys = topographicalSurveys.filter(
-    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
   );
 
   const detectionMethod = planning?.detection.method ?? null;
@@ -117,7 +121,7 @@ export function deriveInvestigationFacts(
     approvedPlansOnFile: verifiedApprovedPlans.length > 0,
     titleDeedSearchable: usableSubjectTitleDeeds.length > 0,
     paidReportSearchable: paidReports.some(
-      (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectMatched(asset),
+      (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
     ),
     paidReportCount: paidReports.length,
     marketEvidenceCount: savedEvidence.length,

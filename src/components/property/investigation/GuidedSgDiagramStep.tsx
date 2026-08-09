@@ -14,12 +14,14 @@ import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { CSG_VIEWER_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
+  erfAssetExtractedIdentity,
   erfAssetHasSearchableExtraction,
+  erfAssetIdentityUserConfirmed,
   erfAssetIdentityMatchStatus,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
@@ -55,6 +57,7 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
   const vault = useErfFileVault(parcel.id, ["sg_diagram"]);
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
+  const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
 
   const sgDocument = useMemo(
     () =>
@@ -147,7 +150,10 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
           category: "sg_diagram",
           assetType: "sg_diagram",
           sourceLabel: "User uploaded SG diagram",
-          metadata: { source: "guided-sg-diagram-step" },
+          metadata: {
+            source: "guided-sg-diagram-step",
+            expectedIdentityContext: buildErfAssetExpectedIdentityContext(parcel),
+          },
         });
         if (!result.ok) {
           if (result.reason === "too_large") {
@@ -189,6 +195,18 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
       toast.error(error instanceof Error ? error.message : "The SG diagram could not be removed.");
     } finally {
       setRemovingAssetId(null);
+    }
+  }
+
+  async function confirmDiagramIdentity(asset: ErfAsset) {
+    setConfirmingAssetId(asset.id);
+    try {
+      await vault.confirmIdentity(asset);
+      toast.success("Document attached as user-confirmed evidence. This is not official verification.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The document could not be confirmed.");
+    } finally {
+      setConfirmingAssetId(null);
     }
   }
 
@@ -354,6 +372,8 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
               const reading = readingAssetId === asset.id;
               const removing = removingAssetId === asset.id;
               const parentLineageContext = identityStatus === "parent_lineage_match";
+              const identity = erfAssetExtractedIdentity(asset);
+              const userConfirmed = erfAssetIdentityUserConfirmed(asset);
               const retry =
                 !parentLineageContext &&
                 (extractionStatus === "failed" ||
@@ -411,6 +431,16 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
                           readable subject SG diagram for this erf.
                         </p>
                       )}
+                      {identityStatus === "unverified" && !userConfirmed ? (
+                        <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
+                          <p className="font-semibold">Read successfully - needs your confirmation</p>
+                          <p className="mt-1">Detected identity: Erf {identity?.erfNumber ?? "not stated"}, portion {identity?.portionNumber ?? "not stated"}, {identity?.suburbOrTown ?? identity?.municipality ?? "location not stated"}.</p>
+                          <button type="button" disabled={confirmingAssetId === asset.id} onClick={() => void confirmDiagramIdentity(asset)} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
+                            Yes, this document is for or supports Erf {parcel.erfNumber ?? "this erf"}
+                          </button>
+                          <p className="mt-1 text-[11px]">Your confirmation is recorded as user-confirmed evidence, not official verification.</p>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {isExtractableErfAsset(asset) &&

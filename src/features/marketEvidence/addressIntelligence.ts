@@ -167,57 +167,7 @@ export async function reverseGeocodeAddressCandidates(
   lat: number,
   lng: number,
 ): Promise<AddressCandidate[]> {
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-  if (!key) return [];
-  try {
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("latlng", `${lat},${lng}`);
-    url.searchParams.set("key", key);
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const payload = (await response.json()) as {
-      results?: Array<{ formatted_address?: string }>;
-    };
-    return (payload.results ?? [])
-      .map((result) => result.formatted_address)
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((formattedAddress) =>
-        buildAddressCandidate({
-          formattedAddress: String(formattedAddress),
-          lat,
-          lng,
-          source: "google_reverse_geocode",
-          confidence: "medium",
-          reason:
-            "Google reverse-geocode suggestion from parcel coordinates. Map-derived, not official truth.",
-        }),
-      );
-  } catch {
-    return [];
-  }
-}
-
-interface GoogleGeocodeComponent {
-  long_name?: string;
-  short_name?: string;
-  types?: string[];
-}
-
-interface GoogleGeocodeResult {
-  formatted_address?: string;
-  address_components?: GoogleGeocodeComponent[];
-  geometry?: { location?: { lat?: number; lng?: number } };
-}
-
-function component(result: GoogleGeocodeResult, ...types: string[]): string | null {
-  for (const type of types) {
-    const match = (result.address_components ?? []).find((item) =>
-      (item.types ?? []).includes(type),
-    );
-    if (match?.long_name) return match.long_name;
-  }
-  return null;
+  return requestAddressCandidates({ action: "reverse", latitude: lat, longitude: lng }, "google_reverse_geocode");
 }
 
 export const ADDRESS_SUGGESTION_MIN_QUERY_LENGTH = 3;
@@ -232,44 +182,26 @@ export async function forwardGeocodeAddressCandidates(
 ): Promise<AddressCandidate[]> {
   const text = query.trim();
   if (text.length < ADDRESS_SUGGESTION_MIN_QUERY_LENGTH) return [];
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-  if (!key) return [];
+  return requestAddressCandidates({ action: "forward", query: text, latitude: options.near?.lat, longitude: options.near?.lng, limit: options.limit }, "google_forward_geocode", options.signal);
+}
 
-  try {
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", text);
-    url.searchParams.set("components", "country:ZA");
-    url.searchParams.set("key", key);
-    if (options.near) {
-      const { lat, lng } = options.near;
-      const pad = 0.25;
-      url.searchParams.set("bounds", `${lat - pad},${lng - pad}|${lat + pad},${lng + pad}`);
-    }
-    const response = await fetch(url, options.signal ? { signal: options.signal } : undefined);
-    if (!response.ok) return [];
-    const payload = (await response.json()) as { results?: GoogleGeocodeResult[] };
-    return (payload.results ?? [])
-      .filter((result) => Boolean(result.formatted_address))
-      .slice(0, options.limit ?? 5)
-      .map((result, index) =>
-        buildAddressCandidate({
-          id: `google-forward-${index}-${String(result.formatted_address)}`,
-          formattedAddress: String(result.formatted_address),
-          streetNumber: component(result, "street_number"),
-          streetName: component(result, "route"),
-          suburb: component(result, "sublocality_level_1", "sublocality", "neighborhood"),
-          town: component(result, "locality", "postal_town"),
-          province: component(result, "administrative_area_level_1"),
-          postalCode: component(result, "postal_code"),
-          lat: result.geometry?.location?.lat ?? null,
-          lng: result.geometry?.location?.lng ?? null,
-          source: "google_forward_geocode",
-          confidence: "medium",
-          reason:
-            "Google address suggestion for what you typed. Check it before saving; it is not official parcel data.",
-        }),
-      );
-  } catch {
-    return [];
-  }
+interface ServerAddressCandidate {
+  id: string;
+  formattedAddress: string;
+  streetNumber?: string | null;
+  streetName?: string | null;
+  suburb?: string | null;
+  town?: string | null;
+  municipality?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+async function requestAddressCandidates(body: Record<string, unknown>, source: "google_forward_geocode" | "google_reverse_geocode", signal?: AbortSignal): Promise<AddressCandidate[]> {
+  const response = await fetch("/api/address/suggestions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+  const payload = (await response.json().catch(() => null)) as { success?: boolean; candidates?: ServerAddressCandidate[]; error?: string } | null;
+  if (!response.ok || !payload?.success) throw new Error(payload?.error ?? "Address suggestions are temporarily unavailable.");
+  return (payload.candidates ?? []).filter((candidate) => candidate.formattedAddress).map((candidate) => buildAddressCandidate({ ...candidate, source, confidence: "medium", reason: source === "google_reverse_geocode" ? "Google map suggestion from parcel coordinates. Check it before saving; it is not official parcel data." : "Google address suggestion for what you typed. Check it before saving; it is not official parcel data." }));
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
   createErfAssetSignedUrl,
+  confirmErfAssetIdentityForParcel,
   deleteErfAsset,
   listErfAssets,
   migrateLocalWorkspaceAttachmentsToVault,
@@ -110,6 +111,15 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
+  const confirmIdentity = useCallback(
+    async (asset: ErfAsset) => {
+      await confirmErfAssetIdentityForParcel(asset);
+      await refresh();
+      dispatchErfFileVaultUpdated(parcelId);
+    },
+    [parcelId, refresh],
+  );
+
   const migrateLocalAttachments = useCallback(async () => {
     if (!userId) return null;
     const result = await migrateLocalWorkspaceAttachmentsToVault(parcelId);
@@ -130,6 +140,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     upload,
     remove,
     open,
+    confirmIdentity,
     migrateLocalAttachments,
   };
 }

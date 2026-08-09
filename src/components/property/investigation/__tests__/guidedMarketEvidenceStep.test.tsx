@@ -51,7 +51,7 @@ describe("guided market evidence", () => {
     expect(selectGuidedInvestigationStep(facts(), workspace.investigation)).toBe("market");
   });
 
-  it("marks market complete after evidence is saved and advances to report", () => {
+  it("marks market complete after evidence is saved and advances to Strategy", () => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(facts({ marketEvidenceCount: 1 }), workspace);
 
@@ -59,7 +59,7 @@ describe("guided market evidence", () => {
       complete: true,
       status: "complete",
     });
-    expect(journey.find((step) => step.current)?.id).toBe("report");
+    expect(journey.find((step) => step.current)?.id).toBe("strategy");
   });
 
   it("renders market as a live step with Back and Skip but no bypass Continue", () => {

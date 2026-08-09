@@ -8,6 +8,7 @@ import {
   matchPlanningArea,
   nonEnforceablePlanningSources,
   planningSourcesFor,
+  resolveMunicipalityPlanningRegistry,
 } from "../municipalityPlanningRegistry";
 import { KOUGA_PLANNING_REGISTRY } from "../kougaPlanningRegistry";
 
@@ -21,6 +22,15 @@ describe("municipality planning registry", () => {
     );
     expect(findMunicipalityPlanningRegistry("Nelson Mandela Bay")).toBeNull();
     expect(findMunicipalityPlanningRegistry(null)).toBeNull();
+  });
+
+  it("resolves Sea Vista to Kouga without treating the CSG Humansdorp region as a municipality", () => {
+    expect(resolveMunicipalityPlanningRegistry(null, ["Sea Vista", "Humansdorp"])?.municipality).toBe(
+      "Kouga Local Municipality",
+    );
+    expect(findMunicipalityPlanningRegistry("Humansdorp")).toBeNull();
+    const res1 = findZone(KOUGA_PLANNING_REGISTRY, "RES1");
+    expect(res1?.rules.every((rule) => rule.status === "manual_candidate")).toBe(true);
   });
 
   it("matches the most specific planning area from location hints", () => {

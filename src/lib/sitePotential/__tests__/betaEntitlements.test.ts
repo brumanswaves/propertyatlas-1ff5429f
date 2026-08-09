@@ -8,6 +8,7 @@ import {
 } from "../betaEntitlements";
 import {
   loadParcelBetaStatus,
+  sitePotentialGenerationUnavailableReason,
   SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
   type BetaCreditUiStatus,
 } from "../betaStatusRequest";
@@ -49,6 +50,28 @@ function betaPayload(parcelId: string, creditsRemaining: number) {
 }
 
 describe("Site Potential private beta entitlements", () => {
+  it("keeps a free allowance valid when purchased and beta credits are zero", () => {
+    expect(
+      sitePotentialGenerationUnavailableReason({
+        enabled: true,
+        creditsRemaining: 0,
+        purchasedCredits: 0,
+        betaCreditsRemaining: 0,
+        freeEligible: true,
+        canGenerate: true,
+      }),
+    ).toBe("Generation is available from the free allowance.");
+    expect(
+      sitePotentialGenerationUnavailableReason({
+        enabled: true,
+        creditsRemaining: 0,
+        purchasedCredits: 0,
+        betaCreditsRemaining: 0,
+        freeEligible: false,
+        canGenerate: false,
+      }),
+    ).toBe("No purchased or beta/test credits are available.");
+  });
   it("keeps beta mode disabled unless explicitly configured", () => {
     expect(isSitePotentialBetaEnabled({ SITE_POTENTIAL_BETA_ENABLED: undefined })).toBe(false);
     expect(isSitePotentialBetaEnabled({ SITE_POTENTIAL_BETA_ENABLED: "false" })).toBe(false);
@@ -197,13 +220,14 @@ describe("Site Potential private beta entitlements", () => {
 
   it("shows free allowance and inline report-only concept selection while purchase UI is hidden", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const statusRequest = read("src/lib/sitePotential/betaStatusRequest.ts");
     const progress = read("src/lib/sitePotential/generationProgress.ts");
 
     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
     expect(tab).toContain("Three site-grounded concepts");
     expect(tab).toContain("Generate 3 free concepts");
     expect(tab).toContain("Use 1 credit for 3 concepts");
-    expect(tab).toContain("No purchased or beta/test credits are available.");
+    expect(statusRequest).toContain("No purchased or beta/test credits are available.");
     expect(tab).toContain("Purchased credits");
     expect(tab).toContain("Daily packs");
     expect(tab).toContain("Weekly packs");

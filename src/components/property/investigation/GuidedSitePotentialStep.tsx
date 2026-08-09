@@ -68,21 +68,33 @@ export function GuidedSitePotentialStep({
       </section>
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-        <h4 className="text-sm font-semibold text-[#0D1B2A]">How to use Site Potential</h4>
+        <h4 className="text-sm font-semibold text-[#0D1B2A]">How Site Potential works</h4>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">Property / build envelope</div>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">Easy Erf uses the parcel boundary plus the planning information available to show the approximate area that may be available for building. Verified rules and working assumptions remain visibly different.</p>
+          </div>
+          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">AI visual concepts</div>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">Easy Erf can create three visual ideas for what a home or renovation could look like using your brief, parcel context and uploaded photos or plans.</p>
+          </div>
+        </div>
         <ol className="mt-3 grid gap-2 text-sm leading-6 text-[#0D1B2A]/70">
           {[
-            "Open Site Potential and choose the kind of property or change you want to explore.",
-            "Add useful photos or plans, then generate one or more concepts.",
-            "Select the concept you want included in the Easy Erf Report, or use Skip for now below.",
+            "A. Choose the current site state: vacant land, existing house, other, or not sure.",
+            "B. Review the parcel and approximate build envelope.",
+            "C. Optionally upload site photos, topography, existing plans or inspiration.",
+            "D. Set the style, bedrooms, features and your custom brief.",
+            "E. Generate three concepts using the available free allowance or credits.",
+            "F. Choose the preferred concept for the Easy Erf Report.",
           ].map((line, index) => (
             <li key={line} className="flex gap-3">
-              <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
-                {index + 1}
-              </span>
+              <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">{index + 1}</span>
               <span>{line}</span>
             </li>
           ))}
         </ol>
+        <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">AI images are illustrative. The build envelope is not an approval. Neither replaces an architect or municipal confirmation.</p>
 
         {partial ? (
           <p className="mt-4 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
@@ -113,7 +125,7 @@ export function GuidedSitePotentialStep({
             onClick={onContinue}
             className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Continue to market evidence
+            Continue to Review report
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>

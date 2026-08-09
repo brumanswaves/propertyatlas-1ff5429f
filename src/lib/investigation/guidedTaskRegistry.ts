@@ -258,7 +258,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
   {
     id: "review-site-potential",
     stageId: "site_potential",
-    priority: 70,
+    priority: 80,
     title: "Review the Site Potential concepts",
     shortExplanation:
       "Generate or review a visual concept for this erf, or skip the step if it is not relevant.",
@@ -286,7 +286,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
   {
     id: "choose-strategy",
     stageId: "strategy",
-    priority: 80,
+    priority: 70,
     title: "Choose a strategy scenario",
     shortExplanation:
       "Run the numbers for the option you are considering and save it as the chosen scenario.",
@@ -307,7 +307,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     canSkip: true,
     confidenceAfterLabel: "Financial view based on assumptions you recorded",
     limitations: "Calculator outputs are estimates from your inputs, not valuations or advice.",
-    isComplete: (facts) => facts.hasChosenScenario,
+    isComplete: (facts) => facts.hasChosenScenario || facts.scenarioCount > 0,
     confidenceBefore: () => "unconfirmed",
   },
   {
