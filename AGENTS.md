@@ -33,6 +33,6 @@ For product-direction decisions, also consult `docs/EASY_ERF_DECISION_LOG.md`.
 - The default UX is simple and guided; expert depth remains underneath.
 - Erf 1570 is the gold-standard acceptance property, not a hard-coded special case.
 - Easy Erf Report is the living destination of the investigation.
-- One canonical Next Best Action must be shared across Guided, Report, Market and Ask surfaces.
+- The Guided Task Registry owns the canonical Next Best Action. Report and Ask must adapt that action rather than invent competing workflow actions. Other surfaces must not introduce a competing canonical next-action ranking; Market Evidence remains a canonical evidence and Strategy input without an assumed navigation contract.
 - Site Potential outputs must inherit evidence confidence and clearly expose assumptions.
 - Do not use Lovable as a parallel roadmap. Codex/GitHub owns implementation and tests; Lovable is reserved for approved visual refinement, preview and publishing work.
