@@ -55,20 +55,23 @@ Major product features should be validated against Erf 1570 before being conside
 The canonical user journey is:
 
 1. Find or click a property
-2. Confirm the erf / parcel identity
-3. Easy Erf starts the investigation automatically
-4. Easy Erf uses available public, paid, uploaded, and derived evidence
-5. Easy Erf shows what it knows, what it does not know, and confidence level
-6. Easy Erf gives one clear **Next Best Step**
-7. User supplies missing evidence only when needed, with clear instructions on how to obtain it
-8. Easy Erf interprets the evidence and updates the property file
-9. Easy Erf runs strategy and calculator scenarios using transparent maths and assumptions
-10. Site Potential turns verified constraints into understandable development possibilities
-11. Market Evidence adds comparable and market context
-12. Easy Erf Report continuously improves as evidence and analysis improve
-13. Ask Easy Erf explains, compares, calculates, and guides actions throughout
+2. Easy Erf opens a read-only **Property First Read / Property Overview** that orients the user with the selected parcel and intelligence already recorded
+3. The user explicitly chooses **Investigate this property** or **Continue investigation** to enter Guided Investigation
+4. Guided Step 1 confirms the erf / parcel identity
+5. Easy Erf uses available public, paid, uploaded, and derived evidence
+6. Easy Erf shows what it knows, what it does not know, and confidence level
+7. Easy Erf gives one clear **Next Best Step**
+8. User supplies missing evidence only when needed, with clear instructions on how to obtain it
+9. Easy Erf interprets the evidence and updates the property file
+10. Easy Erf runs strategy and calculator scenarios using transparent maths and assumptions
+11. Site Potential turns verified constraints into understandable development possibilities
+12. Market Evidence adds comparable and market context
+13. Easy Erf Report continuously improves as evidence and analysis improve
+14. Ask Easy Erf explains, compares, calculates, and guides actions throughout
 
-The current multi-step Guided journey is the investigation model underneath the experience. It should progressively feel like one intelligent investigation, not a sequence of bureaucratic forms.
+Property First Read is the default selected-property entry experience. It is a zero-commit orientation surface, not a second investigation state. Guided Investigation is the default normal-user investigation experience once the user explicitly begins investigating. Expert Workbench tools remain available underneath as a secondary path.
+
+The overall product should still feel like one intelligent investigation, not a sequence of disconnected pages or tabs. The Property First Read, Guided Investigation, expert tools, evidence, calculations, Site Potential and report are views over the same property file and investigation state.
 
 ---
 
@@ -503,8 +506,10 @@ A successful MVP allows a user to:
 - Primary MVP user: serious property buyer / investor
 - Home-buyer UX must remain simple and approachable
 - Developer-grade depth lives underneath Guided mode
-- Guided is the default product experience
+- Property First Read / Property Overview is the default selected-property entry experience
+- Guided Investigation is the default normal-user investigation experience once investigation begins
 - Expert mode remains available but secondary
+- Selecting or opening an erf does not automatically start Guided Investigation. Property confirmation is the first Guided investigation task after the user explicitly begins or continues the investigation. This supersedes the earlier assumption that property selection immediately starts investigation.
 - Erf 1570 is the gold-standard test property
 - Kouga / St Francis remains the initial pilot geography
 - Easy Erf Report is the living destination of the investigation
