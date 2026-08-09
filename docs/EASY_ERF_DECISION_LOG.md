@@ -116,8 +116,24 @@ This is a concise register of durable product and engineering decisions. Exact d
 
 ## EE-015 - Current next action is integration validation
 
-- Date: 2026-08-09, current-state baseline.
-- Decision: Before adding broader automation, validate the missing Strategy-in-Guided path and run a signed-in Erf 1570 end-to-end smoke against current runtime configuration.
-- Rationale: Current main has most durable foundations, but the user journey and deployed configuration are not yet proven together.
+- Date: 2026-08-09, current-state baseline after PR #63.
+- Decision: Before adding broader automation, run a signed-in Erf 1570 end-to-end smoke against the current runtime configuration.
+- Rationale: PR #63 closed the known code-path gaps, but repository tests and deployed provider configuration are not the same as a real user journey.
 - Supersedes: Treating unit-test green as sufficient proof of the live product path.
-- Implementation: Keep the tranche focused; do not expand into national search, new providers or speculative AI features.
+- Implementation: Keep the next tranche focused on QA and defects found in the canonical journey; do not expand into national search, new providers or speculative AI features.
+
+## EE-016 - Ten-step Guided journey includes Strategy
+
+- Date: 2026-08-09, PR #63.
+- Decision: The deliberate Guided journey is ten steps: Confirm property, Add address, SG diagram, title/paid report, zoning, property checks, Market evidence, Strategy & Calculators, Site Potential, Review report.
+- Rationale: Strategy is a core decision pillar and must not exist only in the expert Workbench.
+- Implementation: Reuse the existing StrategyLab, workspace state and deterministic calculators; completion is a saved/chosen scenario or explicit skip where the step permits it.
+- Do not regress: Keep the canonical task registry and report action aligned with the Guided order.
+
+## EE-017 - Server-side address provider boundary
+
+- Date: 2026-08-09, PR #63.
+- Decision: Google autocomplete and geocoding calls use the server-side address suggestions route; the browser must not receive the provider key.
+- Rationale: A missing build-time browser key previously made address suggestions silently unavailable and exposed an avoidable credential dependency.
+- Implementation: Configure `GOOGLE_PLACES_API_KEY` in the runtime, retain parcel bias and visible error states, and keep working address separate from official parcel identity.
+- Do not regress: Never expose a server/provider key in frontend code.

@@ -4,19 +4,19 @@ This is an ordered inventory of future ideas, not a replacement for the Master P
 
 ## NOW
 
-### Make Erf 1570 end to end in the real product
+### Validate Erf 1570 end to end in the real product
 
-- Idea: Add Strategy & Calculators to the deliberate Guided journey, then validate search -> Property Overview -> Guided -> Strategy -> Site Potential -> Market -> Report with a signed-in smoke.
+- Idea: Validate search -> Property Overview -> Guided -> Strategy -> Site Potential -> Market -> Report with a signed-in smoke after the PR #63 rescue.
 - Expected value: Closes the largest current flow gap and proves the MVP for the canonical property.
-- Dependencies: Existing Guided Task Registry, StrategyLab, workspace state, Site Potential runtime configuration and a review-environment account.
-- Why now: Current main already contains the underlying capabilities but the Guided order omits Strategy.
+- Dependencies: Existing Guided Task Registry, StrategyLab, workspace state, Google Places configuration, Site Potential runtime configuration and a review-environment account.
+- Why now: Current main now contains the intended ten-step path, but no signed-in real-product smoke has been completed locally.
 
-### Harden the live address path
+### Validate the live address path
 
-- Idea: Move Google Places autocomplete/geocoding behind the existing server boundary and verify parcel-biased South African suggestions.
+- Idea: Verify the server-side Google Places autocomplete/geocoding route and parcel-biased South African suggestions in the review environment.
 - Expected value: Makes Add Address reliable without exposing a browser credential dependency.
 - Dependencies: Server route, production `GOOGLE_PLACES_API_KEY`, provider quota and review-environment QA.
-- Why now: Current main still reads `VITE_GOOGLE_MAPS_API_KEY` in browser code.
+- Why now: The server boundary now exists, but provider configuration and live response behavior remain external dependencies.
 
 ### Complete signed-in runtime validation
 
