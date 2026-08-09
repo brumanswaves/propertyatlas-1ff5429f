@@ -261,6 +261,15 @@ describe("investigation model", () => {
         planning: verifiedPlanningAssessment(),
         savedEvidence: [marketEvidence],
       }),
+    ).toBe("choose-strategy");
+
+    workspace.strategyScenarioCount = 1;
+    expect(
+      actionFrom({
+        assets: [sgDiagram, approvedPlan, paidReport],
+        planning: verifiedPlanningAssessment(),
+        savedEvidence: [marketEvidence],
+      }),
     ).toBe("review-site-potential");
 
     const facts = deriveInvestigationFacts(
@@ -289,6 +298,36 @@ describe("investigation model", () => {
     expect(facts.paidReportSearchable).toBe(true);
     expect(facts.usableTopographySurveyCount).toBe(1);
     expect(facts.existingHousePhotoCount).toBe(1);
+  });
+
+  it("lets user-confirmed readable documents advance Guided without calling them official matches", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    const confirmed = (category: ErfAsset["asset_category"]) =>
+      evidenceAsset({
+        id: `asset-user-confirmed-${category}`,
+        asset_category: category,
+        asset_type: category,
+        status: "ready",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "unverified",
+          identityBinding: "user_confirmed",
+          identityUserConfirmedParcelId: "parcel:erf-1570",
+        },
+      });
+
+    const facts = deriveInvestigationFacts(
+      baseInput({
+        workspaceState: workspace,
+        assets: [confirmed("sg_diagram"), confirmed("title_deed"), confirmed("paid_report")],
+      }),
+    );
+
+    expect(facts.sgDiagramSearchable).toBe(true);
+    expect(facts.titleDeedSearchable).toBe(true);
+    expect(facts.paidReportSearchable).toBe(true);
+    expect(facts.sgDiagramParentLineageOnly).toBe(false);
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plan files do not complete approved-plan facts", () => {

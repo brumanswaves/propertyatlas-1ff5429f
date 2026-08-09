@@ -35,6 +35,7 @@ import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSi
 import {
   findMunicipalityPlanningRegistry,
   findZone,
+  resolveMunicipalityPlanningRegistry,
 } from "@/lib/planning/municipalityPlanningRegistry";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
@@ -90,6 +91,7 @@ import {
   workspaceProgressPatchForStartedTab,
 } from "@/lib/workbench/workbenchTabProgress";
 import {
+  prepareGuidedIdentityConfirmationTransition,
   prepareExplicitWorkspaceTransition,
   prepareWorkspaceEntry,
   resolvePropertyEntryTab,
@@ -1906,6 +1908,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     const resolved = resolveParcelArea(selection.properties ?? {});
     return resolved?.areaM2 ?? null;
   }, [selection.properties]);
+  const canonicalPlanningRegistry = useMemo(
+    () =>
+      resolveMunicipalityPlanningRegistry(selectedMunicipality, [
+        canonicalUserAddress?.suburb,
+        canonicalUserAddress?.town,
+        csg?.minorRegion,
+      ]),
+    [canonicalUserAddress?.suburb, canonicalUserAddress?.town, csg?.minorRegion, selectedMunicipality],
+  );
   const normalizedParcel: NormalizedOfficialParcel = useMemo(() => {
     const coords = { lng: csg?.longitude ?? lng, lat: csg?.latitude ?? lat };
     const knownFields: NormalizedOfficialParcel["knownFields"] = [];
@@ -1952,7 +1963,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       lpi: csg?.lpi ?? null,
       parcelKey: csg?.parcelKey ?? null,
       objectId: objectId as string | number | null | undefined,
-      municipality: selectedMunicipality,
+      municipality: canonicalPlanningRegistry?.municipality ?? selectedMunicipality,
       province: csg?.province ?? canonicalUserAddress?.province ?? "Eastern Cape",
       suburbOrArea:
         canonicalUserAddress?.suburb ?? csg?.minorRegion ?? resolved.displaySubtitle ?? null,
@@ -1981,6 +1992,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     selectedMunicipality,
     isCsg,
     canonicalUserAddress,
+    canonicalPlanningRegistry,
   ]);
   const selectedErfGoogleMapsUrl = googleMapsCoordinateUrl(normalizedParcel.coordinates);
 
@@ -2204,8 +2216,24 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function confirmGuidedIdentity() {
-    updateIdentityStatus("looks_correct", GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
-    selectGuidedStep("add-address");
+    const now = new Date().toISOString();
+    const next = updateErfWorkspaceState(
+      parcelId,
+      prepareGuidedIdentityConfirmationTransition({
+        persistedWorkspace: readErfWorkspaceState(parcelId),
+        displayWorkspace: workspaceState,
+        now,
+      }),
+    );
+    setWorkspaceState(next);
+    setIdentityStatus("looks_correct");
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(identityStatusKey(parcelId), "looks_correct");
+    }
+    setWorkflowFeedback(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
+    toast.success(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
+    setTab("investigation");
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
   function flagGuidedIdentityUncertain() {

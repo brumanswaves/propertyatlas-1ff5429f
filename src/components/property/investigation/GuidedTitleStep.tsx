@@ -15,15 +15,17 @@ import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { GOVZA_DEEDS_GUIDANCE_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import type { ErfAsset, ErfAssetCategory } from "@/lib/workbench/erfFileVault";
+import { buildErfAssetExpectedIdentityContext, type ErfAsset, type ErfAssetCategory } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetExtractedClaims,
+  erfAssetExtractedIdentity,
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
   erfAssetHasSearchableExtraction,
   erfAssetIdentityMatchReason,
   erfAssetIdentityMatchStatus,
+  erfAssetIdentityUserConfirmed,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
 import { cn } from "@/lib/utils";
@@ -63,6 +65,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
   const vault = useErfFileVault(parcel.id, ["title_deed", "paid_report"]);
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
+  const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
 
   const usableEvidence = vault.assets.filter(isUsableTitleEvidence);
   const usableTitleDeeds = usableEvidence.filter((asset) => asset.asset_category === "title_deed");
@@ -157,7 +160,11 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             category === "paid_report"
               ? "User uploaded Lightstone or WinDeed property report"
               : "User uploaded actual title deed or deeds-office document",
-          metadata: { source: "guided-title-step", evidenceType: category },
+          metadata: {
+            source: "guided-title-step",
+            evidenceType: category,
+            expectedIdentityContext: buildErfAssetExpectedIdentityContext(parcel),
+          },
         });
         if (!result.ok) {
           if (result.reason === "too_large") {
@@ -193,6 +200,18 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
       toast.error(error instanceof Error ? error.message : "The document could not be removed.");
     } finally {
       setRemovingAssetId(null);
+    }
+  }
+
+  async function confirmEvidenceIdentity(asset: ErfAsset) {
+    setConfirmingAssetId(asset.id);
+    try {
+      await vault.confirmIdentity(asset);
+      toast.success("Document attached as user-confirmed evidence. This is not official verification.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The document could not be confirmed.");
+    } finally {
+      setConfirmingAssetId(null);
     }
   }
 
@@ -244,7 +263,15 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
       </section>
 
       <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
-        <h4 className="text-sm font-semibold text-[#0D1B2A]">How to get the information</h4>
+        <h4 className="text-base font-semibold text-[#0D1B2A]">One of the most important upgrades to your Easy Erf investigation</h4>
+        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Free public data helps Easy Erf identify the land. A paid property report adds deeds, transaction and market context that can materially change a buying or development decision.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a href="https://www.lightstoneproperty.co.za/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white">Buy from Lightstone <ExternalLink className="h-3.5 w-3.5" /></a>
+          <a href="https://www.windeed.co.za/wpr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]">Buy from WinDeed <ExternalLink className="h-3.5 w-3.5" /></a>
+          <button type="button" onClick={onOpenPaidReports} className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white">Already have one? Upload your PDF</button>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">Payment happens on the provider's website. Easy Erf does not process it or claim a referral relationship.</p>
+        <h5 className="mt-4 text-sm font-semibold text-[#0D1B2A]">How to get the information</h5>
         <ol className="mt-3 grid gap-3 md:grid-cols-3">
           {[
             {
@@ -432,6 +459,8 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               const usable = isUsableTitleEvidence(asset);
               const reading = readingAssetId === asset.id;
               const removing = removingAssetId === asset.id;
+              const extractedIdentity = erfAssetExtractedIdentity(asset);
+              const userConfirmed = erfAssetIdentityUserConfirmed(asset);
               const retry =
                 extractionStatus === "failed" ||
                 extractionStatus === "partial" ||
@@ -483,6 +512,16 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                         <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
                           {erfAssetIdentityMatchReason(asset)}
                         </p>
+                      ) : null}
+                      {identityStatus === "unverified" && !userConfirmed ? (
+                        <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
+                          <p className="font-semibold">Read successfully - needs your confirmation</p>
+                          <p className="mt-1">Detected identity: Erf {extractedIdentity?.erfNumber ?? "not stated"}, portion {extractedIdentity?.portionNumber ?? "not stated"}, {extractedIdentity?.streetAddress ?? extractedIdentity?.suburbOrTown ?? extractedIdentity?.municipality ?? "location not stated"}.</p>
+                          <button type="button" disabled={confirmingAssetId === asset.id} onClick={() => void confirmEvidenceIdentity(asset)} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
+                            Yes, this document is for or supports Erf {parcel.erfNumber ?? "this erf"}
+                          </button>
+                          <p className="mt-1 text-[11px]">Recorded as user-confirmed evidence, not official verification.</p>
+                        </div>
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">

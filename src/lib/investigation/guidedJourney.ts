@@ -8,8 +8,9 @@ export type GuidedInvestigationStepId =
   | "title"
   | "zoning"
   | "property-checks"
-  | "site-potential"
   | "market"
+  | "strategy"
+  | "site-potential"
   | "report";
 
 export type GuidedInvestigationStepStatus =
@@ -129,19 +130,6 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
       facts.sitePhotoCount + facts.existingHousePhotoCount > 0,
   },
   {
-    id: "site-potential",
-    label: "Site Potential",
-    shortLabel: "Potential",
-    description:
-      "Explore an illustrative property concept and select one for the report, or skip this optional step.",
-    prerequisites: ["confirm-property"],
-    masterPlanRowIds: ["site-potential"],
-    relatedTaskIds: ["review-site-potential"],
-    canSkip: true,
-    isApplicable: () => true,
-    isComplete: (facts) => facts.siteDesignSelected || facts.siteSkipped,
-  },
-  {
     id: "market",
     label: "Market evidence",
     shortLabel: "Market",
@@ -152,6 +140,32 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     canSkip: true,
     isApplicable: () => true,
     isComplete: (facts) => facts.marketEvidenceCount > 0,
+  },
+  {
+    id: "strategy",
+    label: "Strategy & Calculators",
+    shortLabel: "Strategy",
+    description:
+      "Turn the saved property evidence into a decision by testing and saving a financial scenario.",
+    prerequisites: ["confirm-property"],
+    masterPlanRowIds: ["strategy"],
+    relatedTaskIds: ["choose-strategy"],
+    canSkip: true,
+    isApplicable: () => true,
+    isComplete: (facts) => facts.hasChosenScenario || facts.scenarioCount > 0,
+  },
+  {
+    id: "site-potential",
+    label: "Site Potential",
+    shortLabel: "Potential",
+    description:
+      "Review the approximate build envelope, then optionally generate and select an illustrative concept.",
+    prerequisites: ["confirm-property"],
+    masterPlanRowIds: ["site-potential"],
+    relatedTaskIds: ["review-site-potential"],
+    canSkip: true,
+    isApplicable: () => true,
+    isComplete: (facts) => facts.siteDesignSelected || facts.siteSkipped,
   },
   {
     id: "report",

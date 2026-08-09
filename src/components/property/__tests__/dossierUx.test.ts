@@ -106,9 +106,9 @@ describe("official dossier UX guardrails", () => {
     expect(search).not.toContain("Pilot demo example");
     expect(search).not.toContain("Official parcel search");
     expect(search).not.toContain("Searching inside visible map area");
-    expect(autocomplete).toContain("VITE_GOOGLE_MAPS_API_KEY");
-    expect(autocomplete).toContain("places.googleapis.com/v1/places:autocomplete");
-    expect(autocomplete).toContain('includedRegionCodes: ["za"]');
+    expect(autocomplete).toContain('/api/address/suggestions');
+    expect(autocomplete).not.toContain("VITE_GOOGLE_MAPS_API_KEY");
+    expect(autocomplete).not.toContain("places.googleapis.com");
     expect(autocomplete).toContain("trimmed.length < 3");
     expect(autocomplete).not.toContain("AIza");
     expect(home).not.toContain("<FilterPanel");
@@ -710,6 +710,12 @@ describe("official dossier UX guardrails", () => {
     expect(reportsTab).not.toContain("Extraction and AI summary are not");
     expect(reportsTab).toContain("Replace PDF");
     expect(reportsTab).toContain("Remove");
+    expect(reportsTab).toContain("https://www.lightstoneproperty.co.za/");
+    expect(reportsTab).toContain("https://www.windeed.co.za/wpr/");
+    expect(reportsTab).toContain('status: "outbound_purchase_click"');
+    expect(reportsTab).toContain("purchase and download on the provider website");
+    expect(reportsTab).not.toContain("{r.description}");
+    expect(reportsTab).not.toContain("{r.estTurnaround}");
     expect(reportsTab).toContain("useErfFileVault");
     expect(reportsTab).not.toContain("savePaidReportAttachment");
     expect(workspaceFiles).toContain("provider?: PaidReportProvider");
@@ -857,8 +863,8 @@ describe("official dossier UX guardrails", () => {
     expect(tab).toContain("Fallback Search Tools");
     expect(importer).not.toContain("Property24 example result");
     expect(importer).not.toContain("hardcoded");
-    expect(reportsTab).toContain("Report document uploads");
-    expect(reportsTab).not.toContain("Paid property reports");
+    expect(reportsTab).toContain("One of the most important upgrades");
+    expect(reportsTab).toContain("Buy a Property Report");
     expect(tab).not.toContain("Scan cached and imported listing candidates");
     expect(tab).not.toContain("Run Area Radar");
     expect(tab).not.toContain("Run Exact Radar");

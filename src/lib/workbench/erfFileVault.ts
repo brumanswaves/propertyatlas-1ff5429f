@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { toSupabaseJson } from "@/lib/supabase/json";
+import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import {
   readAllWorkspaceAttachments,
   removePaidReportAttachment,
@@ -76,6 +77,20 @@ export interface UploadErfAssetInput {
   localMigrationFingerprint?: string | null;
   status?: ErfAssetStatus;
   onProgress?: (progress: number, label: string) => void;
+}
+
+export function buildErfAssetExpectedIdentityContext(parcel: NormalizedOfficialParcel) {
+  return {
+    lpiCode: parcel.lpi,
+    erfNumber: parcel.erfNumber == null ? null : String(parcel.erfNumber),
+    portionNumber: parcel.portion == null ? "0" : String(parcel.portion),
+    municipality: parcel.municipality,
+    province: parcel.province,
+    town: parcel.suburbOrArea ?? parcel.town,
+    streetAddress:
+      parcel.knownFields.find((field) => /working address|street address/i.test(field.label))?.value ??
+      null,
+  };
 }
 
 export interface VaultMigrationResult {
@@ -384,6 +399,32 @@ export async function createErfAssetSignedUrl(asset: ErfAsset) {
       ? String((lastError as { message?: unknown }).message)
       : "Could not open file.";
   throw new Error(message);
+}
+
+export async function confirmErfAssetIdentityForParcel(asset: ErfAsset) {
+  const userId = await currentVaultUserId();
+  if (asset.user_id !== userId) throw new Error("This file does not belong to the signed-in user.");
+  const identityStatus = asset.metadata.identityMatchStatus;
+  const extractionStatus = asset.metadata.extractionStatus;
+  if (identityStatus !== "unverified" || (extractionStatus !== "partial" && extractionStatus !== "ready")) {
+    throw new Error("Only a readable document that needs confirmation can be attached this way.");
+  }
+  const metadata = {
+    ...asset.metadata,
+    identityUserConfirmedAt: new Date().toISOString(),
+    identityUserConfirmedParcelId: asset.parcel_id,
+    identityBinding: "user_confirmed",
+  };
+  const { data, error } = await supabase
+    .from("erf_assets")
+    .update({ metadata: toSupabaseJson(metadata) })
+    .eq("id", asset.id)
+    .eq("user_id", userId)
+    .eq("parcel_id", asset.parcel_id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return normalizeAsset(data);
 }
 
 export async function deleteErfAsset(asset: ErfAsset) {

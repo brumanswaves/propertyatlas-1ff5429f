@@ -1,26 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
-  BellRing,
-  BookmarkPlus,
-  Check,
   ExternalLink,
   FileText,
-  Lock,
   Loader2,
   ScanText,
   Trash2,
   Upload,
 } from "lucide-react";
-import { REPORT_CATALOG, formatPrice } from "@/lib/reports/catalog";
+import { REPORT_CATALOG } from "@/lib/reports/catalog";
 import { ComplianceNotice } from "@/components/common/ComplianceNotice";
 import { SourceBadge } from "@/components/data/SourceBadge";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { openExternalUrl } from "@/lib/external";
 import type { SgDocumentResult } from "@/lib/research/sgDocument";
+import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { CSG_OFFICIAL_URL } from "@/lib/external-urls";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
 import {
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
@@ -28,66 +25,59 @@ import {
   erfAssetIdentityMatchStatus,
   extractErfAsset,
 } from "@/lib/workbench/erfAssetExtraction";
+import {
+  erfAssetExtractedIdentity,
+  erfAssetIdentityUserConfirmed,
+} from "@/lib/evidence/extractionMetadata";
 import { toast } from "sonner";
 
-type InterestKind = "notify" | "save";
 type PaidReportProvider = "lightstone" | "windeed";
+
+const PAID_REPORT_PURCHASE_URLS: Record<PaidReportProvider, string> = {
+  lightstone: "https://www.lightstoneproperty.co.za/",
+  windeed: "https://www.windeed.co.za/wpr/",
+};
 
 export function ReportsTab({
   parcelId,
   summary,
   sgDoc,
+  parcel,
 }: {
   parcelId: string;
   summary: string;
   sgDoc?: SgDocumentResult;
+  parcel?: NormalizedOfficialParcel;
 }) {
   const { user } = useAuth();
   const reportVault = useErfFileVault(parcelId, ["paid_report"]);
-  const [interests, setInterests] = useState<Record<string, InterestKind>>({});
   const [uploadErrors, setUploadErrors] = useState<Partial<Record<PaidReportProvider, string>>>({});
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
+  const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
   const reportCatalog = REPORT_CATALOG.filter((report) => report.id !== "sg_diagram");
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(`pa.reportInterests.${parcelId}`);
-      if (raw) setInterests(JSON.parse(raw));
-    } catch {
-      // Ignore malformed local-only report interest cache.
-    }
-  }, [parcelId]);
-
-  function persist(next: Record<string, InterestKind>) {
-    setInterests(next);
-    try {
-      window.localStorage.setItem(`pa.reportInterests.${parcelId}`, JSON.stringify(next));
-    } catch {
-      // Ignore local storage write failures; Supabase persistence still runs for signed-in users.
-    }
-  }
-
-  async function record(reportId: string, kind: InterestKind) {
-    const next = { ...interests, [reportId]: kind };
-    persist(next);
+  async function recordOutboundPurchase(provider: PaidReportProvider, reportId: string) {
     if (user) {
       try {
         await supabase.from("report_orders").insert({
           user_id: user.id,
           parcel_id: parcelId,
           report_type: reportId,
-          status: kind === "notify" ? "interest_notify" : "interest_saved",
+          status: "outbound_purchase_click",
+          status_enum: "pending",
           price_cents: 0,
-          provider: "placeholder",
-          payload: { placeholder: true, kind, summary, createdAt: new Date().toISOString() },
+          provider,
+          provider_id: provider,
+          payload: {
+            outboundPurchaseUrl: PAID_REPORT_PURCHASE_URLS[provider],
+            summary,
+            createdAt: new Date().toISOString(),
+          },
         });
       } catch {
-        // Keep report interest UX non-blocking while provider/order capture is placeholder-only.
+        // Outbound measurement must never block access to the independent provider.
       }
     }
-    toast.success(
-      kind === "notify" ? "We'll notify you when this is live." : "Saved to your report interests.",
-    );
   }
 
   async function uploadPaidReport(provider: PaidReportProvider, file: File | null | undefined) {
@@ -114,6 +104,9 @@ export function ReportsTab({
         provider,
         reportType: provider,
         uploadedFor: "paid_reports_tab",
+        ...(parcel
+          ? { expectedIdentityContext: buildErfAssetExpectedIdentityContext(parcel) }
+          : {}),
       },
     }).catch((error: Error) => {
       setUploadErrors((current) => ({ ...current, [provider]: error.message }));
@@ -166,19 +159,31 @@ export function ReportsTab({
     toast.success(`${providerLabel(provider)} PDF removed.`);
   }
 
+  async function confirmPaidReportIdentity(asset: ErfAsset) {
+    setConfirmingAssetId(asset.id);
+    try {
+      await reportVault.confirmIdentity(asset);
+      toast.success("Report attached as user-confirmed evidence. This is not official verification.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The report could not be confirmed.");
+    } finally {
+      setConfirmingAssetId(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border bg-muted/25 px-3 py-2.5">
-        <h3 className="text-sm font-semibold tracking-tight">Report document uploads</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Add Lightstone and WinDeed PDFs when you have them. SG diagram evidence lives in the
-          Sources verification center. No payment is taken here.
-        </p>
+      <div className="rounded-2xl border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">High-value evidence upgrade</div>
+        <h3 className="mt-1 text-base font-semibold tracking-tight text-[#0D1B2A]">One of the most important upgrades to your Easy Erf investigation</h3>
+        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Free public data helps Easy Erf identify the land. A paid property report adds deeds, transaction and market context that can materially change a buying or development decision, including registered extent, title deed information, transfer history, municipal valuation, ownership context and comparable sales.</p>
+        <p className="mt-2 text-sm font-medium leading-6 text-[#0D1B2A]">For a serious property decision, Easy Erf strongly recommends adding one before relying on your final report or strategy.</p>
       </div>
 
       <div className="grid gap-3">
         {reportCatalog.map((r) => {
-          const interest = interests[r.id];
+          const provider = reportProviderForCatalogId(r.id);
+          if (!provider) return null;
           return (
             <article key={r.id} className="rounded-2xl border border-border bg-card p-3">
               <div className="flex items-start justify-between gap-3">
@@ -188,52 +193,31 @@ export function ReportsTab({
                   </span>
                   <div className="min-w-0">
                     <div className="text-[13px] font-semibold">{r.name}</div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{r.description}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {paidReportPurchaseDescription(provider)}
+                    </p>
                     <div className="mt-1 text-[10px] text-muted-foreground">
-                      {r.providerHint} - {r.estTurnaround}
+                      {r.providerHint} - purchase and download on the provider website
                     </div>
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[13px] font-semibold tabular-nums text-muted-foreground">
-                    {formatPrice(r.priceCents)}
-                  </div>
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    <Lock className="h-2.5 w-2.5" /> Coming Soon
-                  </span>
-                </div>
+                <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-800">Buy from provider</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-2.5">
-                <button
-                  type="button"
-                  onClick={() => record(r.id, "notify")}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
-                >
-                  <BellRing className="h-3 w-3" /> Notify me
-                </button>
-                <button
-                  type="button"
-                  onClick={() => record(r.id, "save")}
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
-                >
-                  <BookmarkPlus className="h-3 w-3" /> Save report interest
-                </button>
-                {interest && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                    <Check className="h-2.5 w-2.5" />{" "}
-                    {interest === "notify" ? "Notify requested" : "Saved"}
-                  </span>
-                )}
+                <a href={PAID_REPORT_PURCHASE_URLS[provider]} target="_blank" rel="noopener noreferrer" onClick={() => void recordOutboundPurchase(provider, r.id)} className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white">
+                  Buy a Property Report <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <span className="inline-flex items-center text-xs text-muted-foreground">Payment happens on the provider's website. Easy Erf does not process it.</span>
               </div>
-              {reportProviderForCatalogId(r.id) && (
+              {provider && (
                 <PaidReportUploadArea
-                  provider={reportProviderForCatalogId(r.id)!}
+                  provider={provider}
                   attachment={
-                    paidReportForProvider(reportVault.assets, reportProviderForCatalogId(r.id)!) ??
+                    paidReportForProvider(reportVault.assets, provider) ??
                     null
                   }
                   error={
-                    uploadErrors[reportProviderForCatalogId(r.id)!] ??
+                    uploadErrors[provider] ??
                     (reportVault.signedIn ? undefined : "Sign in to save PDFs to the cloud vault.")
                   }
                   uploading={Boolean(reportVault.uploadState)}
@@ -241,10 +225,15 @@ export function ReportsTab({
                   onRemove={removePaidReport}
                   reading={
                     readingAssetId ===
-                    (paidReportForProvider(reportVault.assets, reportProviderForCatalogId(r.id)!)?.id ??
+                    (paidReportForProvider(reportVault.assets, provider)?.id ??
                       null)
                   }
                   onRead={(asset, retry) => void readDocument(asset, retry)}
+                  confirming={
+                    confirmingAssetId ===
+                    (paidReportForProvider(reportVault.assets, provider)?.id ?? null)
+                  }
+                  onConfirmIdentity={(asset) => void confirmPaidReportIdentity(asset)}
 
                 />
               )}
@@ -253,9 +242,8 @@ export function ReportsTab({
         })}
       </div>
 
-      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5 text-[11px] text-muted-foreground">
-        Placeholder only. No payment will be processed. Lightstone and WinDeed integrations will
-        activate once their commercial connections are live.
+      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2.5 text-[11px] leading-5 text-muted-foreground">
+        Easy Erf reads an uploaded report, cross-checks it against the official erf and brings usable evidence into the investigation. A property report strengthens due diligence but does not replace a certified title deed, municipal zoning confirmation or professional advice.
         {!sgDoc?.shown && (
           <button
             type="button"
@@ -281,6 +269,12 @@ function reportProviderForCatalogId(reportId: string): PaidReportProvider | null
 
 function providerLabel(provider: PaidReportProvider) {
   return provider === "lightstone" ? "Lightstone" : "WinDeed";
+}
+
+function paidReportPurchaseDescription(provider: PaidReportProvider) {
+  return provider === "lightstone"
+    ? "Purchase a once-off property report for valuation, comparable-sales and property context."
+    : "Purchase a property report for deeds-office, ownership, bond and transfer context.";
 }
 
 function paidReportForProvider(assets: ErfAsset[], provider: PaidReportProvider) {
@@ -316,6 +310,8 @@ function PaidReportUploadArea({
   onRemove,
   reading,
   onRead,
+  confirming,
+  onConfirmIdentity,
 }: {
   provider: PaidReportProvider;
   attachment: ErfAsset | null;
@@ -325,9 +321,12 @@ function PaidReportUploadArea({
   onRemove: (provider: PaidReportProvider) => void;
   reading?: boolean;
   onRead: (asset: ErfAsset, retry?: boolean) => void;
+  confirming?: boolean;
+  onConfirmIdentity: (asset: ErfAsset) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const label = providerLabel(provider);
+  const extractedIdentity = attachment ? erfAssetExtractedIdentity(attachment) : null;
   return (
     <div className="mt-4 rounded-2xl border border-dashed border-[#FF6A00]/25 bg-[#fff8ec] p-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -337,8 +336,9 @@ function PaidReportUploadArea({
           </div>
           <p className="mt-1 text-[11px] leading-5 text-[#0D1B2A]/70">
             Buy or download the {label} report, then upload the PDF here. Easy Erf stores it in this
-            erf file for reference. In a later Easy Erf AI step, uploaded reports can help produce a
-            more complete final report.
+            erf file, reads supported evidence, checks the detected identity and keeps the original
+            available for review. You remain responsible for confirming the provider report is for
+            this property.
           </p>
         </div>
         <button
@@ -379,10 +379,12 @@ function PaidReportUploadArea({
                 Replace it with the correct report for this erf.
               </div>
             )}
-            {!reading && erfAssetIdentityMatchStatus(attachment) === "unverified" && (
-              <div className="mt-0.5 font-medium text-[#9A3A1A]">
-                The document does not identify the selected parcel clearly enough to use its
-                contents as evidence.
+            {!reading && erfAssetIdentityMatchStatus(attachment) === "unverified" && !erfAssetIdentityUserConfirmed(attachment) && (
+              <div className="mt-2 rounded-lg border border-amber-300/55 bg-white/80 p-2 text-amber-950">
+                <div className="font-semibold">Read successfully - needs your confirmation</div>
+                <div className="mt-1">Detected: Erf {extractedIdentity?.erfNumber ?? "not stated"}, portion {extractedIdentity?.portionNumber ?? "not stated"}, {extractedIdentity?.streetAddress ?? extractedIdentity?.suburbOrTown ?? extractedIdentity?.municipality ?? "location not stated"}.</div>
+                <button type="button" disabled={confirming} onClick={() => onConfirmIdentity(attachment)} className="mt-2 inline-flex min-h-8 items-center rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold text-white disabled:opacity-60">Yes, this report is for this erf</button>
+                <div className="mt-1 text-[10px]">This records user confirmation, not official verification.</div>
               </div>
             )}
           </div>

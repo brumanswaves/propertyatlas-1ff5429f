@@ -19,7 +19,7 @@ import {
   looksLikeGeneralPlanDocument,
   matchDocumentIdentity,
   normalizeExtractionResult,
-  parseCanonicalLpi,
+  expectedIdentityFromCanonicalLpi,
   parseLegalPortionToken,
   type ErfExpectedIdentity,
   type ErfExtractionFailureCode,
@@ -193,10 +193,29 @@ function lockIsFresh(metadata: Record<string, unknown> | null) {
 }
 
 async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentity> {
+  const fromLpi = expectedIdentityFromCanonicalLpi(asset.parcel_id);
   const expected: ErfExpectedIdentity = {
     parcelId: asset.parcel_id,
-    lpiCode: parseCanonicalLpi(asset.parcel_id),
+    ...fromLpi,
   };
+  const context = asset.metadata?.expectedIdentityContext;
+  if (context && typeof context === "object") {
+    const raw = context as Record<string, unknown>;
+    const text = (key: string) => typeof raw[key] === "string" && raw[key].trim() ? raw[key].trim() : null;
+    const contextLpi = String(text("lpiCode") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const contextErf = String(text("erfNumber") ?? "").replace(/\D/g, "").replace(/^0+/, "") || "0";
+    const contextPortion = String(text("portionNumber") ?? "").replace(/\D/g, "").replace(/^0+/, "") || "0";
+    const trustedCore =
+      (!fromLpi.lpiCode || contextLpi === fromLpi.lpiCode) &&
+      (!fromLpi.erfNumber || contextErf === String(fromLpi.erfNumber)) &&
+      (!fromLpi.portionNumber || contextPortion === String(fromLpi.portionNumber));
+    if (trustedCore) {
+      expected.municipality = text("municipality");
+      expected.province = text("province");
+      expected.town = text("town");
+      expected.streetAddress = text("streetAddress");
+    }
+  }
   const key = serviceKey();
   if (!key) return expected;
   try {
@@ -225,12 +244,12 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
     return {
       ...expected,
       lpiCode: expected.lpiCode ?? pick("lpi", "lpiCode"),
-      erfNumber: pick("erfNumber", "erf"),
-      portionNumber: pick("portion", "portionNumber"),
-      municipality: pick("municipality"),
-      province: pick("province"),
-      town: pick("town", "suburb"),
-      streetAddress: pick("streetAddress", "address"),
+      erfNumber: expected.erfNumber ?? pick("erfNumber", "erf"),
+      portionNumber: expected.portionNumber ?? pick("portion", "portionNumber"),
+      municipality: expected.municipality ?? pick("municipality"),
+      province: expected.province ?? pick("province"),
+      town: expected.town ?? pick("town", "suburb"),
+      streetAddress: expected.streetAddress ?? pick("streetAddress", "address"),
     };
   } catch {
     return expected;
@@ -714,9 +733,9 @@ Deno.serve(async (request: Request) => {
         identityMatchStatus === "mismatch"
           ? ERF_EXTRACTION_MISMATCH_MESSAGE
           : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
-      log("identity_rejected", requestId, { identityMatchStatus });
+      log("identity_requires_review", requestId, { identityMatchStatus });
       return finish(
-        "failed",
+        "partial",
         {
           extractionModel: model,
           extractionError: message,
@@ -724,19 +743,20 @@ Deno.serve(async (request: Request) => {
           identityMatchReason: identityReason,
           extractedIdentity: result.identity,
           documentLineage: baselineIdentity.lineage ?? null,
-          extractedText: "",
-          extractedClaims: [],
-          extractedDocumentType: null,
-          extractedProvider: null,
-          extractedDocumentDate: null,
-          extractionSummary: null,
-          pageCount: null,
+          extractedText: result.extractedText,
+          extractedClaims: result.claims,
+          extractedDocumentType: result.documentType,
+          extractedProvider: result.provider,
+          extractedDocumentDate: result.documentDate,
+          extractionSummary: result.summary,
+          pageCount: result.pageCount ?? sourcePageCount,
         },
         {
-          success: false,
+          success: true,
           code:
             identityMatchStatus === "mismatch" ? "IDENTITY_MISMATCH" : "IDENTITY_UNVERIFIED",
-          error: message,
+          warning: message,
+          readable: true,
           identityMatchStatus,
           identityMatchReason: identityReason,
         },

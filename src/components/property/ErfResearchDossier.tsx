@@ -590,7 +590,7 @@ export function ErfResearchDossier({
     return (
       <section className="rounded-2xl border border-border bg-card p-4">
         <div>
-          <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} />
+          <ReportsTab parcelId={parcel.id} summary={summary} sgDoc={sgDoc} parcel={parcel} />
         </div>
       </section>
     );

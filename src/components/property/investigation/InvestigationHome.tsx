@@ -226,6 +226,8 @@ export function InvestigationHome({
         workspaceState={workspaceState}
         plan={plan}
         report={report}
+        chosenScenario={chosenScenario}
+        savedScenarioCount={scenarios.length}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}

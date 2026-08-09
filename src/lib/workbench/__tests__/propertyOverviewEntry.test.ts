@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyErfWorkspaceState } from "../erfWorkspaceState";
 import {
+  prepareGuidedIdentityConfirmationTransition,
   prepareExplicitWorkspaceTransition,
   prepareWorkspaceEntry,
   resolvePropertyEntryTab,
@@ -98,6 +99,34 @@ describe("property overview entry", () => {
       startedAt: "2026-08-08T08:05:00.000Z",
       currentStepId: "add-address",
       expertWorkspaceOpen: false,
+    });
+  });
+
+  it("confirms identity and advances to Add address without a stale second write", () => {
+    const persistedWorkspace = createEmptyErfWorkspaceState();
+    persistedWorkspace.investigation.currentStepId = "confirm-property";
+    persistedWorkspace.investigation.intentionallyVisitedStepIds = ["confirm-property"];
+    const displayWorkspace = {
+      ...persistedWorkspace,
+      strategyScenarioCount: 2,
+    };
+
+    const patch = prepareGuidedIdentityConfirmationTransition({
+      persistedWorkspace,
+      displayWorkspace,
+      now: "2026-08-08T09:00:00.000Z",
+    });
+
+    expect(patch).toMatchObject({
+      identityStatus: "looks_correct",
+      strategyScenarioCount: 2,
+      dirty: true,
+      investigation: {
+        currentStepId: "add-address",
+        intentionallyVisitedStepIds: ["confirm-property", "add-address"],
+        expertWorkspaceOpen: false,
+        lastMeaningfulActionAt: "2026-08-08T09:00:00.000Z",
+      },
     });
   });
 });

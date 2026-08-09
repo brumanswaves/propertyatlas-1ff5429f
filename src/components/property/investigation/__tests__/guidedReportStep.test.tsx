@@ -31,7 +31,7 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
     paidReportCount: 0,
     marketEvidenceCount: 1,
     marketAddressSaved: true,
-    scenarioCount: 0,
+    scenarioCount: 1,
     hasChosenScenario: false,
     siteConceptCount: 0,
     siteDesignSelected: false,

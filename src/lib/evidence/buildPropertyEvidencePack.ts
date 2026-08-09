@@ -15,6 +15,7 @@ import {
   erfAssetHasSearchableExtraction,
   erfAssetIdentityMatchReason,
   erfAssetIdentityMatchStatus,
+  erfAssetIdentityUserConfirmed,
   isExtractableErfAsset,
 } from "./extractionMetadata";
 import type {
@@ -840,6 +841,7 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
   // Identity gate: only an identity-matched, ready extraction may become evidence.
   if (!erfAssetHasSearchableExtraction(asset)) return;
   const parentLineage = erfAssetIsParentLineageMatch(asset);
+  const userConfirmed = erfAssetIdentityUserConfirmed(asset);
   const lineage = parentLineage ? erfAssetDocumentLineage(asset) : null;
   const planLabel = lineage?.generalPlanReference
     ? `General Plan ${lineage.generalPlanReference}`
@@ -883,7 +885,7 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       // never presented as an established fact.
       nature: parentScoped || item.interpretation === true ? "interpretation" : "fact",
       status: parentScoped || item.interpretation === true ? "not_reviewed" : "supported",
-      confidence: parentScoped || item.interpretation === true ? "unverified" : "medium",
+      confidence: parentScoped || item.interpretation === true || userConfirmed ? "unverified" : "medium",
 
       confidenceReason: parentScoped
         ? `Read from ${planLabel}, which covers this erf's parent property and many other erven. It is contextual cadastral evidence for this erf, not a confirmed value for it.`
@@ -891,7 +893,9 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
           ? "Read from the drawing rather than printed text. A surveyor or conveyancer must confirm it."
           : fromParentPlan
             ? `Explicitly printed on ${planLabel} as affecting this erf. It is supported only to the extent of that printed statement; its legal effect must still be confirmed by a land surveyor or conveyancer.`
-            : EXTRACTED_FACT_CONFIDENCE_REASON,
+            : userConfirmed
+              ? "The document was readable and the user attached it to this erf. Easy Erf did not independently verify that binding."
+              : EXTRACTED_FACT_CONFIDENCE_REASON,
 
       sourceIds: [sourceId],
       locators: [
@@ -904,7 +908,7 @@ function addExtractedDocumentClaims(pack: MutablePack, asset: ErfAsset, sourceId
       ],
       observedAt: asset.updated_at,
       updatedAt: asset.updated_at,
-      userConfirmed: false,
+      userConfirmed,
       excluded: false,
       notes: parentScoped || fromParentPlan
         ? "Confirm applicability to this erf with a land surveyor or conveyancer before relying on it."
@@ -969,15 +973,16 @@ function addDocumentIdentityWarnings(pack: MutablePack, asset: ErfAsset, sourceI
     });
     return;
   }
+  if (identity === "unverified" && erfAssetIdentityUserConfirmed(asset)) return;
   pack.gaps.push({
     id: `document-identity-unverified-${asset.id}`,
     parcelId: asset.parcel_id,
     domain: "documents",
     importance: "medium",
-    title: "Report could not be matched to this erf",
-    explanation: `${asset.original_file_name} does not identify this erf clearly enough for its contents to be used as evidence.`,
+    title: "Readable report needs property confirmation",
+    explanation: `${asset.original_file_name} was read, but Easy Erf could not automatically bind it to this erf. Confirm it only if you checked the document identity yourself.`,
     basis: reason ?? "identityMatchStatus=unverified",
-    nextAction: "Upload a report that clearly states this erf's identity.",
+    nextAction: "Review the detected identity and confirm whether this document supports this erf.",
     targetTab: "reports",
     blocking: false,
   });
@@ -1766,6 +1771,7 @@ function selectVerifiedRegisteredExtent(assets: ErfAsset[], parcelId: string) {
     if (asset.parcel_id !== parcelId) continue;
     if (!REGISTERED_EXTENT_CATEGORIES.includes(asset.asset_category)) continue;
     if (!erfAssetHasSearchableExtraction(asset)) continue;
+    if (erfAssetIdentityMatchStatus(asset) !== "matched") continue;
     // A parent General Plan states the PARENT's extent; it may never set this
     // erf's area, so the whole asset is excluded from this selector.
     if (erfAssetIsParentLineageMatch(asset)) continue;
@@ -1835,7 +1841,16 @@ function extractedFragments(asset: ErfAsset) {
   if (!erfAssetHasSearchableExtraction(asset)) return [];
   const text = asset.metadata.extractedText ?? asset.metadata.extracted_text;
   if (typeof text !== "string" || !text.trim()) return [];
-  return splitFragments(text).map(limitFragment);
+  return splitFragments(redactPersonalIdentifiers(text)).map(limitFragment);
+}
+
+export function redactPersonalIdentifiers(text: string) {
+  return text
+    .replace(/\b\d{13}\b/g, "[personal identifier redacted]")
+    .replace(
+      /\b(?:identity|id)\s*(?:number|no\.?|nr\.?)\s*[:#-]?\s*[A-Z0-9-]{6,}/gi,
+      "[personal identifier redacted]",
+    );
 }
 
 function splitFragments(text: string) {
