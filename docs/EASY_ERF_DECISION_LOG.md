@@ -49,7 +49,7 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Decision: Exact official search, map selection and saved-erf reopen should land on a read-only Property Overview / Property First Read. Guided Investigation begins only through an explicit action.
 - Rationale: The first read should orient the user without creating workspace commits or forcing a task list immediately.
 - Implementation: Reuse canonical parcel, investigation, planning, vault, market, Strategy and Site Potential state; keep the entry zero-commit. The Master Plan Core Product Journey and locked decisions now explicitly distinguish selected-property entry from the Guided investigation experience.
-- Supersedes: The earlier assumption that selecting or confirming an erf immediately starts Guided Investigation.
+- Supersedes: The earlier assumption that selecting or opening an erf immediately starts Guided Investigation; property confirmation occurs as the first Guided task after the user explicitly begins or continues the investigation.
 - Do not regress: Do not make Overview visits start investigation or write derived state.
 - Related: `docs/EASY_ERF_MASTER_PLAN.md` Sections 5 and 13.
 

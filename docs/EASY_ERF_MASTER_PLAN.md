@@ -56,8 +56,8 @@ The canonical user journey is:
 
 1. Find or click a property
 2. Easy Erf opens a read-only **Property First Read / Property Overview** that orients the user with the selected parcel and intelligence already recorded
-3. The user confirms the erf / parcel identity when prompted, without silently starting investigation state
-4. The user explicitly chooses **Investigate this property** or **Continue investigation** to enter Guided Investigation
+3. The user explicitly chooses **Investigate this property** or **Continue investigation** to enter Guided Investigation
+4. Guided Step 1 confirms the erf / parcel identity
 5. Easy Erf uses available public, paid, uploaded, and derived evidence
 6. Easy Erf shows what it knows, what it does not know, and confidence level
 7. Easy Erf gives one clear **Next Best Step**
@@ -509,7 +509,7 @@ A successful MVP allows a user to:
 - Property First Read / Property Overview is the default selected-property entry experience
 - Guided Investigation is the default normal-user investigation experience once investigation begins
 - Expert mode remains available but secondary
-- Selecting or confirming an erf does not automatically start Guided Investigation; this supersedes the earlier assumption that property selection immediately starts investigation.
+- Selecting or opening an erf does not automatically start Guided Investigation. Property confirmation is the first Guided investigation task after the user explicitly begins or continues the investigation. This supersedes the earlier assumption that property selection immediately starts investigation.
 - Erf 1570 is the gold-standard test property
 - Kouga / St Francis remains the initial pilot geography
 - Easy Erf Report is the living destination of the investigation
