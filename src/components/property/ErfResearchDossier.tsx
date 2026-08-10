@@ -17,6 +17,7 @@ import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildE
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1519,7 +1520,7 @@ function StoepAiReportView({
       return Math.hypot(b.x - a.x, b.y - a.y);
     });
     const resolved = resolveSitePotentialInputs({
-      overrides: readStoredBuildEnvelopeInputs(parcel.id),
+      overrides: readStoredBuildEnvelopeInputs(parcel.id, userId),
       pilot: findPilotPlanningRecord({ parcelId: parcel.id, lpiCode: parcel.lpi ?? null }),
       edgeLengths,
       recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
@@ -1530,7 +1531,7 @@ function StoepAiReportView({
       parcelId: parcel.id,
       ring: parcelRing,
     });
-  }, [parcel, parcelRing]);
+  }, [parcel, parcelRing, userId]);
 
   const reportHero = useMemo(
     () =>
@@ -1616,13 +1617,13 @@ function StoepAiReportView({
     [chosenScenario, decision, evidence, report],
   );
   const [decisionMode, setDecisionMode] = useState<ReportDecisionMode>(() =>
-    readReportDecisionMode(parcel.id),
+    readReportDecisionMode(parcel.id, undefined, userId),
   );
-  useEffect(() => {
-    setDecisionMode(readReportDecisionMode(parcel.id));
-  }, [parcel.id]);
+  useLayoutEffect(() => {
+    setDecisionMode(readReportDecisionMode(parcel.id, undefined, userId));
+  }, [parcel.id, userId]);
   const updateDecisionMode = (mode: ReportDecisionMode) => {
-    setDecisionMode(writeReportDecisionMode(parcel.id, mode));
+    setDecisionMode(writeReportDecisionMode(parcel.id, mode, undefined, userId));
   };
   const reportDoc = useMemo(
     () =>
@@ -1731,7 +1732,7 @@ function StoepAiReportView({
   );
   const [reportSnapshotState, setReportSnapshotState] = useState<ReportSnapshotState>(() => ({
     parcelId: parcel.id,
-    snapshots: readReportSnapshots(parcel.id),
+    snapshots: readReportSnapshots(parcel.id, undefined, userId),
   }));
   const [snapshotMessage, setSnapshotMessage] = useState<string | null>(null);
   const [clearSnapshotsRequested, setClearSnapshotsRequested] = useState(false);
@@ -1739,11 +1740,14 @@ function StoepAiReportView({
   const printStylesReadyRef = useRef<Promise<void> | null>(null);
   const printCleanupRef = useRef<(() => void) | null>(null);
   const printInProgressRef = useRef(false);
-  useEffect(() => {
-    setReportSnapshotState({ parcelId: parcel.id, snapshots: readReportSnapshots(parcel.id) });
+  useLayoutEffect(() => {
+    setReportSnapshotState({
+      parcelId: parcel.id,
+      snapshots: readReportSnapshots(parcel.id, undefined, userId),
+    });
     setSnapshotMessage(null);
     setClearSnapshotsRequested(false);
-  }, [parcel.id]);
+  }, [parcel.id, userId]);
   const reportSnapshots = snapshotsForActiveParcel(parcel.id, reportSnapshotState);
   const snapshotComparison = useMemo(
     () => compareReportSnapshots(reportSnapshots[0] ?? null, currentReportSnapshot),
@@ -1759,7 +1763,7 @@ function StoepAiReportView({
       strategyScenarios: scenarios,
       savedAt: new Date().toISOString(),
     });
-    const result = saveReportSnapshot(snapshot);
+    const result = saveReportSnapshot(snapshot, undefined, userId);
     setReportSnapshotState({ parcelId: parcel.id, snapshots: result.snapshots });
     setClearSnapshotsRequested(false);
     setSnapshotMessage(
@@ -1770,7 +1774,7 @@ function StoepAiReportView({
   };
 
   const handleClearReportSnapshots = () => {
-    clearReportSnapshots(parcel.id);
+    clearReportSnapshots(parcel.id, undefined, userId);
     setReportSnapshotState({ parcelId: parcel.id, snapshots: [] });
     setClearSnapshotsRequested(false);
     setSnapshotMessage("Report snapshot history cleared for this property.");

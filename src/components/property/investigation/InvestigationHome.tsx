@@ -97,7 +97,7 @@ export function InvestigationHome({
   );
 
   const planning = useMemo(() => {
-    const manualZoneCode = readStoredPlanningZone(parcel.id);
+    const manualZoneCode = readStoredPlanningZone(parcel.id, userId);
     const registry = findMunicipalityPlanningRegistry(parcel.municipality ?? null);
     const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
     const documentZone = selectedZone
@@ -118,7 +118,7 @@ export function InvestigationHome({
       hasParcelPolygon: Boolean(parcel.rawProperties),
       evidence: signals,
     });
-  }, [assets, parcel]);
+  }, [assets, parcel, userId]);
 
   const selectedSiteDesign = useMemo(
     () =>

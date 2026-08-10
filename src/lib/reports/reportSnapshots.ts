@@ -7,7 +7,11 @@ import type {
   SavedMarketEvidence,
 } from "@/features/marketEvidence/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
-import type { ErfStrategyScenario } from "@/lib/workbench/erfWorkspaceState";
+import {
+  browserScopedParcelKey,
+  type BrowserPersistenceUserId,
+  type ErfStrategyScenario,
+} from "@/lib/workbench/erfWorkspaceState";
 
 export const REPORT_SNAPSHOT_SCHEMA_VERSION = 1;
 export const MAX_REPORT_SNAPSHOTS_PER_PARCEL = 10;
@@ -125,8 +129,11 @@ const SEVERITIES = ["low", "medium", "high"] as const;
 const EVIDENCE_CONFIDENCES = ["high", "medium", "low", "excluded"] as const;
 const LISTING_ROLES = ["subject_active_listing", "comparable_evidence", "market_note"] as const;
 
-export function reportSnapshotStorageKey(parcelId: string) {
-  return `easyerf.reportSnapshots.v1.${parcelId}`;
+export function reportSnapshotStorageKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey("report-snapshots.v1", parcelId, userId);
 }
 
 export function snapshotsForActiveParcel(parcelId: string, state: ReportSnapshotState) {
@@ -270,10 +277,11 @@ export function compareReportSnapshots(
 export function readReportSnapshots(
   parcelId: string,
   storage: SnapshotStorage | undefined = defaultStorage(),
+  userId: BrowserPersistenceUserId = null,
 ): ReportSnapshot[] {
   if (!storage) return [];
   try {
-    const parsed = JSON.parse(storage.getItem(reportSnapshotStorageKey(parcelId)) ?? "[]") as unknown;
+    const parsed = JSON.parse(storage.getItem(reportSnapshotStorageKey(parcelId, userId)) ?? "[]") as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
       .map((item) => coerceSnapshot(item))
@@ -287,23 +295,25 @@ export function readReportSnapshots(
 export function saveReportSnapshot(
   snapshot: ReportSnapshot,
   storage: SnapshotStorage | undefined = defaultStorage(),
+  userId: BrowserPersistenceUserId = null,
 ): SaveReportSnapshotResult {
   if (!storage) return { snapshots: [], saved: false };
   const normalized = coerceSnapshot(snapshot) ?? snapshot;
-  const existing = readReportSnapshots(normalized.parcelId, storage);
+  const existing = readReportSnapshots(normalized.parcelId, storage, userId);
   if (existing[0] && snapshotFingerprint(existing[0]) === snapshotFingerprint(normalized)) {
     return { snapshots: existing, saved: false };
   }
   const next = [normalized, ...existing].slice(0, MAX_REPORT_SNAPSHOTS_PER_PARCEL);
-  storage.setItem(reportSnapshotStorageKey(normalized.parcelId), JSON.stringify(next));
+  storage.setItem(reportSnapshotStorageKey(normalized.parcelId, userId), JSON.stringify(next));
   return { snapshots: next, saved: true };
 }
 
 export function clearReportSnapshots(
   parcelId: string,
   storage: SnapshotStorage | undefined = defaultStorage(),
+  userId: BrowserPersistenceUserId = null,
 ) {
-  storage?.removeItem(reportSnapshotStorageKey(parcelId));
+  storage?.removeItem(reportSnapshotStorageKey(parcelId, userId));
 }
 
 export function snapshotFingerprint(snapshot: ReportSnapshot): string {

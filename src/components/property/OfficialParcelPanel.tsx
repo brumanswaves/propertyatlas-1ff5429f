@@ -2397,7 +2397,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   const planningAssessment = useMemo(() => {
-    const manualZoneCode = readStoredPlanningZone(normalizedParcel.id);
+    const manualZoneCode = readStoredPlanningZone(normalizedParcel.id, userId);
     const registry = findMunicipalityPlanningRegistry(normalizedParcel.municipality ?? null);
     const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
     const documentZone = selectedZone
@@ -2424,7 +2424,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       hasParcelPolygon: Boolean(normalizedParcel.rawProperties),
       evidence: signals,
     });
-  }, [erfFileVault.assets, normalizedParcel]);
+  }, [erfFileVault.assets, normalizedParcel, userId]);
 
   const strategyScenarios = useMemo(
     () => readStrategyScenarios(parcelId, undefined, userId),

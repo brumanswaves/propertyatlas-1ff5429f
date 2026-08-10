@@ -8,6 +8,10 @@
  */
 
 import type { StreetFrontageMethod } from "./streetFrontage";
+import {
+  browserScopedParcelKey,
+  type BrowserPersistenceUserId,
+} from "@/lib/workbench/erfWorkspaceState";
 
 export interface StoredStreetFrontageDetection {
   edgeIndex: number | null;
@@ -18,19 +22,24 @@ export interface StoredStreetFrontageDetection {
 }
 
 const KEY_PREFIX = "erfstoep.street-frontage.v1:";
+type StreetFrontageStorage = Pick<Storage, "getItem" | "setItem">;
 
-function storageKey(parcelId: string) {
-  return `${KEY_PREFIX}${parcelId}`;
+export function streetFrontageStorageKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey(KEY_PREFIX, parcelId, userId);
 }
 
 export function readStoredStreetFrontageDetection(
   parcelId: string,
-  storage?: Storage,
+  storage?: StreetFrontageStorage,
+  userId: BrowserPersistenceUserId = null,
 ): StoredStreetFrontageDetection | null {
   const store = storage ?? (typeof window === "undefined" ? null : window.localStorage);
   if (!store) return null;
   try {
-    const raw = store.getItem(storageKey(parcelId));
+    const raw = store.getItem(streetFrontageStorageKey(parcelId, userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredStreetFrontageDetection;
     return parsed && typeof parsed === "object" ? parsed : null;
@@ -42,7 +51,8 @@ export function readStoredStreetFrontageDetection(
 export function writeStoredStreetFrontageDetection(
   parcelId: string,
   detection: Omit<StoredStreetFrontageDetection, "detectedAt"> & { detectedAt?: string },
-  storage?: Storage,
+  storage?: StreetFrontageStorage,
+  userId: BrowserPersistenceUserId = null,
 ): StoredStreetFrontageDetection {
   const record: StoredStreetFrontageDetection = {
     edgeIndex: detection.edgeIndex,
@@ -54,7 +64,7 @@ export function writeStoredStreetFrontageDetection(
   const store = storage ?? (typeof window === "undefined" ? null : window.localStorage);
   if (store) {
     try {
-      store.setItem(storageKey(parcelId), JSON.stringify(record));
+      store.setItem(streetFrontageStorageKey(parcelId, userId), JSON.stringify(record));
     } catch {
       /* storage unavailable — detection still works for this session */
     }

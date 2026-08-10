@@ -3,17 +3,34 @@
  *
  * Stored locally per parcel; it is user-supplied, never an official source.
  */
+import {
+  browserScopedParcelKey,
+  type BrowserPersistenceUserId,
+} from "@/lib/workbench/erfWorkspaceState";
+
 const STORAGE_PREFIX = "easyerf.planningZone.";
 export const PLANNING_ZONE_UPDATED_EVENT = "easyerf:planning-zone-updated";
+type PlanningStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export function planningZoneStorageKey(parcelId: string): string {
-  return `${STORAGE_PREFIX}${parcelId}`;
+function defaultStorage(): PlanningStorage | undefined {
+  return typeof window === "undefined" ? undefined : window.localStorage;
 }
 
-export function readStoredPlanningZone(parcelId: string): string | null {
-  if (typeof window === "undefined") return null;
+export function planningZoneStorageKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+): string {
+  return browserScopedParcelKey(STORAGE_PREFIX, parcelId, userId);
+}
+
+export function readStoredPlanningZone(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+  storage: PlanningStorage | undefined = defaultStorage(),
+): string | null {
+  if (!storage) return null;
   try {
-    const raw = window.localStorage.getItem(planningZoneStorageKey(parcelId));
+    const raw = storage.getItem(planningZoneStorageKey(parcelId, userId));
     const trimmed = raw?.trim();
     return trimmed ? trimmed : null;
   } catch {
@@ -21,17 +38,24 @@ export function readStoredPlanningZone(parcelId: string): string | null {
   }
 }
 
-export function writeStoredPlanningZone(parcelId: string, zoneCode: string | null): string | null {
+export function writeStoredPlanningZone(
+  parcelId: string,
+  zoneCode: string | null,
+  userId: BrowserPersistenceUserId = null,
+  storage: PlanningStorage | undefined = defaultStorage(),
+): string | null {
   const next = zoneCode?.trim() || null;
-  if (typeof window === "undefined") return next;
+  if (!storage) return next;
   try {
-    if (next) window.localStorage.setItem(planningZoneStorageKey(parcelId), next);
-    else window.localStorage.removeItem(planningZoneStorageKey(parcelId));
-    window.dispatchEvent(
-      new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
-        detail: { parcelId, zoneCode: next },
-      }),
-    );
+    if (next) storage.setItem(planningZoneStorageKey(parcelId, userId), next);
+    else storage.removeItem(planningZoneStorageKey(parcelId, userId));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
+          detail: { parcelId, userId, zoneCode: next },
+        }),
+      );
+    }
   } catch {
     /* storage is best-effort only */
   }

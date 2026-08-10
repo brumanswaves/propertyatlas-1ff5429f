@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
+import {
+  browserScopedParcelKey,
+  type BrowserPersistenceUserId,
+} from "@/lib/workbench/erfWorkspaceState";
 import { parseMarketAddressIntelligence } from "../addressIntelligence";
 import type { PropertyIdentityOverride } from "../propertyIdentity";
 import type {
@@ -140,14 +144,22 @@ function parsePropertyIdentity(value: unknown): PropertyIdentityOverride | null 
   };
 }
 
-function localMarketEvidenceKey(parcelId: string) {
-  return `erfstoep.marketEvidence.${parcelId}`;
+export function marketEvidenceStorageKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey("market-evidence", parcelId, userId);
 }
 
-function readLocalUserData(parcelId: string): Record<string, unknown> {
-  if (typeof window === "undefined") return {};
+export function readLocalMarketEvidenceUserData(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+  storage: Pick<Storage, "getItem"> | undefined =
+    typeof window === "undefined" ? undefined : window.localStorage,
+): Record<string, unknown> {
+  if (!storage) return {};
   try {
-    const raw = window.localStorage.getItem(localMarketEvidenceKey(parcelId));
+    const raw = storage.getItem(marketEvidenceStorageKey(parcelId, userId));
     const parsed = raw ? JSON.parse(raw) : null;
     return isRecord(parsed) ? parsed : {};
   } catch {
@@ -155,16 +167,25 @@ function readLocalUserData(parcelId: string): Record<string, unknown> {
   }
 }
 
-function writeLocalUserData(parcelId: string, nextUserData: Record<string, unknown>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(localMarketEvidenceKey(parcelId), JSON.stringify(nextUserData));
+export function writeLocalMarketEvidenceUserData(
+  parcelId: string,
+  nextUserData: Record<string, unknown>,
+  userId: BrowserPersistenceUserId = null,
+  storage: Pick<Storage, "setItem"> | undefined =
+    typeof window === "undefined" ? undefined : window.localStorage,
+) {
+  storage?.setItem(marketEvidenceStorageKey(parcelId, userId), JSON.stringify(nextUserData));
 }
 
-function dispatchMarketEvidenceUpdated(parcelId: string, userData: Record<string, unknown>) {
+function dispatchMarketEvidenceUpdated(
+  parcelId: string,
+  userData: Record<string, unknown>,
+  userId: BrowserPersistenceUserId,
+) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent("erfstoep:market-evidence-updated", {
-      detail: { parcelId, userData },
+      detail: { parcelId, userId, userData },
     }),
   );
 }
@@ -206,7 +227,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     useState<MarketAddressIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let alive = true;
     setLoading(true);
     setSavedPropertyExists(false);
@@ -216,7 +237,7 @@ export function useSavedMarketEvidence(parcelId: string) {
     setPropertyIdentity(null);
     setMarketAddressIntelligence(null);
     setUserData({});
-    const localUserData = readLocalUserData(parcelId);
+    const localUserData = readLocalMarketEvidenceUserData(parcelId, userId);
     applyUserData(parcelId, localUserData, {
       setUserData,
       setEvidence,
@@ -258,8 +279,13 @@ export function useSavedMarketEvidence(parcelId: string) {
 
   useEffect(() => {
     function refresh(event: Event) {
-      const detail = (event as CustomEvent<{ parcelId?: string; userData?: unknown }>).detail;
+      const detail = (event as CustomEvent<{
+        parcelId?: string;
+        userId?: string | null;
+        userData?: unknown;
+      }>).detail;
       if (detail?.parcelId !== parcelId || !isRecord(detail.userData)) return;
+      if ((detail.userId ?? null) !== userId) return;
       applyUserData(parcelId, detail.userData, {
         setUserData,
         setEvidence,
@@ -271,14 +297,14 @@ export function useSavedMarketEvidence(parcelId: string) {
     }
     window.addEventListener("erfstoep:market-evidence-updated", refresh);
     return () => window.removeEventListener("erfstoep:market-evidence-updated", refresh);
-  }, [parcelId]);
+  }, [parcelId, userId]);
 
   const canSave = true;
 
   async function persistUserData(patch: Record<string, unknown>) {
     const nextUserData = { ...userData, ...patch };
     if (!userId) {
-      writeLocalUserData(parcelId, nextUserData);
+      writeLocalMarketEvidenceUserData(parcelId, nextUserData, userId);
       applyUserData(parcelId, nextUserData, {
         setUserData,
         setEvidence,
@@ -287,14 +313,14 @@ export function useSavedMarketEvidence(parcelId: string) {
         setPropertyIdentity,
         setMarketAddressIntelligence,
       });
-      dispatchMarketEvidenceUpdated(parcelId, nextUserData);
+      dispatchMarketEvidenceUpdated(parcelId, nextUserData, userId);
       toast.message("Saved locally for this erf. Save to My Erfs to keep it in your dashboard.");
       return true;
     }
     try {
       const mergedUserData = await patchSavedPropertyUserData(parcelId, patch);
       setSavedPropertyExists(true);
-      writeLocalUserData(parcelId, mergedUserData);
+      writeLocalMarketEvidenceUserData(parcelId, mergedUserData, userId);
       applyUserData(parcelId, mergedUserData, {
         setUserData,
         setEvidence,
@@ -303,7 +329,7 @@ export function useSavedMarketEvidence(parcelId: string) {
         setPropertyIdentity,
         setMarketAddressIntelligence,
       });
-      dispatchMarketEvidenceUpdated(parcelId, mergedUserData);
+      dispatchMarketEvidenceUpdated(parcelId, mergedUserData, userId);
       return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Market evidence could not be saved");

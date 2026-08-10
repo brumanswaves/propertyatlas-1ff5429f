@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth/useAuth";
 import { cn } from "@/lib/utils";
 import { SITE_POTENTIAL_DISCLAIMER, SITE_POTENTIAL_PACK_SIZE } from "@/lib/sitePotential/config";
 import {
@@ -524,6 +525,8 @@ export function SitePotentialTab({
   onOpenTab,
   guidedReturn,
 }: SitePotentialTabProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
   const site = workspaceState.sitePotential;
   const currentSiteSnapshot = useMemo<SitePotentialSnapshot>(
@@ -588,7 +591,10 @@ export function SitePotentialTab({
     () => derivePlanningEvidenceSignals(vault.assets),
     [vault.assets],
   );
-  const manualZoneCode = useMemo(() => readStoredPlanningZone(parcel.id), [parcel.id]);
+  const manualZoneCode = useMemo(
+    () => readStoredPlanningZone(parcel.id, userId),
+    [parcel.id, userId],
+  );
   const documentZone = useMemo(() => {
     if (!planningSignals.zoningCertificateUploaded) return null;
     return vault.assets.find((asset) => asset.asset_category === "zoning_document") ?? null;
