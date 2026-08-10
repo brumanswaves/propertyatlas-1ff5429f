@@ -5,9 +5,11 @@ import {
   isBetaAdminAllowed,
   isSitePotentialBetaGenerationReady,
   isSitePotentialBetaEnabled,
+  resolveSitePotentialRuntimeReadiness,
 } from "../betaEntitlements";
 import {
   loadParcelBetaStatus,
+  resolveSitePotentialGenerationAvailability,
   sitePotentialGenerationUnavailableReason,
   SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
   type BetaCreditUiStatus,
@@ -48,6 +50,16 @@ function betaPayload(parcelId: string, creditsRemaining: number) {
     openRequestStatus: parcelId,
   };
 }
+
+const READY_RUNTIME_ENV = {
+  SITE_POTENTIAL_BETA_ENABLED: "true",
+  SITE_POTENTIAL_WORKER_ENABLED: "true",
+  SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
+  OPENAI_API_KEY: "openai-key",
+  SUPABASE_URL: "https://project.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "publishable-key",
+  SUPABASE_SERVICE_ROLE_KEY: "service-role",
+} as const;
 
 describe("Site Potential private beta entitlements", () => {
   it("keeps a free allowance valid when purchased and beta credits are zero", () => {
@@ -122,13 +134,7 @@ describe("Site Potential private beta entitlements", () => {
 
   it("requires the worker and server secrets before beta generation is ready", () => {
     expect(
-      isSitePotentialBetaGenerationReady({
-        SITE_POTENTIAL_BETA_ENABLED: "true",
-        SITE_POTENTIAL_WORKER_ENABLED: "true",
-        SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
-        OPENAI_API_KEY: "openai-key",
-        SUPABASE_SERVICE_ROLE_KEY: "service-role",
-      }),
+      isSitePotentialBetaGenerationReady(READY_RUNTIME_ENV),
     ).toBe(true);
 
     expect(
@@ -137,6 +143,8 @@ describe("Site Potential private beta entitlements", () => {
         SITE_POTENTIAL_WORKER_ENABLED: "false",
         SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
         OPENAI_API_KEY: "openai-key",
+        SUPABASE_URL: "https://project.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "publishable-key",
         SUPABASE_SERVICE_ROLE_KEY: "service-role",
       }),
     ).toBe(false);
@@ -147,9 +155,77 @@ describe("Site Potential private beta entitlements", () => {
         SITE_POTENTIAL_WORKER_ENABLED: "true",
         SITE_POTENTIAL_WORKER_SECRET: "worker-secret",
         OPENAI_API_KEY: "",
+        SUPABASE_URL: "https://project.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "publishable-key",
         SUPABASE_SERVICE_ROLE_KEY: "service-role",
       }),
     ).toBe(false);
+  });
+
+  it("maps server readiness into safe, actionable runtime codes", () => {
+    expect(resolveSitePotentialRuntimeReadiness(READY_RUNTIME_ENV)).toEqual({
+      status: "READY",
+      ready: true,
+    });
+    expect(
+      resolveSitePotentialRuntimeReadiness({
+        ...READY_RUNTIME_ENV,
+        SITE_POTENTIAL_BETA_ENABLED: "false",
+      }),
+    ).toEqual({ status: "GENERATION_DISABLED", ready: false });
+    expect(
+      resolveSitePotentialRuntimeReadiness({
+        ...READY_RUNTIME_ENV,
+        SITE_POTENTIAL_WORKER_ENABLED: "false",
+      }),
+    ).toEqual({ status: "WORKER_DISABLED", ready: false });
+    expect(
+      resolveSitePotentialRuntimeReadiness({ ...READY_RUNTIME_ENV, OPENAI_API_KEY: "" }),
+    ).toEqual({ status: "SERVER_CONFIGURATION_ERROR", ready: false });
+  });
+
+  it("maps UI, session, entitlement and provider states without enabling known failures", () => {
+    expect(
+      resolveSitePotentialGenerationAvailability({
+        uiEnabled: false,
+        lifecycle: "ready",
+        status: null,
+      }),
+    ).toMatchObject({ status: "UI_DISABLED", canGenerate: false });
+    expect(
+      resolveSitePotentialGenerationAvailability({
+        uiEnabled: true,
+        lifecycle: "error",
+        status: null,
+        error: SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
+      }),
+    ).toMatchObject({ status: "SIGNED_OUT", canGenerate: false });
+    expect(
+      resolveSitePotentialGenerationAvailability({
+        uiEnabled: true,
+        lifecycle: "ready",
+        status: { enabled: true, creditsRemaining: 0, canGenerate: false, runtimeStatus: "READY" },
+      }),
+    ).toMatchObject({ status: "ENTITLEMENT_UNAVAILABLE", canGenerate: false });
+    expect(
+      resolveSitePotentialGenerationAvailability({
+        uiEnabled: true,
+        lifecycle: "ready",
+        status: {
+          enabled: true,
+          creditsRemaining: 1,
+          canGenerate: true,
+          runtimeStatus: "PROVIDER_UNAVAILABLE",
+        },
+      }),
+    ).toMatchObject({ status: "PROVIDER_UNAVAILABLE", canGenerate: false });
+    expect(
+      resolveSitePotentialGenerationAvailability({
+        uiEnabled: true,
+        lifecycle: "ready",
+        status: { enabled: true, creditsRemaining: 1, canGenerate: true, runtimeStatus: "READY" },
+      }),
+    ).toMatchObject({ status: "READY", canGenerate: true });
   });
 
   it("creates secure beta-credit tables and a service-role-only redemption RPC", () => {
@@ -188,12 +264,12 @@ describe("Site Potential private beta entitlements", () => {
   it("routes generation through free-first or purchased-credit entitlement and the durable queue", () => {
     const route = read("src/routes/api/site-potential.beta-redeem.ts");
 
-    expect(route).toContain("isSitePotentialBetaEnabled");
-    expect(route).toContain("isSitePotentialBetaGenerationReady");
+    expect(route).toContain("resolveSitePotentialRuntimeReadiness");
+    expect(route).toContain("sitePotentialRuntimeMessage");
     expect(route).toContain(
-      "Site Potential generation is temporarily unavailable. No free allowance or credit has been used.",
+      "No free allowance or credit has been used.",
     );
-    expect(route.indexOf("isSitePotentialBetaGenerationReady")).toBeLessThan(
+    expect(route.indexOf("resolveSitePotentialRuntimeReadiness")).toBeLessThan(
       route.indexOf("consumeSitePotentialEntitlement"),
     );
     expect(route).toContain("consumeSitePotentialEntitlement");
@@ -235,6 +311,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Repeat use on this erf");
     expect(tab).toContain("Beta/test credits");
     expect(tab).toContain("generationUnavailableReason");
+    expect(tab).toContain("resolveSitePotentialGenerationAvailability");
     expect(tab).toContain("1 / day · 3 / week · 6 / month free");
     expect(tab).toContain(
       "You may use your available packs on the same erf or across different properties.",
@@ -291,7 +368,7 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("Retry allowance check");
     expect(tab).toContain("onClick={() => void refreshBetaStatus()}");
     expect(tab).toContain('betaStatusLifecycle === "ready" && !generationEntitled');
-    expect(tab).toContain('betaStatusLifecycle === "ready" && !betaStatus?.enabled');
+    expect(tab).toContain("generationAvailability.message");
     expect(tab).not.toContain('BETA_UI_ENABLED && !betaStatus?.enabled\n                    ? "Site Potential generation is disabled in this environment"');
     expect(tab).not.toContain('BETA_UI_ENABLED && !generationEntitled\n                      ? "Free allowance used. Purchase credits');
 
@@ -299,6 +376,8 @@ describe("Site Potential private beta entitlements", () => {
     expect(request).toContain('if (!isCurrentRequest()) return { kind: "stale" }');
     expect(request).toContain("SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE");
     expect(request).toContain("Sign in to check Site Potential allowance.");
+    expect(request).toContain('status: "UI_DISABLED"');
+    expect(request).toContain('status: "ENTITLEMENT_UNAVAILABLE"');
 
     const retryButtonIndex = tab.indexOf("Retry allowance check");
     const redeemIndex = tab.indexOf("/api/site-potential/beta-redeem", retryButtonIndex);

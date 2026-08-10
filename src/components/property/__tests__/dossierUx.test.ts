@@ -755,9 +755,7 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotentialIntegrityMigration).toContain("asset_row.user_id <> NEW.user_id");
     expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
     expect(sitePotential).toContain("GENERATION_UI_ENABLED");
-    expect(sitePotential).toContain(
-      "Concept generation is unavailable until secure entitlement is configured",
-    );
+    expect(sitePotential).toContain("generationAvailability.message");
     expect(sitePotential).toContain("Topographical survey");
     expect(sitePotential).toContain("Architectural plans");
     expect(sitePotential).toContain("Inspiration images");

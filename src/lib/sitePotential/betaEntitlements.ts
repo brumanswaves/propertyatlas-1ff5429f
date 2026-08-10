@@ -4,29 +4,81 @@ export interface BetaCreditStatus {
   openRequestStatus: string | null;
 }
 
+/**
+ * Safe, public readiness information for the entitlement UI. These codes
+ * deliberately describe capability rather than exposing configuration values.
+ */
+export type SitePotentialRuntimeStatus =
+  | "READY"
+  | "GENERATION_DISABLED"
+  | "WORKER_DISABLED"
+  | "SERVER_CONFIGURATION_ERROR"
+  | "PROVIDER_UNAVAILABLE";
+
+export interface SitePotentialRuntimeReadiness {
+  status: SitePotentialRuntimeStatus;
+  ready: boolean;
+}
+
+type SitePotentialRuntimeEnvironment = Partial<
+  Record<
+    | "SITE_POTENTIAL_BETA_ENABLED"
+    | "SITE_POTENTIAL_WORKER_ENABLED"
+    | "SITE_POTENTIAL_WORKER_SECRET"
+    | "OPENAI_API_KEY"
+    | "SUPABASE_URL"
+    | "SUPABASE_PUBLISHABLE_KEY"
+    | "SUPABASE_SERVICE_ROLE_KEY",
+    string | undefined
+  >
+>;
+
+export function sitePotentialRuntimeMessage(status: SitePotentialRuntimeStatus) {
+  switch (status) {
+    case "READY":
+      return "Site Potential generation is operational.";
+    case "GENERATION_DISABLED":
+      return "AI concept generation is not enabled on this deployment yet.";
+    case "WORKER_DISABLED":
+      return "Concept generation is temporarily offline because the generation worker is not enabled.";
+    case "PROVIDER_UNAVAILABLE":
+      return "The image generation provider is temporarily unavailable. Please retry later.";
+    case "SERVER_CONFIGURATION_ERROR":
+      return "Concept generation is temporarily unavailable on this deployment.";
+  }
+}
+
 export function isSitePotentialBetaEnabled(
   env: Pick<NodeJS.ProcessEnv, "SITE_POTENTIAL_BETA_ENABLED">,
 ) {
   return env.SITE_POTENTIAL_BETA_ENABLED === "true";
 }
 
+export function resolveSitePotentialRuntimeReadiness(
+  env: SitePotentialRuntimeEnvironment,
+): SitePotentialRuntimeReadiness {
+  if (!isSitePotentialBetaEnabled(env)) {
+    return { status: "GENERATION_DISABLED", ready: false };
+  }
+  if (env.SITE_POTENTIAL_WORKER_ENABLED !== "true") {
+    return { status: "WORKER_DISABLED", ready: false };
+  }
+  if (
+    !env.SITE_POTENTIAL_WORKER_SECRET ||
+    !env.OPENAI_API_KEY ||
+    !env.SUPABASE_URL ||
+    !env.SUPABASE_PUBLISHABLE_KEY ||
+    !env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    return { status: "SERVER_CONFIGURATION_ERROR", ready: false };
+  }
+  return { status: "READY", ready: true };
+}
+
 export function isSitePotentialBetaGenerationReady(
-  env: Pick<
-    NodeJS.ProcessEnv,
-    | "SITE_POTENTIAL_BETA_ENABLED"
-    | "SITE_POTENTIAL_WORKER_ENABLED"
-    | "SITE_POTENTIAL_WORKER_SECRET"
-    | "OPENAI_API_KEY"
-    | "SUPABASE_SERVICE_ROLE_KEY"
-  >,
+  env: SitePotentialRuntimeEnvironment,
 ) {
-  return (
-    isSitePotentialBetaEnabled(env) &&
-    env.SITE_POTENTIAL_WORKER_ENABLED === "true" &&
-    Boolean(env.SITE_POTENTIAL_WORKER_SECRET) &&
-    Boolean(env.OPENAI_API_KEY) &&
-    Boolean(env.SUPABASE_SERVICE_ROLE_KEY)
-  );
+  return resolveSitePotentialRuntimeReadiness(env).ready;
 }
 
 export function isBetaAdminAllowed(

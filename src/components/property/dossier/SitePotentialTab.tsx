@@ -25,6 +25,7 @@ import {
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
 import {
   loadParcelBetaStatus,
+  resolveSitePotentialGenerationAvailability,
   sitePotentialGenerationUnavailableReason,
   SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE,
   SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE,
@@ -717,10 +718,16 @@ export function SitePotentialTab({
     betaStatus?.betaCreditsRemaining ?? betaStatus?.creditsRemaining ?? 0;
   const purchasedCreditsRemaining = betaStatus?.purchasedCredits ?? 0;
   const freeAllowance = betaStatus?.free;
+  const generationAvailability = resolveSitePotentialGenerationAvailability({
+    uiEnabled: BETA_UI_ENABLED,
+    lifecycle: betaStatusLifecycle,
+    status: betaStatus,
+    error: betaStatusError,
+  });
   const generationEntitled =
     BETA_UI_ENABLED &&
     betaStatusLifecycle === "ready" &&
-    Boolean(betaStatus?.enabled && betaStatus?.canGenerate);
+    generationAvailability.canGenerate;
   const allowanceChecking = BETA_UI_ENABLED && betaStatusLifecycle === "loading";
   const allowanceUnavailable = BETA_UI_ENABLED && betaStatusLifecycle === "error";
 
@@ -1242,10 +1249,11 @@ export function SitePotentialTab({
     if (generating || packProcessing || project?.generation_status === "generating") {
       return packStatus?.status === "queued" ? "3 concepts queued" : "Generating 3 concepts";
     }
+    if (!GENERATION_UI_ENABLED) return "Generation unavailable";
     if (BETA_UI_ENABLED) {
-      if (allowanceChecking) return "Checking allowance…";
-      if (allowanceUnavailable) return "Allowance unavailable";
-      if (!generationEntitled) return generationUnavailableReason(betaStatus);
+      if (generationAvailability.status === "CHECKING") return "Checking availability…";
+      if (generationAvailability.status === "SIGNED_OUT") return "Sign in to generate";
+      if (!generationEntitled) return "Generation unavailable";
       if (conceptsReady) return "Generate another 3 concepts";
       if (betaStatus?.nextEntitlementSource === "free_allowance") return "Generate 3 free concepts";
       return "Use 1 credit for 3 concepts";
@@ -1599,7 +1607,7 @@ export function SitePotentialTab({
           </div>
           <div className="flex flex-col items-start gap-2 lg:items-end">
             <div className="text-[26px] font-bold text-[#0D1B2A]">
-              {BETA_UI_ENABLED
+              {BETA_UI_ENABLED && generationAvailability.status === "READY"
                 ? betaStatus?.nextEntitlementSource === "free_allowance"
                   ? "Free pack"
                   : "1 credit"
@@ -1641,14 +1649,12 @@ export function SitePotentialTab({
                   ? "Needs image-rights confirmation"
                   : allowanceChecking
                     ? "Checking allowance…"
-                    : allowanceUnavailable
-                      ? "Could not check Site Potential allowance."
-                      : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !betaStatus?.enabled
-                        ? "Site Potential generation is disabled in this environment"
-                        : BETA_UI_ENABLED && betaStatusLifecycle === "ready" && !generationEntitled
-                          ? generationUnavailableReason(betaStatus)
+                  : allowanceUnavailable
+                      ? generationAvailability.message
+                      : BETA_UI_ENABLED && !generationEntitled
+                          ? generationAvailability.message
                           : !GENERATION_UI_ENABLED
-                            ? "Concept generation is unavailable until secure entitlement is configured"
+                            ? generationAvailability.message
                             : !project?.id
                               ? "Choose a site state first"
                               : activePackMessage
