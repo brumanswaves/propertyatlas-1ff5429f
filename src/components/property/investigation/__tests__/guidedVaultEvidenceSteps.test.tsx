@@ -114,19 +114,19 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("Matched diagram ready");
   });
 
-  it("keeps the CSG document search honest and exposes viewer and upload fallbacks", () => {
+  it("makes the CSG Property Viewer primary and clearly demotes the unreliable legacy archive", () => {
     const html = renderToStaticMarkup(
       <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
     );
 
     expect(html).toContain("Find and attach the official SG / cadastral document");
-    expect(html).toContain("Open official CSG document search");
     expect(html).toContain("Open CSG Property Viewer");
     expect(html).toContain("Upload SG diagram / General Plan");
-    expect(html).toContain("government document service may sometimes be unavailable");
-    expect(html).toContain(
-      "If the document search shows an error or does not load, use the CSG Property Viewer instead, then upload the relevant SG diagram or General Plan here.",
-    );
+    expect(html).toContain("Try legacy CSG document archive");
+    expect(html).toContain("legacy CSG document archive is");
+    expect(html).toContain("unreliable and can return a government database error");
+    expect(html).toContain("Government archive warning");
+    expect(html).not.toContain("Open official CSG document search");
     expect(html).not.toContain("Download and attach the SG diagram");
   });
 
