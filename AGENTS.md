@@ -28,6 +28,49 @@ For product-direction decisions, also consult `docs/EASY_ERF_DECISION_LOG.md`.
 - Run focused tests while developing. Reserve the full suite for merge readiness or when explicitly required.
 - Keep completion summaries concise and include tests, limitations and deferred work.
 
+## Mandatory Codex execution header and credit controls
+
+Every Codex implementation prompt prepared for Easy Erf MUST explicitly state all of the following before the task instructions:
+
+1. `Model`
+2. `Reasoning`
+3. `Expected credit risk` (`Low`, `Medium`, or `High`)
+4. `Maximum intended scope` such as named files, components, or issues
+5. `Stop conditions` describing when Codex must stop instead of expanding the task
+
+Do not send or recommend a Codex implementation prompt without this header.
+
+### Default model policy
+
+- `Luna`: trivial, mechanical, low-risk work only, such as tiny one-file edits, simple scans, or narrow test cleanup.
+- `Terra` with `High` reasoning: default for normal Easy Erf implementation and focused debugging.
+- `Sol` with `High` reasoning: exceptional use only for difficult architecture, unusually hard debugging, or consequential review where Terra is genuinely insufficient.
+- Do not escalate from Luna or Terra to Sol unless the user is explicitly told why and approves the escalation.
+- Do not let a Codex task silently broaden model choice, reasoning level, or scope.
+
+### Credit-risk policy
+
+- Before any Codex task with `Medium` or `High` expected credit risk, explain why the task is expected to cost more before recommending that it be run.
+- Prefer the smallest useful Codex task. Give exact files, known root cause, expected behavior, and focused tests whenever possible.
+- Avoid broad repository archaeology when ChatGPT/GitHub inspection can identify the relevant files first.
+- Do not ask Codex to reread long project documents for small fixes. For ordinary implementation, start with `AGENTS.md` and `docs/EASY_ERF_CURRENT_STATE.md`; consult the Master Plan or Decision Log only when the task actually changes product behavior, architecture, roadmap, evidence rules, UX philosophy, or commercial direction.
+- Run focused tests during development. Run the full suite once at merge readiness unless there is a specific reason to do otherwise.
+- If the task begins touching materially more files or systems than the stated maximum intended scope, STOP and report the expansion before continuing.
+- Do not spawn additional agents, perform adjacent refactors, or fix unrelated issues unless explicitly requested.
+
+### Required prompt header format
+
+Use this format at the top of future Easy Erf Codex prompts:
+
+```text
+CODEX EXECUTION SETTINGS
+Model: <Luna | Terra | Sol>
+Reasoning: <level>
+Expected credit risk: <Low | Medium | High>
+Maximum intended scope: <named files/components/issues or clear boundary>
+Stop conditions: <conditions that require stopping and reporting before continuing>
+```
+
 ## Product boundaries
 
 - The default UX is simple and guided; expert depth remains underneath.
