@@ -13,6 +13,7 @@ import {
   saveStrategyScenario,
   strategyWorkspaceFromUserData,
   updateErfWorkspaceState,
+  writeErfWorkspaceState,
 } from "../erfWorkspaceState";
 
 function memoryStorage(): Storage {
@@ -88,6 +89,30 @@ describe("erfWorkspaceState", () => {
       skippedStepIds: ["add-address"],
       expertWorkspaceOpen: true,
       lastExpertView: "calculators",
+      guidedReturnStepId: null,
+    });
+  });
+
+  it("preserves a Guided expert return context while the real expert workspace is open", () => {
+    const storage = memoryStorage();
+    const parcelId = "csg:lpi:c03400140000157000000";
+    const state = createEmptyErfWorkspaceState();
+    state.investigation = {
+      ...state.investigation,
+      startedAt: "2026-08-10T10:00:00.000Z",
+      currentStepId: "strategy",
+      expertWorkspaceOpen: true,
+      lastExpertView: "calculators",
+      guidedReturnStepId: "strategy",
+    };
+
+    writeErfWorkspaceState(parcelId, state, storage);
+
+    expect(readErfWorkspaceState(parcelId, storage).investigation).toMatchObject({
+      currentStepId: "strategy",
+      expertWorkspaceOpen: true,
+      lastExpertView: "calculators",
+      guidedReturnStepId: "strategy",
     });
   });
 

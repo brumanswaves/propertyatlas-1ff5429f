@@ -114,6 +114,19 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("Matched diagram ready");
   });
 
+  it("keeps the CSG document search honest and exposes viewer and upload fallbacks", () => {
+    const html = renderToStaticMarkup(
+      <GuidedSgDiagramStep parcel={parcel()} onContinue={vi.fn()} />,
+    );
+
+    expect(html).toContain("Find and attach the official SG / cadastral document");
+    expect(html).toContain("Open official CSG document search");
+    expect(html).toContain("Open CSG Property Viewer");
+    expect(html).toContain("Upload SG diagram / General Plan");
+    expect(html).toContain("government document service may sometimes be unavailable");
+    expect(html).not.toContain("Download and attach the SG diagram");
+  });
+
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: title documents use title wording instead of report wording", () => {
     vaultFixture.assets = [
       asset({

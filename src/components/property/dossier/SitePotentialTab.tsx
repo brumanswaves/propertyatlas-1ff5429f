@@ -67,6 +67,10 @@ export interface SitePotentialTabProps {
   onExploreReport?: () => void;
   /** Lets the vacant-land next-best-action jump straight to another workbench tab. */
   onOpenTab?: (tab: string) => void;
+  guidedReturn?: {
+    onBack: () => void;
+    onContinue: () => void;
+  };
 }
 
 
@@ -518,6 +522,7 @@ export function SitePotentialTab({
   onUpdateSite,
   onExploreReport,
   onOpenTab,
+  guidedReturn,
 }: SitePotentialTabProps) {
 
   const site = workspaceState.sitePotential;
@@ -656,6 +661,7 @@ export function SitePotentialTab({
   const projectGenerationStatus = project?.generation_status ?? null;
   const projectSelectedDesignAssetId = project?.selected_design_asset_id ?? null;
   const projectRightsConfirmedAt = project?.rights_confirmed_at ?? null;
+  const guidedComplete = Boolean(projectSelectedDesignAssetId) || projectMode === "skipped" || site.skipped;
   const packProcessing = shouldPollPackStatus(packStatus);
   const runtimeProgress = buildSitePotentialRuntimeProgress(
     packStatus,
@@ -1229,6 +1235,33 @@ export function SitePotentialTab({
 
   return (
     <div className="space-y-6">
+      {guidedReturn ? (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Guided Investigation · Step 9 of 10
+          </div>
+          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
+            Explore the build envelope and/or AI concepts, then return to your investigation.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={guidedReturn.onBack}
+              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
+            >
+              Back to Investigation
+            </button>
+            <button
+              type="button"
+              disabled={!guidedComplete}
+              onClick={guidedReturn.onContinue}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continue to Easy Erf Report
+            </button>
+          </div>
+        </section>
+      ) : null}
       <header className="rounded-[1.5rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6 shadow-[0_16px_44px_-28px_rgba(13,27,42,0.3)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

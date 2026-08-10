@@ -497,6 +497,11 @@ describe("official dossier UX guardrails", () => {
     expect(reportBuilder).toContain("Investigation detail and master plan");
     expect(panel).toContain("Open full research workspace");
     expect(panel).toContain("Return to guided investigation");
+    expect(panel).toContain("guidedReturnStepId");
+    expect(panel).toContain("continueGuidedFromExpert");
+    expect(panel).toContain('onConflict: "user_id,parcel_id"');
+    expect(panel).toContain("buildSavedParcelMapHref");
+    expect(panel).toContain("shareOfficialPropertyLink");
     expect(read("src/components/property/investigation/InvestigationProgress.tsx")).toContain(
       'role="progressbar"',
     );
@@ -633,7 +638,8 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("Listings & Comps");
     expect(dossier).toContain("<StrategyLab");
     expect(dossier).toContain("parcel={parcel}");
-    expect(dossier).toContain('onOpenReport={() => onSelectView?.("stoep-report")}');
+    expect(dossier).toContain("guidedStrategyReturn ? undefined");
+    expect(dossier).toContain("guidedReturn={guidedStrategyReturn}");
     expect(strategyLab).toContain("Every input autosaves as a draft for this erf");
     expect(strategyLab).toContain("Deal Snapshot");
     expect(strategyLab).toContain("Property-derived inputs");
@@ -656,6 +662,8 @@ describe("official dossier UX guardrails", () => {
     expect(strategyLab).toContain("Choose another scenario");
     expect(strategyLab).toContain("Use this scenario in report");
     expect(strategyLab).toContain("Continue to Easy Erf Report");
+    expect(strategyLab).toContain("Guided Investigation · Step 8 of 10");
+    expect(strategyLab).toContain("Save and continue to Site Potential");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
     expect(marketEvidence).toContain("Import comparable listing or sale");
@@ -725,6 +733,10 @@ describe("official dossier UX guardrails", () => {
     expect(vaultFiles).toContain("migrateLocalWorkspaceAttachmentsToVault");
     expect(vaultFiles).toContain("createSignedUrl");
     expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
+    expect(sitePotential).toContain("Guided Investigation · Step 9 of 10");
+    expect(sitePotential).toContain("Back to Investigation");
+    expect(sitePotential).toContain("Continue to Easy Erf Report");
+    expect(sitePotential).toContain("projectMode === \"skipped\"");
     expect(sitePotential).toContain("useErfFileVault");
     expect(sitePotential).toContain("/api/site-potential/generate");
     expect(sitePotential).toContain("generationInFlightRef");

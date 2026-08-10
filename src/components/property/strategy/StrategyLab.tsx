@@ -580,11 +580,16 @@ export function StrategyLab({
   parcelId,
   defaultPrice,
   onOpenReport,
+  guidedReturn,
 }: {
   parcel: NormalizedOfficialParcel;
   parcelId: string;
   defaultPrice: number;
   onOpenReport?: () => void;
+  guidedReturn?: {
+    onBack: () => void;
+    onContinue: () => void;
+  };
 }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -1340,6 +1345,35 @@ export function StrategyLab({
           </div>
         </div>
       </section>
+
+      {guidedReturn ? (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Guided Investigation · Step 8 of 10
+          </div>
+          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
+            Complete or save the scenario you want Easy Erf to use, then continue with Site
+            Potential.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={guidedReturn.onBack}
+              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
+            >
+              Back to Investigation
+            </button>
+            <button
+              type="button"
+              disabled={!chosenScenario}
+              onClick={guidedReturn.onContinue}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Save and continue to Site Potential
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {sitePotentialDraft && (
         <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">

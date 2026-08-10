@@ -25,8 +25,10 @@ import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
 import {
   buildOfficialParcelId,
+  buildSavedParcelMapHref,
   type NormalizedOfficialParcel,
 } from "@/lib/parcels/officialParcelId";
+import { shareOfficialPropertyLink } from "@/lib/parcels/shareOfficialProperty";
 import { cn } from "@/lib/utils";
 import { resolveParcelArea } from "@/lib/evidence/parcelArea";
 import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
@@ -90,6 +92,7 @@ import {
   workflowFeedbackForStartedTab,
   workspaceProgressPatchForStartedTab,
 } from "@/lib/workbench/workbenchTabProgress";
+import { persistSavedProperty } from "@/lib/workbench/savedPropertyPersistence";
 import {
   prepareGuidedIdentityConfirmationTransition,
   prepareExplicitWorkspaceTransition,
@@ -1767,6 +1770,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const erfFileVault = useErfFileVault(parcelId);
   const paidReportVault = useErfFileVault(parcelId, ["paid_report"]);
   const [shareCopied, setShareCopied] = useState(false);
+  const [savingProperty, setSavingProperty] = useState(false);
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null);
 
   const [userAddr, setUserAddr] = useState<UserAddress | null>(null);
@@ -2001,64 +2005,99 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       toast.message("Sign in to save properties");
       return;
     }
-    if (saved) {
-      await supabase
-        .from("saved_properties")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("parcel_id", parcelId);
-      setSaved(false);
-      toast.success("Removed from saved");
-    } else {
-      const userData = {
-        normalizedParcelId: parcelId,
-        provider: csg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
-        sourceLayer: selection.layer,
-        displayTitle: resolved.displayTitle,
-        displaySubtitle: resolved.displaySubtitle,
-        approximateAddress: resolved.approximateAddress ?? null,
-        streetNumber: resolved.streetNumber ?? null,
-        streetName: resolved.streetName ?? null,
-        nearestRoad: resolved.nearestRoad ?? null,
-        erfNumber: csg?.erfNumber ?? null,
-        portion: csg?.portion ?? null,
-        lpi: csg?.lpi ?? null,
-        parcelKey: csg?.parcelKey ?? null,
-        municipality: normalizedParcel.municipality ?? null,
-        province: csg?.province ?? null,
-        town: csg?.majorRegion ?? null,
-        majorRegion: csg?.majorRegion ?? null,
-        minorRegion: csg?.minorRegion ?? null,
-        geometryArea: csg?.geometryArea ?? null,
-        zoningCode: (kouga?.zoningCode as string | number | null) ?? null,
-        zoningType: (kouga?.zoningType as string | number | null) ?? null,
-        lng: csg?.longitude ?? lng,
-        lat: csg?.latitude ?? lat,
-        longitude: csg?.longitude ?? lng,
-        latitude: csg?.latitude ?? lat,
-        addressSource: resolved.addressSource,
-        addressConfidence: resolved.addressConfidence,
-        researchQuery: resolved.researchQuery,
-        userEntered: userAddr ?? null,
-        fetchedAt: new Date().toISOString(),
-      };
-      const { error } = await supabase.from("saved_properties").insert({
-        user_id: user.id,
-        parcel_id: parcelId,
-        external_links: [
-          {
-            label: isCsg ? "CSG Viewer" : "Kouga Mapping Portal",
-            url: sourceUrl,
-            category: "official",
-          },
-        ],
-        user_data: userData as unknown as Record<string, unknown> as never,
-      });
-      if (error) toast.error(error.message);
-      else {
-        setSaved(true);
-        toast.success("Saved to your properties");
+    if (savingProperty) return;
+    setSavingProperty(true);
+    try {
+      if (saved) {
+        const { error } = await supabase
+          .from("saved_properties")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("parcel_id", parcelId);
+        if (error) {
+          toast.error("Could not update this saved property. Please try again.");
+          return;
+        }
+        setSaved(false);
+        toast.success("Removed from saved");
+      } else {
+        const userData = {
+          normalizedParcelId: parcelId,
+          provider: csg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
+          sourceLayer: selection.layer,
+          displayTitle: resolved.displayTitle,
+          displaySubtitle: resolved.displaySubtitle,
+          approximateAddress: resolved.approximateAddress ?? null,
+          streetNumber: resolved.streetNumber ?? null,
+          streetName: resolved.streetName ?? null,
+          nearestRoad: resolved.nearestRoad ?? null,
+          erfNumber: csg?.erfNumber ?? null,
+          portion: csg?.portion ?? null,
+          lpi: csg?.lpi ?? null,
+          parcelKey: csg?.parcelKey ?? null,
+          municipality: normalizedParcel.municipality ?? null,
+          province: csg?.province ?? null,
+          town: csg?.majorRegion ?? null,
+          majorRegion: csg?.majorRegion ?? null,
+          minorRegion: csg?.minorRegion ?? null,
+          geometryArea: csg?.geometryArea ?? null,
+          zoningCode: (kouga?.zoningCode as string | number | null) ?? null,
+          zoningType: (kouga?.zoningType as string | number | null) ?? null,
+          lng: csg?.longitude ?? lng,
+          lat: csg?.latitude ?? lat,
+          longitude: csg?.longitude ?? lng,
+          latitude: csg?.latitude ?? lat,
+          addressSource: resolved.addressSource,
+          addressConfidence: resolved.addressConfidence,
+          researchQuery: resolved.researchQuery,
+          userEntered: userAddr ?? null,
+          fetchedAt: new Date().toISOString(),
+        };
+        try {
+          await persistSavedProperty({
+            userId: user.id,
+            parcelId,
+            userData,
+            externalLinks: [
+              {
+                label: isCsg ? "CSG Viewer" : "Kouga Mapping Portal",
+                url: sourceUrl,
+                category: "official",
+              },
+            ],
+            readExisting: async () => {
+              const { data, error } = await supabase
+                .from("saved_properties")
+                .select("user_data, external_links")
+                .eq("user_id", user.id)
+                .eq("parcel_id", parcelId)
+                .maybeSingle();
+              if (error) throw error;
+              return data
+                ? { userData: data.user_data, externalLinks: data.external_links }
+                : null;
+            },
+            write: async (record) => {
+              const { error } = await supabase.from("saved_properties").upsert(
+                {
+                  user_id: record.userId,
+                  parcel_id: record.parcelId,
+                  external_links: record.externalLinks as never,
+                  user_data: record.userData as never,
+                },
+                { onConflict: "user_id,parcel_id" },
+              );
+              if (error) throw error;
+            },
+          });
+          setSaved(true);
+          toast.success("Property saved");
+        } catch {
+          toast.error("Could not save this property. Please try again.");
+        }
       }
+    } finally {
+      setSavingProperty(false);
     }
   }
 
@@ -2156,8 +2195,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function returnToGuidedInvestigation() {
+    const returnStepId = workspaceState.investigation.guidedReturnStepId;
     setInvestigationPatch({
       expertWorkspaceOpen: false,
+      guidedReturnStepId: null,
+      ...(returnStepId ? { currentStepId: returnStepId } : {}),
       lastExpertView:
         tab !== "investigation" && tab !== "overview"
           ? tab
@@ -2167,16 +2209,38 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
+  function continueGuidedFromExpert(nextStepId: GuidedInvestigationStepId) {
+    setInvestigationPatch({
+      currentStepId: nextStepId,
+      intentionallyVisitedStepIds: Array.from(
+        new Set([...workspaceState.investigation.intentionallyVisitedStepIds, nextStepId]),
+      ),
+      expertWorkspaceOpen: false,
+      guidedReturnStepId: null,
+      lastMeaningfulActionAt: new Date().toISOString(),
+    });
+    setTab("investigation");
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+  }
+
   function openExpertWorkspace(
     view: DossierView = "research",
-    options?: { anchorId?: string; markStarted?: boolean },
+    options?: {
+      anchorId?: string;
+      markStarted?: boolean;
+      guidedReturnStepId?: "strategy" | "site-potential";
+    },
   ) {
     selectWorkbenchTab(view as Tab, { ...options, markStarted: options?.markStarted });
   }
 
   function selectWorkbenchTab(
     nextTab: Tab,
-    options?: { markStarted?: boolean; anchorId?: string },
+    options?: {
+      markStarted?: boolean;
+      anchorId?: string;
+      guidedReturnStepId?: "strategy" | "site-potential";
+    },
   ) {
     if (nextTab === "overview") {
       setTab("overview");
@@ -2194,6 +2258,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       setInvestigationPatch({
         expertWorkspaceOpen: true,
         lastExpertView: nextTab,
+        guidedReturnStepId: options?.guidedReturnStepId ?? null,
       }, false);
     }
     if (options?.markStarted) {
@@ -2267,26 +2332,39 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   async function shareErfFile() {
-    const shareText = [
+    if (typeof window === "undefined") return;
+    const href = buildSavedParcelMapHref(parcelId, {
+      title: resolved.displayTitle,
+      erf: normalizedParcel.erfNumber,
+      portion: normalizedParcel.portion,
+      municipality: normalizedParcel.municipality,
+      province: normalizedParcel.province,
+      lng: normalizedParcel.coordinates?.lng,
+      lat: normalizedParcel.coordinates?.lat,
+      zoom: 18,
+    });
+    const url = new URL(href, window.location.origin).toString();
+    const text = [
       resolved.displayTitle,
-      `Parcel ID: ${parcelId}`,
       normalizedParcel.erfNumber ? `Erf: ${normalizedParcel.erfNumber}` : null,
       normalizedParcel.portion != null ? `Portion: ${normalizedParcel.portion}` : null,
-      normalizedParcel.coordinates
-        ? `Coordinates: ${normalizedParcel.coordinates.lat.toFixed(6)}, ${normalizedParcel.coordinates.lng.toFixed(6)}`
-        : null,
-      typeof window !== "undefined" ? window.location.href : null,
     ]
       .filter(Boolean)
-      .join("\n");
+      .join(" · ");
 
     try {
-      await navigator.clipboard.writeText(shareText);
-      setShareCopied(true);
-      toast.success("Erf file link copied");
-    } catch {
-      setShareCopied(true);
-      toast.message("Copy failed. Parcel ID is visible in this Workbench.");
+      const result = await shareOfficialPropertyLink(navigator, {
+        title: resolved.displayTitle,
+        text,
+        url,
+      });
+      if (result === "copied") {
+        setShareCopied(true);
+        toast.success("Property link copied");
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Could not share this property link. Please try again.");
     }
   }
 
@@ -2629,6 +2707,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={toggleSave}
+            disabled={savingProperty}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-stone-900 shadow-sm hover:bg-amber-100 md:min-h-0 md:border-0 md:bg-transparent md:p-2 md:text-foreground md:shadow-none md:hover:bg-muted"
             title={saved ? "Saved" : "Save property"}
             aria-label={saved ? "Saved erf" : "Save erf"}
@@ -2640,7 +2719,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             )}
             <span className="md:hidden">{saved ? "Saved" : "Save erf"}</span>
           </button>
-          <button className="hidden rounded-full p-2 hover:bg-muted md:inline-flex" title="Share">
+          <button
+            type="button"
+            onClick={shareErfFile}
+            className="hidden rounded-full p-2 hover:bg-muted md:inline-flex"
+            title="Share property"
+            aria-label="Share property"
+          >
             <Share2 className="h-4 w-4" />
           </button>
           <button
@@ -2841,6 +2926,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                     view === "reports" ||
                     view === "stoep-report",
                   anchorId: options?.anchorId,
+                  guidedReturnStepId: options?.guidedReturnStepId,
                 })
               }
               onBackToMap={handleBackToMap}
@@ -2928,8 +3014,20 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               recordedAreaM2={recordedAreaM2}
               workspaceState={workspaceState}
               onUpdateSite={updateSitePotentialSnapshot}
-              onExploreReport={() => selectWorkbenchTab("stoep-report", { markStarted: true })}
+              onExploreReport={
+                workspaceState.investigation.guidedReturnStepId === "site-potential"
+                  ? undefined
+                  : () => selectWorkbenchTab("stoep-report", { markStarted: true })
+              }
               onOpenTab={(next) => selectWorkbenchTab(next as Tab, { markStarted: true })}
+              guidedReturn={
+                workspaceState.investigation.guidedReturnStepId === "site-potential"
+                  ? {
+                      onBack: returnToGuidedInvestigation,
+                      onContinue: () => continueGuidedFromExpert("report"),
+                    }
+                  : undefined
+              }
             />
           )}
           {tab === "listings" && (
@@ -2959,6 +3057,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               view="calculators"
               planningAssessment={planningAssessment}
               onSelectView={(view) => selectWorkbenchTab(view as Tab, { markStarted: true })}
+              guidedStrategyReturn={
+                workspaceState.investigation.guidedReturnStepId === "strategy"
+                  ? {
+                      onBack: returnToGuidedInvestigation,
+                      onContinue: () => continueGuidedFromExpert("site-potential"),
+                    }
+                  : undefined
+              }
             />
           )}
           {tab === "stoep-report" && (
