@@ -10,8 +10,12 @@ export interface OfficialPropertySharePayload {
   sender: string;
 }
 
+export interface PropertySharePopup {
+  opener?: unknown;
+}
+
 export interface PropertyShareWindow {
-  open?: (url: string, target?: string, features?: string) => unknown;
+  open?: (url: string, target?: string) => PropertySharePopup | null;
 }
 
 export function buildOfficialPropertySharePayload(input: {
@@ -20,7 +24,7 @@ export function buildOfficialPropertySharePayload(input: {
   senderName?: string | null;
 }): OfficialPropertySharePayload {
   const senderName = input.senderName?.trim();
-  const sender = senderName || "Someone";
+  const sender = senderName?.split(/\s+/)[0] || "Someone";
   return {
     title: input.title,
     text: `${sender} sent you this property to check out on Easy Erf.`,
@@ -62,12 +66,16 @@ export async function shareOfficialPropertyLink(
   // text and leave only the raw URL, which produced a poor Gmail experience.
   // Gmail renders the canonical URL as a normal clickable hyperlink.
   if (typeof windowRef?.open === "function") {
-    const opened = windowRef.open(
-      buildOfficialPropertyGmailUrl(payload),
-      "_blank",
-      "noopener,noreferrer",
-    );
-    if (opened !== null) return "shared";
+    const opened = windowRef.open(buildOfficialPropertyGmailUrl(payload), "_blank");
+    if (opened !== null) {
+      try {
+        opened.opener = null;
+      } catch {
+        // The popup is already open. Failing to clear opener must not trigger a
+        // second share action or lose the prepared Gmail draft.
+      }
+      return "shared";
+    }
   }
 
   if (typeof navigatorRef.share === "function") {
