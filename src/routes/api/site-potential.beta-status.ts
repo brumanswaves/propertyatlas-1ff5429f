@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSitePotentialAccessStatus } from "@/lib/sitePotential/betaServer";
-import { isSitePotentialBetaEnabled } from "@/lib/sitePotential/betaEntitlements";
+import { resolveSitePotentialRuntimeReadiness } from "@/lib/sitePotential/betaEntitlements";
 import {
   ApiRequestError,
   authenticateApiRequest,
@@ -24,18 +24,27 @@ export const Route = createFileRoute("/api/site-potential/beta-status")({
 
 export async function handleBetaStatusRequest(request: Request) {
   try {
-    const { user } = await authenticateApiRequest(request);
-    const enabled = isSitePotentialBetaEnabled(process.env);
-    if (!enabled) {
-      return json({ success: true, enabled: false, creditsRemaining: 0 }, 200);
+    const runtime = resolveSitePotentialRuntimeReadiness(process.env);
+    if (!runtime.ready) {
+      return json(
+        {
+          success: true,
+          enabled: runtime.status !== "GENERATION_DISABLED",
+          creditsRemaining: 0,
+          canGenerate: false,
+          runtimeStatus: runtime.status,
+        },
+        200,
+      );
     }
+    const { user } = await authenticateApiRequest(request);
     const parcelId = new URL(request.url).searchParams.get("parcelId");
     const status = await readSitePotentialAccessStatus({
       serviceSupabase: createServiceRoleSupabaseClient(),
       userId: user.id,
       parcelId,
     });
-    return json({ success: true, enabled, ...status }, 200);
+    return json({ success: true, enabled: true, runtimeStatus: runtime.status, ...status }, 200);
   } catch (error) {
     if (error instanceof ApiRequestError) {
       return json({ success: false, error: error.message }, error.status);

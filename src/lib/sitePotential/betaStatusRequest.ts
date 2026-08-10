@@ -1,3 +1,8 @@
+import {
+  sitePotentialRuntimeMessage,
+  type SitePotentialRuntimeStatus,
+} from "./betaEntitlements";
+
 export type AllowanceStatusLifecycle = "loading" | "ready" | "error";
 
 export interface BetaCreditUiStatus {
@@ -17,6 +22,21 @@ export interface BetaCreditUiStatus {
     remaining30Days: number;
   };
   openRequestStatus?: string | null;
+  runtimeStatus?: SitePotentialRuntimeStatus;
+}
+
+export type SitePotentialGenerationAvailabilityStatus =
+  | "CHECKING"
+  | "UI_DISABLED"
+  | "SIGNED_OUT"
+  | "ENTITLEMENT_UNAVAILABLE"
+  | "STATUS_UNAVAILABLE"
+  | SitePotentialRuntimeStatus;
+
+export interface SitePotentialGenerationAvailability {
+  status: SitePotentialGenerationAvailabilityStatus;
+  message: string;
+  canGenerate: boolean;
 }
 
 export type BetaStatusRequestResult =
@@ -39,7 +59,58 @@ export const SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE =
 export const SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE =
   "Could not check Site Potential allowance.";
 
+export function resolveSitePotentialGenerationAvailability(input: {
+  uiEnabled: boolean;
+  lifecycle: AllowanceStatusLifecycle;
+  status: BetaCreditUiStatus | null;
+  error?: string | null;
+}): SitePotentialGenerationAvailability {
+  if (!input.uiEnabled) {
+    return {
+      status: "UI_DISABLED",
+      message: "AI concept generation is not enabled on this deployment yet.",
+      canGenerate: false,
+    };
+  }
+  if (input.lifecycle === "loading") {
+    return { status: "CHECKING", message: "Checking availability…", canGenerate: false };
+  }
+  if (input.lifecycle === "error") {
+    if (input.error === SITE_POTENTIAL_ALLOWANCE_SIGN_IN_MESSAGE) {
+      return { status: "SIGNED_OUT", message: input.error, canGenerate: false };
+    }
+    return {
+      status: "STATUS_UNAVAILABLE",
+      message: input.error || SITE_POTENTIAL_ALLOWANCE_ERROR_MESSAGE,
+      canGenerate: false,
+    };
+  }
+  const runtimeStatus = input.status?.runtimeStatus;
+  if (runtimeStatus && runtimeStatus !== "READY") {
+    return {
+      status: runtimeStatus,
+      message: sitePotentialRuntimeMessage(runtimeStatus),
+      canGenerate: false,
+    };
+  }
+  if (!input.status?.enabled || !input.status?.canGenerate) {
+    return {
+      status: "ENTITLEMENT_UNAVAILABLE",
+      message: sitePotentialGenerationUnavailableReason(input.status),
+      canGenerate: false,
+    };
+  }
+  return {
+    status: "READY",
+    message: sitePotentialRuntimeMessage("READY"),
+    canGenerate: true,
+  };
+}
+
 export function sitePotentialGenerationUnavailableReason(status: BetaCreditUiStatus | null) {
+  if (status?.runtimeStatus && status.runtimeStatus !== "READY") {
+    return sitePotentialRuntimeMessage(status.runtimeStatus);
+  }
   if (!status?.enabled) return "Site Potential generation is disabled in this environment.";
   if (status.canGenerate || status.freeEligible) return "Generation is available from the free allowance.";
   if (status.free && status.free.remaining24Hours <= 0) return "Daily free allowance used.";
@@ -96,6 +167,16 @@ export async function loadParcelBetaStatus({
         nextEntitlementSource: payload.nextEntitlementSource ?? null,
         free: payload.free ?? undefined,
         openRequestStatus: payload.openRequestStatus ?? null,
+        runtimeStatus:
+          payload.runtimeStatus === "READY" ||
+          payload.runtimeStatus === "GENERATION_DISABLED" ||
+          payload.runtimeStatus === "WORKER_DISABLED" ||
+          payload.runtimeStatus === "SERVER_CONFIGURATION_ERROR" ||
+          payload.runtimeStatus === "PROVIDER_UNAVAILABLE"
+            ? payload.runtimeStatus
+            : payload.enabled
+              ? "READY"
+              : "GENERATION_DISABLED",
       },
     };
   } catch (error) {

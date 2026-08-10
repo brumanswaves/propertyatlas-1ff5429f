@@ -33,6 +33,8 @@ export interface SatelliteParcelMapProps {
   ring: Array<[number, number]> | null;
   result: BuildEnvelopeResult;
   className?: string;
+  /** Optional copy for a surface that needs to identify the diagram as a fallback. */
+  fallbackNotice?: string;
   /** Rendered road lines near the parcel, for street-frontage detection. */
   onRoadsDetected?: (roads: RoadLineInput[]) => void;
   /** When true, every parcel edge becomes clickable on the satellite map. */
@@ -88,6 +90,7 @@ export function SatelliteParcelMap({
   ring,
   result,
   className,
+  fallbackNotice,
   onRoadsDetected,
   selectableEdges = false,
   highlightEdgeIndex = null,
@@ -453,8 +456,11 @@ export function SatelliteParcelMap({
 
   if (showFallback) {
     return (
-      <div className={cn("relative", className)}>
+      <div className={cn("relative", className)} data-satellite-context="unavailable">
         <BuildEnvelopeDiagram result={result} />
+        {fallbackNotice ? (
+          <p className="mt-2 text-xs leading-5 text-[#64748B]">{fallbackNotice}</p>
+        ) : null}
       </div>
     );
   }

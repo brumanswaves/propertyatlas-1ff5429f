@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  isSitePotentialBetaEnabled,
-  isSitePotentialBetaGenerationReady,
+  resolveSitePotentialRuntimeReadiness,
+  sitePotentialRuntimeMessage,
 } from "@/lib/sitePotential/betaEntitlements";
 import { consumeSitePotentialEntitlement } from "@/lib/sitePotential/betaServer";
 import {
@@ -45,17 +45,15 @@ export async function handleBetaRedeemRequest(request: Request) {
   }
 
   try {
-    if (!isSitePotentialBetaEnabled(process.env)) {
-      return json({ success: false, error: "Site Potential beta access is disabled." }, 403);
-    }
-    if (!isSitePotentialBetaGenerationReady(process.env)) {
+    const runtime = resolveSitePotentialRuntimeReadiness(process.env);
+    if (!runtime.ready) {
       return json(
         {
           success: false,
-          error:
-            "Site Potential generation is temporarily unavailable. No free allowance or credit has been used.",
+          code: runtime.status,
+          error: `${sitePotentialRuntimeMessage(runtime.status)} No free allowance or credit has been used.`,
         },
-        503,
+        runtime.status === "GENERATION_DISABLED" ? 403 : 503,
       );
     }
 

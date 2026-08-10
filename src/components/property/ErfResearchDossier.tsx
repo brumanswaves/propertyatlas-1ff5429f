@@ -12,7 +12,7 @@ import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecord
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import { selectReportHero } from "@/lib/reports/reportHero";
 import { buildSitePotentialReportPanel } from "@/lib/reports/sitePotentialSection";
-import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
+import { ReportBuildableAreaVisual } from "@/components/property/dossier/ReportBuildableAreaVisual";
 
 import {
   Fragment,
@@ -2052,7 +2052,11 @@ function StoepAiReportView({
             panel={sitePotentialPanel}
             capacityVisual={
               heroEnvelope ? (
-                <BuildEnvelopeDiagram result={heroEnvelope} className="border-0" />
+                <ReportBuildableAreaVisual
+                  ring={parcelRing}
+                  result={heroEnvelope}
+                  printOnly={printOnly}
+                />
               ) : undefined
             }
             conceptVisual={
@@ -2526,7 +2530,12 @@ function StoepAiReportView({
             reportHero.kind === "site_potential" && selectedDesign ? (
               <SignedAssetPreview asset={selectedDesign} />
             ) : reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
-              <BuildEnvelopeDiagram result={heroEnvelope!} compact className="border-0" />
+              <ReportBuildableAreaVisual
+                ring={parcelRing}
+                result={heroEnvelope!}
+                printOnly={printOnly}
+                compact
+              />
             ) : undefined
           }
           heroCaption={reportHero.kind === "neutral_card" ? null : reportHero.caption}
