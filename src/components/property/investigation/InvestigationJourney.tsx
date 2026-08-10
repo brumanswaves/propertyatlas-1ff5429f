@@ -38,7 +38,10 @@ interface InvestigationJourneyProps {
   onBackToMap: () => void;
   onSelectStep: (stepId: GuidedInvestigationStepId) => void;
   onSkipStep: (stepId: GuidedInvestigationStepId) => void;
-  onOpenExpertWorkspace: (view?: DossierView) => void;
+  onOpenExpertWorkspace: (
+    view?: DossierView,
+    options?: { guidedReturnStepId?: "strategy" | "site-potential" },
+  ) => void;
 }
 
 export function InvestigationJourney({
@@ -101,14 +104,18 @@ export function InvestigationJourney({
           <GuidedStrategyStep
             chosenScenario={chosenScenario}
             savedScenarioCount={savedScenarioCount}
-            onOpenStrategy={() => onOpenExpertWorkspace("calculators")}
+            onOpenStrategy={() =>
+              onOpenExpertWorkspace("calculators", { guidedReturnStepId: "strategy" })
+            }
             onContinue={() => onSelectStep("site-potential")}
           />
         ) : activeStep.id === "site-potential" ? (
           <GuidedSitePotentialStep
             workspaceState={workspaceState}
             stepSkipped={activeStep.skipped}
-            onOpenSitePotential={() => onOpenExpertWorkspace("site-potential")}
+            onOpenSitePotential={() =>
+              onOpenExpertWorkspace("site-potential", { guidedReturnStepId: "site-potential" })
+            }
             onContinue={() => onSelectStep("report")}
           />
         ) : activeStep.id === "report" ? (

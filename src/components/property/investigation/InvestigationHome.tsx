@@ -52,7 +52,10 @@ export interface InvestigationHomeProps {
   onFlagIdentityUncertain: () => void;
   onSelectGuidedStep: (stepId: GuidedInvestigationStepId) => void;
   onSkipGuidedStep: (stepId: GuidedInvestigationStepId) => void;
-  onOpenExpertWorkspace: (view?: DossierView, options?: { anchorId?: string }) => void;
+  onOpenExpertWorkspace: (
+    view?: DossierView,
+    options?: { anchorId?: string; guidedReturnStepId?: "strategy" | "site-potential" },
+  ) => void;
   onBackToMap: () => void;
   mapSlot?: ReactNode;
 }

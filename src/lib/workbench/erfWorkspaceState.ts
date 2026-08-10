@@ -67,6 +67,7 @@ export interface InvestigationSnapshot {
   lastMeaningfulActionAt: string | null;
   expertWorkspaceOpen: boolean;
   lastExpertView: string | null;
+  guidedReturnStepId: "strategy" | "site-potential" | null;
 }
 
 export function createEmptyInvestigationSnapshot(): InvestigationSnapshot {
@@ -82,6 +83,7 @@ export function createEmptyInvestigationSnapshot(): InvestigationSnapshot {
     lastMeaningfulActionAt: null,
     expertWorkspaceOpen: false,
     lastExpertView: null,
+    guidedReturnStepId: null,
   };
 }
 
@@ -104,6 +106,10 @@ function coerceInvestigation(value: unknown): InvestigationSnapshot {
       typeof raw.lastMeaningfulActionAt === "string" ? raw.lastMeaningfulActionAt : null,
     expertWorkspaceOpen: Boolean(raw.expertWorkspaceOpen),
     lastExpertView: typeof raw.lastExpertView === "string" ? raw.lastExpertView : null,
+    guidedReturnStepId:
+      raw.guidedReturnStepId === "strategy" || raw.guidedReturnStepId === "site-potential"
+        ? raw.guidedReturnStepId
+        : null,
   };
 }
 

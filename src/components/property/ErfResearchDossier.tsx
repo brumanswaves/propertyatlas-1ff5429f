@@ -203,6 +203,10 @@ interface Props {
   view?: DossierView;
   planningAssessment?: ParcelPlanningAssessment | null;
   onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
+  guidedStrategyReturn?: {
+    onBack: () => void;
+    onContinue: () => void;
+  };
 }
 
 export type { DossierView } from "@/components/property/dossier/reportViews";
@@ -468,6 +472,7 @@ export function ErfResearchDossier({
   view = "overview",
   planningAssessment = null,
   onSelectView,
+  guidedStrategyReturn,
 }: Props) {
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
@@ -619,7 +624,10 @@ export function ErfResearchDossier({
             parcel={parcel}
             parcelId={parcel.id}
             defaultPrice={extractDefaultPrice(parcel)}
-            onOpenReport={() => onSelectView?.("stoep-report")}
+            onOpenReport={
+              guidedStrategyReturn ? undefined : () => onSelectView?.("stoep-report")
+            }
+            guidedReturn={guidedStrategyReturn}
           />
       </section>
     );
