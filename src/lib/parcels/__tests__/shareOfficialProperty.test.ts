@@ -9,11 +9,11 @@ import {
 describe("official property sharing", () => {
   const payload = buildOfficialPropertySharePayload({
     title: "Erf 1570",
-    senderName: "Amina",
+    senderName: "Amina Patel",
     url: "https://easyerf.example/?officialParcel=csg%3Alpi%3Ac03400140000157000000&fromSaved=1",
   });
 
-  it("uses safe display metadata for clean share copy", () => {
+  it("uses the sender first name for clean share copy", () => {
     expect(payload).toMatchObject({
       title: "Erf 1570",
       text: "Amina sent you this property to check out on Easy Erf.",
@@ -39,16 +39,14 @@ describe("official property sharing", () => {
   it("opens the personalized Gmail draft before falling back to native sharing", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     const clipboard = { writeText: vi.fn() };
-    const open = vi.fn().mockReturnValue({});
+    const popup = { opener: "source-window" as unknown };
+    const open = vi.fn().mockReturnValue(popup);
 
     await expect(
       shareOfficialPropertyLink({ share, clipboard }, payload, { open }),
     ).resolves.toBe("shared");
-    expect(open).toHaveBeenCalledWith(
-      buildOfficialPropertyGmailUrl(payload),
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(open).toHaveBeenCalledWith(buildOfficialPropertyGmailUrl(payload), "_blank");
+    expect(popup.opener).toBeNull();
     expect(share).not.toHaveBeenCalled();
     expect(clipboard.writeText).not.toHaveBeenCalled();
   });
