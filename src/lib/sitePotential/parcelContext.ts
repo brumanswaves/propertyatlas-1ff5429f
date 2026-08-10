@@ -15,7 +15,20 @@ export interface SitePotentialParcelContext {
   coordinates: { lng: number; lat: number } | null;
   knownFields: Array<{ label: string; value: string; source: string }>;
   sourceAttributes: Record<string, string | number | boolean | null>;
+  /** Optional user-confirmed orientation, never a verified planning control. */
+  frontage: {
+    primaryEdgeIndex: number | null;
+    secondaryEdgeIndex: number | null;
+    streetName: string | null;
+    source: "user_confirmed";
+  } | null;
   capturedAt: string;
+}
+
+export interface SitePotentialFrontageContext {
+  primaryEdgeIndex: number | null;
+  secondaryEdgeIndex: number | null;
+  streetName: string | null;
 }
 
 function primitiveSourceAttributes(raw: Record<string, unknown> | undefined) {
@@ -25,8 +38,13 @@ function primitiveSourceAttributes(raw: Record<string, unknown> | undefined) {
   return Object.fromEntries(entries) as Record<string, string | number | boolean | null>;
 }
 
+function parseNullableEdgeIndex(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 export function buildSitePotentialParcelContext(
   parcel: NormalizedOfficialParcel,
+  frontage: SitePotentialFrontageContext | null = null,
 ): SitePotentialParcelContext {
   return {
     parcelId: parcel.id,
@@ -42,6 +60,10 @@ export function buildSitePotentialParcelContext(
     coordinates: parcel.coordinates ?? null,
     knownFields: parcel.knownFields.slice(0, 40),
     sourceAttributes: primitiveSourceAttributes(parcel.rawProperties),
+    frontage:
+      frontage?.primaryEdgeIndex != null || frontage?.secondaryEdgeIndex != null
+        ? { ...frontage, source: "user_confirmed" }
+        : null,
     capturedAt: new Date().toISOString(),
   };
 }
@@ -55,6 +77,9 @@ export function sitePotentialParcelContextFromProject(
   const coordinates = row.coordinates as Record<string, unknown> | null | undefined;
   const lng = Number(coordinates?.lng);
   const lat = Number(coordinates?.lat);
+  const frontage = row.frontage as Record<string, unknown> | null | undefined;
+  const primaryEdgeIndex = parseNullableEdgeIndex(frontage?.primaryEdgeIndex);
+  const secondaryEdgeIndex = parseNullableEdgeIndex(frontage?.secondaryEdgeIndex);
   return {
     parcelId: typeof row.parcelId === "string" ? row.parcelId : project.parcel_id,
     sourceLabel: typeof row.sourceLabel === "string" ? row.sourceLabel : "Official parcel source",
@@ -88,6 +113,17 @@ export function sitePotentialParcelContextFromProject(
       !Array.isArray(row.sourceAttributes)
         ? (row.sourceAttributes as Record<string, string | number | boolean | null>)
         : {},
+    frontage:
+      frontage?.source === "user_confirmed" &&
+      (primaryEdgeIndex != null || secondaryEdgeIndex != null)
+        ? {
+            primaryEdgeIndex,
+            secondaryEdgeIndex:
+              secondaryEdgeIndex === primaryEdgeIndex ? null : secondaryEdgeIndex,
+            streetName: typeof frontage.streetName === "string" ? frontage.streetName : null,
+            source: "user_confirmed",
+          }
+        : null,
     capturedAt: typeof row.capturedAt === "string" ? row.capturedAt : new Date(0).toISOString(),
   };
 }
@@ -113,5 +149,8 @@ export function describeSitePotentialParcelContext(context: SitePotentialParcelC
     )
     .slice(0, 12)
     .map((field) => `${field.label}: ${field.value} (${field.source})`);
-  return [parts.join(", "), ...importantFields].filter(Boolean).join(". ");
+  const frontage = context.frontage
+    ? `User-confirmed street orientation: primary boundary ${context.frontage.primaryEdgeIndex != null ? context.frontage.primaryEdgeIndex + 1 : "not set"}${context.frontage.secondaryEdgeIndex != null ? `; secondary boundary ${context.frontage.secondaryEdgeIndex + 1}` : ""}${context.frontage.streetName ? ` (${context.frontage.streetName})` : ""}. This is an exploratory orientation, not a verified planning control.`
+    : null;
+  return [parts.join(", "), ...importantFields, frontage].filter(Boolean).join(". ");
 }

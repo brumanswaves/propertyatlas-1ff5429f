@@ -78,6 +78,7 @@ export interface ResolvedSitePotentialInputs {
     dwellingUnits: ResolvedSitePotentialField<number>;
     additionalDwellingRule: ResolvedSitePotentialField<string>;
     streetEdgeIndex: ResolvedSitePotentialField<number>;
+    secondaryStreetEdgeIndex: ResolvedSitePotentialField<number>;
     streetName: ResolvedSitePotentialField<string>;
   };
   ruleSource: BuildEnvelopeRuleSource | null;
@@ -230,6 +231,14 @@ export function resolveSitePotentialInputs(
     detected?.roadName ? detectedProvenance : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
     detected?.roadName ? "map_road" : "pilot",
   );
+  const secondaryStreetEdgeIndex = field<number>(
+    null,
+    documentProvenance,
+    stored.secondaryStreetEdgeIndex,
+    null,
+    UNKNOWN_PROVENANCE,
+    "unknown",
+  );
 
   const resolvedFields = {
     zoneLabel,
@@ -241,6 +250,7 @@ export function resolveSitePotentialInputs(
     dwellingUnits,
     additionalDwellingRule,
     streetEdgeIndex,
+    secondaryStreetEdgeIndex,
     streetName,
   };
 
@@ -280,6 +290,10 @@ export function resolveSitePotentialInputs(
   const answers: StoredBuildEnvelopeInputs = {
     boundaryConfirmed: stored.boundaryConfirmed === true,
     streetEdgeIndex: streetEdgeIndex.value,
+    secondaryStreetEdgeIndex:
+      secondaryStreetEdgeIndex.value === streetEdgeIndex.value
+        ? null
+        : secondaryStreetEdgeIndex.value,
     streetName: streetName.value,
     ruleSource,
     zoneLabel: zoneLabel.value,

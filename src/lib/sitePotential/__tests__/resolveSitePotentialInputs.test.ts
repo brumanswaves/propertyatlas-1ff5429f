@@ -83,6 +83,27 @@ describe("Site Potential input precedence", () => {
     expect(resolved.fields.streetSetbackM.origin).toBe("user");
   });
 
+  it("retains a distinct user-confirmed second frontage without treating it as planning evidence", () => {
+    const resolved = resolveSitePotentialInputs({
+      overrides: { streetEdgeIndex: 0, secondaryStreetEdgeIndex: 3 },
+      prefill: registryPrefill(),
+    });
+
+    expect(resolved.answers.streetEdgeIndex).toBe(0);
+    expect(resolved.answers.secondaryStreetEdgeIndex).toBe(3);
+    expect(resolved.fields.secondaryStreetEdgeIndex.origin).toBe("user");
+    expect(resolved.ruleStatus).toBe("estimated");
+  });
+
+  it("drops a duplicate second frontage when it matches the primary edge", () => {
+    const resolved = resolveSitePotentialInputs({
+      overrides: { streetEdgeIndex: 2, secondaryStreetEdgeIndex: 2 },
+      prefill: registryPrefill(),
+    });
+
+    expect(resolved.answers.secondaryStreetEdgeIndex).toBeNull();
+  });
+
   it("prefers a matched zoning document over both user and pack values", () => {
     const documentPrefill = registryPrefill({
       ruleSource: "document",

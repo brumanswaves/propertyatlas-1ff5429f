@@ -9,6 +9,7 @@ import {
   sourceAssetsForGenerationMode,
 } from "../generationJobs";
 import { buildSitePotentialPrompt } from "../generation";
+import { describeSitePotentialParcelContext } from "../parcelContext";
 import { isDevelopmentEntitlementAllowed } from "../serverAuth";
 
 function read(path: string) {
@@ -322,6 +323,7 @@ describe("Site Potential production-blocker repair", () => {
       coordinates: { lng: 24.82, lat: -34.17 },
       knownFields: [],
       sourceAttributes: {},
+      frontage: null,
       capturedAt: "2026-07-15T00:00:00.000Z",
     };
     const prompts = [0, 1, 2].map((optionIndex) =>
@@ -345,6 +347,33 @@ describe("Site Potential production-blocker repair", () => {
       expect(prompt).toContain("Do not generate words, captions, labels");
       expect(prompt).not.toContain("AI-generated concept visualisation. Not an architectural plan");
     }
+  });
+
+  it("carries user-confirmed primary and secondary frontages into the site context without claiming planning evidence", () => {
+    expect(
+      describeSitePotentialParcelContext({
+        parcelId: "csg:lpi:test",
+        sourceLabel: "Kouga SG Properties",
+        erfNumber: 1570,
+        portion: 0,
+        lpi: "C03400140000157000000",
+        parcelKey: "E108C034001400001570000000",
+        municipality: "Kouga",
+        province: "Eastern Cape",
+        suburbOrArea: "St Francis Bay",
+        town: "St Francis Bay",
+        coordinates: null,
+        knownFields: [],
+        sourceAttributes: {},
+        frontage: {
+          primaryEdgeIndex: 0,
+          secondaryEdgeIndex: 3,
+          streetName: "Harbour Road",
+          source: "user_confirmed",
+        },
+        capturedAt: "2026-07-15T00:00:00.000Z",
+      }),
+    ).toContain("primary boundary 1; secondary boundary 4 (Harbour Road). This is an exploratory orientation, not a verified planning control.");
   });
 
   it("defaults OpenAI image generation to GPT Image 2 landscape medium", () => {

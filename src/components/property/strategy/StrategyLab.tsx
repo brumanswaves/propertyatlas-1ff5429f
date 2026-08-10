@@ -1350,26 +1350,20 @@ export function StrategyLab({
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
             Guided Investigation · Step 8 of 10
           </div>
-          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
-            Complete or save the scenario you want Easy Erf to use, then continue with Site
-            Potential.
+          <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
+            Turn the evidence into one report-ready strategy
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
+            Choose one approach, review only the assumptions that matter, then save the scenario you
+            want the Easy Erf Report to use. Your draft remains separate until you choose it.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={guidedReturn.onBack}
-              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
-            >
-              Back to Investigation
-            </button>
-            <button
-              type="button"
-              disabled={!chosenScenario}
-              onClick={guidedReturn.onContinue}
-              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Save and continue to Site Potential
-            </button>
+          <ol className="mt-3 grid gap-2 text-xs leading-5 text-[#0D1B2A]/72 sm:grid-cols-3">
+            <li><span className="font-semibold text-[#B24A00]">1.</span> Choose a strategy</li>
+            <li><span className="font-semibold text-[#B24A00]">2.</span> Review assumptions and outputs</li>
+            <li><span className="font-semibold text-[#B24A00]">3.</span> Save one scenario for the report</li>
+          </ol>
+          <div className="mt-3 text-xs font-semibold text-[#0D1B2A]/72">
+            {chosenScenario ? `Chosen for the report: ${chosenScenario.label}.` : "Complete this step by choosing a scenario for the report."}
           </div>
         </section>
       ) : null}
@@ -1604,6 +1598,38 @@ export function StrategyLab({
           </button>
         )}
       </div>
+      {guidedReturn ? (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Guided completion · Strategy
+          </div>
+          <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
+            {chosenScenario ? "Strategy ready for Site Potential" : "Choose a scenario to complete this step"}
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
+            {chosenScenario
+              ? "The chosen scenario will be used by the Easy Erf Report. Continue to explore the site context and potential concepts."
+              : "Your autosaved draft is safe, but Guided Investigation needs one chosen scenario before it can continue."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={guidedReturn.onBack}
+              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
+            >
+              Back to Investigation
+            </button>
+            <button
+              type="button"
+              disabled={!chosenScenario}
+              onClick={guidedReturn.onContinue}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Save and continue to Site Potential
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

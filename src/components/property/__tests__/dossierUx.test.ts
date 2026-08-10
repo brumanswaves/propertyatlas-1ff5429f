@@ -665,6 +665,9 @@ describe("official dossier UX guardrails", () => {
     expect(strategyLab).toContain("Continue to Easy Erf Report");
     expect(strategyLab).toContain("Guided Investigation · Step 8 of 10");
     expect(strategyLab).toContain("Save and continue to Site Potential");
+    expect(strategyLab).toContain("Turn the evidence into one report-ready strategy");
+    expect(strategyLab).toContain("Guided completion · Strategy");
+    expect(strategyLab).toContain("Choose a scenario to complete this step");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
     expect(marketEvidence).toContain("Import comparable listing or sale");
@@ -737,6 +740,9 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotential).toContain("Guided Investigation · Step 9 of 10");
     expect(sitePotential).toContain("Back to Investigation");
     expect(sitePotential).toContain("Continue to Easy Erf Report");
+    expect(sitePotential).toContain("Explore the site before you complete the report");
+    expect(sitePotential).toContain("Guided completion · Site Potential");
+    expect(sitePotential).toContain("Select a concept or explicitly skip this step");
     expect(sitePotential).toContain("projectMode === \"skipped\"");
     expect(sitePotential).toContain("useErfFileVault");
     expect(sitePotential).toContain("/api/site-potential/generate");
