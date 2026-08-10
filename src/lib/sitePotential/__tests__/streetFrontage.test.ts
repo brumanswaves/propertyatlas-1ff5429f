@@ -221,4 +221,58 @@ describe("frontage changes recompute setbacks", () => {
       JSON.stringify(onEdgeTwo.envelopePolygon),
     );
   });
+
+  it("keeps a user-confirmed second frontage distinct and applies the street setback to both edges", () => {
+    const result = calculateBuildEnvelope({
+      parcelId: "dual-frontage",
+      ring: rectangleRing(),
+      boundaryConfirmed: true,
+      streetEdgeIndex: 0,
+      secondaryStreetEdgeIndex: 3,
+      streetName: "Harbour Road",
+      ruleSource: "registry",
+      zoneLabel: "Residential 1",
+      streetSetbackM: 4,
+      sideSetbackM: 2,
+      rearSetbackM: 3,
+      maxCoveragePercent: 50,
+      maxHeightM: 8,
+      dwellingUnits: 1,
+      additionalDwellingRule: null,
+      additionalDwellingRequiresConsent: false,
+      servitudeNotes: null,
+      recordedAreaM2: 600,
+    });
+
+    expect(result.streetEdge?.index).toBe(0);
+    expect(result.secondaryStreetEdge?.index).toBe(3);
+    expect(result.streetEdge?.setbackM).toBe(4);
+    expect(result.secondaryStreetEdge?.setbackM).toBe(4);
+    expect(result.edges.filter((edge) => edge.kind === "street" || edge.kind === "secondary_street")).toHaveLength(2);
+  });
+
+  it("does not allow the optional second frontage to duplicate the primary edge", () => {
+    const result = calculateBuildEnvelope({
+      parcelId: "single-frontage",
+      ring: rectangleRing(),
+      boundaryConfirmed: true,
+      streetEdgeIndex: 1,
+      secondaryStreetEdgeIndex: 1,
+      streetName: null,
+      ruleSource: "manual",
+      zoneLabel: null,
+      streetSetbackM: 3,
+      sideSetbackM: 2,
+      rearSetbackM: 2,
+      maxCoveragePercent: 50,
+      maxHeightM: 8,
+      dwellingUnits: 1,
+      additionalDwellingRule: null,
+      additionalDwellingRequiresConsent: false,
+      servitudeNotes: null,
+      recordedAreaM2: 600,
+    });
+
+    expect(result.secondaryStreetEdge).toBeNull();
+  });
 });

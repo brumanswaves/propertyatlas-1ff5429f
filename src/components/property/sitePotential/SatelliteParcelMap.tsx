@@ -47,6 +47,7 @@ const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 const SRC = {
   parcel: "site-potential-parcel",
   street: "site-potential-street",
+  secondaryStreet: "site-potential-secondary-street",
   setback: "site-potential-setback",
   streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
@@ -137,6 +138,9 @@ export function SatelliteParcelMap({
       },
     });
     const street = result.streetEdge ? line(result.streetEdge.a, result.streetEdge.b) : null;
+    const secondaryStreet = result.secondaryStreetEdge
+      ? line(result.secondaryStreetEdge.a, result.secondaryStreetEdge.b)
+      : null;
     const streetLine = result.streetEdge?.setbackLine
       ? line(result.streetEdge.setbackLine.a, result.streetEdge.setbackLine.b)
       : null;
@@ -170,7 +174,7 @@ export function SatelliteParcelMap({
         };
       }),
     };
-    return { parcel, setback, coverage, street, streetLine, coverageLabel, edges };
+    return { parcel, setback, coverage, street, secondaryStreet, streetLine, coverageLabel, edges };
   }, [result]);
 
   const fit = useCallback(() => {
@@ -265,6 +269,12 @@ export function SatelliteParcelMap({
             type: "line",
             source: SRC.street,
             paint: { "line-color": "#FF6A00", "line-width": 4 },
+          });
+          map.addLayer({
+            id: `${SRC.secondaryStreet}-line`,
+            type: "line",
+            source: SRC.secondaryStreet,
+            paint: { "line-color": "#F59E0B", "line-width": 4, "line-dasharray": [2, 1.5] },
           });
           map.addLayer({
             id: `${SRC.parcel}-line`,
@@ -404,6 +414,7 @@ export function SatelliteParcelMap({
     set(SRC.setback, geo.setback);
     set(SRC.coverage, geo.coverage);
     set(SRC.street, geo.street);
+    set(SRC.secondaryStreet, geo.secondaryStreet);
     set(SRC.streetLine, geo.streetLine);
     set(SRC.coverageLabel, geo.coverageLabel);
     const edgeSource = map.getSource(SRC.edges) as import("mapbox-gl").GeoJSONSource | undefined;
@@ -465,6 +476,7 @@ export function SatelliteParcelMap({
       <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
         <LegendChip color="#22D3EE" label="Erf boundary" />
         <LegendChip color="#FF6A00" label="Street frontage" />
+        {result.secondaryStreetEdge ? <LegendChip color="#F59E0B" label="Secondary frontage" /> : null}
         <LegendChip color="#38BDF8" label="Street building line" />
         <LegendChip color="#22C55E" label="Side / rear building line" />
         <LegendChip color="#FB7185" label="Max coverage" />

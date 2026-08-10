@@ -38,6 +38,7 @@ import {
 } from "@/lib/sitePotential/sitePotentialService";
 import type { SitePotentialMode } from "@/lib/sitePotential/types";
 import { buildSitePotentialParcelContext } from "@/lib/sitePotential/parcelContext";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
 import { buildSyncedSitePotentialSnapshot } from "@/lib/sitePotential/sitePotentialSnapshotSync";
 import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
@@ -527,6 +528,19 @@ export function SitePotentialTab({
 }: SitePotentialTabProps) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const parcelContextForProject = useCallback(() => {
+    const storedEnvelope = readStoredBuildEnvelopeInputs(parcel.id, userId);
+    const primaryEdgeIndex = storedEnvelope?.streetEdgeIndex ?? null;
+    const storedSecondaryEdgeIndex = storedEnvelope?.secondaryStreetEdgeIndex ?? null;
+    return buildSitePotentialParcelContext(parcel, {
+      primaryEdgeIndex,
+      secondaryEdgeIndex:
+        primaryEdgeIndex != null && storedSecondaryEdgeIndex !== primaryEdgeIndex
+          ? storedSecondaryEdgeIndex
+          : null,
+      streetName: storedEnvelope?.streetName ?? null,
+    });
+  }, [parcel, userId]);
 
   const site = workspaceState.sitePotential;
   const currentSiteSnapshot = useMemo<SitePotentialSnapshot>(
@@ -1040,7 +1054,7 @@ export function SitePotentialTab({
   }
 
   async function grantDevEntitlement() {
-    const parcelContext = buildSitePotentialParcelContext(parcel);
+    const parcelContext = parcelContextForProject();
     const current = await saveProject({
       mode,
       generation_status: "ready_to_generate",
@@ -1071,7 +1085,7 @@ export function SitePotentialTab({
   }
 
   async function generateWithEntitlement() {
-    const parcelContext = buildSitePotentialParcelContext(parcel);
+    const parcelContext = parcelContextForProject();
     const current = await saveProject({
       mode,
       generation_status: "ready_to_generate",
@@ -1246,26 +1260,19 @@ export function SitePotentialTab({
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
             Guided Investigation · Step 9 of 10
           </div>
-          <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
-            Explore the build envelope and/or AI concepts, then return to your investigation.
+          <h3 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
+            Explore the site before you complete the report
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
+            Review the parcel boundary and planning inputs, then either select a concept for the
+            report or explicitly skip Site Potential for this erf. Concepts remain exploratory, not
+            approvals or verified building rights.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={guidedReturn.onBack}
-              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
-            >
-              Back to Investigation
-            </button>
-            <button
-              type="button"
-              disabled={!guidedComplete}
-              onClick={guidedReturn.onContinue}
-              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Continue to Easy Erf Report
-            </button>
-          </div>
+          <ol className="mt-3 grid gap-2 text-xs leading-5 text-[#0D1B2A]/72 sm:grid-cols-3">
+            <li><span className="font-semibold text-[#B24A00]">1.</span> Review the site context</li>
+            <li><span className="font-semibold text-[#B24A00]">2.</span> Explore a concept if useful</li>
+            <li><span className="font-semibold text-[#B24A00]">3.</span> Select one or explicitly skip</li>
+          </ol>
         </section>
       ) : null}
       <header className="rounded-[1.5rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6 shadow-[0_16px_44px_-28px_rgba(13,27,42,0.3)]">
@@ -1729,6 +1736,39 @@ export function SitePotentialTab({
           )}
         </div>
       </section>
+
+      {guidedReturn ? (
+        <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            Guided completion · Site Potential
+          </div>
+          <h3 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
+            {guidedComplete ? "Site Potential step complete" : "Select a concept or explicitly skip this step"}
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
+            {guidedComplete
+              ? "Your selected concept or explicit skip is recorded. Continue to the Easy Erf Report to see the remaining evidence and decision work together."
+              : "Guided Investigation needs either a selected Site Potential concept or an explicit skip before continuing. It does not require generation when that is not useful."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={guidedReturn.onBack}
+              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
+            >
+              Back to Investigation
+            </button>
+            <button
+              type="button"
+              disabled={!guidedComplete}
+              onClick={guidedReturn.onContinue}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continue to Easy Erf Report
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {onExploreReport && (
         <button

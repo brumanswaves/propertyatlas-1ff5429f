@@ -115,7 +115,7 @@ export function VacantLandBuildEnvelope({
 
   /** Road lines rendered by the satellite map near this parcel. */
   const [roads, setRoads] = useState<RoadLineInput[] | null>(null);
-  const [pickingFrontage, setPickingFrontage] = useState(false);
+  const [pickingFrontage, setPickingFrontage] = useState<"primary" | "secondary" | null>(null);
 
   const savedStreetName = overrides.streetName ?? pilot?.streetName ?? null;
 
@@ -244,18 +244,21 @@ export function VacantLandBuildEnvelope({
       {(() => {
         const confirmed = overrides.streetEdgeIndex != null;
         const needsPick =
-          pickingFrontage || (!confirmed && detection.requiresConfirmation && roads !== null);
+          pickingFrontage != null || (!confirmed && detection.requiresConfirmation && roads !== null);
         return (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3">
             <div className="text-[12px] leading-5 text-[#0D1B2A]">
               {needsPick ? (
                 <span className="font-semibold">
-                  Which side faces the street? Click the road-facing boundary on the map.
+                  {pickingFrontage === "secondary"
+                    ? "Select the optional second street-facing boundary on the map."
+                    : "Which side faces the street? Click the primary road-facing boundary on the map."}
                 </span>
               ) : confirmed ? (
                 <span>
                   <span className="font-semibold">Street frontage · confirmed by you</span>
                   {savedStreetName ? ` · ${savedStreetName}` : ""}
+                  {answers.secondaryStreetEdgeIndex != null ? " - second frontage selected" : ""}
                 </span>
               ) : detection.edgeIndex != null ? (
                 <span>
@@ -270,11 +273,20 @@ export function VacantLandBuildEnvelope({
             </div>
             <button
               type="button"
-              onClick={() => setPickingFrontage((value) => !value)}
+              onClick={() => setPickingFrontage((value) => (value ? null : "primary"))}
               className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
             >
-              {needsPick ? "Cancel" : "Change"}
+              {needsPick ? "Cancel" : "Change primary"}
             </button>
+            {confirmed ? (
+              <button
+                type="button"
+                onClick={() => setPickingFrontage("secondary")}
+                className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
+              >
+                {answers.secondaryStreetEdgeIndex != null ? "Change second frontage" : "Add second frontage"}
+              </button>
+            ) : null}
           </div>
         );
       })()}
@@ -286,13 +298,27 @@ export function VacantLandBuildEnvelope({
           result={result}
           onRoadsDetected={setRoads}
           selectableEdges={
-            pickingFrontage ||
+            pickingFrontage != null ||
             (overrides.streetEdgeIndex == null && detection.requiresConfirmation && roads !== null)
           }
-          highlightEdgeIndex={answers.streetEdgeIndex ?? detection.edgeIndex ?? null}
+          highlightEdgeIndex={
+            pickingFrontage === "secondary"
+              ? answers.secondaryStreetEdgeIndex
+              : (answers.streetEdgeIndex ?? detection.edgeIndex ?? null)
+          }
           onEdgeSelect={(edgeIndex) => {
-            patch({ streetEdgeIndex: edgeIndex });
-            setPickingFrontage(false);
+            if (pickingFrontage === "secondary") {
+              if (edgeIndex !== answers.streetEdgeIndex) patch({ secondaryStreetEdgeIndex: edgeIndex });
+            } else {
+              patch({
+                streetEdgeIndex: edgeIndex,
+                secondaryStreetEdgeIndex:
+                  answers.secondaryStreetEdgeIndex === edgeIndex
+                    ? null
+                    : answers.secondaryStreetEdgeIndex,
+              });
+            }
+            setPickingFrontage(null);
           }}
         />
 
@@ -495,24 +521,32 @@ export function VacantLandBuildEnvelope({
               </Step>
 
               {/* Step 2 — street edge */}
-              <Step index={2} title="Which boundary faces the street?">
+              <Step index={2} title="Street-facing boundaries">
                 <div className="flex flex-wrap gap-2">
                   {edgeOptions.map((index) => {
                     const edge = result.edges[index];
-                    const active = answers.streetEdgeIndex === index;
+                    const primary = answers.streetEdgeIndex === index;
                     return (
                       <button
                         key={index}
                         type="button"
-                        onClick={() => patch({ streetEdgeIndex: index })}
+                        onClick={() =>
+                          patch({
+                            streetEdgeIndex: index,
+                            secondaryStreetEdgeIndex:
+                              answers.secondaryStreetEdgeIndex === index
+                                ? null
+                                : answers.secondaryStreetEdgeIndex,
+                          })
+                        }
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                          active
+                          primary
                             ? "border-[#FF6A00] bg-[#FF6A00]/10 text-[#9a3412]"
                             : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
                         )}
                       >
-                        Boundary {index + 1}
+                        {primary ? "Primary · " : ""}Boundary {index + 1}
                         {result.showsDimensions ? ` · ${edge?.lengthM ?? 0} m` : ""}
                       </button>
                     );
@@ -526,6 +560,38 @@ export function VacantLandBuildEnvelope({
                 <p className="mt-2 text-[11px] text-[#64748B]">
                   {resolved.fields.streetEdgeIndex.provenance}
                 </p>
+                {answers.streetEdgeIndex != null ? (
+                  <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {edgeOptions
+                        .filter((index) => index !== answers.streetEdgeIndex)
+                        .map((index) => {
+                          const secondary = answers.secondaryStreetEdgeIndex === index;
+                          return (
+                            <button
+                              key={`secondary-${index}`}
+                              type="button"
+                              onClick={() =>
+                                patch({ secondaryStreetEdgeIndex: secondary ? null : index })
+                              }
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
+                                secondary
+                                  ? "border-[#F59E0B] bg-[#F59E0B]/10 text-[#92400E]"
+                                  : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
+                              )}
+                            >
+                              {secondary ? "Second frontage · " : "Add second frontage · "}Boundary {index + 1}
+                            </button>
+                          );
+                        })}
+                    </div>
+                    <p className="mt-2 text-[11px] text-[#64748B]">
+                      A second street-facing boundary is optional. It is used only when you confirm it
+                      and is not a verified planning control.
+                    </p>
+                  </>
+                ) : null}
                 <input
                   type="text"
                   value={answers.streetName ?? ""}

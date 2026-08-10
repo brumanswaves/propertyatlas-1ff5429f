@@ -53,7 +53,12 @@ describe("browser parcel state account isolation", () => {
   it("does not let planning, envelope, or frontage overrides cross accounts", () => {
     const storage = memoryStorage();
     writeStoredPlanningZone("erf-1570", "Residential Zone I", "user-a", storage);
-    writeStoredBuildEnvelopeInputs("erf-1570", { maxCoveragePercent: 50 }, "user-a", storage);
+    writeStoredBuildEnvelopeInputs(
+      "erf-1570",
+      { maxCoveragePercent: 50, streetEdgeIndex: 1, secondaryStreetEdgeIndex: 3 },
+      "user-a",
+      storage,
+    );
     writeStoredStreetFrontageDetection(
       "erf-1570",
       { edgeIndex: 2, roadName: "Harbour Road", confidence: 0.92, method: "map_road_match" },
@@ -67,6 +72,8 @@ describe("browser parcel state account isolation", () => {
     expect(readStoredPlanningZone("erf-1570", "user-a", storage)).toBe("Residential Zone I");
     expect(readStoredBuildEnvelopeInputs("erf-1570", "user-a", storage)).toEqual({
       maxCoveragePercent: 50,
+      streetEdgeIndex: 1,
+      secondaryStreetEdgeIndex: 3,
     });
     expect(readStoredStreetFrontageDetection("erf-1570", storage, "user-a")).toMatchObject({
       edgeIndex: 2,

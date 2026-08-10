@@ -23,6 +23,7 @@ function toPath(points: LocalPoint[]) {
 
 const EDGE_LABEL: Record<string, string> = {
   street: "Street boundary",
+  secondary_street: "Secondary street boundary",
   side: "Side",
   rear: "Rear",
 };
@@ -130,9 +131,9 @@ export function BuildEnvelopeDiagram({
               y1={edge.setbackLine.a.y}
               x2={edge.setbackLine.b.x}
               y2={edge.setbackLine.b.y}
-              stroke={edge.kind === "street" ? "#38BDF8" : "#22C55E"}
+              stroke={edge.kind === "street" || edge.kind === "secondary_street" ? "#38BDF8" : "#22C55E"}
               strokeOpacity={0.9}
-              strokeWidth={edge.kind === "street" ? stroke * 1.4 : stroke}
+              strokeWidth={edge.kind === "street" || edge.kind === "secondary_street" ? stroke * 1.4 : stroke}
               strokeDasharray={`${stroke * 3} ${stroke * 2}`}
             />
           ) : null,
@@ -178,6 +179,18 @@ export function BuildEnvelopeDiagram({
             strokeLinecap="round"
           />
         ) : null}
+        {result.secondaryStreetEdge ? (
+          <line
+            x1={result.secondaryStreetEdge.a.x}
+            y1={result.secondaryStreetEdge.a.y}
+            x2={result.secondaryStreetEdge.b.x}
+            y2={result.secondaryStreetEdge.b.y}
+            stroke="#F59E0B"
+            strokeWidth={stroke * 2.5}
+            strokeLinecap="round"
+            strokeDasharray={`${stroke * 3} ${stroke * 1.5}`}
+          />
+        ) : null}
 
 
         {/* Dimensions, only when the boundary was confirmed */}
@@ -209,6 +222,7 @@ export function BuildEnvelopeDiagram({
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-white/65">
           <LegendSwatch color="#22D3EE" label="Parcel boundary" />
           <LegendSwatch color="#FF6A00" label={result.streetEdge ? "Street boundary" : "Street boundary not set"} />
+          {result.secondaryStreetEdge ? <LegendSwatch color="#F59E0B" dashed label="Secondary street boundary" /> : null}
           <LegendSwatch color="#38BDF8" dashed label="Street building line" />
           <LegendSwatch color="#22C55E" dashed label="Side / rear building line" />
           <LegendSwatch color="#4ADE80" faded label="Inside building lines" />
