@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildSavedParcelMapHref, parseOfficialParcelReopenSearch } from "../officialParcelId";
-import { buildOfficialPropertySharePayload, shareOfficialPropertyLink } from "../shareOfficialProperty";
+import {
+  buildOfficialPropertyGmailUrl,
+  buildOfficialPropertySharePayload,
+  shareOfficialPropertyLink,
+} from "../shareOfficialProperty";
 
 describe("official property sharing", () => {
   const payload = buildOfficialPropertySharePayload({
@@ -13,26 +17,66 @@ describe("official property sharing", () => {
     expect(payload).toMatchObject({
       title: "Erf 1570",
       text: "Amina sent you this property to check out on Easy Erf.",
+      sender: "Amina",
     });
     expect(
       buildOfficialPropertySharePayload({ title: "Erf 1570", url: payload.url }).text,
     ).toBe("Someone sent you this property to check out on Easy Erf.");
   });
 
-  it("uses native sharing when available", async () => {
+  it("builds a personalized Gmail compose draft with the canonical clickable property URL", () => {
+    const gmailUrl = new URL(buildOfficialPropertyGmailUrl(payload));
+
+    expect(gmailUrl.origin).toBe("https://mail.google.com");
+    expect(gmailUrl.searchParams.get("su")).toBe("Amina sent you a property on Easy Erf");
+    expect(gmailUrl.searchParams.get("body")).toContain(
+      "Amina is sending you this property to check out on Easy Erf.",
+    );
+    expect(gmailUrl.searchParams.get("body")).toContain("VIEW PROPERTY ON EASY ERF");
+    expect(gmailUrl.searchParams.get("body")).toContain(payload.url);
+  });
+
+  it("opens the personalized Gmail draft before falling back to native sharing", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     const clipboard = { writeText: vi.fn() };
+    const open = vi.fn().mockReturnValue({});
 
-    await expect(shareOfficialPropertyLink({ share, clipboard }, payload)).resolves.toBe("shared");
-    expect(share).toHaveBeenCalledWith(payload);
+    await expect(
+      shareOfficialPropertyLink({ share, clipboard }, payload, { open }),
+    ).resolves.toBe("shared");
+    expect(open).toHaveBeenCalledWith(
+      buildOfficialPropertyGmailUrl(payload),
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(share).not.toHaveBeenCalled();
     expect(clipboard.writeText).not.toHaveBeenCalled();
   });
 
-  it("copies the canonical property URL when native sharing is unavailable", async () => {
+  it("uses native sharing when a Gmail popup is unavailable", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const clipboard = { writeText: vi.fn() };
+
+    await expect(
+      shareOfficialPropertyLink({ share, clipboard }, payload, { open: () => null }),
+    ).resolves.toBe("shared");
+    expect(share).toHaveBeenCalledWith({
+      title: payload.title,
+      text: payload.text,
+      url: payload.url,
+    });
+    expect(clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it("copies the canonical property URL when Gmail and native sharing are unavailable", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
 
     await expect(
-      shareOfficialPropertyLink({ clipboard: { writeText } }, payload),
+      shareOfficialPropertyLink(
+        { clipboard: { writeText } },
+        payload,
+        { open: () => null },
+      ),
     ).resolves.toBe("copied");
     expect(writeText).toHaveBeenCalledWith(payload.url);
   });
@@ -42,6 +86,7 @@ describe("official property sharing", () => {
       shareOfficialPropertyLink(
         { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("blocked")) } },
         payload,
+        { open: () => null },
       ),
     ).rejects.toThrow("blocked");
   });
