@@ -190,16 +190,35 @@ export interface ErfStrategyWorkspace {
   migratedFromLegacy: boolean;
 }
 
-export function erfWorkspaceStateKey(parcelId: string) {
-  return `erfstoep.workspace.${parcelId}`;
+export type BrowserPersistenceUserId = string | null | undefined;
+
+export function browserScopedParcelKey(
+  stateType: string,
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  const namespace = userId?.trim()
+    ? `easyerf.user.${encodeURIComponent(userId)}`
+    : "easyerf.anonymous";
+  return `${namespace}.${stateType}.${encodeURIComponent(parcelId)}`;
 }
 
-export function erfStrategyScenariosKey(parcelId: string) {
-  return `erfstoep.strategyScenarios.${parcelId}`;
+export function erfWorkspaceStateKey(parcelId: string, userId: BrowserPersistenceUserId = null) {
+  return browserScopedParcelKey("workspace", parcelId, userId);
 }
 
-export function erfStrategyWorkspaceKey(parcelId: string) {
-  return `easyerf.strategyWorkspace.v1.${parcelId}`;
+export function erfStrategyScenariosKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey("strategy-scenarios", parcelId, userId);
+}
+
+export function erfStrategyWorkspaceKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey("strategy-workspace.v1", parcelId, userId);
 }
 
 export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
@@ -328,10 +347,11 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
 export function readErfWorkspaceState(
   parcelId: string,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ): ErfWorkspaceState {
   if (!storage) return createEmptyErfWorkspaceState();
   try {
-    const raw = storage.getItem(erfWorkspaceStateKey(parcelId));
+    const raw = storage.getItem(erfWorkspaceStateKey(parcelId, userId));
     return raw ? coerceWorkspaceState(JSON.parse(raw)) : createEmptyErfWorkspaceState();
   } catch {
     return createEmptyErfWorkspaceState();
@@ -342,11 +362,14 @@ export function writeErfWorkspaceState(
   parcelId: string,
   state: ErfWorkspaceState,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ) {
   const next = { ...state, updatedAt: new Date().toISOString() };
-  if (storage) storage.setItem(erfWorkspaceStateKey(parcelId), JSON.stringify(next));
+  if (storage) storage.setItem(erfWorkspaceStateKey(parcelId, userId), JSON.stringify(next));
   if (typeof window !== "undefined") {
-  window.dispatchEvent(new CustomEvent("erfstoep:workspace-updated", { detail: { parcelId } }));
+    window.dispatchEvent(
+      new CustomEvent("erfstoep:workspace-updated", { detail: { parcelId, userId } }),
+    );
   }
   return next;
 }
@@ -355,11 +378,13 @@ export function updateErfWorkspaceState(
   parcelId: string,
   patch: Partial<ErfWorkspaceState>,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ) {
   return writeErfWorkspaceState(
     parcelId,
-    { ...readErfWorkspaceState(parcelId, storage), ...patch },
+    { ...readErfWorkspaceState(parcelId, storage, userId), ...patch },
     storage,
+    userId,
   );
 }
 
@@ -513,27 +538,29 @@ export function strategyWorkspaceFromLegacy(
 export function readStrategyWorkspace(
   parcelId: string,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ): ErfStrategyWorkspace {
   if (!storage) return createEmptyStrategyWorkspace(parcelId);
   try {
-    const parsed = JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId)) ?? "null");
+    const parsed = JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId, userId)) ?? "null");
     const workspace = coerceStrategyWorkspace(parsed, parcelId);
     if (workspace) return workspace;
   } catch {
-    // Fall through to legacy migration.
+    // A malformed scoped record is treated as empty rather than reading unscoped legacy data.
   }
-  return strategyWorkspaceFromLegacy(parcelId, storage);
+  return createEmptyStrategyWorkspace(parcelId);
 }
 
 export function writeStrategyWorkspace(
   parcelId: string,
   workspace: ErfStrategyWorkspace,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ) {
   const next = coerceStrategyWorkspace(workspace, parcelId) ?? createEmptyStrategyWorkspace(parcelId);
   if (storage) {
-    storage.setItem(erfStrategyWorkspaceKey(parcelId), JSON.stringify(next));
-    storage.setItem(erfStrategyScenariosKey(parcelId), JSON.stringify(next.scenarios));
+    storage.setItem(erfStrategyWorkspaceKey(parcelId, userId), JSON.stringify(next));
+    storage.setItem(erfStrategyScenariosKey(parcelId, userId), JSON.stringify(next.scenarios));
   }
   updateErfWorkspaceState(
     parcelId,
@@ -544,10 +571,11 @@ export function writeStrategyWorkspace(
       dirty: true,
     },
     storage,
+    userId,
   );
   if (typeof window !== "undefined") {
     window.dispatchEvent(
-      new CustomEvent("easyerf:strategy-workspace-updated", { detail: { parcelId } }),
+      new CustomEvent("easyerf:strategy-workspace-updated", { detail: { parcelId, userId } }),
     );
   }
   return next;
@@ -557,8 +585,9 @@ export function saveStrategyDraft(
   parcelId: string,
   draft: { activeStrategy: string; draftInputs: Record<string, string>; updatedAt?: string },
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ) {
-  const current = readStrategyWorkspace(parcelId, storage);
+  const current = readStrategyWorkspace(parcelId, storage, userId);
   const draftUpdatedAt = draft.updatedAt ?? nextMonotonicIso(current.draftUpdatedAt);
   return writeStrategyWorkspace(
     parcelId,
@@ -569,6 +598,7 @@ export function saveStrategyDraft(
       draftUpdatedAt,
     },
     storage,
+    userId,
   );
 }
 
@@ -642,29 +672,20 @@ export function strategyWorkspaceFromUserData(
 export function readStrategyScenarios(
   parcelId: string,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ): ErfStrategyScenario[] {
   if (storage) {
     try {
       const workspace = coerceStrategyWorkspace(
-        JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId)) ?? "null"),
+        JSON.parse(storage.getItem(erfStrategyWorkspaceKey(parcelId, userId)) ?? "null"),
         parcelId,
       );
       if (workspace) return workspace.scenarios;
     } catch {
-      // Fall back to the legacy scenario list.
+      // A malformed scoped record is treated as empty rather than reading unscoped legacy data.
     }
   }
-  if (!storage) return [];
-  try {
-    const raw = storage.getItem(erfStrategyScenariosKey(parcelId));
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item) => coerceStrategyScenario(item, parcelId))
-      .filter((item): item is ErfStrategyScenario => Boolean(item));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export function saveStrategyScenario(
@@ -672,7 +693,7 @@ export function saveStrategyScenario(
   scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt" | "updatedAt"> & {
     id?: string;
   },
-  optionsOrStorage: { asNew?: boolean } | Storage = {},
+  optionsOrStorage: { asNew?: boolean; userId?: BrowserPersistenceUserId } | Storage = {},
   storageArg?: Storage,
 ) {
   const options =
@@ -681,7 +702,8 @@ export function saveStrategyScenario(
     "getItem" in optionsOrStorage && "setItem" in optionsOrStorage
       ? optionsOrStorage
       : storageArg ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  const currentWorkspace = readStrategyWorkspace(parcelId, storage);
+  const userId = "getItem" in optionsOrStorage ? null : options.userId ?? null;
+  const currentWorkspace = readStrategyWorkspace(parcelId, storage, userId);
   const current = currentWorkspace.scenarios;
   const existingChosen =
     !options.asNew && currentWorkspace.chosenScenarioId
@@ -725,6 +747,7 @@ export function saveStrategyScenario(
       chosenScenarioUpdatedAt: now,
     },
     storage,
+    userId,
   );
   return { scenario: saved, scenarios: workspace.scenarios, workspace };
 }
@@ -732,10 +755,11 @@ export function saveStrategyScenario(
 export function getChosenStrategyScenario(
   parcelId: string,
   storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  userId: BrowserPersistenceUserId = null,
 ) {
-  const scenarios = readStrategyScenarios(parcelId, storage);
+  const scenarios = readStrategyScenarios(parcelId, storage, userId);
   if (!scenarios.length) return null;
-  const workspace = readErfWorkspaceState(parcelId, storage);
+  const workspace = readErfWorkspaceState(parcelId, storage, userId);
   return (
     scenarios.find((scenario) => scenario.id === workspace.chosenScenarioId) ??
     scenarios.find((scenario) => scenario.selected) ??

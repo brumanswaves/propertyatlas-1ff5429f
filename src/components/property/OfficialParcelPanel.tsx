@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AREA_UNAVAILABLE_LABEL,
   canonicalAreaM2,
@@ -28,7 +28,10 @@ import {
   buildSavedParcelMapHref,
   type NormalizedOfficialParcel,
 } from "@/lib/parcels/officialParcelId";
-import { shareOfficialPropertyLink } from "@/lib/parcels/shareOfficialProperty";
+import {
+  buildOfficialPropertySharePayload,
+  shareOfficialPropertyLink,
+} from "@/lib/parcels/shareOfficialProperty";
 import { cn } from "@/lib/utils";
 import { resolveParcelArea } from "@/lib/evidence/parcelArea";
 import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
@@ -55,6 +58,7 @@ import {
   getChosenStrategyScenario,
   readStrategyScenarios,
   updateErfWorkspaceState,
+  browserScopedParcelKey,
   type ErfWorkspaceIdentityStatus,
   type InvestigationSnapshot,
   type ErfWorkspaceState,
@@ -438,13 +442,13 @@ const IDENTITY_STATUS_LABELS: Record<IdentityCheckStatus, string> = {
   uncertain: "Uncertain",
 };
 
-function identityStatusKey(parcelId: string) {
-  return `erfstoep.identityCheck.${parcelId}`;
+function identityStatusKey(parcelId: string, userId: string | null) {
+  return browserScopedParcelKey("identity-check", parcelId, userId);
 }
 
-function readIdentityStatus(parcelId: string): IdentityCheckStatus {
+function readIdentityStatus(parcelId: string, userId: string | null): IdentityCheckStatus {
   if (typeof window === "undefined") return "needs_verification";
-  const value = window.localStorage.getItem(identityStatusKey(parcelId));
+  const value = window.localStorage.getItem(identityStatusKey(parcelId, userId));
   return value === "checked" || value === "looks_correct" || value === "uncertain"
     ? value
     : "needs_verification";
@@ -456,6 +460,16 @@ function identityStatusToWorkspace(status: IdentityCheckStatus): ErfWorkspaceIde
 
 function workspaceStatusToIdentity(status: ErfWorkspaceIdentityStatus): IdentityCheckStatus {
   return status === "none" ? "needs_verification" : status;
+}
+
+function safeShareDisplayName(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const values = metadata as Record<string, unknown>;
+  for (const key of ["display_name", "full_name", "name"]) {
+    const value = values[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 function formatMapCoordinate(value: number | undefined): string {
@@ -1703,12 +1717,12 @@ function resolveOfficialParcelLocation(opts: {
   };
 }
 
-function userAddrKey(parcelId: string) {
-  return `pa.userAddress.${parcelId}`;
+function userAddrKey(parcelId: string, userId: string | null) {
+  return browserScopedParcelKey("working-address", parcelId, userId);
 }
-function readUserAddress(parcelId: string): UserAddress | null {
+function readUserAddress(parcelId: string, userId: string | null): UserAddress | null {
   try {
-    const v = window.localStorage.getItem(userAddrKey(parcelId));
+    const v = window.localStorage.getItem(userAddrKey(parcelId, userId));
     return v ? (JSON.parse(v) as UserAddress) : null;
   } catch {
     return null;
@@ -1716,6 +1730,7 @@ function readUserAddress(parcelId: string): UserAddress | null {
 }
 export function OfficialParcelPanel({ selection, onClose }: Props) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const isCsg = selection.layer === "csg-parcels";
   const csg = useMemo(
     () => (isCsg ? normalizeCsg(selection.properties) : null),
@@ -1764,7 +1779,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const [fetchedAt, setFetchedAt] = useState(() => new Date().toLocaleString());
   const [identityStatus, setIdentityStatus] = useState<IdentityCheckStatus>("needs_verification");
   const [workspaceState, setWorkspaceState] = useState<ErfWorkspaceState>(() =>
-    readErfWorkspaceState(parcelId),
+    readErfWorkspaceState(parcelId, undefined, userId),
   );
   const [paidReportCount, setPaidReportCount] = useState(0);
   const erfFileVault = useErfFileVault(parcelId);
@@ -1797,10 +1812,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   useEffect(() => {
     setFetchedAt(new Date().toLocaleString());
   }, [parcelId]);
-  useEffect(() => {
-    const workspace = readErfWorkspaceState(parcelId);
-    const legacyIdentityStatus = readIdentityStatus(parcelId);
-    const savedScenarioCount = readStrategyScenarios(parcelId).length;
+  useLayoutEffect(() => {
+    const workspace = readErfWorkspaceState(parcelId, undefined, userId);
+    const legacyIdentityStatus = readIdentityStatus(parcelId, userId);
+    const savedScenarioCount = readStrategyScenarios(parcelId, undefined, userId).length;
     const initialTab = readInitialTab();
     const now = new Date().toISOString();
     const mergedIdentityStatus =
@@ -1815,29 +1830,30 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       now,
     });
     const nextWorkspace = entry.persistencePatch
-      ? updateErfWorkspaceState(parcelId, entry.persistencePatch)
+      ? updateErfWorkspaceState(parcelId, entry.persistencePatch, undefined, userId)
       : entry.displayWorkspace;
     setWorkspaceState(nextWorkspace);
     setIdentityStatus(workspaceStatusToIdentity(nextWorkspace.identityStatus));
     setShareCopied(false);
     setWorkflowFeedback(null);
-  }, [parcelId]);
+  }, [parcelId, userId]);
   useEffect(() => {
     function refresh(event: Event) {
-      const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
+      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }>).detail;
       if (detail?.parcelId && detail.parcelId !== parcelId) return;
-      setWorkspaceState(readErfWorkspaceState(parcelId));
+      if ((detail?.userId ?? null) !== userId) return;
+      setWorkspaceState(readErfWorkspaceState(parcelId, undefined, userId));
     }
     window.addEventListener("erfstoep:workspace-updated", refresh);
     return () => window.removeEventListener("erfstoep:workspace-updated", refresh);
-  }, [parcelId]);
+  }, [parcelId, userId]);
   useEffect(() => {
     setPaidReportCount(paidReportVault.assets.length);
   }, [paidReportVault.assets.length]);
-  useEffect(() => {
-    const a = readUserAddress(parcelId);
+  useLayoutEffect(() => {
+    const a = readUserAddress(parcelId, userId);
     setUserAddr(a);
-  }, [parcelId]);
+  }, [parcelId, userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2102,26 +2118,31 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function setWorkspacePatch(patch: Partial<ErfWorkspaceState>) {
-    const next = updateErfWorkspaceState(parcelId, patch);
+    const next = updateErfWorkspaceState(parcelId, patch, undefined, userId);
     setWorkspaceState(next);
     return next;
   }
 
   const updateSitePotentialSnapshot = useCallback(
     (patch: Partial<SitePotentialSnapshot>) => {
-      const current = readErfWorkspaceState(parcelId).sitePotential;
-      const next = updateErfWorkspaceState(parcelId, {
-        sitePotential: { ...current, ...patch },
-        dirty: true,
-      });
+      const current = readErfWorkspaceState(parcelId, undefined, userId).sitePotential;
+      const next = updateErfWorkspaceState(
+        parcelId,
+        {
+          sitePotential: { ...current, ...patch },
+          dirty: true,
+        },
+        undefined,
+        userId,
+      );
       setWorkspaceState(next);
       return next;
     },
-    [parcelId],
+    [parcelId, userId],
   );
 
   function setInvestigationPatch(patch: Partial<InvestigationSnapshot>, dirty = true) {
-    const persistedWorkspace = readErfWorkspaceState(parcelId);
+    const persistedWorkspace = readErfWorkspaceState(parcelId, undefined, userId);
     const now = new Date().toISOString();
     return setWorkspacePatch({
       ...prepareExplicitWorkspaceTransition({
@@ -2168,7 +2189,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function selectGuidedStep(stepId: GuidedInvestigationStepId) {
-    const current = readErfWorkspaceState(parcelId).investigation;
+    const current = readErfWorkspaceState(parcelId, undefined, userId).investigation;
     const intentionallyVisitedStepIds = Array.from(
       new Set([...current.intentionallyVisitedStepIds, stepId]),
     );
@@ -2184,7 +2205,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
 
   function skipGuidedStep(stepId: GuidedInvestigationStepId) {
     if (stepId === "confirm-property") return;
-    const current = readErfWorkspaceState(parcelId).investigation;
+    const current = readErfWorkspaceState(parcelId, undefined, userId).investigation;
     const skippedStepIds = Array.from(new Set([...current.skippedStepIds, stepId]));
     setInvestigationPatch({
       skippedStepIds,
@@ -2247,7 +2268,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
       return;
     }
-    const currentInvestigation = readErfWorkspaceState(parcelId).investigation;
+    const currentInvestigation = readErfWorkspaceState(parcelId, undefined, userId).investigation;
     if (nextTab === "investigation") {
       setInvestigationPatch({
         expertWorkspaceOpen: false,
@@ -2285,15 +2306,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     const next = updateErfWorkspaceState(
       parcelId,
       prepareGuidedIdentityConfirmationTransition({
-        persistedWorkspace: readErfWorkspaceState(parcelId),
+        persistedWorkspace: readErfWorkspaceState(parcelId, undefined, userId),
         displayWorkspace: workspaceState,
         now,
       }),
+      undefined,
+      userId,
     );
     setWorkspaceState(next);
     setIdentityStatus("looks_correct");
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(identityStatusKey(parcelId), "looks_correct");
+      window.localStorage.setItem(identityStatusKey(parcelId, userId), "looks_correct");
     }
     setWorkflowFeedback(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
     toast.success(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
@@ -2309,7 +2332,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   function updateIdentityStatus(nextStatus: IdentityCheckStatus, feedbackMessage?: string) {
     setIdentityStatus(nextStatus);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(identityStatusKey(parcelId), nextStatus);
+      window.localStorage.setItem(identityStatusKey(parcelId, userId), nextStatus);
     }
     setWorkspacePatch({
       identityStatus: identityStatusToWorkspace(nextStatus),
@@ -2344,20 +2367,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       zoom: 18,
     });
     const url = new URL(href, window.location.origin).toString();
-    const text = [
-      resolved.displayTitle,
-      normalizedParcel.erfNumber ? `Erf: ${normalizedParcel.erfNumber}` : null,
-      normalizedParcel.portion != null ? `Portion: ${normalizedParcel.portion}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    const payload = buildOfficialPropertySharePayload({
+      title: resolved.displayTitle,
+      url,
+      senderName: safeShareDisplayName(user?.user_metadata),
+    });
 
     try {
-      const result = await shareOfficialPropertyLink(navigator, {
-        title: resolved.displayTitle,
-        text,
-        url,
-      });
+      const result = await shareOfficialPropertyLink(navigator, payload);
       if (result === "copied") {
         setShareCopied(true);
         toast.success("Property link copied");
@@ -2409,8 +2426,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     });
   }, [erfFileVault.assets, normalizedParcel]);
 
-  const strategyScenarios = useMemo(() => readStrategyScenarios(parcelId), [parcelId]);
-  const chosenScenario = useMemo(() => getChosenStrategyScenario(parcelId), [parcelId]);
+  const strategyScenarios = useMemo(
+    () => readStrategyScenarios(parcelId, undefined, userId),
+    [parcelId, userId],
+  );
+  const chosenScenario = useMemo(
+    () => getChosenStrategyScenario(parcelId, undefined, userId),
+    [parcelId, userId],
+  );
   const workbenchInvestigationInput = useMemo<BuildPropertyInvestigationInput>(
     () => ({
       parcel: normalizedParcel,
@@ -2913,6 +2936,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">
             <InvestigationHome
               parcel={normalizedParcel}
+              userId={userId}
               workspaceState={workspaceState}
               onConfirmIdentity={confirmGuidedIdentity}
               onFlagIdentityUncertain={flagGuidedIdentityUncertain}

@@ -1,13 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildSavedParcelMapHref, parseOfficialParcelReopenSearch } from "../officialParcelId";
-import { shareOfficialPropertyLink } from "../shareOfficialProperty";
+import { buildOfficialPropertySharePayload, shareOfficialPropertyLink } from "../shareOfficialProperty";
 
 describe("official property sharing", () => {
-  const payload = {
+  const payload = buildOfficialPropertySharePayload({
     title: "Erf 1570",
-    text: "Erf: 1570 · Portion: 0",
+    senderName: "Amina",
     url: "https://easyerf.example/?officialParcel=csg%3Alpi%3Ac03400140000157000000&fromSaved=1",
-  };
+  });
+
+  it("uses safe display metadata for clean share copy", () => {
+    expect(payload).toMatchObject({
+      title: "Erf 1570",
+      text: "Amina sent you this property to check out on Easy Erf.",
+    });
+    expect(
+      buildOfficialPropertySharePayload({ title: "Erf 1570", url: payload.url }).text,
+    ).toBe("Someone sent you this property to check out on Easy Erf.");
+  });
 
   it("uses native sharing when available", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
@@ -36,7 +46,7 @@ describe("official property sharing", () => {
     ).rejects.toThrow("blocked");
   });
 
-  it("builds a share URL that invokes canonical official-property reopen", () => {
+  it("builds a canonical official-property reopen URL without session data", () => {
     const href = buildSavedParcelMapHref("csg:lpi:c03400140000157000000", {
       title: "Erf 1570",
       erf: 1570,
@@ -54,5 +64,6 @@ describe("official property sharing", () => {
       erf: "1570",
       portion: "0",
     });
+    expect(href).not.toMatch(/access_token|refresh_token|#/i);
   });
 });

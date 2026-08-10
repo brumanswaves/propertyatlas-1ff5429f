@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, MapPin, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
-import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import {
+  browserScopedParcelKey,
+  updateErfWorkspaceState,
+} from "@/lib/workbench/erfWorkspaceState";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
 import {
   buildAddressCandidate,
@@ -15,6 +18,7 @@ import type { AddressCandidate, MarketAddressIntelligence } from "@/features/mar
 
 interface AddAddressStepProps {
   parcel: NormalizedOfficialParcel;
+  userId: string | null;
   onContinue: () => void;
 }
 
@@ -74,7 +78,7 @@ function buildParcelAddressSuggestion(parcel: NormalizedOfficialParcel): Address
   });
 }
 
-export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
+export function AddAddressStep({ parcel, userId, onContinue }: AddAddressStepProps) {
   const { loading, marketAddressIntelligence, saveMarketAddressIntelligence } =
     useSavedMarketEvidence(parcel.id);
   const savedAddress = selectedMarketAddress(marketAddressIntelligence);
@@ -196,7 +200,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
 
       if (typeof window !== "undefined") {
         window.localStorage.setItem(
-          `pa.userAddress.${parcel.id}`,
+          browserScopedParcelKey("working-address", parcel.id, userId),
           JSON.stringify({
             streetName: cleanStreetAddress,
             suburb: suburb.trim() || undefined,
@@ -209,7 +213,7 @@ export function AddAddressStep({ parcel, onContinue }: AddAddressStepProps) {
       updateErfWorkspaceState(parcel.id, {
         marketAddressSaved: true,
         dirty: true,
-      });
+      }, undefined, userId);
       onContinue();
     } finally {
       setSaving(false);

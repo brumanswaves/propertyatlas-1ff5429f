@@ -3,6 +3,7 @@ import {
   buildErfWorkspaceNextStep,
   buildStoepStepProgress,
   createEmptyErfWorkspaceState,
+  erfStrategyScenariosKey,
   erfStrategyWorkspaceKey,
   erfWorkspaceStateKey,
   getChosenStrategyScenario,
@@ -58,6 +59,76 @@ describe("erfWorkspaceState", () => {
       reviewedSourceIds: ["csg-property-viewer"],
     });
     expect(updated.updatedAt).toEqual(expect.any(String));
+  });
+
+  it("isolates workspace and Strategy drafts between signed-in accounts", () => {
+    const storage = memoryStorage();
+    const parcelId = "csg:lpi:c03400140000157000000";
+
+    updateErfWorkspaceState(parcelId, { identityStatus: "checked" }, storage, "account-a");
+    saveStrategyDraft(
+      parcelId,
+      {
+        activeStrategy: "development_sell",
+        draftInputs: { landCost: "900000" },
+        updatedAt: "2026-08-10T10:00:00.000Z",
+      },
+      storage,
+      "account-a",
+    );
+
+    updateErfWorkspaceState(parcelId, { identityStatus: "uncertain" }, storage, "account-b");
+    saveStrategyDraft(
+      parcelId,
+      {
+        activeStrategy: "flip",
+        draftInputs: { purchasePrice: "1200000" },
+        updatedAt: "2026-08-10T10:01:00.000Z",
+      },
+      storage,
+      "account-b",
+    );
+
+    expect(readErfWorkspaceState(parcelId, storage, "account-a").identityStatus).toBe("checked");
+    expect(readStrategyWorkspace(parcelId, storage, "account-a")).toMatchObject({
+      activeStrategy: "development_sell",
+      draftInputs: { landCost: "900000" },
+    });
+    expect(readErfWorkspaceState(parcelId, storage, "account-b").identityStatus).toBe("uncertain");
+    expect(readStrategyWorkspace(parcelId, storage, "account-b")).toMatchObject({
+      activeStrategy: "flip",
+      draftInputs: { purchasePrice: "1200000" },
+    });
+    expect(storage.getItem(erfWorkspaceStateKey(parcelId, "account-a"))).not.toBeNull();
+    expect(storage.getItem(erfStrategyWorkspaceKey(parcelId, "account-b"))).not.toBeNull();
+  });
+
+  it("does not silently claim legacy parcel-only workspace or strategy records for a signed-in user", () => {
+    const storage = memoryStorage();
+    const parcelId = "legacy-parcel";
+    storage.setItem(
+      `erfstoep.workspace.${parcelId}`,
+      JSON.stringify({ identityStatus: "looks_correct", saved: true }),
+    );
+    storage.setItem(
+      `erfstoep.strategyScenarios.${parcelId}`,
+      JSON.stringify([
+        {
+          id: "legacy-scenario",
+          parcelId,
+          label: "Legacy scenario",
+          strategy: "development_sell",
+          inputs: { landCost: "1200000" },
+          summary: [],
+          selected: true,
+          savedAt: "2026-07-18T12:00:00.000Z",
+        },
+      ]),
+    );
+
+    expect(readErfWorkspaceState(parcelId, storage, "account-b").identityStatus).toBe("none");
+    expect(readStrategyWorkspace(parcelId, storage, "account-b").scenarios).toEqual([]);
+    expect(storage.getItem(erfStrategyScenariosKey(parcelId, "account-b"))).toBeNull();
   });
 
   it("coerces legacy investigation snapshots into the versioned guided journey shape", () => {
@@ -349,7 +420,7 @@ describe("erfWorkspaceState", () => {
     expect(getChosenStrategyScenario(parcelId, storage)?.id).toBe(scenario.id);
   });
 
-  it("migrates legacy local strategy scenarios into the durable workspace shape", () => {
+  it("keeps legacy local strategy scenarios unclaimed until a dedicated migration is available", () => {
     const storage = memoryStorage();
     const parcelId = "legacy-parcel";
     storage.setItem(
@@ -370,10 +441,10 @@ describe("erfWorkspaceState", () => {
 
     const workspace = readStrategyWorkspace(parcelId, storage);
 
-    expect(workspace.migratedFromLegacy).toBe(true);
-    expect(workspace.activeStrategy).toBe("development_sell");
-    expect(workspace.draftInputs.landCost).toBe("1200000");
-    expect(workspace.chosenScenarioId).toBe("legacy-scenario");
+    expect(workspace.migratedFromLegacy).toBe(false);
+    expect(workspace.activeStrategy).toBe("buy_hold");
+    expect(workspace.draftInputs).toEqual({});
+    expect(workspace.chosenScenarioId).toBeNull();
   });
 
   it("merges signed-in cloud Strategy workspace without losing local draft edits", () => {

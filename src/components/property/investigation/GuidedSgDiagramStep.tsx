@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 interface GuidedSgDiagramStepProps {
   parcel: NormalizedOfficialParcel;
+  userId: string | null;
   onContinue: () => void;
 }
 
@@ -52,7 +53,7 @@ function isUsableSubjectDiagram(asset: ErfAsset) {
   return erfAssetHasSearchableExtraction(asset) && erfAssetIdentityMatchStatus(asset) === "matched";
 }
 
-export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepProps) {
+export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["sg_diagram"]);
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
     updateErfWorkspaceState(parcel.id, {
       sgDiagramAttachmentCount: count,
       dirty: true,
-    });
+    }, undefined, userId);
   }
 
   async function readDiagram(asset: ErfAsset, retry = false) {
@@ -221,12 +222,16 @@ export function GuidedSgDiagramStep({ parcel, onContinue }: GuidedSgDiagramStepP
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
               Find and attach the official SG / cadastral document
             </h4>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
-              Easy Erf can prepare the official CSG lookup, but the government document service may
-              sometimes be unavailable. If it fails, use the CSG Property Viewer or upload an SG
-              diagram / General Plan you already have. Easy Erf only marks this step complete after
-              the file is readable and matched to the selected erf.
-            </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
+            Easy Erf can prepare the official CSG lookup, but the government document service may
+            sometimes be unavailable. If it fails, use the CSG Property Viewer or upload an SG
+            diagram / General Plan you already have. Easy Erf only marks this step complete after
+            the file is readable and matched to the selected erf.
+          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
+            If the document search shows an error or does not load, use the CSG Property Viewer
+            instead, then upload the relevant SG diagram or General Plan here.
+          </p>
           </div>
           <span
             className={cn(
