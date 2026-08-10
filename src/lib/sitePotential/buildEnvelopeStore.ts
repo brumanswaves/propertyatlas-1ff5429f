@@ -1,4 +1,8 @@
 import type { BuildEnvelopeInputs } from "./buildEnvelope";
+import {
+  browserScopedParcelKey,
+  type BrowserPersistenceUserId,
+} from "@/lib/workbench/erfWorkspaceState";
 
 /** Persisted answers only. Geometry always comes from the live parcel layer. */
 export type StoredBuildEnvelopeInputs = Omit<BuildEnvelopeInputs, "ring" | "parcelId">;
@@ -9,11 +13,19 @@ export type StoredBuildEnvelopeInputs = Omit<BuildEnvelopeInputs, "ring" | "parc
  * prefill that becomes available later.
  */
 export type StoredBuildEnvelopeOverrides = Partial<StoredBuildEnvelopeInputs>;
+type BuildEnvelopeStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 const KEY_PREFIX = "erfstoep.build-envelope.v1:";
 
-function storageKey(parcelId: string) {
-  return `${KEY_PREFIX}${parcelId}`;
+export function buildEnvelopeStorageKey(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+) {
+  return browserScopedParcelKey(KEY_PREFIX, parcelId, userId);
+}
+
+function defaultStorage(): BuildEnvelopeStorage | undefined {
+  return typeof window === "undefined" ? undefined : window.localStorage;
 }
 
 /** Drops null/blank legacy entries so old stored values migrate safely. */
@@ -30,10 +42,12 @@ function stripEmpty(value: StoredBuildEnvelopeOverrides): StoredBuildEnvelopeOve
 
 export function readStoredBuildEnvelopeInputs(
   parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+  storage: BuildEnvelopeStorage | undefined = defaultStorage(),
 ): StoredBuildEnvelopeOverrides | null {
-  if (typeof window === "undefined") return null;
+  if (!storage) return null;
   try {
-    const raw = window.localStorage.getItem(storageKey(parcelId));
+    const raw = storage.getItem(buildEnvelopeStorageKey(parcelId, userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredBuildEnvelopeOverrides;
     return parsed && typeof parsed === "object" ? stripEmpty(parsed) : null;
@@ -45,19 +59,28 @@ export function readStoredBuildEnvelopeInputs(
 export function writeStoredBuildEnvelopeInputs(
   parcelId: string,
   inputs: StoredBuildEnvelopeOverrides,
+  userId: BrowserPersistenceUserId = null,
+  storage: BuildEnvelopeStorage | undefined = defaultStorage(),
 ): void {
-  if (typeof window === "undefined") return;
+  if (!storage) return;
   try {
-    window.localStorage.setItem(storageKey(parcelId), JSON.stringify(stripEmpty(inputs)));
+    storage.setItem(
+      buildEnvelopeStorageKey(parcelId, userId),
+      JSON.stringify(stripEmpty(inputs)),
+    );
   } catch {
     /* storage unavailable — the session still works, it just will not persist */
   }
 }
 
-export function clearStoredBuildEnvelopeInputs(parcelId: string): void {
-  if (typeof window === "undefined") return;
+export function clearStoredBuildEnvelopeInputs(
+  parcelId: string,
+  userId: BrowserPersistenceUserId = null,
+  storage: BuildEnvelopeStorage | undefined = defaultStorage(),
+): void {
+  if (!storage) return;
   try {
-    window.localStorage.removeItem(storageKey(parcelId));
+    storage.removeItem(buildEnvelopeStorageKey(parcelId, userId));
   } catch {
     /* ignore */
   }

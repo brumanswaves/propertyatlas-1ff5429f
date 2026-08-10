@@ -211,6 +211,19 @@ describe("report decision mode preference", () => {
     expect(readReportDecisionMode("parcel-a", throwingStorage)).toBe("standard");
     expect(writeReportDecisionMode("parcel-a", "investor", throwingStorage)).toBe("investor");
   });
+
+  it("does not expose one signed-in account's report mode to another", () => {
+    const storage = new Map<string, string>();
+    const mockStorage = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    };
+
+    writeReportDecisionMode("parcel-a", "investor", mockStorage, "user-a");
+
+    expect(readReportDecisionMode("parcel-a", mockStorage, "user-b")).toBe("standard");
+    expect(readReportDecisionMode("parcel-a", mockStorage, "user-a")).toBe("investor");
+  });
 });
 
 describe("buildInvestorDecisionMode", () => {

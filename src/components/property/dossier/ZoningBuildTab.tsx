@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import {
@@ -10,6 +10,7 @@ import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAsse
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import { useAuth } from "@/lib/auth/useAuth";
 import {
   PLANNING_ZONE_UPDATED_EVENT,
   readStoredPlanningZone,
@@ -32,25 +33,29 @@ export interface ZoningBuildTabProps {
 }
 
 export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: ZoningBuildTabProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const { assets } = useErfFileVault(parcel.id);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
+        ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      setManualZoneCode(readStoredPlanningZone(parcel.id));
+      if ((detail?.userId ?? null) !== userId) return;
+      setManualZoneCode(readStoredPlanningZone(parcel.id, userId));
     };
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
-  }, [parcel.id]);
+  }, [parcel.id, userId]);
 
   const selectZone = useCallback(
     (code: string | null) => {
-      setManualZoneCode(writeStoredPlanningZone(parcel.id, code));
+      setManualZoneCode(writeStoredPlanningZone(parcel.id, code, userId));
     },
-    [parcel.id],
+    [parcel.id, userId],
   );
 
   const registry = useMemo(

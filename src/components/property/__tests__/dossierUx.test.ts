@@ -803,8 +803,9 @@ describe("official dossier UX guardrails", () => {
     const tab = read("src/features/marketEvidence/components/MarketEvidenceTab.tsx");
 
     expect(hook).toContain("savedMarketEvidence");
-    expect(hook).toContain("localMarketEvidenceKey");
-    expect(hook).toContain("writeLocalUserData");
+    expect(hook).toContain("marketEvidenceStorageKey");
+    expect(hook).toContain("writeLocalMarketEvidenceUserData");
+    expect(hook).toContain("browserScopedParcelKey");
     expect(hook).toContain(
       "Saved locally for this erf. Save to My Erfs to keep it in your dashboard.",
     );

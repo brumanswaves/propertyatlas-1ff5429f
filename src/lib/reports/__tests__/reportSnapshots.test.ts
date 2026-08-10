@@ -323,6 +323,15 @@ describe("Easy Erf report snapshots", () => {
     expect(readReportSnapshots("parcel-1", s)).toEqual([]);
   });
 
+  it("keeps report snapshots scoped to the signed-in account and restores the owner's history", () => {
+    const s = storage();
+    saveReportSnapshot(snapshot(), s, "user-a");
+
+    expect(readReportSnapshots("parcel-1", s, "user-b")).toEqual([]);
+    expect(readReportSnapshots("parcel-1", s, "user-a")).toHaveLength(1);
+    expect(readReportSnapshots("parcel-1", s, null)).toEqual([]);
+  });
+
   it("detects market address additions and changes", () => {
     expect(
       changedTypes(snapshot({ identity: { marketAddressLine: null } }), snapshot()),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -41,6 +41,7 @@ import {
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/useAuth";
 
 interface GuidedZoningStepProps {
   parcel: NormalizedOfficialParcel;
@@ -76,6 +77,8 @@ function zoningClaims(asset: ErfAsset) {
 }
 
 export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["zoning_document"]);
   const [selectedZoneCode, setSelectedZoneCode] = useState<string | null>(null);
@@ -101,16 +104,18 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     [parcel.suburbOrArea, parcel.town, registry],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
+        ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      setSelectedZoneCode(readStoredPlanningZone(parcel.id));
+      if ((detail?.userId ?? null) !== userId) return;
+      setSelectedZoneCode(readStoredPlanningZone(parcel.id, userId));
     };
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
-  }, [parcel.id]);
+  }, [parcel.id, userId]);
 
   const usableDocuments = useMemo(
     () =>
@@ -137,7 +142,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   );
 
   function selectZone(code: string | null) {
-    setSelectedZoneCode(writeStoredPlanningZone(parcel.id, code));
+    setSelectedZoneCode(writeStoredPlanningZone(parcel.id, code, userId));
   }
 
   async function readZoningDocument(asset: ErfAsset, retry = false) {

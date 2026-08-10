@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth/useAuth";
 import { Info, Ruler, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -87,6 +88,8 @@ export function VacantLandBuildEnvelope({
   lpiCode = null,
   onOpenTab,
 }: VacantLandBuildEnvelopeProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const prefill = useMemo(
     () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
     [assessment],
@@ -95,12 +98,12 @@ export function VacantLandBuildEnvelope({
 
   /** Only fields the user actually touched. Never seeded from a prefill. */
   const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
-    () => readStoredBuildEnvelopeInputs(parcelId) ?? {},
+    () => readStoredBuildEnvelopeInputs(parcelId, userId) ?? {},
   );
 
-  useEffect(() => {
-    setOverrides(readStoredBuildEnvelopeInputs(parcelId) ?? {});
-  }, [parcelId]);
+  useLayoutEffect(() => {
+    setOverrides(readStoredBuildEnvelopeInputs(parcelId, userId) ?? {});
+  }, [parcelId, userId]);
 
   const edgeLengths = useMemo(() => {
     const polygon = ring ? projectRingToLocalMetres(ring) : [];
@@ -134,13 +137,18 @@ export function VacantLandBuildEnvelope({
   // Detection evidence is audited separately from the confirmed answer.
   useEffect(() => {
     if (detection.method !== "map_road_match") return;
-    writeStoredStreetFrontageDetection(parcelId, {
-      edgeIndex: detection.edgeIndex,
-      roadName: detection.roadName,
-      confidence: detection.confidence,
-      method: detection.method,
-    });
-  }, [detection, parcelId]);
+    writeStoredStreetFrontageDetection(
+      parcelId,
+      {
+        edgeIndex: detection.edgeIndex,
+        roadName: detection.roadName,
+        confidence: detection.confidence,
+        method: detection.method,
+      },
+      undefined,
+      userId,
+    );
+  }, [detection, parcelId, userId]);
 
   const resolved = useMemo(
     () =>
@@ -167,11 +175,11 @@ export function VacantLandBuildEnvelope({
     (next: StoredBuildEnvelopeOverrides) => {
       setOverrides((current) => {
         const merged = { ...current, ...next };
-        writeStoredBuildEnvelopeInputs(parcelId, merged);
+        writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
         return merged;
       });
     },
-    [parcelId],
+    [parcelId, userId],
   );
 
   const answers = resolved.answers;
@@ -686,7 +694,7 @@ export function VacantLandBuildEnvelope({
       <button
         type="button"
         onClick={() => {
-          clearStoredBuildEnvelopeInputs(parcelId);
+          clearStoredBuildEnvelopeInputs(parcelId, userId);
           setOverrides({});
         }}
         className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"

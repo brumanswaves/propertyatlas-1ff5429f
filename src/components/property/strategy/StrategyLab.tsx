@@ -41,6 +41,10 @@ import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelope
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import {
+  readSitePotentialStrategyDraft,
+  type SitePotentialStrategyDraft,
+} from "@/lib/sitePotential/sitePotentialStrategyDraftStore";
 import { cn } from "@/lib/utils";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
@@ -90,15 +94,6 @@ interface DealSnapshotModel {
   uncertainty: string;
   items: [string, string][];
   emphasis: [string, string][];
-}
-
-interface SitePotentialStrategyDraft {
-  source?: string;
-  projectId?: string;
-  selectedDesignAssetId?: string | null;
-  conceptTitle?: string | null;
-  buildableSqm?: string;
-  notes?: string[];
 }
 
 type StrategySaveStatus =
@@ -541,18 +536,6 @@ export function buildDealSnapshot(input: {
   }
 }
 
-function readSitePotentialStrategyDraft(parcelId: string): SitePotentialStrategyDraft | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`easyErf.sitePotential.strategyDraft.${parcelId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SitePotentialStrategyDraft;
-    return parsed?.source === "site-potential" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -595,22 +578,24 @@ export function StrategyLab({
   const userId = user?.id ?? null;
   const { assets } = useErfFileVault(parcelId);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readStoredPlanningZone(parcelId),
+    typeof window === "undefined" ? null : readStoredPlanningZone(parcelId, userId),
   );
   useEffect(() => {
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ parcelId?: string }> | undefined)?.detail;
+      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
+        ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcelId) return;
-      setManualZoneCode(readStoredPlanningZone(parcelId));
+      if ((detail?.userId ?? null) !== userId) return;
+      setManualZoneCode(readStoredPlanningZone(parcelId, userId));
     };
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
-  }, [parcelId]);
+  }, [parcelId, userId]);
 
   const initialWorkspace = readStrategyWorkspace(parcelId, undefined, userId);
-  const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
-  const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
+  const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId, userId);
+  const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
   const initialResolvedSitePotentialInputs = resolveSitePotentialInputs({
     overrides: initialBuildEnvelopeOverrides,
     pilot: findPilotPlanningRecord({ parcelId, lpiCode: parcel.lpi ?? null }),
@@ -738,8 +723,8 @@ export function StrategyLab({
   useLayoutEffect(() => {
     const workspace = readStrategyWorkspace(parcelId, undefined, userId);
     const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
-    const nextSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
-    const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
+    const nextSitePotentialDraft = readSitePotentialStrategyDraft(parcelId, userId);
+    const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
     const nextPropertyDefaults = strategyDefaultsFromPropertyFacts(
       buildStrategyPropertyInputFacts({
         parcel,
