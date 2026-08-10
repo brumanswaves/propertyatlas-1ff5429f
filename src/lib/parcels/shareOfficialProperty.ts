@@ -3,6 +3,20 @@ export interface PropertyShareNavigator {
   clipboard?: { writeText: (value: string) => Promise<void> };
 }
 
+export function buildOfficialPropertySharePayload(input: {
+  title: string;
+  url: string;
+  senderName?: string | null;
+}) {
+  const senderName = input.senderName?.trim();
+  const sender = senderName || "Someone";
+  return {
+    title: input.title,
+    text: `${sender} sent you this property to check out on Easy Erf.`,
+    url: input.url,
+  };
+}
+
 export async function shareOfficialPropertyLink(
   navigatorRef: PropertyShareNavigator,
   payload: { title: string; text: string; url: string },

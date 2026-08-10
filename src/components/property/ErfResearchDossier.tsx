@@ -474,6 +474,8 @@ export function ErfResearchDossier({
   onSelectView,
   guidedStrategyReturn,
 }: Props) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [completedSourceIds, setCompletedSourceIds] = useState<Set<string>>(() => new Set());
   const completeness = dataCompleteness(parcel);
   const sources = buildPublicResearchSources(parcel).filter(
@@ -646,7 +648,11 @@ export function ErfResearchDossier({
 
   return (
     <div className="space-y-6">
-      <ReportBuilderOverview parcel={parcel} onSelectView={selectWorkflowView} />
+      <ReportBuilderOverview
+        parcel={parcel}
+        workspaceState={readErfWorkspaceState(parcel.id, undefined, userId)}
+        onSelectView={selectWorkflowView}
+      />
       <ManualResearchFields parcel={parcel} />
     </div>
   );
@@ -1488,12 +1494,13 @@ function StoepAiReportView({
   onSelectView?: (view: DossierView, options?: { anchorId?: string }) => void;
 }) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const { evidence, marketAddressIntelligence } = useSavedMarketEvidence(parcel.id);
   const fileVault = useErfFileVault(parcel.id);
-  const workspaceState = readErfWorkspaceState(parcel.id);
-  const strategyWorkspace = readStrategyWorkspace(parcel.id);
-  const scenarios = readStrategyScenarios(parcel.id);
-  const chosenScenario = getChosenStrategyScenario(parcel.id);
+  const workspaceState = readErfWorkspaceState(parcel.id, undefined, userId);
+  const strategyWorkspace = readStrategyWorkspace(parcel.id, undefined, userId);
+  const scenarios = readStrategyScenarios(parcel.id, undefined, userId);
+  const chosenScenario = getChosenStrategyScenario(parcel.id, undefined, userId);
   const generatedDesigns = fileVault.assets.filter(
     (asset) => asset.asset_category === "generated_design",
   );

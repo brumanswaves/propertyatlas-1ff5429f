@@ -47,6 +47,7 @@ import { ReportReadinessPanel } from "./ReportReadinessPanel";
 
 export interface InvestigationHomeProps {
   parcel: NormalizedOfficialParcel;
+  userId: string | null;
   workspaceState: ErfWorkspaceState;
   onConfirmIdentity: () => void;
   onFlagIdentityUncertain: () => void;
@@ -62,6 +63,7 @@ export interface InvestigationHomeProps {
 
 export function InvestigationHome({
   parcel,
+  userId,
   workspaceState,
   onConfirmIdentity,
   onFlagIdentityUncertain,
@@ -77,9 +79,18 @@ export function InvestigationHome({
   );
   const vendorWorkspace = useVendorWorkspace(parcel.id);
 
-  const scenarios = useMemo(() => readStrategyScenarios(parcel.id), [parcel.id]);
-  const chosenScenario = useMemo(() => getChosenStrategyScenario(parcel.id), [parcel.id]);
-  const strategyWorkspace = useMemo(() => readStrategyWorkspace(parcel.id), [parcel.id]);
+  const scenarios = useMemo(
+    () => readStrategyScenarios(parcel.id, undefined, userId),
+    [parcel.id, userId],
+  );
+  const chosenScenario = useMemo(
+    () => getChosenStrategyScenario(parcel.id, undefined, userId),
+    [parcel.id, userId],
+  );
+  const strategyWorkspace = useMemo(
+    () => readStrategyWorkspace(parcel.id, undefined, userId),
+    [parcel.id, userId],
+  );
   const savedMarketAddress = useMemo(
     () => selectedMarketAddress(marketAddressIntelligence),
     [marketAddressIntelligence],
@@ -224,8 +235,9 @@ export function InvestigationHome({
 
   return (
     <div className="space-y-4 md:space-y-5">
-      <InvestigationJourney
-        parcel={parcel}
+        <InvestigationJourney
+          parcel={parcel}
+          userId={userId}
         workspaceState={workspaceState}
         plan={plan}
         report={report}

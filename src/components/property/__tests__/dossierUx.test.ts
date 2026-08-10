@@ -346,13 +346,13 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("User checked, not legally verified");
     expect(panel).toContain("Recording a check is research");
     expect(panel).toContain("progress, not legal verification");
-    expect(panel).toContain("erfstoep.identityCheck.");
+    expect(panel).toContain('browserScopedParcelKey("identity-check", parcelId, userId)');
     expect(panel).toContain("openedSourceIds");
     expect(panel).toContain("reviewedSourceIds");
     expect(panel).toContain("sgDiagramAttachmentCount");
     expect(panel).toContain("markSourceOpened");
     expect(panel).toContain("markSourceReviewed");
-    expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId), nextStatus)");
+    expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId, userId), nextStatus)");
     expect(panel).toContain("identityStatusToWorkspace");
     expect(panel).toContain("buildWorkbenchPageNextStep");
     expect(panel).toContain("Needs verification");
@@ -571,7 +571,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("saveErfFile");
     expect(panel).toContain("shareErfFile");
     expect(panel).toContain("You made changes to this erf file. Leave without saving?");
-    expect(workspace).toContain("erfstoep.workspace.");
+    expect(workspace).toContain("browserScopedParcelKey");
+    expect(workspace).toContain("easyerf.user.");
     expect(workspace).toContain("buildStoepStepProgress");
     expect(workspace).toContain("Review the official source");
     expect(workspace).toContain("At least one official source is reviewed by user.");

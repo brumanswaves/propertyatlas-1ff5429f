@@ -104,7 +104,7 @@ describe("guided vault evidence steps", () => {
     ];
 
     const html = renderToStaticMarkup(
-      <GuidedSgDiagramStep parcel={parcel()} onContinue={vi.fn()} />,
+      <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
     );
 
     expect(html).toContain("context only");
@@ -116,7 +116,7 @@ describe("guided vault evidence steps", () => {
 
   it("keeps the CSG document search honest and exposes viewer and upload fallbacks", () => {
     const html = renderToStaticMarkup(
-      <GuidedSgDiagramStep parcel={parcel()} onContinue={vi.fn()} />,
+      <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
     );
 
     expect(html).toContain("Find and attach the official SG / cadastral document");
@@ -124,6 +124,9 @@ describe("guided vault evidence steps", () => {
     expect(html).toContain("Open CSG Property Viewer");
     expect(html).toContain("Upload SG diagram / General Plan");
     expect(html).toContain("government document service may sometimes be unavailable");
+    expect(html).toContain(
+      "If the document search shows an error or does not load, use the CSG Property Viewer instead, then upload the relevant SG diagram or General Plan here.",
+    );
     expect(html).not.toContain("Download and attach the SG diagram");
   });
 

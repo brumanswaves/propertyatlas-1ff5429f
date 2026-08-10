@@ -25,6 +25,7 @@ import { InvestigationStepShell } from "./InvestigationStepShell";
 
 interface InvestigationJourneyProps {
   parcel: NormalizedOfficialParcel;
+  userId: string | null;
   workspaceState: ErfWorkspaceState;
   plan: MasterInvestigationPlan;
   report: ReportViewModel;
@@ -46,6 +47,7 @@ interface InvestigationJourneyProps {
 
 export function InvestigationJourney({
   parcel,
+  userId,
   workspaceState,
   plan,
   report,
@@ -82,9 +84,17 @@ export function InvestigationJourney({
             onBackToMap={onBackToMap}
           />
         ) : activeStep.id === "add-address" ? (
-          <AddAddressStep parcel={parcel} onContinue={() => onSelectStep("sg-diagram")} />
+          <AddAddressStep
+            parcel={parcel}
+            userId={userId}
+            onContinue={() => onSelectStep("sg-diagram")}
+          />
         ) : activeStep.id === "sg-diagram" ? (
-          <GuidedSgDiagramStep parcel={parcel} onContinue={() => onSelectStep("title")} />
+          <GuidedSgDiagramStep
+            parcel={parcel}
+            userId={userId}
+            onContinue={() => onSelectStep("title")}
+          />
         ) : activeStep.id === "title" ? (
           <GuidedTitleStep
             parcel={parcel}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -608,7 +608,7 @@ export function StrategyLab({
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
   }, [parcelId]);
 
-  const initialWorkspace = readStrategyWorkspace(parcelId);
+  const initialWorkspace = readStrategyWorkspace(parcelId, undefined, userId);
   const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
   const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
   const initialResolvedSitePotentialInputs = resolveSitePotentialInputs({
@@ -631,8 +631,12 @@ export function StrategyLab({
     ...strategyDefaults(defaultPrice, initialPropertyDefaults),
     ...initialWorkspace.draftInputs,
   }));
-  const [savedScenarios, setSavedScenarios] = useState(() => readStrategyScenarios(parcelId));
-  const [chosenScenario, setChosenScenario] = useState(() => getChosenStrategyScenario(parcelId));
+  const [savedScenarios, setSavedScenarios] = useState(() =>
+    readStrategyScenarios(parcelId, undefined, userId),
+  );
+  const [chosenScenario, setChosenScenario] = useState(() =>
+    getChosenStrategyScenario(parcelId, undefined, userId),
+  );
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
   const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
     initialSitePotentialDraft,
@@ -731,9 +735,9 @@ export function StrategyLab({
     [propertyInputFacts],
   );
 
-  useEffect(() => {
-    const workspace = readStrategyWorkspace(parcelId);
-    const chosen = getChosenStrategyScenario(parcelId);
+  useLayoutEffect(() => {
+    const workspace = readStrategyWorkspace(parcelId, undefined, userId);
+    const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
     const nextSitePotentialDraft = readSitePotentialStrategyDraft(parcelId);
     const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId);
     const nextPropertyDefaults = strategyDefaultsFromPropertyFacts(
@@ -848,9 +852,14 @@ export function StrategyLab({
           return;
         }
         const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
-        const local = readStrategyWorkspace(parcelId);
-        const merged = writeStrategyWorkspace(parcelId, mergeStrategyWorkspaces(parcelId, local, remote));
-        const chosen = getChosenStrategyScenario(parcelId);
+        const local = readStrategyWorkspace(parcelId, undefined, userId);
+        const merged = writeStrategyWorkspace(
+          parcelId,
+          mergeStrategyWorkspaces(parcelId, local, remote),
+          undefined,
+          userId,
+        );
+        const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
         setSavedScenarios(merged.scenarios);
         setChosenScenario(chosen);
         setActive(
@@ -881,10 +890,15 @@ export function StrategyLab({
   }, [parcelId, propertyDefaults, queueCloudSave, userId]);
 
   function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
-    const workspace = saveStrategyDraft(parcelId, {
-      activeStrategy: nextActive,
-      draftInputs: nextValues,
-    });
+    const workspace = saveStrategyDraft(
+      parcelId,
+      {
+        activeStrategy: nextActive,
+        draftInputs: nextValues,
+      },
+      undefined,
+      userId,
+    );
     queueCloudSave(workspace, immediate);
     return workspace;
   }
@@ -1289,7 +1303,7 @@ export function StrategyLab({
         inputs: values,
         summary: summary.map(([label, value]) => ({ label, value })),
       },
-      { asNew },
+      { asNew, userId },
     );
     setSavedScenarios(scenarios);
     setChosenScenario(scenario);
