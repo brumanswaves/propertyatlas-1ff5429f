@@ -38,6 +38,10 @@ function primitiveSourceAttributes(raw: Record<string, unknown> | undefined) {
   return Object.fromEntries(entries) as Record<string, string | number | boolean | null>;
 }
 
+function parseNullableEdgeIndex(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 export function buildSitePotentialParcelContext(
   parcel: NormalizedOfficialParcel,
   frontage: SitePotentialFrontageContext | null = null,
@@ -74,8 +78,8 @@ export function sitePotentialParcelContextFromProject(
   const lng = Number(coordinates?.lng);
   const lat = Number(coordinates?.lat);
   const frontage = row.frontage as Record<string, unknown> | null | undefined;
-  const primaryEdgeIndex = Number(frontage?.primaryEdgeIndex);
-  const secondaryEdgeIndex = Number(frontage?.secondaryEdgeIndex);
+  const primaryEdgeIndex = parseNullableEdgeIndex(frontage?.primaryEdgeIndex);
+  const secondaryEdgeIndex = parseNullableEdgeIndex(frontage?.secondaryEdgeIndex);
   return {
     parcelId: typeof row.parcelId === "string" ? row.parcelId : project.parcel_id,
     sourceLabel: typeof row.sourceLabel === "string" ? row.sourceLabel : "Official parcel source",
@@ -111,10 +115,11 @@ export function sitePotentialParcelContextFromProject(
         : {},
     frontage:
       frontage?.source === "user_confirmed" &&
-      (Number.isInteger(primaryEdgeIndex) || Number.isInteger(secondaryEdgeIndex))
+      (primaryEdgeIndex != null || secondaryEdgeIndex != null)
         ? {
-            primaryEdgeIndex: Number.isInteger(primaryEdgeIndex) ? primaryEdgeIndex : null,
-            secondaryEdgeIndex: Number.isInteger(secondaryEdgeIndex) ? secondaryEdgeIndex : null,
+            primaryEdgeIndex,
+            secondaryEdgeIndex:
+              secondaryEdgeIndex === primaryEdgeIndex ? null : secondaryEdgeIndex,
             streetName: typeof frontage.streetName === "string" ? frontage.streetName : null,
             source: "user_confirmed",
           }
