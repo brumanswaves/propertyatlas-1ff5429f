@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
-import { CSG_VIEWER_URL } from "@/lib/external-urls";
+import { CSG_VIEWER_URL, ONEMAP_PROPERTYMAP_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
@@ -348,6 +348,17 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               event.currentTarget.value = "";
             }}
           />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-[#0D1B2A]/60">
+          <a
+            href={ONEMAP_PROPERTYMAP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-[#0D1B2A] underline decoration-[#FF6A00]/70 underline-offset-2 transition hover:text-[#FF6A00]"
+          >
+            Both government options unavailable? Try 1map for SG diagrams.
+          </a>
+          <span>Third-party service. SG diagram access may require a paid 1map plan.</span>
         </div>
 
         {sgDocument.shown ? (

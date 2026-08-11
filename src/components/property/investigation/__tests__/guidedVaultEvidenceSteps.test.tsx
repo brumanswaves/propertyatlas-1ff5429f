@@ -133,6 +133,9 @@ describe("guided vault evidence steps", () => {
     expect(html).toContain("Upload SG diagram / General Plan");
     expect(html).toContain("Official search broken? Open CSG Property Viewer");
     expect(html).toContain("If the government document search errors or does not load");
+    expect(html).toContain("Both government options unavailable? Try 1map for SG diagrams.");
+    expect(html).toContain("Third-party service. SG diagram access may require a paid 1map plan.");
+    expect(html).toContain('href="https://www.1map.co.za/login"');
     expect(html).not.toContain("legacy CSG document archive");
   });
 

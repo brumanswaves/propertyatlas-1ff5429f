@@ -11,6 +11,9 @@ export const CSG_OFFICIAL_URL = "https://csg.dlrrd.gov.za/";
 /** Base for SG document-list lookups (esio). */
 export const SG_DOCUMENT_BASE = "https://csg.dlrrd.gov.za/esio/listdocument.jsp";
 
+/** Manual third-party fallback for SG diagrams; access may require a 1map plan. */
+export const ONEMAP_PROPERTYMAP_URL = "https://www.1map.co.za/login";
+
 export const KOUGA_MAPPING_URL = "https://mapping-kouga.hub.arcgis.com/";
 export const KOUGA_PUBLIC_MAP_URL =
   "https://experience.arcgis.com/experience/e498b2a5005a4d278eb7f32984676140/page/Main-Map";
