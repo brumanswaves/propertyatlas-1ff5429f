@@ -14,12 +14,12 @@ import UPNG from "npm:upng-js@2.1.0";
 import {
   ERF_NORMALIZED_IMAGE_MIME,
   ERF_TIFF_MAX_BILEVEL_EDGE_PX,
-  ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
   type NormalizedExtractionPage,
   checkConvertedByteBudget,
   checkTiffPageBudget,
   checkTiffPixelBudget,
-  planDenseSheetTiles,
+  planBilevelTiffOutputs,
+  planTiffRegionStrips,
   planTiffPageScale,
 } from "../_shared/erfExtractionMedia.ts";
 
@@ -80,11 +80,23 @@ async function deflate(bytes: Uint8Array) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-async function encodeGrayPng(gray: Uint8Array, width: number, height: number) {
+async function encodeInkPng(
+  ink: Float32Array,
+  width: number,
+  height: number,
+  cellArea: number,
+  whiteIsZero: boolean,
+) {
   const raw = new Uint8Array((width + 1) * height);
   for (let y = 0; y < height; y += 1) {
     raw[y * (width + 1)] = 0;
-    raw.set(gray.subarray(y * width, (y + 1) * width), y * (width + 1) + 1);
+    const rowStart = y * width;
+    const rawStart = y * (width + 1) + 1;
+    for (let x = 0; x < width; x += 1) {
+      const coverage = Math.min(1, (ink[rowStart + x] / cellArea) * 1.6);
+      const value = Math.round(255 * (1 - coverage));
+      raw[rawStart + x] = whiteIsZero ? value : 255 - value;
+    }
   }
   const idat = await deflate(raw);
 
@@ -281,35 +293,35 @@ async function convertBilevelPage(
   }
 
   const ink = new Float32Array(plan.width * plan.height);
-  let decodedRows = 0;
-  for (let strip = 0; strip < offsets.length && decodedRows < height; strip += 1) {
-    const stripRows = Math.min(rowsPerStrip, height - decodedRows);
+  const stripWork = planTiffRegionStrips({
+    height,
+    rowsPerStrip,
+    stripCount: offsets.length,
+    y0: region.y0,
+    y1: region.y1,
+  });
+  for (const strip of stripWork) {
     decodeG4Strip(
       bytes,
-      offsets[strip],
-      counts[strip],
+      offsets[strip.index],
+      counts[strip.index],
       width,
       region,
-      stripRows,
-      decodedRows,
+      strip.rowCount,
+      strip.yBase,
       lsbFirst,
       colBin,
       plan.width,
       plan.height,
       ink,
     );
-    decodedRows += stripRows;
   }
 
   const cellArea = (regionWidth / plan.width) * (regionHeight / plan.height);
-  const gray = new Uint8Array(plan.width * plan.height);
-  for (let i = 0; i < gray.length; i += 1) {
-    const coverage = Math.min(1, (ink[i] / cellArea) * 1.6);
-    const value = Math.round(255 * (1 - coverage));
-    gray[i] = whiteIsZero ? value : 255 - value;
-  }
-
-  return { png: await encodeGrayPng(gray, plan.width, plan.height), plan };
+  return {
+    png: await encodeInkPng(ink, plan.width, plan.height, cellArea, whiteIsZero),
+    plan,
+  };
 }
 
 function resizeRgba(
@@ -370,6 +382,7 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
     }
 
     const isBilevelG4 = (tag(ifd, "t258") ?? 0) === 1 && (tag(ifd, "t259") ?? 0) === 4;
+    const bilevelOutputs = isBilevelG4 ? planBilevelTiffOutputs(srcWidth, srcHeight) : null;
     const pixelBudget = checkTiffPixelBudget(srcWidth, srcHeight, { bilevel: isBilevelG4 });
     if (!pixelBudget.ok) {
       warnings.push(pixelBudget.message);
@@ -381,7 +394,9 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
     let planHeight: number;
     try {
       if (isBilevelG4) {
-        const converted = await convertBilevelPage(bytes, ifd, srcWidth, srcHeight);
+        const converted = await convertBilevelPage(bytes, ifd, srcWidth, srcHeight, {
+          maxEdgePx: bilevelOutputs!.overview.maxEdgePx,
+        });
         png = converted.png;
         planWidth = converted.plan.width;
         planHeight = converted.plan.height;
@@ -425,11 +440,12 @@ export async function normalizeTiffToPngPages(bytes: Uint8Array): Promise<TiffNo
     });
 
     if (!isBilevelG4) continue;
-    for (const tile of planDenseSheetTiles(srcWidth, srcHeight)) {
+    for (const detail of bilevelOutputs!.details) {
+      const tile = detail.tile;
       try {
         const converted = await convertBilevelPage(bytes, ifd, srcWidth, srcHeight, {
           region: { x0: tile.x0, y0: tile.y0, x1: tile.x1, y1: tile.y1 },
-          maxEdgePx: ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
+          maxEdgePx: detail.output.maxEdgePx,
         });
         const tileBudget = checkConvertedByteBudget(
           converted.png.byteLength,

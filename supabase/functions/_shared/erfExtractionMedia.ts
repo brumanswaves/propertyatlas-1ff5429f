@@ -15,8 +15,10 @@ export const ERF_TIFF_MAX_SOURCE_PIXELS = 60_000_000;
 export const ERF_TIFF_MAX_BILEVEL_SOURCE_PIXELS = 160_000_000;
 export const ERF_TIFF_MAX_EDGE_PX = 4_000;
 export const ERF_TIFF_MAX_BILEVEL_EDGE_PX = 3_000;
+export const ERF_TIFF_MAX_DENSE_OVERVIEW_EDGE_PX = 1_800;
 export const ERF_TIFF_MAX_PAGE_BYTES = 8 * 1024 * 1024;
 export const ERF_TIFF_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+export const ERF_TIFF_MAX_PLANNED_OUTPUT_PIXELS = 28_000_000;
 
 /** Dense township plans need detail crops in addition to an overview. */
 export const ERF_TIFF_DETAIL_TILE_MIN_SOURCE_PIXELS = 40_000_000;
@@ -44,6 +46,21 @@ export interface NormalizedExtractionPage {
   width: number;
   height: number;
   detail?: ExtractionDetailTile | null;
+}
+
+export interface PlannedTiffStrip {
+  index: number;
+  yBase: number;
+  rowCount: number;
+}
+
+export interface PlannedBilevelTiffOutput {
+  overview: ReturnType<typeof planTiffPageScale> & { maxEdgePx: number };
+  details: Array<{
+    tile: ExtractionDetailTile;
+    output: ReturnType<typeof planTiffPageScale> & { maxEdgePx: number };
+  }>;
+  totalOutputPixels: number;
 }
 
 export type ExtractionContentBlock =
@@ -112,6 +129,67 @@ export function planDenseSheetTiles(
     }
   }
   return tiles;
+}
+
+/**
+ * TIFF strips are independently encoded image segments. A regional G4 pass
+ * only needs strips whose row range intersects the requested crop.
+ */
+export function planTiffRegionStrips(input: {
+  height: number;
+  rowsPerStrip: number;
+  stripCount: number;
+  y0?: number;
+  y1?: number;
+}): PlannedTiffStrip[] {
+  const height = Math.max(1, Math.floor(input.height));
+  const rowsPerStrip = Math.max(1, Math.floor(input.rowsPerStrip));
+  const availableStrips = Math.min(
+    Math.max(0, Math.floor(input.stripCount)),
+    Math.ceil(height / rowsPerStrip),
+  );
+  const y0 = Math.min(height, Math.max(0, Math.floor(input.y0 ?? 0)));
+  const y1 = Math.min(height, Math.max(y0, Math.ceil(input.y1 ?? height)));
+  const firstStrip = Math.min(availableStrips, Math.floor(y0 / rowsPerStrip));
+  const endStrip = Math.min(availableStrips, Math.ceil(y1 / rowsPerStrip));
+  const strips: PlannedTiffStrip[] = [];
+
+  for (let index = firstStrip; index < endStrip; index += 1) {
+    const yBase = index * rowsPerStrip;
+    strips.push({
+      index,
+      yBase,
+      rowCount: Math.min(rowsPerStrip, height - yBase),
+    });
+  }
+  return strips;
+}
+
+export function planBilevelTiffOutputs(width: number, height: number): PlannedBilevelTiffOutput {
+  const tiles = planDenseSheetTiles(width, height);
+  const overviewMaxEdge = tiles.length > 0
+    ? ERF_TIFF_MAX_DENSE_OVERVIEW_EDGE_PX
+    : ERF_TIFF_MAX_BILEVEL_EDGE_PX;
+  const overview = {
+    ...planTiffPageScale(width, height, overviewMaxEdge),
+    maxEdgePx: overviewMaxEdge,
+  };
+  const details = tiles.map((tile) => ({
+    tile,
+    output: {
+      ...planTiffPageScale(
+        tile.x1 - tile.x0,
+        tile.y1 - tile.y0,
+        ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
+      ),
+      maxEdgePx: ERF_TIFF_MAX_DETAIL_TILE_EDGE_PX,
+    },
+  }));
+  const totalOutputPixels = details.reduce(
+    (total, detail) => total + detail.output.width * detail.output.height,
+    overview.width * overview.height,
+  );
+  return { overview, details, totalOutputPixels };
 }
 
 export function describeDetailTile(tile: ExtractionDetailTile) {
