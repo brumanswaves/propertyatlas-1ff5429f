@@ -26,6 +26,7 @@ import {
   erfAssetIdentityMatchStatus,
   isExtractableErfAsset,
 } from "@/lib/evidence/extractionMetadata";
+import { isTiffExtractionMimeType } from "../../../../supabase/functions/_shared/erfExtractionMedia";
 import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { cn } from "@/lib/utils";
 
@@ -112,6 +113,12 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
 
       if (!result.success) {
         toast.error(result.error);
+        return;
+      }
+      if (result.extractionStatus === "processing") {
+        toast.message(
+          "Reviewing survey plan. Large SG plans can take several minutes; you can leave this page and come back.",
+        );
         return;
       }
       if (result.identityMatchStatus === "mismatch") {
@@ -427,6 +434,8 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           <div className="mt-4 grid gap-3">
             {vault.assets.map((asset) => {
               const extractionStatus = erfAssetExtractionStatus(asset);
+              const reviewingLargeTiff =
+                extractionStatus === "processing" && isTiffExtractionMimeType(asset.mime_type);
               const identityStatus = erfAssetIdentityMatchStatus(asset);
               const usable = isUsableSubjectDiagram(asset);
               const reading = readingAssetId === asset.id;
@@ -474,12 +483,22 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                                 : "bg-amber-200 text-amber-950",
                           )}
                         >
-                          {reading ? "Reading diagram" : erfAssetExtractionLabel(asset, "diagram")}
+                          {reading
+                            ? "Checking review"
+                            : reviewingLargeTiff
+                              ? "Reviewing survey plan..."
+                              : erfAssetExtractionLabel(asset, "diagram")}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
                           Identity: {identityStatus}
                         </span>
                       </div>
+                      {reviewingLargeTiff ? (
+                        <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
+                          Large SG plans can take several minutes. You can leave this page and come
+                          back.
+                        </p>
+                      ) : null}
                       {identityStatus === "mismatch" && (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">
                           This document appears to describe a different property. Its contents are
@@ -520,7 +539,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                           ) : (
                             <RotateCcw className="h-3.5 w-3.5" />
                           )}
-                          {reading ? "Reading" : retry ? "Retry reading" : "Read diagram"}
+                          {reading
+                            ? "Checking"
+                            : reviewingLargeTiff
+                              ? "Check review"
+                              : retry
+                                ? "Retry reading"
+                                : "Read diagram"}
                         </button>
                       ) : null}
                       <button
