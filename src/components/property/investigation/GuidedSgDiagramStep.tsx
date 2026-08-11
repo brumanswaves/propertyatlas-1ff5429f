@@ -17,6 +17,7 @@ import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/us
 import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
+  erfAssetCanConfirmIdentity,
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
   erfAssetExtractedIdentity,
@@ -50,7 +51,7 @@ function formatDate(value: string) {
 }
 
 function isUsableSubjectDiagram(asset: ErfAsset) {
-  return erfAssetHasSearchableExtraction(asset) && erfAssetIdentityMatchStatus(asset) === "matched";
+  return erfAssetHasSearchableExtraction(asset);
 }
 
 export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
@@ -77,6 +78,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
 
   const usableDiagrams = vault.assets.filter(isUsableSubjectDiagram);
   const canContinue = usableDiagrams.length > 0;
+  const hasMatchedDiagram = usableDiagrams.some(
+    (asset) => erfAssetIdentityMatchStatus(asset) === "matched",
+  );
+  const hasUserConfirmedDiagram = usableDiagrams.some(erfAssetIdentityUserConfirmed);
+  const hasParentPlanEvidence = usableDiagrams.some(
+    (asset) => erfAssetIdentityMatchStatus(asset) === "parent_lineage_match",
+  );
 
   function syncAttachmentCount(count: number) {
     updateErfWorkspaceState(parcel.id, {
@@ -250,7 +258,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               <FileText className="h-3.5 w-3.5" />
             )}
             {canContinue
-              ? "Matched diagram ready"
+              ? hasMatchedDiagram
+                ? "Matched diagram ready"
+                : hasUserConfirmedDiagram
+                  ? "Supporting diagram attached by you"
+                  : hasParentPlanEvidence
+                    ? "Supporting cadastral evidence attached"
+                    : "Supporting diagram attached"
               : vault.assets.length
                 ? "Diagram needs attention"
                 : "No diagram attached"}
@@ -420,6 +434,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               const parentLineageContext = identityStatus === "parent_lineage_match";
               const identity = erfAssetExtractedIdentity(asset);
               const userConfirmed = erfAssetIdentityUserConfirmed(asset);
+              const canConfirm = erfAssetCanConfirmIdentity(asset);
               const retry =
                 !parentLineageContext &&
                 (extractionStatus === "failed" ||
@@ -473,11 +488,12 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                       )}
                       {parentLineageContext && (
                         <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
-                          This General Plan is useful context for a parent property, but it is not a
-                          readable subject SG diagram for this erf.
+                          {usable
+                            ? "Supporting cadastral evidence is attached from a parent General Plan. It can support this step, but obtaining the individual subject SG diagram remains a confidence upgrade."
+                            : "This General Plan is useful context for a parent property, but it is not readable supporting evidence yet."}
                         </p>
                       )}
-                      {identityStatus === "unverified" && !userConfirmed ? (
+                      {canConfirm ? (
                         <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
                           <p className="font-semibold">Read successfully - needs your confirmation</p>
                           <p className="mt-1">Detected identity: Erf {identity?.erfNumber ?? "not stated"}, portion {identity?.portionNumber ?? "not stated"}, {identity?.suburbOrTown ?? identity?.municipality ?? "location not stated"}.</p>

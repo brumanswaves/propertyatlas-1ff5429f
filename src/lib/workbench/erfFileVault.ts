@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import { erfAssetCanConfirmIdentity } from "@/lib/evidence/extractionMetadata";
 import { toSupabaseJson } from "@/lib/supabase/json";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import {
@@ -404,9 +405,7 @@ export async function createErfAssetSignedUrl(asset: ErfAsset) {
 export async function confirmErfAssetIdentityForParcel(asset: ErfAsset) {
   const userId = await currentVaultUserId();
   if (asset.user_id !== userId) throw new Error("This file does not belong to the signed-in user.");
-  const identityStatus = asset.metadata.identityMatchStatus;
-  const extractionStatus = asset.metadata.extractionStatus;
-  if (identityStatus !== "unverified" || (extractionStatus !== "partial" && extractionStatus !== "ready")) {
+  if (!erfAssetCanConfirmIdentity(asset)) {
     throw new Error("Only a readable document that needs confirmation can be attached this way.");
   }
   const metadata = {

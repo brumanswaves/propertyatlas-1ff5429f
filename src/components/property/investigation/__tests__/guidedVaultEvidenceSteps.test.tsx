@@ -89,7 +89,7 @@ describe("guided vault evidence steps", () => {
     vaultFixture.error = null;
   });
 
-  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: parent General Plan is context only with no Read or Retry action", () => {
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: readable parent General Plan supports the SG step without becoming a subject diagram", () => {
     vaultFixture.assets = [
       asset({
         metadata: {
@@ -108,8 +108,9 @@ describe("guided vault evidence steps", () => {
       <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
     );
 
-    expect(html).toContain("context only");
-    expect(html).toContain("not a readable subject SG diagram");
+    expect(html).toContain("Supporting cadastral evidence attached");
+    expect(html).toContain("can support this step");
+    expect(html).toContain("Continue to Check title");
     expect(html).not.toContain("Read diagram");
     expect(html).not.toContain("Retry reading");
     expect(html).not.toContain("Matched diagram ready");
@@ -199,8 +200,53 @@ describe("guided vault evidence steps", () => {
       <GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
     );
 
-    expect(html).toContain("Matched title deed ready");
+    expect(html).toContain("Readable title deed ready");
     expect(html).not.toContain("Report searchable");
+  });
+
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-confirmed readable paid evidence can continue without claiming an official match", () => {
+    vaultFixture.assets = [
+      asset({
+        asset_category: "paid_report",
+        asset_type: "paid_property_report",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "unverified",
+          identityBinding: "user_confirmed",
+          identityUserConfirmedParcelId: "parcel:test-fixture",
+          extractedClaims: [],
+        },
+      }),
+    ];
+
+    const html = renderToStaticMarkup(
+      <GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
+    );
+
+    expect(html).toContain("Readable paid report attached");
+    expect(html).toContain("Readable - attached by you");
+    expect(html).toContain("Continue to Confirm zoning");
+    expect(html).not.toContain("This is the correct property");
+  });
+
+  it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: failed uncertain evidence cannot be confirmed as readable", () => {
+    vaultFixture.assets = [
+      asset({
+        metadata: {
+          extractionStatus: "failed",
+          identityMatchStatus: "unverified",
+          extractionError: "The document could not be read.",
+        },
+      }),
+    ];
+
+    const html = renderToStaticMarkup(
+      <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
+    );
+
+    expect(html).toContain("The document could not be read.");
+    expect(html).not.toContain("read successfully - needs confirmation");
+    expect(html).not.toContain("This is the correct property");
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plans do not claim municipal approval", () => {

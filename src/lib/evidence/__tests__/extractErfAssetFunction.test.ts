@@ -16,6 +16,7 @@ type Handler = (request: Request) => Promise<Response>;
 let handler: Handler;
 let assetRow: Record<string, unknown>;
 let openAiCalls = 0;
+let openAiRequests: Array<Record<string, unknown>>;
 let downloadCalls = 0;
 let patchCalls: Array<{ url: string; body: Record<string, unknown> }>;
 let patchOk = true;
@@ -73,6 +74,7 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
               municipality: "Kouga Local Municipality",
               province: "Eastern Cape",
               town: "St Francis Bay",
+              streetAddress: "8 Harbour Road, St Francis Bay",
             },
           },
         },
@@ -85,6 +87,7 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
   }
   if (url.includes(OPENAI_HOST)) {
     openAiCalls += 1;
+    openAiRequests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
     return Promise.resolve(
       jsonResponse({
         choices: [
@@ -113,6 +116,7 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
 beforeEach(async () => {
   assetRow = baseAsset();
   openAiCalls = 0;
+  openAiRequests = [];
   downloadCalls = 0;
   patchCalls = [];
   patchOk = true;
@@ -288,6 +292,7 @@ describe("extract-erf-asset identity gate", () => {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         if (String(input).includes(OPENAI_HOST)) {
           openAiCalls += 1;
+          openAiRequests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
           return Promise.resolve(
             jsonResponse({
               choices: [
@@ -341,6 +346,16 @@ describe("extract-erf-asset identity gate", () => {
     expect(written.extractionStatus).toBe("partial");
     expect(written.extractedText).toContain("Municipal valuation");
     expect(written.extractedClaims).toHaveLength(1);
+
+    const messages = openAiRequests.at(-1)?.messages as Array<{ role?: string; content?: string }>;
+    const prompt = messages.find((message) => message.role === "system")?.content ?? "";
+    expect(prompt).toContain("Review this document in the context of the active Easy Erf dossier.");
+    expect(prompt).toContain("Erf 1570");
+    expect(prompt).toContain("LPI C03400140000157000000");
+    expect(prompt).toContain("Municipality Kouga Local Municipality");
+    expect(prompt).toContain("Working address 8 Harbour Road, St Francis Bay");
+    expect(prompt).toContain("never copy them into extracted identity or claims unless they are literally stated");
+    expect(prompt).not.toContain("user-1");
   });
 
   it("keeps a readable wrong-property result for explanation but does not mark it matched", async () => {

@@ -337,6 +337,37 @@ function toBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
+function dossierPromptValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).replace(/[\r\n\t]+/g, " ").trim().slice(0, 160);
+  return normalized || null;
+}
+
+/**
+ * The active dossier identity is comparison context only. It helps the model
+ * distinguish subject-erf evidence from a parent plan or the wrong property,
+ * but is never itself an extracted document fact.
+ */
+function dossierAwareExtractionPrompt(assetCategory: string, expected: ErfExpectedIdentity) {
+  const context = [
+    dossierPromptValue(expected.erfNumber) ? `Erf ${dossierPromptValue(expected.erfNumber)}` : null,
+    dossierPromptValue(expected.portionNumber) ? `Portion ${dossierPromptValue(expected.portionNumber)}` : null,
+    dossierPromptValue(expected.lpiCode) ? `LPI ${dossierPromptValue(expected.lpiCode)}` : null,
+    dossierPromptValue(expected.municipality) ? `Municipality ${dossierPromptValue(expected.municipality)}` : null,
+    dossierPromptValue(expected.province) ? `Province ${dossierPromptValue(expected.province)}` : null,
+    dossierPromptValue(expected.town) ? `Town or locality ${dossierPromptValue(expected.town)}` : null,
+    dossierPromptValue(expected.streetAddress) ? `Working address ${dossierPromptValue(expected.streetAddress)}` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return [
+    erfExtractionSystemPrompt(assetCategory),
+    "Review this document in the context of the active Easy Erf dossier.",
+    `Active dossier identifiers: ${context.length ? context.join("; ") : "not available"}.`,
+    "Use these identifiers only to compare the document with the active dossier and distinguish subject-erf evidence, parent or General Plan context, uncertainty, or a wrong property.",
+    "The dossier identifiers are comparison context only: never copy them into extracted identity or claims unless they are literally stated in the document. Preserve uncertainty when the document does not establish identity.",
+  ].join("\n");
+}
+
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const fail = (code: ErfExtractionFailureCode, error: string, status: number) =>
@@ -604,7 +635,7 @@ Deno.serve(async (request: Request) => {
         max_tokens: 8000,
         response_format: erfExtractionResponseFormat(),
         messages: [
-          { role: "system", content: erfExtractionSystemPrompt(asset.asset_category) },
+          { role: "system", content: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity) },
           { role: "user", content },
         ],
       }),
