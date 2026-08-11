@@ -255,8 +255,12 @@ export interface ErfExtractionMetadataPatch {
   /** Media provenance for normalised (e.g. TIFF -> PNG) inputs. Never bytes. */
   originalMimeType?: string | null;
   normalizedExtractionMimeType?: string | null;
-
-
+  /** Temporary OpenAI background-job references. Never document bytes or secrets. */
+  extractionProvider?: "openai_code_interpreter" | null;
+  openaiResponseId?: string | null;
+  openaiFileId?: string | null;
+  openaiContainerId?: string | null;
+  openaiBackgroundStartedAt?: string | null;
   extractionRequestId?: string | null;
   extractionStartedAt?: string | null;
 }
@@ -506,6 +510,17 @@ export function erfExtractionResponseFormat() {
         },
       },
     },
+  };
+}
+
+/** Responses API equivalent of the canonical Chat Completions JSON schema. */
+export function erfExtractionResponsesTextFormat() {
+  const format = erfExtractionResponseFormat().json_schema;
+  return {
+    type: "json_schema" as const,
+    name: format.name,
+    strict: format.strict,
+    schema: format.schema,
   };
 }
 

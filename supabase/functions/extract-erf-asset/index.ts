@@ -29,16 +29,22 @@ import {
   type ErfKnownParcelLineage,
 } from "../_shared/erfExtractionContract.ts";
 import {
-  ERF_NORMALIZED_IMAGE_MIME,
   buildExtractionContent,
   findUnsupportedContentMime,
   isTiffExtractionMimeType,
-  type NormalizedExtractionPage,
 } from "../_shared/erfExtractionMedia.ts";
 import {
   applyGeneralPlanSubjectClaimPolicy,
   evaluateGeneralPlanSubjectMatch,
 } from "../_shared/generalPlanSubjectEvidence.ts";
+import {
+  OPENAI_TIFF_EXTRACTION_PROVIDER,
+  OpenAiTiffBackgroundError,
+  cleanupOpenAiTiffResources,
+  pollOpenAiTiffBackground,
+  startOpenAiTiffBackground,
+  type OpenAiTiffResources,
+} from "./openAiTiffBackground.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -465,7 +471,10 @@ Deno.serve(async (request: Request) => {
   const currentStatus = metadataString(asset.metadata, "extractionStatus");
   const currentIdentity = metadataString(asset.metadata, "identityMatchStatus");
   const currentVersion = Number(asset.metadata?.extractionVersion ?? 0);
-  if (lockIsFresh(asset.metadata)) {
+  const mimeType = (asset.mime_type || "").split(";")[0].trim().toLowerCase();
+  const isTiff = isTiffExtractionMimeType(mimeType);
+  const openaiResponseId = metadataString(asset.metadata, "openaiResponseId");
+  if (lockIsFresh(asset.metadata) && !(isTiff && openaiResponseId)) {
     log("already_processing", requestId);
     return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
   }
@@ -494,7 +503,6 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const mimeType = (asset.mime_type || "").split(";")[0].trim().toLowerCase();
   if (asset.asset_category === "paid_report" && mimeType !== "application/pdf") {
     log("paid_report_not_pdf", requestId);
     return finish(
@@ -537,153 +545,309 @@ Deno.serve(async (request: Request) => {
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
   if (!apiKey) return fail("OPENAI_NOT_CONFIGURED", "Document reading is not configured yet.", 503);
 
-  const locked = await claimProcessingLock(asset, requestId);
-  if (!locked) {
-    log("lock_contended", requestId);
-    return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
-  }
-
   const expectedIdentity = await loadExpectedIdentity(asset);
   const knownLineage = isSgDiagramCategory(asset.asset_category)
     ? await loadKnownParcelLineage(asset)
     : null;
-  const bytes = await downloadAsset(asset);
-  if (!bytes || bytes.byteLength === 0) {
-    log("download_failed", requestId);
-    return finish(
-      "failed",
-      { extractionError: "The stored file could not be opened." },
-      { success: false, code: "DOWNLOAD_FAILED", error: "The stored file could not be opened." },
-      200,
-    );
-  }
-
   const mime = mimeType || "application/pdf";
-  let normalizedPages: NormalizedExtractionPage[] | null = null;
-  let normalizationWarning: string | null = null;
-  let sourcePageCount: number | null = null;
-  let normalizedMime: string | null = null;
-  if (isTiffExtractionMimeType(mime)) {
+  let model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
+  let parsed: unknown = null;
+  let backgroundResources: OpenAiTiffResources | null = null;
+
+  const finishResult = async (
+    status: ErfExtractionStatus,
+    patch: Partial<ErfExtractionMetadataPatch>,
+    responseBody: Record<string, unknown>,
+    httpStatus: number,
+  ) => {
+    const response = await finish(
+      status,
+      backgroundResources
+        ? {
+            ...patch,
+            extractionProvider: null,
+            openaiResponseId: null,
+            openaiFileId: null,
+            openaiContainerId: null,
+            openaiBackgroundStartedAt: null,
+          }
+        : patch,
+      responseBody,
+      httpStatus,
+    );
+    if (backgroundResources && response.status < 500) {
+      const cleanup = await cleanupOpenAiTiffResources({
+        apiKey,
+        ...backgroundResources,
+      });
+      if (!cleanup.allDeleted) log("openai_cleanup_incomplete", requestId);
+    }
+    return response;
+  };
+
+  if (isTiff && openaiResponseId) {
+    model = metadataString(asset.metadata, "extractionModel") ??
+      Deno.env.get("ERF_SG_TIFF_MODEL")?.trim() ??
+      "";
+    if (!model) {
+      return fail("OPENAI_NOT_CONFIGURED", "Large survey plan reading is not configured yet.", 503);
+    }
+    let poll;
     try {
-      const { normalizeTiffToPngPages } = await import("./tiffDecode.ts");
-      const normalized = await normalizeTiffToPngPages(bytes);
-      normalizedPages = normalized.pages;
-      normalizationWarning = normalized.warning;
-      sourcePageCount = normalized.sourcePageCount;
-      normalizedMime = ERF_NORMALIZED_IMAGE_MIME;
-      log("tiff_normalized", requestId, {
-        sourcePageCount: normalized.sourcePageCount,
-        convertedImageCount: normalized.pages.length,
-        detailTileCount: normalized.detailTileCount,
-        downscaled: normalized.downscaled,
+      poll = await pollOpenAiTiffBackground({
+        apiKey,
+        responseId: openaiResponseId,
+        fileId: metadataString(asset.metadata, "openaiFileId"),
+        containerId: metadataString(asset.metadata, "openaiContainerId"),
       });
     } catch (error) {
-      const message =
-        error instanceof Error && error.name === "TiffNormalizationError"
-          ? error.message
-          : "This diagram could not be converted for reading.";
-      log("tiff_normalize_failed", requestId);
+      const expiredResponse =
+        error instanceof OpenAiTiffBackgroundError &&
+        error.stage === "retrieve" &&
+        (error.statusCode === 404 || error.statusCode === 410);
+      if (expiredResponse) {
+        backgroundResources = {
+          fileId: metadataString(asset.metadata, "openaiFileId"),
+          containerId: metadataString(asset.metadata, "openaiContainerId"),
+        };
+        return finishResult(
+          "failed",
+          { extractionError: "The previous survey-plan review expired. Try reading the diagram again." },
+          {
+            success: false,
+            code: "SERVER_UNAVAILABLE",
+            error: "The previous survey-plan review expired. Try reading the diagram again.",
+          },
+          200,
+        );
+      }
+      log("openai_background_poll_failed", requestId, {
+        errorClass: error instanceof Error ? error.name : "UnknownError",
+      });
+      return fail("SERVER_UNAVAILABLE", "The survey plan review could not be checked yet.", 503);
+    }
+    backgroundResources = { fileId: poll.fileId, containerId: poll.containerId };
+    if (poll.state === "processing") {
+      if (poll.containerId !== metadataString(asset.metadata, "openaiContainerId")) {
+        await patchAssetMetadata(asset, { openaiContainerId: poll.containerId });
+      }
+      return json(
+        {
+          success: true,
+          requestId,
+          assetId: asset.id,
+          extractionStatus: "processing",
+          identityMatchStatus: null,
+          claimCount: 0,
+          documentType: null,
+          warning: "Large SG plans can take several minutes. You can leave this page and come back.",
+        },
+        200,
+      );
+    }
+    if (poll.state === "failed") {
+      return finishResult(
+        "failed",
+        { extractionError: "The survey plan background review failed. Try again." },
+        {
+          success: false,
+          code: "SERVER_UNAVAILABLE",
+          error: "The survey plan background review failed. Try again.",
+        },
+        200,
+      );
+    }
+    parsed = poll.parsed;
+  } else {
+    const locked = await claimProcessingLock(asset, requestId);
+    if (!locked) {
+      log("lock_contended", requestId);
+      return fail("ALREADY_PROCESSING", "This document is already being read.", 409);
+    }
+
+    const bytes = await downloadAsset(asset);
+    if (!bytes || bytes.byteLength === 0) {
+      log("download_failed", requestId);
       return finish(
         "failed",
-        {
-          extractionError: message,
+        { extractionError: "The stored file could not be opened." },
+        { success: false, code: "DOWNLOAD_FAILED", error: "The stored file could not be opened." },
+        200,
+      );
+    }
+
+    if (isTiff) {
+      model = Deno.env.get("ERF_SG_TIFF_MODEL")?.trim() ?? "";
+      if (!model) {
+        return finish(
+          "failed",
+          { extractionError: "Large survey plan reading is not configured yet." },
+          {
+            success: false,
+            code: "OPENAI_NOT_CONFIGURED",
+            error: "Large survey plan reading is not configured yet.",
+          },
+          200,
+        );
+      }
+      try {
+        const job = await startOpenAiTiffBackground({
+          apiKey,
+          bytes,
+          fileName: asset.original_file_name,
+          mimeType: mime,
+          model,
+          systemPrompt: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity),
+        });
+        const startedAt = new Date().toISOString();
+        const written = await patchAssetMetadata(asset, {
+          extractionStatus: "processing",
+          extractionProvider: OPENAI_TIFF_EXTRACTION_PROVIDER,
+          extractionModel: model,
+          extractionVersion: ERF_EXTRACTION_VERSION,
+          extractedAt: null,
+          extractionError: null,
+          extractionWarning: null,
           originalMimeType: mime,
           normalizedExtractionMimeType: null,
-          extractionWarning: message,
-        },
-        { success: false, code: "UNREADABLE_DOCUMENT", error: message },
-        200,
-      );
-    }
-  }
-
-  const dataUrl = normalizedPages ? null : `data:${mime};base64,${toBase64(bytes)}`;
-  const content = buildExtractionContent({
-    fileName: asset.original_file_name,
-    mimeType: mime,
-    dataUrl,
-    pages: normalizedPages,
-    subjectErfNumber: expectedIdentity.erfNumber ?? null,
-  });
-  const offendingMime = findUnsupportedContentMime(content);
-  if (offendingMime) {
-    log("blocked_unsupported_content", requestId);
-    return finish(
-      "failed",
-      { extractionError: "This file type cannot be read automatically." },
-      {
-        success: false,
-        code: "UNSUPPORTED_FILE_TYPE",
-        error: "This file type cannot be read automatically.",
-      },
-      200,
-    );
-  }
-
-  const model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ERF_EXTRACTION_TIMEOUT_MS);
-  try {
-    log("openai_request_start", requestId, { model, bytes: bytes.byteLength });
-    const response = await fetch(ERF_EXTRACTION_OPENAI_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: 8000,
-        response_format: erfExtractionResponseFormat(),
-        messages: [
-          { role: "system", content: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity) },
-          { role: "user", content },
-        ],
-      }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { type?: string; code?: string };
-    } | null;
-    log("openai_response", requestId, { status: response.status });
-    if (!response.ok) {
-      console.error(
-        JSON.stringify({
-          fn: "extract-erf-asset",
-          stage: "openai_request_failed",
-          requestId,
-          status: response.status,
-          errorType: payload?.error?.type ?? null,
-          errorCode: payload?.error?.code ?? null,
-        }),
-      );
-      const code: ErfExtractionFailureCode =
-        response.status === 429
-          ? "RATE_LIMITED"
-          : response.status >= 400 && response.status < 500
-            ? "UPSTREAM_REQUEST_REJECTED"
-            : "SERVER_UNAVAILABLE";
-      return finish(
-        "failed",
-        { extractionError: "Reading this document failed. Try again." },
-        { success: false, code, error: "Reading this document failed. Try again." },
-        200,
-      );
-    }
-
-    let parsed: unknown = null;
-    const raw = payload?.choices?.[0]?.message?.content;
-    if (typeof raw === "string") {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        parsed = null;
+          openaiResponseId: job.responseId,
+          openaiFileId: job.fileId,
+          openaiContainerId: job.containerId,
+          openaiBackgroundStartedAt: startedAt,
+        });
+        if (!written) {
+          await cleanupOpenAiTiffResources({ apiKey, ...job });
+          return fail("SERVER_UNAVAILABLE", "The background review could not be saved.", 503);
+        }
+        return json(
+          {
+            success: true,
+            requestId,
+            assetId: asset.id,
+            extractionStatus: "processing",
+            identityMatchStatus: null,
+            claimCount: 0,
+            documentType: null,
+            warning: "Large SG plans can take several minutes. You can leave this page and come back.",
+          },
+          200,
+        );
+      } catch (error) {
+        const upstreamStatus = error instanceof OpenAiTiffBackgroundError ? error.statusCode : null;
+        const code: ErfExtractionFailureCode =
+          upstreamStatus === 429
+            ? "RATE_LIMITED"
+            : upstreamStatus && upstreamStatus >= 400 && upstreamStatus < 500
+              ? "UPSTREAM_REQUEST_REJECTED"
+              : "SERVER_UNAVAILABLE";
+        log("openai_background_start_failed", requestId, {
+          errorClass: error instanceof Error ? error.name : "UnknownError",
+        });
+        return finish(
+          "failed",
+          { extractionError: "The survey plan background review could not start. Try again." },
+          {
+            success: false,
+            code,
+            error: "The survey plan background review could not start. Try again.",
+          },
+          200,
+        );
       }
     }
+
+    const dataUrl = `data:${mime};base64,${toBase64(bytes)}`;
+    const content = buildExtractionContent({
+      fileName: asset.original_file_name,
+      mimeType: mime,
+      dataUrl,
+      subjectErfNumber: expectedIdentity.erfNumber ?? null,
+    });
+    const offendingMime = findUnsupportedContentMime(content);
+    if (offendingMime) {
+      log("blocked_unsupported_content", requestId);
+      return finish(
+        "failed",
+        { extractionError: "This file type cannot be read automatically." },
+        {
+          success: false,
+          code: "UNSUPPORTED_FILE_TYPE",
+          error: "This file type cannot be read automatically.",
+        },
+        200,
+      );
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ERF_EXTRACTION_TIMEOUT_MS);
+    try {
+      log("openai_request_start", requestId, { model, bytes: bytes.byteLength });
+      const response = await fetch(ERF_EXTRACTION_OPENAI_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          max_tokens: 8000,
+          response_format: erfExtractionResponseFormat(),
+          messages: [
+            { role: "system", content: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity) },
+            { role: "user", content },
+          ],
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        error?: { type?: string; code?: string };
+      } | null;
+      log("openai_response", requestId, { status: response.status });
+      if (!response.ok) {
+        const code: ErfExtractionFailureCode =
+          response.status === 429
+            ? "RATE_LIMITED"
+            : response.status >= 400 && response.status < 500
+              ? "UPSTREAM_REQUEST_REJECTED"
+              : "SERVER_UNAVAILABLE";
+        return finish(
+          "failed",
+          { extractionError: "Reading this document failed. Try again." },
+          { success: false, code, error: "Reading this document failed. Try again." },
+          200,
+        );
+      }
+      const raw = payload?.choices?.[0]?.message?.content;
+      if (typeof raw === "string") {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = null;
+        }
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "UnknownError";
+      const timedOut = name === "AbortError" || name === "TimeoutError";
+      return finish(
+        "failed",
+        { extractionError: timedOut ? "Reading this document timed out." : "Reading this document failed." },
+        {
+          success: false,
+          code: timedOut ? "TIMEOUT" : "SERVER_UNAVAILABLE",
+          error: timedOut ? "Reading this document timed out." : "Reading this document failed.",
+        },
+        200,
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  try {
     const result = normalizeExtractionResult(parsed, { assetCategory: asset.asset_category });
     if (!result) {
       log("malformed_model_response", requestId);
-      return finish(
+      return finishResult(
         "failed",
         { extractionError: "The document could not be read into structured evidence." },
         {
@@ -695,7 +859,7 @@ Deno.serve(async (request: Request) => {
       );
     }
     if (!result.extractedText && result.claims.length === 0) {
-      return finish(
+      return finishResult(
         "failed",
         { extractionError: "No readable text was found in this document." },
         {
@@ -715,17 +879,9 @@ Deno.serve(async (request: Request) => {
 
     log("identity_inputs", requestId, {
       assetId: asset.id,
-      normalizedImageCount: normalizedPages?.length ?? 0,
-      normalizedSourcePageCount: normalizedPages
-        ? new Set(normalizedPages.map((page) => page.pageNumber)).size
-        : 0,
-      normalizedPageSizes: (normalizedPages ?? []).map((page) => ({
-        page: page.pageNumber,
-        detailTile: page.detail?.index ?? null,
-        width: page.width,
-        height: page.height,
-        bytes: Math.round((page.base64.length * 3) / 4),
-      })),
+      normalizedImageCount: 0,
+      normalizedSourcePageCount: 0,
+      normalizedPageSizes: [],
       documentTypePresent: Boolean(result.documentType),
       extractedTextChars: result.extractedText.length,
       claimCount: result.claims.length,
@@ -765,7 +921,7 @@ Deno.serve(async (request: Request) => {
           ? ERF_EXTRACTION_MISMATCH_MESSAGE
           : ERF_EXTRACTION_UNVERIFIED_MESSAGE;
       log("identity_requires_review", requestId, { identityMatchStatus });
-      return finish(
+      return finishResult(
         "partial",
         {
           extractionModel: model,
@@ -780,7 +936,7 @@ Deno.serve(async (request: Request) => {
           extractedProvider: result.provider,
           extractedDocumentDate: result.documentDate,
           extractionSummary: result.summary,
-          pageCount: result.pageCount ?? sourcePageCount,
+          pageCount: result.pageCount,
         },
         {
           success: true,
@@ -808,13 +964,9 @@ Deno.serve(async (request: Request) => {
           })
         : result.claims;
 
-    const normalizedPageCount = normalizedPages
-      ? new Set(normalizedPages.map((page) => page.pageNumber)).size
-      : null;
     const status: ErfExtractionStatus = claims.length > 0 ? "ready" : "partial";
     const combinedWarning =
       [
-        normalizationWarning,
         result.warning,
         isParentLineage || generalPlanSubject.matched ? identityReason : null,
       ]
@@ -827,7 +979,7 @@ Deno.serve(async (request: Request) => {
       identityMatchStatus,
       generalPlanSubjectMatch: generalPlanSubject.matched,
     });
-    return finish(
+    return finishResult(
       status,
       {
         identityMatchStatus,
@@ -836,7 +988,7 @@ Deno.serve(async (request: Request) => {
         documentLineage: baselineIdentity.lineage ?? null,
         extractionModel: model,
         originalMimeType: mime,
-        normalizedExtractionMimeType: normalizedMime,
+        normalizedExtractionMimeType: null,
         extractionWarning: combinedWarning,
         extractedText: result.extractedText,
         extractedClaims: claims,
@@ -844,14 +996,14 @@ Deno.serve(async (request: Request) => {
         extractedProvider: result.provider,
         extractedDocumentDate: result.documentDate,
         extractionSummary: result.summary,
-        pageCount: result.pageCount ?? normalizedPageCount ?? sourcePageCount,
+        pageCount: result.pageCount,
       },
       {
         success: true,
         identityMatchStatus,
         claimCount: claims.length,
         documentType: result.documentType,
-        pageCount: result.pageCount ?? normalizedPageCount ?? sourcePageCount,
+        pageCount: result.pageCount,
         warning: combinedWarning,
       },
       200,
@@ -862,7 +1014,7 @@ Deno.serve(async (request: Request) => {
     console.error(
       JSON.stringify({ fn: "extract-erf-asset", stage: "fetch_error", requestId, errorClass: name }),
     );
-    return finish(
+    return finishResult(
       "failed",
       { extractionError: timedOut ? "Reading this document timed out." : "Reading this document failed." },
       {
@@ -872,7 +1024,5 @@ Deno.serve(async (request: Request) => {
       },
       200,
     );
-  } finally {
-    clearTimeout(timeout);
   }
 });

@@ -249,6 +249,30 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("This is the correct property");
   });
 
+  it("shows an honest long-running state for a TIFF background review without Retry", () => {
+    vaultFixture.assets = [
+      asset({
+        original_file_name: "TEST FIXTURE - LARGE SG PLAN.tif",
+        mime_type: "image/tiff",
+        metadata: {
+          extractionStatus: "processing",
+          extractionProvider: "openai_code_interpreter",
+          openaiResponseId: "resp-test-fixture",
+        },
+      }),
+    ];
+
+    const html = renderToStaticMarkup(
+      <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
+    );
+
+    expect(html).toContain("Reviewing survey plan...");
+    expect(html).toContain("Large SG plans can take several minutes");
+    expect(html).toContain("You can leave this page and come back");
+    expect(html).toContain("Check review");
+    expect(html).not.toContain("Retry reading");
+  });
+
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plans do not claim municipal approval", () => {
     vaultFixture.assets = [
       asset({

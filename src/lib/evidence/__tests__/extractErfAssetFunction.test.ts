@@ -17,6 +17,13 @@ let handler: Handler;
 let assetRow: Record<string, unknown>;
 let openAiCalls = 0;
 let openAiRequests: Array<Record<string, unknown>>;
+let openAiUrls: string[];
+let openAiUploads: FormData[];
+let openAiDeletes: string[];
+let backgroundStartStatus = 200;
+let backgroundPollStatus = 200;
+let backgroundPollPayload: Record<string, unknown>;
+let cleanupStatus = 200;
 let downloadCalls = 0;
 let patchCalls: Array<{ url: string; body: Record<string, unknown> }>;
 let patchOk = true;
@@ -43,6 +50,61 @@ function baseAsset(overrides: Record<string, unknown> = {}) {
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+
+function sgExtractionResult(overrides: Record<string, unknown> = {}) {
+  return {
+    identity: {
+      erfNumber: "1570",
+      portionNumber: "0",
+      lpiCode: null,
+      sgCode: "GP12252",
+      streetAddress: null,
+      suburbOrTown: "St Francis Bay",
+      municipality: "Kouga Local Municipality",
+      province: "Eastern Cape",
+    },
+    documentType: "General Plan",
+    provider: "Chief Surveyor-General",
+    documentDate: null,
+    pageCount: 1,
+    summary: "General Plan showing Erf 1570.",
+    extractedText: "GENERAL PLAN GP12252. Erf 1570. Padrone Crescent.",
+    warning: null,
+    claims: [
+      {
+        domain: "identity",
+        key: "erfNumber",
+        label: "Erf number",
+        value: "1570",
+        numericValue: 1570,
+        unit: null,
+        page: 1,
+        quote: "Erf 1570",
+        confidence: "high",
+        interpretation: false,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function completedBackgroundPayload(result: unknown = sgExtractionResult()) {
+  return {
+    id: "resp-sg-test",
+    status: "completed",
+    output: [
+      {
+        type: "code_interpreter_call",
+        container_id: "cntr-sg-test",
+        status: "completed",
+      },
+      {
+        type: "message",
+        content: [{ type: "output_text", text: JSON.stringify(result) }],
+      },
+    ],
+  };
 }
 
 function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -85,8 +147,35 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
     downloadCalls += 1;
     return Promise.resolve(new Response(new Uint8Array([1, 2, 3])));
   }
+  if (url.endsWith("/v1/files") && method === "POST") {
+    openAiCalls += 1;
+    openAiUrls.push(url);
+    openAiUploads.push(init?.body as FormData);
+    return Promise.resolve(jsonResponse({ id: "file-sg-test", purpose: "user_data" }));
+  }
+  if (url.endsWith("/v1/responses") && method === "POST") {
+    openAiCalls += 1;
+    openAiUrls.push(url);
+    openAiRequests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+    return Promise.resolve(
+      jsonResponse({ id: "resp-sg-test", status: "queued", output: [] }, backgroundStartStatus),
+    );
+  }
+  if (url.includes("/v1/responses/") && method === "GET") {
+    openAiCalls += 1;
+    openAiUrls.push(url);
+    return Promise.resolve(jsonResponse(backgroundPollPayload, backgroundPollStatus));
+  }
+  if (
+    (url.includes("/v1/files/") || url.includes("/v1/containers/")) &&
+    method === "DELETE"
+  ) {
+    openAiDeletes.push(url);
+    return Promise.resolve(jsonResponse({ deleted: cleanupStatus < 400 }, cleanupStatus));
+  }
   if (url.includes(OPENAI_HOST)) {
     openAiCalls += 1;
+    openAiUrls.push(url);
     openAiRequests.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
     return Promise.resolve(
       jsonResponse({
@@ -117,6 +206,13 @@ beforeEach(async () => {
   assetRow = baseAsset();
   openAiCalls = 0;
   openAiRequests = [];
+  openAiUrls = [];
+  openAiUploads = [];
+  openAiDeletes = [];
+  backgroundStartStatus = 200;
+  backgroundPollStatus = 200;
+  backgroundPollPayload = { id: "resp-sg-test", status: "in_progress", output: [] };
+  cleanupStatus = 200;
   downloadCalls = 0;
   patchCalls = [];
   patchOk = true;
@@ -129,6 +225,7 @@ beforeEach(async () => {
           SUPABASE_SERVICE_ROLE_KEY: "service-key",
           SUPABASE_ANON_KEY: "anon-key",
           OPENAI_API_KEY: "openai-key",
+          ERF_SG_TIFF_MODEL: "gpt-5.2",
         })[key],
     },
     serve: (fn: Handler) => {
@@ -185,6 +282,247 @@ describe("extract-erf-asset request binding", () => {
     expect(payload.code).toBe("UNSUPPORTED_FILE_TYPE");
     expect(payload.extractionStatus).toBe("unsupported");
     expect(openAiCalls).toBe(0);
+  });
+});
+
+describe("extract-erf-asset TIFF background review", () => {
+  function useTiffAsset(metadata: Record<string, unknown> = {}) {
+    assetRow = baseAsset({
+      asset_category: "sg_diagram",
+      storage_path: "erf-files/1570/11032680-test-fixture.tif",
+      original_file_name: "11032680 TEST FIXTURE.tif",
+      mime_type: "image/tiff",
+      size_bytes: 742_000,
+      metadata,
+    });
+  }
+
+  function useRunningTiffAsset() {
+    useTiffAsset({
+      extractionStatus: "processing",
+      extractionStartedAt: new Date().toISOString(),
+      extractionProvider: "openai_code_interpreter",
+      extractionModel: "gpt-5.2",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+      openaiBackgroundStartedAt: new Date().toISOString(),
+    });
+  }
+
+  it("keeps PDF extraction on the existing synchronous Chat Completions path", async () => {
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+
+    expect(openAiUrls).toEqual(["https://api.openai.com/v1/chat/completions"]);
+    expect(openAiUploads).toHaveLength(0);
+    expect(openAiRequests[0]).toHaveProperty("messages");
+    expect(openAiRequests[0]).not.toHaveProperty("background");
+  });
+
+  it("starts a private, expiring Code Interpreter TIFF job and returns processing", async () => {
+    useTiffAsset();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const form = openAiUploads[0];
+    const request = openAiRequests[0];
+    const requestText = JSON.stringify(request);
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(payload.warning).toContain("several minutes");
+    expect(JSON.stringify(payload)).not.toContain("openai-key");
+    expect(JSON.stringify(payload)).not.toContain("service-key");
+    expect(form.get("purpose")).toBe("user_data");
+    expect(form.get("expires_after[anchor]")).toBe("created_at");
+    expect(form.get("expires_after[seconds]")).toBe("3600");
+    expect((form.get("file") as File).name).toBe("11032680 TEST FIXTURE.tif");
+    expect(request).toMatchObject({
+      model: "gpt-5.2",
+      background: true,
+      max_output_tokens: 24_000,
+      reasoning: { effort: "high" },
+      tools: [
+        {
+          type: "code_interpreter",
+          container: { type: "auto", file_ids: ["file-sg-test"] },
+        },
+      ],
+      text: { format: { type: "json_schema", name: "erf_document_extraction" } },
+    });
+    expect(requestText).not.toContain("input_file");
+    expect(requestText).toContain("NEVER render or copy the entire full-resolution TIFF");
+    expect(requestText).toContain("Erf 1570");
+    expect(requestText).toContain("LPI C03400140000157000000");
+    expect(requestText).toContain("Municipality Kouga Local Municipality");
+    expect(requestText).toContain("Working address 8 Harbour Road, St Francis Bay");
+    expect(requestText).not.toContain("user-1");
+    expect(requestText).not.toContain("email");
+    expect(requestText).not.toContain("private notes");
+
+    const metadata = assetRow.metadata as Record<string, unknown>;
+    expect(metadata).toMatchObject({
+      extractionStatus: "processing",
+      extractionProvider: "openai_code_interpreter",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+    });
+    expect(JSON.stringify(metadata)).not.toContain("data:image/tiff");
+    expect(JSON.stringify(metadata)).not.toContain("openai-key");
+  });
+
+  it("polls a running TIFF job without downloading or restarting it", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = { id: "resp-sg-test", status: "in_progress", output: [] };
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(downloadCalls).toBe(0);
+    expect(openAiUrls).toEqual(["https://api.openai.com/v1/responses/resp-sg-test"]);
+    expect(openAiUploads).toHaveLength(0);
+  });
+
+  it.each([404, 410])(
+    "recovers an expired TIFF response (%s) into a retryable failed asset",
+    async (status) => {
+      useRunningTiffAsset();
+      backgroundPollStatus = status;
+
+      const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+      const payload = (await response.json()) as Record<string, unknown>;
+      const metadata = assetRow.metadata as Record<string, unknown>;
+
+      expect(response.status).toBe(200);
+      expect(payload).toMatchObject({
+        success: false,
+        extractionStatus: "failed",
+        error: "The previous survey-plan review expired. Try reading the diagram again.",
+      });
+      expect(metadata).toMatchObject({
+        extractionStatus: "failed",
+        extractionProvider: null,
+        openaiResponseId: null,
+        openaiFileId: null,
+        openaiContainerId: null,
+        openaiBackgroundStartedAt: null,
+      });
+      expect(openAiDeletes).toEqual(
+        expect.arrayContaining([
+          "https://api.openai.com/v1/files/file-sg-test",
+        ]),
+      );
+    },
+  );
+
+  it("keeps TIFF job metadata for a transient background retrieve failure", async () => {
+    useRunningTiffAsset();
+    backgroundPollStatus = 503;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(response.status).toBe(503);
+    expect(payload).toMatchObject({ success: false, code: "SERVER_UNAVAILABLE" });
+    expect(String(payload.error)).toContain("The survey plan review could not be checked yet.");
+    expect(metadata).toMatchObject({
+      extractionStatus: "processing",
+      extractionProvider: "openai_code_interpreter",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+    });
+    expect(openAiDeletes).toHaveLength(0);
+  });
+
+  it("can start a fresh TIFF review after recovering an expired response", async () => {
+    useRunningTiffAsset();
+    backgroundPollStatus = 404;
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    backgroundPollStatus = 200;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(openAiUrls).toEqual(
+      expect.arrayContaining([
+        "https://api.openai.com/v1/files",
+        "https://api.openai.com/v1/responses",
+      ]),
+    );
+    expect((assetRow.metadata as Record<string, unknown>).openaiResponseId).toBe("resp-sg-test");
+  });
+
+  it("normalizes a completed TIFF result through the canonical identity and claim gates", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = completedBackgroundPayload();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(payload).toMatchObject({
+      success: true,
+      extractionStatus: "ready",
+      identityMatchStatus: "matched",
+      claimCount: 1,
+    });
+    expect(metadata.identityMatchStatus).toBe("matched");
+    expect(metadata.extractedClaims).toHaveLength(1);
+    expect(metadata.openaiResponseId).toBeNull();
+    expect(metadata.openaiFileId).toBeNull();
+    expect(openAiDeletes).toEqual(
+      expect.arrayContaining([
+        "https://api.openai.com/v1/files/file-sg-test",
+        "https://api.openai.com/v1/containers/cntr-sg-test",
+      ]),
+    );
+  });
+
+  it("rejects free-form background prose and cleans up instead of bypassing the contract", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = completedBackgroundPayload();
+    const output = backgroundPollPayload.output as Array<Record<string, unknown>>;
+    output[1] = { type: "message", content: [{ type: "output_text", text: "free-form proof" }] };
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({
+      success: false,
+      code: "MALFORMED_MODEL_RESPONSE",
+      extractionStatus: "failed",
+    });
+    expect(openAiDeletes).toHaveLength(2);
+  });
+
+  it("attempts file cleanup when the background request cannot start", async () => {
+    useTiffAsset();
+    backgroundStartStatus = 500;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: false, extractionStatus: "failed" });
+    expect(openAiDeletes).toContain("https://api.openai.com/v1/files/file-sg-test");
+  });
+
+  it("keeps a good canonical result when temporary resource cleanup fails", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = completedBackgroundPayload();
+    cleanupStatus = 500;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "ready" });
+    expect(assetRow.metadata).toMatchObject({
+      extractionStatus: "ready",
+      openaiResponseId: null,
+      openaiFileId: null,
+    });
+    expect(openAiDeletes).toHaveLength(2);
   });
 });
 
