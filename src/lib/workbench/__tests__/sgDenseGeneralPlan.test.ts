@@ -1,8 +1,15 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  ERF_TIFF_MAX_PAGE_BYTES,
+  ERF_TIFF_MAX_PLANNED_OUTPUT_PIXELS,
+  ERF_TIFF_MAX_TOTAL_BYTES,
   buildExtractionContent,
+  checkTiffPixelBudget,
   findUnsupportedContentMime,
+  planBilevelTiffOutputs,
   planDenseSheetTiles,
+  planTiffRegionStrips,
   type NormalizedExtractionPage,
 } from "../../../../supabase/functions/_shared/erfExtractionMedia";
 import {
@@ -59,6 +66,85 @@ function claim(overrides: Partial<ErfExtractedClaim>): ErfExtractedClaim {
 }
 
 describe("dense SG General Plan extraction", () => {
+  it("accepts and bounds the real dense G4 sheet dimensions", () => {
+    const width = 7151;
+    const height = 10017;
+    const plan = planBilevelTiffOutputs(width, height);
+
+    expect(checkTiffPixelBudget(width, height, { bilevel: true })).toEqual({ ok: true });
+    expect(plan.overview).toMatchObject({ width: 1285, height: 1800 });
+    expect(plan.details).toHaveLength(4);
+    expect(plan.details.every((detail) => detail.output.height === 2400)).toBe(true);
+    expect(plan.totalOutputPixels).toBeLessThanOrEqual(ERF_TIFF_MAX_PLANNED_OUTPUT_PIXELS);
+
+    const plannedImages = [plan.overview, ...plan.details.map((detail) => detail.output)];
+    const rawGrayBytes = plannedImages.map((image) => image.width * image.height + image.height);
+    expect(Math.max(...rawGrayBytes)).toBeLessThan(ERF_TIFF_MAX_PAGE_BYTES);
+    expect(rawGrayBytes.reduce((total, bytes) => total + bytes, 0)).toBeLessThan(
+      ERF_TIFF_MAX_TOTAL_BYTES,
+    );
+
+    expect(Math.min(...plan.details.map((detail) => detail.tile.x0))).toBe(0);
+    expect(Math.min(...plan.details.map((detail) => detail.tile.y0))).toBe(0);
+    expect(Math.max(...plan.details.map((detail) => detail.tile.x1))).toBe(width);
+    expect(Math.max(...plan.details.map((detail) => detail.tile.y1))).toBe(height);
+  });
+
+  it("decodes only strips intersecting each vertical detail region", () => {
+    const width = 7151;
+    const height = 10017;
+    const rowsPerStrip = 5;
+    const stripCount = Math.ceil(height / rowsPerStrip);
+    const plan = planBilevelTiffOutputs(width, height);
+    const top = plan.details[0].tile;
+    const bottom = plan.details[2].tile;
+    const topStrips = planTiffRegionStrips({
+      height,
+      rowsPerStrip,
+      stripCount,
+      y0: top.y0,
+      y1: top.y1,
+    });
+    const bottomStrips = planTiffRegionStrips({
+      height,
+      rowsPerStrip,
+      stripCount,
+      y0: bottom.y0,
+      y1: bottom.y1,
+    });
+
+    expect(topStrips[0].index).toBe(0);
+    expect(topStrips.at(-1)!.yBase).toBeLessThan(top.y1);
+    expect(topStrips.every((strip) => strip.yBase < top.y1)).toBe(true);
+    expect(bottomStrips[0].yBase + bottomStrips[0].rowCount).toBeGreaterThan(bottom.y0);
+    expect(bottomStrips.every((strip) => strip.yBase + strip.rowCount > bottom.y0)).toBe(true);
+    expect(topStrips).toHaveLength(1062);
+    expect(bottomStrips).toHaveLength(1063);
+  });
+
+  it("materially reduces dense detail strip work below every-strip-per-crop decoding", () => {
+    const width = 7151;
+    const height = 10017;
+    const rowsPerStrip = 5;
+    const stripCount = Math.ceil(height / rowsPerStrip);
+    const plan = planBilevelTiffOutputs(width, height);
+    const detailStripWork = plan.details.reduce(
+      (total, detail) => total + planTiffRegionStrips({
+        height,
+        rowsPerStrip,
+        stripCount,
+        y0: detail.tile.y0,
+        y1: detail.tile.y1,
+      }).length,
+      0,
+    );
+    const plannedWork = stripCount + detailStripWork;
+    const previousWork = stripCount * (1 + plan.details.length);
+
+    expect(plannedWork).toBe(6254);
+    expect(plannedWork).toBeLessThan(previousWork * 0.65);
+  });
+
   it.each([
     [12484, 8899],
     [12774, 9109],
@@ -87,6 +173,24 @@ describe("dense SG General Plan extraction", () => {
 
   it("does not add detail tiles to an ordinary low-resolution diagram", () => {
     expect(planDenseSheetTiles(3000, 2000)).toEqual([]);
+    expect(planBilevelTiffOutputs(3000, 2000)).toMatchObject({
+      overview: { width: 3000, height: 2000, downscaled: false },
+      details: [],
+    });
+  });
+
+  it("keeps the G4 path out of the full-size RGBA decoder", () => {
+    const decoderSource = readFileSync(
+      new URL("../../../../supabase/functions/extract-erf-asset/tiffDecode.ts", import.meta.url),
+      "utf8",
+    );
+    const g4BranchStart = decoderSource.indexOf("if (isBilevelG4) {");
+    const rgbaBranchStart = decoderSource.indexOf("} else {", g4BranchStart);
+
+    expect(g4BranchStart).toBeGreaterThan(-1);
+    expect(rgbaBranchStart).toBeGreaterThan(g4BranchStart);
+    expect(decoderSource.slice(g4BranchStart, rgbaBranchStart)).not.toContain("UTIF.toRGBA8");
+    expect(decoderSource.slice(rgbaBranchStart)).toContain("UTIF.toRGBA8");
   });
 
   it("sends a PNG overview and high-detail crops, never raw TIFF", () => {
@@ -133,6 +237,25 @@ describe("dense SG General Plan extraction", () => {
     expect(JSON.stringify(content)).toContain("detail\":\"high");
     expect(JSON.stringify(content)).toMatch(/visibly present|never infer|never invent/i);
     expect(JSON.stringify(content)).toContain("Erf 1021");
+  });
+
+  it("keeps the existing PDF extraction payload unchanged", () => {
+    expect(
+      buildExtractionContent({
+        fileName: "title-deed.pdf",
+        mimeType: "application/pdf",
+        dataUrl: "data:application/pdf;base64,PDF",
+      }),
+    ).toEqual([
+      { type: "text", text: "Extract this property document: title-deed.pdf" },
+      {
+        type: "file",
+        file: {
+          filename: "title-deed.pdf",
+          file_data: "data:application/pdf;base64,PDF",
+        },
+      },
+    ]);
   });
 
   it("accepts a General Plan only when the selected erf is visibly printed", () => {
