@@ -2,6 +2,8 @@ import { erfExtractionResponsesTextFormat } from "../_shared/erfExtractionContra
 
 const OPENAI_API_BASE = "https://api.openai.com/v1";
 const FILE_EXPIRY_SECONDS = 60 * 60;
+const TIFF_BACKGROUND_MAX_OUTPUT_TOKENS = 24_000;
+const TIFF_BACKGROUND_REASONING_EFFORT = "high";
 
 export const OPENAI_TIFF_EXTRACTION_PROVIDER = "openai_code_interpreter" as const;
 
@@ -159,7 +161,10 @@ export async function startOpenAiTiffBackground(input: {
       model: input.model,
       background: true,
       store: true,
-      max_output_tokens: 8_000,
+      // Reasoning and visible output share this budget. Dense SG TIFF review needs
+      // enough headroom for safe Code Interpreter inspection before JSON output.
+      max_output_tokens: TIFF_BACKGROUND_MAX_OUTPUT_TOKENS,
+      reasoning: { effort: TIFF_BACKGROUND_REASONING_EFFORT },
       instructions: input.systemPrompt,
       input: codeInterpreterTiffInstructions(),
       tools: [

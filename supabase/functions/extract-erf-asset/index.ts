@@ -601,6 +601,26 @@ Deno.serve(async (request: Request) => {
         containerId: metadataString(asset.metadata, "openaiContainerId"),
       });
     } catch (error) {
+      const expiredResponse =
+        error instanceof OpenAiTiffBackgroundError &&
+        error.stage === "retrieve" &&
+        (error.statusCode === 404 || error.statusCode === 410);
+      if (expiredResponse) {
+        backgroundResources = {
+          fileId: metadataString(asset.metadata, "openaiFileId"),
+          containerId: metadataString(asset.metadata, "openaiContainerId"),
+        };
+        return finishResult(
+          "failed",
+          { extractionError: "The previous survey-plan review expired. Try reading the diagram again." },
+          {
+            success: false,
+            code: "SERVER_UNAVAILABLE",
+            error: "The previous survey-plan review expired. Try reading the diagram again.",
+          },
+          200,
+        );
+      }
       log("openai_background_poll_failed", requestId, {
         errorClass: error instanceof Error ? error.name : "UnknownError",
       });

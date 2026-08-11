@@ -338,6 +338,8 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(request).toMatchObject({
       model: "gpt-5.2",
       background: true,
+      max_output_tokens: 24_000,
+      reasoning: { effort: "high" },
       tools: [
         {
           type: "code_interpreter",
@@ -378,6 +380,78 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(downloadCalls).toBe(0);
     expect(openAiUrls).toEqual(["https://api.openai.com/v1/responses/resp-sg-test"]);
     expect(openAiUploads).toHaveLength(0);
+  });
+
+  it.each([404, 410])(
+    "recovers an expired TIFF response (%s) into a retryable failed asset",
+    async (status) => {
+      useRunningTiffAsset();
+      backgroundPollStatus = status;
+
+      const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+      const payload = (await response.json()) as Record<string, unknown>;
+      const metadata = assetRow.metadata as Record<string, unknown>;
+
+      expect(response.status).toBe(200);
+      expect(payload).toMatchObject({
+        success: false,
+        extractionStatus: "failed",
+        error: "The previous survey-plan review expired. Try reading the diagram again.",
+      });
+      expect(metadata).toMatchObject({
+        extractionStatus: "failed",
+        extractionProvider: null,
+        openaiResponseId: null,
+        openaiFileId: null,
+        openaiContainerId: null,
+        openaiBackgroundStartedAt: null,
+      });
+      expect(openAiDeletes).toEqual(
+        expect.arrayContaining([
+          "https://api.openai.com/v1/files/file-sg-test",
+        ]),
+      );
+    },
+  );
+
+  it("keeps TIFF job metadata for a transient background retrieve failure", async () => {
+    useRunningTiffAsset();
+    backgroundPollStatus = 503;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(response.status).toBe(503);
+    expect(payload).toMatchObject({ success: false, code: "SERVER_UNAVAILABLE" });
+    expect(String(payload.error)).toContain("The survey plan review could not be checked yet.");
+    expect(metadata).toMatchObject({
+      extractionStatus: "processing",
+      extractionProvider: "openai_code_interpreter",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+    });
+    expect(openAiDeletes).toHaveLength(0);
+  });
+
+  it("can start a fresh TIFF review after recovering an expired response", async () => {
+    useRunningTiffAsset();
+    backgroundPollStatus = 404;
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    backgroundPollStatus = 200;
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(openAiUrls).toEqual(
+      expect.arrayContaining([
+        "https://api.openai.com/v1/files",
+        "https://api.openai.com/v1/responses",
+      ]),
+    );
+    expect((assetRow.metadata as Record<string, unknown>).openaiResponseId).toBe("resp-sg-test");
   });
 
   it("normalizes a completed TIFF result through the canonical identity and claim gates", async () => {
