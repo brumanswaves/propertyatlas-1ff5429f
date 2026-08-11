@@ -124,10 +124,10 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
       "Wait for Easy Erf to read the diagram so it becomes searchable evidence.",
     ],
     afterCompletion:
-      "Easy Erf reads the diagram, checks it against this erf's identity, and uses the matched values in the report and in Ask Easy Erf.",
+      "Easy Erf records readable cadastral evidence. A parent General Plan remains contextual evidence, and the individual subject SG diagram remains a confidence upgrade.",
     canSkip: true,
-    confidenceAfterLabel: "Cadastral dimensions supported by an identity-matched SG diagram",
-    isComplete: (facts) => facts.sgDiagramSearchable,
+    confidenceAfterLabel: "Readable cadastral evidence attached; obtain the subject SG diagram to strengthen property-specific confidence.",
+    isComplete: (facts) => facts.sgDiagramSearchable || facts.sgDiagramParentLineageOnly,
     isBlocked: (facts) => facts.identityUncertain,
     confidenceBefore: (facts) => (facts.sgDiagramParentLineageOnly ? "indicative" : "unconfirmed"),
   },

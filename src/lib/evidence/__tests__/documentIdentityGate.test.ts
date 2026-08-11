@@ -264,7 +264,9 @@ describe("evidence pack quarantine", () => {
       savedEvidence: [],
     });
 
-    expect(facts.sgDiagramSearchable).toBe(true);
+    expect(facts.sgDiagramSearchable).toBe(false);
+    expect(facts.sgDiagramParentLineageOnly).toBe(true);
+    expect(facts.usableSubjectSgDiagramCount).toBe(0);
     expect(facts.paidReportSearchable).toBe(true);
     expect(selectNextGuidedTask(facts)?.id).not.toBe("add-sg-diagram");
     expect(selectNextGuidedTask(facts)?.id).not.toBe("add-lightstone-report");
