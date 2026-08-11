@@ -4,6 +4,7 @@ import { Info, Ruler, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   calculateBuildEnvelope,
+  changePrimaryStreetEdgeIndex,
   projectRingToLocalMetres,
   type BuildEnvelopeInputs,
   type BuildEnvelopeResult,
@@ -115,7 +116,10 @@ export function VacantLandBuildEnvelope({
 
   /** Road lines rendered by the satellite map near this parcel. */
   const [roads, setRoads] = useState<RoadLineInput[] | null>(null);
-  const [pickingFrontage, setPickingFrontage] = useState<"primary" | "secondary" | null>(null);
+  const [pickingFrontage, setPickingFrontage] = useState<"primary" | "manage" | null>(null);
+  const [managedAdditionalStreetEdgeIndexes, setManagedAdditionalStreetEdgeIndexes] = useState<
+    number[] | null
+  >(null);
 
   const savedStreetName = overrides.streetName ?? pilot?.streetName ?? null;
 
@@ -183,6 +187,47 @@ export function VacantLandBuildEnvelope({
   );
 
   const answers = resolved.answers;
+  const additionalStreetEdgeIndexes = useMemo(
+    () => answers.additionalStreetEdgeIndexes ?? [],
+    [answers.additionalStreetEdgeIndexes],
+  );
+  const displayedAdditionalStreetEdgeIndexes =
+    managedAdditionalStreetEdgeIndexes ?? additionalStreetEdgeIndexes;
+
+  // Every frontage edit writes the generalized collection and clears the old
+  // single-secondary value, so legacy data cannot re-add a removed boundary.
+  const patchFrontage = useCallback(
+    (next: StoredBuildEnvelopeOverrides) =>
+      patch({ ...next, secondaryStreetEdgeIndex: null }),
+    [patch],
+  );
+
+  const selectPrimaryFrontage = useCallback(
+    (edgeIndex: number) => {
+      patchFrontage(
+        changePrimaryStreetEdgeIndex(
+          answers.streetEdgeIndex,
+          additionalStreetEdgeIndexes,
+          edgeIndex,
+          edgeLengths.length,
+        ),
+      );
+    },
+    [additionalStreetEdgeIndexes, answers.streetEdgeIndex, edgeLengths.length, patchFrontage],
+  );
+
+  const toggleAdditionalFrontage = useCallback(
+    (edgeIndex: number) => {
+      if (edgeIndex === answers.streetEdgeIndex) return;
+      setManagedAdditionalStreetEdgeIndexes((current) => {
+        const additional = current ?? additionalStreetEdgeIndexes;
+        return additional.includes(edgeIndex)
+          ? additional.filter((index) => index !== edgeIndex)
+          : [...additional, edgeIndex];
+      });
+    },
+    [additionalStreetEdgeIndexes, answers.streetEdgeIndex],
+  );
 
   const inputs = useMemo<BuildEnvelopeInputs>(
     () => ({
@@ -242,7 +287,8 @@ export function VacantLandBuildEnvelope({
 
       {/* Street frontage: confirmation prompt sits directly above the map. */}
       {(() => {
-        const confirmed = overrides.streetEdgeIndex != null;
+        const confirmed = answers.streetEdgeIndex != null;
+        const selectedCount = (confirmed ? 1 : 0) + displayedAdditionalStreetEdgeIndexes.length;
         const needsPick =
           pickingFrontage != null || (!confirmed && detection.requiresConfirmation && roads !== null);
         return (
@@ -250,15 +296,15 @@ export function VacantLandBuildEnvelope({
             <div className="text-[12px] leading-5 text-[#0D1B2A]">
               {needsPick ? (
                 <span className="font-semibold">
-                  {pickingFrontage === "secondary"
-                    ? "Select the optional second street-facing boundary on the map."
+                  {pickingFrontage === "manage"
+                    ? "Select every additional boundary that faces a street. The primary boundary stays selected."
                     : "Which side faces the street? Click the primary road-facing boundary on the map."}
                 </span>
               ) : confirmed ? (
                 <span>
                   <span className="font-semibold">Street frontage · confirmed by you</span>
+                  {` · ${selectedCount} street-facing edge${selectedCount === 1 ? "" : "s"} selected`}
                   {savedStreetName ? ` · ${savedStreetName}` : ""}
-                  {answers.secondaryStreetEdgeIndex != null ? " - second frontage selected" : ""}
                 </span>
               ) : detection.edgeIndex != null ? (
                 <span>
@@ -273,18 +319,44 @@ export function VacantLandBuildEnvelope({
             </div>
             <button
               type="button"
-              onClick={() => setPickingFrontage((value) => (value ? null : "primary"))}
+              onClick={() => {
+                setManagedAdditionalStreetEdgeIndexes(null);
+                setPickingFrontage((value) => (value === "primary" ? null : "primary"));
+              }}
               className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
             >
-              {needsPick ? "Cancel" : "Change primary"}
+              {pickingFrontage === "primary" ? "Cancel" : "Change primary"}
             </button>
             {confirmed ? (
               <button
                 type="button"
-                onClick={() => setPickingFrontage("secondary")}
+                onClick={() => {
+                  if (pickingFrontage === "manage") {
+                    patchFrontage({
+                      additionalStreetEdgeIndexes: displayedAdditionalStreetEdgeIndexes,
+                    });
+                    setManagedAdditionalStreetEdgeIndexes(null);
+                    setPickingFrontage(null);
+                    return;
+                  }
+                  setManagedAdditionalStreetEdgeIndexes([...additionalStreetEdgeIndexes]);
+                  setPickingFrontage("manage");
+                }}
                 className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
               >
-                {answers.secondaryStreetEdgeIndex != null ? "Change second frontage" : "Add second frontage"}
+                {pickingFrontage === "manage" ? "Done" : "Manage street frontages"}
+              </button>
+            ) : null}
+            {pickingFrontage === "manage" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setManagedAdditionalStreetEdgeIndexes(null);
+                  setPickingFrontage(null);
+                }}
+                className="rounded-full border border-[#0D1B2A]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#0D1B2A]/5"
+              >
+                Cancel
               </button>
             ) : null}
           </div>
@@ -299,25 +371,16 @@ export function VacantLandBuildEnvelope({
           onRoadsDetected={setRoads}
           selectableEdges={
             pickingFrontage != null ||
-            (overrides.streetEdgeIndex == null && detection.requiresConfirmation && roads !== null)
+            (answers.streetEdgeIndex == null && detection.requiresConfirmation && roads !== null)
           }
-          highlightEdgeIndex={
-            pickingFrontage === "secondary"
-              ? answers.secondaryStreetEdgeIndex
-              : (answers.streetEdgeIndex ?? detection.edgeIndex ?? null)
-          }
+          primaryEdgeIndex={answers.streetEdgeIndex ?? detection.edgeIndex ?? null}
+          additionalStreetEdgeIndexes={displayedAdditionalStreetEdgeIndexes}
           onEdgeSelect={(edgeIndex) => {
-            if (pickingFrontage === "secondary") {
-              if (edgeIndex !== answers.streetEdgeIndex) patch({ secondaryStreetEdgeIndex: edgeIndex });
-            } else {
-              patch({
-                streetEdgeIndex: edgeIndex,
-                secondaryStreetEdgeIndex:
-                  answers.secondaryStreetEdgeIndex === edgeIndex
-                    ? null
-                    : answers.secondaryStreetEdgeIndex,
-              });
+            if (pickingFrontage === "manage") {
+              toggleAdditionalFrontage(edgeIndex);
+              return;
             }
+            selectPrimaryFrontage(edgeIndex);
             setPickingFrontage(null);
           }}
         />
@@ -530,15 +593,7 @@ export function VacantLandBuildEnvelope({
                       <button
                         key={index}
                         type="button"
-                        onClick={() =>
-                          patch({
-                            streetEdgeIndex: index,
-                            secondaryStreetEdgeIndex:
-                              answers.secondaryStreetEdgeIndex === index
-                                ? null
-                                : answers.secondaryStreetEdgeIndex,
-                          })
-                        }
+                        onClick={() => selectPrimaryFrontage(index)}
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
                           primary
@@ -561,36 +616,12 @@ export function VacantLandBuildEnvelope({
                   {resolved.fields.streetEdgeIndex.provenance}
                 </p>
                 {answers.streetEdgeIndex != null ? (
-                  <>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {edgeOptions
-                        .filter((index) => index !== answers.streetEdgeIndex)
-                        .map((index) => {
-                          const secondary = answers.secondaryStreetEdgeIndex === index;
-                          return (
-                            <button
-                              key={`secondary-${index}`}
-                              type="button"
-                              onClick={() =>
-                                patch({ secondaryStreetEdgeIndex: secondary ? null : index })
-                              }
-                              className={cn(
-                                "rounded-full border px-3 py-1.5 text-[11px] font-semibold transition",
-                                secondary
-                                  ? "border-[#F59E0B] bg-[#F59E0B]/10 text-[#92400E]"
-                                  : "border-[#0D1B2A]/15 bg-white text-[#0D1B2A] hover:border-[#0D1B2A]/30",
-                              )}
-                            >
-                              {secondary ? "Second frontage · " : "Add second frontage · "}Boundary {index + 1}
-                            </button>
-                          );
-                        })}
-                    </div>
-                    <p className="mt-2 text-[11px] text-[#64748B]">
-                      A second street-facing boundary is optional. It is used only when you confirm it
-                      and is not a verified planning control.
-                    </p>
-                  </>
+                  <p className="mt-2 text-[11px] text-[#64748B]">
+                    {additionalStreetEdgeIndexes.length} additional street-facing edge
+                    {additionalStreetEdgeIndexes.length === 1 ? " is" : "s are"} confirmed. Use
+                    Manage street frontages above to add or remove any non-primary boundary. These
+                    confirmations are user-supplied orientation, not verified planning controls.
+                  </p>
                 ) : null}
                 <input
                   type="text"

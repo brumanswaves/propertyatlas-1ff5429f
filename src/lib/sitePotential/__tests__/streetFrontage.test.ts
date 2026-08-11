@@ -5,7 +5,12 @@ import {
   selectRoadLayerIds,
   streetNamesMatch,
 } from "../streetFrontage";
-import { calculateBuildEnvelope, type BuildEnvelopeInputs } from "../buildEnvelope";
+import {
+  calculateBuildEnvelope,
+  changePrimaryStreetEdgeIndex,
+  normalizeAdditionalStreetEdgeIndexes,
+  type BuildEnvelopeInputs,
+} from "../buildEnvelope";
 
 /** Base point near Jeffreys Bay so the local projection stays realistic. */
 const LAT0 = -34.0489;
@@ -222,13 +227,13 @@ describe("frontage changes recompute setbacks", () => {
     );
   });
 
-  it("keeps a user-confirmed second frontage distinct and applies the street setback to both edges", () => {
+  it("applies the street setback to the primary edge and every additional street edge", () => {
     const result = calculateBuildEnvelope({
       parcelId: "dual-frontage",
       ring: rectangleRing(),
       boundaryConfirmed: true,
       streetEdgeIndex: 0,
-      secondaryStreetEdgeIndex: 3,
+      additionalStreetEdgeIndexes: [1, 3],
       streetName: "Harbour Road",
       ruleSource: "registry",
       zoneLabel: "Residential 1",
@@ -245,25 +250,26 @@ describe("frontage changes recompute setbacks", () => {
     });
 
     expect(result.streetEdge?.index).toBe(0);
-    expect(result.secondaryStreetEdge?.index).toBe(3);
     expect(result.streetEdge?.setbackM).toBe(4);
-    expect(result.secondaryStreetEdge?.setbackM).toBe(4);
-    expect(result.edges.filter((edge) => edge.kind === "street" || edge.kind === "secondary_street")).toHaveLength(2);
+    expect(result.additionalStreetEdges.map((edge) => edge.index)).toEqual([1, 3]);
+    expect(result.additionalStreetEdges.every((edge) => edge.setbackM === 4)).toBe(true);
+    expect(result.edges.filter((edge) => edge.kind === "street" || edge.kind === "additional_street")).toHaveLength(3);
+    expect(result.edges.filter((edge) => edge.kind === "side" || edge.kind === "rear").every((edge) => edge.setbackM !== 4)).toBe(true);
   });
 
-  it("does not allow the optional second frontage to duplicate the primary edge", () => {
+  it("uses only street setbacks and no fabricated side or rear edge when every boundary is street-facing", () => {
     const result = calculateBuildEnvelope({
-      parcelId: "single-frontage",
+      parcelId: "all-street",
       ring: rectangleRing(),
       boundaryConfirmed: true,
-      streetEdgeIndex: 1,
-      secondaryStreetEdgeIndex: 1,
+      streetEdgeIndex: 0,
+      additionalStreetEdgeIndexes: [1, 2, 3],
       streetName: null,
       ruleSource: "manual",
       zoneLabel: null,
       streetSetbackM: 3,
-      sideSetbackM: 2,
-      rearSetbackM: 2,
+      sideSetbackM: null,
+      rearSetbackM: null,
       maxCoveragePercent: 50,
       maxHeightM: 8,
       dwellingUnits: 1,
@@ -273,6 +279,21 @@ describe("frontage changes recompute setbacks", () => {
       recordedAreaM2: 600,
     });
 
-    expect(result.secondaryStreetEdge).toBeNull();
+    expect(result.additionalStreetEdges).toHaveLength(3);
+    expect(result.edges.every((edge) => edge.kind === "street" || edge.kind === "additional_street")).toBe(true);
+    expect(result.edges.every((edge) => edge.setbackM === 3)).toBe(true);
+    expect(result.edges.some((edge) => edge.kind === "side" || edge.kind === "rear")).toBe(false);
+    expect(result.envelopePolygon).not.toBeNull();
+  });
+
+  it("normalizes duplicate, primary and invalid additional indexes safely", () => {
+    expect(normalizeAdditionalStreetEdgeIndexes(1, [0, 0, 1, 3, -1, 4.5, 9], null, 4)).toEqual([0, 3]);
+  });
+
+  it("preserves the confirmed street-facing set when primary changes", () => {
+    expect(changePrimaryStreetEdgeIndex(1, [2, 3], 2, 4)).toEqual({
+      streetEdgeIndex: 2,
+      additionalStreetEdgeIndexes: [3, 1],
+    });
   });
 });

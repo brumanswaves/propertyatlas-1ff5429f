@@ -16,7 +16,10 @@
  */
 
 import type { BuildEnvelopeRuleSource } from "./buildEnvelope";
-import { pickStreetEdgeIndexByLength } from "./buildEnvelope";
+import {
+  normalizeAdditionalStreetEdgeIndexes,
+  pickStreetEdgeIndexByLength,
+} from "./buildEnvelope";
 import type { StoredBuildEnvelopeInputs } from "./buildEnvelopeStore";
 import type { PilotPlanningRecord } from "./pilotPlanningRecords";
 import type { SitePotentialRulePrefill } from "./planningRuleAdapter";
@@ -78,7 +81,7 @@ export interface ResolvedSitePotentialInputs {
     dwellingUnits: ResolvedSitePotentialField<number>;
     additionalDwellingRule: ResolvedSitePotentialField<string>;
     streetEdgeIndex: ResolvedSitePotentialField<number>;
-    secondaryStreetEdgeIndex: ResolvedSitePotentialField<number>;
+    additionalStreetEdgeIndexes: ResolvedSitePotentialField<number[]>;
     streetName: ResolvedSitePotentialField<string>;
   };
   ruleSource: BuildEnvelopeRuleSource | null;
@@ -96,6 +99,15 @@ function usable<T>(value: T | null | undefined): value is T {
   if (typeof value === "string") return value.trim() !== "";
   if (typeof value === "number") return Number.isFinite(value);
   return true;
+}
+
+function validEdgeIndex(value: unknown, edgeCount?: number): number | null {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    (edgeCount == null || value < edgeCount)
+    ? value
+    : null;
 }
 
 function field<T>(
@@ -202,10 +214,13 @@ export function resolveSitePotentialInputs(
   );
 
   const detected = args.detectedStreetEdge ?? null;
+  const edgeCount = args.edgeLengths?.length;
+  const storedStreetEdgeIndex = validEdgeIndex(stored.streetEdgeIndex, edgeCount);
   const pilotStreetEdgeIndex =
     pilot?.streetFrontageLengthRangeM && args.edgeLengths?.length
       ? pickStreetEdgeIndexByLength(args.edgeLengths, pilot.streetFrontageLengthRangeM)
       : null;
+  const detectedStreetEdgeIndex = validEdgeIndex(detected?.edgeIndex, edgeCount);
   // Map road evidence outranks the prototype record, so a stale pilot edge is
   // never retained once the rendered road points at a different boundary.
   const detectedProvenance = detected?.roadName
@@ -214,14 +229,14 @@ export function resolveSitePotentialInputs(
   const streetEdgeIndex = field<number>(
     null,
     documentProvenance,
-    stored.streetEdgeIndex,
-    detected?.edgeIndex ?? pilotStreetEdgeIndex,
-    detected?.edgeIndex != null
+    storedStreetEdgeIndex,
+    detectedStreetEdgeIndex ?? validEdgeIndex(pilotStreetEdgeIndex, edgeCount),
+    detectedStreetEdgeIndex != null
       ? detectedProvenance
       : pilot
         ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
         : UNKNOWN_PROVENANCE,
-    detected?.edgeIndex != null ? "map_road" : "pilot",
+    detectedStreetEdgeIndex != null ? "map_road" : "pilot",
   );
   const streetName = field<string>(
     null,
@@ -231,14 +246,19 @@ export function resolveSitePotentialInputs(
     detected?.roadName ? detectedProvenance : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
     detected?.roadName ? "map_road" : "pilot",
   );
-  const secondaryStreetEdgeIndex = field<number>(
-    null,
-    documentProvenance,
+  const additionalStreetEdgeIndexes = normalizeAdditionalStreetEdgeIndexes(
+    streetEdgeIndex.value,
+    stored.additionalStreetEdgeIndexes,
     stored.secondaryStreetEdgeIndex,
-    null,
-    UNKNOWN_PROVENANCE,
-    "unknown",
+    args.edgeLengths?.length,
   );
+  const additionalStreetEdges = {
+    value: additionalStreetEdgeIndexes,
+    origin: additionalStreetEdgeIndexes.length ? ("user" as const) : ("unknown" as const),
+    provenance: additionalStreetEdgeIndexes.length
+      ? USER_PROVENANCE
+      : UNKNOWN_PROVENANCE,
+  };
 
   const resolvedFields = {
     zoneLabel,
@@ -250,7 +270,7 @@ export function resolveSitePotentialInputs(
     dwellingUnits,
     additionalDwellingRule,
     streetEdgeIndex,
-    secondaryStreetEdgeIndex,
+    additionalStreetEdgeIndexes: additionalStreetEdges,
     streetName,
   };
 
@@ -290,10 +310,7 @@ export function resolveSitePotentialInputs(
   const answers: StoredBuildEnvelopeInputs = {
     boundaryConfirmed: stored.boundaryConfirmed === true,
     streetEdgeIndex: streetEdgeIndex.value,
-    secondaryStreetEdgeIndex:
-      secondaryStreetEdgeIndex.value === streetEdgeIndex.value
-        ? null
-        : secondaryStreetEdgeIndex.value,
+    additionalStreetEdgeIndexes,
     streetName: streetName.value,
     ruleSource,
     zoneLabel: zoneLabel.value,
