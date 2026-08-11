@@ -4,6 +4,7 @@ import { GuidedPropertyChecksStep } from "@/components/property/investigation/Gu
 import { GuidedSgDiagramStep } from "@/components/property/investigation/GuidedSgDiagramStep";
 import { GuidedTitleStep } from "@/components/property/investigation/GuidedTitleStep";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 const vaultFixture = vi.hoisted(() => ({
@@ -114,20 +115,56 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("Matched diagram ready");
   });
 
-  it("makes the CSG Property Viewer primary and clearly demotes the unreliable legacy archive", () => {
+  it("uses the prepared official SG document search as the primary action and preserves Viewer/upload fallbacks", () => {
     const html = renderToStaticMarkup(
       <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
     );
+    const directUrl = buildSgDocumentUrl({
+      lpi: "C03400140000102100000",
+      parcelKey: "E108C034001400001021000000",
+      erfNumber: 1021,
+      portion: 0,
+    }).url;
 
     expect(html).toContain("Find and attach the official SG / cadastral document");
+    expect(html).toContain("Start with the prepared official SG document search for this erf.");
+    expect(html).toContain("Open official SG diagram search");
+    expect(html).toContain(`href="${directUrl.replaceAll("&", "&amp;")}"`);
+    expect(html).toContain("Upload SG diagram / General Plan");
+    expect(html).toContain("Official search broken? Open CSG Property Viewer");
+    expect(html).toContain("If the government document search errors or does not load");
+    expect(html).not.toContain("legacy CSG document archive");
+  });
+
+  it("keeps the padded direct official SG URL stable", () => {
+    expect(
+      buildSgDocumentUrl({
+        lpi: "C03400140000102100000",
+        erfNumber: 1021,
+        portion: 0,
+      }),
+    ).toMatchObject({
+      shown: true,
+      url: "https://csg.dlrrd.gov.za/esio/listdocument.jsp?office=SGCTN&Noffice=8&regDivision=C0340014&Erf=00001021&Portion=00000&FarmName=",
+    });
+  });
+
+  it("uses the Viewer route without a broken direct CTA when parcel identifiers cannot build the official search", () => {
+    const incompleteParcel = {
+      ...parcel(),
+      lpi: null,
+      parcelKey: null,
+      erfNumber: null,
+      knownFields: [],
+    };
+    const html = renderToStaticMarkup(
+      <GuidedSgDiagramStep parcel={incompleteParcel} userId={null} onContinue={vi.fn()} />,
+    );
+
     expect(html).toContain("Open CSG Property Viewer");
     expect(html).toContain("Upload SG diagram / General Plan");
-    expect(html).toContain("Try legacy CSG document archive");
-    expect(html).toContain("legacy CSG document archive is");
-    expect(html).toContain("unreliable and can return a government database error");
-    expect(html).toContain("Government archive warning");
-    expect(html).not.toContain("Open official CSG document search");
-    expect(html).not.toContain("Download and attach the SG diagram");
+    expect(html).toContain("A prepared official SG document search could not be built");
+    expect(html).not.toContain("Open official SG diagram search");
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: title documents use title wording instead of report wording", () => {

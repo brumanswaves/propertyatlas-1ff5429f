@@ -223,14 +223,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               Find and attach the official SG / cadastral document
             </h4>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
-              Start with the official CSG Property Viewer. The legacy CSG document archive is
-              unreliable and can return a government database error. If you already have the SG
-              diagram or General Plan, upload it directly. Easy Erf only marks this step complete
-              after the file is readable and matched to the selected erf.
-            </p>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#0D1B2A]/66">
-              The legacy archive is kept only as a backup. Easy Erf cannot repair an outage on the
-              government archive, so do not rely on that link as the main route.
+              {sgDocument.shown
+                ? "Start with the prepared official SG document search for this erf. It should take you directly to Surveyor-General document results for the selected parcel."
+                : "Use the official CSG Property Viewer to search for this erf. The prepared official SG document search could not be built from the identifiers currently recorded for this parcel."}{" "}
+              If the government document search does not load or returns an error, use the CSG
+              Property Viewer or upload an SG diagram or General Plan you already have. Easy Erf
+              only marks this step complete after the file is readable and matched to the selected
+              erf.
             </p>
           </div>
           <span
@@ -267,8 +266,9 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
             </div>
             <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">Find the official diagram</p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              Open the official CSG Property Viewer and find the subject erf. Use the legacy
-              document archive only as a backup if you need to try the scanned-document system.
+              {sgDocument.shown
+                ? "Open the prepared official SG document search for this erf. Use the CSG Property Viewer if the government document search is unavailable."
+                : "Open the official CSG Property Viewer and find the subject erf using the identifiers shown in Step 1."}
             </p>
           </li>
           <li className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
@@ -296,15 +296,27 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
         </ol>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a
-            href={CSG_VIEWER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
-          >
-            Open CSG Property Viewer
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          {sgDocument.shown ? (
+            <a
+              href={sgDocument.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+            >
+              Open official SG diagram search
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : (
+            <a
+              href={CSG_VIEWER_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#142941]"
+            >
+              Open CSG Property Viewer
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
           <button
             type="button"
             disabled={!vault.signedIn}
@@ -316,12 +328,12 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           </button>
           {sgDocument.shown ? (
             <a
-              href={sgDocument.url}
+              href={CSG_VIEWER_URL}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-amber-300/60 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-950 transition hover:border-amber-400"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/18 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#0D1B2A]/35"
             >
-              Try legacy CSG document archive
+              Official search broken? Open CSG Property Viewer
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           ) : null}
@@ -339,14 +351,14 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
         </div>
 
         {sgDocument.shown ? (
-          <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Government archive warning: the legacy CSG document-list service is unreliable and may
-            return a database connection error. Use the CSG Property Viewer as the primary route.
+          <p className="mt-3 rounded-xl border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
+            If the government document search errors or does not load, use the CSG Property Viewer
+            fallback above, then upload the subject diagram when available.
           </p>
         ) : (
           <p className="mt-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
-            A legacy CSG document-archive link could not be built from this parcel record. Use the
-            CSG Property Viewer and search using Erf {parcel.erfNumber ?? "number not available"},
+            A prepared official SG document search could not be built from this parcel record. Use
+            the CSG Property Viewer and search using Erf {parcel.erfNumber ?? "number not available"},
             portion {parcel.portion ?? 0}, and the parcel identifiers shown in Step 1.
           </p>
         )}
