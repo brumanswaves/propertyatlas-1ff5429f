@@ -7,7 +7,9 @@ export interface OfficialPropertySharePayload {
   title: string;
   text: string;
   url: string;
-  sender: string;
+  sender: string | null;
+  subject: string;
+  propertyLines: string[];
 }
 
 export interface PropertySharePopup {
@@ -18,38 +20,123 @@ export interface PropertyShareWindow {
   open?: (url: string, target?: string) => PropertySharePopup | null;
 }
 
+function cleanShareText(value: string | number | null | undefined): string | null {
+  const text = value == null ? "" : String(value).trim();
+  return text || null;
+}
+
+function comparableShareText(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function uniqueShareValues(values: Array<string | null | undefined>): string[] {
+  return values.reduce<string[]>((lines, value) => {
+    const cleaned = cleanShareText(value);
+    if (!cleaned) return lines;
+    const comparable = comparableShareText(cleaned);
+    return lines.some((line) => comparableShareText(line) === comparable) ? lines : [...lines, cleaned];
+  }, []);
+}
+
+function addressIncludes(address: string | null, value: string | null): boolean {
+  if (!address || !value) return false;
+  return comparableShareText(address).includes(comparableShareText(value));
+}
+
+function buildPropertyLines(input: {
+  title: string;
+  erfNumber?: string | number | null;
+  address?: string | null;
+  area?: string | null;
+  locality?: string | null;
+}): string[] {
+  const erf = cleanShareText(input.erfNumber);
+  const address = cleanShareText(input.address);
+  const area = cleanShareText(input.area);
+  const locality = cleanShareText(input.locality);
+  const location = uniqueShareValues([
+    area && !addressIncludes(address, area) ? area : null,
+    locality && !addressIncludes(address, locality) ? locality : null,
+  ]).join(", ");
+  const structuredLines = uniqueShareValues([erf ? `Erf ${erf}` : null, address, location]);
+
+  return structuredLines.length ? structuredLines : uniqueShareValues([input.title]);
+}
+
+function shareSubject(input: {
+  sender: string | null;
+  erfNumber?: string | number | null;
+  address?: string | null;
+  area?: string | null;
+}): string {
+  if (!input.sender) return "A property was shared with you on Easy Erf";
+
+  const erf = cleanShareText(input.erfNumber);
+  const address = cleanShareText(input.address);
+  const area = cleanShareText(input.area);
+  const property = erf ? `Erf ${erf}${area ? `, ${area}` : ""}` : address ?? "a property";
+  return `${input.sender} shared ${property} with you`;
+}
+
 export function buildOfficialPropertySharePayload(input: {
   title: string;
   url: string;
   senderName?: string | null;
+  erfNumber?: string | number | null;
+  address?: string | null;
+  area?: string | null;
+  locality?: string | null;
 }): OfficialPropertySharePayload {
   const senderName = input.senderName?.trim();
-  const sender = senderName?.split(/\s+/)[0] || "Someone";
+  const sender = senderName?.split(/\s+/)[0] || null;
+  const propertyLines = buildPropertyLines(input);
+  const subject = shareSubject({
+    sender,
+    erfNumber: input.erfNumber,
+    address: input.address,
+    area: input.area,
+  });
   return {
     title: input.title,
-    text: `${sender} sent you this property to check out on Easy Erf.`,
+    text: `${propertyLines[0] ?? "Property"} was shared with you on Easy Erf.`,
     url: input.url,
     sender,
+    subject,
+    propertyLines,
   };
 }
 
 export function buildOfficialPropertyGmailUrl(payload: OfficialPropertySharePayload) {
-  const subject = `${payload.sender} sent you a property on Easy Erf`;
+  const signature = payload.sender
+    ? [payload.sender, "", "Easy Erf", "Property intelligence made simple."]
+    : ["Easy Erf", "Property intelligence made simple."];
   const body = [
-    `${payload.sender} is sending you this property to check out on Easy Erf.`,
+    "Hi,",
     "",
-    payload.title,
+    "I thought you might want to take a look at this property:",
     "",
-    "VIEW PROPERTY ON EASY ERF",
+    ...payload.propertyLines,
+    "",
+    "VIEW PROPERTY ON EASY ERF ->",
     payload.url,
     "",
-    "Easy Erf brings the property, evidence, planning potential and deal numbers together in one place.",
+    "Easy Erf brings the important property information together in one place, including:",
+    "",
+    "- Property and erf details",
+    "- Maps and location information",
+    "- Planning and development potential",
+    "- Supporting evidence and documents",
+    "- Property and investment numbers",
+    "",
+    "You can open the property above and explore the information that was shared with you.",
+    "",
+    ...signature,
   ].join("\n");
 
   const params = new URLSearchParams({
     view: "cm",
     fs: "1",
-    su: subject,
+    su: payload.subject,
     body,
   });
   return `https://mail.google.com/mail/?${params.toString()}`;
