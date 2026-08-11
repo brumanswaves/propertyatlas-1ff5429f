@@ -2350,8 +2350,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function saveErfFile() {
-    setWorkspacePatch({ saved: true, dirty: false });
-    toast.success("Erf file saved locally");
+    try {
+      setWorkspacePatch({ saved: true, dirty: false });
+      toast.success("Erf file saved locally");
+    } catch {
+      toast.error("Could not save changes to this erf file. Please try again.");
+    }
   }
 
   async function shareErfFile() {
@@ -2727,8 +2731,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
               : "Unsaved"}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
           <button
+            type="button"
+            onClick={saveErfFile}
+            disabled={!workspaceState.dirty}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#FF6A00] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-[#0D1B2A]/20 disabled:text-[#0D1B2A]/55 disabled:shadow-none"
+            title={workspaceState.dirty ? "Save Changes" : "All changes saved"}
+            aria-label="Save dossier changes"
+          >
+            Save Changes
+          </button>
+          <button
+            type="button"
             onClick={toggleSave}
             disabled={savingProperty}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-stone-900 shadow-sm hover:bg-amber-100 md:min-h-0 md:border-0 md:bg-transparent md:p-2 md:text-foreground md:shadow-none md:hover:bg-muted"
