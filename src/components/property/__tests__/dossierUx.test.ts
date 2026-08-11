@@ -449,6 +449,25 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("sticky top-0 z-30");
   });
 
+  it("keeps dossier saving separate from the saved-property bookmark", () => {
+    const panel = read("src/components/property/OfficialParcelPanel.tsx");
+    const dossierSaveStart = panel.indexOf("function saveErfFile()");
+    const dossierSaveEnd = panel.indexOf("async function shareErfFile()", dossierSaveStart);
+    const dossierSave = panel.slice(dossierSaveStart, dossierSaveEnd);
+    const headerStart = panel.indexOf('<div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">');
+    const headerEnd = panel.indexOf("{expertWorkspaceOpen ?", headerStart);
+    const headerActions = panel.slice(headerStart, headerEnd);
+
+    expect(dossierSave).toContain("setWorkspacePatch({ saved: true, dirty: false })");
+    expect(dossierSave).toContain("Could not save changes to this erf file. Please try again.");
+    expect(headerActions).toContain("Save Changes");
+    expect(headerActions).toContain("onClick={saveErfFile}");
+    expect(headerActions).toContain("disabled={!workspaceState.dirty}");
+    expect(headerActions).toContain("All changes saved");
+    expect(headerActions).toContain("onClick={toggleSave}");
+    expect(headerActions).toContain('aria-label={saved ? "Saved erf" : "Save erf"}');
+  });
+
   it("keeps signed-in workspace effects keyed by stable user id", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
     const vault = read("src/lib/workbench/useErfFileVault.ts");
