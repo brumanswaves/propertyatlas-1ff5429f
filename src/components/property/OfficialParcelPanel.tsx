@@ -2375,6 +2375,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       title: resolved.displayTitle,
       url,
       senderName: safeShareDisplayName(user?.user_metadata),
+      erfNumber: normalizedParcel.erfNumber,
+      address: resolved.approximateAddress ?? null,
+      area: canonicalUserAddress?.suburb ?? normalizedParcel.suburbOrArea,
+      locality: canonicalUserAddress?.town ?? normalizedParcel.town,
     });
 
     try {
