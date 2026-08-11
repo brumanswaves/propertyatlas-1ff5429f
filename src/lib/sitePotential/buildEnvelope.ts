@@ -16,7 +16,7 @@ export type BuildEnvelopeState =
 /** Where the numeric build rules came from. Manual can never be verified. */
 export type BuildEnvelopeRuleSource = "document" | "registry" | "manual";
 
-export type BuildEnvelopeEdgeKind = "street" | "secondary_street" | "side" | "rear";
+export type BuildEnvelopeEdgeKind = "street" | "additional_street" | "side" | "rear";
 
 export interface LocalPoint {
   x: number;
@@ -41,7 +41,12 @@ export interface BuildEnvelopeInputs {
   boundaryConfirmed: boolean;
   /** Index of the street-facing edge in the ring. */
   streetEdgeIndex: number | null;
-  /** Optional second street-facing edge selected explicitly by the user. */
+  /** Explicitly confirmed street-facing edges in addition to the primary edge. */
+  additionalStreetEdgeIndexes?: number[];
+  /**
+   * Legacy single-additional-frontage value. It is read only for backwards
+   * compatibility and normalized into `additionalStreetEdgeIndexes`.
+   */
   secondaryStreetEdgeIndex?: number | null;
   streetName: string | null;
   ruleSource: BuildEnvelopeRuleSource | null;
@@ -83,7 +88,7 @@ export interface BuildEnvelopeResult {
   projection: LocalProjection | null;
   edges: BuildEnvelopeEdge[];
   streetEdge: BuildEnvelopeEdge | null;
-  secondaryStreetEdge: BuildEnvelopeEdge | null;
+  additionalStreetEdges: BuildEnvelopeEdge[];
   /** Setback-constrained envelope. Null when it cannot be computed honestly. */
   envelopePolygon: LocalPoint[] | null;
   /**
@@ -264,29 +269,99 @@ function clipByHalfPlane(
   return out.length >= 3 ? out : [];
 }
 
+export function normalizeAdditionalStreetEdgeIndexes(
+  primaryEdgeIndex: number | null,
+  additionalIndexes: number[] | null | undefined,
+  legacySecondaryIndex: number | null | undefined,
+  edgeCount?: number,
+): number[] {
+  const values = [
+    ...(Array.isArray(additionalIndexes) ? additionalIndexes : []),
+    legacySecondaryIndex,
+  ];
+  const seen = new Set<number>();
+  return values.filter((index): index is number => {
+    if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index === primaryEdgeIndex) {
+      return false;
+    }
+    if (edgeCount != null && index >= edgeCount) return false;
+    if (seen.has(index)) return false;
+    seen.add(index);
+    return true;
+  });
+}
+
+/**
+ * Reassigns the primary orientation without discarding other user-confirmed
+ * street-facing boundaries. This is a UI-state helper, not road detection.
+ */
+export function changePrimaryStreetEdgeIndex(
+  currentPrimaryEdgeIndex: number | null,
+  currentAdditionalIndexes: number[] | null | undefined,
+  nextPrimaryEdgeIndex: number,
+  edgeCount?: number,
+): { streetEdgeIndex: number | null; additionalStreetEdgeIndexes: number[] } {
+  const nextIsValid =
+    Number.isInteger(nextPrimaryEdgeIndex) &&
+    nextPrimaryEdgeIndex >= 0 &&
+    (edgeCount == null || nextPrimaryEdgeIndex < edgeCount);
+  const currentPrimaryIsValid =
+    currentPrimaryEdgeIndex != null &&
+    Number.isInteger(currentPrimaryEdgeIndex) &&
+    currentPrimaryEdgeIndex >= 0 &&
+    (edgeCount == null || currentPrimaryEdgeIndex < edgeCount);
+  if (!nextIsValid) {
+    return {
+      streetEdgeIndex: currentPrimaryIsValid ? currentPrimaryEdgeIndex : null,
+      additionalStreetEdgeIndexes: normalizeAdditionalStreetEdgeIndexes(
+        currentPrimaryIsValid ? currentPrimaryEdgeIndex : null,
+        currentAdditionalIndexes,
+        null,
+        edgeCount,
+      ),
+    };
+  }
+  return {
+    streetEdgeIndex: nextPrimaryEdgeIndex,
+    additionalStreetEdgeIndexes: normalizeAdditionalStreetEdgeIndexes(
+      nextPrimaryEdgeIndex,
+      [
+        ...(currentAdditionalIndexes ?? []),
+        ...(currentPrimaryIsValid ? [currentPrimaryEdgeIndex] : []),
+      ],
+      null,
+      edgeCount,
+    ),
+  };
+}
+
 function classifyEdges(
   polygon: LocalPoint[],
   streetEdgeIndex: number | null,
-  secondaryStreetEdgeIndex: number | null | undefined,
+  additionalStreetEdgeIndexes: number[] | null | undefined,
+  legacySecondaryStreetEdgeIndex: number | null | undefined,
 ): BuildEnvelopeEdgeKind[] {
   const kinds: BuildEnvelopeEdgeKind[] = polygon.map(() => "side");
   if (streetEdgeIndex == null || streetEdgeIndex < 0 || streetEdgeIndex >= polygon.length) {
     return kinds;
   }
   kinds[streetEdgeIndex] = "street";
-  const hasSecondaryStreet =
-    secondaryStreetEdgeIndex != null &&
-    secondaryStreetEdgeIndex >= 0 &&
-    secondaryStreetEdgeIndex < polygon.length &&
-    secondaryStreetEdgeIndex !== streetEdgeIndex;
-  if (hasSecondaryStreet) kinds[secondaryStreetEdgeIndex] = "secondary_street";
+  const additionalStreetIndexes = normalizeAdditionalStreetEdgeIndexes(
+    streetEdgeIndex,
+    additionalStreetEdgeIndexes,
+    legacySecondaryStreetEdgeIndex,
+    polygon.length,
+  );
+  additionalStreetIndexes.forEach((index) => {
+    kinds[index] = "additional_street";
+  });
   const streetA = polygon[streetEdgeIndex];
   const streetB = polygon[(streetEdgeIndex + 1) % polygon.length];
   const streetMid = { x: (streetA.x + streetB.x) / 2, y: (streetA.y + streetB.y) / 2 };
   let rearIndex = -1;
   let rearDistance = -1;
   for (let i = 0; i < polygon.length; i += 1) {
-    if (i === streetEdgeIndex || i === secondaryStreetEdgeIndex) continue;
+    if (i === streetEdgeIndex || additionalStreetIndexes.includes(i)) continue;
     const a = polygon[i];
     const b = polygon[(i + 1) % polygon.length];
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -298,6 +373,12 @@ function classifyEdges(
   }
   if (rearIndex >= 0) kinds[rearIndex] = "rear";
   return kinds;
+}
+
+function validEdgeIndex(index: number | null | undefined, edgeCount: number): number | null {
+  return typeof index === "number" && Number.isInteger(index) && index >= 0 && index < edgeCount
+    ? index
+    : null;
 }
 
 /** Scale a polygon about its centroid. Area scales with factor². */
@@ -375,14 +456,13 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
 
   const parcelPolygon = input.ring ? projectRingToLocalMetres(input.ring) : [];
   const hasPolygon = parcelPolygon.length >= 3;
+  const primaryStreetEdgeIndex = validEdgeIndex(input.streetEdgeIndex, parcelPolygon.length);
   const geometryAreaM2 = hasPolygon ? round(polygonAreaM2(parcelPolygon)) : null;
 
   if (!hasPolygon) missingInformation.push("Parcel boundary geometry");
   if (hasPolygon && !input.boundaryConfirmed) missingInformation.push("Confirmed parcel boundary");
-  if (input.streetEdgeIndex == null) missingInformation.push("Street-facing boundary");
+  if (primaryStreetEdgeIndex == null) missingInformation.push("Street-facing boundary");
   if (input.streetSetbackM == null) missingInformation.push("Street building line");
-  if (input.sideSetbackM == null) missingInformation.push("Side building lines");
-  if (input.rearSetbackM == null) missingInformation.push("Rear building line");
   if (input.maxCoveragePercent == null) missingInformation.push("Maximum coverage");
   if (input.maxHeightM == null) missingInformation.push("Maximum height");
   if (!input.additionalDwellingRule) missingInformation.push("Additional dwelling rule");
@@ -412,12 +492,18 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
   const centroid = hasPolygon ? polygonCentroid(parcelPolygon) : { x: 0, y: 0 };
   const kinds = classifyEdges(
     parcelPolygon,
-    input.streetEdgeIndex,
+    primaryStreetEdgeIndex,
+    input.additionalStreetEdgeIndexes,
     input.secondaryStreetEdgeIndex,
   );
 
+  const hasSideEdge = kinds.includes("side");
+  const hasRearEdge = kinds.includes("rear");
+  if (hasSideEdge && input.sideSetbackM == null) missingInformation.push("Side building lines");
+  if (hasRearEdge && input.rearSetbackM == null) missingInformation.push("Rear building line");
+
   const setbackFor = (kind: BuildEnvelopeEdgeKind) =>
-    kind === "street" || kind === "secondary_street"
+    kind === "street" || kind === "additional_street"
       ? input.streetSetbackM
       : kind === "rear"
         ? input.rearSetbackM
@@ -447,10 +533,12 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
   });
 
   const setbacksComplete =
-    input.streetSetbackM != null && input.sideSetbackM != null && input.rearSetbackM != null;
+    input.streetSetbackM != null &&
+    (!hasSideEdge || input.sideSetbackM != null) &&
+    (!hasRearEdge || input.rearSetbackM != null);
 
   let envelopePolygon: LocalPoint[] | null = null;
-  if (hasPolygon && input.streetEdgeIndex != null && setbacksComplete) {
+  if (hasPolygon && primaryStreetEdgeIndex != null && setbacksComplete) {
     let working = parcelPolygon;
     for (const edge of edges) {
       const setback = edge.setbackM ?? 0;
@@ -523,7 +611,7 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
   if (!hasPolygon) {
     state = "unavailable";
   } else if (
-    input.streetEdgeIndex == null ||
+    primaryStreetEdgeIndex == null ||
     !setbacksComplete ||
     input.maxCoveragePercent == null ||
     input.maxHeightM == null ||
@@ -553,7 +641,7 @@ export function calculateBuildEnvelope(input: BuildEnvelopeInputs): BuildEnvelop
     projection: input.ring ? ringProjection(input.ring) : null,
     edges,
     streetEdge: edges.find((edge) => edge.kind === "street") ?? null,
-    secondaryStreetEdge: edges.find((edge) => edge.kind === "secondary_street") ?? null,
+    additionalStreetEdges: edges.filter((edge) => edge.kind === "additional_street"),
     envelopePolygon: state === "more_information_required" ? null : envelopePolygon,
     coverageFootprint: state === "more_information_required" ? null : coverageFootprint,
     secondDwelling: input.additionalDwellingRule

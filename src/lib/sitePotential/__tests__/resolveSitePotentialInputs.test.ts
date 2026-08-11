@@ -83,25 +83,40 @@ describe("Site Potential input precedence", () => {
     expect(resolved.fields.streetSetbackM.origin).toBe("user");
   });
 
-  it("retains a distinct user-confirmed second frontage without treating it as planning evidence", () => {
+  it("migrates a legacy secondary frontage into the additional-frontage collection", () => {
     const resolved = resolveSitePotentialInputs({
       overrides: { streetEdgeIndex: 0, secondaryStreetEdgeIndex: 3 },
       prefill: registryPrefill(),
     });
 
     expect(resolved.answers.streetEdgeIndex).toBe(0);
-    expect(resolved.answers.secondaryStreetEdgeIndex).toBe(3);
-    expect(resolved.fields.secondaryStreetEdgeIndex.origin).toBe("user");
+    expect(resolved.answers.additionalStreetEdgeIndexes).toEqual([3]);
+    expect(resolved.fields.additionalStreetEdgeIndexes.origin).toBe("user");
     expect(resolved.ruleStatus).toBe("estimated");
   });
 
-  it("drops a duplicate second frontage when it matches the primary edge", () => {
+  it("drops duplicate primary and out-of-range additional frontages", () => {
     const resolved = resolveSitePotentialInputs({
-      overrides: { streetEdgeIndex: 2, secondaryStreetEdgeIndex: 2 },
+      overrides: {
+        streetEdgeIndex: 2,
+        additionalStreetEdgeIndexes: [0, 0, 2, 4, -1],
+        secondaryStreetEdgeIndex: 3,
+      },
       prefill: registryPrefill(),
+      edgeLengths: [10, 10, 10, 10],
     });
 
-    expect(resolved.answers.secondaryStreetEdgeIndex).toBeNull();
+    expect(resolved.answers.additionalStreetEdgeIndexes).toEqual([0, 3]);
+  });
+
+  it("ignores an out-of-range primary frontage instead of treating it as confirmed", () => {
+    const resolved = resolveSitePotentialInputs({
+      overrides: { streetEdgeIndex: 9 },
+      prefill: registryPrefill(),
+      edgeLengths: [10, 10, 10, 10],
+    });
+
+    expect(resolved.answers.streetEdgeIndex).toBeNull();
   });
 
   it("prefers a matched zoning document over both user and pack values", () => {

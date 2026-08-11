@@ -39,8 +39,9 @@ export interface SatelliteParcelMapProps {
   onRoadsDetected?: (roads: RoadLineInput[]) => void;
   /** When true, every parcel edge becomes clickable on the satellite map. */
   selectableEdges?: boolean;
-  /** Edge currently highlighted while the user picks the street frontage. */
-  highlightEdgeIndex?: number | null;
+  /** Primary and additional confirmations used while managing street frontages. */
+  primaryEdgeIndex?: number | null;
+  additionalStreetEdgeIndexes?: number[];
   onEdgeSelect?: (edgeIndex: number) => void;
 }
 
@@ -49,7 +50,7 @@ const TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
 const SRC = {
   parcel: "site-potential-parcel",
   street: "site-potential-street",
-  secondaryStreet: "site-potential-secondary-street",
+  additionalStreet: "site-potential-additional-street",
   setback: "site-potential-setback",
   streetLine: "site-potential-street-building-line",
   coverage: "site-potential-coverage",
@@ -93,7 +94,8 @@ export function SatelliteParcelMap({
   fallbackNotice,
   onRoadsDetected,
   selectableEdges = false,
-  highlightEdgeIndex = null,
+  primaryEdgeIndex = null,
+  additionalStreetEdgeIndexes = [],
   onEdgeSelect,
 }: SatelliteParcelMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -141,12 +143,16 @@ export function SatelliteParcelMap({
       },
     });
     const street = result.streetEdge ? line(result.streetEdge.a, result.streetEdge.b) : null;
-    const secondaryStreet = result.secondaryStreetEdge
-      ? line(result.secondaryStreetEdge.a, result.secondaryStreetEdge.b)
-      : null;
-    const streetLine = result.streetEdge?.setbackLine
-      ? line(result.streetEdge.setbackLine.a, result.streetEdge.setbackLine.b)
-      : null;
+    const additionalStreet = {
+      type: "FeatureCollection" as const,
+      features: result.additionalStreetEdges.map((edge) => line(edge.a, edge.b)),
+    };
+    const streetLine = {
+      type: "FeatureCollection" as const,
+      features: [result.streetEdge, ...result.additionalStreetEdges]
+        .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge?.setbackLine))
+        .map((edge) => line(edge.setbackLine!.a, edge.setbackLine!.b)),
+    };
     const coverageLabel =
       result.coverageFootprint && result.coverageFootprint.polygon.length >= 3
         ? {
@@ -177,7 +183,7 @@ export function SatelliteParcelMap({
         };
       }),
     };
-    return { parcel, setback, coverage, street, secondaryStreet, streetLine, coverageLabel, edges };
+    return { parcel, setback, coverage, street, additionalStreet, streetLine, coverageLabel, edges };
   }, [result]);
 
   const fit = useCallback(() => {
@@ -274,9 +280,9 @@ export function SatelliteParcelMap({
             paint: { "line-color": "#FF6A00", "line-width": 4 },
           });
           map.addLayer({
-            id: `${SRC.secondaryStreet}-line`,
+            id: `${SRC.additionalStreet}-line`,
             type: "line",
-            source: SRC.secondaryStreet,
+            source: SRC.additionalStreet,
             paint: { "line-color": "#F59E0B", "line-width": 4, "line-dasharray": [2, 1.5] },
           });
           map.addLayer({
@@ -406,18 +412,22 @@ export function SatelliteParcelMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !geo) return;
-    const set = (id: string, feature: GeoJSON.Feature | null) => {
+    const set = (id: string, feature: GeoJSON.Feature | GeoJSON.FeatureCollection | null) => {
       const source = map.getSource(id) as import("mapbox-gl").GeoJSONSource | undefined;
       if (!source) return;
       source.setData(
-        feature ? { type: "FeatureCollection", features: [feature] } : emptyCollection(),
+        feature
+          ? feature.type === "FeatureCollection"
+            ? feature
+            : { type: "FeatureCollection", features: [feature] }
+          : emptyCollection(),
       );
     };
     set(SRC.parcel, geo.parcel);
     set(SRC.setback, geo.setback);
     set(SRC.coverage, geo.coverage);
     set(SRC.street, geo.street);
-    set(SRC.secondaryStreet, geo.secondaryStreet);
+    set(SRC.additionalStreet, geo.additionalStreet);
     set(SRC.streetLine, geo.streetLine);
     set(SRC.coverageLabel, geo.coverageLabel);
     const edgeSource = map.getSource(SRC.edges) as import("mapbox-gl").GeoJSONSource | undefined;
@@ -433,12 +443,14 @@ export function SatelliteParcelMap({
     map.setPaintProperty(`${SRC.edges}-line`, "line-opacity", selectableEdges ? 0.95 : 0);
     map.setPaintProperty(`${SRC.edges}-line`, "line-color", [
       "case",
-      ["==", ["get", "edgeIndex"], highlightEdgeIndex ?? -1],
+      ["==", ["get", "edgeIndex"], primaryEdgeIndex ?? -1],
       "#FF6A00",
+      ["in", ["get", "edgeIndex"], ["literal", additionalStreetEdgeIndexes]],
+      "#F59E0B",
       "#FACC15",
     ]);
     map.setLayoutProperty(`${SRC.edges}-hit`, "visibility", selectableEdges ? "visible" : "none");
-  }, [highlightEdgeIndex, mapReady, selectableEdges]);
+  }, [additionalStreetEdgeIndexes, mapReady, primaryEdgeIndex, selectableEdges]);
 
   // The satellite canvas must always fill its frame, including after the
   // enclosing disclosure opens or the layout reflows.
@@ -481,8 +493,8 @@ export function SatelliteParcelMap({
       )}
       <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
         <LegendChip color="#22D3EE" label="Erf boundary" />
-        <LegendChip color="#FF6A00" label="Street frontage" />
-        {result.secondaryStreetEdge ? <LegendChip color="#F59E0B" label="Secondary frontage" /> : null}
+        <LegendChip color="#FF6A00" label="Primary street boundary" />
+        {result.additionalStreetEdges.length ? <LegendChip color="#F59E0B" label="Additional street boundary" /> : null}
         <LegendChip color="#38BDF8" label="Street building line" />
         <LegendChip color="#22C55E" label="Side / rear building line" />
         <LegendChip color="#FB7185" label="Max coverage" />
