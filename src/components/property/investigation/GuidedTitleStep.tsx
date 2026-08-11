@@ -18,6 +18,7 @@ import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/us
 import { buildErfAssetExpectedIdentityContext, type ErfAsset, type ErfAssetCategory } from "@/lib/workbench/erfFileVault";
 import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
 import {
+  erfAssetCanConfirmIdentity,
   erfAssetExtractedClaims,
   erfAssetExtractedIdentity,
   erfAssetExtractionLabel,
@@ -54,8 +55,7 @@ function evidenceLabel(asset: ErfAsset) {
 function isUsableTitleEvidence(asset: ErfAsset) {
   return (
     (asset.asset_category === "title_deed" || asset.asset_category === "paid_report") &&
-    erfAssetHasSearchableExtraction(asset) &&
-    erfAssetIdentityMatchStatus(asset) === "matched"
+    erfAssetHasSearchableExtraction(asset)
   );
 }
 
@@ -216,9 +216,9 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
   }
 
   const statusText = hasTitleDeed
-    ? "Matched title deed ready"
+    ? "Readable title deed ready"
     : hasPaidReport
-      ? "Matched paid report ready"
+      ? "Readable paid report attached"
       : vault.assets.length
         ? "Document needs attention"
         : "No title evidence attached";
@@ -236,7 +236,8 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
               The fastest practical route is usually a Lightstone or WinDeed report. Easy Erf can
-              use a matched report to continue, while an actual title deed remains the stronger
+              use a readable report that matches automatically or is explicitly attached by you to
+              continue, while an actual title deed remains the stronger
               source for deed conditions, servitudes and restrictions.
             </p>
           </div>
@@ -438,7 +439,8 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               Attached title and report evidence
             </h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              Only readable files matched to this erf can complete the step.
+              Only readable files automatically matched to this erf or explicitly attached by you
+              can complete the step.
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
@@ -461,6 +463,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               const removing = removingAssetId === asset.id;
               const extractedIdentity = erfAssetExtractedIdentity(asset);
               const userConfirmed = erfAssetIdentityUserConfirmed(asset);
+              const canConfirm = erfAssetCanConfirmIdentity(asset);
               const retry =
                 extractionStatus === "failed" ||
                 extractionStatus === "partial" ||
@@ -502,7 +505,13 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                                 : "bg-amber-200 text-amber-950",
                           )}
                         >
-                          {reading ? "Reading document" : usable ? "Matched and readable" : erfAssetExtractionLabel(asset)}
+                          {reading
+                            ? "Reading document"
+                            : usable
+                              ? userConfirmed
+                                ? "Readable - attached by you"
+                                : "Matched and readable"
+                              : erfAssetExtractionLabel(asset)}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
                           Identity: {identityStatus ?? "not checked"}
@@ -513,7 +522,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
                           {erfAssetIdentityMatchReason(asset)}
                         </p>
                       ) : null}
-                      {identityStatus === "unverified" && !userConfirmed ? (
+                      {canConfirm ? (
                         <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
                           <p className="font-semibold">Read successfully - needs your confirmation</p>
                           <p className="mt-1">Detected identity: Erf {extractedIdentity?.erfNumber ?? "not stated"}, portion {extractedIdentity?.portionNumber ?? "not stated"}, {extractedIdentity?.streetAddress ?? extractedIdentity?.suburbOrTown ?? extractedIdentity?.municipality ?? "location not stated"}.</p>

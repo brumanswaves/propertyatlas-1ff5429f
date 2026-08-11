@@ -69,6 +69,10 @@ function isSubjectSupported(asset: ErfAsset) {
   );
 }
 
+function isGuidedSgEvidence(asset: ErfAsset) {
+  return isSubjectSupported(asset) || erfAssetIsParentLineageMatch(asset);
+}
+
 export function deriveInvestigationFacts(
   input: BuildPropertyInvestigationInput,
 ): InvestigationFacts {
@@ -88,7 +92,7 @@ export function deriveInvestigationFacts(
     (asset) => asset.asset_category === "existing_house_photo",
   );
   const usableSubjectSgDiagrams = sgDiagrams.filter(
-    (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),
+    (asset) => erfAssetHasSearchableExtraction(asset) && isGuidedSgEvidence(asset),
   );
   const usableSubjectTitleDeeds = titleDeeds.filter(
     (asset) => erfAssetHasSearchableExtraction(asset) && isSubjectSupported(asset),

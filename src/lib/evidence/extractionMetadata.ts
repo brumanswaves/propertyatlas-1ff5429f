@@ -113,6 +113,16 @@ export function erfAssetIdentityUserConfirmed(asset: MetadataBearer) {
   );
 }
 
+/** A readable uncertain-identity document may be attached only through an explicit user decision. */
+export function erfAssetCanConfirmIdentity(asset: MetadataBearer) {
+  const extraction = erfAssetExtractionStatus(asset);
+  return (
+    erfAssetIdentityMatchStatus(asset) === "unverified" &&
+    (extraction === "ready" || extraction === "partial") &&
+    !erfAssetIdentityUserConfirmed(asset)
+  );
+}
+
 /**
  * The single gate every evidence consumer must use: only an identity-matched
  * (or parent-lineage-matched), ready extraction may contribute searchable
@@ -141,6 +151,8 @@ export function erfAssetExtractionLabel(
 ) {
   const noun = variant === "diagram" ? "diagram" : variant === "title" ? "title document" : "report";
   const Noun = variant === "diagram" ? "Diagram" : variant === "title" ? "Title document" : "Report";
+  const status = erfAssetExtractionStatus(asset);
+  if (status === "failed") return erfAssetExtractionError(asset) ?? "Extraction failed";
   const identity = erfAssetIdentityMatchStatus(asset);
   if (identity === "mismatch") return `Wrong property ${noun}`;
   if (identity === "unverified") {
@@ -154,7 +166,6 @@ export function erfAssetExtractionLabel(
     const plan = lineage?.generalPlanReference ? ` ${lineage.generalPlanReference}` : "";
     return `Parent General Plan${plan} matched${parent} — context only`;
   }
-  const status = erfAssetExtractionStatus(asset);
   switch (status) {
     case "ready":
       return `${Noun} searchable`;
@@ -166,8 +177,6 @@ export function erfAssetExtractionLabel(
       return "Queued for reading";
     case "unsupported":
       return "Cannot be read automatically";
-    case "failed":
-      return erfAssetExtractionError(asset) ?? "Extraction failed";
     default:
       return "Not read yet";
   }
