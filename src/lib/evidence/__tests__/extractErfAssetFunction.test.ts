@@ -31,6 +31,7 @@ let relatedAssetRows: Record<string, unknown>[];
 let previewUploadCalls = 0;
 let previewUploadStatus = 200;
 let previewUrl = "https://temporary-preview.test/sg-overview.png";
+let fastPreviewUrls: string[];
 let previewBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 let previewContentType = "image/png";
 let previewFetches: Array<{ url: string; authorization: string | null }>;
@@ -115,6 +116,21 @@ function completedBackgroundPayload(result: unknown = sgExtractionResult(), imag
   };
 }
 
+function completedFastPreprocessPayload(imageUrls = fastPreviewUrls) {
+  return {
+    id: "resp-sg-test",
+    status: "completed",
+    output: [
+      {
+        type: "code_interpreter_call",
+        container_id: "cntr-sg-test",
+        status: "completed",
+        outputs: imageUrls.map((url) => ({ type: "image", url })),
+      },
+    ],
+  };
+}
+
 function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = String(input);
   const method = (init?.method ?? "GET").toUpperCase();
@@ -154,7 +170,7 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
       ]),
     );
   }
-  if (url === previewUrl) {
+  if (url === previewUrl || fastPreviewUrls.includes(url)) {
     previewFetches.push({
       url,
       authorization: new Headers(init?.headers ?? {}).get("Authorization"),
@@ -251,6 +267,13 @@ beforeEach(async () => {
   previewUploadCalls = 0;
   previewUploadStatus = 200;
   previewUrl = "https://temporary-preview.test/sg-overview.png";
+  fastPreviewUrls = [
+    "https://temporary-preview.test/sg-overview.png",
+    "https://temporary-preview.test/sg-top-left.png",
+    "https://temporary-preview.test/sg-top-right.png",
+    "https://temporary-preview.test/sg-bottom-left.png",
+    "https://temporary-preview.test/sg-bottom-right.png",
+  ];
   previewBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
   previewContentType = "image/png";
   previewFetches = [];
@@ -356,7 +379,7 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(openAiRequests[0]).not.toHaveProperty("background");
   });
 
-  it("starts a private, expiring Code Interpreter TIFF job and returns processing", async () => {
+  it("starts a private, expiring fast TIFF preprocessing job and returns processing", async () => {
     useTiffAsset();
 
     const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
@@ -376,24 +399,22 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(request).toMatchObject({
       model: "gpt-5.2",
       background: true,
-      max_output_tokens: 24_000,
-      reasoning: { effort: "high" },
+      max_output_tokens: 4_000,
+      reasoning: { effort: "low" },
       tools: [
         {
           type: "code_interpreter",
           container: { type: "auto", file_ids: ["file-sg-test"] },
         },
       ],
-      text: { format: { type: "json_schema", name: "erf_document_extraction" } },
     });
+    expect(request).not.toHaveProperty("text");
     expect(requestText).not.toContain("input_file");
-    expect(requestText).toContain("NEVER render or copy the entire full-resolution TIFF");
-    expect(requestText).toContain("explicitly DISPLAY it inline from Code Interpreter");
-    expect(requestText).toContain("exactly one image");
-    expect(requestText).toContain("Erf 1570");
-    expect(requestText).toContain("LPI C03400140000157000000");
-    expect(requestText).toContain("Municipality Kouga Local Municipality");
-    expect(requestText).toContain("Working address 8 Harbour Road, St Francis Bay");
+    expect(requestText).toContain("conversion only");
+    expect(requestText).toContain("exactly five PNG images");
+    expect(requestText).toContain("top-left, top-right, bottom-left, and bottom-right");
+    expect(requestText).not.toContain("Erf 1570");
+    expect(requestText).not.toContain("LPI C03400140000157000000");
     expect(requestText).not.toContain("user-1");
     expect(requestText).not.toContain("email");
     expect(requestText).not.toContain("private notes");
@@ -401,7 +422,7 @@ describe("extract-erf-asset TIFF background review", () => {
     const metadata = assetRow.metadata as Record<string, unknown>;
     expect(metadata).toMatchObject({
       extractionStatus: "processing",
-      extractionProvider: "openai_code_interpreter",
+      extractionProvider: "openai_sg_tiff_fast_preprocess",
       openaiResponseId: "resp-sg-test",
       openaiFileId: "file-sg-test",
     });
@@ -420,6 +441,83 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(downloadCalls).toBe(0);
     expect(openAiUrls).toEqual(["https://api.openai.com/v1/responses/resp-sg-test"]);
     expect(openAiUploads).toHaveLength(0);
+  });
+
+  it("sends exactly five ordered preprocessed images through the normal extraction contract", async () => {
+    useTiffAsset({
+      extractionStatus: "processing",
+      extractionStartedAt: new Date().toISOString(),
+      extractionProvider: "openai_sg_tiff_fast_preprocess",
+      extractionModel: "gpt-5.2",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+      openaiBackgroundStartedAt: new Date().toISOString(),
+    });
+    backgroundPollPayload = completedFastPreprocessPayload();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const visionRequest = openAiRequests.find((request) => Array.isArray(request.messages));
+    const content = ((visionRequest?.messages as Array<Record<string, unknown>>)[1]?.content ?? []) as Array<Record<string, unknown>>;
+
+    expect(payload).toMatchObject({ success: true, identityMatchStatus: "matched" });
+    expect(previewFetches).toHaveLength(5);
+    expect(previewFetches.map((entry) => entry.url)).toEqual(fastPreviewUrls);
+    expect(content.filter((block) => block.type === "image_url")).toHaveLength(5);
+    expect(content[1]).toMatchObject({ type: "text", text: "Page 1:" });
+    expect(content[3]).toMatchObject({ type: "text", text: expect.stringContaining("top left quadrant") });
+    expect(assetRow.metadata).toMatchObject({
+      sgPreviewStoragePath: "erf-files/1570/derived/sg-overview.png",
+      normalizedExtractionMimeType: "image/png",
+      openaiResponseId: null,
+    });
+    expect(JSON.stringify(assetRow.metadata)).not.toContain("temporary-preview.test");
+  });
+
+  it("uses the deep Code Interpreter review only when the fast preprocessor has unusable images", async () => {
+    useTiffAsset({
+      extractionStatus: "processing",
+      extractionStartedAt: new Date().toISOString(),
+      extractionProvider: "openai_sg_tiff_fast_preprocess",
+      extractionModel: "gpt-5.2",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+      openaiBackgroundStartedAt: new Date().toISOString(),
+    });
+    backgroundPollPayload = completedFastPreprocessPayload(fastPreviewUrls.slice(0, 4));
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const deepRequest = openAiRequests.at(-1);
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(deepRequest).toMatchObject({
+      background: true,
+      max_output_tokens: 24_000,
+      reasoning: { effort: "high" },
+      text: { format: { type: "json_schema", name: "erf_document_extraction" } },
+    });
+    expect(assetRow.metadata).toMatchObject({ extractionProvider: "openai_code_interpreter" });
+  });
+
+  it("falls back to deep review when the fast preprocessing response fails", async () => {
+    useTiffAsset({
+      extractionStatus: "processing",
+      extractionStartedAt: new Date().toISOString(),
+      extractionProvider: "openai_sg_tiff_fast_preprocess",
+      extractionModel: "gpt-5.2",
+      openaiResponseId: "resp-sg-test",
+      openaiFileId: "file-sg-test",
+      openaiBackgroundStartedAt: new Date().toISOString(),
+    });
+    backgroundPollPayload = { id: "resp-sg-test", status: "failed", output: [] };
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "processing" });
+    expect(assetRow.metadata).toMatchObject({ extractionProvider: "openai_code_interpreter" });
+    expect(openAiRequests.at(-1)).toMatchObject({ max_output_tokens: 24_000 });
   });
 
   it.each([404, 410])(

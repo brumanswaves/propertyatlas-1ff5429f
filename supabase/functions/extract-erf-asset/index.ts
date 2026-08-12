@@ -32,6 +32,7 @@ import {
   buildExtractionContent,
   findUnsupportedContentMime,
   isTiffExtractionMimeType,
+  type NormalizedExtractionPage,
 } from "../_shared/erfExtractionMedia.ts";
 import {
   applyGeneralPlanSubjectClaimPolicy,
@@ -39,6 +40,8 @@ import {
 } from "../_shared/generalPlanSubjectEvidence.ts";
 import {
   OPENAI_TIFF_EXTRACTION_PROVIDER,
+  OPENAI_TIFF_EXPECTED_PREPROCESS_IMAGES,
+  OPENAI_TIFF_FAST_PREPROCESS_PROVIDER,
   OpenAiTiffBackgroundError,
   cleanupOpenAiTiffResources,
   pollOpenAiTiffBackground,
@@ -157,6 +160,12 @@ function derivedPreviewPath(asset: AssetRow, mimeType: string) {
 }
 
 const TIFF_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
+const TIFF_PREPROCESS_MAX_TOTAL_BYTES = TIFF_PREVIEW_MAX_BYTES * OPENAI_TIFF_EXPECTED_PREPROCESS_IMAGES;
+
+interface TiffPreviewImage {
+  bytes: Uint8Array;
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+}
 
 function previewMimeType(bytes: Uint8Array, contentType: string | null) {
   const declared = (contentType ?? "").split(";", 1)[0]?.trim().toLowerCase() ?? "";
@@ -181,16 +190,7 @@ function previewMimeType(bytes: Uint8Array, contentType: string | null) {
   return isWebp ? "image/webp" : null;
 }
 
-async function storeTiffPreview(
-  asset: AssetRow,
-  previewUrl: string | null,
-  apiKey: string,
-  requestId: string,
-) {
-  if (!previewUrl) {
-    log("sg_preview_missing", requestId, { reasonCode: "no_image_output" });
-    return null;
-  }
+async function fetchTiffPreviewImage(previewUrl: string, apiKey: string, requestId: string) {
   try {
     const url = new URL(previewUrl);
     if (url.protocol !== "https:") {
@@ -217,6 +217,55 @@ async function storeTiffPreview(
       });
       return null;
     }
+    return { bytes, mimeType } as TiffPreviewImage;
+  } catch {
+    log("sg_preview_fetch_failed", requestId, { reasonCode: "request_error" });
+    return null;
+  }
+}
+
+async function fetchTiffPreprocessImages(
+  previewUrls: string[],
+  apiKey: string,
+  requestId: string,
+) {
+  if (previewUrls.length !== OPENAI_TIFF_EXPECTED_PREPROCESS_IMAGES) {
+    log("sg_fast_preprocess_unusable", requestId, {
+      imageCount: previewUrls.length,
+      reasonCode: "expected_five_images",
+    });
+    return null;
+  }
+  const images: TiffPreviewImage[] = [];
+  let totalBytes = 0;
+  for (const previewUrl of previewUrls) {
+    const image = await fetchTiffPreviewImage(previewUrl, apiKey, requestId);
+    if (!image) return null;
+    totalBytes += image.bytes.byteLength;
+    if (totalBytes > TIFF_PREPROCESS_MAX_TOTAL_BYTES) {
+      log("sg_fast_preprocess_unusable", requestId, {
+        imageCount: images.length + 1,
+        bytes: totalBytes,
+        reasonCode: "total_image_limit",
+      });
+      return null;
+    }
+    images.push(image);
+  }
+  return images;
+}
+
+async function storeTiffPreview(
+  asset: AssetRow,
+  image: TiffPreviewImage | null,
+  requestId: string,
+) {
+  if (!image) {
+    log("sg_preview_missing", requestId, { reasonCode: "no_image_output" });
+    return null;
+  }
+  try {
+    const { bytes, mimeType } = image;
     const path = derivedPreviewPath(asset, mimeType);
     const key = serviceKey();
     if (!key) {
@@ -234,7 +283,7 @@ async function storeTiffPreview(
           "Content-Type": mimeType,
           "x-upsert": "true",
         },
-        body: bytes,
+        body: bytes as unknown as BodyInit,
       },
     );
     if (!upload.ok) {
@@ -254,9 +303,33 @@ async function storeTiffPreview(
     log("sg_preview_stored", requestId, { mime: mimeType, bytes: bytes.byteLength });
     return patch;
   } catch {
-    log("sg_preview_fetch_failed", requestId, { reasonCode: "request_error" });
+    log("sg_preview_upload_failed", requestId, { reasonCode: "request_error" });
     return null;
   }
+}
+
+function tiffPreviewPages(images: TiffPreviewImage[]): NormalizedExtractionPage[] {
+  return images.map((image, index) => ({
+    pageNumber: 1,
+    mimeType: "image/png",
+    base64: toBase64(image.bytes),
+    width: 0,
+    height: 0,
+    detail:
+      index === 0
+        ? null
+        : {
+            index,
+            row: index <= 2 ? 1 : 2,
+            col: index % 2 === 1 ? 1 : 2,
+            rows: 2,
+            cols: 2,
+            x0: 0,
+            y0: 0,
+            x1: 0,
+            y1: 0,
+          },
+  }));
 }
 
 async function claimProcessingLock(asset: AssetRow, requestId: string) {
@@ -494,6 +567,66 @@ function dossierAwareExtractionPrompt(assetCategory: string, expected: ErfExpect
   ].join("\n");
 }
 
+async function runFastTiffVisionExtraction(input: {
+  asset: AssetRow;
+  expectedIdentity: ErfExpectedIdentity;
+  pages: NormalizedExtractionPage[];
+  apiKey: string;
+  model: string;
+  requestId: string;
+}) {
+  const content = buildExtractionContent({
+    fileName: input.asset.original_file_name,
+    mimeType: "image/tiff",
+    pages: input.pages,
+    subjectErfNumber: input.expectedIdentity.erfNumber ?? null,
+  });
+  const offendingMime = findUnsupportedContentMime(content);
+  if (offendingMime) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ERF_EXTRACTION_TIMEOUT_MS);
+  try {
+    log("sg_fast_extract_started", input.requestId, { imageCount: input.pages.length });
+    const response = await fetch(ERF_EXTRACTION_OPENAI_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: input.model,
+        temperature: 0,
+        max_tokens: 8000,
+        response_format: erfExtractionResponseFormat(),
+        messages: [
+          { role: "system", content: dossierAwareExtractionPrompt(input.asset.asset_category, input.expectedIdentity) },
+          { role: "user", content },
+        ],
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    } | null;
+    const raw = payload?.choices?.[0]?.message?.content;
+    if (!response.ok || typeof raw !== "string") return null;
+    try {
+      const parsed = JSON.parse(raw);
+      const result = normalizeExtractionResult(parsed, { assetCategory: input.asset.asset_category });
+      if (!result || (!result.extractedText && result.claims.length === 0)) return null;
+      log("sg_fast_extract_completed", input.requestId, {
+        imageCount: input.pages.length,
+        claimCount: result.claims.length,
+      });
+      return parsed;
+    } catch {
+      return null;
+    }
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const fail = (code: ErfExtractionFailureCode, error: string, status: number) =>
@@ -673,6 +806,7 @@ Deno.serve(async (request: Request) => {
   let model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
   let parsed: unknown = null;
   let previewPatch: Partial<ErfExtractionMetadataPatch> = {};
+  let normalizedExtractionMimeType: string | null = null;
   let backgroundResources: OpenAiTiffResources | null = null;
 
   const finishResult = async (
@@ -706,7 +840,97 @@ Deno.serve(async (request: Request) => {
     return response;
   };
 
+  const startDeepTiffFallback = async (reasonCode: string) => {
+    log("sg_deep_fallback_started", requestId, { reasonCode });
+    const bytes = await downloadAsset(asset);
+    if (!bytes?.byteLength) {
+      return finishResult(
+        "failed",
+        { extractionError: "The stored file could not be opened." },
+        { success: false, code: "DOWNLOAD_FAILED", error: "The stored file could not be opened." },
+        200,
+      );
+    }
+    const deepModel = Deno.env.get("ERF_SG_TIFF_MODEL")?.trim() ?? "";
+    if (!deepModel) {
+      return finishResult(
+        "failed",
+        { extractionError: "Large survey plan reading is not configured yet." },
+        {
+          success: false,
+          code: "OPENAI_NOT_CONFIGURED",
+          error: "Large survey plan reading is not configured yet.",
+        },
+        200,
+      );
+    }
+    try {
+      const job = await startOpenAiTiffBackground({
+        apiKey,
+        bytes,
+        fileName: asset.original_file_name,
+        mimeType: mime,
+        model: deepModel,
+        systemPrompt: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity),
+        mode: "deep_review",
+      });
+      const previousResources = backgroundResources;
+      const written = await patchAssetMetadata(asset, {
+        extractionStatus: "processing",
+        extractionProvider: OPENAI_TIFF_EXTRACTION_PROVIDER,
+        extractionModel: deepModel,
+        extractionVersion: ERF_EXTRACTION_VERSION,
+        extractedAt: null,
+        extractionError: null,
+        extractionWarning: null,
+        originalMimeType: mime,
+        normalizedExtractionMimeType: null,
+        openaiResponseId: job.responseId,
+        openaiFileId: job.fileId,
+        openaiContainerId: job.containerId,
+        openaiBackgroundStartedAt: new Date().toISOString(),
+      });
+      if (!written) {
+        await cleanupOpenAiTiffResources({ apiKey, ...job });
+        return finishResult(
+          "failed",
+          { extractionError: "The fallback review could not be saved." },
+          { success: false, code: "SERVER_UNAVAILABLE", error: "The fallback review could not be saved." },
+          503,
+        );
+      }
+      if (previousResources) await cleanupOpenAiTiffResources({ apiKey, ...previousResources });
+      backgroundResources = null;
+      return json(
+        {
+          success: true,
+          requestId,
+          assetId: asset.id,
+          extractionStatus: "processing",
+          identityMatchStatus: null,
+          claimCount: 0,
+          documentType: null,
+          warning: "Large SG plans can take several minutes. You can leave this page and come back.",
+        },
+        200,
+      );
+    } catch {
+      return finishResult(
+        "failed",
+        { extractionError: "The survey plan fallback review could not start. Try again." },
+        {
+          success: false,
+          code: "SERVER_UNAVAILABLE",
+          error: "The survey plan fallback review could not start. Try again.",
+        },
+        200,
+      );
+    }
+  };
+
   if (isTiff && openaiResponseId) {
+    const isFastPreprocess =
+      metadataString(asset.metadata, "extractionProvider") === OPENAI_TIFF_FAST_PREPROCESS_PROVIDER;
     model = metadataString(asset.metadata, "extractionModel") ??
       Deno.env.get("ERF_SG_TIFF_MODEL")?.trim() ??
       "";
@@ -731,6 +955,7 @@ Deno.serve(async (request: Request) => {
           fileId: metadataString(asset.metadata, "openaiFileId"),
           containerId: metadataString(asset.metadata, "openaiContainerId"),
         };
+        if (isFastPreprocess) return startDeepTiffFallback("preprocess_response_expired");
         return finishResult(
           "failed",
           { extractionError: "The previous survey-plan review expired. Try reading the diagram again." },
@@ -767,6 +992,7 @@ Deno.serve(async (request: Request) => {
       );
     }
     if (poll.state === "failed") {
+      if (isFastPreprocess) return startDeepTiffFallback("preprocess_failed");
       return finishResult(
         "failed",
         { extractionError: "The survey plan background review failed. Try again." },
@@ -778,8 +1004,30 @@ Deno.serve(async (request: Request) => {
         200,
       );
     }
-    parsed = poll.parsed;
-    previewPatch = (await storeTiffPreview(asset, poll.previewUrl, apiKey, requestId)) ?? {};
+    if (isFastPreprocess) {
+      log("sg_fast_preprocess_completed", requestId, { imageCount: poll.previewUrls.length });
+      const images = await fetchTiffPreprocessImages(poll.previewUrls, apiKey, requestId);
+      if (!images) return startDeepTiffFallback("preprocess_images_unavailable");
+      previewPatch = (await storeTiffPreview(asset, images[0], requestId)) ?? {};
+      const fastModel = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
+      parsed = await runFastTiffVisionExtraction({
+        asset,
+        expectedIdentity,
+        pages: tiffPreviewPages(images),
+        apiKey,
+        model: fastModel,
+        requestId,
+      });
+      if (!parsed) return startDeepTiffFallback("fast_vision_unusable");
+      model = fastModel;
+      normalizedExtractionMimeType = "image/png";
+    } else {
+      parsed = poll.parsed;
+      const preview = poll.previewUrls[0]
+        ? await fetchTiffPreviewImage(poll.previewUrls[0], apiKey, requestId)
+        : null;
+      previewPatch = (await storeTiffPreview(asset, preview, requestId)) ?? {};
+    }
   } else {
     const locked = await claimProcessingLock(asset, requestId);
     if (!locked) {
@@ -813,6 +1061,7 @@ Deno.serve(async (request: Request) => {
         );
       }
       try {
+        log("sg_fast_preprocess_started", requestId, { bytes: bytes.byteLength });
         const job = await startOpenAiTiffBackground({
           apiKey,
           bytes,
@@ -820,18 +1069,19 @@ Deno.serve(async (request: Request) => {
           mimeType: mime,
           model,
           systemPrompt: dossierAwareExtractionPrompt(asset.asset_category, expectedIdentity),
+          mode: "fast_preprocess",
         });
         const startedAt = new Date().toISOString();
         const written = await patchAssetMetadata(asset, {
           extractionStatus: "processing",
-          extractionProvider: OPENAI_TIFF_EXTRACTION_PROVIDER,
+          extractionProvider: OPENAI_TIFF_FAST_PREPROCESS_PROVIDER,
           extractionModel: model,
           extractionVersion: ERF_EXTRACTION_VERSION,
           extractedAt: null,
           extractionError: null,
           extractionWarning: null,
           originalMimeType: mime,
-          normalizedExtractionMimeType: null,
+          normalizedExtractionMimeType,
           openaiResponseId: job.responseId,
           openaiFileId: job.fileId,
           openaiContainerId: job.containerId,
@@ -858,26 +1108,10 @@ Deno.serve(async (request: Request) => {
           200,
         );
       } catch (error) {
-        const upstreamStatus = error instanceof OpenAiTiffBackgroundError ? error.statusCode : null;
-        const code: ErfExtractionFailureCode =
-          upstreamStatus === 429
-            ? "RATE_LIMITED"
-            : upstreamStatus && upstreamStatus >= 400 && upstreamStatus < 500
-              ? "UPSTREAM_REQUEST_REJECTED"
-              : "SERVER_UNAVAILABLE";
         log("openai_background_start_failed", requestId, {
           errorClass: error instanceof Error ? error.name : "UnknownError",
         });
-        return finish(
-          "failed",
-          { extractionError: "The survey plan background review could not start. Try again." },
-          {
-            success: false,
-            code,
-            error: "The survey plan background review could not start. Try again.",
-          },
-          200,
-        );
+        return startDeepTiffFallback("preprocess_start_failed");
       }
     }
 
@@ -1121,7 +1355,7 @@ Deno.serve(async (request: Request) => {
         documentLineage: baselineIdentity.lineage ?? null,
         extractionModel: model,
         originalMimeType: mime,
-        normalizedExtractionMimeType: null,
+        normalizedExtractionMimeType,
         extractionWarning: combinedWarning,
         extractedText: result.extractedText,
         extractedClaims: claims,

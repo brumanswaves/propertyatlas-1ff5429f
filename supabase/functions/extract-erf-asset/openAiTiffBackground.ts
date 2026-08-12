@@ -2,10 +2,14 @@ import { erfExtractionResponsesTextFormat } from "../_shared/erfExtractionContra
 
 const OPENAI_API_BASE = "https://api.openai.com/v1";
 const FILE_EXPIRY_SECONDS = 60 * 60;
-const TIFF_BACKGROUND_MAX_OUTPUT_TOKENS = 24_000;
-const TIFF_BACKGROUND_REASONING_EFFORT = "high";
+const TIFF_DEEP_BACKGROUND_MAX_OUTPUT_TOKENS = 24_000;
+const TIFF_DEEP_BACKGROUND_REASONING_EFFORT = "high";
+const TIFF_FAST_PREPROCESS_MAX_OUTPUT_TOKENS = 4_000;
+const TIFF_FAST_PREPROCESS_REASONING_EFFORT = "low";
 
 export const OPENAI_TIFF_EXTRACTION_PROVIDER = "openai_code_interpreter" as const;
+export const OPENAI_TIFF_FAST_PREPROCESS_PROVIDER = "openai_sg_tiff_fast_preprocess" as const;
+export const OPENAI_TIFF_EXPECTED_PREPROCESS_IMAGES = 5;
 
 export class OpenAiTiffBackgroundError extends Error {
   constructor(
@@ -34,8 +38,10 @@ export interface OpenAiTiffBackgroundJob extends OpenAiTiffResources {
 
 export type OpenAiTiffPollResult =
   | ({ state: "processing"; status: "queued" | "in_progress" } & OpenAiTiffResources)
-  | ({ state: "completed"; parsed: unknown; previewUrl: string | null } & OpenAiTiffResources)
+  | ({ state: "completed"; parsed: unknown; previewUrls: string[] } & OpenAiTiffResources)
   | ({ state: "failed"; status: "failed" | "cancelled" | "incomplete" } & OpenAiTiffResources);
+
+export type OpenAiTiffBackgroundMode = "deep_review" | "fast_preprocess";
 
 function authHeaders(apiKey: string) {
   return { Authorization: `Bearer ${apiKey}` };
@@ -76,8 +82,9 @@ function responseOutputText(payload: OpenAiResponsePayload | null) {
   return null;
 }
 
-export function responseImageOutputUrl(payload: OpenAiResponsePayload | null) {
-  if (!Array.isArray(payload?.output)) return null;
+export function responseImageOutputUrls(payload: OpenAiResponsePayload | null) {
+  if (!Array.isArray(payload?.output)) return [];
+  const urls: string[] = [];
   for (const item of payload.output) {
     if (!item || typeof item !== "object") continue;
     const outputs = (item as Record<string, unknown>).outputs;
@@ -86,14 +93,18 @@ export function responseImageOutputUrl(payload: OpenAiResponsePayload | null) {
       if (!output || typeof output !== "object") continue;
       const raw = output as Record<string, unknown>;
       if (raw.type === "image" && typeof raw.url === "string" && raw.url.trim()) {
-        return raw.url.trim();
+        urls.push(raw.url.trim());
       }
     }
   }
-  return null;
+  return urls;
 }
 
-export function codeInterpreterTiffInstructions() {
+export function responseImageOutputUrl(payload: OpenAiResponsePayload | null) {
+  return responseImageOutputUrls(payload)[0] ?? null;
+}
+
+function codeInterpreterDeepTiffInstructions() {
   return [
     "Review the attached Surveyor-General TIFF using Code Interpreter and return only the required structured extraction result.",
     "The file may be a 70M+ pixel bilevel survey TIFF.",
@@ -108,6 +119,24 @@ export function codeInterpreterTiffInstructions() {
     "Report only facts visibly supported by the TIFF and explicitly preserve uncertainty.",
     "OCR alone is not identity proof. Every accepted claim needs a supporting quote or visible evidence string and provenance.",
   ].join("\n");
+}
+
+function codeInterpreterFastTiffInstructions() {
+  return [
+    "Prepare this large Surveyor-General TIFF for a separate, normal vision extraction request.",
+    "This is conversion only: do not extract facts, identify the property, reason about evidence, or return structured extraction JSON.",
+    "Never render or copy the full-resolution TIFF into one large image or matrix.",
+    "Use memory-safe strip, tile, downscale and crop processing.",
+    "Create and DISPLAY exactly five PNG images in this exact order: one readable low-resolution whole-sheet overview (longest edge about 1800px), then overlapping high-detail crops for top-left, top-right, bottom-left, and bottom-right quadrants (longest edge no more than 2400px).",
+    "The four detail images must be a 2 by 2 grid with modest overlap so small labels at boundaries remain visible.",
+    "Display the five derived images inline as Code Interpreter image outputs. Do not display the original TIFF. Do not include another image or text answer.",
+  ].join("\n");
+}
+
+export function codeInterpreterTiffInstructions(mode: OpenAiTiffBackgroundMode = "deep_review") {
+  return mode === "fast_preprocess"
+    ? codeInterpreterFastTiffInstructions()
+    : codeInterpreterDeepTiffInstructions();
 }
 
 async function deleteResource(
@@ -150,6 +179,7 @@ export async function startOpenAiTiffBackground(input: {
   mimeType: string;
   model: string;
   systemPrompt: string;
+  mode?: OpenAiTiffBackgroundMode;
 }): Promise<OpenAiTiffBackgroundJob> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const form = new FormData();
@@ -173,6 +203,7 @@ export async function startOpenAiTiffBackground(input: {
   const fileId = typeof uploadPayload?.id === "string" ? uploadPayload.id : null;
   if (!upload?.ok || !fileId) throw new OpenAiTiffBackgroundError("upload", upload?.status ?? null);
 
+  const mode = input.mode ?? "deep_review";
   const response = await fetchImpl(`${OPENAI_API_BASE}/responses`, {
     method: "POST",
     headers: { ...authHeaders(input.apiKey), "Content-Type": "application/json" },
@@ -180,19 +211,27 @@ export async function startOpenAiTiffBackground(input: {
       model: input.model,
       background: true,
       store: true,
-      // Reasoning and visible output share this budget. Dense SG TIFF review needs
-      // enough headroom for safe Code Interpreter inspection before JSON output.
-      max_output_tokens: TIFF_BACKGROUND_MAX_OUTPUT_TOKENS,
-      reasoning: { effort: TIFF_BACKGROUND_REASONING_EFFORT },
-      instructions: input.systemPrompt,
-      input: codeInterpreterTiffInstructions(),
+      // The fast job creates bounded images only. The deep fallback keeps the
+      // larger budget needed for full Code Interpreter document review.
+      max_output_tokens:
+        mode === "fast_preprocess"
+          ? TIFF_FAST_PREPROCESS_MAX_OUTPUT_TOKENS
+          : TIFF_DEEP_BACKGROUND_MAX_OUTPUT_TOKENS,
+      reasoning: {
+        effort:
+          mode === "fast_preprocess"
+            ? TIFF_FAST_PREPROCESS_REASONING_EFFORT
+            : TIFF_DEEP_BACKGROUND_REASONING_EFFORT,
+      },
+      instructions: mode === "fast_preprocess" ? undefined : input.systemPrompt,
+      input: codeInterpreterTiffInstructions(mode),
       tools: [
         {
           type: "code_interpreter",
           container: { type: "auto", file_ids: [fileId] },
         },
       ],
-      text: { format: erfExtractionResponsesTextFormat() },
+      ...(mode === "deep_review" ? { text: { format: erfExtractionResponsesTextFormat() } } : {}),
     }),
   }).catch(() => null);
   const payload = response
@@ -247,5 +286,10 @@ export async function pollOpenAiTiffBackground(input: {
       parsed = null;
     }
   }
-  return { state: "completed", parsed, previewUrl: responseImageOutputUrl(payload), ...resources };
+  return {
+    state: "completed",
+    parsed,
+    previewUrls: responseImageOutputUrls(payload),
+    ...resources,
+  };
 }
