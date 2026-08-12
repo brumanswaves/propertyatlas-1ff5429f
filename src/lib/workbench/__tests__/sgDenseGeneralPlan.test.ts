@@ -258,7 +258,7 @@ describe("dense SG General Plan extraction", () => {
     ]);
   });
 
-  it("accepts a General Plan only when the selected erf is visibly printed", () => {
+  it("treats a General Plan with the selected erf visibly printed as supporting context", () => {
     const match = evaluateGeneralPlanSubjectMatch({
       expected,
       document: documentIdentity,
@@ -269,8 +269,8 @@ describe("dense SG General Plan extraction", () => {
       baseline: erfTitleConflict,
     });
 
-    expect(match).toMatchObject({ matched: true, generalPlanReference: "GP9905" });
-    expect(match.reason).toMatch(/visibly printed/i);
+    expect(match).toMatchObject({ supportsSubject: true, generalPlanReference: "GP9905" });
+    expect(match.reason).toMatch(/supports this investigation/i);
   });
 
   it("accepts a printed erf range but rejects an unrelated plan", () => {
@@ -282,7 +282,7 @@ describe("dense SG General Plan extraction", () => {
         documentType: "General Plan",
         documentText: "GENERAL PLAN TP 9905. ERVEN 1000 TO 1099.",
         baseline: erfTitleConflict,
-      }).matched,
+      }).supportsSubject,
     ).toBe(true);
 
     expect(
@@ -293,11 +293,11 @@ describe("dense SG General Plan extraction", () => {
         documentType: "General Plan",
         documentText: "GENERAL PLAN TP 9905. ERVEN 2000 TO 2099.",
         baseline: erfTitleConflict,
-      }).matched,
+      }).supportsSubject,
     ).toBe(false);
   });
 
-  it("never overrides a strong LPI or place conflict", () => {
+  it("never overrides a strong LPI conflict", () => {
     expect(
       evaluateGeneralPlanSubjectMatch({
         expected,
@@ -309,7 +309,7 @@ describe("dense SG General Plan extraction", () => {
           status: "mismatch",
           reason: "Identity conflict: the document LPI code is for a different parcel.",
         },
-      }).matched,
+      }).supportsSubject,
     ).toBe(false);
   });
 

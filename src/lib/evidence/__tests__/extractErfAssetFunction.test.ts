@@ -597,6 +597,45 @@ describe("extract-erf-asset TIFF background review", () => {
     expect(metadata.identityMatchReason).toContain("Confirmed title report");
   });
 
+  it("does not use stale user-confirmed mismatch metadata as parent-plan lineage", async () => {
+    useRunningTiffAsset();
+    relatedAssetRows = [
+      baseAsset({
+        id: "asset-stale-mismatch-lineage",
+        source_label: "Wrong property report",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "mismatch",
+          identityBinding: "user_confirmed",
+          identityUserConfirmedParcelId: PARCEL_ID,
+          documentLineage: { parentErfNumber: "1496", generalPlanReference: "GP12252" },
+        },
+      }),
+    ];
+    backgroundPollPayload = completedBackgroundPayload(
+      sgExtractionResult({
+        identity: {
+          erfNumber: "1496",
+          portionNumber: "PTN OF 1496-GP12252",
+          lpiCode: null,
+          sgCode: "GP12252",
+          streetAddress: null,
+          suburbOrTown: "SEA VISTA",
+          municipality: "Humansdorp",
+          province: "Eastern Cape",
+        },
+        extractedText: "GENERAL PLAN No. 12252 of SUBDIVISIONS OF ERF 1496 SEA VISTA.",
+      }),
+    );
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, identityMatchStatus: "mismatch" });
+    expect(metadata.identityMatchReason).not.toContain("Wrong property report");
+  });
+
   it("rejects free-form background prose and cleans up instead of bypassing the contract", async () => {
     useRunningTiffAsset();
     backgroundPollPayload = completedBackgroundPayload();

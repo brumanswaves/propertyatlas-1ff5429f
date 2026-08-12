@@ -284,10 +284,12 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
     for (const row of rows ?? []) {
       if (row.id === asset.id) continue;
       const metadata = row.metadata ?? {};
-      const userConfirmedForParcel =
+      const automaticallyMatched = metadata.identityMatchStatus === "matched";
+      const userConfirmedUnverifiedForParcel =
+        metadata.identityMatchStatus === "unverified" &&
         metadata.identityBinding === "user_confirmed" &&
         metadata.identityUserConfirmedParcelId === asset.parcel_id;
-      if (metadata.identityMatchStatus !== "matched" && !userConfirmedForParcel) continue;
+      if (!automaticallyMatched && !userConfirmedUnverifiedForParcel) continue;
       const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
       const fromLineage = raw && typeof raw === "object" ? raw : null;
       const identityRaw = metadata.extractedIdentity as Record<string, unknown> | null | undefined;
@@ -312,7 +314,7 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
         sourceLabel:
           row.source_label ||
           row.original_file_name ||
-          (userConfirmedForParcel
+          (userConfirmedUnverifiedForParcel
             ? "a user-confirmed document on this erf"
             : "an identity-matched document on this erf"),
       };
