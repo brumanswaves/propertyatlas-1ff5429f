@@ -15,7 +15,12 @@ import {
   calculateResidualLandValue,
   calculateShortTermRental,
 } from "@/lib/research/calculators";
-import { buildDealSnapshot, deriveStrategyBuildAreaM2 } from "../StrategyLab";
+import {
+  buildDealSnapshot,
+  completeGuidedStrategyScenario,
+  deriveStrategyBuildAreaM2,
+  strategyLabActionAvailability,
+} from "../StrategyLab";
 
 function baseSnapshotInputs() {
   const acquisition = calculateAcquisition({
@@ -218,5 +223,48 @@ describe("Strategy Lab deal snapshot", () => {
     expect(labels).toContain("Maximum justified offer");
     expect(labels).toContain("Residual land value");
     expect(labels).toContain("Cash required");
+  });
+});
+
+describe("Guided Strategy completion", () => {
+  it("saves the current scenario through the chosen-scenario path before continuing", () => {
+    const calls: string[] = [];
+    const savedScenario = { id: "chosen-scenario" };
+
+    const result = completeGuidedStrategyScenario(
+      () => {
+        calls.push("save-chosen-scenario");
+        return savedScenario;
+      },
+      () => calls.push("continue-to-site-potential"),
+    );
+
+    expect(result).toBe(savedScenario);
+    expect(calls).toEqual(["save-chosen-scenario", "continue-to-site-potential"]);
+  });
+
+  it("does not require an existing chosen scenario before Guided completion can save one", () => {
+    let saved = false;
+
+    completeGuidedStrategyScenario(
+      () => {
+        saved = true;
+        return { id: "new-chosen-scenario" };
+      },
+      () => undefined,
+    );
+
+    expect(saved).toBe(true);
+  });
+
+  it("keeps expert scenario management separate from the simplified Guided controls", () => {
+    expect(strategyLabActionAvailability(true)).toEqual({
+      showExpertScenarioManagement: false,
+      showDirectReport: false,
+    });
+    expect(strategyLabActionAvailability(false)).toEqual({
+      showExpertScenarioManagement: true,
+      showDirectReport: true,
+    });
   });
 });

@@ -558,6 +558,22 @@ async function activeSupabaseUserMatches(expectedUserId: string | null) {
   return data.user?.id === expectedUserId;
 }
 
+export function completeGuidedStrategyScenario<T>(
+  saveChosenScenario: () => T,
+  onContinue: () => void,
+) {
+  const scenario = saveChosenScenario();
+  onContinue();
+  return scenario;
+}
+
+export function strategyLabActionAvailability(isGuided: boolean) {
+  return {
+    showExpertScenarioManagement: !isGuided,
+    showDirectReport: !isGuided,
+  };
+}
+
 export function StrategyLab({
   parcel,
   parcelId,
@@ -574,6 +590,8 @@ export function StrategyLab({
     onContinue: () => void;
   };
 }) {
+  const isGuided = Boolean(guidedReturn);
+  const actionAvailability = strategyLabActionAvailability(isGuided);
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const { assets } = useErfFileVault(parcelId);
@@ -1295,9 +1313,16 @@ export function StrategyLab({
     setShowChosenState(true);
     queueCloudSave(workspace, true);
     toast.success("Scenario chosen for this erf.");
+    return scenario;
+  }
+
+  function saveGuidedScenarioAndContinue() {
+    if (!guidedReturn) return;
+    completeGuidedStrategyScenario(() => saveScenario(), guidedReturn.onContinue);
   }
 
   const activeOption = optionFor(active);
+  const guidedAssumptionGroups = isGuided ? splitGuidedAssumptionGroups(active) : null;
 
   return (
     <div className="space-y-5">
@@ -1305,20 +1330,24 @@ export function StrategyLab({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Strategy Lab
+              {isGuided ? "Guided Investigation / Strategy" : "Strategy Lab"}
             </div>
             <h3 className="mt-1 text-xl font-semibold tracking-tight text-[#0D1B2A]">
-              Choose a strategy for this erf
+              {isGuided ? "1. Choose a strategy" : "Choose a strategy for this erf"}
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/68">
-              Every input autosaves as a draft for this erf. Save a scenario only when you want that
-              version to feed the Easy Erf Report.
+              {isGuided
+                ? "Choose how you would approach this property, then review the assumptions and results before saving one report scenario."
+                : "Every input autosaves as a draft for this erf. Save a scenario only when you want that version to feed the Easy Erf Report."}
             </p>
             <div className="mt-3 inline-flex rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1 text-[11px] font-semibold text-[#0D1B2A]/70">
-              Autosaved draft separate from chosen report scenario
+              {isGuided
+                ? "Choose strategy -> Assumptions -> Results"
+                : "Autosaved draft separate from chosen report scenario"}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          {actionAvailability.showExpertScenarioManagement && (
+            <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={reset}
@@ -1341,29 +1370,27 @@ export function StrategyLab({
             >
               Save as a new scenario
             </button>
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {guidedReturn ? (
+      {isGuided ? (
         <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-            Guided Investigation · Step 8 of 10
+            Guided Strategy
           </div>
           <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
-            Turn the evidence into one report-ready strategy
+            One report-ready scenario
           </h4>
           <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
-            Choose one approach, review only the assumptions that matter, then save the scenario you
-            want the Easy Erf Report to use. Your draft remains separate until you choose it.
+            Your working inputs autosave as a draft. The completion action below intentionally
+            chooses the current scenario for the Easy Erf Report.
           </p>
-          <ol className="mt-3 grid gap-2 text-xs leading-5 text-[#0D1B2A]/72 sm:grid-cols-3">
-            <li><span className="font-semibold text-[#B24A00]">1.</span> Choose a strategy</li>
-            <li><span className="font-semibold text-[#B24A00]">2.</span> Review assumptions and outputs</li>
-            <li><span className="font-semibold text-[#B24A00]">3.</span> Save one scenario for the report</li>
-          </ol>
           <div className="mt-3 text-xs font-semibold text-[#0D1B2A]/72">
-            {chosenScenario ? `Chosen for the report: ${chosenScenario.label}.` : "Complete this step by choosing a scenario for the report."}
+            {chosenScenario
+              ? `Current report scenario saved: ${chosenScenario.label}.`
+              : "No report scenario is chosen yet. Your draft remains editable."}
           </div>
         </section>
       ) : null}
@@ -1398,7 +1425,7 @@ export function StrategyLab({
         </section>
       )}
 
-      {showChosenState && chosenScenario && (
+      {actionAvailability.showExpertScenarioManagement && showChosenState && chosenScenario && (
         <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -1423,20 +1450,6 @@ export function StrategyLab({
           </div>
         </section>
       )}
-
-      <DealSnapshotPanel
-        activeLabel={activeOption.label}
-        snapshot={dealSnapshot}
-      />
-
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <PropertyInputFactsPanel facts={propertyInputFacts} values={values} />
-        <MarketContextPanel
-          subjectListing={subjectListing}
-          comparableCount={comparableEvidence.length}
-          averageComparablePrice={averageComparablePrice}
-        />
-      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {STRATEGY_OPTIONS.map((option) => (
@@ -1490,11 +1503,21 @@ export function StrategyLab({
         ))}
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <PropertyInputFactsPanel facts={propertyInputFacts} values={values} />
+        <MarketContextPanel
+          subjectListing={subjectListing}
+          comparableCount={comparableEvidence.length}
+          averageComparablePrice={averageComparablePrice}
+        />
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4">
-          <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Assumptions
+              {isGuided ? "2. Review assumptions" : "Assumptions"}
             </div>
             <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">{activeOption.label}</h4>
             <div
@@ -1526,8 +1549,18 @@ export function StrategyLab({
             <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/62">
               Adjust these assumptions before relying on the result.
             </p>
+            </div>
+            {isGuided && (
+              <button
+                type="button"
+                onClick={reset}
+                className="text-xs font-semibold text-[#0D1B2A]/60 underline decoration-[#0D1B2A]/25 underline-offset-4 hover:text-[#0D1B2A]"
+              >
+                Reset assumptions
+              </button>
+            )}
           </div>
-          {fieldGroupsFor(active).map((group) => (
+          {(guidedAssumptionGroups?.primary ?? fieldGroupsFor(active)).map((group) => (
             <FieldGroup
               key={group.title}
               group={group}
@@ -1536,12 +1569,33 @@ export function StrategyLab({
               onBlur={flushStrategySave}
             />
           ))}
+          {guidedAssumptionGroups && guidedAssumptionGroups.advanced.length > 0 && (
+            <details className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
+              <summary className="cursor-pointer text-sm font-semibold text-[#0D1B2A]">
+                Advanced assumptions
+              </summary>
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/58">
+                Detailed costs, finance overrides and sensitivity inputs use the same draft values.
+              </p>
+              <div className="mt-3 space-y-3">
+                {guidedAssumptionGroups.advanced.map((group) => (
+                  <FieldGroup
+                    key={group.title}
+                    group={group}
+                    values={values}
+                    setValue={setValue}
+                    onBlur={flushStrategySave}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
         </div>
 
         <div className="space-y-3">
           <section className="rounded-[1.5rem] border border-[#FF6A00]/20 bg-[#fff8ec] p-4">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Output panel
+              {isGuided ? "3. Review the result" : "Output panel"}
             </div>
             <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">Planning result</h4>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -1562,13 +1616,15 @@ export function StrategyLab({
                 <li key={note}>{note}</li>
               ))}
             </ul>
-            <button
-              type="button"
-              onClick={() => saveScenario()}
-              className="mt-4 w-full rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
-            >
-              Use this scenario in report
-            </button>
+            {actionAvailability.showExpertScenarioManagement && (
+              <button
+                type="button"
+                onClick={() => saveScenario()}
+                className="mt-4 w-full rounded-full bg-[#0D1B2A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#142941]"
+              >
+                Use this scenario in report
+              </button>
+            )}
           </section>
           {active === "development_sell" && (
             <>
@@ -1584,11 +1640,13 @@ export function StrategyLab({
         </div>
       </section>
 
+      <DealSnapshotPanel activeLabel={activeOption.label} snapshot={dealSnapshot} />
+
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
         {savedScenarios.length > 0
           ? `${savedScenarios.length} saved strategy scenario${savedScenarios.length === 1 ? "" : "s"} on file. Only the chosen scenario feeds the Easy Erf Report.`
           : "Your draft is autosaved, but the Easy Erf Report waits for you to save a chosen scenario."}
-        {savedScenarios.length > 0 && (
+        {actionAvailability.showDirectReport && savedScenarios.length > 0 && (
           <button
             type="button"
             onClick={onOpenReport}
@@ -1598,34 +1656,32 @@ export function StrategyLab({
           </button>
         )}
       </div>
-      {guidedReturn ? (
+      {isGuided ? (
         <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
             Guided completion · Strategy
           </div>
           <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
-            {chosenScenario ? "Strategy ready for Site Potential" : "Choose a scenario to complete this step"}
+            Use this scenario and continue
           </h4>
           <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
-            {chosenScenario
-              ? "The chosen scenario will be used by the Easy Erf Report. Continue to explore the site context and potential concepts."
-              : "Your autosaved draft is safe, but Guided Investigation needs one chosen scenario before it can continue."}
+            This saves the current assumptions as the scenario used in your Easy Erf Report, then
+            continues to Site Potential.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={guidedReturn.onBack}
+              onClick={() => guidedReturn?.onBack()}
               className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/14 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
             >
               Back to Investigation
             </button>
             <button
               type="button"
-              disabled={!chosenScenario}
-              onClick={guidedReturn.onContinue}
-              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={saveGuidedScenarioAndContinue}
+              className="inline-flex min-h-10 items-center rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FF7D1F]"
             >
-              Save and continue to Site Potential
+              Use this scenario and continue
             </button>
           </div>
         </section>
@@ -1638,6 +1694,52 @@ interface FieldGroupModel {
   title: string;
   helper: string;
   fields: [string, string][];
+}
+
+const GUIDED_ADVANCED_ASSUMPTION_KEYS = new Set([
+  "transferDuty",
+  "transferCosts",
+  "bondCosts",
+  "attorneyFees",
+  "inspectionCosts",
+  "otherAcquisitionCosts",
+  "loanAmount",
+  "monthlyBondPayment",
+  "financeFees",
+  "otherIncome",
+  "utilitiesPaidByOwner",
+  "otherMonthlyCosts",
+  "security",
+  "gardenPool",
+  "agentCommission",
+  "sellingCosts",
+  "requiredProfit",
+  "targetReturnPercent",
+  "targetMarginPercent",
+  "downsideBuildCostPercent",
+  "downsideGdvPercent",
+  "downsideDurationMonths",
+  "upsideBuildCostPercent",
+  "upsideGdvPercent",
+]);
+
+export function splitGuidedAssumptionGroups(strategy: StrategyType) {
+  const primary: FieldGroupModel[] = [];
+  const advanced: FieldGroupModel[] = [];
+
+  for (const group of fieldGroupsFor(strategy)) {
+    const primaryFields = group.fields.filter(([, key]) => !GUIDED_ADVANCED_ASSUMPTION_KEYS.has(key));
+    const advancedFields = group.fields.filter(([, key]) => GUIDED_ADVANCED_ASSUMPTION_KEYS.has(key));
+
+    if (primaryFields.length > 0) {
+      primary.push({ ...group, fields: primaryFields });
+    }
+    if (advancedFields.length > 0) {
+      advanced.push({ ...group, fields: advancedFields });
+    }
+  }
+
+  return { primary, advanced };
 }
 
 function fieldGroupsFor(strategy: StrategyType): FieldGroupModel[] {
