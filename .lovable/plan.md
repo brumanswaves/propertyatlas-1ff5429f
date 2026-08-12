@@ -1,38 +1,32 @@
-## Verification results (commit 671af4d6, read-only)
+# SG TIFF preview not persisted — diagnosis (read-only)
 
-**1. Unauthenticated POST `{}`**
-- Status: `401`
-- Body: `{"success":false,"code":"AUTH_REQUIRED","error":"Unauthorized.","requestId":"af472ecb-…"}`
-- Correct: the function is deployed, boots, and rejects unauthenticated callers with the app-level contract (not a proxy error).
+## What the data shows
 
-**2. Authenticated server-to-server POST (synthetic fixture)**
-- Payload: `parcelId: fixture-parcel`, question `Who owns this property?`, one `S1` source of type `missing`, zero claims/contradictions, one ownership gap. No real data used.
-- Sent with `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY` (and a retry adding `apikey`).
-- Status: `401` in both attempts, ~0.14s. OpenAI was never reached.
+Asset `9c1d7ac4-0b72-45a2-a405-0743e8066b89` (`image/tiff`, `sg_diagram`, created 12:27:31Z, extracted 12:32:29Z):
 
-**3. Safe JSON response**
-- `success`: **false** (`AUTH_REQUIRED`)
-- Owner invention: n/a — no model answer produced
-- Evidence ref resolution to `S1`: n/a
-- Response time: 0.140s / 0.150s
+- `extractionStatus = partial`, `identityMatchStatus = unverified`, `identityBinding = user_confirmed`, 15 claims, `extractedDocumentType = GENERAL PLAN`, model `gpt-5.6-sol`.
+- `sgPreviewStoragePath`, `sgPreviewMimeType`, `sgPreviewGeneratedAt` are all `null`.
+- `openaiResponseId` / `openaiFileId` / `openaiContainerId` / `extractionProvider` are already cleared (normal post-finalisation cleanup), so the completed payload can no longer be re-inspected for this run.
 
-**4. Edge Function logs (fixture request IDs)**
-- `stage: auth_rejected` for `fixture-verify-671af4d6` and `fixture-verify-671af4d6-b`
-- `booted (time: 18ms)` on each invocation
-- No `openai_request_start`, no OpenAI status, no reference count — execution stops at the auth gate.
+So the asset did complete through the background Code Interpreter path, and `previewPatch` came back empty from `storeTiffPreview`.
 
-**Root cause of test 2 failing:** the service-role value available in this sandbox environment (legacy `eyJ…` JWT) is not byte-identical to the `SUPABASE_SERVICE_ROLE_KEY` the deployed function reads at runtime, so `safeEqual` fails. This is an out-of-band test-caller mismatch, not necessarily a defect in the production path — the published TanStack route reads its own `SUPABASE_SERVICE_ROLE_KEY` from the worker environment, which may or may not match the function's injected value. That remains unproven.
+## Logs are insufficient — and that is a code defect
 
-**5. Publish status of 671af4d6**
-- `https://easyerf.lovable.app/` responds `200`, but the served commit cannot be identified from public output. There is no evidence in this session that 671af4d6 was published; it is present in the working tree/preview only. Not published by me.
+`storeTiffPreview` in `supabase/functions/extract-erf-asset/index.ts` (lines 159-192) has **five silent `return null` branches and a bare `catch { return null }`**, and emits no `log(...)` line at all. The finalisation path spreads `previewPatch` unconditionally, so an empty patch is indistinguishable from success. Production logs for this asset show only `auth_ok`, `identity_inputs`, `identity_requires_review` — nothing about the preview. Therefore the logs **cannot** discriminate between causes 1-4; that is by itself the first thing to fix.
 
-## Precise next action
+## Most likely cause from code inspection: (1), with (2) as the immediate second failure
 
-Prove the shared-secret path end to end rather than guessing:
+`responseImageOutputUrl` (`openAiTiffBackground.ts:79-94`) only accepts `output[].outputs[]` entries shaped `{ type: "image", url: "..." }`.
 
-1. Add an explicit shared secret for this hop (for example `ASK_EASY_ERF_FN_SECRET`) via `generate_secret`, so both the published worker and the Edge Function compare one value that is not tied to Supabase's key-format migration.
-2. Change the Edge Function's auth check to accept that secret (keeping service-role acceptance as a fallback if desired), and make `askEasyErfServer.ts` send it.
-3. Redeploy the Edge Function, re-run the fixture probe, and confirm logs show `openai_request_start` → `openai_response status 200` → `answer_ready referenceCount 1`.
-4. Only then publish and re-test on `easyerf.lovable.app`.
+- The current OpenAI Responses API does not return Code Interpreter image artefacts that way. Generated files surface as **container files** — `container_file_citation` annotations on the `output_text` part (and/or `outputs` entries carrying `file_id` + `container_id`), with no `url` field. The matcher therefore finds nothing, `previewUrl` is `null`, and `storeTiffPreview` returns at its first line. This fits the observed all-null preview fields with no other symptom.
+- Even if a URL were present, `fetch(previewUrl)` is issued with **no `Authorization: Bearer $OPENAI_API_KEY`**, so any `api.openai.com` container/file URL would answer 401/404 and be swallowed as a `!response.ok` return. Container file bytes must be read from `GET /v1/containers/{container_id}/files/{file_id}/content` with the OpenAI bearer token, and that endpoint returns `application/octet-stream` / no useful `content-type`, which the strict MIME allow-list in `storeTiffPreview` would also reject (cause 3 waiting behind cause 2).
+- Storage upload (cause 4) is unlikely to be the failure: it uses the service key with `x-upsert`, and the same bucket/path scheme already works for the source asset.
 
-No code, secrets, deployments, or publishes were changed in this verification.
+## Smallest safe proposed fix (no edits made)
+
+1. **Instrument first, one line per outcome.** Add `log("sg_preview_skipped"|"sg_preview_failed", requestId, { reason, status, mimeType, bytes })` to each `return null` in `storeTiffPreview`, plus a `log("sg_preview_stored", …)` on success, and log whether `poll.previewUrl` was null. This makes the next run self-diagnosing at essentially zero cost.
+2. **Read container files, not URLs.** Extend the payload reader to also collect `{ container_id, file_id }` from `container_file_citation` annotations / `outputs` entries, and fetch bytes from `/v1/containers/{container_id}/files/{file_id}/content` with `Authorization: Bearer OPENAI_API_KEY`. Keep the existing `url` branch as a fallback, and send the bearer header when the URL host is `api.openai.com`.
+3. **Relax MIME validation to sniffing.** When the response has no usable `content-type`, detect PNG/JPEG/WebP from the leading magic bytes and store with the sniffed type; only reject when no image signature matches. Keep the 5 MB ceiling.
+4. Preview persistence stays strictly non-blocking — a preview failure must never change `extractionStatus`, claims, or identity outcome.
+
+Scope: `supabase/functions/extract-erf-asset/openAiTiffBackground.ts` and the `storeTiffPreview` helper in `supabase/functions/extract-erf-asset/index.ts` only. No schema, secret, or frontend change. Verifying it requires one fresh background run on a SG TIFF after deploy, since the prior response ids are already cleaned up.
