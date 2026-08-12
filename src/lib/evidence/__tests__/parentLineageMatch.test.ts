@@ -447,11 +447,9 @@ describe("historical province naming on pre-1994 survey sheets", () => {
     expect(sheet("Cape of Good Hope").status).toBe("parent_lineage_match");
   });
 
-  it("still rejects a genuinely different present-day province", () => {
-    expect(sheet("Gauteng").status).toBe("mismatch");
-    // A present-day province mismatch blocks the parent-lineage acceptance
-    // path entirely, so the document falls back to the plain erf conflict.
-    expect(sheet("Gauteng").reason).toMatch(/erf 1496, not erf 1570/);
+  it("treats a genuinely different present-day province as corroborating context", () => {
+    expect(sheet("Gauteng").status).toBe("parent_lineage_match");
+    expect(sheet("Gauteng").reason).toMatch(/parent erf 1496/i);
   });
 
   it("treats a superseded province as neither conflict nor corroboration", () => {

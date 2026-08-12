@@ -220,6 +220,8 @@ Examples:
 
 Confidence and provenance are product features, not legal disclaimers added at the end.
 
+Document identity must scale nationally without treating administrative geography as a hard parcel gate. Province, municipality, district, town, suburb, locality and address wording are corroborating context only: they can inform confidence, but cannot alone reject a readable document as the wrong property. Automatic mismatch is reserved for an explicit conflicting LPI/cadastral identifier, a different subject erf, or a different subject portion of the same erf. A readable document without a uniquely matching cadastral identifier remains confirmable user-supported evidence; a General Plan can support an erf through safely filtered annotations without becoming that erf's individual SG diagram.
+
 ---
 
 ## 8. Strategy & Calculator System
@@ -519,6 +521,7 @@ A successful MVP allows a user to:
 - Site Potential must inherit evidence confidence and assumptions
 - Paid reports are an important evidence and commercial pathway
 - Evidence provenance and confidence must be preserved
+- Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch
 - GitHub `main` is the code source of truth
 - This document is the product source of truth
 

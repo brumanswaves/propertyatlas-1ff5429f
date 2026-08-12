@@ -284,7 +284,10 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
     for (const row of rows ?? []) {
       if (row.id === asset.id) continue;
       const metadata = row.metadata ?? {};
-      if (metadata.identityMatchStatus !== "matched") continue;
+      const userConfirmedForParcel =
+        metadata.identityBinding === "user_confirmed" &&
+        metadata.identityUserConfirmedParcelId === asset.parcel_id;
+      if (metadata.identityMatchStatus !== "matched" && !userConfirmedForParcel) continue;
       const raw = metadata.documentLineage as Record<string, unknown> | null | undefined;
       const fromLineage = raw && typeof raw === "object" ? raw : null;
       const identityRaw = metadata.extractedIdentity as Record<string, unknown> | null | undefined;
@@ -307,7 +310,11 @@ async function loadKnownParcelLineage(asset: AssetRow): Promise<ErfKnownParcelLi
         parentErfNumber,
         generalPlanReference,
         sourceLabel:
-          row.source_label || row.original_file_name || "an identity-matched document on this erf",
+          row.source_label ||
+          row.original_file_name ||
+          (userConfirmedForParcel
+            ? "a user-confirmed document on this erf"
+            : "an identity-matched document on this erf"),
       };
     }
   } catch {
@@ -909,11 +916,21 @@ Deno.serve(async (request: Request) => {
       documentGeneralPlanReference,
       baseline: baselineIdentity,
     });
-    const identityMatchStatus: ErfIdentityMatchStatus = generalPlanSubject.matched
-      ? "matched"
-      : baselineIdentity.status;
-    const identityReason = generalPlanSubject.reason ?? baselineIdentity.reason;
     const isParentLineage = baselineIdentity.status === "parent_lineage_match";
+    const generalPlanSupportsSubject = generalPlanSubject.supportsSubject;
+    const identityMatchStatus: ErfIdentityMatchStatus =
+      generalPlanSupportsSubject && baselineIdentity.status === "mismatch"
+        ? "unverified"
+        : baselineIdentity.status;
+    const identityReason = isParentLineage
+      ? baselineIdentity.reason
+      : generalPlanSubject.reason ?? baselineIdentity.reason;
+    const generalPlanClaims = generalPlanSupportsSubject
+      ? applyGeneralPlanSubjectClaimPolicy(result.claims, {
+          subjectErfNumber: expectedIdentity.erfNumber,
+          generalPlanReference: generalPlanSubject.generalPlanReference,
+        })
+      : result.claims;
 
     if (identityMatchStatus !== "matched" && !isParentLineage) {
       const message =
@@ -931,7 +948,7 @@ Deno.serve(async (request: Request) => {
           extractedIdentity: result.identity,
           documentLineage: baselineIdentity.lineage ?? null,
           extractedText: result.extractedText,
-          extractedClaims: result.claims,
+          extractedClaims: generalPlanClaims,
           extractedDocumentType: result.documentType,
           extractedProvider: result.provider,
           extractedDocumentDate: result.documentDate,
@@ -957,18 +974,15 @@ Deno.serve(async (request: Request) => {
           parentErfNumber: baselineIdentity.lineage?.parentErfNumber ?? null,
           generalPlanReference: baselineIdentity.lineage?.generalPlanReference ?? null,
         })
-      : generalPlanSubject.matched
-        ? applyGeneralPlanSubjectClaimPolicy(result.claims, {
-            subjectErfNumber: expectedIdentity.erfNumber,
-            generalPlanReference: generalPlanSubject.generalPlanReference,
-          })
+      : generalPlanSupportsSubject
+        ? generalPlanClaims
         : result.claims;
 
     const status: ErfExtractionStatus = claims.length > 0 ? "ready" : "partial";
     const combinedWarning =
       [
         result.warning,
-        isParentLineage || generalPlanSubject.matched ? identityReason : null,
+        isParentLineage || generalPlanSupportsSubject ? identityReason : null,
       ]
         .filter((entry) => Boolean(entry))
         .join(" ") || null;
@@ -977,7 +991,7 @@ Deno.serve(async (request: Request) => {
       status,
       claimCount: claims.length,
       identityMatchStatus,
-      generalPlanSubjectMatch: generalPlanSubject.matched,
+      generalPlanSubjectSupport: generalPlanSupportsSubject,
     });
     return finishResult(
       status,

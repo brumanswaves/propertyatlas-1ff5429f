@@ -51,7 +51,22 @@ function visibleSubjectErf(
   return bare.test(text);
 }
 
+function namesParentErfInGeneralPlanTitle(
+  documentText: string | null | undefined,
+  parentErfNumber: string | null | undefined,
+) {
+  const parent = normNumber(parentErfNumber);
+  if (!parent) return false;
+  const title = new RegExp(
+    `\\b(?:subdivisions?\\s+of|general\\s+plan(?:\\s+(?:no\\.?|nr\\.?|number)\\s*\\d+)?\\s+of)\\s+erf\\s*(?:no\\.?\\s*)?0*${parent}\\b`,
+    "i",
+  );
+  return title.test(String(documentText ?? "").replace(/[\u00a0]/g, " "));
+}
+
 export interface GeneralPlanSubjectMatch {
+  supportsSubject: boolean;
+  /** @deprecated Use supportsSubject. This is support, never an automatic identity status. */
   matched: boolean;
   reason: string | null;
   generalPlanReference: string | null;
@@ -68,23 +83,28 @@ export function evaluateGeneralPlanSubjectMatch(input: {
 }): GeneralPlanSubjectMatch {
   const subject = normNumber(input.expected.erfNumber);
   if (!subject || !isSgDiagramCategory(input.assetCategory)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, matched: false, reason: null, generalPlanReference: null };
   }
   if (!looksLikeGeneralPlanDocument(input.documentType, input.documentText)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, matched: false, reason: null, generalPlanReference: null };
   }
 
-  // Never override a different LPI, portion or province. The only mismatch a
-  // township plan may forgive is its title block naming a different parent erf.
+  // Never override a different LPI or explicit subject portion. A township
+  // plan may name a parent erf in its title block while visibly including the
+  // subject erf; that is supporting context, not an individual-document bind.
+  const parentTitleErfMismatch =
+    input.baseline.status === "mismatch" &&
+    /document states erf \d+, not erf \d+/i.test(input.baseline.reason) &&
+    namesParentErfInGeneralPlanTitle(input.documentText, input.document.erfNumber);
   if (
     input.baseline.status === "mismatch" &&
-    !/document states erf \d+, not erf \d+/i.test(input.baseline.reason)
+    !parentTitleErfMismatch
   ) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, matched: false, reason: null, generalPlanReference: null };
   }
 
   if (!visibleSubjectErf(input.documentText, subject, input.document.erfNumber)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, matched: false, reason: null, generalPlanReference: null };
   }
 
   const reference =
@@ -93,10 +113,11 @@ export function evaluateGeneralPlanSubjectMatch(input: {
     extractGeneralPlanReference(input.documentText);
   const label = reference ? `General Plan ${reference}` : "the General Plan";
   return {
+    supportsSubject: true,
     matched: true,
     reason:
-      `Identity confirmed: Erf ${subject} is visibly printed on ${label}. ` +
-      "Only annotations explicitly tied to this erf can become subject evidence; all other plan content remains context.",
+      `${label} visibly includes Erf ${subject}. It supports this investigation but cannot automatically ` +
+      "bind the plan as this erf's individual SG diagram; only annotations explicitly tied to this erf can become subject evidence.",
     generalPlanReference: reference,
   };
 }

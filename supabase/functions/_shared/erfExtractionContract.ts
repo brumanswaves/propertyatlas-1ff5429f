@@ -816,7 +816,7 @@ export function matchDocumentIdentity(
   document: ErfExtractedIdentity,
   options: ErfIdentityMatchOptions = {},
 ): ErfIdentityMatchResult {
-  const conflicts: Array<{ code: "lpi" | "erf" | "portion" | "place"; message: string }> = [];
+  const conflicts: Array<{ code: "lpi" | "erf" | "portion"; message: string }> = [];
   const positives: string[] = [];
 
   const expectedLpi = normCode(expected.lpiCode) ?? parseCanonicalLpi(expected.parcelId);
@@ -856,11 +856,9 @@ export function matchDocumentIdentity(
     lineage: documentToken.lineage,
   };
 
-  let portionOk = true;
   if (erfMatch && documentToken.subjectPortion != null) {
     const expectedPortion = normPortion(expected.portionNumber) ?? "0";
     if (expectedPortion !== documentToken.subjectPortion) {
-      portionOk = false;
       conflicts.push({
         code: "portion",
         message: `the document describes portion ${documentToken.subjectPortion}, not portion ${expectedPortion}`,
@@ -868,10 +866,12 @@ export function matchDocumentIdentity(
     }
   }
 
-  let placeMatch = false;
-  for (const [label, expectedValue, documentValue, hard] of [
+  // Administrative geography is useful corroborating context, but is never a
+  // cadastral rejection gate. Municipal boundaries, place spellings and
+  // historical provinces cannot make a readable document the wrong property.
+  for (const [label, expectedValue, documentValue] of [
     ["municipality", expected.municipality, document.municipality, false],
-    ["province", expected.province, document.province, true],
+    ["province", expected.province, document.province, false],
     ["town", expected.town, document.suburbOrTown, false],
   ] as const) {
     const normalize = label === "province" ? normProvince : normPlace;
@@ -879,19 +879,8 @@ export function matchDocumentIdentity(
     const b = normalize(documentValue);
     if (!a || !b) continue;
     if (placeAgrees(a, b)) {
-      placeMatch = true;
       positives.push(`${label} matches`);
-    } else if (hard && isSupersededProvincePair(a, b)) {
-      // Pre-1994 province name on a historical survey sheet. Neither a
-      // conflict nor corroboration: the era differs, not the property.
-      continue;
-    } else if (hard) {
-      // Province is coarse and stable, so a disagreement is decisive.
-      conflicts.push({ code: "place", message: `the document ${label} is different` });
     }
-    // Municipality and suburb names are aliased and re-demarcated frequently
-    // (e.g. "ST FRANCIS BAY MUN" vs "Kouga Local Municipality"), so a
-    // disagreement there simply fails to corroborate rather than conflicting.
   }
 
   // Parent General Plan acceptance. Deliberately narrow: SG diagrams only,
@@ -922,7 +911,9 @@ export function matchDocumentIdentity(
   if (conflicts.length) {
     return { status: "mismatch", reason: `Identity conflict: ${conflicts[0].message}.`, lineage };
   }
-  if (lpiMatch || (erfMatch && portionOk && placeMatch)) {
+  // An exact LPI is a parcel-specific cadastral identifier. Erf/portion and
+  // geography can support review, but do not uniquely bind a document nationally.
+  if (lpiMatch) {
     return { status: "matched", reason: `Identity confirmed: ${positives.join(", ")}.`, lineage };
   }
   return {
