@@ -70,9 +70,9 @@ describe("legal portion token parser", () => {
 });
 
 describe("identity gate for the 24 Padrone Crescent report", () => {
-  it("matches Erf 1570 [PTN OF 1496-GP12252] against the selected freehold erf", () => {
+  it("keeps Erf 1570 [PTN OF 1496-GP12252] safely unverified without an exact LPI", () => {
     const result = matchDocumentIdentity(expected1570, padroneIdentity);
-    expect(result.status).toBe("matched");
+    expect(result.status).toBe("unverified");
   });
 
   it("retains parent erf 1496 and GP12252 separately from the subject", () => {
@@ -82,9 +82,10 @@ describe("identity gate for the 24 Padrone Crescent report", () => {
     expect(result.lineage?.generalPlanReference).toBe("GP12252");
   });
 
-  it("corroborates the match on province while tolerating municipality aliases", () => {
+  it("uses province as corroborating context while tolerating municipality aliases", () => {
     const result = matchDocumentIdentity(expected1570, padroneIdentity);
-    expect(result.reason).toMatch(/province matches/);
+    expect(result.status).toBe("unverified");
+    expect(result.reason).not.toMatch(/province matches/);
     expect(result.reason).not.toMatch(/municipality is different/);
   });
 
@@ -106,13 +107,13 @@ describe("identity gate for the 24 Padrone Crescent report", () => {
     expect(result.reason).toMatch(/erf 262/);
   });
 
-  it("still rejects a conflicting province", () => {
+  it("keeps a province disagreement alone safely unverified", () => {
     const result = matchDocumentIdentity(
       expected1570,
       normalizeExtractedIdentity({ ...padroneIdentity, province: "North-West" }),
     );
-    expect(result.status).toBe("mismatch");
-    expect(result.reason).toMatch(/province is different/);
+    expect(result.status).toBe("unverified");
+    expect(result.reason).not.toMatch(/province is different/);
   });
 });
 
