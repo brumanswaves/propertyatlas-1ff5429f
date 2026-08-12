@@ -54,7 +54,7 @@ describe("Report buildable-area visual", () => {
     expect(markup).not.toContain('data-visual="satellite"');
   });
 
-  it("uses primary and additional-frontage language and collection rendering", () => {
+  it("uses direct equivalent street-boundary selection while preserving the buildable-area visual", () => {
     const vacancy = readFileSync(
       "src/components/property/sitePotential/VacantLandBuildEnvelope.tsx",
       "utf8",
@@ -68,15 +68,21 @@ describe("Report buildable-area visual", () => {
       "utf8",
     );
 
-    expect(vacancy).toContain("Manage street frontages");
-    expect(vacancy).toContain('pickingFrontage === "manage" ? "Done"');
-    expect(vacancy).toContain("Cancel");
-    expect(vacancy).toContain("toggleAdditionalFrontage");
+    expect(vacancy).toContain("Select every property boundary that faces a street");
+    expect(vacancy).toContain("toggleStreetFrontage");
+    expect(vacancy).toContain("confirmedStreetEdgeIndexes");
+    expect(vacancy).not.toContain("Change primary");
+    expect(vacancy).not.toContain("Manage street frontages");
+    expect(vacancy).not.toContain("toggleAdditionalFrontage");
     expect(vacancy).not.toContain("second frontage");
-    expect(satellite).toContain("additionalStreetEdges.map");
-    expect(satellite).toContain("Additional street boundary");
-    expect(diagram).toContain("additionalStreetEdges.map");
-    expect(diagram).toContain("Additional street boundary");
+    expect(satellite).toContain("confirmedStreetEdgeIndexes");
+    expect(satellite).toContain("suggestedStreetEdgeIndex");
+    expect(satellite).not.toContain("Primary street boundary");
+    expect(satellite).not.toContain("Additional street boundary");
+    expect(diagram).toContain("streetFacingEdges.map");
+    expect(diagram).toContain("Street-facing boundary");
+    expect(diagram).not.toContain("Primary street boundary");
+    expect(diagram).not.toContain("Additional street boundary");
     expect(diagram).not.toContain("Secondary street boundary");
   });
 });
