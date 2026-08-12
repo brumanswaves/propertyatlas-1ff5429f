@@ -727,6 +727,20 @@ function normPlace(value: unknown): string | null {
   return text || null;
 }
 
+function normProvince(value: unknown): string | null {
+  const compact = String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (!compact) return null;
+
+  // Historical cadastral sheets commonly print the full constitutional title
+  // rather than the short province name used by the existing supersession map.
+  if (compact === "provinceofthecapeofgoodhope" || compact === "provinceofcapeofgoodhope") {
+    return "capeofgoodhope";
+  }
+  if (compact === "capeprovince") return "capeprovince";
+
+  return normPlace(value);
+}
+
 function placeAgrees(a: string, b: string) {
   return a === b || a.includes(b) || b.includes(a);
 }
@@ -860,8 +874,9 @@ export function matchDocumentIdentity(
     ["province", expected.province, document.province, true],
     ["town", expected.town, document.suburbOrTown, false],
   ] as const) {
-    const a = normPlace(expectedValue);
-    const b = normPlace(documentValue);
+    const normalize = label === "province" ? normProvince : normPlace;
+    const a = normalize(expectedValue);
+    const b = normalize(documentValue);
     if (!a || !b) continue;
     if (placeAgrees(a, b)) {
       placeMatch = true;
