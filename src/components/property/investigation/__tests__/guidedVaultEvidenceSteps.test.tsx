@@ -273,6 +273,36 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("Retry reading");
   });
 
+  it("shows stored readable SG findings and preserves uncertain identity wording", () => {
+    vaultFixture.assets = [
+      asset({
+        original_file_name: "readable-sg-test-fixture.pdf",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "unverified",
+          extractionSummary: "The document shows a cadastral diagram reference.",
+          extractedClaims: [
+            {
+              label: "General plan number",
+              value: "GP12252",
+              scope: "parent_plan",
+              confidence: "medium",
+            },
+          ],
+        },
+      }),
+    ];
+
+    const html = renderToStaticMarkup(
+      <GuidedSgDiagramStep parcel={parcel()} userId={null} onContinue={vi.fn()} />,
+    );
+
+    expect(html).toContain("What Easy Erf found");
+    expect(html).toContain("The document shows a cadastral diagram reference.");
+    expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
+    expect(html).toContain("parent context");
+  });
+
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-identified plans do not claim municipal approval", () => {
     vaultFixture.assets = [
       asset({

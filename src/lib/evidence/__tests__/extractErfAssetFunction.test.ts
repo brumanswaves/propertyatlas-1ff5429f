@@ -28,6 +28,7 @@ let downloadCalls = 0;
 let patchCalls: Array<{ url: string; body: Record<string, unknown> }>;
 let patchOk = true;
 let relatedAssetRows: Record<string, unknown>[];
+let previewUploadCalls = 0;
 
 const ASSET_ID = "6a8a1f2c-0000-4000-8000-000000000000";
 const PARCEL_ID = "csg:lpi:C03400140000157000000";
@@ -99,6 +100,7 @@ function completedBackgroundPayload(result: unknown = sgExtractionResult()) {
         type: "code_interpreter_call",
         container_id: "cntr-sg-test",
         status: "completed",
+        outputs: [{ type: "image", url: "https://temporary-preview.test/sg-overview.png" }],
       },
       {
         type: "message",
@@ -147,7 +149,14 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
       ]),
     );
   }
-  if (url.includes("/storage/v1/object/")) {
+  if (url.includes("temporary-preview.test")) {
+    return Promise.resolve(new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { "Content-Type": "image/png" } }));
+  }
+  if (url.includes("/storage/v1/object/") && method === "POST") {
+    previewUploadCalls += 1;
+    return Promise.resolve(jsonResponse({ Key: "derived/sg-overview.png" }));
+  }
+  if (url.includes("/storage/v1/object/") && method === "GET") {
     downloadCalls += 1;
     return Promise.resolve(new Response(new Uint8Array([1, 2, 3])));
   }
@@ -225,6 +234,7 @@ beforeEach(async () => {
   patchCalls = [];
   patchOk = true;
   relatedAssetRows = [];
+  previewUploadCalls = 0;
   vi.stubGlobal("fetch", vi.fn(fakeFetch));
   vi.stubGlobal("Deno", {
     env: {
@@ -487,6 +497,20 @@ describe("extract-erf-asset TIFF background review", () => {
         "https://api.openai.com/v1/containers/cntr-sg-test",
       ]),
     );
+  });
+
+  it("stores the temporary Code Interpreter image as a private derived preview", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = completedBackgroundPayload();
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+
+    expect(previewUploadCalls).toBe(1);
+    expect(assetRow.metadata).toMatchObject({
+      sgPreviewStoragePath: "erf-files/1570/derived/sg-overview.png",
+      sgPreviewMimeType: "image/png",
+    });
+    expect(JSON.stringify(assetRow.metadata)).not.toContain("temporary-preview.test");
   });
 
   it("keeps a General Plan with the target erf visible confirmable and filters its claims safely", async () => {

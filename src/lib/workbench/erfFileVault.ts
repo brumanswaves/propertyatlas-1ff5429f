@@ -402,6 +402,27 @@ export async function createErfAssetSignedUrl(asset: ErfAsset) {
   throw new Error(message);
 }
 
+const PREVIEW_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+export async function createErfAssetPreviewSignedUrl(asset: ErfAsset) {
+  const previewPath = asset.metadata.sgPreviewStoragePath;
+  const mimeType = String(asset.metadata.sgPreviewMimeType ?? asset.mime_type).split(";")[0].toLowerCase();
+  const path = typeof previewPath === "string" && previewPath.trim()
+    ? previewPath.trim()
+    : PREVIEW_MIME_TYPES.has(mimeType)
+      ? asset.storage_path
+      : null;
+  if (!path) return null;
+  const candidates = erfAssetStoragePathCandidates(path);
+  for (const candidate of candidates) {
+    const { data, error } = await supabase.storage
+      .from(asset.storage_bucket || ERF_FILE_BUCKET)
+      .createSignedUrl(candidate, ERF_FILE_SIGNED_URL_TTL_SECONDS);
+    if (!error && data?.signedUrl) return data.signedUrl;
+  }
+  return null;
+}
+
 export async function confirmErfAssetIdentityForParcel(asset: ErfAsset) {
   const userId = await currentVaultUserId();
   if (asset.user_id !== userId) throw new Error("This file does not belong to the signed-in user.");

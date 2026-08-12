@@ -521,6 +521,7 @@ A successful MVP allows a user to:
 - Site Potential must inherit evidence confidence and assumptions
 - Paid reports are an important evidence and commercial pathway
 - Evidence provenance and confidence must be preserved
+- Visual evidence traceability: when a stored SG document has a safe derived preview, the living report may show that preview beside identity-gated findings. Preview generation is convenience evidence display only; it never changes identity, lineage or planning provenance, and a missing preview remains an honest limitation.
 - Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch
 - GitHub `main` is the code source of truth
 - This document is the product source of truth

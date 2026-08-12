@@ -5,6 +5,7 @@
  * Presentation only. Unknown values render as an explicit missing state with a
  * next action — never as a clearance, a zero amount or an invented figure.
  */
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportSectionTitleBlock } from "./ReportEvidenceUi";
@@ -14,8 +15,9 @@ import {
   type ContextSectionModel,
   type MunicipalSectionModel,
 } from "@/lib/reports/contextSections";
-import type { SgSectionModel } from "@/lib/reports/sgSection";
+import type { SgEvidenceBlock, SgSectionModel } from "@/lib/reports/sgSection";
 import type { StillToVerifySummary } from "@/lib/reports/contextSections";
+import { createErfAssetPreviewSignedUrl } from "@/lib/workbench/erfFileVault";
 
 function sectionShell(extra?: string) {
   return cn(
@@ -156,6 +158,52 @@ export function ReportMunicipalSection({
   );
 }
 
+function SgPreview({ block }: { block: SgEvidenceBlock }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const settleRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const settlement = new Promise<void>((resolve) => {
+      settleRef.current = resolve;
+    });
+    void createErfAssetPreviewSignedUrl(block.asset).then((signedUrl) => {
+      if (!alive) return;
+      if (signedUrl) setUrl(signedUrl);
+      else {
+        setFailed(true);
+        settleRef.current?.();
+      }
+    });
+    return () => {
+      alive = false;
+      settleRef.current?.();
+      settleRef.current = null;
+    };
+  }, [block.asset]);
+
+  if (!url || failed) {
+    return (
+      <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#0D1B2A]/15 bg-[#F8FAFC] px-4 text-center text-xs font-semibold text-[#64748B]">
+        {url ? "Diagram preview unavailable" : "No visual preview was generated for this diagram."}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={`${block.asset.original_file_name} visual preview`}
+      className="max-h-[28rem] w-full rounded-2xl border border-[#D9E6F2] bg-white object-contain"
+      onLoad={() => settleRef.current?.()}
+      onError={() => {
+        setFailed(true);
+        settleRef.current?.();
+      }}
+    />
+  );
+}
+
 export function ReportSgLineageSection({
   anchorId,
   model,
@@ -247,6 +295,60 @@ export function ReportSgLineageSection({
               </dl>
             )}
           </div>
+        </div>
+      )}
+
+      {model.evidence.length > 0 && (
+        <div className="mt-5 space-y-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+            What Easy Erf found
+          </div>
+          {model.evidence.map((block) => (
+            <article key={block.asset.id} className="grid gap-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 lg:grid-cols-[0.85fr_1.15fr]">
+              <div>
+                <SgPreview block={block} />
+                <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{block.asset.original_file_name}</div>
+                <div className="mt-1 text-[11px] text-[#64748B]">{block.readLabel}</div>
+                {block.isParentContext && <div className="mt-2 text-[11px] font-semibold text-[#92400E]">PLAN / PARENT CONTEXT only</div>}
+                {block.isUserConfirmed && <div className="mt-2 text-[11px] font-semibold text-[#92400E]">User-confirmed attachment, not official verification</div>}
+                {onOpenAsset && (
+                  <button type="button" onClick={() => onOpenAsset(block.asset.id)} className="report-no-print mt-3 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-white">
+                    Open source file <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">Findings</div>
+                {block.isUserConfirmed && <p className="mt-2 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">Easy Erf read this document, but it has not been automatically bound to this erf.</p>}
+                {block.summary && <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/75">{block.summary}</p>}
+                {block.findings.length ? (
+                  <ul className="mt-3 space-y-2">
+                    {block.findings.slice(0, 6).map((finding) => (
+                      <li key={`${finding.label}-${finding.value}`} className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2 text-xs">
+                        <span className="font-semibold text-[#0D1B2A]">{finding.label}:</span> {finding.value}
+                        <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">{finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="mt-3 text-sm text-[#64748B]">No structured findings were stored for this document.</p>}
+                {block.findings.length > 6 && (
+                  <details className="report-no-print mt-3 rounded-xl border border-[#D9E6F2] bg-white px-3 py-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-[#B24A00]">
+                      Show all {block.findings.length} findings
+                    </summary>
+                    <ul className="mt-2 space-y-1.5">
+                      {block.findings.slice(6).map((finding) => (
+                        <li key={`${finding.label}-${finding.value}`} className="text-xs leading-5 text-[#0D1B2A]/75">
+                          <span className="font-semibold">{finding.label}:</span> {finding.value}
+                          <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">{finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
       )}
 

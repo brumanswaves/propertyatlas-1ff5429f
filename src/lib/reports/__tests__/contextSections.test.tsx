@@ -13,6 +13,7 @@ import {
 } from "@/components/property/dossier/ReportContextSections";
 import type { EvidenceClaim, PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import type { EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 function claim(overrides: Partial<EvidenceClaim>): EvidenceClaim {
   return {
@@ -195,5 +196,52 @@ describe("SG lineage section model", () => {
     const model = buildSgSectionModel({ appendixRows: [], pack: null });
     expect(model.emptyMessage).toMatch(/No Surveyor-General diagram/);
     expect(model.hasParentContext).toBe(false);
+  });
+
+  it("shows stored SG findings as scoped visual evidence without upgrading identity", () => {
+    const sgAsset = {
+      id: "asset-sg-readable",
+      user_id: "user-1",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      asset_type: "sg_diagram",
+      source_label: "Surveyor-General",
+      storage_bucket: "erf-files",
+      storage_path: "user-1/parcel:erf-1570/sg_diagram/asset/readable.tif",
+      original_file_name: "readable-sg-test-fixture.tif",
+      mime_type: "image/tiff",
+      size_bytes: 100,
+      checksum_sha256: null,
+      status: "ready",
+      metadata: {
+        extractionStatus: "partial",
+        identityMatchStatus: "unverified",
+        identityBinding: "user_confirmed",
+        identityUserConfirmedParcelId: "parcel:erf-1570",
+        extractionSummary: "The document shows a cadastral diagram reference.",
+        extractedClaims: [
+          {
+            label: "General plan number",
+            value: "GP12252",
+            scope: "parent_plan",
+            confidence: "medium",
+          },
+        ],
+      },
+      local_migration_fingerprint: null,
+      created_at: "2026-08-12T08:00:00.000Z",
+      updated_at: "2026-08-12T08:00:00.000Z",
+    } as unknown as ErfAsset;
+    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [sgAsset] });
+    expect(model.evidence).toHaveLength(1);
+    expect(model.evidence[0]?.isUserConfirmed).toBe(true);
+    expect(model.evidence[0]?.findings[0]?.scope).toBe("parent_plan");
+
+    const html = renderToStaticMarkup(
+      <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
+    );
+    expect(html).toContain("What Easy Erf found");
+    expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
+    expect(html).toContain("parent context");
   });
 });

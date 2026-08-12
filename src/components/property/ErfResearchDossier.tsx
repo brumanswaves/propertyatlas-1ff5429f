@@ -1270,8 +1270,6 @@ const REPORT_PRINT_IFRAME_CSS = `
   img { max-width: 100%; }
 `;
 const signedAssetPreviewUrlCache = new Map<string, string>();
-const pendingSignedAssetPreviewSettlements = new Set<Promise<void>>();
-
 type SignedAssetPreviewState =
   | { status: "loading" }
   | { status: "ready"; url: string }
@@ -1300,15 +1298,6 @@ function formatAssetDate(value: string) {
 function assetTitle(asset: ErfAsset) {
   const title = asset.metadata?.title;
   return typeof title === "string" && title.trim() ? title : asset.original_file_name;
-}
-
-function trackSignedAssetPreviewSettlement(promise: Promise<void>) {
-  pendingSignedAssetPreviewSettlements.add(promise);
-  promise.finally(() => pendingSignedAssetPreviewSettlements.delete(promise));
-}
-
-function waitForSignedAssetPreviewSettlements() {
-  return Promise.allSettled(Array.from(pendingSignedAssetPreviewSettlements)).then(() => undefined);
 }
 
 async function waitForReportPrintPreparation(root: ParentNode | null | undefined) {
@@ -1704,8 +1693,8 @@ function StoepAiReportView({
   );
 
   const sgSection = useMemo(
-    () => buildSgSectionModel({ appendixRows, pack: report.evidencePack ?? null }),
-    [appendixRows, report.evidencePack],
+    () => buildSgSectionModel({ appendixRows, pack: report.evidencePack ?? null, assets: fileVault.assets }),
+    [appendixRows, fileVault.assets, report.evidencePack],
   );
 
   const askSuggestionPayload = useMemo(
@@ -3887,4 +3876,14 @@ function ResultTile({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-sm font-semibold tabular-nums">{value}</div>
     </div>
   );
+}
+const pendingSignedAssetPreviewSettlements = new Set<Promise<void>>();
+
+function trackSignedAssetPreviewSettlement(promise: Promise<void>) {
+  pendingSignedAssetPreviewSettlements.add(promise);
+  promise.finally(() => pendingSignedAssetPreviewSettlements.delete(promise));
+}
+
+function waitForSignedAssetPreviewSettlements() {
+  return Promise.allSettled(Array.from(pendingSignedAssetPreviewSettlements)).then(() => undefined);
 }

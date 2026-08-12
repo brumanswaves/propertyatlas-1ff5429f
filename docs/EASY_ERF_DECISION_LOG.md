@@ -147,3 +147,10 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Rationale: South African document history, municipal demarcation and place naming vary nationally. Evidence ingestion must not depend on an ever-growing administrative alias library.
 - Implementation: Automatic mismatch is limited to strong cadastral contradictions: an explicit different LPI/canonical identifier, a different subject erf, or a different subject portion of the same erf. Readable ambiguity remains unverified and may use the existing user-confirmation binding. A General Plan may safely support an erf with filtered contextual/subject claims without becoming its individual SG diagram.
 - Do not regress: Preserve the existing identity-status enum, General Plan claim restrictions and user-confirmed provenance; never make a geography-only difference a wrong-property rejection.
+
+## EE-019 - SG visual evidence remains provenance-bound
+
+- Date: 2026-08-12, MVP Rescue 1F.
+- Decision: The report may show a private, low-resolution SG preview beside findings already stored by the identity-gated extraction flow.
+- Rationale: Users need to see why cadastral evidence matters, but a preview must not be mistaken for identity verification or a planning-rights decision.
+- Implementation: Preview output is derived and stored without a durable URL; subject, parent-plan and user-confirmed scope remain explicit. Preview failure leaves the extracted evidence usable and is shown as a limitation.
