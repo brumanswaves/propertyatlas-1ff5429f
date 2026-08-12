@@ -15,7 +15,10 @@ import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { CSG_VIEWER_URL, ONEMAP_PROPERTYMAP_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
-import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
+import {
+  extractErfAsset,
+  type ExtractErfAssetResult,
+} from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetCanConfirmIdentity,
   erfAssetExtractionLabel,
@@ -61,6 +64,77 @@ function extractionSummary(asset: ErfAsset) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+interface SgDiagramPollingOptions {
+  assetId: string;
+  parcelId: string;
+  refreshVault: () => Promise<void> | void;
+  extract?: (assetId: string, options: { expectedParcelId: string }) => Promise<ExtractErfAssetResult>;
+  dispatchUpdated?: (parcelId: string) => void;
+}
+
+/**
+ * Schedules background TIFF checks for the same asset the mounted step observed.
+ * The effect below owns its lifecycle; this small controller keeps each delayed
+ * request, completion and cleanup path deterministic and testable.
+ */
+export function startSgDiagramPolling({
+  assetId,
+  parcelId,
+  refreshVault,
+  extract = extractErfAsset,
+  dispatchUpdated = dispatchErfFileVaultUpdated,
+}: SgDiagramPollingOptions) {
+  let disposed = false;
+  let inFlight = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const startedAt = Date.now();
+  let delay = 8_000;
+
+  const schedule = () => {
+    if (disposed || Date.now() - startedAt >= 15 * 60_000) return;
+    timer = setTimeout(() => void poll(), delay);
+  };
+
+  const poll = async () => {
+    if (disposed || inFlight) return;
+    inFlight = true;
+    try {
+      const result = await extract(assetId, { expectedParcelId: parcelId });
+      if (disposed) return;
+      if (result.success && result.extractionStatus === "processing") {
+        delay = 20_000;
+        schedule();
+        return;
+      }
+
+      await refreshVault();
+      dispatchUpdated(parcelId);
+      if (result.success) {
+        toast.success(
+          result.identityMatchStatus === "mismatch"
+            ? "The diagram review completed, but it was not accepted for this erf."
+            : "The SG diagram review completed. Check the findings below.",
+        );
+      } else if (result.code === "SERVER_UNAVAILABLE") {
+        delay = 20_000;
+        schedule();
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      if (!disposed) toast.error("The SG diagram review could not be checked yet.");
+    } finally {
+      inFlight = false;
+    }
+  };
+
+  schedule();
+  return () => {
+    disposed = true;
+    if (timer !== null) clearTimeout(timer);
+  };
+}
+
 export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["sg_diagram"]);
@@ -101,53 +175,11 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
 
   useEffect(() => {
     if (!signedIn || !processingAssetId) return;
-    let disposed = false;
-    let inFlight = false;
-    let timer: number | null = null;
-    const startedAt = Date.now();
-    let delay = 8_000;
-    const schedule = () => {
-      if (disposed || Date.now() - startedAt >= 15 * 60_000) return;
-      timer = window.setTimeout(() => void poll(), delay);
-    };
-    const poll = async () => {
-      if (disposed || inFlight) return;
-      inFlight = true;
-      try {
-        const result = await extractErfAsset(processingAssetId, { expectedParcelId: parcel.id });
-        if (disposed) return;
-        if (result.success && result.extractionStatus === "processing") {
-          delay = 20_000;
-          schedule();
-        } else {
-          await refreshVault();
-          dispatchErfFileVaultUpdated(parcel.id);
-          if (result.success && result.extractionStatus !== "processing") {
-            toast.success(
-              result.identityMatchStatus === "mismatch"
-                ? "The diagram review completed, but it was not accepted for this erf."
-                : "The SG diagram review completed. Check the findings below.",
-            );
-          } else if (!result.success) {
-            if (result.code === "SERVER_UNAVAILABLE") {
-              delay = 20_000;
-              schedule();
-            } else {
-              toast.error(result.error);
-            }
-          }
-        }
-      } catch {
-        if (!disposed) toast.error("The SG diagram review could not be checked yet.");
-      } finally {
-        inFlight = false;
-      }
-    };
-    schedule();
-    return () => {
-      disposed = true;
-      if (timer !== null) window.clearTimeout(timer);
-    };
+    return startSgDiagramPolling({
+      assetId: processingAssetId,
+      parcelId: parcel.id,
+      refreshVault,
+    });
   }, [parcel.id, processingAssetId, refreshVault, signedIn]);
 
   function syncAttachmentCount(count: number) {

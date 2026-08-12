@@ -2124,6 +2124,7 @@ function StoepAiReportView({
                   if (asset) void openVaultAsset(asset);
                 }}
                 onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+                onPreviewSettlement={trackSignedAssetPreviewSettlement}
               />
 
               {/* ZONING & BUILD — detailed published-rule clauses live behind this disclosure */}

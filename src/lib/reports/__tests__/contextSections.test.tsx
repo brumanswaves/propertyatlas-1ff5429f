@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   buildLocationLifestyleSectionModel,
@@ -10,6 +10,7 @@ import {
   ReportContextSection,
   ReportMunicipalSection,
   ReportSgLineageSection,
+  registerSgPreviewSettlement,
 } from "@/components/property/dossier/ReportContextSections";
 import type { EvidenceClaim, PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import type { EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
@@ -196,6 +197,32 @@ describe("SG lineage section model", () => {
     const model = buildSgSectionModel({ appendixRows: [], pack: null });
     expect(model.emptyMessage).toMatch(/No Surveyor-General diagram/);
     expect(model.hasParentContext).toBe(false);
+  });
+
+  it("keeps the SG empty state when only another searchable vault document exists", () => {
+    const paidReport = {
+      id: "asset-paid-report",
+      asset_category: "paid_report",
+      metadata: { extractionStatus: "ready", identityMatchStatus: "matched" },
+    } as unknown as ErfAsset;
+    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [paidReport] });
+
+    expect(model.emptyMessage).toMatch(/No Surveyor-General diagram has been read/);
+    expect(model.evidence).toHaveLength(0);
+  });
+
+  it("registers each SG signed-preview settlement with report print preparation", async () => {
+    let resolveSettlement: (() => void) | undefined;
+    const settlement = new Promise<void>((resolve) => {
+      resolveSettlement = resolve;
+    });
+    const register = vi.fn();
+
+    registerSgPreviewSettlement(register, settlement);
+
+    expect(register).toHaveBeenCalledWith(settlement);
+    resolveSettlement?.();
+    await expect(settlement).resolves.toBeUndefined();
   });
 
   it("shows stored SG findings as scoped visual evidence without upgrading identity", () => {

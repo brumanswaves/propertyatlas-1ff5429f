@@ -134,6 +134,7 @@ export function buildSgSectionModel(input: {
   assets?: ErfAsset[];
 }): SgSectionModel {
   const { appendixRows, pack, assets = [] } = input;
+  const sgAssets = assets.filter((asset) => asset.asset_category === "sg_diagram");
 
   const files: SgFileRow[] = appendixRows
     .filter(
@@ -194,7 +195,9 @@ export function buildSgSectionModel(input: {
       ? "These diagrams were matched to the parent general plan for this erf. They are shown as parent-plan context: they describe the layout this erf came from, and they do not confirm boundaries, extent or servitudes for the subject erf on their own."
       : null,
     emptyMessage:
-      files.length === 0 && lineage.length === 0 && assets.every((asset) => !erfAssetHasSearchableExtraction(asset))
+      files.length === 0 &&
+      lineage.length === 0 &&
+      sgAssets.every((asset) => !erfAssetHasSearchableExtraction(asset))
         ? "No Surveyor-General diagram has been read for this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
         : null,
   };

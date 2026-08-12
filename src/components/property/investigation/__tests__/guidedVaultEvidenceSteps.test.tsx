@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GuidedPropertyChecksStep } from "@/components/property/investigation/GuidedPropertyChecksStep";
-import { GuidedSgDiagramStep } from "@/components/property/investigation/GuidedSgDiagramStep";
+import {
+  GuidedSgDiagramStep,
+  startSgDiagramPolling,
+} from "@/components/property/investigation/GuidedSgDiagramStep";
 import { GuidedTitleStep } from "@/components/property/investigation/GuidedTitleStep";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
@@ -10,6 +13,15 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 const vaultFixture = vi.hoisted(() => ({
   assets: [] as ErfAsset[],
   error: null as string | null,
+  refresh: vi.fn(),
+}));
+
+const extractionFixture = vi.hoisted(() => ({ extract: vi.fn() }));
+const toastFixture = vi.hoisted(() => ({
+  error: vi.fn(),
+  message: vi.fn(),
+  success: vi.fn(),
+  warning: vi.fn(),
 }));
 
 vi.mock("@/lib/workbench/useErfFileVault", () => ({
@@ -21,7 +33,7 @@ vi.mock("@/lib/workbench/useErfFileVault", () => ({
     uploadState: null,
     migration: null,
     signedIn: true,
-    refresh: vi.fn(),
+    refresh: vaultFixture.refresh,
     upload: vi.fn(),
     remove: vi.fn(),
     open: vi.fn(),
@@ -29,13 +41,12 @@ vi.mock("@/lib/workbench/useErfFileVault", () => ({
   })),
 }));
 
+vi.mock("@/lib/workbench/erfAssetExtraction", () => ({
+  extractErfAsset: extractionFixture.extract,
+}));
+
 vi.mock("sonner", () => ({
-  toast: {
-    error: vi.fn(),
-    message: vi.fn(),
-    success: vi.fn(),
-    warning: vi.fn(),
-  },
+  toast: toastFixture,
 }));
 
 function parcel(): NormalizedOfficialParcel {
@@ -87,6 +98,13 @@ describe("guided vault evidence steps", () => {
   beforeEach(() => {
     vaultFixture.assets = [];
     vaultFixture.error = null;
+    vaultFixture.refresh.mockReset();
+    extractionFixture.extract.mockReset();
+    toastFixture.error.mockReset();
+    toastFixture.message.mockReset();
+    toastFixture.success.mockReset();
+    toastFixture.warning.mockReset();
+    vi.useRealTimers();
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: readable parent General Plan supports the SG step without becoming a subject diagram", () => {
@@ -271,6 +289,89 @@ describe("guided vault evidence steps", () => {
     expect(html).toContain("You can leave this page and come back");
     expect(html).toContain("Check review");
     expect(html).not.toContain("Retry reading");
+  });
+
+  it("polls a processing TIFF after eight seconds, then waits twenty seconds between checks", async () => {
+    vi.useFakeTimers();
+    const dispatchUpdated = vi.fn();
+    extractionFixture.extract
+      .mockResolvedValueOnce({
+        success: true,
+        extractionStatus: "processing",
+        identityMatchStatus: null,
+        claimCount: 0,
+        documentType: "sg_diagram",
+        warning: null,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        extractionStatus: "ready",
+        identityMatchStatus: "matched",
+        claimCount: 2,
+        documentType: "sg_diagram",
+        warning: null,
+      });
+    const stop = startSgDiagramPolling({
+      assetId: "processing-sg",
+      parcelId: "parcel:test-fixture",
+      refreshVault: vaultFixture.refresh,
+      dispatchUpdated,
+    });
+
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(extractionFixture.extract).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(1);
+    expect(toastFixture.error).not.toHaveBeenCalled();
+    expect(toastFixture.message).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(2);
+    expect(vaultFixture.refresh).toHaveBeenCalledTimes(1);
+    expect(dispatchUpdated).toHaveBeenCalledWith("parcel:test-fixture");
+    expect(toastFixture.success).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
+  it("retains a processing TIFF and retries quietly when the server is temporarily unavailable", async () => {
+    vi.useFakeTimers();
+    extractionFixture.extract.mockResolvedValue({
+      success: false,
+      code: "SERVER_UNAVAILABLE",
+      error: "Document reading is temporarily unavailable.",
+      extractionStatus: "processing",
+    });
+    const stop = startSgDiagramPolling({
+      assetId: "processing-sg",
+      parcelId: "parcel:test-fixture",
+      refreshVault: vaultFixture.refresh,
+    });
+
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(1);
+    expect(toastFixture.error).not.toHaveBeenCalled();
+    expect(toastFixture.message).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
+  it("clears the scheduled TIFF poll when the mounted step unmounts", async () => {
+    vi.useFakeTimers();
+    const stop = startSgDiagramPolling({
+      assetId: "processing-sg",
+      parcelId: "parcel:test-fixture",
+      refreshVault: vaultFixture.refresh,
+    });
+
+    stop();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(extractionFixture.extract).not.toHaveBeenCalled();
   });
 
   it("shows stored readable SG findings and preserves uncertain identity wording", () => {

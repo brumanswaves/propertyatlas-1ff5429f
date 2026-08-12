@@ -158,7 +158,20 @@ export function ReportMunicipalSection({
   );
 }
 
-function SgPreview({ block }: { block: SgEvidenceBlock }) {
+export function registerSgPreviewSettlement(
+  onPreviewSettlement: ((settlement: Promise<void>) => void) | undefined,
+  settlement: Promise<void>,
+) {
+  onPreviewSettlement?.(settlement);
+}
+
+function SgPreview({
+  block,
+  onPreviewSettlement,
+}: {
+  block: SgEvidenceBlock;
+  onPreviewSettlement?: (settlement: Promise<void>) => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const settleRef = useRef<(() => void) | null>(null);
@@ -168,6 +181,7 @@ function SgPreview({ block }: { block: SgEvidenceBlock }) {
     const settlement = new Promise<void>((resolve) => {
       settleRef.current = resolve;
     });
+    registerSgPreviewSettlement(onPreviewSettlement, settlement);
     void createErfAssetPreviewSignedUrl(block.asset).then((signedUrl) => {
       if (!alive) return;
       if (signedUrl) setUrl(signedUrl);
@@ -181,7 +195,7 @@ function SgPreview({ block }: { block: SgEvidenceBlock }) {
       settleRef.current?.();
       settleRef.current = null;
     };
-  }, [block.asset]);
+  }, [block.asset, onPreviewSettlement]);
 
   if (!url || failed) {
     return (
@@ -209,11 +223,13 @@ export function ReportSgLineageSection({
   model,
   onOpenAsset,
   onOpenTab,
+  onPreviewSettlement,
 }: {
   anchorId: string;
   model: SgSectionModel;
   onOpenAsset?: (assetId: string) => void;
   onOpenTab?: (tab: string) => void;
+  onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
   return (
     <section id={anchorId} className={sectionShell()}>
@@ -306,7 +322,7 @@ export function ReportSgLineageSection({
           {model.evidence.map((block) => (
             <article key={block.asset.id} className="grid gap-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 lg:grid-cols-[0.85fr_1.15fr]">
               <div>
-                <SgPreview block={block} />
+                <SgPreview block={block} onPreviewSettlement={onPreviewSettlement} />
                 <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{block.asset.original_file_name}</div>
                 <div className="mt-1 text-[11px] text-[#64748B]">{block.readLabel}</div>
                 {block.isParentContext && <div className="mt-2 text-[11px] font-semibold text-[#92400E]">PLAN / PARENT CONTEXT only</div>}
