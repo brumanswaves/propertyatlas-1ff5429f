@@ -22,8 +22,8 @@ function toPath(points: LocalPoint[]) {
 }
 
 const EDGE_LABEL: Record<string, string> = {
-  street: "Primary street boundary",
-  additional_street: "Additional street boundary",
+  street: "Street-facing boundary",
+  additional_street: "Street-facing boundary",
   side: "Side",
   rear: "Rear",
 };
@@ -69,6 +69,9 @@ export function BuildEnvelopeDiagram({
   const coverageCentre = result.coverageFootprint
     ? polygonCentroid(result.coverageFootprint.polygon)
     : null;
+  const streetFacingEdges = result.edges.filter(
+    (edge) => edge.kind === "street" || edge.kind === "additional_street",
+  );
 
 
 
@@ -167,29 +170,17 @@ export function BuildEnvelopeDiagram({
           </>
         ) : null}
 
-        {/* Street edge emphasis */}
-        {result.streetEdge ? (
+        {/* Confirmed street-facing boundaries share one visual treatment. */}
+        {streetFacingEdges.map((edge) => (
           <line
-            x1={result.streetEdge.a.x}
-            y1={result.streetEdge.a.y}
-            x2={result.streetEdge.b.x}
-            y2={result.streetEdge.b.y}
-            stroke="#FF6A00"
-            strokeWidth={stroke * 3}
-            strokeLinecap="round"
-          />
-        ) : null}
-        {result.additionalStreetEdges.map((edge) => (
-          <line
-            key={`additional-street-${edge.index}`}
+            key={`street-facing-${edge.index}`}
             x1={edge.a.x}
             y1={edge.a.y}
             x2={edge.b.x}
             y2={edge.b.y}
-            stroke="#F59E0B"
-            strokeWidth={stroke * 2.5}
+            stroke="#FF6A00"
+            strokeWidth={stroke * 3}
             strokeLinecap="round"
-            strokeDasharray={`${stroke * 3} ${stroke * 1.5}`}
           />
         ))}
 
@@ -222,8 +213,11 @@ export function BuildEnvelopeDiagram({
       {compact ? null : (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-white/65">
           <LegendSwatch color="#22D3EE" label="Parcel boundary" />
-          <LegendSwatch color="#FF6A00" label={result.streetEdge ? "Primary street boundary" : "Primary street boundary not set"} />
-          {result.additionalStreetEdges.length ? <LegendSwatch color="#F59E0B" dashed label="Additional street boundary" /> : null}
+          <LegendSwatch
+            color="#FF6A00"
+            label="Street-facing boundary"
+            faded={!streetFacingEdges.length}
+          />
           <LegendSwatch color="#38BDF8" dashed label="Street building line" />
           <LegendSwatch color="#22C55E" dashed label="Side / rear building line" />
           <LegendSwatch color="#4ADE80" faded label="Inside building lines" />

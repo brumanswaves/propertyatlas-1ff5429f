@@ -79,7 +79,10 @@ describe("Report buildable-area visual", () => {
     expect(satellite).toContain("suggestedStreetEdgeIndex");
     expect(satellite).not.toContain("Primary street boundary");
     expect(satellite).not.toContain("Additional street boundary");
-    expect(diagram).toContain("additionalStreetEdges.map");
+    expect(diagram).toContain("streetFacingEdges.map");
+    expect(diagram).toContain("Street-facing boundary");
+    expect(diagram).not.toContain("Primary street boundary");
+    expect(diagram).not.toContain("Additional street boundary");
     expect(diagram).not.toContain("Secondary street boundary");
   });
 });
