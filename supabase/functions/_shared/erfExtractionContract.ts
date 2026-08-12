@@ -260,7 +260,7 @@ export interface ErfExtractionMetadataPatch {
   sgPreviewMimeType?: string | null;
   sgPreviewGeneratedAt?: string | null;
   /** Temporary OpenAI background-job references. Never document bytes or secrets. */
-  extractionProvider?: "openai_code_interpreter" | null;
+  extractionProvider?: "openai_code_interpreter" | "openai_sg_tiff_fast_preprocess" | null;
   openaiResponseId?: string | null;
   openaiFileId?: string | null;
   openaiContainerId?: string | null;
