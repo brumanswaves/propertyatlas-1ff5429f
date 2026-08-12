@@ -38,6 +38,11 @@ const expected1570: ErfExpectedIdentity = {
   town: "St Francis Bay",
 };
 
+const expected1570SeaVista: ErfExpectedIdentity = {
+  ...expected1570,
+  town: "Sea Vista",
+};
+
 // The real quarantined sample: a Potchefstroom report uploaded against Erf 1570.
 const potchefstroomIdentity = normalizeExtractedIdentity({
   erfNumber: "262",
@@ -102,6 +107,50 @@ describe("document-parcel identity gate", () => {
       normalizeExtractedIdentity({ erfNumber: "1570", portionNumber: "0", suburbOrTown: "St Francis Bay" }),
     );
     expect(result.status).toBe("matched");
+  });
+
+  it("matches a historical Cape of Good Hope province title when other identity signals agree", () => {
+    const result = matchDocumentIdentity(
+      expected1570SeaVista,
+      normalizeExtractedIdentity({
+        erfNumber: "1570",
+        portionNumber: "0",
+        province: "Province of the Cape of Good Hope",
+        suburbOrTown: "SEA VISTA",
+      }),
+    );
+
+    expect(result.status).toBe("matched");
+    expect(result.reason).not.toContain("province is different");
+  });
+
+  it("treats Cape Province as a historical predecessor of Eastern Cape", () => {
+    const result = matchDocumentIdentity(
+      expected1570SeaVista,
+      normalizeExtractedIdentity({
+        erfNumber: "1570",
+        portionNumber: "0",
+        province: "Cape Province",
+        suburbOrTown: "Sea Vista",
+      }),
+    );
+
+    expect(result.status).toBe("matched");
+  });
+
+  it("still rejects a genuinely different modern province", () => {
+    const result = matchDocumentIdentity(
+      expected1570SeaVista,
+      normalizeExtractedIdentity({
+        erfNumber: "1570",
+        portionNumber: "0",
+        province: "North-West",
+        suburbOrTown: "Sea Vista",
+      }),
+    );
+
+    expect(result.status).toBe("mismatch");
+    expect(result.reason).toContain("province is different");
   });
 
   it("treats a document with too little identity as unverified", () => {
