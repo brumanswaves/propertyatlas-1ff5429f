@@ -156,17 +156,73 @@ function derivedPreviewPath(asset: AssetRow, mimeType: string) {
   return `${parent}/derived/sg-overview.${extension}`;
 }
 
-async function storeTiffPreview(asset: AssetRow, previewUrl: string | null) {
-  if (!previewUrl) return null;
+const TIFF_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
+
+function previewMimeType(bytes: Uint8Array, contentType: string | null) {
+  const declared = (contentType ?? "").split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  if (["image/png", "image/jpeg", "image/webp"].includes(declared)) return declared;
+  const isPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a;
+  if (isPng) return "image/png";
+  const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (isJpeg) return "image/jpeg";
+  const isWebp =
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  return isWebp ? "image/webp" : null;
+}
+
+async function storeTiffPreview(
+  asset: AssetRow,
+  previewUrl: string | null,
+  apiKey: string,
+  requestId: string,
+) {
+  if (!previewUrl) {
+    log("sg_preview_missing", requestId, { reasonCode: "no_image_output" });
+    return null;
+  }
   try {
-    const response = await fetch(previewUrl);
-    if (!response.ok) return null;
-    const mimeType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-    if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) return null;
+    const url = new URL(previewUrl);
+    if (url.protocol !== "https:") {
+      log("sg_preview_fetch_failed", requestId, { reasonCode: "https_required" });
+      return null;
+    }
+    const headers = url.hostname === "api.openai.com" ? { Authorization: `Bearer ${apiKey}` } : undefined;
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      log("sg_preview_fetch_failed", requestId, { status: response.status, reasonCode: "http_error" });
+      return null;
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (!bytes.byteLength || bytes.byteLength > 5 * 1024 * 1024) return null;
+    if (!bytes.byteLength || bytes.byteLength > TIFF_PREVIEW_MAX_BYTES) {
+      log("sg_preview_too_large", requestId, { bytes: bytes.byteLength, reasonCode: "max_5mb" });
+      return null;
+    }
+    const mimeType = previewMimeType(bytes, response.headers.get("content-type"));
+    if (!mimeType) {
+      log("sg_preview_invalid_mime", requestId, {
+        mime: response.headers.get("content-type") ?? null,
+        bytes: bytes.byteLength,
+        reasonCode: "unsupported_image",
+      });
+      return null;
+    }
     const path = derivedPreviewPath(asset, mimeType);
     const key = serviceKey();
+    if (!key) {
+      log("sg_preview_upload_failed", requestId, { mime: mimeType, bytes: bytes.byteLength, reasonCode: "storage_unavailable" });
+      return null;
+    }
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     const upload = await fetch(
       `${supabaseUrl()}/storage/v1/object/${encodeURIComponent(asset.storage_bucket)}/${encodedPath}`,
@@ -181,13 +237,24 @@ async function storeTiffPreview(asset: AssetRow, previewUrl: string | null) {
         body: bytes,
       },
     );
-    if (!upload.ok) return null;
-    return {
+    if (!upload.ok) {
+      log("sg_preview_upload_failed", requestId, {
+        status: upload.status,
+        mime: mimeType,
+        bytes: bytes.byteLength,
+        reasonCode: "storage_http_error",
+      });
+      return null;
+    }
+    const patch = {
       sgPreviewStoragePath: path,
       sgPreviewMimeType: mimeType,
       sgPreviewGeneratedAt: new Date().toISOString(),
     };
+    log("sg_preview_stored", requestId, { mime: mimeType, bytes: bytes.byteLength });
+    return patch;
   } catch {
+    log("sg_preview_fetch_failed", requestId, { reasonCode: "request_error" });
     return null;
   }
 }
@@ -712,7 +779,7 @@ Deno.serve(async (request: Request) => {
       );
     }
     parsed = poll.parsed;
-    previewPatch = (await storeTiffPreview(asset, poll.previewUrl)) ?? {};
+    previewPatch = (await storeTiffPreview(asset, poll.previewUrl, apiKey, requestId)) ?? {};
   } else {
     const locked = await claimProcessingLock(asset, requestId);
     if (!locked) {
