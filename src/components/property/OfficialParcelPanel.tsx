@@ -2521,6 +2521,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const isOverview = tab === "overview";
   const isInvestigation = tab === "investigation";
   const expertWorkspaceOpen = !isOverview && !isInvestigation;
+  const showWorkbenchNextStep =
+    expertWorkspaceOpen && tab !== "calculators" && tab !== "site-potential";
   const workbenchIdentityLine = buildWorkbenchIdentityLine(normalizedParcel, canonicalUserAddress);
   const pageNextStep = buildWorkbenchPageNextStep(tab, {
     paidReportCount,
@@ -3134,7 +3136,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
 
-          {expertWorkspaceOpen && (
+          {showWorkbenchNextStep && (
             <WorkbenchNextStep
               step={pageNextStep}
               onAction={() => {
