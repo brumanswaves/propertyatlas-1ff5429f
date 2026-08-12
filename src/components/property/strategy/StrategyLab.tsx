@@ -1512,7 +1512,7 @@ export function StrategyLab({
         />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className={cn("grid gap-4", !isGuided && "xl:grid-cols-[1.1fr_0.9fr]")}>
         <div className="space-y-3 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -1593,11 +1593,20 @@ export function StrategyLab({
         </div>
 
         <div className="space-y-3">
+          {isGuided && (
+            <DealSnapshotPanel
+              activeLabel={activeOption.label}
+              snapshot={dealSnapshot}
+              guidedStepLabel="3. Review the result"
+            />
+          )}
           <section className="rounded-[1.5rem] border border-[#FF6A00]/20 bg-[#fff8ec] p-4">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              {isGuided ? "3. Review the result" : "Output panel"}
+              {isGuided ? "Detailed outputs" : "Output panel"}
             </div>
-            <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">Planning result</h4>
+            <h4 className="mt-1 text-lg font-semibold text-[#0D1B2A]">
+              {isGuided ? `${activeOption.label} outputs` : "Planning result"}
+            </h4>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {summary.map(([label, value]) => (
                 <ResultTile key={label} label={label} value={value} />
@@ -1640,7 +1649,7 @@ export function StrategyLab({
         </div>
       </section>
 
-      <DealSnapshotPanel activeLabel={activeOption.label} snapshot={dealSnapshot} />
+      {!isGuided && <DealSnapshotPanel activeLabel={activeOption.label} snapshot={dealSnapshot} />}
 
       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
         {savedScenarios.length > 0
@@ -2009,12 +2018,19 @@ function fieldGroupsFor(strategy: StrategyType): FieldGroupModel[] {
 function DealSnapshotPanel({
   activeLabel,
   snapshot,
+  guidedStepLabel,
 }: {
   activeLabel: string;
   snapshot: DealSnapshotModel;
+  guidedStepLabel?: string;
 }) {
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4 shadow-[0_18px_60px_-48px_rgba(13,27,42,0.55)]">
+      {guidedStepLabel && (
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+          {guidedStepLabel}
+        </div>
+      )}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
