@@ -545,6 +545,12 @@ describe("official dossier UX guardrails", () => {
     expect(reportProgress).toContain('tab: siteMissing ? "site-potential" : "stoep-report"');
     expect(panel).toContain("WorkbenchNextStep");
     expect(panel).toContain("Next best step");
+    expect(panel).toContain("const showWorkbenchNextStep =");
+    expect(panel).toContain('tab !== "calculators"');
+    expect(panel).toContain('tab !== "site-potential"');
+    expect(panel).toContain("{showWorkbenchNextStep && (");
+    expect(panel).toContain('guidedStrategyReturn=');
+    expect(panel).toContain('guidedReturn=');
     expect(panel).toContain("buildCanonicalNextAction");
     expect(panel).toContain("GUIDED_TASK_DEFINITIONS");
     expect(panel).toContain("deriveInvestigationFacts");
