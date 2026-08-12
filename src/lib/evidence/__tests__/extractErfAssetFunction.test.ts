@@ -29,6 +29,11 @@ let patchCalls: Array<{ url: string; body: Record<string, unknown> }>;
 let patchOk = true;
 let relatedAssetRows: Record<string, unknown>[];
 let previewUploadCalls = 0;
+let previewUploadStatus = 200;
+let previewUrl = "https://temporary-preview.test/sg-overview.png";
+let previewBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+let previewContentType = "image/png";
+let previewFetches: Array<{ url: string; authorization: string | null }>;
 
 const ASSET_ID = "6a8a1f2c-0000-4000-8000-000000000000";
 const PARCEL_ID = "csg:lpi:C03400140000157000000";
@@ -91,7 +96,7 @@ function sgExtractionResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function completedBackgroundPayload(result: unknown = sgExtractionResult()) {
+function completedBackgroundPayload(result: unknown = sgExtractionResult(), imageUrl = previewUrl) {
   return {
     id: "resp-sg-test",
     status: "completed",
@@ -100,7 +105,7 @@ function completedBackgroundPayload(result: unknown = sgExtractionResult()) {
         type: "code_interpreter_call",
         container_id: "cntr-sg-test",
         status: "completed",
-        outputs: [{ type: "image", url: "https://temporary-preview.test/sg-overview.png" }],
+        outputs: [{ type: "image", url: imageUrl }],
       },
       {
         type: "message",
@@ -149,12 +154,21 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
       ]),
     );
   }
-  if (url.includes("temporary-preview.test")) {
-    return Promise.resolve(new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { "Content-Type": "image/png" } }));
+  if (url === previewUrl) {
+    previewFetches.push({
+      url,
+      authorization: new Headers(init?.headers ?? {}).get("Authorization"),
+    });
+    return Promise.resolve(
+      new Response(previewBytes, {
+        status: 200,
+        headers: previewContentType ? { "Content-Type": previewContentType } : undefined,
+      }),
+    );
   }
   if (url.includes("/storage/v1/object/") && method === "POST") {
     previewUploadCalls += 1;
-    return Promise.resolve(jsonResponse({ Key: "derived/sg-overview.png" }));
+    return Promise.resolve(jsonResponse({ Key: "derived/sg-overview.png" }, previewUploadStatus));
   }
   if (url.includes("/storage/v1/object/") && method === "GET") {
     downloadCalls += 1;
@@ -235,6 +249,11 @@ beforeEach(async () => {
   patchOk = true;
   relatedAssetRows = [];
   previewUploadCalls = 0;
+  previewUploadStatus = 200;
+  previewUrl = "https://temporary-preview.test/sg-overview.png";
+  previewBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  previewContentType = "image/png";
+  previewFetches = [];
   vi.stubGlobal("fetch", vi.fn(fakeFetch));
   vi.stubGlobal("Deno", {
     env: {
@@ -369,6 +388,8 @@ describe("extract-erf-asset TIFF background review", () => {
     });
     expect(requestText).not.toContain("input_file");
     expect(requestText).toContain("NEVER render or copy the entire full-resolution TIFF");
+    expect(requestText).toContain("explicitly DISPLAY it inline from Code Interpreter");
+    expect(requestText).toContain("exactly one image");
     expect(requestText).toContain("Erf 1570");
     expect(requestText).toContain("LPI C03400140000157000000");
     expect(requestText).toContain("Municipality Kouga Local Municipality");
@@ -510,7 +531,75 @@ describe("extract-erf-asset TIFF background review", () => {
       sgPreviewStoragePath: "erf-files/1570/derived/sg-overview.png",
       sgPreviewMimeType: "image/png",
     });
+    expect((assetRow.metadata as Record<string, unknown>).sgPreviewGeneratedAt).toEqual(expect.any(String));
+    expect(previewFetches).toEqual([
+      { url: "https://temporary-preview.test/sg-overview.png", authorization: null },
+    ]);
     expect(JSON.stringify(assetRow.metadata)).not.toContain("temporary-preview.test");
+  });
+
+  it("authenticates a temporary preview only when it is hosted by the OpenAI API", async () => {
+    useRunningTiffAsset();
+    previewUrl = "https://api.openai.com/v1/files/preview-sg/content";
+    backgroundPollPayload = completedBackgroundPayload();
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+
+    expect(previewFetches).toEqual([
+      { url: "https://api.openai.com/v1/files/preview-sg/content", authorization: "Bearer openai-key" },
+    ]);
+    expect(JSON.stringify(assetRow.metadata)).not.toContain("preview-sg");
+  });
+
+  it("sniffs a PNG overview when the temporary response has a generic MIME header", async () => {
+    useRunningTiffAsset();
+    previewContentType = "application/octet-stream";
+    backgroundPollPayload = completedBackgroundPayload();
+
+    await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+
+    expect(previewUploadCalls).toBe(1);
+    expect(assetRow.metadata).toMatchObject({ sgPreviewMimeType: "image/png" });
+  });
+
+  it("rejects invalid preview bytes without failing the completed TIFF extraction", async () => {
+    useRunningTiffAsset();
+    previewContentType = "application/octet-stream";
+    previewBytes = new Uint8Array([1, 2, 3, 4]);
+    backgroundPollPayload = completedBackgroundPayload();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "ready" });
+    expect(previewUploadCalls).toBe(0);
+    expect(assetRow.metadata).not.toMatchObject({ sgPreviewStoragePath: expect.anything() });
+  });
+
+  it("keeps the five-megabyte preview limit non-fatal", async () => {
+    useRunningTiffAsset();
+    previewBytes = new Uint8Array(5 * 1024 * 1024 + 1);
+    backgroundPollPayload = completedBackgroundPayload();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "ready" });
+    expect(previewUploadCalls).toBe(0);
+    expect(assetRow.metadata).not.toMatchObject({ sgPreviewStoragePath: expect.anything() });
+  });
+
+  it("does not fail a completed TIFF extraction when preview storage fails", async () => {
+    useRunningTiffAsset();
+    previewUploadStatus = 500;
+    backgroundPollPayload = completedBackgroundPayload();
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, extractionStatus: "ready" });
+    expect(previewUploadCalls).toBe(1);
+    expect(assetRow.metadata).not.toMatchObject({ sgPreviewStoragePath: expect.anything() });
   });
 
   it("keeps a General Plan with the target erf visible confirmable and filters its claims safely", async () => {
