@@ -139,3 +139,11 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Rationale: A missing build-time browser key previously made address suggestions silently unavailable and exposed an avoidable credential dependency.
 - Implementation: Configure `GOOGLE_PLACES_API_KEY` in the runtime, retain parcel bias and visible error states, and keep working address separate from official parcel identity.
 - Do not regress: Never expose a server/provider key in frontend code.
+
+## EE-018 - National document identity uses cadastral contradiction, not administrative aliases
+
+- Date: 2026-08-12, MVP Rescue 1E.
+- Decision: Administrative geography is corroborating context for document identity, not a hard gate. Province, municipality, district, town, suburb, locality and address wording may inform confidence but cannot independently reject a readable document.
+- Rationale: South African document history, municipal demarcation and place naming vary nationally. Evidence ingestion must not depend on an ever-growing administrative alias library.
+- Implementation: Automatic mismatch is limited to strong cadastral contradictions: an explicit different LPI/canonical identifier, a different subject erf, or a different subject portion of the same erf. Readable ambiguity remains unverified and may use the existing user-confirmation binding. A General Plan may safely support an erf with filtered contextual/subject claims without becoming its individual SG diagram.
+- Do not regress: Preserve the existing identity-status enum, General Plan claim restrictions and user-confirmed provenance; never make a geography-only difference a wrong-property rejection.

@@ -52,7 +52,7 @@ function visibleSubjectErf(
 }
 
 export interface GeneralPlanSubjectMatch {
-  matched: boolean;
+  supportsSubject: boolean;
   reason: string | null;
   generalPlanReference: string | null;
 }
@@ -68,23 +68,27 @@ export function evaluateGeneralPlanSubjectMatch(input: {
 }): GeneralPlanSubjectMatch {
   const subject = normNumber(input.expected.erfNumber);
   if (!subject || !isSgDiagramCategory(input.assetCategory)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, reason: null, generalPlanReference: null };
   }
   if (!looksLikeGeneralPlanDocument(input.documentType, input.documentText)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, reason: null, generalPlanReference: null };
   }
 
-  // Never override a different LPI, portion or province. The only mismatch a
-  // township plan may forgive is its title block naming a different parent erf.
+  // Never override a different LPI or explicit subject portion. A township
+  // plan may name a parent erf in its title block while visibly including the
+  // subject erf; that is supporting context, not an individual-document bind.
+  const generalPlanErfContext =
+    input.baseline.status === "mismatch" &&
+    /document states erf \d+, not erf \d+/i.test(input.baseline.reason);
   if (
     input.baseline.status === "mismatch" &&
-    !/document states erf \d+, not erf \d+/i.test(input.baseline.reason)
+    !generalPlanErfContext
   ) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, reason: null, generalPlanReference: null };
   }
 
   if (!visibleSubjectErf(input.documentText, subject, input.document.erfNumber)) {
-    return { matched: false, reason: null, generalPlanReference: null };
+    return { supportsSubject: false, reason: null, generalPlanReference: null };
   }
 
   const reference =
@@ -93,10 +97,10 @@ export function evaluateGeneralPlanSubjectMatch(input: {
     extractGeneralPlanReference(input.documentText);
   const label = reference ? `General Plan ${reference}` : "the General Plan";
   return {
-    matched: true,
+    supportsSubject: true,
     reason:
-      `Identity confirmed: Erf ${subject} is visibly printed on ${label}. ` +
-      "Only annotations explicitly tied to this erf can become subject evidence; all other plan content remains context.",
+      `${label} visibly includes Erf ${subject}. It supports this investigation but cannot automatically ` +
+      "bind the plan as this erf's individual SG diagram; only annotations explicitly tied to this erf can become subject evidence.",
     generalPlanReference: reference,
   };
 }

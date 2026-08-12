@@ -27,6 +27,7 @@ let cleanupStatus = 200;
 let downloadCalls = 0;
 let patchCalls: Array<{ url: string; body: Record<string, unknown> }>;
 let patchOk = true;
+let relatedAssetRows: Record<string, unknown>[];
 
 const ASSET_ID = "6a8a1f2c-0000-4000-8000-000000000000";
 const PARCEL_ID = "csg:lpi:C03400140000157000000";
@@ -57,7 +58,7 @@ function sgExtractionResult(overrides: Record<string, unknown> = {}) {
     identity: {
       erfNumber: "1570",
       portionNumber: "0",
-      lpiCode: null,
+      lpiCode: "C03400140000157000000",
       sgCode: "GP12252",
       streetAddress: null,
       suburbOrTown: "St Francis Bay",
@@ -111,7 +112,10 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
   const url = String(input);
   const method = (init?.method ?? "GET").toUpperCase();
   if (url.includes("/auth/v1/user")) return Promise.resolve(jsonResponse({ id: "user-1" }));
-  if (url.includes("/rest/v1/erf_assets") && method === "GET") return Promise.resolve(jsonResponse([assetRow]));
+  if (url.includes("/rest/v1/erf_assets") && method === "GET") {
+    const rows = url.includes("select=id,source_label") ? [assetRow, ...relatedAssetRows] : [assetRow];
+    return Promise.resolve(jsonResponse(rows));
+  }
   if (url.includes("/rest/v1/erf_assets") && method === "PATCH") {
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
     patchCalls.push({ url, body });
@@ -183,7 +187,11 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
           {
             message: {
               content: JSON.stringify({
-                identity: { erfNumber: "1570", suburbOrTown: "St Francis Bay" },
+                identity: {
+                  erfNumber: "1570",
+                  lpiCode: "C03400140000157000000",
+                  suburbOrTown: "St Francis Bay",
+                },
                 documentType: "Lightstone report",
                 provider: "Lightstone",
                 documentDate: null,
@@ -216,6 +224,7 @@ beforeEach(async () => {
   downloadCalls = 0;
   patchCalls = [];
   patchOk = true;
+  relatedAssetRows = [];
   vi.stubGlobal("fetch", vi.fn(fakeFetch));
   vi.stubGlobal("Deno", {
     env: {
@@ -478,6 +487,153 @@ describe("extract-erf-asset TIFF background review", () => {
         "https://api.openai.com/v1/containers/cntr-sg-test",
       ]),
     );
+  });
+
+  it("keeps a General Plan with the target erf visible confirmable and filters its claims safely", async () => {
+    useRunningTiffAsset();
+    backgroundPollPayload = completedBackgroundPayload(
+      sgExtractionResult({
+        identity: {
+          erfNumber: "1496",
+          portionNumber: "PTN OF 1496-GP12252",
+          lpiCode: null,
+          sgCode: "GP12252",
+          streetAddress: null,
+          suburbOrTown: "SEA VISTA",
+          municipality: "Humansdorp",
+          province: "Province of the Cape of Good Hope",
+        },
+        extractedText:
+          "GENERAL PLAN No. 12252. SUBDIVISIONS OF ERF 1496 SEA VISTA. Province of the Cape of Good Hope. Erf 1570. Padrone Crescent. Erf 1569.",
+        claims: [
+          {
+            domain: "identity",
+            key: "erfNumber",
+            label: "Erf number",
+            value: "1570",
+            numericValue: null,
+            unit: null,
+            page: 1,
+            quote: "Erf 1570",
+            confidence: "high",
+            interpretation: false,
+          },
+          {
+            domain: "documents",
+            key: "boundaryNotes",
+            label: "Plan-wide annotation",
+            value: "50%",
+            numericValue: 50,
+            unit: "%",
+            page: 1,
+            quote: "Boundary note: Padrone Crescent",
+            confidence: "high",
+            interpretation: false,
+          },
+        ],
+      }),
+    );
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+    const claims = metadata.extractedClaims as Array<Record<string, unknown>>;
+
+    expect(payload).toMatchObject({
+      success: true,
+      code: "IDENTITY_UNVERIFIED",
+      identityMatchStatus: "unverified",
+      readable: true,
+    });
+    expect(metadata.extractionStatus).toBe("partial");
+    expect(metadata.identityMatchReason).toContain("supports this investigation");
+    expect(claims).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ domain: "identity", key: "erfNumber", scope: "subject" }),
+        expect.objectContaining({ domain: "documents", key: "boundaryNotes", scope: "parent_plan" }),
+      ]),
+    );
+    expect(claims).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ domain: "documents", key: "boundaryNotes", scope: "subject" })]),
+    );
+  });
+
+  it("uses user-confirmed paid-report lineage as supporting provenance for a parent General Plan", async () => {
+    useRunningTiffAsset();
+    relatedAssetRows = [
+      baseAsset({
+        id: "asset-paid-lineage",
+        source_label: "Confirmed title report",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "unverified",
+          identityBinding: "user_confirmed",
+          identityUserConfirmedParcelId: PARCEL_ID,
+          documentLineage: { parentErfNumber: "1496", generalPlanReference: "GP12252" },
+        },
+      }),
+    ];
+    backgroundPollPayload = completedBackgroundPayload(
+      sgExtractionResult({
+        identity: {
+          erfNumber: "1496",
+          portionNumber: "PTN OF 1496-GP12252",
+          lpiCode: null,
+          sgCode: "GP12252",
+          streetAddress: null,
+          suburbOrTown: "SEA VISTA",
+          municipality: "Humansdorp",
+          province: "Eastern Cape",
+        },
+        extractedText: "GENERAL PLAN No. 12252 of SUBDIVISIONS OF ERF 1496 SEA VISTA.",
+      }),
+    );
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, identityMatchStatus: "parent_lineage_match" });
+    expect(metadata.identityMatchReason).toContain("Confirmed title report");
+  });
+
+  it("does not use stale user-confirmed mismatch metadata as parent-plan lineage", async () => {
+    useRunningTiffAsset();
+    relatedAssetRows = [
+      baseAsset({
+        id: "asset-stale-mismatch-lineage",
+        source_label: "Wrong property report",
+        metadata: {
+          extractionStatus: "partial",
+          identityMatchStatus: "mismatch",
+          identityBinding: "user_confirmed",
+          identityUserConfirmedParcelId: PARCEL_ID,
+          documentLineage: { parentErfNumber: "1496", generalPlanReference: "GP12252" },
+        },
+      }),
+    ];
+    backgroundPollPayload = completedBackgroundPayload(
+      sgExtractionResult({
+        identity: {
+          erfNumber: "1496",
+          portionNumber: "PTN OF 1496-GP12252",
+          lpiCode: null,
+          sgCode: "GP12252",
+          streetAddress: null,
+          suburbOrTown: "SEA VISTA",
+          municipality: "Humansdorp",
+          province: "Eastern Cape",
+        },
+        extractedText: "GENERAL PLAN No. 12252 of SUBDIVISIONS OF ERF 1496 SEA VISTA.",
+      }),
+    );
+
+    const response = await call({ assetId: ASSET_ID, expectedParcelId: PARCEL_ID });
+    const payload = (await response.json()) as Record<string, unknown>;
+    const metadata = assetRow.metadata as Record<string, unknown>;
+
+    expect(payload).toMatchObject({ success: true, identityMatchStatus: "mismatch" });
+    expect(metadata.identityMatchReason).not.toContain("Wrong property report");
   });
 
   it("rejects free-form background prose and cleans up instead of bypassing the contract", async () => {

@@ -101,12 +101,12 @@ describe("document-parcel identity gate", () => {
     expect(result.status).toBe("matched");
   });
 
-  it("matches on erf + portion plus an agreeing place", () => {
+  it("keeps erf + portion plus an agreeing place confirmable rather than automatically matched", () => {
     const result = matchDocumentIdentity(
       expected1570,
       normalizeExtractedIdentity({ erfNumber: "1570", portionNumber: "0", suburbOrTown: "St Francis Bay" }),
     );
-    expect(result.status).toBe("matched");
+    expect(result.status).toBe("unverified");
   });
 
   it("matches a historical Cape of Good Hope province title when other identity signals agree", () => {
@@ -120,7 +120,7 @@ describe("document-parcel identity gate", () => {
       }),
     );
 
-    expect(result.status).toBe("matched");
+    expect(result.status).toBe("unverified");
     expect(result.reason).not.toContain("province is different");
   });
 
@@ -135,10 +135,10 @@ describe("document-parcel identity gate", () => {
       }),
     );
 
-    expect(result.status).toBe("matched");
+    expect(result.status).toBe("unverified");
   });
 
-  it("still rejects a genuinely different modern province", () => {
+  it("does not reject the same erf merely because the province differs", () => {
     const result = matchDocumentIdentity(
       expected1570SeaVista,
       normalizeExtractedIdentity({
@@ -149,8 +149,32 @@ describe("document-parcel identity gate", () => {
       }),
     );
 
+    expect(result.status).toBe("unverified");
+    expect(result.reason).not.toContain("province is different");
+  });
+
+  it("does not reject the same erf merely because municipality or town wording differs", () => {
+    const result = matchDocumentIdentity(
+      expected1570SeaVista,
+      normalizeExtractedIdentity({
+        erfNumber: "1570",
+        portionNumber: "0",
+        municipality: "Humansdorp Local Municipality",
+        suburbOrTown: "St Francis-on-Sea",
+      }),
+    );
+
+    expect(result.status).toBe("unverified");
+  });
+
+  it("rejects a different explicit LPI", () => {
+    const result = matchDocumentIdentity(
+      expected1570,
+      normalizeExtractedIdentity({ lpiCode: "C03400140000999900000" }),
+    );
+
     expect(result.status).toBe("mismatch");
-    expect(result.reason).toContain("province is different");
+    expect(result.reason).toContain("LPI code");
   });
 
   it("treats a document with too little identity as unverified", () => {
