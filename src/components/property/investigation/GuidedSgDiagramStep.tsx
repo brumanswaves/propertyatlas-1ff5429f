@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,11 +15,15 @@ import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { CSG_VIEWER_URL, ONEMAP_PROPERTYMAP_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
-import { extractErfAsset } from "@/lib/workbench/erfAssetExtraction";
+import {
+  extractErfAsset,
+  type ExtractErfAssetResult,
+} from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetCanConfirmIdentity,
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
+  erfAssetExtractedClaims,
   erfAssetExtractedIdentity,
   erfAssetHasSearchableExtraction,
   erfAssetIdentityUserConfirmed,
@@ -55,12 +59,90 @@ function isUsableSubjectDiagram(asset: ErfAsset) {
   return erfAssetHasSearchableExtraction(asset);
 }
 
+function extractionSummary(asset: ErfAsset) {
+  const value = asset.metadata.extractionSummary ?? asset.metadata.extraction_summary;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+interface SgDiagramPollingOptions {
+  assetId: string;
+  parcelId: string;
+  refreshVault: () => Promise<void> | void;
+  extract?: (assetId: string, options: { expectedParcelId: string }) => Promise<ExtractErfAssetResult>;
+  dispatchUpdated?: (parcelId: string) => void;
+}
+
+/**
+ * Schedules background TIFF checks for the same asset the mounted step observed.
+ * The effect below owns its lifecycle; this small controller keeps each delayed
+ * request, completion and cleanup path deterministic and testable.
+ */
+export function startSgDiagramPolling({
+  assetId,
+  parcelId,
+  refreshVault,
+  extract = extractErfAsset,
+  dispatchUpdated = dispatchErfFileVaultUpdated,
+}: SgDiagramPollingOptions) {
+  let disposed = false;
+  let inFlight = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const startedAt = Date.now();
+  let delay = 8_000;
+
+  const schedule = () => {
+    if (disposed || Date.now() - startedAt >= 15 * 60_000) return;
+    timer = setTimeout(() => void poll(), delay);
+  };
+
+  const poll = async () => {
+    if (disposed || inFlight) return;
+    inFlight = true;
+    try {
+      const result = await extract(assetId, { expectedParcelId: parcelId });
+      if (disposed) return;
+      if (result.success && result.extractionStatus === "processing") {
+        delay = 20_000;
+        schedule();
+        return;
+      }
+
+      await refreshVault();
+      dispatchUpdated(parcelId);
+      if (result.success) {
+        toast.success(
+          result.identityMatchStatus === "mismatch"
+            ? "The diagram review completed, but it was not accepted for this erf."
+            : "The SG diagram review completed. Check the findings below.",
+        );
+      } else if (result.code === "SERVER_UNAVAILABLE") {
+        delay = 20_000;
+        schedule();
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      if (!disposed) toast.error("The SG diagram review could not be checked yet.");
+    } finally {
+      inFlight = false;
+    }
+  };
+
+  schedule();
+  return () => {
+    disposed = true;
+    if (timer !== null) clearTimeout(timer);
+  };
+}
+
 export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["sg_diagram"]);
+  const { refresh: refreshVault, signedIn } = vault;
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
   const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
+  const [expandedFindings, setExpandedFindings] = useState<Set<string>>(() => new Set());
 
   const sgDocument = useMemo(
     () =>
@@ -86,6 +168,19 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
   const hasParentPlanEvidence = usableDiagrams.some(
     (asset) => erfAssetIdentityMatchStatus(asset) === "parent_lineage_match",
   );
+
+  const processingAssetId = vault.assets.find(
+    (asset) => erfAssetExtractionStatus(asset) === "processing" && isTiffExtractionMimeType(asset.mime_type),
+  )?.id ?? null;
+
+  useEffect(() => {
+    if (!signedIn || !processingAssetId) return;
+    return startSgDiagramPolling({
+      assetId: processingAssetId,
+      parcelId: parcel.id,
+      refreshVault,
+    });
+  }, [parcel.id, processingAssetId, refreshVault, signedIn]);
 
   function syncAttachmentCount(count: number) {
     updateErfWorkspaceState(parcel.id, {
@@ -451,6 +546,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                   extractionStatus === "unsupported" ||
                   extractionStatus === "not_started" ||
                   identityStatus === "unverified");
+              const readableEvidence =
+                usable ||
+                ((extractionStatus === "ready" || extractionStatus === "partial") &&
+                  identityStatus === "unverified");
+              const findings = erfAssetExtractedClaims(asset);
+              const visibleFindings = expandedFindings.has(asset.id) ? findings : findings.slice(0, 6);
+              const summary = extractionSummary(asset);
 
               return (
                 <article
@@ -498,6 +600,36 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                           Large SG plans can take several minutes. You can leave this page and come
                           back.
                         </p>
+                      ) : null}
+                      {readableEvidence ? (
+                        <div className="mt-3 rounded-lg border border-[#D9E6F2] bg-white/80 p-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+                            What Easy Erf found
+                          </div>
+                          {summary ? <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/75">{summary}</p> : null}
+                          {identityStatus === "unverified" ? (
+                            <p className="mt-2 text-xs leading-5 text-amber-950">Easy Erf read this document, but it has not been automatically bound to this erf.</p>
+                          ) : null}
+                          {findings.length > 0 ? (
+                            <ul className="mt-2 space-y-1.5">
+                              {visibleFindings.map((finding) => (
+                                <li key={`${finding.label}-${finding.value}`} className="text-xs leading-5 text-[#0D1B2A]/75">
+                                  <span className="font-semibold">{finding.label}:</span> {finding.value}
+                                  <span className="ml-1 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">({finding.scope === "parent_plan" ? "parent context" : "subject"}, {finding.confidence})</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {findings.length > 6 ? (
+                            <button type="button" onClick={() => setExpandedFindings((current) => {
+                              const next = new Set(current);
+                              if (next.has(asset.id)) next.delete(asset.id); else next.add(asset.id);
+                              return next;
+                            })} className="mt-2 text-xs font-semibold text-[#B24A00]">
+                              {expandedFindings.has(asset.id) ? "Show less" : `Show all ${findings.length} findings`}
+                            </button>
+                          ) : null}
+                        </div>
                       ) : null}
                       {identityStatus === "mismatch" && (
                         <p className="mt-2 text-xs font-medium leading-5 text-red-900">

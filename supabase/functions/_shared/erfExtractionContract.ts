@@ -255,6 +255,10 @@ export interface ErfExtractionMetadataPatch {
   /** Media provenance for normalised (e.g. TIFF -> PNG) inputs. Never bytes. */
   originalMimeType?: string | null;
   normalizedExtractionMimeType?: string | null;
+  /** Private, derived low-resolution SG preview; never a durable URL. */
+  sgPreviewStoragePath?: string | null;
+  sgPreviewMimeType?: string | null;
+  sgPreviewGeneratedAt?: string | null;
   /** Temporary OpenAI background-job references. Never document bytes or secrets. */
   extractionProvider?: "openai_code_interpreter" | null;
   openaiResponseId?: string | null;

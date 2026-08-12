@@ -12,6 +12,13 @@ import type {
   EvidenceDomain,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
+import {
+  erfAssetExtractedClaims,
+  erfAssetHasSearchableExtraction,
+  erfAssetIdentityMatchStatus,
+  erfAssetIdentityUserConfirmed,
+} from "@/lib/evidence/extractionMetadata";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 export interface SgFileRow {
   id: string;
@@ -29,8 +36,23 @@ export interface SgLineageRow {
   scope: "subject" | "parent_context";
 }
 
+export interface SgEvidenceBlock {
+  asset: ErfAsset;
+  readLabel: string;
+  isParentContext: boolean;
+  isUserConfirmed: boolean;
+  summary: string | null;
+  findings: Array<{
+    label: string;
+    value: string;
+    scope: "subject" | "parent_plan";
+    confidence: "high" | "medium" | "low";
+  }>;
+}
+
 export interface SgSectionModel {
   files: SgFileRow[];
+  evidence: SgEvidenceBlock[];
   lineage: SgLineageRow[];
   hasParentContext: boolean;
   contextNote: string | null;
@@ -79,6 +101,11 @@ const LINEAGE_SPECS: Array<{
   },
 ];
 
+function extractionSummary(asset: ErfAsset) {
+  const value = asset.metadata.extractionSummary ?? asset.metadata.extraction_summary;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function pickClaim(
   pack: PropertyEvidencePack | null,
   domains: EvidenceDomain[],
@@ -104,11 +131,17 @@ function pickClaim(
 export function buildSgSectionModel(input: {
   appendixRows: EvidenceAppendixRow[];
   pack: PropertyEvidencePack | null;
+  assets?: ErfAsset[];
 }): SgSectionModel {
-  const { appendixRows, pack } = input;
+  const { appendixRows, pack, assets = [] } = input;
+  const sgAssets = assets.filter((asset) => asset.asset_category === "sg_diagram");
 
   const files: SgFileRow[] = appendixRows
-    .filter((row) => row.category === "Surveyor-General diagram")
+    .filter(
+      (row) =>
+        row.category === "Surveyor-General diagram" &&
+        (row.readState === "searchable_matched" || row.readState === "parent_plan_context"),
+    )
     .map((row) => ({
       id: row.id,
       name: row.name,
@@ -137,13 +170,34 @@ export function buildSgSectionModel(input: {
 
   return {
     files,
+    evidence: assets
+      .filter((asset) => asset.asset_category === "sg_diagram" && erfAssetHasSearchableExtraction(asset))
+      .map((asset) => {
+        const row = appendixRows.find((candidate) => candidate.assetId === asset.id);
+        const identity = erfAssetIdentityMatchStatus(asset);
+        return {
+          asset,
+          readLabel: row?.readLabel ?? "Readable cadastral evidence attached",
+          isParentContext: identity === "parent_lineage_match",
+          isUserConfirmed: identity === "unverified" && erfAssetIdentityUserConfirmed(asset),
+          summary: extractionSummary(asset),
+          findings: erfAssetExtractedClaims(asset).map((claim) => ({
+            label: claim.label,
+            value: claim.value,
+            scope: claim.scope,
+            confidence: claim.confidence,
+          })),
+        };
+      }),
     lineage,
     hasParentContext,
     contextNote: hasParentContext
       ? "These diagrams were matched to the parent general plan for this erf. They are shown as parent-plan context: they describe the layout this erf came from, and they do not confirm boundaries, extent or servitudes for the subject erf on their own."
       : null,
     emptyMessage:
-      files.length === 0 && lineage.length === 0
+      files.length === 0 &&
+      lineage.length === 0 &&
+      sgAssets.every((asset) => !erfAssetHasSearchableExtraction(asset))
         ? "No Surveyor-General diagram has been read for this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
         : null,
   };

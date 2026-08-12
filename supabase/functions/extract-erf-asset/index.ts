@@ -148,6 +148,50 @@ async function patchAssetMetadata(asset: AssetRow, patch: Partial<ErfExtractionM
   }
 }
 
+function derivedPreviewPath(asset: AssetRow, mimeType: string) {
+  const parent = asset.storage_path.includes("/")
+    ? asset.storage_path.slice(0, asset.storage_path.lastIndexOf("/"))
+    : asset.storage_path;
+  const extension = mimeType === "image/jpeg" ? "jpg" : mimeType === "image/webp" ? "webp" : "png";
+  return `${parent}/derived/sg-overview.${extension}`;
+}
+
+async function storeTiffPreview(asset: AssetRow, previewUrl: string | null) {
+  if (!previewUrl) return null;
+  try {
+    const response = await fetch(previewUrl);
+    if (!response.ok) return null;
+    const mimeType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.byteLength || bytes.byteLength > 5 * 1024 * 1024) return null;
+    const path = derivedPreviewPath(asset, mimeType);
+    const key = serviceKey();
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const upload = await fetch(
+      `${supabaseUrl()}/storage/v1/object/${encodeURIComponent(asset.storage_bucket)}/${encodedPath}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": mimeType,
+          "x-upsert": "true",
+        },
+        body: bytes,
+      },
+    );
+    if (!upload.ok) return null;
+    return {
+      sgPreviewStoragePath: path,
+      sgPreviewMimeType: mimeType,
+      sgPreviewGeneratedAt: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function claimProcessingLock(asset: AssetRow, requestId: string) {
   const key = serviceKey();
   if (!key) return false;
@@ -561,6 +605,7 @@ Deno.serve(async (request: Request) => {
   const mime = mimeType || "application/pdf";
   let model = Deno.env.get("ERF_EXTRACTION_MODEL")?.trim() || ERF_EXTRACTION_MODEL_DEFAULT;
   let parsed: unknown = null;
+  let previewPatch: Partial<ErfExtractionMetadataPatch> = {};
   let backgroundResources: OpenAiTiffResources | null = null;
 
   const finishResult = async (
@@ -667,6 +712,7 @@ Deno.serve(async (request: Request) => {
       );
     }
     parsed = poll.parsed;
+    previewPatch = (await storeTiffPreview(asset, poll.previewUrl)) ?? {};
   } else {
     const locked = await claimProcessingLock(asset, requestId);
     if (!locked) {
@@ -723,6 +769,9 @@ Deno.serve(async (request: Request) => {
           openaiFileId: job.fileId,
           openaiContainerId: job.containerId,
           openaiBackgroundStartedAt: startedAt,
+          sgPreviewStoragePath: null,
+          sgPreviewMimeType: null,
+          sgPreviewGeneratedAt: null,
         });
         if (!written) {
           await cleanupOpenAiTiffResources({ apiKey, ...job });
@@ -956,6 +1005,7 @@ Deno.serve(async (request: Request) => {
           extractedDocumentDate: result.documentDate,
           extractionSummary: result.summary,
           pageCount: result.pageCount,
+          ...previewPatch,
         },
         {
           success: true,
@@ -1013,6 +1063,7 @@ Deno.serve(async (request: Request) => {
         extractedDocumentDate: result.documentDate,
         extractionSummary: result.summary,
         pageCount: result.pageCount,
+        ...previewPatch,
       },
       {
         success: true,

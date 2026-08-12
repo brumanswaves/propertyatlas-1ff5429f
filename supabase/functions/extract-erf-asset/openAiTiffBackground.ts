@@ -34,7 +34,7 @@ export interface OpenAiTiffBackgroundJob extends OpenAiTiffResources {
 
 export type OpenAiTiffPollResult =
   | ({ state: "processing"; status: "queued" | "in_progress" } & OpenAiTiffResources)
-  | ({ state: "completed"; parsed: unknown } & OpenAiTiffResources)
+  | ({ state: "completed"; parsed: unknown; previewUrl: string | null } & OpenAiTiffResources)
   | ({ state: "failed"; status: "failed" | "cancelled" | "incomplete" } & OpenAiTiffResources);
 
 function authHeaders(apiKey: string) {
@@ -76,6 +76,23 @@ function responseOutputText(payload: OpenAiResponsePayload | null) {
   return null;
 }
 
+export function responseImageOutputUrl(payload: OpenAiResponsePayload | null) {
+  if (!Array.isArray(payload?.output)) return null;
+  for (const item of payload.output) {
+    if (!item || typeof item !== "object") continue;
+    const outputs = (item as Record<string, unknown>).outputs;
+    if (!Array.isArray(outputs)) continue;
+    for (const output of outputs) {
+      if (!output || typeof output !== "object") continue;
+      const raw = output as Record<string, unknown>;
+      if (raw.type === "image" && typeof raw.url === "string" && raw.url.trim()) {
+        return raw.url.trim();
+      }
+    }
+  }
+  return null;
+}
+
 export function codeInterpreterTiffInstructions() {
   return [
     "Review the attached Surveyor-General TIFF using Code Interpreter and return only the required structured extraction result.",
@@ -83,6 +100,7 @@ export function codeInterpreterTiffInstructions() {
     "NEVER render or copy the entire full-resolution TIFF into one large image or matrix.",
     "Use memory-safe strip, tile, downscale and crop processing.",
     "Create a low-resolution overview, then inspect bounded native-resolution crops for small printed labels.",
+    "Create exactly one whole-sheet overview image output for human review, with the longest edge between 1200 and 1600 pixels, grayscale but readable, and no annotations or full-resolution image output.",
     "Search the full sheet for the requested erf number.",
     "Distinguish the subject erf from its parent General Plan and neighbouring erven.",
     "Dossier identifiers are comparison context only. Never infer that the target erf is present.",
@@ -228,5 +246,5 @@ export async function pollOpenAiTiffBackground(input: {
       parsed = null;
     }
   }
-  return { state: "completed", parsed, ...resources };
+  return { state: "completed", parsed, previewUrl: responseImageOutputUrl(payload), ...resources };
 }
