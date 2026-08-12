@@ -1266,21 +1266,15 @@ export function SitePotentialTab({
       {guidedReturn ? (
         <section className="rounded-[1.25rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-            Guided Investigation · Step 9 of 10
+            Guided Investigation / Site Potential
           </div>
           <h3 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
-            Explore the site before you complete the report
+            Review what could potentially fit on this site
           </h3>
           <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/70">
-            Review the parcel boundary and planning inputs, then either select a concept for the
-            report or explicitly skip Site Potential for this erf. Concepts remain exploratory, not
-            approvals or verified building rights.
+            Confirm the street-facing boundaries, then explore a concept if it would help your
+            decision. Concepts are exploratory, not approvals or verified building rights.
           </p>
-          <ol className="mt-3 grid gap-2 text-xs leading-5 text-[#0D1B2A]/72 sm:grid-cols-3">
-            <li><span className="font-semibold text-[#B24A00]">1.</span> Review the site context</li>
-            <li><span className="font-semibold text-[#B24A00]">2.</span> Explore a concept if useful</li>
-            <li><span className="font-semibold text-[#B24A00]">3.</span> Select one or explicitly skip</li>
-          </ol>
         </section>
       ) : null}
       <header className="rounded-[1.5rem] border border-[#EADFC9]/70 bg-[#FBF6EC] p-6 shadow-[0_16px_44px_-28px_rgba(13,27,42,0.3)]">
@@ -1776,7 +1770,7 @@ export function SitePotentialTab({
         </section>
       ) : null}
 
-      {onExploreReport && (
+      {!guidedReturn && onExploreReport && (
         <button
           type="button"
           onClick={onExploreReport}

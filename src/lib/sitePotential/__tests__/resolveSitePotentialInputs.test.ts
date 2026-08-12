@@ -7,7 +7,15 @@ import {
   ringProjection,
 } from "@/lib/sitePotential/buildEnvelope";
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
-import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import {
+  clearStoredBuildEnvelopeInputs,
+  readStoredBuildEnvelopeInputs,
+  writeStoredBuildEnvelopeInputs,
+} from "@/lib/sitePotential/buildEnvelopeStore";
+import {
+  resolveConfirmedStreetFrontages,
+  resolveSitePotentialInputs,
+} from "@/lib/sitePotential/resolveSitePotentialInputs";
 import type { SitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 
 function prefillField<T>(value: T | null) {
@@ -61,6 +69,15 @@ function edgeLengthsOf(ring: Array<[number, number]>) {
     const b = polygon[(index + 1) % polygon.length];
     return Math.hypot(b.x - a.x, b.y - a.y);
   });
+}
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+  };
 }
 
 describe("Site Potential input precedence", () => {
@@ -117,6 +134,110 @@ describe("Site Potential input precedence", () => {
     });
 
     expect(resolved.answers.streetEdgeIndex).toBeNull();
+  });
+
+  it("keeps an explicit empty frontage selection instead of restoring a map suggestion", () => {
+    const resolved = resolveSitePotentialInputs({
+      overrides: {
+        streetFrontageConfirmedByUser: true,
+        streetEdgeIndex: null,
+        additionalStreetEdgeIndexes: [],
+      },
+      prefill: registryPrefill(),
+      edgeLengths: [10, 10, 10, 10],
+      detectedStreetEdge: { edgeIndex: 2, roadName: "Example Road", confidence: 0.9 },
+    });
+
+    expect(resolved.answers.streetFrontageConfirmedByUser).toBe(true);
+    expect(resolved.answers.streetEdgeIndex).toBeNull();
+    expect(resolved.answers.additionalStreetEdgeIndexes).toEqual([]);
+    expect(resolved.fields.streetEdgeIndex.origin).toBe("user");
+  });
+
+  it("keeps automatic road detection as a suggestion until a frontage is confirmed", () => {
+    const resolved = resolveSitePotentialInputs({
+      overrides: {},
+      prefill: registryPrefill(),
+      edgeLengths: [10, 10, 10, 10],
+      detectedStreetEdge: { edgeIndex: 2, roadName: "Example Road", confidence: 0.9 },
+    });
+
+    expect(resolved.answers.streetFrontageConfirmedByUser).toBe(false);
+    expect(resolved.answers.streetEdgeIndex).toBe(2);
+    expect(resolved.fields.streetEdgeIndex.origin).toBe("map_road");
+  });
+
+  it("uses one deterministic internal anchor for one or several confirmed street boundaries", () => {
+    expect(resolveConfirmedStreetFrontages([2], null, 4)).toMatchObject({
+      streetEdgeIndex: 2,
+      additionalStreetEdgeIndexes: [],
+    });
+    expect(resolveConfirmedStreetFrontages([3, 1, 3], null, 4)).toMatchObject({
+      streetEdgeIndex: 1,
+      additionalStreetEdgeIndexes: [3],
+    });
+  });
+
+  it("promotes another confirmed boundary when the previous anchor is removed", () => {
+    expect(resolveConfirmedStreetFrontages([3], 2, 4)).toMatchObject({
+      streetEdgeIndex: 3,
+      additionalStreetEdgeIndexes: [],
+    });
+  });
+
+  it("classifies every confirmed street boundary without a user-visible hierarchy", () => {
+    const ring = erf1570Ring();
+    const resolved = resolveSitePotentialInputs({
+      overrides: {
+        streetFrontageConfirmedByUser: true,
+        streetEdgeIndex: 0,
+        additionalStreetEdgeIndexes: [1, 2, 3],
+      },
+      prefill: registryPrefill(),
+      edgeLengths: edgeLengthsOf(ring),
+    });
+    const result = calculateBuildEnvelope({
+      ...resolved.answers,
+      parcelId: "frontage-test",
+      ring,
+    });
+
+    expect(
+      result.edges
+        .filter((edge) => edge.kind === "street" || edge.kind === "additional_street")
+        .map((edge) => edge.index)
+        .sort((a, b) => a - b),
+    ).toEqual([0, 1, 2, 3]);
+  });
+
+  it("clears the explicit frontage marker on reset so automatic suggestions may resume", () => {
+    const storage = memoryStorage();
+    writeStoredBuildEnvelopeInputs(
+      "frontage-test",
+      {
+        streetFrontageConfirmedByUser: true,
+        streetEdgeIndex: null,
+        additionalStreetEdgeIndexes: [],
+      },
+      null,
+      storage,
+    );
+    expect(readStoredBuildEnvelopeInputs("frontage-test", null, storage)).toMatchObject({
+      streetFrontageConfirmedByUser: true,
+      additionalStreetEdgeIndexes: [],
+    });
+
+    clearStoredBuildEnvelopeInputs("frontage-test", null, storage);
+    const reloaded = resolveSitePotentialInputs({
+      overrides: readStoredBuildEnvelopeInputs("frontage-test", null, storage) ?? {},
+      prefill: registryPrefill(),
+      edgeLengths: [10, 10, 10, 10],
+      detectedStreetEdge: { edgeIndex: 1, roadName: "Example Road", confidence: 0.9 },
+    });
+
+    expect(reloaded.answers.streetFrontageConfirmedByUser).toBe(false);
+    expect(reloaded.fields.streetEdgeIndex.origin).toBe("map_road");
+    expect(reloaded.answers.streetEdgeIndex).toBe(1);
   });
 
   it("prefers a matched zoning document over both user and pack values", () => {

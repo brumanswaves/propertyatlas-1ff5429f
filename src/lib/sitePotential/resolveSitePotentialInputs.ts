@@ -110,6 +110,34 @@ function validEdgeIndex(value: unknown, edgeCount?: number): number | null {
     : null;
 }
 
+/**
+ * Keeps the existing envelope engine representation while treating every
+ * confirmed street-facing edge as equivalent in the product UI. The retained
+ * primary only gives the existing rear-edge calculation a deterministic anchor.
+ */
+export function resolveConfirmedStreetFrontages(
+  selectedEdgeIndexes: Array<number | null | undefined>,
+  previousStreetEdgeIndex: number | null | undefined,
+  edgeCount?: number,
+) {
+  const selected = Array.from(
+    new Set(
+      selectedEdgeIndexes
+        .map((edgeIndex) => validEdgeIndex(edgeIndex, edgeCount))
+        .filter((edgeIndex): edgeIndex is number => edgeIndex != null),
+    ),
+  ).sort((a, b) => a - b);
+  const previous = validEdgeIndex(previousStreetEdgeIndex, edgeCount);
+  const streetEdgeIndex = previous != null && selected.includes(previous) ? previous : (selected[0] ?? null);
+
+  return {
+    selectedEdgeIndexes: selected,
+    streetEdgeIndex,
+    additionalStreetEdgeIndexes:
+      streetEdgeIndex == null ? [] : selected.filter((edgeIndex) => edgeIndex !== streetEdgeIndex),
+  };
+}
+
 function field<T>(
   documentValue: T | null | undefined,
   documentProvenance: string,
@@ -215,6 +243,7 @@ export function resolveSitePotentialInputs(
 
   const detected = args.detectedStreetEdge ?? null;
   const edgeCount = args.edgeLengths?.length;
+  const streetFrontageConfirmedByUser = stored.streetFrontageConfirmedByUser === true;
   const storedStreetEdgeIndex = validEdgeIndex(stored.streetEdgeIndex, edgeCount);
   const pilotStreetEdgeIndex =
     pilot?.streetFrontageLengthRangeM && args.edgeLengths?.length
@@ -226,18 +255,36 @@ export function resolveSitePotentialInputs(
   const detectedProvenance = detected?.roadName
     ? `Likely street frontage detected from map road geometry (${detected.roadName}). Not confirmed by you.`
     : "Likely street frontage detected from map road geometry. Not confirmed by you.";
-  const streetEdgeIndex = field<number>(
-    null,
-    documentProvenance,
-    storedStreetEdgeIndex,
-    detectedStreetEdgeIndex ?? validEdgeIndex(pilotStreetEdgeIndex, edgeCount),
-    detectedStreetEdgeIndex != null
-      ? detectedProvenance
-      : pilot
-        ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
-        : UNKNOWN_PROVENANCE,
-    detectedStreetEdgeIndex != null ? "map_road" : "pilot",
+  const confirmedStreetFrontages = resolveConfirmedStreetFrontages(
+    [
+      stored.streetEdgeIndex,
+      ...(stored.additionalStreetEdgeIndexes ?? []),
+      stored.secondaryStreetEdgeIndex,
+    ],
+    stored.streetEdgeIndex,
+    edgeCount,
   );
+  const streetEdgeIndex = streetFrontageConfirmedByUser
+    ? {
+        value: confirmedStreetFrontages.streetEdgeIndex,
+        origin: "user" as const,
+        provenance:
+          confirmedStreetFrontages.streetEdgeIndex != null
+            ? USER_PROVENANCE
+            : "You confirmed that no property boundary is currently treated as street-facing.",
+      }
+    : field<number>(
+        null,
+        documentProvenance,
+        storedStreetEdgeIndex,
+        detectedStreetEdgeIndex ?? validEdgeIndex(pilotStreetEdgeIndex, edgeCount),
+        detectedStreetEdgeIndex != null
+          ? detectedProvenance
+          : pilot
+            ? `Street boundary matched to the recorded ${pilot.streetName ?? "street"} frontage length.`
+            : UNKNOWN_PROVENANCE,
+        detectedStreetEdgeIndex != null ? "map_road" : "pilot",
+      );
   const streetName = field<string>(
     null,
     documentProvenance,
@@ -246,15 +293,20 @@ export function resolveSitePotentialInputs(
     detected?.roadName ? detectedProvenance : (pilot?.provenanceLabel ?? UNKNOWN_PROVENANCE),
     detected?.roadName ? "map_road" : "pilot",
   );
-  const additionalStreetEdgeIndexes = normalizeAdditionalStreetEdgeIndexes(
-    streetEdgeIndex.value,
-    stored.additionalStreetEdgeIndexes,
-    stored.secondaryStreetEdgeIndex,
-    args.edgeLengths?.length,
-  );
+  const additionalStreetEdgeIndexes = streetFrontageConfirmedByUser
+    ? confirmedStreetFrontages.additionalStreetEdgeIndexes
+    : normalizeAdditionalStreetEdgeIndexes(
+        streetEdgeIndex.value,
+        stored.additionalStreetEdgeIndexes,
+        stored.secondaryStreetEdgeIndex,
+        args.edgeLengths?.length,
+      );
   const additionalStreetEdges = {
     value: additionalStreetEdgeIndexes,
-    origin: additionalStreetEdgeIndexes.length ? ("user" as const) : ("unknown" as const),
+    origin:
+      streetFrontageConfirmedByUser || additionalStreetEdgeIndexes.length
+        ? ("user" as const)
+        : ("unknown" as const),
     provenance: additionalStreetEdgeIndexes.length
       ? USER_PROVENANCE
       : UNKNOWN_PROVENANCE,
@@ -309,6 +361,7 @@ export function resolveSitePotentialInputs(
 
   const answers: StoredBuildEnvelopeInputs = {
     boundaryConfirmed: stored.boundaryConfirmed === true,
+    streetFrontageConfirmedByUser,
     streetEdgeIndex: streetEdgeIndex.value,
     additionalStreetEdgeIndexes,
     streetName: streetName.value,

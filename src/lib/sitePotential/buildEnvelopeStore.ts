@@ -5,7 +5,14 @@ import {
 } from "@/lib/workbench/erfWorkspaceState";
 
 /** Persisted answers only. Geometry always comes from the live parcel layer. */
-export type StoredBuildEnvelopeInputs = Omit<BuildEnvelopeInputs, "ring" | "parcelId">;
+export type StoredBuildEnvelopeInputs = Omit<BuildEnvelopeInputs, "ring" | "parcelId"> & {
+  /**
+   * Records that the user has explicitly reviewed street-facing boundaries.
+   * This preserves an intentional empty selection rather than letting later
+   * map-road detection silently reintroduce a frontage after reload.
+   */
+  streetFrontageConfirmedByUser?: boolean;
+};
 
 /**
  * Only fields the user actually touched are persisted. Absent keys and null

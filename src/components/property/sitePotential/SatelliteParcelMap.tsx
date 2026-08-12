@@ -39,9 +39,10 @@ export interface SatelliteParcelMapProps {
   onRoadsDetected?: (roads: RoadLineInput[]) => void;
   /** When true, every parcel edge becomes clickable on the satellite map. */
   selectableEdges?: boolean;
-  /** Primary and additional confirmations used while managing street frontages. */
-  primaryEdgeIndex?: number | null;
-  additionalStreetEdgeIndexes?: number[];
+  /** Every boundary the user has confirmed as street-facing. */
+  confirmedStreetEdgeIndexes?: number[];
+  /** A road-geometry suggestion that remains distinct from a user confirmation. */
+  suggestedStreetEdgeIndex?: number | null;
   onEdgeSelect?: (edgeIndex: number) => void;
 }
 
@@ -94,8 +95,8 @@ export function SatelliteParcelMap({
   fallbackNotice,
   onRoadsDetected,
   selectableEdges = false,
-  primaryEdgeIndex = null,
-  additionalStreetEdgeIndexes = [],
+  confirmedStreetEdgeIndexes = [],
+  suggestedStreetEdgeIndex = null,
   onEdgeSelect,
 }: SatelliteParcelMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -277,13 +278,13 @@ export function SatelliteParcelMap({
             id: `${SRC.street}-line`,
             type: "line",
             source: SRC.street,
-            paint: { "line-color": "#FF6A00", "line-width": 4 },
+            paint: { "line-color": "#FACC15", "line-width": 4, "line-dasharray": [2, 1.4] },
           });
           map.addLayer({
             id: `${SRC.additionalStreet}-line`,
             type: "line",
             source: SRC.additionalStreet,
-            paint: { "line-color": "#F59E0B", "line-width": 4, "line-dasharray": [2, 1.5] },
+            paint: { "line-color": "#FF6A00", "line-width": 4 },
           });
           map.addLayer({
             id: `${SRC.parcel}-line`,
@@ -434,8 +435,8 @@ export function SatelliteParcelMap({
     edgeSource?.setData(geo.edges);
   }, [geo, mapReady]);
 
-  // Edge-picking mode: only visible and clickable while the caller asks for a
-  // street-frontage confirmation.
+  // The map makes every boundary directly selectable. A nearby-road result is
+  // presented as a suggestion until the user has confirmed one or more edges.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
@@ -443,14 +444,31 @@ export function SatelliteParcelMap({
     map.setPaintProperty(`${SRC.edges}-line`, "line-opacity", selectableEdges ? 0.95 : 0);
     map.setPaintProperty(`${SRC.edges}-line`, "line-color", [
       "case",
-      ["==", ["get", "edgeIndex"], primaryEdgeIndex ?? -1],
+      ["in", ["get", "edgeIndex"], ["literal", confirmedStreetEdgeIndexes]],
       "#FF6A00",
-      ["in", ["get", "edgeIndex"], ["literal", additionalStreetEdgeIndexes]],
-      "#F59E0B",
+      ["==", ["get", "edgeIndex"], suggestedStreetEdgeIndex ?? -1],
       "#FACC15",
     ]);
     map.setLayoutProperty(`${SRC.edges}-hit`, "visibility", selectableEdges ? "visible" : "none");
-  }, [additionalStreetEdgeIndexes, mapReady, primaryEdgeIndex, selectableEdges]);
+    const primaryStreetIsConfirmed =
+      result.streetEdge != null && confirmedStreetEdgeIndexes.includes(result.streetEdge.index);
+    if (map.getLayer(`${SRC.street}-line`)) {
+      map.setPaintProperty(
+        `${SRC.street}-line`,
+        "line-color",
+        primaryStreetIsConfirmed ? "#FF6A00" : "#FACC15",
+      );
+      map.setPaintProperty(
+        `${SRC.street}-line`,
+        "line-dasharray",
+        primaryStreetIsConfirmed ? [1, 0] : [2, 1.4],
+      );
+    }
+    if (map.getLayer(`${SRC.additionalStreet}-line`)) {
+      map.setPaintProperty(`${SRC.additionalStreet}-line`, "line-color", "#FF6A00");
+      map.setPaintProperty(`${SRC.additionalStreet}-line`, "line-dasharray", [1, 0]);
+    }
+  }, [confirmedStreetEdgeIndexes, mapReady, result.streetEdge, selectableEdges, suggestedStreetEdgeIndex]);
 
   // The satellite canvas must always fill its frame, including after the
   // enclosing disclosure opens or the layout reflows.
@@ -493,8 +511,12 @@ export function SatelliteParcelMap({
       )}
       <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
         <LegendChip color="#22D3EE" label="Erf boundary" />
-        <LegendChip color="#FF6A00" label="Primary street boundary" />
-        {result.additionalStreetEdges.length ? <LegendChip color="#F59E0B" label="Additional street boundary" /> : null}
+        {confirmedStreetEdgeIndexes.length ? (
+          <LegendChip color="#FF6A00" label="Street-facing boundary" />
+        ) : null}
+        {suggestedStreetEdgeIndex != null ? (
+          <LegendChip color="#FACC15" label="Likely frontage from map" />
+        ) : null}
         <LegendChip color="#38BDF8" label="Street building line" />
         <LegendChip color="#22C55E" label="Side / rear building line" />
         <LegendChip color="#FB7185" label="Max coverage" />

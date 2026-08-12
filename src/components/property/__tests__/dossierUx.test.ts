@@ -762,10 +762,14 @@ describe("official dossier UX guardrails", () => {
     expect(vaultFiles).toContain("migrateLocalWorkspaceAttachmentsToVault");
     expect(vaultFiles).toContain("createSignedUrl");
     expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
-    expect(sitePotential).toContain("Guided Investigation · Step 9 of 10");
+    expect(sitePotential).toContain("Guided Investigation / Site Potential");
     expect(sitePotential).toContain("Back to Investigation");
     expect(sitePotential).toContain("Continue to Easy Erf Report");
-    expect(sitePotential).toContain("Explore the site before you complete the report");
+    expect(sitePotential).toContain("Review what could potentially fit on this site");
+    expect(sitePotential).toContain("Confirm the street-facing boundaries");
+    expect(sitePotential).not.toContain(
+      "Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 9 of 10",
+    );
     expect(sitePotential).toContain("Guided completion · Site Potential");
     expect(sitePotential).toContain("Select a concept or explicitly skip this step");
     expect(sitePotential).toContain("projectMode === \"skipped\"");
