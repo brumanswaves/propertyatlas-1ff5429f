@@ -37,6 +37,7 @@ export type ReadinessState = "confirmed" | "partial" | "missing" | "not_reviewed
 
 export type EvidenceBadge =
   | "official"
+  | "recorded"
   | "uploaded_report"
   | "user_confirmed"
   | "listing"

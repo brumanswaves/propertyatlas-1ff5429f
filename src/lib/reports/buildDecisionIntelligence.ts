@@ -6,6 +6,7 @@ import type {
 } from "./buildReportViewModel";
 import type {
   EvidenceClaim,
+  EvidenceGap,
   EvidenceTimelineEvent,
   PropertyEvidencePack,
 } from "@/lib/evidence/propertyEvidenceTypes";
@@ -264,11 +265,15 @@ function buildStillNeeded(
 }
 
 function buildStillNeededFromPack(pack: PropertyEvidencePack): string[] {
+  return rankedEvidenceGaps(pack)
+    .map((gap) => gap.nextAction);
+}
+
+export function rankedEvidenceGaps(pack: PropertyEvidencePack): EvidenceGap[] {
   return pack.gaps
     .slice()
     .sort((a, b) => importanceRank(b.importance) - importanceRank(a.importance) || a.id.localeCompare(b.id))
-    .slice(0, 8)
-    .map((gap) => gap.nextAction);
+    .slice(0, 8);
 }
 
 function buildContradictionsFromPack(pack: PropertyEvidencePack): ContradictionItem[] {

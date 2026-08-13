@@ -101,6 +101,7 @@ import {
   buildMunicipalServicesSectionModel,
   buildSiteRiskSectionModel,
   buildStillToVerifySummary,
+  type StillToVerifyItem,
 } from "@/lib/reports/contextSections";
 import { buildSgSectionModel } from "@/lib/reports/sgSection";
 import {
@@ -140,6 +141,7 @@ import {
 } from "@/lib/reports/buildReportViewModel";
 import {
   buildDecisionIntelligence,
+  rankedEvidenceGaps,
   type DecisionMatrixRow,
   type DecisionVerdict,
   type EvidenceTimelineItem,
@@ -1684,10 +1686,30 @@ function StoepAiReportView({
       }),
     [report.evidencePack, report.identity, report.market.subjectListing],
   );
-  const stillToVerify = useMemo(
-    () => buildStillToVerifySummary([siteRiskSection, municipalSection, locationSection]),
-    [siteRiskSection, municipalSection, locationSection],
+  const canonicalStillToVerifyItems = useMemo<StillToVerifyItem[]>(
+    () =>
+      report.evidencePack
+        ? rankedEvidenceGaps(report.evidencePack).map((gap) => ({
+            id: gap.id,
+            label: gap.title,
+            action: gap.nextAction,
+          }))
+        : [],
+    [report.evidencePack],
   );
+  const stillToVerify = useMemo(
+    () =>
+      buildStillToVerifySummary(
+        [siteRiskSection, municipalSection, locationSection],
+        canonicalStillToVerifyItems,
+      ),
+    [canonicalStillToVerifyItems, locationSection, municipalSection, siteRiskSection],
+  );
+  const parcelIdentityBadge: EvidenceBadge = report.evidencePack?.sources.some(
+    (source) => source.id === "official-parcel-record" && source.authorityType === "official",
+  )
+    ? "official"
+    : "recorded";
 
   const appendixRows = useMemo(
     () =>
@@ -1899,21 +1921,25 @@ function StoepAiReportView({
           >
             <ReportSectionTitle
               eyebrow="Property Identity"
-              title="Official identifiers and confirmed address"
+              title={
+                parcelIdentityBadge === "official"
+                  ? "Official identifiers and confirmed address"
+                  : "Recorded parcel identifiers and confirmed address"
+              }
             />
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-              <IdRow label="Erf number" value={report.identity.erfNumber} badge="official" />
-              <IdRow label="Portion" value={report.identity.portion} badge="official" />
-              <IdRow label="LPI" value={report.identity.lpi} badge="official" />
-              <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
-              <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
-              <IdRow label="Province" value={report.identity.province} badge="official" />
-              <IdRow label="Suburb / area" value={report.identity.suburbOrArea} badge="official" />
-              <IdRow label="Town" value={report.identity.town} badge="official" />
+              <IdRow label="Erf number" value={report.identity.erfNumber} badge={parcelIdentityBadge} />
+              <IdRow label="Portion" value={report.identity.portion} badge={parcelIdentityBadge} />
+              <IdRow label="LPI" value={report.identity.lpi} badge={parcelIdentityBadge} />
+              <IdRow label="Parcel key" value={report.identity.parcelKey} badge={parcelIdentityBadge} />
+              <IdRow label="Municipality" value={report.identity.municipality} badge={parcelIdentityBadge} />
+              <IdRow label="Province" value={report.identity.province} badge={parcelIdentityBadge} />
+              <IdRow label="Suburb / area" value={report.identity.suburbOrArea} badge={parcelIdentityBadge} />
+              <IdRow label="Town" value={report.identity.town} badge={parcelIdentityBadge} />
               <IdRow
                 label="Erf size (m²)"
                 value={formatAreaM2Value(report.identity.areaM2)}
-                badge="official"
+                badge={parcelIdentityBadge}
               />
               <IdRow
                 label="Coordinates"
@@ -1922,7 +1948,7 @@ function StoepAiReportView({
                     ? `${report.identity.coordinates.lat.toFixed(5)}, ${report.identity.coordinates.lng.toFixed(5)}`
                     : null
                 }
-                badge="official"
+                badge={parcelIdentityBadge}
               />
               <IdRow
                 label="Market address (user-confirmed)"
@@ -2143,7 +2169,6 @@ function StoepAiReportView({
           <ReportStillToVerifySection
             anchorId="report-still-to-verify"
             summary={stillToVerify}
-            canonicalItems={decision.stillNeeded.slice(0, 5)}
             onOpenDisclosure={() => {
               const el = document.getElementById("report-due-diligence");
               if (el instanceof HTMLDetailsElement) el.open = true;

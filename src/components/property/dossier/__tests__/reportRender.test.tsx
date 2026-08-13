@@ -70,9 +70,9 @@ const LIGHTSTONE: ErfAsset = evidenceAsset({
   },
 });
 
-function buildDoc(assets: ErfAsset[] = []) {
+function buildDoc(assets: ErfAsset[] = [], parcel = evidenceParcel()) {
   const report = buildReportViewModel({
-    parcel: evidenceParcel(),
+    parcel,
     workspaceState: createEmptyErfWorkspaceState(),
     savedEvidence: [],
     marketAddress: null,
@@ -82,7 +82,7 @@ function buildDoc(assets: ErfAsset[] = []) {
     selectedSiteDesign: null,
     propertyNotes: null,
   });
-  const pack = buildEvidencePackFixture({ assets, savedMarketEvidence: [] });
+  const pack = buildEvidencePackFixture({ assets, parcel, savedMarketEvidence: [] });
   return {
     report,
     pack,
@@ -162,6 +162,21 @@ describe("ReportOpening (rendered)", () => {
     expect(web).toContain("Evidence readiness:");
     expect(web).toContain("Official parcel identity");
     expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
+  });
+
+  it("keeps manual parcel values recorded rather than calling them official", () => {
+    const { doc: manualDoc } = buildDoc(
+      [],
+      evidenceParcel({
+        source: "manual",
+        sourceLabel: "Manual parcel record",
+        knownFields: [],
+      }),
+    );
+    const manualMarkup = renderToStaticMarkup(<ReportOpening doc={manualDoc} />);
+
+    expect(manualMarkup).toContain("Recorded parcel identity");
+    expect(manualMarkup).not.toContain("Official parcel identity");
   });
 
   it("shows a live Ask control in web mode and a static explanation in print mode", () => {
@@ -526,7 +541,19 @@ describe("Report concision (dossier source)", () => {
 
   it("replaces repeated unknown-only context with a single still-to-verify summary", () => {
     expect(source.match(/<ReportStillToVerifySection/g) ?? []).toHaveLength(1);
-    expect(source).toContain("canonicalItems={decision.stillNeeded.slice(0, 5)}");
+    expect(source).toContain("canonicalStillToVerifyItems");
+    expect(source).toContain("rankedEvidenceGaps(report.evidencePack)");
+    expect(source).not.toContain("canonicalItems={decision.stillNeeded.slice(0, 5)}");
+  });
+
+  it("keeps detailed manual parcel identity values out of official-badge presentation", () => {
+    expect(source).toContain("const parcelIdentityBadge");
+    expect(source).toContain('source.id === "official-parcel-record"');
+    expect(source).toContain('badge={parcelIdentityBadge}');
+    expect(source).not.toContain(
+      'label="Suburb / area" value={report.identity.suburbOrArea} badge="official"',
+    );
+    expect(source).not.toContain('label="Town" value={report.identity.town} badge="official"');
   });
 
   it("keeps the primary report hierarchy in reader order without duplicating report models", () => {

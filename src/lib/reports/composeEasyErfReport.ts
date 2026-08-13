@@ -213,6 +213,17 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
 
   // ---- property at a glance ----------------------------------------------
   const atAGlance: GlanceItem[] = [];
+  const parcelRecordIsOfficial = Boolean(
+    pack?.sources.some(
+      (source) => source.id === "official-parcel-record" && source.authorityType === "official",
+    ),
+  );
+  const parcelIdentityProvenance = parcelRecordIsOfficial
+    ? "Official parcel identity"
+    : "Recorded parcel identity";
+  const parcelContextProvenance = parcelRecordIsOfficial
+    ? "Official parcel context"
+    : "Recorded parcel context";
   const glance = (id: string, label: string, value: string | null | undefined, provenance: string) => {
     if (value == null) return;
     const text = String(value).trim();
@@ -223,29 +234,29 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
     "official-erf",
     "Erf",
     report.identity.erfNumber ? `Erf ${report.identity.erfNumber}` : null,
-    "Official parcel identity",
+    parcelIdentityProvenance,
   );
   glance(
     "official-portion",
     "Portion",
     report.identity.portion != null ? `Portion ${report.identity.portion}` : null,
-    "Official parcel identity",
+    parcelIdentityProvenance,
   );
-  glance("official-lpi", "LPI", report.identity.lpi, "Official parcel identity");
+  glance("official-lpi", "LPI", report.identity.lpi, parcelIdentityProvenance);
   glance(
     "suburb-or-area",
     "Suburb / area",
     report.identity.suburbOrArea,
-    "Official parcel context",
+    parcelContextProvenance,
   );
-  glance("town", "Town", report.identity.town, "Official parcel context");
+  glance("town", "Town", report.identity.town, parcelContextProvenance);
   glance(
     "official-municipality",
     "Municipality",
     report.identity.municipality,
-    "Official parcel context",
+    parcelContextProvenance,
   );
-  glance("official-province", "Province", report.identity.province, "Official parcel context");
+  glance("official-province", "Province", report.identity.province, parcelContextProvenance);
   glance(
     "working-address",
     "Working address",

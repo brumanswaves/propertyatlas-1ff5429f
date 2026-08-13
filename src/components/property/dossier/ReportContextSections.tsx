@@ -411,12 +411,10 @@ export function ReportSgLineageSection({
 export function ReportStillToVerifySection({
   anchorId,
   summary,
-  canonicalItems = [],
   onOpenDisclosure,
 }: {
   anchorId: string;
   summary: StillToVerifySummary;
-  canonicalItems?: string[];
   onOpenDisclosure?: () => void;
 }) {
   return (
@@ -426,7 +424,7 @@ export function ReportStillToVerifySection({
         title={
           summary.count
             ? `${summary.count} item(s) still worth checking`
-            : "Nothing outstanding across the tracked context checks"
+            : "Nothing outstanding is currently recorded"
         }
       />
       {summary.topItems.length > 0 && (
@@ -437,18 +435,6 @@ export function ReportStillToVerifySection({
               className="rounded-2xl border border-[#F59E0B]/40 bg-[#FFFBEB] p-4 text-sm leading-6 text-[#0D1B2A]/80"
             >
               <span className="font-semibold text-[#0D1B2A]">{item.label}</span> — {item.action}
-            </li>
-          ))}
-        </ul>
-      )}
-      {canonicalItems.length > 0 && (
-        <ul className="mt-3 space-y-2">
-          {canonicalItems.map((item) => (
-            <li
-              key={item}
-              className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-sm leading-6 text-[#0D1B2A]/80"
-            >
-              {item}
             </li>
           ))}
         </ul>
