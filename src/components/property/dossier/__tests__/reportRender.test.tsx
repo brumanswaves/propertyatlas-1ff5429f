@@ -177,6 +177,17 @@ describe("ReportOpening (rendered)", () => {
 
     expect(manualMarkup).toContain("Recorded parcel identity");
     expect(manualMarkup).not.toContain("Official parcel identity");
+    const manualIdentityFinding = manualDoc.findings.find(
+      (finding) => finding.id === "finding-identity-parcel",
+    );
+    expect(manualIdentityFinding).toMatchObject({
+      status: "not_checked",
+      headline: "Parcel identity recorded from user-supplied property information",
+    });
+    expect(`${manualIdentityFinding?.headline} ${manualIdentityFinding?.whatItMeans}`).not.toContain(
+      "official cadastral record",
+    );
+    expect(manualIdentityFinding?.whatItMeans).not.toContain("official parcel layer");
   });
 
   it("shows a live Ask control in web mode and a static explanation in print mode", () => {

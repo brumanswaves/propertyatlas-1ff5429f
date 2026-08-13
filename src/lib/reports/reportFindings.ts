@@ -157,6 +157,19 @@ function sourceIdsOf(claims: EvidenceClaim[]): string[] {
   return uniq(claims.flatMap((claim) => claim.sourceIds));
 }
 
+function hasOfficialParcelIdentitySource(
+  pack: PropertyEvidencePack,
+  claims: EvidenceClaim[],
+): boolean {
+  const claimSourceIds = new Set(sourceIdsOf(claims));
+  return pack.sources.some(
+    (source) =>
+      claimSourceIds.has(source.id) &&
+      source.kind === "official_parcel" &&
+      source.authorityType === "official",
+  );
+}
+
 const CONFIDENCE_ORDER: EvidenceConfidence[] = ["unverified", "low", "medium", "high"];
 
 /**
@@ -339,30 +352,50 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
 
   // 1. Parcel identity ------------------------------------------------------
   const identityClaims = supported(claimsFor(pack, "identity", ["erfNumber", "lpi", "parcelKey", "portion"]));
-  const identityConfirmed = identityClaims.some((claim) => claim.userConfirmed);
+  const identityFromOfficialParcel = hasOfficialParcelIdentitySource(pack, identityClaims);
+  const identityConfirmed =
+    identityFromOfficialParcel && identityClaims.some((claim) => claim.userConfirmed);
   const identityGap = gapById("identity-not-confirmed") ?? gapsWherePrefix("identity-").at(0) ?? null;
   add({
     id: "finding-identity-parcel",
     category: "identity",
-    status: identityClaims.length ? (identityConfirmed ? "verified" : "supported") : "missing",
-    severity: identityClaims.length ? "information" : "high",
+    status: identityClaims.length
+      ? identityFromOfficialParcel
+        ? identityConfirmed
+          ? "verified"
+          : "supported"
+        : "not_checked"
+      : "missing",
+    severity: identityClaims.length && identityFromOfficialParcel ? "information" : "high",
     headline: identityClaims.length
-      ? identityConfirmed
-        ? "Parcel identity checked against the official record"
-        : "Parcel identity read from the official cadastral record"
+      ? identityFromOfficialParcel
+        ? identityConfirmed
+          ? "Parcel identity checked against the official record"
+          : "Parcel identity read from the official cadastral record"
+        : "Parcel identity recorded from user-supplied property information"
       : "Parcel identity not established",
     whatWeFound: identityClaims.length
       ? identityClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
-      : "No official identifier claim exists for this erf.",
+      : "No parcel identifier claim exists for this erf.",
     whatItMeans: identityClaims.length
-      ? identityConfirmed
-        ? "Every other finding in this report is tied to this confirmed erf."
-        : "Identifiers come from the official parcel layer. Confirming them yourself removes the risk of researching the wrong erf."
+      ? identityFromOfficialParcel
+        ? identityConfirmed
+          ? "Every other finding in this report is tied to this confirmed erf."
+          : "Identifiers come from the official parcel layer. Confirming them yourself removes the risk of researching the wrong erf."
+        : "These identifiers are recorded from user-supplied property information. Official cadastral confirmation is still required before relying on them."
       : "Nothing else in this report can be relied on until the erf is identified.",
-    confidence: identityClaims.length ? weakestConfidence(identityClaims) : "unverified",
+    confidence:
+      identityClaims.length && identityFromOfficialParcel
+        ? weakestConfidence(identityClaims)
+        : "unverified",
     claimIds: identityClaims.map((claim) => claim.id),
     sourceIds: sourceIdsOf(identityClaims),
-    gapIds: identityClaims.length ? [] : identityGap ? [identityGap.id] : [],
+    gapIds:
+      identityClaims.length && identityFromOfficialParcel
+        ? []
+        : identityGap
+          ? [identityGap.id]
+          : [],
   });
 
   // 2. Address / parcel conflict -------------------------------------------

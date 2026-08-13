@@ -8,7 +8,10 @@ import {
   redactPersonalIdentifiers,
   weakestConfidence,
 } from "../reportFindings";
-import { buildEvidencePackFixture } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
+import {
+  buildEvidencePackFixture,
+  evidenceParcel,
+} from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 
 describe("reportFindings", () => {
   const pack = buildEvidencePackFixture();
@@ -27,6 +30,46 @@ describe("reportFindings", () => {
     const ownership = findings.find((finding) => finding.id.includes("ownership"));
     expect(ownership).toBeDefined();
     expect(isPositiveFindingStatus(ownership!.status)).toBe(false);
+  });
+
+  it("keeps manual parcel identity recorded but unverified", () => {
+    const manualPack = buildEvidencePackFixture({
+      parcel: evidenceParcel({
+        source: "manual",
+        sourceLabel: "User-supplied parcel record",
+        knownFields: [],
+      }),
+    });
+    const identity = buildReportFindings(manualPack).find(
+      (finding) => finding.id === "finding-identity-parcel",
+    );
+
+    expect(identity).toMatchObject({
+      status: "not_checked",
+      confidence: "unverified",
+      headline: "Parcel identity recorded from user-supplied property information",
+    });
+    expect(identity?.whatWeFound).toContain("Erf number: 1021");
+    expect(`${identity?.headline} ${identity?.whatWeFound} ${identity?.whatItMeans}`).not.toContain(
+      "official cadastral record",
+    );
+    expect(identity?.whatItMeans).not.toContain("official parcel layer");
+    expect(identity?.whatItMeans).toContain("Official cadastral confirmation is still required");
+  });
+
+  it("retains official identity wording for official parcel evidence", () => {
+    const officialPack = buildEvidencePackFixture({
+      parcel: evidenceParcel({ source: "csg", sourceLabel: "Chief Surveyor-General" }),
+    });
+    const identity = buildReportFindings(officialPack).find(
+      (finding) => finding.id === "finding-identity-parcel",
+    );
+
+    expect(identity).toMatchObject({
+      status: "supported",
+      headline: "Parcel identity read from the official cadastral record",
+    });
+    expect(identity?.whatItMeans).toContain("official parcel layer");
   });
 
   it("scopes every finding to the subject parcel", () => {
