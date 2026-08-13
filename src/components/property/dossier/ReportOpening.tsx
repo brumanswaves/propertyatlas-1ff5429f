@@ -141,7 +141,7 @@ export function ReportOpening({
 
         <article className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-            Decision snapshot
+            Opportunity & decision summary
           </div>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#0D1B2A]">
             {snapshot.verdict}
@@ -170,7 +170,7 @@ export function ReportOpening({
             </div>
             <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-3">
               <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-                Best opportunity
+                Biggest opportunity
               </dt>
               <dd className="mt-1 text-[#0D1B2A]/80">
                 {snapshot.bestOpportunity ??
@@ -179,7 +179,7 @@ export function ReportOpening({
             </div>
           </dl>
           <p className="mt-3 text-xs leading-5 text-[#64748B]">
-            Confidence: {snapshot.confidence} — {snapshot.confidenceReason}
+            Evidence readiness: {snapshot.readinessPercent}% — {snapshot.confidence} confidence. {snapshot.confidenceReason}
           </p>
         </article>
       </section>
@@ -191,7 +191,7 @@ export function ReportOpening({
           className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4 scroll-mt-24"
         >
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-            Property at a glance
+            Property summary
           </div>
           <dl className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-3 divide-x divide-[#0D1B2A]/10">
             {doc.atAGlance.map((item) => (
@@ -237,8 +237,11 @@ export function ReportOpening({
         className="report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-4 scroll-mt-24"
       >
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-          Critical checks
+          Risks & concerns
         </div>
+        <p className="mt-1 text-xs leading-5 text-[#64748B]">
+          The most important recorded concerns and checks that still need attention.
+        </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {doc.riskStrip.map((item) => (
             <li

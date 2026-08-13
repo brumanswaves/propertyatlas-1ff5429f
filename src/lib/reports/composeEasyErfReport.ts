@@ -58,6 +58,8 @@ export interface DecisionSnapshotModel {
   positives: string[];
   biggestConcern: string | null;
   bestOpportunity: string | null;
+  /** Canonical evidence-readiness percentage from the report view model. */
+  readinessPercent: number;
   confidence: "high" | "medium" | "low" | "unverified";
   confidenceReason: string;
 }
@@ -203,7 +205,11 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
   };
 
   // ---- decision snapshot --------------------------------------------------
-  const decisionSnapshot = buildDecisionSnapshot(findings, Boolean(pack));
+  const decisionSnapshot = buildDecisionSnapshot(
+    findings,
+    Boolean(pack),
+    report.brief.readinessPercent,
+  );
 
   // ---- property at a glance ----------------------------------------------
   const atAGlance: GlanceItem[] = [];
@@ -213,6 +219,40 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
     if (!text || text === "0") return;
     atAGlance.push({ id, label, value: text, provenance });
   };
+  glance(
+    "official-erf",
+    "Erf",
+    report.identity.erfNumber ? `Erf ${report.identity.erfNumber}` : null,
+    "Official parcel identity",
+  );
+  glance(
+    "official-portion",
+    "Portion",
+    report.identity.portion != null ? `Portion ${report.identity.portion}` : null,
+    "Official parcel identity",
+  );
+  glance("official-lpi", "LPI", report.identity.lpi, "Official parcel identity");
+  glance(
+    "suburb-or-area",
+    "Suburb / area",
+    report.identity.suburbOrArea,
+    "Official parcel context",
+  );
+  glance("town", "Town", report.identity.town, "Official parcel context");
+  glance(
+    "official-municipality",
+    "Municipality",
+    report.identity.municipality,
+    "Official parcel context",
+  );
+  glance("official-province", "Province", report.identity.province, "Official parcel context");
+  glance(
+    "working-address",
+    "Working address",
+    report.identity.marketAddressLine,
+    "User-confirmed working address",
+  );
+
   if (subject) {
     glance("property-type", "Property type", subject.propertyType, "Subject listing");
     if (subject.beds) glance("beds", "Bedrooms", String(subject.beds), "Subject listing");
@@ -412,6 +452,7 @@ function suggestedQuestions(findings: ReportFinding[]): string[] {
 function buildDecisionSnapshot(
   findings: ReportFinding[],
   hasPack: boolean,
+  readinessPercent: number,
 ): DecisionSnapshotModel {
   const hasEvidence = hasPack && findings.length > 0;
   const positivesFindings = findings.filter(
@@ -475,6 +516,7 @@ function buildDecisionSnapshot(
     positives: positivesFindings.slice(0, 3).map((finding) => finding.headline),
     biggestConcern,
     bestOpportunity: opportunity ? opportunity.headline : null,
+    readinessPercent,
     confidence,
     confidenceReason: !hasEvidence
       ? "No canonical evidence pack is available for this erf yet."

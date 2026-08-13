@@ -16,22 +16,20 @@ describe("report composition", () => {
     }
   });
 
-  it("makes Standard and Investor genuinely different compositions", () => {
+  it("keeps the core evidence hierarchy stable while changing the lens", () => {
     const standard = buildReportComposition("standard");
     const investor = buildReportComposition("investor");
 
-    expect(investor.groupOrder).not.toEqual(standard.groupOrder);
-    // Investor puts Market & Financials directly after the opening.
-    expect(investor.groupOrder[0]).toBe("market");
+    expect(investor.groupOrder).toEqual(standard.groupOrder);
     expect(standard.groupOrder[0]).toBe("identity");
     expect(investor.verdictHeading).not.toBe(standard.verdictHeading);
     expect(investor.openingMetricPreference).not.toEqual(standard.openingMetricPreference);
     expect(investor.askSuggestionFocus).not.toEqual(standard.askSuggestionFocus);
   });
 
-  it("collapses deep context by default so the scroll stays short", () => {
+  it("keeps property and site checks in the visible report hierarchy", () => {
     const composition = buildReportComposition("standard");
-    expect(isGroupCollapsedByDefault(composition, "context")).toBe(true);
+    expect(isGroupCollapsedByDefault(composition, "context")).toBe(false);
     expect(isGroupCollapsedByDefault(composition, "identity")).toBe(false);
     expect(isGroupCollapsedByDefault(composition, "next")).toBe(false);
   });

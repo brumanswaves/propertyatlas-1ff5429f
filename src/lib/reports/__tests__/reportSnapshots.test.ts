@@ -179,6 +179,8 @@ function report(overrides: Partial<ReportViewModel> = {}): ReportViewModel {
       officialLine: "Erf 1021 / Kouga",
       marketAddressLine: "8 Harbour Road",
       addressAndOfficialMismatch: false,
+      suburbOrArea: "St Francis Bay",
+      town: "Humansdorp",
       municipality: "Kouga",
       province: "Eastern Cape",
       erfNumber: "1021",

@@ -256,4 +256,14 @@ describe("PropertyFirstRead", () => {
       "Continue investigation",
     );
   });
+
+  it("keeps the first read zero-commit until the user explicitly chooses investigation", () => {
+    const onInvestigate = vi.fn();
+    const input = props({ onInvestigate });
+    const markup = renderToStaticMarkup(<PropertyFirstRead {...input} />);
+
+    expect(markup).toContain("Investigate this property");
+    expect(markup).toContain("first read stays read-only until you choose to investigate");
+    expect(onInvestigate).not.toHaveBeenCalled();
+  });
 });

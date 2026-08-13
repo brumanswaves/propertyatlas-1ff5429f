@@ -37,7 +37,6 @@ import {
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import {
   buildReportComposition,
-  isGroupCollapsedByDefault,
   type ReportGroupId,
 } from "@/lib/reports/reportComposition";
 import { ZoningBuildTab } from "./dossier/ZoningBuildTab";
@@ -1889,8 +1888,8 @@ function StoepAiReportView({
           <ReportGroupHeading
             letter="A"
             anchorId="report-group-identity"
-            title="Decision & identity"
-            intro="Who and what this erf officially is, and how the records reconcile."
+            title="Identity & official records"
+            intro="The canonical parcel identity, Surveyor-General evidence and ownership records for this erf."
           />
 
           {/* IDENTITY */}
@@ -1909,6 +1908,8 @@ function StoepAiReportView({
               <IdRow label="Parcel key" value={report.identity.parcelKey} badge="official" />
               <IdRow label="Municipality" value={report.identity.municipality} badge="official" />
               <IdRow label="Province" value={report.identity.province} badge="official" />
+              <IdRow label="Suburb / area" value={report.identity.suburbOrArea} badge="official" />
+              <IdRow label="Town" value={report.identity.town} badge="official" />
               <IdRow
                 label="Erf size (m²)"
                 value={formatAreaM2Value(report.identity.areaM2)}
@@ -1951,12 +1952,6 @@ function StoepAiReportView({
             />
           </section>
 
-          {/* OWNERSHIP */}
-          <ReportOwnershipSection
-            ownership={report.ownership}
-            onOpenReports={() => onSelectView?.("reports")}
-          />
-
           <ReportFindingsBlock
             anchorId="report-sg-findings"
             eyebrow="SG findings"
@@ -1984,6 +1979,11 @@ function StoepAiReportView({
             onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
             onPreviewSettlement={trackSignedAssetPreviewSettlement}
           />
+
+          <ReportOwnershipSection
+            ownership={report.ownership}
+            onOpenReports={() => onSelectView?.("reports")}
+          />
         </>
       ),
       planning: (
@@ -1991,20 +1991,8 @@ function StoepAiReportView({
           <ReportGroupHeading
             letter="B"
             anchorId="report-group-planning"
-            title="What exists / what can be done"
-            intro="Approved structures, planning controls and explored site potential."
-          />
-
-          {/* BUILDINGS, PLANS & COMPLIANCE */}
-          <ReportFindingsBlock
-            anchorId="report-buildings"
-            eyebrow="Buildings, Plans & Compliance"
-            title="Approved plans and structure compliance"
-            intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
-            findings={reportDoc.findings.filter((f) => f.category === "buildings")}
-            actions={reportDoc.actions}
-            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-            emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
+            title="Zoning, planning & building controls"
+            intro="Planning evidence first, then the building controls and approvals that still need confirmation."
           />
 
           {/* PLANNING */}
@@ -2053,7 +2041,42 @@ function StoepAiReportView({
             )}
           </section>
 
-          {/* SITE POTENTIAL — calculated capacity and the saved concept together */}
+          {/* BUILDINGS, PLANS & COMPLIANCE */}
+          <ReportFindingsBlock
+            anchorId="report-buildings"
+            eyebrow="Buildings, plans & compliance"
+            title="Approved plans and structure compliance"
+            intro="Whether structures are approved can only come from municipal building-plan records. Architectural plans, notes and Site Potential concepts are never treated as approved-plan evidence."
+            findings={reportDoc.findings.filter((finding) => finding.category === "buildings")}
+            actions={reportDoc.actions}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+            emptyMessage="Approved building plans have not been obtained and no plan comparison has been completed. Request the approved plan set from the municipality to close this section."
+          />
+        </>
+      ),
+      market: (
+        <>
+          <ReportGroupHeading
+            letter="D"
+            anchorId="report-group-market"
+            title="Market, strategy & Site Potential"
+            intro="Market support, selected strategy assumptions and the accepted Site Potential view stay distinct from verified property rights."
+          />
+
+          {/* MARKET */}
+          <ReportMarketSection
+            anchorId="report-market"
+            model={marketSection}
+            onOpenMarket={() => onSelectView?.("listings")}
+          />
+
+          {/* STRATEGY & FINANCIALS */}
+          <ReportStrategySection
+            anchorId="report-strategy"
+            model={strategySection}
+            onOpenStrategy={() => onSelectView?.("calculators")}
+          />
+
           <ReportSitePotentialSection
             anchorId="report-site"
             panel={sitePotentialPanel}
@@ -2076,43 +2099,51 @@ function StoepAiReportView({
           />
         </>
       ),
-      market: (
+      context: (
         <>
           <ReportGroupHeading
             letter="C"
-            anchorId="report-group-market"
-            title="Price & strategy"
-            intro="What the market evidence supports, and what the numbers say under your own assumptions."
+            anchorId="report-group-context"
+            title="Property & site checks"
+            intro="Physical, environmental, service and location context is shown separately from planning controls and market assumptions."
           />
 
-          {/* MARKET */}
-          <ReportMarketSection
-            anchorId="report-market"
-            model={marketSection}
-            onOpenMarket={() => onSelectView?.("listings")}
+          <ReportContextSection
+            anchorId="report-site-risk"
+            eyebrow="Site, environmental & physical risk"
+            title="Physical and environmental conditions supported by evidence"
+            model={siteRiskSection}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
           />
 
-          {/* STRATEGY & FINANCIALS */}
-          <ReportStrategySection
-            anchorId="report-strategy"
-            model={strategySection}
-            onOpenStrategy={() => onSelectView?.("calculators")}
+          <ReportMunicipalSection
+            anchorId="report-municipal"
+            model={municipalSection}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
+          />
+
+          <ReportContextSection
+            anchorId="report-location"
+            eyebrow="Location & lifestyle"
+            title="Where this erf sits, and what is actually known about it"
+            model={locationSection}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
           />
         </>
       ),
-      context: null,
       next: (
         <>
           <ReportGroupHeading
             letter="E"
             anchorId="report-group-next"
-            title="Risks & next actions"
-            intro="The top open risks, what to verify next, and one place to go deeper."
+            title="Missing, unverified & supporting evidence"
+            intro="The canonical evidence gaps and next action, with detailed source material available below."
           />
 
           <ReportStillToVerifySection
             anchorId="report-still-to-verify"
             summary={stillToVerify}
+            canonicalItems={decision.stillNeeded.slice(0, 5)}
             onOpenDisclosure={() => {
               const el = document.getElementById("report-due-diligence");
               if (el instanceof HTMLDetailsElement) el.open = true;
@@ -2153,30 +2184,6 @@ function StoepAiReportView({
               </section>
 
               {/* SITE, ENVIRONMENTAL & PHYSICAL RISK */}
-              <ReportContextSection
-                anchorId="report-site-risk"
-                eyebrow="Site, Environmental & Physical Risk"
-                title="Physical and environmental conditions supported by evidence"
-                model={siteRiskSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
-
-              {/* MUNICIPAL SERVICES & OWNERSHIP COSTS */}
-              <ReportMunicipalSection
-                anchorId="report-municipal"
-                model={municipalSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
-
-              {/* LOCATION & LIFESTYLE */}
-              <ReportContextSection
-                anchorId="report-location"
-                eyebrow="Location & Lifestyle"
-                title="Where this erf sits, and what is actually known about it"
-                model={locationSection}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab ?? undefined))}
-              />
-
               {/* DECISION DETAIL — deeper evidence readiness, never a second hero */}
               <section
                 id="report-brief"

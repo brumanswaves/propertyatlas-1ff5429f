@@ -32,7 +32,7 @@ Property First Read, Guided Investigation, the expert Dossier and the Easy Erf R
 - Market Evidence, active/comparable listing flows and deterministic market summaries.
 - Strategy Lab and deterministic calculators with saved scenarios and chosen-scenario report consumption.
 - Site Potential planning/build-envelope assumptions and concept workflow, kept separate from official approval.
-- Easy Erf Report view models, print foundation, decision intelligence, report action guidance and report change tracking.
+- Easy Erf Report view models, print foundation, decision intelligence, report action guidance and report change tracking. The primary reader flow opens with a canonical Property Summary, grounded Ask Easy Erf guidance, evidence-readiness decision framing, then identity, planning, site checks, market, Strategy and accepted Site Potential sections; deeper technical evidence remains expandable.
 - Ask Easy Erf grounded in the canonical Property Evidence Pack/report intelligence, with answer confidence distinct from investigation readiness.
 - Mobile Workbench navigation, saved workspace state, report uploads, SG multi-upload and the live map/search/parcel workflow.
 - A server-side `/api/address/suggestions` route for Google autocomplete, place details and geocoding, with parcel-aware South African suggestions and visible failure states.

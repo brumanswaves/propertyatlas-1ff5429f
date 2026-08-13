@@ -499,7 +499,9 @@ export function PropertyFirstRead(props: PropertyFirstReadProps) {
             </div>
             <div className="mt-8">
               <p className="max-w-xl text-sm leading-6 text-white/68">
-                Start with the official parcel facts and recorded evidence. Guided investigation will help you confirm what matters next without changing this first read.
+                Use Easy Erf&apos;s guided property investigation to gather records, confirm planning
+                controls, analyse site potential and bring everything together in one report. This
+                first read stays read-only until you choose to investigate.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button

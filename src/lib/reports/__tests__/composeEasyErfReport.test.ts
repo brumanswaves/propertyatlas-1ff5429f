@@ -17,15 +17,16 @@ function buildDoc() {
     selectedSiteDesign: null,
     propertyNotes: null,
   });
-  return composeEasyErfReport({
+  const doc = composeEasyErfReport({
     report,
     pack: buildEvidencePackFixture(),
     generatedAt: "2026-07-23T10:00:00Z",
   });
+  return { report, doc };
 }
 
 describe("composeEasyErfReport", () => {
-  const doc = buildDoc();
+  const { report, doc } = buildDoc();
 
   it("builds a header, ask context and decision snapshot for the subject erf", () => {
     expect(doc.header.title).toBe("Easy Erf Report");
@@ -47,6 +48,20 @@ describe("composeEasyErfReport", () => {
     }
   });
 
+  it("puts canonical parcel identity and evidence readiness in the primary report model", () => {
+    expect(doc.atAGlance).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "official-erf", label: "Erf" }),
+        expect.objectContaining({ id: "official-portion", label: "Portion" }),
+        expect.objectContaining({ id: "official-lpi", label: "LPI" }),
+        expect.objectContaining({ id: "suburb-or-area", label: "Suburb / area" }),
+        expect.objectContaining({ id: "town", label: "Town" }),
+        expect.objectContaining({ id: "official-municipality", label: "Municipality" }),
+      ]),
+    );
+    expect(doc.decisionSnapshot.readinessPercent).toBe(report.brief.readinessPercent);
+  });
+
   it("marks unchecked risk strip rows as unknown or check needed, never positive", () => {
     for (const item of doc.riskStrip) {
       if (item.status === "verified" || item.status === "supported") {
@@ -64,7 +79,7 @@ describe("composeEasyErfReport", () => {
   });
 
   it("is deterministic for identical inputs", () => {
-    expect(JSON.stringify(buildDoc())).toBe(JSON.stringify(doc));
+    expect(JSON.stringify(buildDoc().doc)).toBe(JSON.stringify(doc));
   });
 
   it("never claims an opportunity or an all-clear without supported evidence", () => {

@@ -59,8 +59,8 @@ const STANDARD: ReportComposition = {
     DESTINATIONS.market,
     DESTINATIONS.next,
   ],
-  groupOrder: ["identity", "planning", "market", "context", "next"],
-  collapsedGroups: ["context"],
+  groupOrder: ["identity", "planning", "context", "market", "next"],
+  collapsedGroups: [],
   verdictEyebrow: "Buyer decision",
   verdictHeading: "What a buyer should do next on this erf",
   openingIntro:
@@ -100,9 +100,8 @@ const INVESTOR: ReportComposition = {
     DESTINATIONS.identity,
     DESTINATIONS.next,
   ],
-  // Market & Financials sits directly after the opening.
-  groupOrder: ["market", "planning", "identity", "context", "next"],
-  collapsedGroups: ["context"],
+  groupOrder: ["identity", "planning", "context", "market", "next"],
+  collapsedGroups: [],
   verdictEyebrow: "Investor readiness",
   verdictHeading: "Is this erf ready to underwrite?",
   openingIntro:

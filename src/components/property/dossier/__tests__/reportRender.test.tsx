@@ -155,6 +155,15 @@ describe("ReportOpening (rendered)", () => {
     );
   });
 
+  it("starts with a canonical property summary, grounded Ask and evidence-ready decision framing", () => {
+    expect(web).toContain("Property summary");
+    expect(web).toContain("Opportunity &amp; decision summary");
+    expect(web).toContain("Risks &amp; concerns");
+    expect(web).toContain("Evidence readiness:");
+    expect(web).toContain("Official parcel identity");
+    expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
+  });
+
   it("shows a live Ask control in web mode and a static explanation in print mode", () => {
     expect(web).toContain("Ask Easy Erf about this erf");
     expect(web).toContain("<textarea");
@@ -453,10 +462,10 @@ describe("Report view selector (rendered)", () => {
     expect(print).not.toContain('id="report-view-mode"');
   });
 
-  it("switching to Investor changes the composition the report renders", () => {
+  it("switching to Investor changes the report lens without changing the core evidence hierarchy", () => {
     const standard = buildReportComposition("standard");
     const investor = buildReportComposition("investor");
-    expect(investor.groupOrder).not.toEqual(standard.groupOrder);
+    expect(investor.groupOrder).toEqual(standard.groupOrder);
     expect(investor.destinations.map((d) => d.id)).not.toEqual(
       standard.destinations.map((d) => d.id),
     );
@@ -499,15 +508,51 @@ describe("Report concision (dossier source)", () => {
     expect(sgSummary).toBeGreaterThan(-1);
     expect(sgSummary).toBeLessThan(start);
 
-    // All other deep evidence remains behind the disclosure.
+    // Technical evidence remains behind the disclosure, while the property and
+    // site checks are deliberately part of the reader's primary hierarchy.
     const outside = source.slice(0, start) + source.slice(end);
     for (const marker of ['id="report-zoning-build"', "<ReportEvidenceAppendix", "<ReportChangeTrackingSection"]) {
       expect(outside).not.toContain(marker);
+    }
+    for (const marker of [
+      'anchorId="report-site-risk"',
+      'anchorId="report-municipal"',
+      'anchorId="report-location"',
+    ]) {
+      expect(inside).not.toContain(marker);
+      expect(outside).toContain(marker);
     }
   });
 
   it("replaces repeated unknown-only context with a single still-to-verify summary", () => {
     expect(source.match(/<ReportStillToVerifySection/g) ?? []).toHaveLength(1);
+    expect(source).toContain("canonicalItems={decision.stillNeeded.slice(0, 5)}");
+  });
+
+  it("keeps the primary report hierarchy in reader order without duplicating report models", () => {
+    const planning = source.indexOf('anchorId="report-group-planning"');
+    const buildings = source.indexOf('anchorId="report-buildings"');
+    const context = source.indexOf('anchorId="report-group-context"');
+    const market = source.indexOf('anchorId="report-group-market"');
+    const strategy = source.indexOf('anchorId="report-strategy"');
+    const sitePotential = source.indexOf('anchorId="report-site"');
+    const missing = source.indexOf('anchorId="report-group-next"');
+
+    expect(
+      [planning, buildings, context, market, strategy, sitePotential, missing].every(
+        (index) => index > -1,
+      ),
+    ).toBe(true);
+    expect(planning).toBeLessThan(buildings);
+    expect(market).toBeLessThan(strategy);
+    expect(strategy).toBeLessThan(sitePotential);
+    expect(buildReportComposition("standard").groupOrder).toEqual([
+      "identity",
+      "planning",
+      "context",
+      "market",
+      "next",
+    ]);
   });
 
   it("uses the Guided-accepted Site Potential projection rather than recomputing a report-only envelope", () => {
@@ -525,10 +570,10 @@ describe("Report concision (dossier source)", () => {
     expect(source).toContain('open={printOnly || undefined}');
   });
 
-  it("makes Standard and Investor compositions genuinely differ", () => {
+  it("keeps the core evidence hierarchy stable across report lenses", () => {
     const standard = buildReportComposition("standard");
     const investor = buildReportComposition("investor");
-    expect(investor.groupOrder).not.toEqual(standard.groupOrder);
+    expect(investor.groupOrder).toEqual(standard.groupOrder);
     expect(investor.destinations.map((d) => d.id)).not.toEqual(
       standard.destinations.map((d) => d.id),
     );
