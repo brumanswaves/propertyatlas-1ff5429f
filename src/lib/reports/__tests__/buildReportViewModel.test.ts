@@ -10,6 +10,7 @@ import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState"
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 
 function baseParcel(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
@@ -156,6 +157,26 @@ describe("buildReportViewModel", () => {
       status: "not_reviewed",
       userConfirmed: false,
     });
+  });
+
+  it("keeps a user-confirmed zoning conclusion distinct from planning assumptions", () => {
+    const planningAssessment = buildParcelPlanningAssessment({
+      parcelId: "parcel:erf-224",
+      municipality: "Kouga Local Municipality",
+      locationHints: ["Sea Vista"],
+      erfAreaM2: 987,
+      manualZoneCode: "RES1",
+      userConfirmedZoneCode: "RES1",
+      hasParcelPolygon: true,
+      now: new Date("2026-08-13T10:00:00Z"),
+    });
+    const vm = buildReportViewModel(baseInput({ planningAssessment }));
+
+    expect(vm.planning.find((field) => field.label === "Zoning")).toMatchObject({
+      value: "Residential Zone 1 (single residential)",
+      badge: "user_confirmed",
+    });
+    expect(vm.planning.find((field) => field.label === "Coverage %")?.badge).toBe("assumption");
   });
 
   it("uses canonical pack values for planning labels, market, documents, strategy and site", () => {

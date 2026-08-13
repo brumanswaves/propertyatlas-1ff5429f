@@ -270,5 +270,70 @@ describe("SG lineage section model", () => {
     expect(html).toContain("What Easy Erf found");
     expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
     expect(html).toContain("parent context");
+    expect(html).toContain("No visual preview was generated for this diagram.");
+    expect(html).toContain("The document shows a cadastral diagram reference.");
+  });
+
+  it("selects the strongest subject SG diagram for the report and leaves supporting plans in the appendix", () => {
+    const subjectDiagram = {
+      id: "asset-subject-sg",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      original_file_name: "subject-erf-1570.tif",
+      updated_at: "2026-08-13T10:00:00.000Z",
+      metadata: {
+        extractionStatus: "ready",
+        identityMatchStatus: "matched",
+        extractionSummary: "Individual diagram for the selected erf.",
+        extractedClaims: [],
+      },
+    } as unknown as ErfAsset;
+    const parentPlan = {
+      id: "asset-parent-plan",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      original_file_name: "general-plan-12252.tif",
+      updated_at: "2026-08-13T11:00:00.000Z",
+      metadata: {
+        extractionStatus: "ready",
+        identityMatchStatus: "parent_lineage_match",
+        extractionSummary: "Supporting parent General Plan.",
+        extractedClaims: [],
+      },
+    } as unknown as ErfAsset;
+
+    const model = buildSgSectionModel({
+      appendixRows: [],
+      pack: null,
+      assets: [parentPlan, subjectDiagram],
+    });
+    expect(model.evidence.map((block) => block.asset.id)).toEqual(["asset-subject-sg"]);
+    expect(model.supportingDiagramCount).toBe(1);
+
+    const html = renderToStaticMarkup(
+      <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
+    );
+    expect(html).toContain("subject-erf-1570.tif");
+    expect(html).not.toContain("general-plan-12252.tif");
+    expect(html).toContain("additional readable SG diagram");
+  });
+
+  it("does not admit a wrong-property SG diagram into the report summary", () => {
+    const wrongPropertyDiagram = {
+      id: "asset-wrong-sg",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      original_file_name: "other-property.tif",
+      updated_at: "2026-08-13T11:00:00.000Z",
+      metadata: {
+        extractionStatus: "ready",
+        identityMatchStatus: "mismatch",
+        extractedClaims: [{ label: "Erf", value: "999", scope: "subject", confidence: "high" }],
+      },
+    } as unknown as ErfAsset;
+
+    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [wrongPropertyDiagram] });
+    expect(model.evidence).toHaveLength(0);
+    expect(model.emptyMessage).toMatch(/No Surveyor-General diagram has been read/);
   });
 });

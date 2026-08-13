@@ -231,11 +231,20 @@ export function ReportSgLineageSection({
   onOpenTab?: (tab: string) => void;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
+  const primaryAssetId = model.evidence[0]?.asset.id ?? null;
+  const selectedFile = primaryAssetId
+    ? model.files.find((file) => file.assetId === primaryAssetId) ?? null
+    : model.files[0] ?? null;
+  const additionalDiagramCount = Math.max(
+    model.supportingDiagramCount,
+    model.files.length - (selectedFile ? 1 : 0),
+  );
+
   return (
     <section id={anchorId} className={sectionShell()}>
       <ReportSectionTitleBlock
-        eyebrow="SG Diagrams & Lineage"
-        title="Surveyor-General evidence read for this erf"
+        eyebrow="Cadastral evidence"
+        title="SG Diagram Summary"
       />
 
       {model.contextNote && (
@@ -250,15 +259,15 @@ export function ReportSgLineageSection({
         <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Diagram files read
+              Diagram selected for this report
             </div>
-            {model.files.length === 0 ? (
+            {!selectedFile ? (
               <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
                 No diagram file is attached to this erf yet.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
-                {model.files.map((file) => (
+                {[selectedFile].map((file) => (
                   <li
                     key={file.id}
                     data-sg-file={file.id}
@@ -283,6 +292,12 @@ export function ReportSgLineageSection({
                   </li>
                 ))}
               </ul>
+            )}
+            {additionalDiagramCount > 0 && (
+              <p className="mt-3 text-xs leading-5 text-[#64748B]">
+                {additionalDiagramCount} additional readable SG diagram
+                {additionalDiagramCount === 1 ? " is" : "s are"} listed in the Evidence Appendix.
+              </p>
             )}
           </div>
 
