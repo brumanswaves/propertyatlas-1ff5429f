@@ -132,6 +132,38 @@ describe("guided investigation components", () => {
     expect(html).toContain("Accepted Site Potential concept");
     expect(html).toContain("View building area");
     expect(html).toContain("View selected concept");
+    expect(html).toContain("Continue to Review report");
+
+    const buildingOnly = renderToStaticMarkup(
+      <GuidedSitePotentialStep
+        workspaceState={createEmptyErfWorkspaceState()}
+        acceptedBuildEnvelope={buildEnvelope}
+        onOpenSitePotential={noop}
+        onContinue={noop}
+      />,
+    );
+    expect(buildingOnly).toContain("Accepted building area map");
+    expect(buildingOnly).not.toContain("Accepted Site Potential concept");
+
+    const conceptOnly = renderToStaticMarkup(
+      <GuidedSitePotentialStep
+        workspaceState={workspace}
+        selectedSiteDesign={selectedAsset}
+        onOpenSitePotential={noop}
+        onContinue={noop}
+      />,
+    );
+    expect(conceptOnly).toContain("Accepted Site Potential concept");
+    expect(conceptOnly).not.toContain("Accepted building area map");
+
+    const neither = renderToStaticMarkup(
+      <GuidedSitePotentialStep
+        workspaceState={createEmptyErfWorkspaceState()}
+        onOpenSitePotential={noop}
+        onContinue={noop}
+      />,
+    );
+    expect(neither).not.toContain("Accepted work for this erf");
 
     const historical = renderToStaticMarkup(
       <GuidedSitePotentialStep
