@@ -3,13 +3,7 @@ import {
   formatAreaM2Value,
   formatAreaM2WithUnit,
 } from "@/lib/evidence/parcelArea";
-import {
-  calculateBuildEnvelope,
-  projectRingToLocalMetres,
-} from "@/lib/sitePotential/buildEnvelope";
-import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
-import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
-import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import { deriveAcceptedBuildEnvelope } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import { selectReportHero } from "@/lib/reports/reportHero";
 import { buildSitePotentialReportPanel } from "@/lib/reports/sitePotentialSection";
 import { ReportBuildableAreaVisual } from "@/components/property/dossier/ReportBuildableAreaVisual";
@@ -239,6 +233,22 @@ const TYPE_LABEL: Record<ResearchSource["sourceType"], string> = {
   sponsored: "Sponsored",
   unavailable: "Unavailable",
 };
+
+function planningEvidenceBadgeLabel(badge: EvidenceBadge, hasValue: boolean) {
+  if (!hasValue) return "Missing evidence";
+  switch (badge) {
+    case "uploaded_report":
+      return "Document supported";
+    case "user_confirmed":
+      return "User-confirmed working conclusion";
+    case "assumption":
+      return "Working assumption";
+    case "official":
+      return "Official source";
+    default:
+      return undefined;
+  }
+}
 
 const CONFIDENCE_LABEL: Record<NonNullable<ResearchSource["confidence"]>, string> = {
   confirmed_for_parcel: "Confirmed for parcel",
@@ -1501,39 +1511,32 @@ function StoepAiReportView({
    * Deterministic report hero. The envelope is only drawn from real geometry
    * plus rules the user actually recorded — never invented.
    */
-  const heroEnvelope = useMemo(() => {
-    if (!parcelRing || parcelRing.length < 3) return null;
-    const polygon = projectRingToLocalMetres(parcelRing);
-    const edgeLengths = polygon.map((a, index) => {
-      const b = polygon[(index + 1) % polygon.length];
-      return Math.hypot(b.x - a.x, b.y - a.y);
-    });
-    const resolved = resolveSitePotentialInputs({
-      overrides: readStoredBuildEnvelopeInputs(parcel.id, userId),
-      pilot: findPilotPlanningRecord({ parcelId: parcel.id, lpiCode: parcel.lpi ?? null }),
-      edgeLengths,
-      recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
-    });
-
-    return calculateBuildEnvelope({
-      ...resolved.answers,
-      parcelId: parcel.id,
-      ring: parcelRing,
-    });
-  }, [parcel, parcelRing, userId]);
+  const acceptedBuildEnvelope = useMemo(
+    () =>
+      planningAssessment
+        ? deriveAcceptedBuildEnvelope({
+            parcel,
+            parcelRing,
+            planning: planningAssessment,
+            recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
+            userId,
+          })
+        : null,
+    [parcel, parcelRing, planningAssessment, userId],
+  );
 
   const reportHero = useMemo(
     () =>
       selectReportHero({
         hasSitePotentialVisual:
           Boolean(selectedDesign) ||
-          heroEnvelope?.state === "verified" ||
-          heroEnvelope?.state === "estimated",
+          acceptedBuildEnvelope?.state === "verified" ||
+          acceptedBuildEnvelope?.state === "estimated",
         sitePotentialVisualIsDeterministic: !selectedDesign,
-        hasParcelGeometry: Boolean(heroEnvelope),
+        hasParcelGeometry: Boolean(acceptedBuildEnvelope),
         hasPropertyPhotograph: false,
       }),
-    [heroEnvelope, selectedDesign],
+    [acceptedBuildEnvelope, selectedDesign],
   );
 
   const groupedAssets = groupErfAssets(fileVault.assets);
@@ -1545,14 +1548,14 @@ function StoepAiReportView({
   const sitePotentialPanel = useMemo(
     () =>
       buildSitePotentialReportPanel({
-        envelope: heroEnvelope,
+        envelope: acceptedBuildEnvelope,
         hasConceptImage: Boolean(selectedDesign),
         conceptStyle: siteProject.project?.selected_style ?? null,
         brief: siteProject.project?.design_brief ?? null,
         skipped: sitePotentialSkipped,
         disclaimer: SITE_POTENTIAL_DISCLAIMER,
       }),
-    [heroEnvelope, selectedDesign, siteProject.project, sitePotentialSkipped],
+    [acceptedBuildEnvelope, selectedDesign, siteProject.project, sitePotentialSkipped],
   );
   const notesRequestRef = useRef(0);
   const [reportNotes, setReportNotes] = useState<PropertyNotes | null>(null);
@@ -1653,8 +1656,12 @@ function StoepAiReportView({
     [report],
   );
   const strategySection = useMemo(
-    () => buildStrategySectionModel({ chosen: chosenScenario, scenarioCount: scenarios.length }),
-    [chosenScenario, scenarios.length],
+    () =>
+      buildStrategySectionModel({
+        chosen: report.strategy.chosen,
+        scenarioCount: report.strategy.scenarioCount,
+      }),
+    [report.strategy],
   );
   const siteRiskSection = useMemo(
     () => buildSiteRiskSectionModel({ pack: report.evidencePack ?? null }),
@@ -1966,6 +1973,17 @@ function StoepAiReportView({
             onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
             emptyMessage="No Surveyor-General diagram has been read and matched to this erf yet. Upload the SG diagram in the Erf File to add cadastral evidence."
           />
+
+          <ReportSgLineageSection
+            anchorId="report-sg-evidence"
+            model={sgSection}
+            onOpenAsset={(assetId) => {
+              const asset = fileVault.assets.find((file) => file.id === assetId);
+              if (asset) void openVaultAsset(asset);
+            }}
+            onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
+            onPreviewSettlement={trackSignedAssetPreviewSettlement}
+          />
         </>
       ),
       planning: (
@@ -1996,7 +2014,7 @@ function StoepAiReportView({
           >
             <ReportSectionTitle
               eyebrow="Zoning, Planning & Buildability"
-              title="Only municipally supported controls are shown"
+              title="Recorded planning evidence and working conclusions"
             />
             <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               {report.planning.map((field) => (
@@ -2013,8 +2031,8 @@ function StoepAiReportView({
                     )}
                   </dd>
                   <EvidenceBadgeChip
-                    badge={field.badge}
-                    label={field.value ? "Official" : "Missing"}
+                    badge={field.value ? field.badge : "missing"}
+                    label={planningEvidenceBadgeLabel(field.badge, Boolean(field.value))}
                   />
                 </div>
               ))}
@@ -2040,10 +2058,10 @@ function StoepAiReportView({
             anchorId="report-site"
             panel={sitePotentialPanel}
             capacityVisual={
-              heroEnvelope ? (
+              acceptedBuildEnvelope ? (
                 <ReportBuildableAreaVisual
                   ring={parcelRing}
-                  result={heroEnvelope}
+                  result={acceptedBuildEnvelope}
                   printOnly={printOnly}
                 />
               ) : undefined
@@ -2115,18 +2133,6 @@ function StoepAiReportView({
               </span>
             </summary>
             <div className="mt-4 space-y-5">
-              {/* SG / LINEAGE EVIDENCE — detailed rows & filenames live behind this disclosure */}
-              <ReportSgLineageSection
-                anchorId="report-sg-evidence"
-                model={sgSection}
-                onOpenAsset={(assetId) => {
-                  const asset = fileVault.assets.find((file) => file.id === assetId);
-                  if (asset) void openVaultAsset(asset);
-                }}
-                onOpenTab={(tab) => onSelectView?.(routeTabFor(tab))}
-                onPreviewSettlement={trackSignedAssetPreviewSettlement}
-              />
-
               {/* ZONING & BUILD — detailed published-rule clauses live behind this disclosure */}
               <section
                 id="report-zoning-build"
@@ -2522,7 +2528,7 @@ function StoepAiReportView({
             ) : reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
               <ReportBuildableAreaVisual
                 ring={parcelRing}
-                result={heroEnvelope!}
+                result={acceptedBuildEnvelope!}
                 printOnly={printOnly}
                 compact
               />

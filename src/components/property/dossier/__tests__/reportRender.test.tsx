@@ -474,7 +474,7 @@ describe("Report concision (dossier source)", () => {
     }
   });
 
-  it("keeps every deep evidence block behind exactly one disclosure", () => {
+  it("keeps supporting evidence behind one disclosure while surfacing the selected SG summary", () => {
     const disclosureMatches = source.match(/<details\s*\n\s*id="report-due-diligence"/g) ?? [];
     expect(disclosureMatches).toHaveLength(1);
 
@@ -485,7 +485,6 @@ describe("Report concision (dossier source)", () => {
     const inside = source.slice(start, end);
 
     for (const marker of [
-      "ReportSgLineageSection",
       'id="report-zoning-build"',
       "Decision Detail",
       'id="report-risk"',
@@ -495,15 +494,31 @@ describe("Report concision (dossier source)", () => {
       expect(inside).toContain(marker);
     }
 
-    // None of these deep markers may also appear outside the disclosure.
+    // The strongest identity-gated SG diagram is part of the primary report.
+    const sgSummary = source.indexOf("<ReportSgLineageSection");
+    expect(sgSummary).toBeGreaterThan(-1);
+    expect(sgSummary).toBeLessThan(start);
+
+    // All other deep evidence remains behind the disclosure.
     const outside = source.slice(0, start) + source.slice(end);
-    for (const marker of ["<ReportSgLineageSection", 'id="report-zoning-build"', "<ReportEvidenceAppendix", "<ReportChangeTrackingSection"]) {
+    for (const marker of ['id="report-zoning-build"', "<ReportEvidenceAppendix", "<ReportChangeTrackingSection"]) {
       expect(outside).not.toContain(marker);
     }
   });
 
   it("replaces repeated unknown-only context with a single still-to-verify summary", () => {
     expect(source.match(/<ReportStillToVerifySection/g) ?? []).toHaveLength(1);
+  });
+
+  it("uses the Guided-accepted Site Potential projection rather than recomputing a report-only envelope", () => {
+    const guidedSource = readFileSync(
+      resolve(__dirname, "../../investigation/InvestigationHome.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("deriveAcceptedBuildEnvelope");
+    expect(guidedSource).toContain("deriveAcceptedBuildEnvelope");
+    expect(source).not.toContain("readStoredBuildEnvelopeInputs");
+    expect(source).not.toContain("calculateBuildEnvelope");
   });
 
   it("shows technical evidence in a separated appendix in print mode", () => {

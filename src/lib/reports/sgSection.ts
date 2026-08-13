@@ -52,7 +52,10 @@ export interface SgEvidenceBlock {
 
 export interface SgSectionModel {
   files: SgFileRow[];
+  /** The strongest identity-gated SG document selected for the report body. */
   evidence: SgEvidenceBlock[];
+  /** Other readable SG diagrams remain available in the evidence appendix. */
+  supportingDiagramCount: number;
   lineage: SgLineageRow[];
   hasParentContext: boolean;
   contextNote: string | null;
@@ -104,6 +107,12 @@ const LINEAGE_SPECS: Array<{
 function extractionSummary(asset: ErfAsset) {
   const value = asset.metadata.extractionSummary ?? asset.metadata.extraction_summary;
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function evidencePriority(block: SgEvidenceBlock) {
+  if (!block.isParentContext && !block.isUserConfirmed) return 0;
+  if (block.isUserConfirmed) return 1;
+  return 2;
 }
 
 function pickClaim(
@@ -164,36 +173,53 @@ export function buildSgSectionModel(input: {
     });
   }
 
-  const hasParentContext =
+  const readableEvidence = assets
+    .filter((asset) => asset.asset_category === "sg_diagram" && erfAssetHasSearchableExtraction(asset))
+    .map((asset) => {
+      const row = appendixRows.find((candidate) => candidate.assetId === asset.id);
+      const identity = erfAssetIdentityMatchStatus(asset);
+      return {
+        asset,
+        readLabel: row?.readLabel ?? "Readable cadastral evidence attached",
+        isParentContext: identity === "parent_lineage_match",
+        isUserConfirmed: identity === "unverified" && erfAssetIdentityUserConfirmed(asset),
+        summary: extractionSummary(asset),
+        findings: erfAssetExtractedClaims(asset).map((claim) => ({
+          label: claim.label,
+          value: claim.value,
+          scope: claim.scope,
+          confidence: claim.confidence,
+        })),
+      } satisfies SgEvidenceBlock;
+    })
+    .sort((left, right) => {
+      const priority = evidencePriority(left) - evidencePriority(right);
+      if (priority !== 0) return priority;
+      return right.asset.updated_at.localeCompare(left.asset.updated_at);
+    });
+
+  const primaryEvidence = readableEvidence[0] ?? null;
+  const hasParentDiagramContext =
     files.some((file) => file.isParentContext) ||
-    lineage.some((row) => row.scope === "parent_context");
+    readableEvidence.some((block) => block.isParentContext);
+  const hasParentContext =
+    hasParentDiagramContext || lineage.some((row) => row.scope === "parent_context");
+
+  const contextNote = primaryEvidence?.isParentContext
+    ? "The selected diagram was matched to the parent General Plan for this erf. It is shown as parent-plan context: it describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+    : hasParentDiagramContext
+      ? primaryEvidence
+        ? "Additional supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+        : "Supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+      : null;
 
   return {
     files,
-    evidence: assets
-      .filter((asset) => asset.asset_category === "sg_diagram" && erfAssetHasSearchableExtraction(asset))
-      .map((asset) => {
-        const row = appendixRows.find((candidate) => candidate.assetId === asset.id);
-        const identity = erfAssetIdentityMatchStatus(asset);
-        return {
-          asset,
-          readLabel: row?.readLabel ?? "Readable cadastral evidence attached",
-          isParentContext: identity === "parent_lineage_match",
-          isUserConfirmed: identity === "unverified" && erfAssetIdentityUserConfirmed(asset),
-          summary: extractionSummary(asset),
-          findings: erfAssetExtractedClaims(asset).map((claim) => ({
-            label: claim.label,
-            value: claim.value,
-            scope: claim.scope,
-            confidence: claim.confidence,
-          })),
-        };
-      }),
+    evidence: primaryEvidence ? [primaryEvidence] : [],
+    supportingDiagramCount: Math.max(0, readableEvidence.length - 1),
     lineage,
     hasParentContext,
-    contextNote: hasParentContext
-      ? "These diagrams were matched to the parent general plan for this erf. They are shown as parent-plan context: they describe the layout this erf came from, and they do not confirm boundaries, extent or servitudes for the subject erf on their own."
-      : null,
+    contextNote,
     emptyMessage:
       files.length === 0 &&
       lineage.length === 0 &&

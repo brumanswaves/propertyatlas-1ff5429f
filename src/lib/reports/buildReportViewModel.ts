@@ -411,7 +411,7 @@ function buildPlanning(parcel: NormalizedOfficialParcel): PlanningField[] {
 function buildPlanningFromPack(pack: PropertyEvidencePack, parcel: NormalizedOfficialParcel): PlanningField[] {
   const area = supportedClaim(pack, "identity", "areaM2");
   const field = (key: string, label: string): PlanningField => {
-    const claim = supportedClaim(pack, "planning", key);
+    const claim = reportPlanningClaim(pack, key);
     return {
       label,
       value: displayClaimValue(claim),
@@ -1067,6 +1067,30 @@ function supportedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key:
   return pack.claims.find((claim) => claim.domain === domain && claim.key === key && claim.status === "supported" && !claim.excluded) ?? null;
 }
 
+/**
+ * Planning controls can be supported by a document, recorded as an explicit
+ * user working conclusion, or retained as an unconfirmed working assumption.
+ * The report preserves that provenance rather than hiding recorded work or
+ * relabelling it as municipal confirmation.
+ */
+function reportPlanningClaim(pack: PropertyEvidencePack, key: string): EvidenceClaim | null {
+  const candidates = pack.claims.filter(
+    (claim) =>
+      claim.domain === "planning" &&
+      claim.key === key &&
+      !claim.excluded &&
+      claim.status !== "missing" &&
+      claim.value != null &&
+      String(claim.value).trim() !== "",
+  );
+  return (
+    candidates.find((claim) => claim.status === "supported") ??
+    candidates.find((claim) => claim.userConfirmed) ??
+    candidates.find((claim) => claim.status === "not_reviewed") ??
+    null
+  );
+}
+
 function firstSupportedOrObservedClaim(pack: PropertyEvidencePack, domain: EvidenceDomain, key: string): EvidenceClaim | null {
   return pack.claims.find(
     (claim) =>
@@ -1095,11 +1119,14 @@ function numberOrNull(value: unknown): number | null {
 }
 
 function badgeForClaim(claim: EvidenceClaim): EvidenceBadge {
+  if (claim.domain === "planning" && claim.key !== "zoning" && claim.nature === "assumption") {
+    return "assumption";
+  }
+  if (claim.userConfirmed) return "user_confirmed";
   if (claim.nature === "assumption") return "assumption";
   if (claim.nature === "calculation") return "assumption";
   if (claim.nature === "interpretation") return "ai_interpretation";
   if (claim.sourceIds.some((sourceId) => sourceId.startsWith("market-"))) return "listing";
-  if (claim.userConfirmed) return "user_confirmed";
   if (claim.sourceIds.some((sourceId) => sourceId.startsWith("asset-"))) return "uploaded_report";
   return "official";
 }

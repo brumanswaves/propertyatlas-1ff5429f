@@ -21,11 +21,7 @@ import {
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
-import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
-import { calculateBuildEnvelope, projectRingToLocalMetres } from "@/lib/sitePotential/buildEnvelope";
-import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
-import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
-import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import { deriveAcceptedBuildEnvelope } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
 import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
@@ -144,36 +140,17 @@ export function InvestigationHome({
     [assets, workspaceState.sitePotential.selectedDesignAssetId],
   );
 
-  const acceptedBuildEnvelope = useMemo(() => {
-    const stored = readStoredBuildEnvelopeInputs(parcel.id, userId);
-    if (
-      !parcelRing ||
-      parcelRing.length < 3 ||
-      !stored?.boundaryConfirmed ||
-      !stored.streetFrontageConfirmedByUser
-    ) {
-      return null;
-    }
-    const polygon = projectRingToLocalMetres(parcelRing);
-    const edgeLengths = polygon.map((point, index) => {
-      const next = polygon[(index + 1) % polygon.length];
-      return Math.hypot(next.x - point.x, next.y - point.y);
-    });
-    const resolved = resolveSitePotentialInputs({
-      overrides: stored,
-      prefill: buildSitePotentialRulePrefill(planning),
-      pilot: findPilotPlanningRecord({ parcelId: parcel.id, lpiCode: parcel.lpi ?? null }),
-      documentRuleEvidence: planning.detection.method === "document_supported",
-      edgeLengths,
-      recordedAreaM2,
-    });
-    const result = calculateBuildEnvelope({
-      ...resolved.answers,
-      parcelId: parcel.id,
-      ring: parcelRing,
-    });
-    return result.envelopePolygon || result.coverageFootprint ? result : null;
-  }, [parcel, parcelRing, planning, recordedAreaM2, userId]);
+  const acceptedBuildEnvelope = useMemo(
+    () =>
+      deriveAcceptedBuildEnvelope({
+        parcel,
+        parcelRing,
+        planning,
+        recordedAreaM2,
+        userId,
+      }),
+    [parcel, parcelRing, planning, recordedAreaM2, userId],
+  );
 
   const report = useMemo(
     () =>
