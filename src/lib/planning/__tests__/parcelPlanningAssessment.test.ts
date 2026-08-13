@@ -82,6 +82,18 @@ describe("parcel planning assessment", () => {
     expect(assessment.headlineWarning).toMatch(/have not yet been confirmed/i);
   });
 
+  it("keeps a user-confirmed working zone distinct from document-backed zoning", () => {
+    const assessment = buildParcelPlanningAssessment({
+      ...baseInput,
+      userConfirmedZoneCode: "RES1",
+    });
+
+    expect(assessment.userConfirmedZoneCode).toBe("RES1");
+    expect(assessment.detection.method).toBe("manual_selection");
+    expect(assessment.detection.supportingAssetId).toBeNull();
+    expect(assessment.detection.statement).toMatch(/not been confirmed with the municipality/i);
+  });
+
   it("shows a not-detected state when no zone has been chosen", () => {
     const assessment = buildParcelPlanningAssessment({ ...baseInput, manualZoneCode: null });
     expect(assessment.detection.method).toBe("not_detected");

@@ -240,6 +240,8 @@ export interface ParcelPlanningAssessment {
   municipality: string | null;
   planningArea: string | null;
   registryMatched: boolean;
+  /** A user confirmed the selected zone as their working conclusion. */
+  userConfirmedZoneCode?: string | null;
   detection: ZoningDetection;
   zone: ZoneDefinition | null;
   publishedRules: ZoningRule[];

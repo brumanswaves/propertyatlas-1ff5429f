@@ -607,8 +607,8 @@ export function SitePotentialTab({
     [vault.assets],
   );
   const manualZoneCode = useMemo(
-    () => readStoredPlanningZone(parcel.id, userId),
-    [parcel.id, userId],
+    () => workspaceState.planning.zoneCode ?? readStoredPlanningZone(parcel.id, userId),
+    [parcel.id, userId, workspaceState.planning.zoneCode],
   );
   const documentZone = useMemo(() => {
     if (!planningSignals.zoningCertificateUploaded) return null;
@@ -622,6 +622,7 @@ export function SitePotentialTab({
         locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
         erfAreaM2: canonicalAreaM2(parcel.rawProperties),
         manualZoneCode,
+        userConfirmedZoneCode: workspaceState.planning.userConfirmedZoneCode,
         documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
         documentZoneAssetId: documentZone?.id ?? null,
         observedZoneLabel:
@@ -634,7 +635,7 @@ export function SitePotentialTab({
         hasStreetEdgeReference: false,
         evidence: planningSignals,
       }),
-    [documentZone, manualZoneCode, parcel, planningSignals],
+    [documentZone, manualZoneCode, parcel, planningSignals, workspaceState.planning.userConfirmedZoneCode],
   );
   const allGeneratedDesigns = vault.assets.filter(
     (asset) => asset.asset_category === "generated_design",
@@ -1598,6 +1599,10 @@ export function SitePotentialTab({
               for the Easy Erf Report.
             </p>
             <p className="mt-2 text-[11.5px] text-[#64748B]">{SITE_POTENTIAL_DISCLAIMER}</p>
+            <p className="mt-2 text-[12px] font-medium text-[#4A5A6A]">
+              Concept generation usually takes a few minutes. You can leave this page and return
+              while the background worker continues.
+            </p>
           </div>
           <div className="flex flex-col items-start gap-2 lg:items-end">
             <div className="text-[26px] font-bold text-[#0D1B2A]">

@@ -22,6 +22,7 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
     sgDiagramCount: 0,
     usableSubjectSgDiagramCount: 0,
     zoningConfirmedByDocument: false,
+    zoningUserConfirmed: false,
     zoningRegistryPublished: false,
     zoningWorkingAssumption: false,
     approvedPlansOnFile: false,
@@ -51,7 +52,7 @@ function completedThroughPropertyChecks(overrides: Partial<InvestigationFacts> =
     marketAddressSaved: true,
     sgDiagramSearchable: true,
     titleDeedSearchable: true,
-    zoningWorkingAssumption: true,
+    zoningUserConfirmed: true,
     sitePhotoCount: 1,
     ...overrides,
   });
@@ -169,7 +170,7 @@ describe("guided investigation journey registry", () => {
     }
   });
 
-  it("advances after a working zoning selection without claiming document confirmation", () => {
+  it("advances after a user confirms a working zoning without claiming document confirmation", () => {
     const workspace = createEmptyErfWorkspaceState();
     const journey = buildGuidedInvestigationJourney(
       facts({
@@ -178,7 +179,7 @@ describe("guided investigation journey registry", () => {
         marketAddressSaved: true,
         sgDiagramSearchable: true,
         paidReportSearchable: true,
-        zoningWorkingAssumption: true,
+        zoningUserConfirmed: true,
         zoningConfirmedByDocument: false,
       }),
       workspace,

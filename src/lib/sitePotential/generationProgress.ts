@@ -192,15 +192,15 @@ export function buildSitePotentialRuntimeProgress(
     detail = failedish
       ? "Retry this pack to requeue eligible concepts without using another credit."
       : "Easy Erf will retry eligible failed concepts without using another credit.";
-    estimate = "Retries can add several minutes.";
+    estimate = "Retries can add a few minutes.";
   } else if (firstGenerating) {
     heading = `Creating concept ${firstGenerating.optionIndex} of ${requestedCount}`;
     detail = "The image generator has started and the worker is processing this concept.";
-    estimate = "Each concept can take several minutes.";
+    estimate = "Each concept usually takes a few minutes.";
   } else if (completedCount > 0) {
     heading = `${completedCount} of ${requestedCount} concepts ready`;
     detail = "Completed concepts are saved as they finish. Remaining concepts are still queued.";
-    estimate = "Remaining concepts can take several minutes once the generator starts.";
+    estimate = "Remaining concepts usually take a few minutes once the generator starts.";
   } else if (stalled) {
     heading = "Waiting for generator";
     detail = "The generator has not started yet. Easy Erf is checking the background worker.";

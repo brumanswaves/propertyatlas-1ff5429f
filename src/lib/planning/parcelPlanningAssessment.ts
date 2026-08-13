@@ -42,6 +42,8 @@ export interface ParcelPlanningAssessmentInput {
   erfAreaM2: number | null;
   /** Zone chosen by the user in the Zoning & Build tab, if any. */
   manualZoneCode?: string | null;
+  /** The selected zone the user explicitly confirmed as their working conclusion. */
+  userConfirmedZoneCode?: string | null;
   /** Zone supported by an uploaded zoning certificate, if any. */
   documentZoneCode?: string | null;
   documentZoneAssetId?: string | null;
@@ -512,6 +514,10 @@ export function buildParcelPlanningAssessment(
     municipality: entry?.municipality ?? input.municipality ?? null,
     planningArea,
     registryMatched,
+    userConfirmedZoneCode:
+      input.userConfirmedZoneCode && input.userConfirmedZoneCode === zone?.code
+        ? input.userConfirmedZoneCode
+        : null,
     detection,
     zone,
     publishedRules,

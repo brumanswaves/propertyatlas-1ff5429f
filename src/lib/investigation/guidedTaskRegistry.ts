@@ -25,6 +25,7 @@ export interface InvestigationFacts {
   sgDiagramCount: number;
   usableSubjectSgDiagramCount: number;
   zoningConfirmedByDocument: boolean;
+  zoningUserConfirmed?: boolean;
   zoningRegistryPublished: boolean;
   zoningWorkingAssumption: boolean;
   approvedPlansOnFile: boolean;
@@ -137,7 +138,7 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     priority: 30,
     title: "Confirm the zoning for this erf",
     shortExplanation:
-      "Attach a zoning certificate, or record the zone you believe applies, so build rules can be assessed.",
+      "Attach a zoning certificate, or confirm your working zone, so build rules can be assessed.",
     whyItMatters:
       "Published municipal rules only become erf-specific once the zone is confirmed. Until then no coverage, height or building-line figure applies to this property.",
     improves: ["Zoning & Build", "Site Potential", "Strategy", "Report"],
@@ -148,17 +149,18 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     sourceLabel: "Municipal planning department",
     steps: [
       "Open the Zoning & Build tab.",
-      "Select the zone you believe applies, or request a zoning certificate from the municipality.",
+      "Select the zone you believe applies, then confirm it as your working conclusion or request a zoning certificate from the municipality.",
       "Upload the zoning certificate to the Erf File Vault when you receive it.",
       "Re-check the build envelope once the zone is document-supported.",
     ],
     afterCompletion:
-      "Easy Erf applies the published rules for that zone and shows what is still unverified for this erf.",
+      "Easy Erf records your confirmed working conclusion and shows what is still unverified for this erf.",
     canSkip: true,
-    confidenceAfterLabel: "Zoning supported by a document you attached",
+    confidenceAfterLabel:
+      "Zoning is document-supported or recorded as a user-confirmed working conclusion",
     limitations:
       "A zoning certificate does not confirm title conditions, servitudes, departures or approved plans.",
-    isComplete: (facts) => facts.zoningConfirmedByDocument,
+    isComplete: (facts) => facts.zoningConfirmedByDocument || Boolean(facts.zoningUserConfirmed),
     isBlocked: (facts) => facts.identityUncertain,
     confidenceBefore: (facts) =>
       facts.zoningWorkingAssumption

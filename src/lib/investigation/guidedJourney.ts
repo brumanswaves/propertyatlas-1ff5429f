@@ -106,13 +106,13 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     label: "Confirm zoning",
     shortLabel: "Zoning",
     description:
-      "Save a working zoning selection, then strengthen it with an erf-specific municipal record when available.",
+      "Confirm a working zoning conclusion, then strengthen it with an erf-specific municipal record when available.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["zoning"],
     relatedTaskIds: ["confirm-zoning"],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: (facts) => facts.zoningConfirmedByDocument || facts.zoningWorkingAssumption,
+    isComplete: (facts) => facts.zoningConfirmedByDocument || Boolean(facts.zoningUserConfirmed),
   },
   {
     id: "property-checks",

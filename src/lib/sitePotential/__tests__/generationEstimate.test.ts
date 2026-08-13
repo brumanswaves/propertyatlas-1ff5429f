@@ -20,7 +20,7 @@ describe("Site Potential generation estimates", () => {
       completedCount: 0,
     });
     expect(estimate?.message).toBe(
-      "The first concept is being created. This normally takes several minutes.",
+      "The first concept is being created. This usually takes a few minutes.",
     );
   });
 
@@ -57,7 +57,7 @@ describe("Site Potential generation estimates", () => {
         { status: "queued", attemptCount: 0 },
       ],
     });
-    expect(estimate?.message).toBe("A retry is in progress. This can add several minutes.");
+    expect(estimate?.message).toBe("A retry is in progress. This can add a few minutes.");
     expect(estimate?.detail).toContain("2 concepts remain");
     expect(estimate?.active).toBe(true);
   });
@@ -69,7 +69,7 @@ describe("Site Potential generation estimates", () => {
       completedCount: 0,
       items: [{ status: "failed", attemptCount: 1, nextAttemptAt: "2026-07-20T12:00:00Z" }],
     });
-    expect(estimate?.message).toBe("A retry is in progress. This can add several minutes.");
+    expect(estimate?.message).toBe("A retry is in progress. This can add a few minutes.");
     expect(estimate?.active).toBe(true);
   });
 

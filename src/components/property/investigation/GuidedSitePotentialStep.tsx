@@ -1,16 +1,68 @@
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Lightbulb, Sparkles } from "lucide-react";
 import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import {
+  createErfAssetSignedUrl,
+  type ErfAsset,
+} from "@/lib/workbench/erfFileVault";
+import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
+import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
 import { cn } from "@/lib/utils";
 
 interface GuidedSitePotentialStepProps {
   workspaceState: ErfWorkspaceState;
+  acceptedBuildEnvelope?: BuildEnvelopeResult | null;
+  selectedSiteDesign?: ErfAsset | null;
   stepSkipped?: boolean;
   onOpenSitePotential: () => void;
   onContinue: () => void;
 }
 
+function AcceptedConceptPreview({ asset }: { asset: ErfAsset }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setUrl(null);
+    setUnavailable(false);
+    void createErfAssetSignedUrl(asset)
+      .then((nextUrl) => {
+        if (alive) setUrl(nextUrl || null);
+      })
+      .catch(() => {
+        if (alive) setUnavailable(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [asset]);
+
+  if (!url || unavailable) {
+    return (
+      <div className="grid aspect-[4/3] place-items-center rounded-xl bg-[#F2F4F7] px-3 text-center text-xs text-[#0D1B2A]/60">
+        Preview unavailable. Open Site Potential to view the selected concept.
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt="Selected Site Potential concept"
+      className="aspect-[4/3] w-full rounded-xl object-cover"
+      onError={() => {
+        setUrl(null);
+        setUnavailable(true);
+      }}
+    />
+  );
+}
+
 export function GuidedSitePotentialStep({
   workspaceState,
+  acceptedBuildEnvelope = null,
+  selectedSiteDesign = null,
   stepSkipped = false,
   onOpenSitePotential,
   onContinue,
@@ -18,6 +70,8 @@ export function GuidedSitePotentialStep({
   const site = workspaceState.sitePotential;
   const skipped = stepSkipped || site.skipped || site.progressState === "skipped";
   const designSelected = Boolean(site.selectedDesignAssetId);
+  const acceptedSiteDesign =
+    selectedSiteDesign?.id === site.selectedDesignAssetId ? selectedSiteDesign : null;
   const conceptCount = site.conceptCount;
   const complete = designSelected || skipped;
   const partial = !complete && conceptCount > 0;
@@ -95,6 +149,57 @@ export function GuidedSitePotentialStep({
           ))}
         </ol>
         <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">AI images are illustrative. The build envelope is not an approval. Neither replaces an architect or municipal confirmation.</p>
+
+        {acceptedBuildEnvelope || acceptedSiteDesign ? (
+          <section className="mt-4 rounded-xl border border-emerald-300/40 bg-emerald-50/45 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800">
+              Accepted work for this erf
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {acceptedBuildEnvelope ? (
+                <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
+                  <div className="text-sm font-semibold text-[#0D1B2A]">
+                    Accepted building area map
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+                    Built from the saved boundary and street-facing confirmations. Rules and
+                    assumptions remain visible in Site Potential.
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-xl border border-[#0D1B2A]/10 bg-[#F8FAFC] p-2">
+                    <BuildEnvelopeDiagram result={acceptedBuildEnvelope} compact />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onOpenSitePotential}
+                    className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
+                  >
+                    View building area
+                  </button>
+                </article>
+              ) : null}
+              {acceptedSiteDesign ? (
+                <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
+                  <div className="text-sm font-semibold text-[#0D1B2A]">
+                    Accepted Site Potential concept
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+                    Selected for this erf. It is illustrative only, not an approved building plan.
+                  </p>
+                  <div className="mt-3">
+                    <AcceptedConceptPreview asset={acceptedSiteDesign} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onOpenSitePotential}
+                    className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
+                  >
+                    View selected concept
+                  </button>
+                </article>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         {partial ? (
           <p className="mt-4 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">

@@ -377,6 +377,8 @@ function addPlanningAssessmentEvidence(
 
   const detectionSourceId = planningDetectionSourceId(pack, input, systemSourceId);
   const manual = detection.method === "manual_selection";
+  const userConfirmedWorkingConclusion =
+    manual && assessment.userConfirmedZoneCode === detection.zoneCode;
   const zoneValue = detection.zoneName ?? detection.zoneCode;
   if (zoneValue) {
     addClaim(pack, {
@@ -395,7 +397,7 @@ function addPlanningAssessmentEvidence(
       locators: [planningDetectionLocator(input)],
       observedAt: input.workspaceState.updatedAt,
       updatedAt: input.workspaceState.updatedAt,
-      userConfirmed: manual,
+      userConfirmed: userConfirmedWorkingConclusion,
       excluded: false,
       warning: detection.statement,
     });
@@ -429,7 +431,7 @@ function addPlanningAssessmentEvidence(
       ],
       observedAt: input.workspaceState.updatedAt,
       updatedAt: input.workspaceState.updatedAt,
-      userConfirmed: manual,
+      userConfirmed: userConfirmedWorkingConclusion,
       excluded: false,
       warning: assessment.headlineWarning,
     });
@@ -457,7 +459,7 @@ function addPlanningAssessmentEvidence(
       locators: [{ fieldPath: "planningAssessment.zone.permittedUses" }],
       observedAt: input.workspaceState.updatedAt,
       updatedAt: input.workspaceState.updatedAt,
-      userConfirmed: manual,
+      userConfirmed: userConfirmedWorkingConclusion,
       excluded: false,
       warning: assessment.headlineWarning,
     });

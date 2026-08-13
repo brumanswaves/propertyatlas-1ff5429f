@@ -119,8 +119,14 @@ export function deriveInvestigationFacts(
     usableSubjectSgDiagramCount: usableSubjectSgDiagrams.length,
     zoningConfirmedByDocument:
       detectionMethod === "document_supported" || detectionMethod === "official_polygon",
+    zoningUserConfirmed: Boolean(
+      planning?.userConfirmedZoneCode &&
+        planning?.userConfirmedZoneCode === planning?.detection.zoneCode,
+    ),
     zoningRegistryPublished: Boolean(planning?.registryMatched),
-    zoningWorkingAssumption: detectionMethod === "manual_selection",
+    zoningWorkingAssumption:
+      detectionMethod === "manual_selection" &&
+      planning?.userConfirmedZoneCode !== planning?.detection.zoneCode,
     approvedPlansOnFile: verifiedApprovedPlans.length > 0,
     titleDeedSearchable: usableSubjectTitleDeeds.length > 0,
     paidReportSearchable: paidReports.some(
@@ -196,6 +202,8 @@ function buildStages(
     "Planning",
     facts.zoningConfirmedByDocument
       ? "complete"
+      : facts.zoningUserConfirmed
+        ? "in_progress"
       : facts.zoningWorkingAssumption
         ? "in_progress"
         : facts.zoningRegistryPublished
@@ -203,13 +211,15 @@ function buildStages(
           : "unavailable",
     facts.zoningConfirmedByDocument
       ? "The zoning for this erf is supported by a document on file."
+      : facts.zoningUserConfirmed
+        ? "You confirmed a working zoning conclusion. Municipal proof is still not on file."
       : facts.zoningWorkingAssumption
         ? "A zone is selected as a working assumption. It is not confirmed with the municipality."
         : facts.zoningRegistryPublished
           ? "Published planning rules exist for this municipality, but the zoning of this erf is not confirmed."
           : "Easy Erf does not yet hold a published planning rule set for this municipality.",
-    facts.zoningConfirmedByDocument ? 1 : 0,
-    facts.zoningConfirmedByDocument ? "supported" : "unconfirmed",
+    facts.zoningConfirmedByDocument ? 1 : facts.zoningUserConfirmed ? 1 : 0,
+    facts.zoningConfirmedByDocument ? "supported" : facts.zoningUserConfirmed ? "indicative" : "unconfirmed",
     "zoning-build",
   );
 
