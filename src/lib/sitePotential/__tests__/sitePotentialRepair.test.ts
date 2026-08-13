@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   buildGeneratedDesignMetadata,
   designPackItemRows,
@@ -46,6 +46,87 @@ describe("Site Potential production-blocker repair", () => {
     expect(migration).toContain(
       "GRANT EXECUTE ON FUNCTION public.finalize_site_potential_item(text, uuid, uuid, uuid, text, uuid, text, text, text, text, text, integer, jsonb, text)\nTO service_role",
     );
+  });
+
+  it("keeps historical worker migrations portable without seeding deployment configuration", () => {
+    const lovableRoleMigration = read(
+      "supabase/migrations/20260720150455_4818e236-9455-49f6-81c7-397ecbb12bac.sql",
+    );
+    const workerUrlMigration = read(
+      "supabase/migrations/20260813090000_make_site_potential_worker_portable.sql",
+    );
+    const workerScheduleMigration = read(
+      "supabase/migrations/20260720150510_f8470865-5fa1-4143-83f0-acb6d16c115d.sql",
+    );
+    const migrationNames = readdirSync("supabase/migrations")
+      .filter((name) => name.endsWith(".sql"))
+      .sort();
+    const historicalMigrationNames = [
+      "20260610065719_286b13eb-4dee-460b-a0c0-6339f6162c22.sql",
+      "20260610065753_4e315e28-7e34-4f00-bc3d-630d856f957b.sql",
+      "20260617151453_6f98a6cb-76a6-428a-aafb-a1384e439788.sql",
+      "20260617151510_bdf53030-c4b4-4343-9e7e-f38d5f6654ca.sql",
+      "20260617153206_9c7217f5-c6cf-4802-97ed-89b234837e33.sql",
+      "20260617153220_4c24d38a-0ab3-4ea9-a3d8-80a00f578387.sql",
+      "20260617160402_cafa6599-8384-4eb2-959c-b2867542794b.sql",
+      "20260617162228_6dbfa98a-1e97-469c-a87a-f3268c9923e7.sql",
+      "20260618124248_2c910e9a-41d0-4dc7-a0d1-f0a78ba49540.sql",
+      "20260713090000_erf_file_vault_site_potential.sql",
+      "20260713100000_repair_site_potential_security_jobs.sql",
+      "20260714090000_site_potential_durable_generation_jobs.sql",
+      "20260714103000_lock_site_potential_worker_rpc_leases.sql",
+      "20260714113000_site_potential_beta_credits.sql",
+      "20260714124500_site_potential_pack_completion_status.sql",
+      "20260714133000_site_potential_retryable_pack_reconciliation.sql",
+      "20260715131130_14a0ad68-a2f0-4fc1-97d9-6a2dfe8fb18a.sql",
+      "20260715150000_site_potential_v2_entitlements.sql",
+      "20260718085305_c77a3420-4a02-4475-a190-545c802c2944.sql",
+      "20260720150359_8c82e8f6-1cc4-4afd-a359-7f016296099e.sql",
+      "20260720150438_112ff1d2-8f81-4afb-953d-b83b2a86eaf2.sql",
+      "20260720150455_4818e236-9455-49f6-81c7-397ecbb12bac.sql",
+      "20260720150510_f8470865-5fa1-4143-83f0-acb6d16c115d.sql",
+      "20260720193000_patch_saved_property_user_data.sql",
+      "20260721141802_20cf1377-64a2-4dc8-ac8e-8d5597688573.sql",
+      "20260723090000_normalize_erf_asset_storage_paths.sql",
+      "20260723110000_allow_repeat_site_potential_free_packs_per_erf.sql",
+    ];
+
+    expect(lovableRoleMigration).toContain("FROM pg_roles");
+    expect(lovableRoleMigration).toContain("rolname = 'sandbox_exec'");
+    expect(lovableRoleMigration).toMatch(
+      /IF EXISTS[\s\S]*GRANT USAGE ON SCHEMA private TO sandbox_exec;/,
+    );
+    expect(lovableRoleMigration).not.toMatch(
+      /^GRANT USAGE ON SCHEMA private TO sandbox_exec;/m,
+    );
+
+    expect(workerUrlMigration).toContain("site_potential_worker_secret");
+    expect(workerUrlMigration).toContain("site_potential_worker_url");
+    expect(workerUrlMigration).toContain("IF v_secret IS NULL THEN");
+    expect(workerUrlMigration).toContain("IF v_url IS NULL THEN");
+    expect(workerUrlMigration).toContain("net.http_post");
+    expect(workerUrlMigration).toContain("timeout_milliseconds := 55000");
+    expect(workerUrlMigration).toContain("X-Site-Potential-Worker-Secret");
+    expect(workerUrlMigration).not.toContain("erfstoep.lovable.app");
+    expect(workerUrlMigration).not.toMatch(
+      /INSERT INTO private\.worker_secrets|UPDATE private\.worker_secrets/i,
+    );
+    expect(workerUrlMigration).toContain("SECURITY DEFINER");
+    expect(workerUrlMigration).toContain(
+      "REVOKE ALL ON FUNCTION private.invoke_site_potential_worker(integer) FROM PUBLIC, anon, authenticated",
+    );
+    expect(workerUrlMigration).toContain(
+      "GRANT EXECUTE ON FUNCTION private.invoke_site_potential_worker(integer) TO postgres, service_role",
+    );
+    expect(workerScheduleMigration).toContain(
+      "SELECT private.invoke_site_potential_worker(1);",
+    );
+
+    expect(migrationNames).toHaveLength(28);
+    expect(migrationNames).toEqual([
+      ...historicalMigrationNames,
+      "20260813090000_make_site_potential_worker_portable.sql",
+    ]);
   });
 
   it("counts claimed attempts and blocks finalisation after lease ownership is lost", () => {

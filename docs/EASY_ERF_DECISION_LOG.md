@@ -163,3 +163,11 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Implementation: Record an explicit confirmation once against the parcel, consume it through the canonical evidence and planning inputs, and preserve whether the support is official, document-supported, user-confirmed, an assumption, missing or conflicting.
 - Do not regress: Do not create a second confirmation ledger or promote a user confirmation into official or document-backed evidence.
 - Related: `docs/EASY_ERF_MASTER_PLAN.md` Section 5, `docs/EASY_ERF_CURRENT_STATE.md` Canonical shared-state contract.
+
+## EE-021 - Portable Supabase worker configuration
+
+- Date: 2026-08-13.
+- Decision: The GitHub migration chain is portable across standard Supabase and Lovable Cloud. Lovable-specific roles are granted only when they exist, while the Site Potential worker URL and secret remain private runtime configuration.
+- Rationale: Founder-owned standard Supabase projects do not provide Lovable's `sandbox_exec` role, and no deployment-specific endpoint belongs in canonical database history.
+- Implementation: The worker stays inert unless both private `site_potential_worker_secret` and `site_potential_worker_url` values are configured. GitHub `main` remains the canonical backend source; no default values are seeded.
+- Do not regress: Do not create `sandbox_exec`, add secret values to migrations, or reintroduce a hard-coded worker URL.
