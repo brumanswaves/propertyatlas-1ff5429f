@@ -1,6 +1,6 @@
 # Easy Erf Current State
 
-Baseline: 2026-08-09, GitHub `main` at `0ec642583286927c3ca61b2c6990d933bc504950` after merged PR #63.
+Baseline: 2026-08-13, GitHub `main` at `5a494001b3f5f9a680596d74a55b17b92c69d3c1` after merged PR #86.
 
 ## Current MVP objective
 
@@ -17,6 +17,10 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 3. `Investigate this property` deliberately enters the Guided Investigation and records investigation state.
 4. The current ten-step Guided order is: Confirm property, Add address, Add SG diagram, Check title, Confirm zoning, Property checks, Market evidence, Strategy & Calculators, Site Potential, Review report.
 5. The existing expert Workbench still exposes Sources, Market, Paid Reports/Documents, Strategy, Site Potential, Notes and Easy Erf Report.
+
+## Canonical shared-state contract
+
+Property First Read, Guided Investigation, the expert Dossier and the Easy Erf Report are interfaces over the same canonical parcel, workspace, evidence, planning and Site Potential state. Property First Read remains zero-commit. An explicit user confirmation, such as a working zoning conclusion, is recorded once for the parcel and remains distinct from official or document-supported evidence everywhere it is shown.
 
 ## Capabilities present on current main
 
@@ -46,6 +50,7 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - PR #61, merged 2026-08-08: Property First Read as the default zero-commit property entry.
 - PR #62, merged 2026-08-08: Ask Easy Erf in Property Overview, grounded in the canonical evidence pack and canonical next action.
 - PR #63, merged 2026-08-09: Erf 1570 MVP rescue, including atomic confirmation -> address progression, server address suggestions, document trust handling, paid-report purchase UX, Kouga resolution, Site Potential entitlement truthfulness and Strategy in Guided step 8.
+- PR #86, merged 2026-08-13: the latest main baseline for the canonical investigation and report integration work.
 
 ## Current weaknesses and blockers
 

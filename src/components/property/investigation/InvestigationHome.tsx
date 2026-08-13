@@ -21,6 +21,11 @@ import {
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { calculateBuildEnvelope, projectRingToLocalMetres } from "@/lib/sitePotential/buildEnvelope";
+import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
+import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
+import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
 import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
@@ -59,6 +64,8 @@ export interface InvestigationHomeProps {
   ) => void;
   onBackToMap: () => void;
   mapSlot?: ReactNode;
+  parcelRing?: Array<[number, number]> | null;
+  recordedAreaM2?: number | null;
 }
 
 export function InvestigationHome({
@@ -72,6 +79,8 @@ export function InvestigationHome({
   onOpenExpertWorkspace,
   onBackToMap,
   mapSlot,
+  parcelRing = null,
+  recordedAreaM2 = null,
 }: InvestigationHomeProps) {
   const { assets } = useErfFileVault(parcel.id);
   const { evidence, marketAddressIntelligence, propertyIdentity } = useSavedMarketEvidence(
@@ -97,7 +106,8 @@ export function InvestigationHome({
   );
 
   const planning = useMemo(() => {
-    const manualZoneCode = readStoredPlanningZone(parcel.id, userId);
+    const manualZoneCode =
+      workspaceState.planning.zoneCode ?? readStoredPlanningZone(parcel.id, userId);
     const registry = findMunicipalityPlanningRegistry(parcel.municipality ?? null);
     const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
     const documentZone = selectedZone
@@ -113,12 +123,19 @@ export function InvestigationHome({
       locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
       erfAreaM2: canonicalAreaM2(parcel.rawProperties),
       manualZoneCode,
+      userConfirmedZoneCode: workspaceState.planning.userConfirmedZoneCode,
       documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
       documentZoneAssetId: documentZone?.id ?? null,
       hasParcelPolygon: Boolean(parcel.rawProperties),
       evidence: signals,
     });
-  }, [assets, parcel, userId]);
+  }, [
+    assets,
+    parcel,
+    userId,
+    workspaceState.planning.userConfirmedZoneCode,
+    workspaceState.planning.zoneCode,
+  ]);
 
   const selectedSiteDesign = useMemo(
     () =>
@@ -126,6 +143,37 @@ export function InvestigationHome({
       null,
     [assets, workspaceState.sitePotential.selectedDesignAssetId],
   );
+
+  const acceptedBuildEnvelope = useMemo(() => {
+    const stored = readStoredBuildEnvelopeInputs(parcel.id, userId);
+    if (
+      !parcelRing ||
+      parcelRing.length < 3 ||
+      !stored?.boundaryConfirmed ||
+      !stored.streetFrontageConfirmedByUser
+    ) {
+      return null;
+    }
+    const polygon = projectRingToLocalMetres(parcelRing);
+    const edgeLengths = polygon.map((point, index) => {
+      const next = polygon[(index + 1) % polygon.length];
+      return Math.hypot(next.x - point.x, next.y - point.y);
+    });
+    const resolved = resolveSitePotentialInputs({
+      overrides: stored,
+      prefill: buildSitePotentialRulePrefill(planning),
+      pilot: findPilotPlanningRecord({ parcelId: parcel.id, lpiCode: parcel.lpi ?? null }),
+      documentRuleEvidence: planning.detection.method === "document_supported",
+      edgeLengths,
+      recordedAreaM2,
+    });
+    const result = calculateBuildEnvelope({
+      ...resolved.answers,
+      parcelId: parcel.id,
+      ring: parcelRing,
+    });
+    return result.envelopePolygon || result.coverageFootprint ? result : null;
+  }, [parcel, parcelRing, planning, recordedAreaM2, userId]);
 
   const report = useMemo(
     () =>
@@ -243,6 +291,8 @@ export function InvestigationHome({
         report={report}
         chosenScenario={chosenScenario}
         savedScenarioCount={scenarios.length}
+        acceptedBuildEnvelope={acceptedBuildEnvelope}
+        selectedSiteDesign={selectedSiteDesign}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}

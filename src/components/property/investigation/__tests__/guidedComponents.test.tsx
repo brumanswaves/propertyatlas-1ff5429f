@@ -4,6 +4,7 @@ import { ConfirmPropertyStep } from "@/components/property/investigation/Confirm
 import { InvestigationStepNavigator } from "@/components/property/investigation/InvestigationStepNavigator";
 import { InvestigationStepShell } from "@/components/property/investigation/InvestigationStepShell";
 import { GuidedStrategyStep } from "@/components/property/investigation/GuidedStrategyStep";
+import { GuidedSitePotentialStep } from "@/components/property/investigation/GuidedSitePotentialStep";
 import {
   buildGuidedInvestigationJourney,
   GUIDED_INVESTIGATION_STEPS,
@@ -11,6 +12,8 @@ import {
 import type { InvestigationFacts } from "@/lib/investigation/guidedTaskRegistry";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import { calculateBuildEnvelope, createEmptyBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelope";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 const noop = vi.fn();
 
@@ -71,6 +74,76 @@ function facts(): InvestigationFacts {
 }
 
 describe("guided investigation components", () => {
+  it("shows only canonical accepted Site Potential outputs", () => {
+    const buildEnvelope = calculateBuildEnvelope({
+      ...createEmptyBuildEnvelopeInputs(
+        "parcel:erf-1021",
+        [
+          [24.82, -34.16],
+          [24.821, -34.16],
+          [24.821, -34.161],
+          [24.82, -34.161],
+          [24.82, -34.16],
+        ],
+        700,
+      ),
+      boundaryConfirmed: true,
+      streetEdgeIndex: 0,
+      ruleSource: "manual",
+      maxCoveragePercent: 50,
+      streetSetbackM: 3,
+      sideSetbackM: 1.5,
+      rearSetbackM: 2,
+      maxHeightM: 8,
+    });
+    const selectedAsset: ErfAsset = {
+      id: "selected-concept",
+      user_id: "user-1",
+      parcel_id: "parcel:erf-1021",
+      asset_category: "generated_design",
+      asset_type: "image",
+      source_label: "Selected concept",
+      storage_bucket: "erf-files",
+      storage_path: "selected.png",
+      original_file_name: "selected.png",
+      mime_type: "image/png",
+      size_bytes: 1,
+      checksum_sha256: null,
+      status: "ready",
+      metadata: {},
+      local_migration_fingerprint: null,
+      created_at: "2026-08-13T00:00:00.000Z",
+      updated_at: "2026-08-13T00:00:00.000Z",
+    };
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.sitePotential.selectedDesignAssetId = selectedAsset.id;
+
+    const html = renderToStaticMarkup(
+      <GuidedSitePotentialStep
+        workspaceState={workspace}
+        acceptedBuildEnvelope={buildEnvelope}
+        selectedSiteDesign={selectedAsset}
+        onOpenSitePotential={noop}
+        onContinue={noop}
+      />,
+    );
+
+    expect(html).toContain("Accepted building area map");
+    expect(html).toContain("Accepted Site Potential concept");
+    expect(html).toContain("View building area");
+    expect(html).toContain("View selected concept");
+
+    const historical = renderToStaticMarkup(
+      <GuidedSitePotentialStep
+        workspaceState={workspace}
+        selectedSiteDesign={{ ...selectedAsset, id: "historical-concept" }}
+        onOpenSitePotential={noop}
+        onContinue={noop}
+      />,
+    );
+    expect(historical).not.toContain("Accepted Site Potential concept");
+  });
+
   it("renders Step 1 as a direct property confirmation action", () => {
     const html = renderToStaticMarkup(
       <ConfirmPropertyStep

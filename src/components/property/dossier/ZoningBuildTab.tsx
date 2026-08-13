@@ -13,7 +13,8 @@ import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
   PLANNING_ZONE_UPDATED_EVENT,
-  readStoredPlanningZone,
+  confirmStoredPlanningZone,
+  readStoredPlanningZoneState,
   writeStoredPlanningZone,
 } from "@/lib/planning/storedPlanningZone";
 import { ZoningBuildPanel } from "./ZoningBuildPanel";
@@ -37,6 +38,7 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
   const userId = user?.id ?? null;
   const { assets } = useErfFileVault(parcel.id);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(null);
+  const [userConfirmedZoneCode, setUserConfirmedZoneCode] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const sync = (event?: Event) => {
@@ -44,7 +46,9 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
         ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
       if ((detail?.userId ?? null) !== userId) return;
-      setManualZoneCode(readStoredPlanningZone(parcel.id, userId));
+      const planningState = readStoredPlanningZoneState(parcel.id, userId);
+      setManualZoneCode(planningState.zoneCode);
+      setUserConfirmedZoneCode(planningState.userConfirmedZoneCode);
     };
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
@@ -54,9 +58,16 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
   const selectZone = useCallback(
     (code: string | null) => {
       setManualZoneCode(writeStoredPlanningZone(parcel.id, code, userId));
+      setUserConfirmedZoneCode(null);
     },
     [parcel.id, userId],
   );
+
+  const confirmZone = useCallback(() => {
+    const next = confirmStoredPlanningZone(parcel.id, userId);
+    setManualZoneCode(next.zoneCode);
+    setUserConfirmedZoneCode(next.userConfirmedZoneCode);
+  }, [parcel.id, userId]);
 
   const registry = useMemo(
     () => findMunicipalityPlanningRegistry(parcel.municipality ?? null),
@@ -96,6 +107,7 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
         locationHints: [parcel.suburbOrArea, parcel.town, parcel.municipality, parcel.province],
         erfAreaM2: canonicalAreaM2(parcel.rawProperties),
         manualZoneCode,
+        userConfirmedZoneCode,
         documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
         documentZoneAssetId: documentZone?.id ?? null,
         observedZoneLabel:
@@ -108,7 +120,7 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
         hasStreetEdgeReference: false,
         evidence: signals,
       }),
-    [documentZone, manualZoneCode, parcel, signals],
+    [documentZone, manualZoneCode, parcel, signals, userConfirmedZoneCode],
   );
 
   return (
@@ -117,6 +129,7 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
       zoneOptions={zoneOptions}
       selectedZoneCode={manualZoneCode}
       onSelectZone={selectZone}
+      onConfirmZone={confirmZone}
       onOpenTab={onOpenTab}
       onAskEasyErf={onAskEasyErf}
       compact={compact}

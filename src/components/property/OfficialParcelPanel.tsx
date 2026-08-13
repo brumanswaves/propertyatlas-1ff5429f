@@ -2405,7 +2405,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   const planningAssessment = useMemo(() => {
-    const manualZoneCode = readStoredPlanningZone(normalizedParcel.id, userId);
+    const manualZoneCode =
+      workspaceState.planning.zoneCode ?? readStoredPlanningZone(normalizedParcel.id, userId);
     const registry = findMunicipalityPlanningRegistry(normalizedParcel.municipality ?? null);
     const selectedZone = registry ? findZone(registry, manualZoneCode) : null;
     const documentZone = selectedZone
@@ -2427,12 +2428,19 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       ],
       erfAreaM2: canonicalAreaM2(normalizedParcel.rawProperties),
       manualZoneCode,
+      userConfirmedZoneCode: workspaceState.planning.userConfirmedZoneCode,
       documentZoneCode: documentZone && manualZoneCode ? manualZoneCode : null,
       documentZoneAssetId: documentZone?.id ?? null,
       hasParcelPolygon: Boolean(normalizedParcel.rawProperties),
       evidence: signals,
     });
-  }, [erfFileVault.assets, normalizedParcel, userId]);
+  }, [
+    erfFileVault.assets,
+    normalizedParcel,
+    userId,
+    workspaceState.planning.userConfirmedZoneCode,
+    workspaceState.planning.zoneCode,
+  ]);
 
   const strategyScenarios = useMemo(
     () => readStrategyScenarios(parcelId, undefined, userId),
@@ -2975,6 +2983,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 })
               }
               onBackToMap={handleBackToMap}
+              parcelRing={parcelRing}
+              recordedAreaM2={recordedAreaM2}
               mapSlot={
                 <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white/88 p-4 shadow-[0_18px_45px_-38px_rgba(13,27,42,0.42)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">

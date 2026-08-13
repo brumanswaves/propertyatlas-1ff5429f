@@ -154,3 +154,12 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Decision: The report may show a private, low-resolution SG preview beside findings already stored by the identity-gated extraction flow.
 - Rationale: Users need to see why cadastral evidence matters, but a preview must not be mistaken for identity verification or a planning-rights decision.
 - Implementation: Preview output is derived and stored without a durable URL; subject, parent-plan and user-confirmed scope remain explicit. Preview failure leaves the extracted evidence usable and is shown as a limitation.
+
+## EE-020 - Investigation surfaces share canonical state
+
+- Date: 2026-08-13, canonical investigation and report integration.
+- Decision: Guided Investigation, the expert Dossier and the Easy Erf Report are interfaces over the same canonical property, workspace, planning, Site Potential and evidence state.
+- Rationale: A user must not be asked to confirm the same finding in multiple interfaces or see contradictory completion state.
+- Implementation: Record an explicit confirmation once against the parcel, consume it through the canonical evidence and planning inputs, and preserve whether the support is official, document-supported, user-confirmed, an assumption, missing or conflicting.
+- Do not regress: Do not create a second confirmation ledger or promote a user confirmation into official or document-backed evidence.
+- Related: `docs/EASY_ERF_MASTER_PLAN.md` Section 5, `docs/EASY_ERF_CURRENT_STATE.md` Canonical shared-state contract.

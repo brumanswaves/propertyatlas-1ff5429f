@@ -58,7 +58,7 @@ export function buildSitePotentialGenerationEstimate(
   if (input.status === "generating" && completedCount === 0) {
     return {
       label: "Estimated time",
-      message: "The first concept is being created. This normally takes several minutes.",
+      message: "The first concept is being created. This usually takes a few minutes.",
       detail: "Keep this page open or return later; concepts appear one by one.",
       remainingCount,
       active: true,
@@ -83,7 +83,7 @@ export function buildSitePotentialGenerationEstimate(
     }
     return {
       label: "Estimated time",
-      message: "A retry is in progress. This can add several minutes.",
+      message: "A retry is in progress. This can add a few minutes.",
       detail: `${formatRemaining(remainingCount)} still ${remainingCount === 1 ? "needs" : "need"} to finish.`,
       remainingCount,
       active: true,

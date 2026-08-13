@@ -31,6 +31,27 @@ export interface SitePotentialSnapshot {
   projectId: string | null;
 }
 
+/**
+ * The user's recorded planning conclusion for this erf.
+ *
+ * It deliberately records a user confirmation separately from documentary or
+ * official planning support. A confirmed working conclusion is still not an
+ * official municipal finding.
+ */
+export interface PlanningWorkspaceState {
+  zoneCode: string | null;
+  userConfirmedZoneCode: string | null;
+  userConfirmedAt: string | null;
+}
+
+export function createEmptyPlanningWorkspaceState(): PlanningWorkspaceState {
+  return {
+    zoneCode: null,
+    userConfirmedZoneCode: null,
+    userConfirmedAt: null,
+  };
+}
+
 export function createEmptySitePotentialSnapshot(): SitePotentialSnapshot {
   return {
     mode: null,
@@ -126,6 +147,7 @@ export interface ErfWorkspaceState {
   strategyScenarioCount: number;
   chosenScenarioId: string | null;
   reportStarted: boolean;
+  planning: PlanningWorkspaceState;
   sitePotential: SitePotentialSnapshot;
   investigation: InvestigationSnapshot;
   updatedAt: string;
@@ -192,6 +214,8 @@ export interface ErfStrategyWorkspace {
 
 export type BrowserPersistenceUserId = string | null | undefined;
 
+export type BrowserStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
 export function browserScopedParcelKey(
   stateType: string,
   parcelId: string,
@@ -235,6 +259,7 @@ export function createEmptyErfWorkspaceState(): ErfWorkspaceState {
     strategyScenarioCount: 0,
     chosenScenarioId: null,
     reportStarted: false,
+    planning: createEmptyPlanningWorkspaceState(),
     sitePotential: createEmptySitePotentialSnapshot(),
     investigation: createEmptyInvestigationSnapshot(),
     updatedAt: new Date().toISOString(),
@@ -306,6 +331,27 @@ function coerceSitePotential(value: unknown): SitePotentialSnapshot {
   };
 }
 
+function coercePlanningWorkspace(value: unknown): PlanningWorkspaceState {
+  const base = createEmptyPlanningWorkspaceState();
+  if (!value || typeof value !== "object") return base;
+  const raw = value as Partial<PlanningWorkspaceState>;
+  const zoneCode = typeof raw.zoneCode === "string" && raw.zoneCode.trim() ? raw.zoneCode : null;
+  const userConfirmedZoneCode =
+    typeof raw.userConfirmedZoneCode === "string" &&
+    raw.userConfirmedZoneCode.trim() &&
+    raw.userConfirmedZoneCode === zoneCode
+      ? raw.userConfirmedZoneCode
+      : null;
+  return {
+    zoneCode,
+    userConfirmedZoneCode,
+    userConfirmedAt:
+      userConfirmedZoneCode && typeof raw.userConfirmedAt === "string"
+        ? raw.userConfirmedAt
+        : null,
+  };
+}
+
 function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
   const base = createEmptyErfWorkspaceState();
   if (!value || typeof value !== "object") return base;
@@ -338,6 +384,7 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
       : 0,
     chosenScenarioId: typeof raw.chosenScenarioId === "string" ? raw.chosenScenarioId : null,
     reportStarted: Boolean(raw.reportStarted),
+    planning: coercePlanningWorkspace(raw.planning),
     sitePotential: coerceSitePotential(raw.sitePotential),
     investigation: coerceInvestigation(raw.investigation),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : base.updatedAt,
@@ -346,7 +393,8 @@ function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
 
 export function readErfWorkspaceState(
   parcelId: string,
-  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  storage: BrowserStorage | undefined =
+    typeof window !== "undefined" ? window.localStorage : undefined,
   userId: BrowserPersistenceUserId = null,
 ): ErfWorkspaceState {
   if (!storage) return createEmptyErfWorkspaceState();
@@ -361,7 +409,8 @@ export function readErfWorkspaceState(
 export function writeErfWorkspaceState(
   parcelId: string,
   state: ErfWorkspaceState,
-  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  storage: BrowserStorage | undefined =
+    typeof window !== "undefined" ? window.localStorage : undefined,
   userId: BrowserPersistenceUserId = null,
 ) {
   const next = { ...state, updatedAt: new Date().toISOString() };
@@ -377,7 +426,8 @@ export function writeErfWorkspaceState(
 export function updateErfWorkspaceState(
   parcelId: string,
   patch: Partial<ErfWorkspaceState>,
-  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  storage: BrowserStorage | undefined =
+    typeof window !== "undefined" ? window.localStorage : undefined,
   userId: BrowserPersistenceUserId = null,
 ) {
   return writeErfWorkspaceState(

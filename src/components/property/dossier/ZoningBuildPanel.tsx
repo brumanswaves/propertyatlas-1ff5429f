@@ -24,6 +24,7 @@ export interface ZoningBuildPanelProps {
   zoneOptions: Array<{ code: string; name: string }>;
   selectedZoneCode: string | null;
   onSelectZone?: (code: string | null) => void;
+  onConfirmZone?: () => void;
   onOpenTab?: (tab: string) => void;
   onAskEasyErf?: (question: string) => void;
   compact?: boolean;
@@ -105,12 +106,15 @@ export function ZoningBuildPanel({
   zoneOptions,
   selectedZoneCode,
   onSelectZone,
+  onConfirmZone,
   onOpenTab,
   onAskEasyErf,
   compact = false,
 }: ZoningBuildPanelProps) {
   const { detection, envelope, publishedRules } = assessment;
   const summary = buildZoningSummary(assessment);
+  const userConfirmedWorkingZone =
+    Boolean(selectedZoneCode) && assessment.userConfirmedZoneCode === selectedZoneCode;
 
   return (
     <div className="space-y-4">
@@ -222,7 +226,11 @@ export function ZoningBuildPanel({
           {onSelectZone && zoneOptions.length ? (
             <Block
               title="Select the zone you believe applies"
-              intro="A manual selection is a working assumption. Attach a zoning certificate to strengthen it."
+              intro={
+                userConfirmedWorkingZone
+                  ? "You confirmed this as your working planning conclusion. It remains distinct from municipal proof."
+                  : "A manual selection is a working assumption. Confirm it as your working conclusion or attach a zoning certificate to strengthen it."
+              }
             >
               <div className="flex flex-wrap gap-2">
                 <button
@@ -253,6 +261,26 @@ export function ZoningBuildPanel({
                   </button>
                 ))}
               </div>
+              {selectedZoneCode && onConfirmZone ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={detection.method === "document_supported" || userConfirmedWorkingZone}
+                    onClick={onConfirmZone}
+                    className="inline-flex min-h-10 items-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:cursor-default disabled:opacity-55"
+                  >
+                    {detection.method === "document_supported"
+                      ? "Document-backed zoning recorded"
+                      : userConfirmedWorkingZone
+                        ? "Working zoning confirmed"
+                        : "Confirm working zoning"}
+                  </button>
+                  <p className="max-w-xl text-[12px] leading-5 text-[#64748B]">
+                    This records your conclusion for this erf. It does not make the published
+                    rules an official property right.
+                  </p>
+                </div>
+              ) : null}
             </Block>
           ) : null}
 

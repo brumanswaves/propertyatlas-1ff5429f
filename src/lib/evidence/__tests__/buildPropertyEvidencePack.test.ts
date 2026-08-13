@@ -4,6 +4,7 @@ import { selectPropertyEvidence } from "../selectPropertyEvidence";
 import { evidenceFingerprint } from "../evidenceFingerprint";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type {
   MarketAddressIntelligence,
@@ -309,6 +310,30 @@ describe("buildPropertyEvidencePack", () => {
       nature: "interpretation",
     });
     expect(pack.domains.find((domain) => domain.domain === "ownership")?.state).not.toBe("supported");
+  });
+
+  it("carries a user-confirmed working zoning conclusion through the canonical evidence pack", () => {
+    const planningAssessment = buildParcelPlanningAssessment({
+      parcelId: "parcel-a",
+      municipality: "Kouga Local Municipality",
+      locationHints: ["Sea Vista", "St Francis Bay"],
+      erfAreaM2: 900,
+      manualZoneCode: "RES1",
+      userConfirmedZoneCode: "RES1",
+      hasParcelPolygon: true,
+    });
+    const pack = build({ planningAssessment });
+
+    expect(pack.claims.find((claim) => claim.key === "zoning")).toMatchObject({
+      nature: "assumption",
+      status: "not_reviewed",
+      userConfirmed: true,
+    });
+    expect(pack.claims.find((claim) => claim.key === "coverage")).toMatchObject({
+      nature: "assumption",
+      status: "not_reviewed",
+      userConfirmed: true,
+    });
   });
 
   it("preserves extracted text safely and never stores signed URLs as fragments", () => {

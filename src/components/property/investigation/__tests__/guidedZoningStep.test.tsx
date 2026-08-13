@@ -83,6 +83,7 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
     sgDiagramCount: 1,
     usableSubjectSgDiagramCount: 1,
     zoningConfirmedByDocument: false,
+    zoningUserConfirmed: false,
     zoningRegistryPublished: true,
     zoningWorkingAssumption: false,
     approvedPlansOnFile: false,
@@ -151,12 +152,21 @@ describe("guided zoning evidence gate", () => {
     ).toBe(false);
   });
 
-  it("stays on zoning before a selection, then advances with an unverified working zoning", () => {
+  it("requires a user-confirmed working zoning before Guided advances", () => {
     const workspace = createEmptyErfWorkspaceState();
     expect(selectGuidedInvestigationStep(facts(), workspace.investigation)).toBe("zoning");
 
-    const journey = buildGuidedInvestigationJourney(
+    const selectedOnly = buildGuidedInvestigationJourney(
       facts({ zoningWorkingAssumption: true, zoningConfirmedByDocument: false }),
+      workspace,
+    );
+    expect(selectedOnly.find((step) => step.id === "zoning")).toMatchObject({
+      complete: false,
+      status: "current",
+    });
+
+    const journey = buildGuidedInvestigationJourney(
+      facts({ zoningUserConfirmed: true, zoningWorkingAssumption: false }),
       workspace,
     );
     expect(journey.find((step) => step.id === "zoning")).toMatchObject({

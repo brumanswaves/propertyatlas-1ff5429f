@@ -212,7 +212,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
       }
       if (result.extractionStatus === "processing") {
         toast.message(
-          "Reviewing survey plan. Large SG plans can take several minutes; you can leave this page and come back.",
+          "SG diagram review is running. This usually takes about 7 to 10 minutes. You can leave this page and come back.",
         );
         return;
       }
@@ -411,7 +411,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           </li>
         </ol>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           {sgDocument.shown ? (
             <a
               href={sgDocument.url}
@@ -442,6 +442,9 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
             <Upload className="h-3.5 w-3.5" />
             Upload SG diagram / General Plan
           </button>
+          <p className="text-xs leading-5 text-[#0D1B2A]/62">
+            Large SG diagram review usually takes about 7 to 10 minutes.
+          </p>
           {sgDocument.shown ? (
             <a
               href={CSG_VIEWER_URL}
@@ -597,8 +600,8 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                       </div>
                       {reviewingLargeTiff ? (
                         <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
-                          Large SG plans can take several minutes. You can leave this page and come
-                          back.
+                          SG diagram review is running. This usually takes about 7 to 10 minutes.
+                          You can leave this page and come back.
                         </p>
                       ) : null}
                       {readableEvidence ? (

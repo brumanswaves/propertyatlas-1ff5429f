@@ -285,7 +285,7 @@ describe("guided vault evidence steps", () => {
     );
 
     expect(html).toContain("Reviewing survey plan...");
-    expect(html).toContain("Large SG plans can take several minutes");
+    expect(html).toContain("about 7 to 10 minutes");
     expect(html).toContain("You can leave this page and come back");
     expect(html).toContain("Check review");
     expect(html).not.toContain("Retry reading");
