@@ -50,4 +50,15 @@ describe("stored planning zone", () => {
       userConfirmedAt: null,
     });
   });
+
+  it("preserves the confirmation when the user selects the already-confirmed zone again", () => {
+    const storage = memoryStorage();
+    writeStoredPlanningZone("parcel-1570", "RES1", "user-a", storage);
+    const confirmed = confirmStoredPlanningZone("parcel-1570", "user-a", storage);
+
+    expect(writeStoredPlanningZone("parcel-1570", "RES1", "user-a", storage)).toEqual(
+      confirmed,
+    );
+    expect(readStoredPlanningZoneState("parcel-1570", "user-a", storage)).toEqual(confirmed);
+  });
 });

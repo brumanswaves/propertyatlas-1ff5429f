@@ -148,8 +148,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   );
 
   function selectZone(code: string | null) {
-    setSelectedZoneCode(writeStoredPlanningZone(parcel.id, code, userId));
-    setUserConfirmedZoneCode(null);
+    const next = writeStoredPlanningZone(parcel.id, code, userId);
+    setSelectedZoneCode(next.zoneCode);
+    setUserConfirmedZoneCode(next.userConfirmedZoneCode);
   }
 
   function confirmWorkingZone() {

@@ -85,11 +85,11 @@ export function writeStoredPlanningZone(
   zoneCode: string | null,
   userId: BrowserPersistenceUserId = null,
   storage: PlanningStorage | undefined = defaultStorage(),
-): string | null {
+): PlanningWorkspaceState {
   const next = zoneCode?.trim() || null;
   const current = readStoredPlanningZoneState(parcelId, userId, storage);
   const confirmationRemainsValid = current.userConfirmedZoneCode === next;
-  updateErfWorkspaceState(
+  const workspace = updateErfWorkspaceState(
     parcelId,
     {
       planning: {
@@ -107,7 +107,7 @@ export function writeStoredPlanningZone(
     /* storage is best-effort only */
   }
   dispatchPlanningZoneUpdated(parcelId, userId, next);
-  return next;
+  return workspace.planning;
 }
 
 export function confirmStoredPlanningZone(

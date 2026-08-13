@@ -57,8 +57,9 @@ export function ZoningBuildTab({ parcel, onOpenTab, onAskEasyErf, compact }: Zon
 
   const selectZone = useCallback(
     (code: string | null) => {
-      setManualZoneCode(writeStoredPlanningZone(parcel.id, code, userId));
-      setUserConfirmedZoneCode(null);
+      const next = writeStoredPlanningZone(parcel.id, code, userId);
+      setManualZoneCode(next.zoneCode);
+      setUserConfirmedZoneCode(next.userConfirmedZoneCode);
     },
     [parcel.id, userId],
   );
