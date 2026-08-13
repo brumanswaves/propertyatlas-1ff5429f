@@ -58,6 +58,8 @@ export interface DecisionSnapshotModel {
   positives: string[];
   biggestConcern: string | null;
   bestOpportunity: string | null;
+  /** Canonical evidence-readiness percentage from the report view model. */
+  readinessPercent: number;
   confidence: "high" | "medium" | "low" | "unverified";
   confidenceReason: string;
 }
@@ -203,16 +205,65 @@ export function composeEasyErfReport(input: ComposeEasyErfReportInput): EasyErfR
   };
 
   // ---- decision snapshot --------------------------------------------------
-  const decisionSnapshot = buildDecisionSnapshot(findings, Boolean(pack));
+  const decisionSnapshot = buildDecisionSnapshot(
+    findings,
+    Boolean(pack),
+    report.brief.readinessPercent,
+  );
 
   // ---- property at a glance ----------------------------------------------
   const atAGlance: GlanceItem[] = [];
+  const parcelRecordIsOfficial = Boolean(
+    pack?.sources.some(
+      (source) => source.id === "official-parcel-record" && source.authorityType === "official",
+    ),
+  );
+  const parcelIdentityProvenance = parcelRecordIsOfficial
+    ? "Official parcel identity"
+    : "Recorded parcel identity";
+  const parcelContextProvenance = parcelRecordIsOfficial
+    ? "Official parcel context"
+    : "Recorded parcel context";
   const glance = (id: string, label: string, value: string | null | undefined, provenance: string) => {
     if (value == null) return;
     const text = String(value).trim();
     if (!text || text === "0") return;
     atAGlance.push({ id, label, value: text, provenance });
   };
+  glance(
+    "official-erf",
+    "Erf",
+    report.identity.erfNumber ? `Erf ${report.identity.erfNumber}` : null,
+    parcelIdentityProvenance,
+  );
+  glance(
+    "official-portion",
+    "Portion",
+    report.identity.portion != null ? `Portion ${report.identity.portion}` : null,
+    parcelIdentityProvenance,
+  );
+  glance("official-lpi", "LPI", report.identity.lpi, parcelIdentityProvenance);
+  glance(
+    "suburb-or-area",
+    "Suburb / area",
+    report.identity.suburbOrArea,
+    parcelContextProvenance,
+  );
+  glance("town", "Town", report.identity.town, parcelContextProvenance);
+  glance(
+    "official-municipality",
+    "Municipality",
+    report.identity.municipality,
+    parcelContextProvenance,
+  );
+  glance("official-province", "Province", report.identity.province, parcelContextProvenance);
+  glance(
+    "working-address",
+    "Working address",
+    report.identity.marketAddressLine,
+    "User-confirmed working address",
+  );
+
   if (subject) {
     glance("property-type", "Property type", subject.propertyType, "Subject listing");
     if (subject.beds) glance("beds", "Bedrooms", String(subject.beds), "Subject listing");
@@ -412,6 +463,7 @@ function suggestedQuestions(findings: ReportFinding[]): string[] {
 function buildDecisionSnapshot(
   findings: ReportFinding[],
   hasPack: boolean,
+  readinessPercent: number,
 ): DecisionSnapshotModel {
   const hasEvidence = hasPack && findings.length > 0;
   const positivesFindings = findings.filter(
@@ -475,6 +527,7 @@ function buildDecisionSnapshot(
     positives: positivesFindings.slice(0, 3).map((finding) => finding.headline),
     biggestConcern,
     bestOpportunity: opportunity ? opportunity.headline : null,
+    readinessPercent,
     confidence,
     confidenceReason: !hasEvidence
       ? "No canonical evidence pack is available for this erf yet."

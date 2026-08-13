@@ -1018,6 +1018,8 @@ function validateIdentity(value: unknown): ReportViewModel["identity"] | null {
     marketAddressLine: nullableText(raw.marketAddressLine, 180),
     addressAndOfficialMismatch:
       typeof raw.addressAndOfficialMismatch === "boolean" ? raw.addressAndOfficialMismatch : false,
+    suburbOrArea: nullableText(raw.suburbOrArea, 120),
+    town: nullableText(raw.town, 120),
     municipality: nullableText(raw.municipality, 120),
     province: nullableText(raw.province, 120),
     erfNumber: nullableText(raw.erfNumber, 80),

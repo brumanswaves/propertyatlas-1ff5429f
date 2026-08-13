@@ -423,8 +423,8 @@ export function ReportStillToVerifySection({
         eyebrow="Still to verify"
         title={
           summary.count
-            ? `${summary.count} item(s) still need verification`
-            : "Nothing outstanding across the tracked context checks"
+            ? `${summary.count} item(s) still worth checking`
+            : "Nothing outstanding is currently recorded"
         }
       />
       {summary.topItems.length > 0 && (

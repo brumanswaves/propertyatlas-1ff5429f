@@ -37,6 +37,7 @@ export type ReadinessState = "confirmed" | "partial" | "missing" | "not_reviewed
 
 export type EvidenceBadge =
   | "official"
+  | "recorded"
   | "uploaded_report"
   | "user_confirmed"
   | "listing"
@@ -107,6 +108,8 @@ export interface PropertyIdentityDisplay {
   officialLine: string | null;
   marketAddressLine: string | null;
   addressAndOfficialMismatch: boolean;
+  suburbOrArea: string | null;
+  town: string | null;
   municipality: string | null;
   province: string | null;
   erfNumber: string | null;
@@ -291,6 +294,8 @@ function buildIdentity(
     officialLine,
     marketAddressLine,
     addressAndOfficialMismatch: mismatch,
+    suburbOrArea: parcel.suburbOrArea ?? null,
+    town: parcel.town ?? null,
     municipality: parcel.municipality ?? null,
     province: parcel.province ?? null,
     erfNumber: parcel.erfNumber != null ? String(parcel.erfNumber) : null,
@@ -324,6 +329,10 @@ function buildIdentityFromPack(
   const portion = identityClaim("portion")?.value ?? parcel.portion ?? null;
   const municipality = stringOrNull(identityClaim("municipality")?.value ?? parcel.municipality);
   const province = stringOrNull(identityClaim("province")?.value ?? parcel.province);
+  const suburbOrArea = stringOrNull(
+    identityClaim("suburbOrArea")?.value ?? parcel.suburbOrArea,
+  );
+  const town = stringOrNull(identityClaim("town")?.value ?? parcel.town);
   const marketAddressLine = stringOrNull(addressClaim("marketAddress")?.value);
   const officialParts: string[] = [];
   if (erfNumber != null) officialParts.push(`Erf ${erfNumber}`);
@@ -344,6 +353,8 @@ function buildIdentityFromPack(
     addressAndOfficialMismatch: pack.contradictions.some(
       (item) => item.id === "market-address-municipality-mismatch" || item.id === "market-address-province-mismatch",
     ),
+    suburbOrArea,
+    town,
     municipality,
     province,
     erfNumber: erfNumber != null ? String(erfNumber) : null,

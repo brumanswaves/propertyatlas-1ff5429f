@@ -650,16 +650,27 @@ export function buildStillToVerifySummary(
   sections: Array<Pick<ContextSectionModel, "missingChecks">>,
   extra: StillToVerifyItem[] = [],
 ): StillToVerifySummary {
-  const allItems: StillToVerifyItem[] = [
+  const candidates: StillToVerifyItem[] = [
     ...sections.flatMap((section) => section.missingChecks),
     ...extra,
   ];
+  const seen = new Set<string>();
+  const allItems = candidates.filter((item) => {
+    const key = `${normalizeStillToVerifyText(item.label)}:${normalizeStillToVerifyText(item.action)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return {
     count: allItems.length,
     topItems: allItems.slice(0, 3),
     allItems,
     action: allItems.length
       ? "Open the full due diligence & evidence area below to see every outstanding item and close it out."
-      : "No outstanding unknowns were recorded across the tracked context sections.",
+      : "No outstanding missing or unverified items are recorded in this report.",
   };
+}
+
+function normalizeStillToVerifyText(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }

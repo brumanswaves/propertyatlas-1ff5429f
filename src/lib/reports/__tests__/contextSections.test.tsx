@@ -4,12 +4,14 @@ import {
   buildLocationLifestyleSectionModel,
   buildMunicipalServicesSectionModel,
   buildSiteRiskSectionModel,
+  buildStillToVerifySummary,
 } from "@/lib/reports/contextSections";
 import { buildSgSectionModel } from "@/lib/reports/sgSection";
 import {
   ReportContextSection,
   ReportMunicipalSection,
   ReportSgLineageSection,
+  ReportStillToVerifySection,
   registerSgPreviewSettlement,
 } from "@/components/property/dossier/ReportContextSections";
 import type { EvidenceClaim, PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
@@ -140,6 +142,46 @@ describe("location & lifestyle section model", () => {
       expect(fact.value).toBeNull();
       expect(fact.provenance).toMatch(/does not estimate/);
     }
+  });
+});
+
+describe("still to verify summary", () => {
+  it("counts canonical evidence gaps alongside context checks", () => {
+    const summary = buildStillToVerifySummary(
+      [{ missingChecks: [] }],
+      [
+        {
+          id: "gap-ownership",
+          label: "Ownership evidence",
+          action: "Obtain a title deed or ownership report",
+        },
+      ],
+    );
+
+    expect(summary.count).toBe(1);
+    expect(summary.allItems).toHaveLength(1);
+
+    const html = renderToStaticMarkup(
+      <ReportStillToVerifySection anchorId="report-still-to-verify" summary={summary} />,
+    );
+    expect(html).toContain("1 item(s) still worth checking");
+    expect(html).toContain("Ownership evidence");
+    expect(html).not.toContain("Nothing outstanding");
+    expect(html).not.toContain("No outstanding unknowns");
+  });
+
+  it("does not count the same outstanding item twice", () => {
+    const shared = {
+      id: "ownership-context",
+      label: "Ownership evidence",
+      action: "Obtain a title deed or ownership report",
+    };
+    const summary = buildStillToVerifySummary([{ missingChecks: [shared] }], [
+      { ...shared, id: "ownership-gap" },
+    ]);
+
+    expect(summary.count).toBe(1);
+    expect(summary.allItems).toEqual([shared]);
   });
 });
 

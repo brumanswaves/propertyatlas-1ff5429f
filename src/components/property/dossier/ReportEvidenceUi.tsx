@@ -22,6 +22,7 @@ import type {
 export function EvidenceBadgeChip({ badge, label }: { badge: EvidenceBadge; label?: string }) {
   const tone: Record<EvidenceBadge, string> = {
     official: "bg-[#0D1B2A] text-white",
+    recorded: "bg-[#475569] text-white",
     uploaded_report: "bg-[#0F766E] text-white",
     user_confirmed: "bg-[#2563EB] text-white",
     listing: "bg-[#FF6A00] text-white",
@@ -31,6 +32,7 @@ export function EvidenceBadgeChip({ badge, label }: { badge: EvidenceBadge; labe
   };
   const defaultLabel: Record<EvidenceBadge, string> = {
     official: "Official source",
+    recorded: "Recorded parcel value",
     uploaded_report: "Uploaded report",
     user_confirmed: "User-confirmed",
     listing: "Listing source",
