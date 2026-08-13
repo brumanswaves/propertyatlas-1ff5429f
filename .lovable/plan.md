@@ -1,32 +1,51 @@
-# SG TIFF preview not persisted — diagnosis (read-only)
+# Exporting `erf-files` and migrating Easy Erf to a founder-owned backend
 
-## What the data shows
+## Verified current state (read-only)
 
-Asset `9c1d7ac4-0b72-45a2-a405-0743e8066b89` (`image/tiff`, `sg_diagram`, created 12:27:31Z, extracted 12:32:29Z):
+Queried the live storage catalogue just now:
 
-- `extractionStatus = partial`, `identityMatchStatus = unverified`, `identityBinding = user_confirmed`, 15 claims, `extractedDocumentType = GENERAL PLAN`, model `gpt-5.6-sol`.
-- `sgPreviewStoragePath`, `sgPreviewMimeType`, `sgPreviewGeneratedAt` are all `null`.
-- `openaiResponseId` / `openaiFileId` / `openaiContainerId` / `extractionProvider` are already cleared (normal post-finalisation cleanup), so the completed payload can no longer be re-inspected for this run.
+- Bucket `erf-files` (private): **58 objects, ~71.8 MB total**
+  - `ae0ac2f4-8449-4ae9-bbe8-09f230a02ba5/` — 45 objects, ~53.9 MB
+  - `dd556ed0-ac6d-4545-9589-88203f852430/` — 13 objects, ~17.9 MB
+- Bucket `database_export_13_08_26` (private): 1 object, a `.backup` file (~1.2 MB) — precedent that a database dump was already staged into storage.
 
-So the asset did complete through the background Code Interpreter path, and `previewPatch` came back empty from `storeTiffPreview`.
+## Answer to the direct question
 
-## Logs are insufficient — and that is a code defect
+**There is no built-in Lovable Cloud "download bucket" or "export storage as ZIP" UI action.** The storage UI is per-object. So there are no exact UI steps to give for a bulk export — that capability does not exist today, and I should not invent one.
 
-`storeTiffPreview` in `supabase/functions/extract-erf-asset/index.ts` (lines 159-192) has **five silent `return null` branches and a bare `catch { return null }`**, and emits no `log(...)` line at all. The finalisation path spreads `previewPatch` unconditionally, so an empty patch is indistinguishable from success. Production logs for this asset show only `auth_ok`, `identity_inputs`, `identity_requires_review` — nothing about the preview. Therefore the logs **cannot** discriminate between causes 1-4; that is by itself the first thing to fix.
+What *is* supported, and avoids 58 manual downloads: I can run a **read-only export pass** from the agent sandbox. It lists every object in `erf-files`, downloads each one using the backend's own credentials (never printed, never committed), rebuilds the identical path tree, and packages it as a single archive you download from chat. Nothing in the bucket, database, or deployment is touched.
 
-## Most likely cause from code inspection: (1), with (2) as the immediate second failure
+## Proposed export (when you approve leaving plan mode)
 
-`responseImageOutputUrl` (`openAiTiffBackground.ts:79-94`) only accepts `output[].outputs[]` entries shaped `{ type: "image", url: "..." }`.
+1. List all 58 objects with full paths, sizes, MIME types, timestamps and metadata.
+2. Download each object into `/tmp/erf-files-export/<exact/object/path>` — byte-identical, original filenames, both UUID folders preserved as top-level directories.
+3. Write a `manifest.csv` / `manifest.json` next to the tree recording, per object: path, size, MIME type, created/updated timestamps, and a SHA-256 checksum.
+4. Verify: object count = 58, total bytes = 71,765,300, no zero-byte files, checksums recomputed from disk.
+5. Produce `erf-files-export-<date>.zip` in `/mnt/documents` so you can download it in one click, plus the manifest as a separate file.
 
-- The current OpenAI Responses API does not return Code Interpreter image artefacts that way. Generated files surface as **container files** — `container_file_citation` annotations on the `output_text` part (and/or `outputs` entries carrying `file_id` + `container_id`), with no `url` field. The matcher therefore finds nothing, `previewUrl` is `null`, and `storeTiffPreview` returns at its first line. This fits the observed all-null preview fields with no other symptom.
-- Even if a URL were present, `fetch(previewUrl)` is issued with **no `Authorization: Bearer $OPENAI_API_KEY`**, so any `api.openai.com` container/file URL would answer 401/404 and be swallowed as a `!response.ok` return. Container file bytes must be read from `GET /v1/containers/{container_id}/files/{file_id}/content` with the OpenAI bearer token, and that endpoint returns `application/octet-stream` / no useful `content-type`, which the strict MIME allow-list in `storeTiffPreview` would also reject (cause 3 waiting behind cause 2).
-- Storage upload (cause 4) is unlikely to be the failure: it uses the service key with `x-upsert`, and the same bucket/path scheme already works for the source asset.
+Note on metadata: object *paths*, filenames, content types, sizes and timestamps are all preserved in the archive + manifest. ZIP itself cannot carry Supabase-side fields (owner id, `metadata` JSON) — that is exactly what the manifest is for, and it is what a re-upload script reads to restore content types on the new project.
 
-## Smallest safe proposed fix (no edits made)
+## Migration path to a founder-owned Supabase project
 
-1. **Instrument first, one line per outcome.** Add `log("sg_preview_skipped"|"sg_preview_failed", requestId, { reason, status, mimeType, bytes })` to each `return null` in `storeTiffPreview`, plus a `log("sg_preview_stored", …)` on success, and log whether `poll.previewUrl` was null. This makes the next run self-diagnosing at essentially zero cost.
-2. **Read container files, not URLs.** Extend the payload reader to also collect `{ container_id, file_id }` from `container_file_citation` annotations / `outputs` entries, and fetch bytes from `/v1/containers/{container_id}/files/{file_id}/content` with `Authorization: Bearer OPENAI_API_KEY`. Keep the existing `url` branch as a fallback, and send the bearer header when the URL host is `api.openai.com`.
-3. **Relax MIME validation to sniffing.** When the response has no usable `content-type`, detect PNG/JPEG/WebP from the leading magic bytes and store with the sniffed type; only reject when no image signature matches. Keep the 5 MB ceiling.
-4. Preview persistence stays strictly non-blocking — a preview failure must never change `extractionStatus`, claims, or identity outcome.
+Lowest-risk sequence, storage-focused:
 
-Scope: `supabase/functions/extract-erf-asset/openAiTiffBackground.ts` and the `storeTiffPreview` helper in `supabase/functions/extract-erf-asset/index.ts` only. No schema, secret, or frontend change. Verifying it requires one fresh background run on a SG TIFF after deploy, since the prior response ids are already cleaned up.
+1. **Freeze-free export first** (above). No production interaction beyond reads.
+2. **Create the new founder-owned project**, then recreate the `erf-files` bucket as **private** with the same name.
+3. **Preserve user UUIDs** when migrating auth users. Every storage path starts with a user UUID and `erf_assets.storage_path` embeds it, so a changed UUID silently breaks every file link. This is the single highest-risk item in the whole migration.
+4. **Re-upload** from the export tree, path-for-path, setting content type from the manifest, then re-verify count/bytes/checksums against the manifest.
+5. **Apply schema migrations** from the repo (tables, RLS, grants, triggers, functions), then import row data.
+6. **Re-enter secrets** in the new project and re-deploy edge functions.
+7. Point the app at the new project and smoke-test signed-URL access for one SG diagram and one paid report per user.
+
+### Can storage be copied server-side, project-to-project?
+
+Not directly. Supabase Storage has no cross-project server-side copy; `copy`/`move` operate within one project. Any transfer is download-then-upload. Two options:
+
+- **Via the sandbox (recommended)**: credentials stay in the sandbox environment, never in chat, files never leave a trusted path. Requires the new project's key to be added as a secret when the upload step comes.
+- **Via your machine**: you download the ZIP I produce and upload with your own new-project key. Nothing sensitive ever reaches me. Slightly more manual, maximum key isolation.
+
+Either way, no secret needs to be displayed, logged, or committed.
+
+## Scope of this step
+
+Read-only. Approving this plan authorises only the export + manifest + ZIP. Creating the new project, uploading, schema apply and cutover are separate approvals.
