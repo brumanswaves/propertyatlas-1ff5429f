@@ -231,13 +231,14 @@ export function ReportSgLineageSection({
   onOpenTab?: (tab: string) => void;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
-  const primaryAssetId = model.evidence[0]?.asset.id ?? null;
-  const selectedFile = primaryAssetId
-    ? model.files.find((file) => file.assetId === primaryAssetId) ?? null
-    : model.files[0] ?? null;
+  const selectedEvidence = model.evidence[0] ?? null;
+  const selectedAppendixRow = selectedEvidence
+    ? model.files.find((file) => file.assetId === selectedEvidence.asset.id) ?? null
+    : null;
+  const file = selectedAppendixRow ?? { locator: null };
   const additionalDiagramCount = Math.max(
     model.supportingDiagramCount,
-    model.files.length - (selectedFile ? 1 : 0),
+    model.files.filter((file) => file.assetId !== selectedEvidence?.asset.id).length,
   );
 
   return (
@@ -261,29 +262,39 @@ export function ReportSgLineageSection({
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
               Diagram selected for this report
             </div>
-            {!selectedFile ? (
+            {!selectedEvidence ? (
               <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
-                No diagram file is attached to this erf yet.
+                No identity-gated Surveyor-General diagram is selected for this report.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
-                {[selectedFile].map((file) => (
+                {[selectedEvidence].map((block) => (
                   <li
-                    key={file.id}
-                    data-sg-file={file.id}
+                    key={block.asset.id}
+                    data-sg-file={block.asset.id}
                     className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2"
                   >
                     <div className="text-sm font-semibold break-all text-[#0D1B2A]">
-                      {file.name}
+                      {block.asset.original_file_name}
                     </div>
                     <div className="mt-1 text-[11px] text-[#64748B]">
-                      {file.readLabel}
+                      {block.readLabel}
                       {file.locator ? ` · ${file.locator}` : ""}
                     </div>
-                    {file.assetId && onOpenAsset && (
+                    {block.isUserConfirmed && (
+                      <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                        User-confirmed attachment, not official verification
+                      </div>
+                    )}
+                    {block.isParentContext && (
+                      <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                        PLAN / PARENT CONTEXT only
+                      </div>
+                    )}
+                    {onOpenAsset && (
                       <button
                         type="button"
-                        onClick={() => onOpenAsset(file.assetId as string)}
+                        onClick={() => onOpenAsset(block.asset.id)}
                         className="report-no-print mt-2 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
                       >
                         Open source file <ExternalLink className="h-3 w-3" />
@@ -303,7 +314,7 @@ export function ReportSgLineageSection({
 
           <div className="rounded-2xl border border-[#D9E6F2] bg-white p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Cadastral lineage read from the diagrams
+              Cadastral identity context
             </div>
             {model.lineage.length === 0 ? (
               <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">

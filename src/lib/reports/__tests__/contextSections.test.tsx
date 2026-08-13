@@ -160,7 +160,7 @@ describe("SG lineage section model", () => {
     },
   ];
 
-  it("labels parent-plan context and exposes filenames and lineage", () => {
+  it("labels parent-plan context without attributing broader lineage to a selected diagram", () => {
     const model = buildSgSectionModel({
       appendixRows: rows,
       pack: pack([
@@ -182,15 +182,17 @@ describe("SG lineage section model", () => {
     });
     expect(model.files).toHaveLength(1);
     expect(model.hasParentContext).toBe(true);
-    expect(model.contextNote).toMatch(/parent-plan context/i);
+    expect(model.contextNote).toMatch(/parent General Plan context/i);
     expect(model.lineage.map((row) => row.value)).toContain("GP12252");
 
     const html = renderToStaticMarkup(
       <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
     );
-    expect(html).toContain("sg-diagram-1496.tif");
+    expect(html).toContain("No identity-gated Surveyor-General diagram is selected for this report.");
     expect(html).toContain("GP12252");
     expect(html).toContain("Parent-plan context");
+    expect(html).toContain("Cadastral identity context");
+    expect(html).not.toContain("Cadastral lineage read from the diagrams");
   });
 
   it("shows an honest empty state with no diagram evidence", () => {
@@ -268,6 +270,9 @@ describe("SG lineage section model", () => {
       <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
     );
     expect(html).toContain("What Easy Erf found");
+    expect(html).toContain("readable-sg-test-fixture.tif");
+    expect(html).not.toContain("No identity-gated Surveyor-General diagram is selected for this report.");
+    expect(html).toContain("User-confirmed attachment, not official verification");
     expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
     expect(html).toContain("parent context");
     expect(html).toContain("No visual preview was generated for this diagram.");
@@ -316,6 +321,54 @@ describe("SG lineage section model", () => {
     expect(html).toContain("subject-erf-1570.tif");
     expect(html).not.toContain("general-plan-12252.tif");
     expect(html).toContain("additional readable SG diagram");
+    expect(html).toContain("Additional supporting SG evidence includes parent General Plan context.");
+  });
+
+  it("keeps a user-confirmed subject SG primary when parent General Plan evidence is also readable", () => {
+    const userConfirmedDiagram = {
+      id: "asset-user-confirmed-sg",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      original_file_name: "user-confirmed-erf-1570.tif",
+      updated_at: "2026-08-13T10:00:00.000Z",
+      metadata: {
+        extractionStatus: "ready",
+        identityMatchStatus: "unverified",
+        identityBinding: "user_confirmed",
+        identityUserConfirmedParcelId: "parcel:erf-1570",
+        extractedClaims: [],
+      },
+    } as unknown as ErfAsset;
+    const parentPlan = {
+      id: "asset-parent-plan",
+      parcel_id: "parcel:erf-1570",
+      asset_category: "sg_diagram",
+      original_file_name: "general-plan-12252.tif",
+      updated_at: "2026-08-13T11:00:00.000Z",
+      metadata: {
+        extractionStatus: "ready",
+        identityMatchStatus: "parent_lineage_match",
+        extractedClaims: [],
+      },
+    } as unknown as ErfAsset;
+
+    const model = buildSgSectionModel({
+      appendixRows: [],
+      pack: null,
+      assets: [parentPlan, userConfirmedDiagram],
+    });
+
+    expect(model.evidence.map((block) => block.asset.id)).toEqual(["asset-user-confirmed-sg"]);
+    expect(model.evidence[0]?.isUserConfirmed).toBe(true);
+    expect(model.supportingDiagramCount).toBe(1);
+
+    const html = renderToStaticMarkup(
+      <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
+    );
+    expect(html).toContain("user-confirmed-erf-1570.tif");
+    expect(html).not.toContain("general-plan-12252.tif");
+    expect(html).toContain("User-confirmed attachment, not official verification");
+    expect(html).toContain("Additional supporting SG evidence includes parent General Plan context.");
   });
 
   it("does not admit a wrong-property SG diagram into the report summary", () => {

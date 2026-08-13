@@ -198,20 +198,28 @@ export function buildSgSectionModel(input: {
       return right.asset.updated_at.localeCompare(left.asset.updated_at);
     });
 
-  const hasParentContext =
+  const primaryEvidence = readableEvidence[0] ?? null;
+  const hasParentDiagramContext =
     files.some((file) => file.isParentContext) ||
-    lineage.some((row) => row.scope === "parent_context") ||
     readableEvidence.some((block) => block.isParentContext);
+  const hasParentContext =
+    hasParentDiagramContext || lineage.some((row) => row.scope === "parent_context");
+
+  const contextNote = primaryEvidence?.isParentContext
+    ? "The selected diagram was matched to the parent General Plan for this erf. It is shown as parent-plan context: it describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+    : hasParentDiagramContext
+      ? primaryEvidence
+        ? "Additional supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+        : "Supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
+      : null;
 
   return {
     files,
-    evidence: readableEvidence.slice(0, 1),
+    evidence: primaryEvidence ? [primaryEvidence] : [],
     supportingDiagramCount: Math.max(0, readableEvidence.length - 1),
     lineage,
     hasParentContext,
-    contextNote: hasParentContext
-      ? "These diagrams were matched to the parent general plan for this erf. They are shown as parent-plan context: they describe the layout this erf came from, and they do not confirm boundaries, extent or servitudes for the subject erf on their own."
-      : null,
+    contextNote,
     emptyMessage:
       files.length === 0 &&
       lineage.length === 0 &&
