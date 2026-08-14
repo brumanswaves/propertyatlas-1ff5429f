@@ -1,25 +1,25 @@
 import {
   resolveSitePotentialRuntimeReadiness,
   sitePotentialRuntimeMessage,
-} from "./betaEntitlements";
+} from "./betaEntitlements.ts";
 import {
   consumeSitePotentialEntitlement,
   readSitePotentialAccessStatus,
   readSitePotentialPackStatus,
   retrySitePotentialPack,
-} from "./betaServer";
+} from "./betaServer.ts";
 import {
   formatQueueStatus,
   queueSitePotentialGeneration,
-} from "./generationSupabaseWorker";
-import { sourceAssetsForGenerationMode } from "./generationJobs";
+} from "./generationSupabaseWorker.ts";
+import { sourceAssetsForGenerationMode } from "./generationJobs.ts";
 import {
   ApiRequestError,
   authenticateApiRequest,
   createServiceRoleSupabaseClient,
-} from "./serverAuth";
-import { sitePotentialServerEnv } from "./runtimeEnv";
-import type { SitePotentialMode } from "./runtimeTypes";
+} from "./serverAuth.ts";
+import { sitePotentialServerEnv } from "./runtimeEnv.ts";
+import type { SitePotentialMode } from "./runtimeTypes.ts";
 
 export const SITE_POTENTIAL_EDGE_API_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
