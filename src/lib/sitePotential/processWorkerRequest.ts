@@ -1,11 +1,11 @@
 import {
   createSupabaseGenerationStore,
   openAiSitePotentialImageClient,
-} from "./generationSupabaseWorker";
-import { processSitePotentialGenerationQueue } from "./generationWorker";
-import { sanitizedGenerationError } from "./generationJobs";
-import { createServiceRoleSupabaseClient } from "./serverAuth";
-import { readServerEnv } from "./runtimeEnv";
+} from "./generationSupabaseWorker.ts";
+import { processSitePotentialGenerationQueue } from "./generationWorker.ts";
+import { sanitizedGenerationError } from "./generationJobs.ts";
+import { createServiceRoleSupabaseClient } from "./serverAuth.ts";
+import { readServerEnv } from "./runtimeEnv.ts";
 
 export const SITE_POTENTIAL_WORKER_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
