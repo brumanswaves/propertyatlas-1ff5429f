@@ -10,20 +10,7 @@ import {
   type ErfWorkspaceAttachmentRecord,
 } from "./erfWorkspaceFiles";
 
-import {
-  ERF_FILE_BUCKET,
-  buildErfAssetStoragePath,
-  erfAssetStoragePathCandidates,
-} from "./erfAssetStoragePaths";
-
-export {
-  ERF_FILE_BUCKET,
-  buildErfAssetStoragePath,
-  canonicalErfAssetStoragePath,
-  erfAssetStoragePathCandidates,
-  safeErfAssetPathSegment,
-  safeFileName,
-} from "./erfAssetStoragePaths";
+export const ERF_FILE_BUCKET = "erf-files";
 export const ERF_FILE_SIGNED_URL_TTL_SECONDS = 10 * 60;
 
 export type ErfAssetCategory =
@@ -171,6 +158,61 @@ function normalizeAsset(row: Record<string, unknown>): ErfAsset {
     created_at: String(row.created_at),
     updated_at: String(row.updated_at ?? row.created_at),
   };
+}
+
+export function safeFileName(fileName: string) {
+  const cleaned = fileName
+    .normalize("NFKD")
+    .replace(/[^\w.\- ]+/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/\.+/g, ".")
+    .slice(0, 120);
+  return cleaned || "easy-erf-file";
+}
+
+export function safeErfAssetPathSegment(value: string) {
+  const cleaned = value
+    .normalize("NFKC")
+    .split("")
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code > 31 && code !== 127;
+    })
+    .join("")
+    .replace(/[\\/]+/g, "-")
+    .trim()
+    .slice(0, 180);
+  return cleaned || "unknown-parcel";
+}
+
+export function canonicalErfAssetStoragePath(storagePath: string) {
+  const parts = storagePath.split("/");
+  if (parts.length < 2) return storagePath;
+  const parcelSegment = parts[1].replace(/%3A/gi, ":");
+  if (parcelSegment === parts[1]) return storagePath;
+  return [parts[0], parcelSegment, ...parts.slice(2)].join("/");
+}
+
+export function erfAssetStoragePathCandidates(storagePath: string) {
+  const canonical = canonicalErfAssetStoragePath(storagePath);
+  return canonical === storagePath ? [storagePath] : [canonical, storagePath];
+}
+
+export function buildErfAssetStoragePath(input: {
+  userId: string;
+  parcelId: string;
+  category: ErfAssetCategory;
+  assetId: string;
+  fileName: string;
+}) {
+  return [
+    input.userId,
+    safeErfAssetPathSegment(input.parcelId),
+    input.category,
+    input.assetId,
+    safeFileName(input.fileName),
+  ].join("/");
 }
 
 export function validateErfAssetFile(
