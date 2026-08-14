@@ -16,8 +16,8 @@ import {
   SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
   type SourceAssetLike,
 } from "./generationJobs";
-import type { SitePotentialProject } from "./types";
-import { sitePotentialParcelContextFromProject } from "./parcelContext";
+import type { SitePotentialProject } from "./runtimeTypes";
+import { sitePotentialParcelContextFromProject } from "./parcelRuntimeContext";
 import { buildAutomaticSiteContextReference } from "./siteContextReference";
 
 export interface GenerationWorkerClaim {
