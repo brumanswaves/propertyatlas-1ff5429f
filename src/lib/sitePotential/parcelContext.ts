@@ -1,8 +1,4 @@
-import {
-  describeSitePotentialParcelContext,
-  sitePotentialParcelContextFromProject,
-  type SitePotentialParcelContext,
-} from "./parcelRuntimeContext";
+import type { SitePotentialParcelContext } from "./parcelRuntimeContext";
 
 export {
   describeSitePotentialParcelContext,
@@ -64,6 +60,3 @@ export function buildSitePotentialParcelContext(
     capturedAt: new Date().toISOString(),
   };
 }
-
-void describeSitePotentialParcelContext;
-void sitePotentialParcelContextFromProject;
