@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { ImageEditReference } from "./generation";
 import type { SitePotentialParcelContext } from "./parcelContext";
+import { readServerEnv } from "./runtimeEnv";
 
 const KOUGA_PARCEL_QUERY =
   "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query";
@@ -108,7 +109,7 @@ function styledParcelFeature(feature: Feature): Feature {
 }
 
 function staticMapUrl(context: SitePotentialParcelContext, parcelFeature: Feature | null) {
-  const token = process.env.MAPBOX_ACCESS_TOKEN || process.env.VITE_MAPBOX_ACCESS_TOKEN;
+  const token = readServerEnv("MAPBOX_ACCESS_TOKEN") || readServerEnv("VITE_MAPBOX_ACCESS_TOKEN");
   if (!token || !context.coordinates) return null;
   const { lng, lat } = context.coordinates;
   const pin = `pin-s+ff6a00(${lng},${lat})`;
