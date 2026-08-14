@@ -170,6 +170,15 @@ export async function processSitePotentialGenerationQueue(input: {
   return result;
 }
 
+function decodeBase64Bytes(value: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
 async function processClaimedSitePotentialItem(input: {
   store: SitePotentialGenerationStore;
   imageClient: SitePotentialImageClient;
@@ -226,7 +235,7 @@ async function processClaimedSitePotentialItem(input: {
             timeoutMs: SITE_POTENTIAL_OPENAI_TIMEOUT_MS,
           }),
   });
-  const imageBytes = Uint8Array.from(Buffer.from(image.b64, "base64"));
+  const imageBytes = decodeBase64Bytes(image.b64);
   await renewLeaseOrThrow(input.store, input.claim);
   const upload = await input.store.uploadGeneratedImage(input.claim, imageBytes);
   try {
