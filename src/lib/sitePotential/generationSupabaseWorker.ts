@@ -25,7 +25,7 @@ import {
   buildErfAssetStoragePath,
   erfAssetStoragePathCandidates,
   safeFileName,
-} from "@/lib/workbench/erfFileVault";
+} from "../workbench/erfAssetStoragePaths";
 import type { SitePotentialProject } from "./types";
 
 type SupabaseServiceClient = ReturnType<typeof createServiceRoleSupabaseClient>;
