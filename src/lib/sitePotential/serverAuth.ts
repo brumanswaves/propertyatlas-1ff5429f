@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 import { readServerEnv } from "./runtimeEnv";
 
 export class ApiRequestError extends Error {
@@ -21,7 +20,6 @@ function serverSupabaseUrl() {
 }
 
 export async function authenticateApiRequest(request: Request) {
-  // Supabase Edge Functions expose the publishable key as SUPABASE_ANON_KEY.
   const publishableKey =
     readServerEnv("SUPABASE_PUBLISHABLE_KEY") ?? readServerEnv("SUPABASE_ANON_KEY");
   if (!publishableKey) {
@@ -32,7 +30,7 @@ export async function authenticateApiRequest(request: Request) {
     throw new ApiRequestError("Sign in is required.", 401);
   }
   const token = authorization.slice("Bearer ".length).trim();
-  const supabase = createClient<Database>(serverSupabaseUrl(), publishableKey, {
+  const supabase = createClient(serverSupabaseUrl(), publishableKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: {
       storage: undefined,
@@ -50,7 +48,7 @@ export function createServiceRoleSupabaseClient() {
   if (!serviceRoleKey) {
     throw new ApiRequestError("Trusted Supabase service role is not configured.", 500);
   }
-  return createClient<Database>(serverSupabaseUrl(), serviceRoleKey, {
+  return createClient(serverSupabaseUrl(), serviceRoleKey, {
     auth: {
       storage: undefined,
       persistSession: false,
@@ -59,11 +57,14 @@ export function createServiceRoleSupabaseClient() {
   });
 }
 
+type DevelopmentEntitlementEnv = {
+  NODE_ENV?: string;
+  SITE_POTENTIAL_DEV_ENTITLEMENTS?: string;
+  SITE_POTENTIAL_DEV_ADMIN_ALLOWLIST?: string;
+};
+
 export function isDevelopmentEntitlementAllowed(
-  env: Pick<
-    NodeJS.ProcessEnv,
-    "NODE_ENV" | "SITE_POTENTIAL_DEV_ENTITLEMENTS" | "SITE_POTENTIAL_DEV_ADMIN_ALLOWLIST"
-  >,
+  env: DevelopmentEntitlementEnv,
   user: { id: string; email?: string | null },
 ) {
   if (env.NODE_ENV === "production") {
