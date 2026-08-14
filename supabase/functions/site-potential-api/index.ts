@@ -89,7 +89,6 @@ Deno.serve(async (request: Request) => {
       JSON.stringify({
         success: false,
         error: "Site Potential service is temporarily unavailable.",
-        startupCode: error instanceof StartupError ? error.code : "HANDLER_STARTUP",
       }),
       {
         status: 500,
