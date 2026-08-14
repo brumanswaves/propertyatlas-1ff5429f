@@ -20,6 +20,8 @@ const workerGraph = [
   "src/lib/workbench/erfAssetStoragePaths.ts",
 ];
 
+const smokeTestedWorkerRevision = "692c040ea1be2488c832071e0e129474a490d9c7";
+
 describe("founder-owned Site Potential Edge runtime", () => {
   it("keeps the worker import graph free of browser-only aliases and Node Buffer", () => {
     for (const path of workerGraph) {
@@ -33,7 +35,7 @@ describe("founder-owned Site Potential Edge runtime", () => {
     );
   });
 
-  it("ships a Supabase Edge worker backed by encrypted Vault runtime values", () => {
+  it("ships the smoke-tested Supabase Edge worker with encrypted Vault runtime values", () => {
     const edge = read("supabase/functions/site-potential-worker/index.ts");
     const deno = read("supabase/functions/site-potential-worker/deno.json");
 
@@ -41,13 +43,16 @@ describe("founder-owned Site Potential Edge runtime", () => {
     expect(edge).toContain("easy_erf_site_potential_worker_secret");
     expect(edge).toContain("easy_erf_openai_api_key");
     expect(edge).toContain("__EASY_ERF_RUNTIME_ENV__");
-    expect(edge).toContain(
-      'import("../../../src/lib/sitePotential/processWorkerRequest.ts")',
-    );
+    expect(edge).toContain(smokeTestedWorkerRevision);
+    expect(edge).toContain("raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f");
     expect(edge).not.toContain("erfstoep.lovable.app");
     expect(edge).not.toContain("SITE_POTENTIAL_WORKER_SECRET=");
+    expect(edge).not.toContain("diagnostic:");
     expect(deno).toContain('"@supabase/supabase-js"');
     expect(deno).toContain('"npm:@supabase/supabase-js@2.108.1"');
+    expect(deno).toContain(smokeTestedWorkerRevision);
+    expect(deno).toContain("generationWorker.ts");
+    expect(deno).toContain("erfAssetStoragePaths.ts");
   });
 
   it("keeps worker authentication and public errors secret-safe", () => {
