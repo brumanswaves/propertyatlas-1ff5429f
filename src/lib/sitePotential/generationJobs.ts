@@ -1,5 +1,5 @@
 import { SITE_POTENTIAL_DISCLAIMER, SITE_POTENTIAL_PACK_SIZE } from "./config";
-import type { SitePotentialMode } from "./types";
+import type { SitePotentialMode } from "./runtimeTypes";
 
 export type DesignPackItemStatus = "queued" | "generating" | "complete" | "failed" | "cancelled";
 

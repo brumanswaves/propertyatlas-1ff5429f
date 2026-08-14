@@ -5,6 +5,7 @@ import {
   SITE_POTENTIAL_PACK_SIZE,
 } from "./config";
 import { SITE_POTENTIAL_PROMPT_VERSION } from "./generationJobs";
+import { readServerEnv } from "./runtimeEnv";
 import {
   describeSitePotentialParcelContext,
   type SitePotentialParcelContext,
@@ -107,12 +108,12 @@ export function buildSitePotentialPrompt(input: SitePotentialPromptInput, option
 }
 
 export function openAiImageModelFromEnv() {
-  return process.env.OPENAI_IMAGE_MODEL || SITE_POTENTIAL_DEFAULT_IMAGE_MODEL;
+  return readServerEnv("OPENAI_IMAGE_MODEL") || SITE_POTENTIAL_DEFAULT_IMAGE_MODEL;
 }
 
 export function openAiImageQualityFromEnv() {
   const value = String(
-    process.env.OPENAI_IMAGE_QUALITY || SITE_POTENTIAL_DEFAULT_IMAGE_QUALITY,
+    readServerEnv("OPENAI_IMAGE_QUALITY") || SITE_POTENTIAL_DEFAULT_IMAGE_QUALITY,
   ).toLowerCase();
   return value === "low" || value === "high" || value === "auto" ? value : "medium";
 }
@@ -128,12 +129,12 @@ export interface OpenAiImageRequestOptions {
 }
 
 function openAiOutputFormat() {
-  const configured = String(process.env.OPENAI_IMAGE_OUTPUT_FORMAT ?? "png").toLowerCase();
+  const configured = String(readServerEnv("OPENAI_IMAGE_OUTPUT_FORMAT") ?? "png").toLowerCase();
   return configured === "jpeg" || configured === "webp" ? configured : "png";
 }
 
 function openAiImageSize() {
-  return process.env.OPENAI_IMAGE_SIZE || SITE_POTENTIAL_DEFAULT_IMAGE_SIZE;
+  return readServerEnv("OPENAI_IMAGE_SIZE") || SITE_POTENTIAL_DEFAULT_IMAGE_SIZE;
 }
 
 function isTransientOpenAiStatus(status: number) {
@@ -239,7 +240,7 @@ export async function requestImageGenerationWithOpenAI(
   prompt: string,
   options: OpenAiImageRequestOptions = {},
 ) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = readServerEnv("OPENAI_API_KEY");
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
@@ -298,7 +299,7 @@ export async function requestImageEditWithOpenAI(
   references: ImageEditReference | ImageEditReference[],
   options: OpenAiImageRequestOptions = {},
 ) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = readServerEnv("OPENAI_API_KEY");
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured.");
   }
