@@ -1,0 +1,42 @@
+name: Verify Site Potential client transport
+
+on:
+  push:
+    branches:
+      - codex/founder-site-potential-client-transport
+    paths:
+      - .github/workflows/verify-site-potential-client-transport.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/founder-site-potential-client-transport
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run Site Potential transport tests
+        run: >-
+          npx vitest run
+          src/lib/sitePotential/__tests__/sitePotentialApiClient.test.ts
+          src/lib/sitePotential/__tests__/sitePotentialEdgeApi.test.ts
+
+      - name: Run full test suite
+        run: npx vitest run
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check stacked patch whitespace
+        run: git diff --check ae14150d1bb099fe4779c15ddc72a68c5d11da17 HEAD
