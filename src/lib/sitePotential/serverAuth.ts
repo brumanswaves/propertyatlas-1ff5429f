@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { readServerEnv } from "./runtimeEnv";
 
 export class ApiRequestError extends Error {
   constructor(
@@ -12,7 +13,7 @@ export class ApiRequestError extends Error {
 }
 
 function serverSupabaseUrl() {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = readServerEnv("SUPABASE_URL");
   if (!supabaseUrl) {
     throw new ApiRequestError("Supabase server environment is not configured.", 500);
   }
@@ -20,7 +21,9 @@ function serverSupabaseUrl() {
 }
 
 export async function authenticateApiRequest(request: Request) {
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  // Supabase Edge Functions expose the publishable key as SUPABASE_ANON_KEY.
+  const publishableKey =
+    readServerEnv("SUPABASE_PUBLISHABLE_KEY") ?? readServerEnv("SUPABASE_ANON_KEY");
   if (!publishableKey) {
     throw new ApiRequestError("Supabase server environment is not configured.", 500);
   }
@@ -43,7 +46,7 @@ export async function authenticateApiRequest(request: Request) {
 }
 
 export function createServiceRoleSupabaseClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) {
     throw new ApiRequestError("Trusted Supabase service role is not configured.", 500);
   }
