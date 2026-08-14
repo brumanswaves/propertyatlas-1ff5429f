@@ -30,11 +30,13 @@ describe("founder-owned Site Potential API", () => {
   it("keeps the Edge wrapper secret-safe and founder-owned", () => {
     const edge = read("supabase/functions/site-potential-api/index.ts");
     const handler = read("src/lib/sitePotential/edgeApiRequest.ts");
+    const bundle = read("supabase/functions/site-potential-api/handler.bundle.mjs");
 
     expect(edge).toContain("vault.decrypted_secrets");
     expect(edge).toContain("easy_erf_site_potential_beta_enabled");
     expect(edge).toContain("easy_erf_site_potential_worker_secret");
-    expect(edge).toContain("API_SOURCE_REVISION");
+    expect(edge).toContain("handler.bundle.mjs");
+    expect(edge).toContain("66640ce499f5be9bab1385e2edb8fb6c29b5b083");
     expect(edge).not.toContain("erfstoep.lovable.app");
     expect(edge).not.toContain("SUPABASE_SERVICE_ROLE_KEY=");
     expect(edge).not.toContain("SITE_POTENTIAL_WORKER_SECRET=");
@@ -44,5 +46,9 @@ describe("founder-owned Site Potential API", () => {
     expect(handler).toContain('case "pack-status"');
     expect(handler).toContain('case "retry-pack"');
     expect(handler).not.toContain("process.env");
+
+    expect(bundle).toContain("GENERATED from src/lib/sitePotential/edgeApiRequest.ts");
+    expect(bundle).toContain("handleSitePotentialEdgeApiRequest");
+    expect(bundle).not.toContain("erfstoep.lovable.app");
   });
 });
