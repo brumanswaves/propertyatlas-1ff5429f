@@ -5,6 +5,7 @@ import {
 import { processSitePotentialGenerationQueue } from "./generationWorker";
 import { sanitizedGenerationError } from "./generationJobs";
 import { createServiceRoleSupabaseClient } from "./serverAuth";
+import { readServerEnv } from "./runtimeEnv";
 
 export const SITE_POTENTIAL_WORKER_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ export const SITE_POTENTIAL_WORKER_CORS_HEADERS = {
 } as const;
 
 export async function handleProcessSitePotentialRequest(request: Request) {
-  if (process.env.SITE_POTENTIAL_WORKER_ENABLED !== "true") {
+  if (readServerEnv("SITE_POTENTIAL_WORKER_ENABLED") !== "true") {
     return json({ success: false, error: "Site Potential worker is disabled." }, 403);
   }
   if (!isAuthorizedWorker(request)) {
@@ -53,7 +54,7 @@ function publicWorkerError(error: unknown) {
 }
 
 function isAuthorizedWorker(request: Request) {
-  const expected = process.env.SITE_POTENTIAL_WORKER_SECRET;
+  const expected = readServerEnv("SITE_POTENTIAL_WORKER_SECRET");
   if (!expected) return false;
   const explicit = request.headers.get("x-site-potential-worker-secret");
   const authorization = request.headers.get("authorization") ?? "";
