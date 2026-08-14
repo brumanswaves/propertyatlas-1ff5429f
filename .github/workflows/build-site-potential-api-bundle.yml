@@ -20,15 +20,9 @@ jobs:
           ref: codex/founder-site-potential-api
           fetch-depth: 0
 
-      - name: Confirm Node.js
-        run: node --version
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Bundle founder-owned Site Potential API handler
         run: |
-          npx esbuild src/lib/sitePotential/edgeApiRequest.ts \
+          npx --yes esbuild@0.25.11 src/lib/sitePotential/edgeApiRequest.ts \
             --bundle \
             --format=esm \
             --platform=neutral \
