@@ -14,12 +14,19 @@ type ApiModule = {
   handleSitePotentialEdgeApiRequest(request: Request): Promise<Response>;
 };
 
+class StartupError extends Error {
+  constructor(public readonly code: "RUNTIME_ENV" | "VAULT_LOAD" | "BUNDLE_IMPORT") {
+    super(code);
+    this.name = "StartupError";
+  }
+}
+
 // Pin the generated handler artifact to the exact reviewed branch revision.
 const API_BUNDLE_REVISION = "66640ce499f5be9bab1385e2edb8fb6c29b5b083";
 
 async function loadApiModule(): Promise<ApiModule> {
   const dbUrl = Deno.env.get("SUPABASE_DB_URL");
-  if (!dbUrl) throw new Error("Supabase database runtime is unavailable.");
+  if (!dbUrl) throw new StartupError("RUNTIME_ENV");
 
   const sql = postgres(dbUrl, {
     max: 1,
@@ -29,46 +36,56 @@ async function loadApiModule(): Promise<ApiModule> {
   });
 
   try {
-    const rows = await sql`
-      select name, decrypted_secret
-      from vault.decrypted_secrets
-      where name in (
-        'easy_erf_openai_api_key',
-        'easy_erf_site_potential_beta_admin_allowlist',
-        'easy_erf_site_potential_beta_enabled',
-        'easy_erf_site_potential_dev_entitlements',
-        'easy_erf_site_potential_generation_enabled',
-        'easy_erf_site_potential_worker_enabled',
-        'easy_erf_site_potential_worker_secret'
-      )
-    `;
-    const values = new Map(
-      rows.map((row) => [String(row.name), String(row.decrypted_secret ?? "")]),
-    );
-    const runtime: Record<string, string | undefined> = {
-      NODE_ENV: "production",
-    };
-    const mappings = [
-      ["easy_erf_openai_api_key", "OPENAI_API_KEY"],
-      ["easy_erf_site_potential_beta_admin_allowlist", "SITE_POTENTIAL_BETA_ADMIN_ALLOWLIST"],
-      ["easy_erf_site_potential_beta_enabled", "SITE_POTENTIAL_BETA_ENABLED"],
-      ["easy_erf_site_potential_dev_entitlements", "SITE_POTENTIAL_DEV_ENTITLEMENTS"],
-      ["easy_erf_site_potential_generation_enabled", "SITE_POTENTIAL_GENERATION_ENABLED"],
-      ["easy_erf_site_potential_worker_enabled", "SITE_POTENTIAL_WORKER_ENABLED"],
-      ["easy_erf_site_potential_worker_secret", "SITE_POTENTIAL_WORKER_SECRET"],
-    ] as const;
-    for (const [vaultName, envName] of mappings) {
-      const value = values.get(vaultName) ?? "";
-      if (value) runtime[envName] = value;
+    try {
+      const rows = await sql`
+        select name, decrypted_secret
+        from vault.decrypted_secrets
+        where name in (
+          'easy_erf_openai_api_key',
+          'easy_erf_site_potential_beta_admin_allowlist',
+          'easy_erf_site_potential_beta_enabled',
+          'easy_erf_site_potential_dev_entitlements',
+          'easy_erf_site_potential_generation_enabled',
+          'easy_erf_site_potential_worker_enabled',
+          'easy_erf_site_potential_worker_secret'
+        )
+      `;
+      const values = new Map(
+        rows.map((row) => [String(row.name), String(row.decrypted_secret ?? "")]),
+      );
+      const runtime: Record<string, string | undefined> = {
+        NODE_ENV: "production",
+      };
+      const mappings = [
+        ["easy_erf_openai_api_key", "OPENAI_API_KEY"],
+        ["easy_erf_site_potential_beta_admin_allowlist", "SITE_POTENTIAL_BETA_ADMIN_ALLOWLIST"],
+        ["easy_erf_site_potential_beta_enabled", "SITE_POTENTIAL_BETA_ENABLED"],
+        ["easy_erf_site_potential_dev_entitlements", "SITE_POTENTIAL_DEV_ENTITLEMENTS"],
+        ["easy_erf_site_potential_generation_enabled", "SITE_POTENTIAL_GENERATION_ENABLED"],
+        ["easy_erf_site_potential_worker_enabled", "SITE_POTENTIAL_WORKER_ENABLED"],
+        ["easy_erf_site_potential_worker_secret", "SITE_POTENTIAL_WORKER_SECRET"],
+      ] as const;
+      for (const [vaultName, envName] of mappings) {
+        const value = values.get(vaultName) ?? "";
+        if (value) runtime[envName] = value;
+      }
+      (globalThis as RuntimeGlobal).__EASY_ERF_RUNTIME_ENV__ = runtime;
+    } catch (error) {
+      console.error("Site Potential API Vault load failed", error);
+      throw new StartupError("VAULT_LOAD");
     }
-    (globalThis as RuntimeGlobal).__EASY_ERF_RUNTIME_ENV__ = runtime;
   } finally {
     await sql.end({ timeout: 1 }).catch(() => {});
   }
 
-  return import(
-    `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${API_BUNDLE_REVISION}/supabase/functions/site-potential-api/handler.bundle.mjs`
-  );
+  try {
+    return await import(
+      `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${API_BUNDLE_REVISION}/supabase/functions/site-potential-api/handler.bundle.mjs`
+    );
+  } catch (error) {
+    console.error("Site Potential API bundle import failed", error);
+    throw new StartupError("BUNDLE_IMPORT");
+  }
 }
 
 const apiModulePromise = loadApiModule();
@@ -87,6 +104,7 @@ Deno.serve(async (request: Request) => {
       JSON.stringify({
         success: false,
         error: "Site Potential service is temporarily unavailable.",
+        startupCode: error instanceof StartupError ? error.code : "HANDLER_STARTUP",
       }),
       {
         status: 500,
