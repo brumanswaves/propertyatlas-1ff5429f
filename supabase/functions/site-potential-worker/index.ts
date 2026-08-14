@@ -1,27 +1,19 @@
 import postgres from "npm:postgres@3.4.7";
 
-type RuntimeGlobal = typeof globalThis & {
-  __EASY_ERF_RUNTIME_ENV__?: Record<string, string | undefined>;
-};
-
-type WorkerModule = typeof import("../../../src/lib/sitePotential/processWorkerRequest.ts");
-
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Site-Potential-Worker-Secret",
 };
 
-const VAULT_ENV_MAPPING = [
-  ["easy_erf_openai_api_key", "OPENAI_API_KEY"],
-  ["easy_erf_openai_image_model", "OPENAI_IMAGE_MODEL"],
-  ["easy_erf_openai_image_output_format", "OPENAI_IMAGE_OUTPUT_FORMAT"],
-  ["easy_erf_openai_image_quality", "OPENAI_IMAGE_QUALITY"],
-  ["easy_erf_openai_image_size", "OPENAI_IMAGE_SIZE"],
-  ["easy_erf_site_potential_generation_enabled", "SITE_POTENTIAL_GENERATION_ENABLED"],
-  ["easy_erf_site_potential_worker_enabled", "SITE_POTENTIAL_WORKER_ENABLED"],
-  ["easy_erf_site_potential_worker_secret", "SITE_POTENTIAL_WORKER_SECRET"],
-] as const;
+type WorkerModule = {
+  handleProcessSitePotentialRequest(request: Request): Promise<Response>;
+};
+type RuntimeGlobal = typeof globalThis & {
+  __EASY_ERF_RUNTIME_ENV__?: Record<string, string | undefined>;
+};
+
+const WORKER_SOURCE_REVISION = "692c040ea1be2488c832071e0e129474a490d9c7";
 
 async function loadWorkerModule(): Promise<WorkerModule> {
   const dbUrl = Deno.env.get("SUPABASE_DB_URL");
@@ -35,17 +27,35 @@ async function loadWorkerModule(): Promise<WorkerModule> {
   });
 
   try {
-    const vaultNames = VAULT_ENV_MAPPING.map(([vaultName]) => vaultName);
     const rows = await sql`
       select name, decrypted_secret
       from vault.decrypted_secrets
-      where name = any(${vaultNames})
+      where name in (
+        'easy_erf_openai_api_key',
+        'easy_erf_openai_image_model',
+        'easy_erf_openai_image_output_format',
+        'easy_erf_openai_image_quality',
+        'easy_erf_openai_image_size',
+        'easy_erf_site_potential_generation_enabled',
+        'easy_erf_site_potential_worker_enabled',
+        'easy_erf_site_potential_worker_secret'
+      )
     `;
     const values = new Map(
       rows.map((row) => [String(row.name), String(row.decrypted_secret ?? "")]),
     );
     const runtime: Record<string, string | undefined> = {};
-    for (const [vaultName, envName] of VAULT_ENV_MAPPING) {
+    const mappings = [
+      ["easy_erf_openai_api_key", "OPENAI_API_KEY"],
+      ["easy_erf_openai_image_model", "OPENAI_IMAGE_MODEL"],
+      ["easy_erf_openai_image_output_format", "OPENAI_IMAGE_OUTPUT_FORMAT"],
+      ["easy_erf_openai_image_quality", "OPENAI_IMAGE_QUALITY"],
+      ["easy_erf_openai_image_size", "OPENAI_IMAGE_SIZE"],
+      ["easy_erf_site_potential_generation_enabled", "SITE_POTENTIAL_GENERATION_ENABLED"],
+      ["easy_erf_site_potential_worker_enabled", "SITE_POTENTIAL_WORKER_ENABLED"],
+      ["easy_erf_site_potential_worker_secret", "SITE_POTENTIAL_WORKER_SECRET"],
+    ] as const;
+    for (const [vaultName, envName] of mappings) {
       const value = values.get(vaultName) ?? "";
       if (value) runtime[envName] = value;
     }
@@ -54,7 +64,9 @@ async function loadWorkerModule(): Promise<WorkerModule> {
     await sql.end({ timeout: 1 }).catch(() => {});
   }
 
-  return import("../../../src/lib/sitePotential/processWorkerRequest.ts");
+  return import(
+    `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${WORKER_SOURCE_REVISION}/src/lib/sitePotential/processWorkerRequest.ts`
+  );
 }
 
 const workerModulePromise = loadWorkerModule();
