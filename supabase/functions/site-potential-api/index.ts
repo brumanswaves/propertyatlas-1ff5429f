@@ -1,4 +1,5 @@
 import postgres from "npm:postgres@3.4.7";
+import { handleSitePotentialEdgeApiRequest } from "https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/66640ce499f5be9bab1385e2edb8fb6c29b5b083/supabase/functions/site-potential-api/handler.bundle.mjs";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -10,21 +11,14 @@ type RuntimeGlobal = typeof globalThis & {
   __EASY_ERF_RUNTIME_ENV__?: Record<string, string | undefined>;
 };
 
-type ApiModule = {
-  handleSitePotentialEdgeApiRequest(request: Request): Promise<Response>;
-};
-
 class StartupError extends Error {
-  constructor(public readonly code: "RUNTIME_ENV" | "VAULT_LOAD" | "BUNDLE_IMPORT") {
+  constructor(public readonly code: "RUNTIME_ENV" | "VAULT_LOAD") {
     super(code);
     this.name = "StartupError";
   }
 }
 
-// Pin the generated handler artifact to the exact reviewed branch revision.
-const API_BUNDLE_REVISION = "66640ce499f5be9bab1385e2edb8fb6c29b5b083";
-
-async function loadApiModule(): Promise<ApiModule> {
+async function loadRuntimeConfiguration() {
   const dbUrl = Deno.env.get("SUPABASE_DB_URL");
   if (!dbUrl) throw new StartupError("RUNTIME_ENV");
 
@@ -77,18 +71,9 @@ async function loadApiModule(): Promise<ApiModule> {
   } finally {
     await sql.end({ timeout: 1 }).catch(() => {});
   }
-
-  try {
-    return await import(
-      `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${API_BUNDLE_REVISION}/supabase/functions/site-potential-api/handler.bundle.mjs`
-    );
-  } catch (error) {
-    console.error("Site Potential API bundle import failed", error);
-    throw new StartupError("BUNDLE_IMPORT");
-  }
 }
 
-const apiModulePromise = loadApiModule();
+const runtimeConfigurationPromise = loadRuntimeConfiguration();
 
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") {
@@ -96,8 +81,8 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const apiModule = await apiModulePromise;
-    return apiModule.handleSitePotentialEdgeApiRequest(request);
+    await runtimeConfigurationPromise;
+    return handleSitePotentialEdgeApiRequest(request);
   } catch (error) {
     console.error("Site Potential API startup failed", error);
     return new Response(
