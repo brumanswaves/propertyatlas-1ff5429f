@@ -15,7 +15,7 @@ type ApiModule = {
 };
 
 // Pin the shared handler source that this deployed wrapper was reviewed against.
-const API_SOURCE_REVISION = "dd57de8c34e56097a556493c6d5b8bed866ac906";
+const API_SOURCE_REVISION = "da719dbf897ad223cd8bfe2efa6f66aedc2c7b33";
 
 async function loadApiModule(): Promise<ApiModule> {
   const dbUrl = Deno.env.get("SUPABASE_DB_URL");
