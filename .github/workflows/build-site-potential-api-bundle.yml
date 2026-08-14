@@ -33,7 +33,7 @@ jobs:
 
       - name: Commit generated bundle
         run: |
-          if git diff --quiet -- supabase/functions/site-potential-api/handler.bundle.mjs; then
+          if [ -z "$(git status --porcelain -- supabase/functions/site-potential-api/handler.bundle.mjs)" ]; then
             echo "Bundle already current."
             exit 0
           fi
