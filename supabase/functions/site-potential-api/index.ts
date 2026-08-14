@@ -14,8 +14,8 @@ type ApiModule = {
   handleSitePotentialEdgeApiRequest(request: Request): Promise<Response>;
 };
 
-// Pin the shared handler source that this deployed wrapper was reviewed against.
-const API_SOURCE_REVISION = "da719dbf897ad223cd8bfe2efa6f66aedc2c7b33";
+// Pin the generated handler artifact to the exact reviewed branch revision.
+const API_BUNDLE_REVISION = "66640ce499f5be9bab1385e2edb8fb6c29b5b083";
 
 async function loadApiModule(): Promise<ApiModule> {
   const dbUrl = Deno.env.get("SUPABASE_DB_URL");
@@ -67,7 +67,7 @@ async function loadApiModule(): Promise<ApiModule> {
   }
 
   return import(
-    `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${API_SOURCE_REVISION}/src/lib/sitePotential/edgeApiRequest.ts`
+    `https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/${API_BUNDLE_REVISION}/supabase/functions/site-potential-api/handler.bundle.mjs`
   );
 }
 
