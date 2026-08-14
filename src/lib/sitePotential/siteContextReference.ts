@@ -1,7 +1,18 @@
-import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { ImageEditReference } from "./generation";
 import type { SitePotentialParcelContext } from "./parcelContext";
 import { readServerEnv } from "./runtimeEnv";
+
+type Position = number[];
+type PolygonGeometry = { type: "Polygon"; coordinates: Position[][] };
+type MultiPolygonGeometry = { type: "MultiPolygon"; coordinates: Position[][][] };
+type OtherGeometry = { type: string; [key: string]: unknown };
+type Geometry = PolygonGeometry | MultiPolygonGeometry | OtherGeometry;
+type Feature = {
+  type: "Feature";
+  geometry: Geometry;
+  properties?: Record<string, unknown> | null;
+};
+type FeatureCollection = { features?: Feature[] };
 
 const KOUGA_PARCEL_QUERY =
   "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/arcgis/rest/services/Kouga_SG_Properties/FeatureServer/32/query";
@@ -71,7 +82,7 @@ async function fetchParcelFeature(context: SitePotentialParcelContext) {
   }
 }
 
-function thinRing(ring: number[][], limit = 100) {
+function thinRing(ring: Position[], limit = 100) {
   if (ring.length <= limit) return ring;
   const step = Math.ceil(ring.length / limit);
   const thinned = ring.filter((_, index) => index % step === 0);
@@ -83,12 +94,16 @@ function thinRing(ring: number[][], limit = 100) {
 
 function thinGeometry(geometry: Geometry): Geometry {
   if (geometry.type === "Polygon") {
-    return { ...geometry, coordinates: geometry.coordinates.map((ring) => thinRing(ring)) };
+    const polygon = geometry as PolygonGeometry;
+    return { ...polygon, coordinates: polygon.coordinates.map((ring) => thinRing(ring)) };
   }
   if (geometry.type === "MultiPolygon") {
+    const multiPolygon = geometry as MultiPolygonGeometry;
     return {
-      ...geometry,
-      coordinates: geometry.coordinates.map((polygon) => polygon.map((ring) => thinRing(ring))),
+      ...multiPolygon,
+      coordinates: multiPolygon.coordinates.map((polygon) =>
+        polygon.map((ring) => thinRing(ring)),
+      ),
     };
   }
   return geometry;
