@@ -4,14 +4,22 @@
 //   - the TanStack Start server runtime (process.env)
 //   - Supabase Edge Functions / Deno (Deno.env.get)
 //
-// Nothing here is browser code: every caller is a server route handler, a
-// trusted worker, or an Edge Function handler. Values are read at CALL time,
-// never at module scope, because both runtimes bind env per request.
+// Supabase Edge Functions may hydrate encrypted Vault values into the
+// in-memory override map before loading the worker module. Nothing here is
+// browser code and no secret value is persisted by this helper.
 
 type EnvRecord = Record<string, string | undefined>;
 
+type EasyErfRuntimeGlobal = typeof globalThis & {
+  __EASY_ERF_RUNTIME_ENV__?: EnvRecord;
+};
+
 interface DenoLike {
   env?: { get(key: string): string | undefined };
+}
+
+function overrideEnv(key: string) {
+  return (globalThis as EasyErfRuntimeGlobal).__EASY_ERF_RUNTIME_ENV__?.[key];
 }
 
 function denoEnv(key: string) {
@@ -20,7 +28,6 @@ function denoEnv(key: string) {
   try {
     return runtime.env.get(key);
   } catch {
-    // Deno without --allow-env: treat as unset rather than crashing.
     return undefined;
   }
 }
@@ -30,9 +37,9 @@ function processEnv(key: string) {
   return runtime?.env?.[key];
 }
 
-/** Reads one server environment variable in either supported runtime. */
+/** Reads one server environment value in any supported trusted runtime. */
 export function readServerEnv(key: string): string | undefined {
-  return denoEnv(key) ?? processEnv(key);
+  return overrideEnv(key) ?? denoEnv(key) ?? processEnv(key);
 }
 
 /**
@@ -45,10 +52,6 @@ export function readServerEnvRecord<K extends string>(keys: readonly K[]) {
   return snapshot as Record<K, string | undefined>;
 }
 
-/**
- * Environment keys Site Potential server code inspects for entitlement and
- * runtime-readiness decisions.
- */
 export const SITE_POTENTIAL_ENV_KEYS = [
   "SITE_POTENTIAL_BETA_ENABLED",
   "SITE_POTENTIAL_BETA_ADMIN_ALLOWLIST",
@@ -62,13 +65,6 @@ export const SITE_POTENTIAL_ENV_KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
-/**
- * Runtime-neutral replacement for `process.env` in Site Potential server
- * handlers. Entitlement rules are unchanged: identical key values produce
- * identical decisions. Supabase Edge Functions expose the publishable key as
- * SUPABASE_ANON_KEY, so that is accepted as a fallback for
- * SUPABASE_PUBLISHABLE_KEY only.
- */
 export function sitePotentialServerEnv() {
   const snapshot = readServerEnvRecord(SITE_POTENTIAL_ENV_KEYS);
   return {
