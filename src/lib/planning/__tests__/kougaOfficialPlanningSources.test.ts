@@ -18,6 +18,16 @@ describe("Kouga official planning source metadata", () => {
     expect(sourceIds).toContain("kouga-st-francis-bay-town-zoning-plan-2020-12");
   });
 
+  it("uses stable direct municipal PDF URLs for the verified scheme and town plan", () => {
+    expect(registry).not.toBeNull();
+    expect(findPlanningSource(registry!, "kouga-land-use-scheme-2021")?.url).toBe(
+      "https://www.kouga.gov.za/download/4539",
+    );
+    expect(
+      findPlanningSource(registry!, "kouga-st-francis-bay-town-zoning-plan-2020-12")?.url,
+    ).toBe("https://www.kouga.gov.za/download/4531");
+  });
+
   it("records the official St Francis Bay zoning-plan artifact without claiming parcel zoning", () => {
     expect(registry).not.toBeNull();
     const source = findPlanningSource(
@@ -34,13 +44,14 @@ describe("Kouga official planning source metadata", () => {
     expect(canAttemptOfficialZoningDetection(registry)).toBe(false);
   });
 
-  it("keeps the unparsed RES1 numbers review-required", () => {
+  it("promotes the verified RES1 definition and rules to cited published evidence", () => {
     expect(registry).not.toBeNull();
     const zone = findZone(registry!, "RES1");
 
-    expect(zone?.status).toBe("manual_candidate");
+    expect(zone?.status).toBe("active");
     expect(zone?.rules.length).toBeGreaterThan(0);
-    expect(zone?.rules.every((rule) => rule.status === "manual_candidate")).toBe(true);
-    expect(zone?.rules.every((rule) => rule.citation == null)).toBe(true);
+    expect(zone?.rules.every((rule) => rule.status === "active")).toBe(true);
+    expect(zone?.rules.every((rule) => rule.citation?.includes("section 25"))).toBe(true);
+    expect(zone?.summary).toMatch(/not evidence that a particular erf is zoned RES1/i);
   });
 });
