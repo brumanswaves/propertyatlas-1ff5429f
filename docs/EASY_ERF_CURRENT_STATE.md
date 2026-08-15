@@ -1,6 +1,6 @@
 # Easy Erf Current State
 
-Baseline: 2026-08-13, GitHub `main` at `5a494001b3f5f9a680596d74a55b17b92c69d3c1` after merged PR #86.
+Baseline: 2026-08-15, GitHub `main` at `fcddd9eed8a0951e4d10c88eeaf8efb4da3c9b44` after merged PR #94.
 
 ## Current MVP objective
 
@@ -39,6 +39,7 @@ Property First Read, Guided Investigation, the expert Dossier and the Easy Erf R
 - Readable SG/title/paid documents preserved when automatic identity binding needs confirmation, with user-confirmed evidence kept distinct from official evidence.
 - Paid-report purchase pathways for Lightstone and WinDeed, with external payment positioning and outbound-intent tracking.
 - Kouga planning registry resolution and free Site Potential allowance handling for the Guided MVP path.
+- A rollback-safe direct Supabase Google OAuth path exists behind `VITE_FOUNDER_SUPABASE_AUTH`; production remains on the current Lovable auth path until the founder Supabase Google provider is enabled and verified.
 
 ## Recently completed significant work
 
@@ -50,13 +51,14 @@ Property First Read, Guided Investigation, the expert Dossier and the Easy Erf R
 - PR #61, merged 2026-08-08: Property First Read as the default zero-commit property entry.
 - PR #62, merged 2026-08-08: Ask Easy Erf in Property Overview, grounded in the canonical evidence pack and canonical next action.
 - PR #63, merged 2026-08-09: Erf 1570 MVP rescue, including atomic confirmation -> address progression, server address suggestions, document trust handling, paid-report purchase UX, Kouga resolution, Site Potential entitlement truthfulness and Strategy in Guided step 8.
-- PR #86, merged 2026-08-13: the latest main baseline for the canonical investigation and report integration work.
+- PR #86, merged 2026-08-13: canonical investigation and report integration baseline.
+- PR #94, merged 2026-08-15: rollback-safe founder Supabase Google auth bridge with current production behavior unchanged by default.
 
 ## Current weaknesses and blockers
 
-- The repository has strong automated coverage, but no local signed-in browser smoke command was available for the Erf 1570 journey.
+- Founder Supabase Google OAuth is not yet enabled, so PR #95 remains a gated frontend cutover rather than a production change.
 - The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration; code correctness alone does not prove live provider availability.
-- Site Potential generation is code-complete only when the required deployment/runtime flags, worker secret, provider key and Supabase server configuration are present; those settings are not part of the repository.
+- Site Potential generation depends on the required deployment/runtime flags, worker secret, provider key and Supabase server configuration.
 - Public-source and provider availability remain external dependencies. Missing or uncertain evidence must remain visible rather than being filled with demo values.
 - Older documents and UI/history still contain PropertyAtlas/ErfStoep-era names and roadmap language; they are historical context unless current main and the Master Plan say otherwise.
 
@@ -68,8 +70,24 @@ Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `Save
 
 Stronger cadastral retrieval, wider municipal/planning integrations, provider APIs, document-intelligence expansion, listing/comparable automation, environmental datasets, a robust deterministic build envelope, richer development/financial intelligence, risk scoring, property passport, monitoring, professional collaboration, transaction rooms, portfolio tools, marketplace/fulfilment, enterprise APIs, additional municipalities, national coverage, Earth-observation intelligence and international expansion remain roadmap work.
 
+## Autonomous investigation state
+
+Planning Investigation Job V1 is the first implementation tranche of Easy Erf's autonomous property-investigation direction. The job is derived from canonical planning state plus the property evidence graph and is first surfaced in the Guided zoning step. It reports sources reviewed, findings, confidence, contradictions, unresolved evidence and the next investigation.
+
+No database schema change is required for V1. Manual working zoning still requires explicit confirmation, and published scheme rules remain distinct from property-specific rights. Dossier and Report continue consuming the same canonical planning assessment and evidence pack, so the job does not create a competing state store.
+
+Canonical regression coverage uses Erf 1570, Portion 0, Sea Vista, Kouga. The implementation branch for PR #96 has passed focused tests, the full test suite, TypeScript, targeted ESLint, production build and whitespace checks.
+
+### Real-source validation, 2026-08-15
+
+Independent source validation against Kouga Municipality confirmed that the municipality currently publishes a Land Use Scheme adoption record, planning/development guidance, and a St Francis Bay town zoning plan in its document library. These are credible municipal planning sources that support Easy Erf's source-registry direction.
+
+The validation also confirmed the important V1 limitation: Easy Erf does not yet have a verified parcel-specific adapter that correlates the published St Francis Bay zoning plan to the selected canonical parcel automatically. Therefore Planning Investigation V1 must continue to label configured/published scheme material separately from property-specific zoning proof and must not claim live parcel zoning detection.
+
+The highest-value next planning automation after V1 is to test a narrow Kouga/St Francis property-specific planning-source adapter before attempting generic national browser automation.
+
+See `docs/EASY_ERF_AGENT_JOBS_V1.md`.
+
 ## Recommended Next Best Project Action
 
-Run one signed-in review-environment smoke from exact search through Report with the required Google Places and Site Potential runtime configuration, then fix only defects found in that canonical journey.
-
-Why next: PR #63 has closed the known code-path failures and added the missing Strategy and address plumbing. A real signed-in smoke is now the highest-value check before expanding automation or adding new product surfaces.
+Finish review of PR #96 and, once merged, validate the Planning Investigation panel in the signed-in Erf 1570 Guided zoning step. In parallel, keep PR #95 gated until founder Supabase Google OAuth is enabled. After the first planning-job UI smoke, prototype the cheapest credible Kouga/St Francis property-specific zoning-source correlation and measure whether it materially improves the investigation.
