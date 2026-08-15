@@ -298,6 +298,7 @@ describe("Site Potential private beta entitlements", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
     const statusRequest = read("src/lib/sitePotential/betaStatusRequest.ts");
     const progress = read("src/lib/sitePotential/generationProgress.ts");
+    const apiClient = read("src/lib/sitePotential/sitePotentialApiClient.ts");
 
     expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
     expect(tab).toContain("Three site-grounded concepts");
@@ -330,9 +331,12 @@ describe("Site Potential private beta entitlements", () => {
     expect(tab).toContain("setImageUrl(null);");
     expect(tab).not.toContain("Use selected concept in Strategy");
     expect(tab).not.toContain("onOpenStrategy");
-    expect(tab).toContain("/api/site-potential/beta-redeem");
-    expect(tab).toContain("/api/site-potential/pack-status");
-    expect(tab).toContain("/api/site-potential/retry-pack");
+    expect(tab).toContain("fetchSitePotentialApi");
+    expect(apiClient).toContain('"beta-redeem"');
+    expect(apiClient).toContain('"pack-status"');
+    expect(apiClient).toContain('"retry-pack"');
+    expect(apiClient).toContain("VITE_SITE_POTENTIAL_EDGE_API");
+    expect(apiClient).toContain('`/api/site-potential/${input.route}`');
     expect(tab).toContain("Site Potential generation progress");
     expect(progress).toContain("Waiting for generator");
     expect(progress).toContain("Waiting for the image generator to start.");
