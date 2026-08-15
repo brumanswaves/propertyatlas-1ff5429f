@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
+  FounderOperationsJobsResponse,
   FounderSupportSearchResponse,
   FounderSupportUserResponse,
 } from "./founderSupportTypes";
@@ -34,4 +35,8 @@ export async function readFounderSupportUser(userId: string) {
   return supportRequest<FounderSupportUserResponse>(
     `/api/admin/support?mode=user&userId=${encodeURIComponent(userId)}`,
   );
+}
+
+export async function readFounderOperationsJobs() {
+  return supportRequest<FounderOperationsJobsResponse>("/api/admin/support?mode=jobs");
 }
