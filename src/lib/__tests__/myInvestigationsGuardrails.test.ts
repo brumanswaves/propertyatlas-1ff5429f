@@ -13,9 +13,13 @@ describe("My Investigations guardrails", () => {
     expect(dashboard).not.toContain("const NEXT_ACTIONS");
     expect(dashboard).not.toContain("pa.reportInterests.");
     expect(dashboard).not.toContain("Saved Research Dossiers");
+    expect(dashboard).not.toContain("Run calculator");
+    expect(dashboard).not.toContain("tab=calc");
     expect(dashboard).toContain("My Investigations");
     expect(dashboard).toContain("Continue Investigation");
     expect(dashboard).toContain("GUIDED_INVESTIGATION_STEPS");
+    expect(dashboard).toContain('withTab(href, "investigation")');
+    expect(dashboard).toContain('withTab(href, "stoep-report")');
   });
 
   it("uses the existing saved property row as the durable dashboard projection boundary", () => {
