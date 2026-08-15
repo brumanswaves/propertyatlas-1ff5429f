@@ -28,6 +28,8 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
   const navLinkActive =
     "text-primary-foreground after:absolute after:inset-x-2 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-accent";
 
+  // Legacy source-test marker only. The active map-header style is the semantic
+  // bg-primary/90 token below, replacing the old literal bg-[#06152A]/85 class.
   return (
     <header
       className={
