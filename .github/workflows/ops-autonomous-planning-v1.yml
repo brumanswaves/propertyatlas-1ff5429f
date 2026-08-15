@@ -1,0 +1,155 @@
+name: Wire and verify Planning Investigation V1
+
+on:
+  push:
+    branches:
+      - codex/autonomous-planning-investigation-v1
+    paths:
+      - .github/workflows/ops-autonomous-planning-v1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/autonomous-planning-investigation-v1
+          fetch-depth: 0
+
+      - name: Wire planning job into Guided Investigation and canonical docs
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          journey_path = Path('src/components/property/investigation/InvestigationJourney.tsx')
+          journey = journey_path.read_text()
+          if 'buildPlanningInvestigationJob' not in journey:
+              journey = journey.replace(
+                  'import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";\n',
+                  'import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";\nimport type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";\nimport { buildPlanningInvestigationJob } from "@/lib/investigation/planningInvestigationJob";\n'
+              )
+              journey = journey.replace(
+                  'import { GuidedZoningStep } from "./GuidedZoningStep";\n',
+                  'import { GuidedZoningStep } from "./GuidedZoningStep";\nimport { PlanningInvestigationPanel } from "./PlanningInvestigationPanel";\n'
+              )
+              journey = journey.replace(
+                  '  report: ReportViewModel;\n  chosenScenario: ErfStrategyScenario | null;\n',
+                  '  report: ReportViewModel;\n  planningAssessment: ParcelPlanningAssessment;\n  chosenScenario: ErfStrategyScenario | null;\n'
+              )
+              journey = journey.replace(
+                  '  report,\n  chosenScenario,\n',
+                  '  report,\n  planningAssessment,\n  chosenScenario,\n'
+              )
+              journey = journey.replace(
+                  '}: InvestigationJourneyProps) {\n  return (',
+                  '''}: InvestigationJourneyProps) {\n  const planningInvestigationJob = buildPlanningInvestigationJob({\n    property: {\n      parcelId: parcel.id,\n      erfNumber: parcel.erfNumber,\n      portion: parcel.portion,\n      lpi: parcel.lpi,\n      parcelKey: parcel.parcelKey,\n      municipality: parcel.municipality,\n      province: parcel.province,\n      suburbOrArea: parcel.suburbOrArea,\n      town: parcel.town,\n    },\n    planningAssessment,\n    evidencePack: report.evidencePack ?? null,\n  });\n\n  return ('''
+              )
+              journey = journey.replace(
+                  '          <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />',
+                  '''          <div className="space-y-4">\n            <PlanningInvestigationPanel job={planningInvestigationJob} />\n            <GuidedZoningStep\n              parcel={parcel}\n              onContinue={() => onSelectStep("property-checks")}\n            />\n          </div>'''
+              )
+              journey_path.write_text(journey)
+
+          home_path = Path('src/components/property/investigation/InvestigationHome.tsx')
+          home = home_path.read_text()
+          if 'planningAssessment={planning}' not in home:
+              home = home.replace(
+                  '        report={report}\n        chosenScenario={chosenScenario}\n',
+                  '        report={report}\n        planningAssessment={planning}\n        chosenScenario={chosenScenario}\n'
+              )
+              home_path.write_text(home)
+
+          master_path = Path('docs/EASY_ERF_MASTER_PLAN.md')
+          master = master_path.read_text()
+          master_marker = '## Autonomous property-investigation workforce'
+          if master_marker not in master:
+              master += '''\n\n## Autonomous property-investigation workforce\n\nEasy Erf is evolving from a collection of property information and AI features into a South Africa-specific autonomous property-investigation workforce. The user assigns understandable jobs while the product performs as much evidence-grounded work as the available tools and sources allow.\n\nThe first real job is **Investigate this property\'s planning position**. It reuses the canonical parcel, `ParcelPlanningAssessment`, municipality planning registries, uploaded evidence and `PropertyEvidencePack`. It returns a machine-readable Agent Job Contract V1 result with goal, inputs, context, tools, process, evidence, confidence, actions, approval rules, output and next job.\n\nV1 deliberately adds no new agent-memory or planning-results table. Guided Investigation, Dossier and Report remain interfaces over the same canonical planning and evidence state. A persisted investigation-run ledger is deferred until asynchronous continuation, audit history, professional review or API consumers prove the need.\n\nThe user-facing rule remains **One screen. One clear job.** Internal worker architecture is not exposed as fake personalities.\n\nSee `docs/EASY_ERF_AGENT_JOBS_V1.md`.\n'''
+              master_path.write_text(master)
+
+          state_path = Path('docs/EASY_ERF_CURRENT_STATE.md')
+          state = state_path.read_text()
+          state_marker = '## Autonomous investigation state'
+          if state_marker not in state:
+              state += '''\n\n## Autonomous investigation state\n\nPlanning Investigation Job V1 is the first implementation tranche of Easy Erf\'s autonomous property-investigation direction. The job is derived from canonical planning state plus the property evidence graph and is first surfaced in the Guided zoning step. It reports sources checked, findings, confidence, contradictions, unresolved evidence and the next investigation.\n\nNo database schema change is required for V1. Manual working zoning still requires explicit confirmation, and published scheme rules remain distinct from property-specific rights. Dossier and Report continue consuming the same canonical planning assessment and evidence pack, so the job does not create a competing state store.\n\nCanonical regression coverage uses Erf 1570, Portion 0, Sea Vista, Kouga. The current known limitation remains property-specific official planning evidence: the Kouga registry is useful, but no verified zoning-polygon adapter exists, so automatic parcel zoning detection must not be implied.\n\nSee `docs/EASY_ERF_AGENT_JOBS_V1.md`.\n'''
+              state_path.write_text(state)
+
+          decision_path = Path('docs/EASY_ERF_DECISION_LOG.md')
+          decision = decision_path.read_text()
+          decision_marker = '## EE-022 - Autonomous investigation jobs reuse canonical state'
+          if decision_marker not in decision:
+              decision += '''\n\n## EE-022 - Autonomous investigation jobs reuse canonical state\n\n- Date: 2026-08-15.\n- Decision: Easy Erf evolves toward a South Africa-specific autonomous property-investigation workforce built from real jobs, not agent personalities. The first job is Planning Investigation V1.\n- Rationale: Users should assign a property question and receive evidence-grounded work without learning a collection of disconnected tools. The product moat remains South African property identity, source reliability, planning reasoning, evidence relationships and trusted outputs.\n- Implementation: Agent Job Contract V1 is machine-readable and contains goal, inputs, context, tools, process, evidence, confidence, actions, approval rules, output and next job. Planning Investigation V1 derives its result from the canonical `ParcelPlanningAssessment` and `PropertyEvidencePack`, then surfaces it in the existing Guided zoning step.\n- Schema: No new agent-run or planning-result table for V1. Persisted run history is deferred until a proven workflow requires asynchronous continuation, immutable audit history, professional review or API history.\n- Approval rule: A manually selected working zone is never promoted to user-confirmed or municipal proof without the existing explicit confirmation. Published rules remain general scheme rules unless property-specific evidence supports a right.\n- Product boundary: Easy Erf remains South Africa-specific. Venture Compass and Deal Skeptic remain separate products; future interoperability may use the structured job contract but does not merge the products.\n- Do not regress: Do not create duplicate property state, duplicate confirmation ledgers, fake agent personas or prose-only conclusions that lose provenance.\n- Related: `docs/EASY_ERF_AGENT_JOBS_V1.md`, EE-020.\n'''
+              decision_path.write_text(decision)
+          PY
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format changed implementation files
+        run: >-
+          npx prettier --write
+          src/lib/investigation/agentJobContract.ts
+          src/lib/investigation/planningInvestigationJob.ts
+          src/lib/investigation/__tests__/planningInvestigationJob.test.ts
+          src/components/property/investigation/PlanningInvestigationPanel.tsx
+          src/components/property/investigation/__tests__/planningInvestigationPanel.test.tsx
+          src/components/property/investigation/InvestigationJourney.tsx
+          src/components/property/investigation/InvestigationHome.tsx
+
+      - name: Run focused planning investigation tests
+        run: >-
+          npx vitest run
+          src/lib/investigation/__tests__/planningInvestigationJob.test.ts
+          src/components/property/investigation/__tests__/planningInvestigationPanel.test.tsx
+          src/lib/planning/__tests__/parcelPlanningAssessment.test.ts
+          src/lib/evidence/__tests__/buildPropertyEvidencePack.test.ts
+
+      - name: Run full test suite
+        run: npx vitest run
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run targeted ESLint
+        run: >-
+          npx eslint
+          src/lib/investigation/agentJobContract.ts
+          src/lib/investigation/planningInvestigationJob.ts
+          src/lib/investigation/__tests__/planningInvestigationJob.test.ts
+          src/components/property/investigation/PlanningInvestigationPanel.tsx
+          src/components/property/investigation/__tests__/planningInvestigationPanel.test.tsx
+          src/components/property/investigation/InvestigationJourney.tsx
+          src/components/property/investigation/InvestigationHome.tsx
+          --rule 'prettier/prettier: off'
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Commit verified implementation
+        run: |
+          git config user.name "Easy Erf Build Driver"
+          git config user.email "brumanswaves@gmail.com"
+          git add \
+            src/lib/investigation/agentJobContract.ts \
+            src/lib/investigation/planningInvestigationJob.ts \
+            src/lib/investigation/__tests__/planningInvestigationJob.test.ts \
+            src/components/property/investigation/PlanningInvestigationPanel.tsx \
+            src/components/property/investigation/__tests__/planningInvestigationPanel.test.tsx \
+            src/components/property/investigation/InvestigationJourney.tsx \
+            src/components/property/investigation/InvestigationHome.tsx \
+            docs/EASY_ERF_AGENT_JOBS_V1.md \
+            docs/EASY_ERF_MASTER_PLAN.md \
+            docs/EASY_ERF_CURRENT_STATE.md \
+            docs/EASY_ERF_DECISION_LOG.md
+          if git diff --cached --quiet; then
+            echo "No additional patch to commit."
+          else
+            git commit -m "Build autonomous planning investigation V1"
+            git push origin HEAD:codex/autonomous-planning-investigation-v1
+          fi
