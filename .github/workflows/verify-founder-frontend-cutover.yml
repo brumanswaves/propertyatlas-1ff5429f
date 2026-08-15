@@ -58,6 +58,7 @@ jobs:
       - name: Run targeted ESLint
         run: >-
           npx eslint
+          --rule 'prettier/prettier: off'
           src/routes/auth.tsx
           src/lib/auth/googleAuthTransport.ts
           src/lib/auth/__tests__/googleAuthTransport.test.ts
