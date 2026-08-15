@@ -1,6 +1,6 @@
 # Easy Erf Current State
 
-Baseline entering trusted Founder support: 2026-08-15, GitHub `main` at `98adc515ff3c674d371911a09ee103bed2747846` after merged PR #103.
+Baseline entering Founder entitlement-history work: 2026-08-15, GitHub `main` at `9df0c1fa7ad6c5bf72684473272bffc040249e48` after merged PR #105.
 
 ## Current MVP objective
 
@@ -42,6 +42,8 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - Durable My Investigations dashboard derived from canonical investigation state.
 - Account experience with truthful identity, preferences, billing/access boundaries and admin-only Founder Operations entry.
 - Founder Operations V1 with real report-order/provider operational visibility, shared admin navigation and separated developer diagnostics.
+- Trusted Founder user support search/detail through a same-origin server boundary with existing `user_roles` admin authorization.
+- One controlled Founder support write: grant exactly one complimentary Site Potential beta credit for a recorded support reason, with acting admin stored in the existing entitlement record.
 
 ## Recently completed significant work
 
@@ -61,24 +63,31 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - PR #101: My Investigations dashboard rebuilt from durable canonical state.
 - PR #102: Profile rebuilt as truthful Account while retaining compatible routing.
 - PR #103: Founder Operations V1 replacing demo KPIs with real admin-readable operational data.
+- PR #104: trusted cross-user Founder support reads for users, properties, evidence processing, Site Potential, entitlements, report orders and provider errors.
+- PR #105: audited one-generation complimentary Site Potential grants through the existing beta-credit entitlement store.
 
-## Current Founder Operations support tranche
+## Current Founder Operations state
 
-PR #104 implements the first trusted cross-user support workflow without changing the current auth/backend cutover state.
+Founder Operations now extends the existing protected `/admin` architecture rather than running a parallel admin system.
 
-The design is deliberately read-only:
+Current operational capabilities:
 
-- admin searches users by email, name or exact user ID
-- the browser sends the current signed-in access token to a same-origin TanStack server route
-- the server authenticates the token and verifies the existing `user_roles` admin role
-- only after that check may the trusted server use its service-role Supabase client for bounded cross-user reads
-- the returned support record includes durable saved investigation state, evidence-processing status, Site Potential jobs/packs, Site Potential access, report orders and recent provider errors
-- storage paths, raw asset metadata, secrets and raw file contents are not returned
-- the support UI reuses `readSavedInvestigationProjection(...)`; it does not create a second investigation/progress engine
+- real report-order/provider overview
+- provider readiness and public-data diagnostics separated from normal operations
+- user search by email, name or exact user id
+- bounded customer support detail
+- durable saved-investigation position derived through `readSavedInvestigationProjection(...)`
+- evidence-processing status without exposing storage paths or raw file contents
+- Site Potential project/pack status
+- purchased and beta Site Potential access
+- report orders and recent provider errors
+- one controlled entitlement action: grant exactly one complimentary Site Potential generation for a required support reason
 
-This route works with the current pre-cutover frontend/auth path. It does not depend on or alter PR #95.
+The grant action uses the existing `site_potential_beta_credits` record, including `granted_by` and `reason`. It does not create another entitlement ledger and does not trigger Site Potential generation automatically.
 
-No refund, credit grant/restore, job retry, destructive repair or impersonation control is exposed yet. Those remain a later audited-mutation tranche.
+The current follow-up tranche exposes the existing beta-credit grant records as visible intervention history, including actor, reason, granted/used/remaining credits, expiry and timestamp. This improves support auditability without adding another write surface or migration.
+
+No refund, revoke, job retry, destructive repair or impersonation control is exposed.
 
 ## Design-system requirement
 
@@ -92,7 +101,8 @@ Founder Operations may use denser tables, logs and operational status, but typog
 - The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration.
 - Site Potential depends on required deployment/runtime configuration and provider availability.
 - Kouga planning sources are stronger, but Easy Erf still does not have a verified parcel-specific zoning adapter for the published St Francis Bay zoning plan.
-- Founder Operations support mutations still need an audited trusted action model before grants, restores, refunds, retries or repair controls are exposed.
+- Founder Operations job retry or destructive support repairs still need an appropriate audited action model before controls are exposed.
+- Financial/refund controls remain unavailable until a real payment-provider workflow supports them.
 - Provider/public-source availability remains an external dependency. Missing evidence must remain visible rather than being filled with demo values.
 
 ## Systems to reuse
@@ -107,4 +117,4 @@ Broader cadastral/planning automation, additional municipalities, national cover
 
 ## Recommended Next Best Project Action
 
-Finish PR #104 through the full regression/build gate and merge only if green. Then design the smallest auditable Founder Operations mutation layer for real support needs such as Site Potential credit restoration or failed-job retry, while keeping financial/refund controls absent until a real payment-provider workflow supports them and keeping PR #95 gated until founder Supabase Google OAuth is verified.
+Finish the entitlement intervention-history tranche through the full regression/build gate and merge only if green. After that, inspect the existing failed Site Potential retry path and only expose a Founder support retry if it can preserve ownership validation, retryability rules, generation-spend safety and a durable admin intervention audit. Keep refund/payment actions absent and keep PR #95 gated until founder Supabase Google OAuth is verified.
