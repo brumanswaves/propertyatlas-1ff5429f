@@ -35,14 +35,14 @@ describe("Easy Erf brand and navigation guardrails", () => {
   });
 
   it("does not allow secondary or legacy marketing routes back into primary navigation", () => {
-    const primaryRoutes = new Set(PRIMARY_NAV_LINKS.map((link) => link.to));
+    const primaryRoutes = new Set<string>(PRIMARY_NAV_LINKS.map((link) => link.to));
     for (const route of SECONDARY_OR_LEGACY_PUBLIC_ROUTES) {
       expect(primaryRoutes.has(route)).toBe(false);
     }
   });
 
   it("keeps supporting content in the footer rather than primary navigation", () => {
-    const footerRoutes = new Set([
+    const footerRoutes = new Set<string>([
       ...FOOTER_PRODUCT_LINKS,
       ...FOOTER_RESOURCE_LINKS,
       ...FOOTER_LEGAL_LINKS,
