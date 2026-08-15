@@ -464,8 +464,10 @@ A successful MVP allows a user to:
 - Market Evidence integrated into strategy
 - living Easy Erf Report
 - Ask Easy Erf across the workflow
+- coherent public shell, My Investigations and Account
+- Founder Operations for real support and operational visibility
 
-### NEXT: Automate evidence acquisition
+### NEXT: Automate evidence acquisition and support operations
 
 - stronger cadastral retrieval
 - zoning / planning sources
@@ -475,6 +477,8 @@ A successful MVP allows a user to:
 - address intelligence
 - listing and comparable import
 - environmental and public-data sources
+- trusted cross-user support inspection for Founder Operations
+- audited entitlement, job-retry and support actions where real backend capabilities exist
 
 ### THEN: Decision intelligence
 
@@ -523,6 +527,11 @@ A successful MVP allows a user to:
 - Evidence provenance and confidence must be preserved
 - Visual evidence traceability: when a stored SG document has a safe derived preview, the living report may show that preview beside identity-gated findings. Preview generation is convenience evidence display only; it never changes identity, lineage or planning provenance, and a missing preview remains an honest limitation.
 - Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch
+- Current commercial positioning does not introduce a subscription. Pay-per-use or pay-per-property offers must remain truthful to real entitlement and payment infrastructure.
+- My Investigations derives from canonical property/investigation state and must not create a separate progress engine.
+- Founder Operations extends the existing protected admin architecture and must not create a second admin-role system.
+- Privileged admin mutations require a trusted backend boundary and audit trail before UI controls are exposed.
+- `docs/EASY_ERF_DESIGN_SYSTEM.md` is the canonical lightweight visual and terminology reference.
 - GitHub `main` is the code source of truth
 - This document is the product source of truth
 
@@ -539,10 +548,11 @@ Before starting a feature, answer:
 - Where does it belong in the canonical architecture?
 - Which existing facts / evidence / state should it reuse?
 - What must not be duplicated?
-- Does it improve the investigation, strategy, or report?
+- Does it improve the investigation, strategy, report, customer continuity or safe operations?
+- Does it create design or terminology drift elsewhere?
 - Is it NOW, NEXT, THEN, or LATER?
 
-No new chat, Lovable project, agent, or branch gets to create a competing roadmap.
+No new chat, Lovable project, agent, admin system or branch gets to create a competing roadmap.
 
 ---
 
@@ -553,6 +563,9 @@ Absolute source of truth for production code.
 
 ### Master Plan
 `docs/EASY_ERF_MASTER_PLAN.md` is the canonical product-direction document.
+
+### Design System
+`docs/EASY_ERF_DESIGN_SYSTEM.md` is the canonical lightweight reference for visual roles, reusable patterns, navigation, terminology and responsive coherence.
 
 ### Codex
 Primary engineering implementation, debugging, code review, and test work.
@@ -585,13 +598,14 @@ When a major product direction changes:
 
 1. Update this Master Plan first.
 2. State what previous decision is being superseded.
-3. Identify impacted UX, data model, report, calculators, and existing features.
+3. Identify impacted UX, data model, report, calculators, operations and existing features.
 4. Only then open implementation work.
 
-This prevents repeated redesign, duplicated code, fragmented Lovable projects, and unnecessary engineering / AI spend.
+This prevents repeated redesign, duplicated code, fragmented Lovable projects, unsafe operational shortcuts and unnecessary engineering / AI spend.
 
+---
 
-## Autonomous property-investigation workforce
+## 17. Autonomous property-investigation workforce
 
 Easy Erf is evolving from a collection of property information and AI features into a South Africa-specific autonomous property-investigation workforce. The user assigns understandable jobs while the product performs as much evidence-grounded work as the available tools and sources allow.
 
@@ -602,3 +616,42 @@ V1 deliberately adds no new agent-memory or planning-results table. Guided Inves
 The user-facing rule remains **One screen. One clear job.** Internal worker architecture is not exposed as fake personalities.
 
 See `docs/EASY_ERF_AGENT_JOBS_V1.md`.
+
+---
+
+## 18. Founder Operations architecture
+
+The existing protected `/admin` area evolves into **Easy Erf Founder Operations**. Do not create a parallel admin application or a second role model.
+
+Founder Operations has a different job from the customer application, so it may use denser tables, logs, filters and operational statuses. It must still inherit Easy Erf typography, semantic colors, controls, status meanings, responsive behavior and terminology.
+
+### V1: read-first operational truth
+
+The first production-quality console should prefer real operational records over vanity metrics. It may surface data already available to the current admin authorization boundary, including:
+
+- report orders and fulfilment failures
+- provider audit activity and latency
+- provider settings/health
+- existing provider readiness diagnostics
+- existing public-data diagnostics
+
+Do not substitute demo-property counts for registered users, active investigations or production activity.
+
+### Trusted support layer
+
+Cross-user investigation detail, uploaded evidence, Site Potential generations, entitlements, support notes, refunds, grants, retries and repairs are privileged support capabilities. They require a trusted backend boundary with:
+
+- existing admin-role authorization
+- least privilege
+- server-side validation
+- actor admin id
+- target user id where applicable
+- action type
+- previous/new state where useful
+- reason or support note
+- timestamp and result
+- reversible behavior where practical
+
+No service-role credential may reach the browser. Do not expose a refund, credit-grant, destructive repair or impersonation control before a real audited backend action exists.
+
+Developer/debug tools must remain clearly separated from normal operations even when linked from the same Founder Operations shell.

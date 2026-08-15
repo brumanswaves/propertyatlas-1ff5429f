@@ -1,93 +1,106 @@
 # Easy Erf Current State
 
-Baseline: 2026-08-15, GitHub `main` at `fcddd9eed8a0951e4d10c88eeaf8efb4da3c9b44` after merged PR #94.
+Baseline entering Founder Operations V1: 2026-08-15, GitHub `main` at `c21115ed99a02a1f971e93f46ae1392529271369` after merged PR #102.
 
 ## Current MVP objective
 
-Make one real South African property investigation work end to end, with Erf 1570 as the acceptance property and Kouga / St Francis as the pilot geography. The product should show what is known, what is missing, how confident each conclusion is, what the numbers assume, and one clear next action.
+Make one real South African property investigation work extremely well end to end, with Erf 1570 as the acceptance property and Kouga / St Francis as the pilot geography. Easy Erf should show what is known, what is missing, how confident each conclusion is, what the numbers assume and one clear Next Best Step.
+
+The product shell, account experience and operations tooling must support that investigation rather than becoming separate products.
 
 ## Canonical acceptance property
 
 Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C034001400001570000000`, approximately 618.7 m2, Sea Vista, Kouga Local Municipality, Eastern Cape. These are acceptance inputs and source-backed test fixtures, not values to hard-code into generic logic.
 
-## Current entry and investigation flow
+## Canonical customer journey
 
-1. Exact official search or official parcel selection opens the selected property through the canonical Workbench path.
-2. The default destination is the read-only `PropertyFirstRead` / Property Overview. Opening it is intended to be zero-commit.
-3. `Investigate this property` deliberately enters the Guided Investigation and records investigation state.
-4. The current ten-step Guided order is: Confirm property, Add address, Add SG diagram, Check title, Confirm zoning, Property checks, Market evidence, Strategy & Calculators, Site Potential, Review report.
-5. The existing expert Workbench still exposes Sources, Market, Paid Reports/Documents, Strategy, Site Potential, Notes and Easy Erf Report.
-
-## Canonical shared-state contract
-
-Property First Read, Guided Investigation, the expert Dossier and the Easy Erf Report are interfaces over the same canonical parcel, workspace, evidence, planning and Site Potential state. Property First Read remains zero-commit. An explicit user confirmation, such as a working zoning conclusion, is recorded once for the parcel and remains distinct from official or document-supported evidence everywhere it is shown.
+1. Find or click a property.
+2. Open read-only Property Overview / Property First Read with no investigation commit.
+3. Explicitly begin or continue Guided Investigation.
+4. Complete the ten-step Guided journey: Confirm property, Add address, Add SG diagram, Check title, Confirm zoning, Property checks, Market Evidence, Strategy & Calculators, Site Potential, Review report.
+5. Guided Investigation, the expert Dossier and the Easy Erf Report consume the same canonical parcel, workspace, evidence, planning, Strategy and Site Potential state.
+6. Ask Easy Erf remains grounded in the property evidence pack and report intelligence.
+7. My Investigations reopens durable canonical investigation state rather than maintaining a separate dashboard progress engine.
 
 ## Capabilities present on current main
 
-- Precision official erf/portion search, including direct canonical opening for exact official results.
-- Property First Read driven by the selected parcel, recorded evidence, planning assessment, market evidence, Strategy state and Site Potential state.
-- A versioned, parcel-scoped Guided Investigation with explicit completed, skipped, current and available states.
-- A canonical Guided Task Registry and `canonicalReportAction` adapter used by report/action surfaces.
-- Evidence/file storage patterns for SG diagrams, paid report PDFs and Site Potential assets, with provenance and identity-trust distinctions.
-- Market Evidence, active/comparable listing flows and deterministic market summaries.
-- Strategy Lab and deterministic calculators with saved scenarios and chosen-scenario report consumption.
-- Site Potential planning/build-envelope assumptions and concept workflow, kept separate from official approval.
-- Easy Erf Report view models, print foundation, decision intelligence, report action guidance and report change tracking. The primary reader flow opens with a canonical Property Summary, grounded Ask Easy Erf guidance, evidence-readiness decision framing, then identity, planning, site checks, market, Strategy and accepted Site Potential sections; deeper technical evidence remains expandable.
-- Ask Easy Erf grounded in the canonical Property Evidence Pack/report intelligence, with answer confidence distinct from investigation readiness.
-- Mobile Workbench navigation, saved workspace state, report uploads, SG multi-upload and the live map/search/parcel workflow.
-- A server-side `/api/address/suggestions` route for Google autocomplete, place details and geocoding, with parcel-aware South African suggestions and visible failure states.
-- Readable SG/title/paid documents preserved when automatic identity binding needs confirmation, with user-confirmed evidence kept distinct from official evidence.
-- Paid-report purchase pathways for Lightstone and WinDeed, with external payment positioning and outbound-intent tracking.
-- Kouga planning registry resolution and free Site Potential allowance handling for the Guided MVP path.
-- A rollback-safe direct Supabase Google OAuth path exists behind `VITE_FOUNDER_SUPABASE_AUTH`; production remains on the current Lovable auth path until the founder Supabase Google provider is enabled and verified.
+- Precision official erf/portion search and canonical parcel opening.
+- Property Overview as the zero-commit selected-property entry.
+- Versioned Guided Investigation with canonical task definitions and Next Best Step logic.
+- Shared evidence/file vault patterns for SG diagrams, paid reports, title evidence and Site Potential assets.
+- Evidence provenance, identity trust, contradictions, missing evidence and confidence states.
+- Market Evidence, Strategy & Calculators, Site Potential and living Easy Erf Report integration.
+- SG TIFF fast extraction path plus safe report preview when available.
+- Shared planning confirmation across Guided Investigation, expert Dossier and Report.
+- Planning Investigation Job V1 as the first real autonomous Easy Erf investigation job.
+- Verified Kouga planning-source metadata for the municipality-wide 2021 Land Use Scheme and St Francis Bay town zoning plan without claiming parcel-level zoning proof.
+- Founder-owned Site Potential worker/API/client transport foundations with rollback paths.
+- Rollback-safe founder Supabase Google-auth bridge.
+- Canonical Easy Erf design system and semantic styling guidance.
+- Simplified primary information architecture: Find a Property, How It Works, Pricing; signed-in My Investigations and Account.
+- Public-page and Pricing overhaul with no current subscription and no invented payment workflows.
+- Durable My Investigations dashboard derived from canonical investigation state.
+- Account experience with truthful identity, preferences, billing/access boundaries and admin-only Founder Operations entry.
 
 ## Recently completed significant work
 
-- PR #56, merged 2026-08-07: Erf 1570 guided-entry trust integrity, exact-entry hardening, evidence truthfulness, planning provenance and Ask confidence.
-- PR #57, merged 2026-08-07: Strategy calculator core, property-derived inputs, deterministic development calculations and saved/chosen scenarios.
-- PR #58, merged 2026-08-07: Site Potential workspace snapshot idempotence and render-loop repair.
-- PR #59, merged 2026-08-08: precision official search confidence and accessible result markup.
-- PR #60, merged 2026-08-08: actionable Living Report next step sourced from the Guided Task Registry.
-- PR #61, merged 2026-08-08: Property First Read as the default zero-commit property entry.
-- PR #62, merged 2026-08-08: Ask Easy Erf in Property Overview, grounded in the canonical evidence pack and canonical next action.
-- PR #63, merged 2026-08-09: Erf 1570 MVP rescue, including atomic confirmation -> address progression, server address suggestions, document trust handling, paid-report purchase UX, Kouga resolution, Site Potential entitlement truthfulness and Strategy in Guided step 8.
-- PR #86, merged 2026-08-13: canonical investigation and report integration baseline.
-- PR #94, merged 2026-08-15: rollback-safe founder Supabase Google auth bridge with current production behavior unchanged by default.
+- PR #86: fast SG TIFF extraction.
+- PR #87: unified canonical investigation confirmation state.
+- PR #88: canonical report evidence assembly and SG summary.
+- PR #89: primary Easy Erf report experience.
+- PR #90: portable Supabase migrations.
+- PR #91: founder-owned Site Potential worker.
+- PR #92: founder-owned signed-in Site Potential API.
+- PR #93: rollback-safe founder Site Potential client transport.
+- PR #94: rollback-safe founder Supabase Google auth bridge.
+- PR #96: autonomous Planning Investigation V1.
+- PR #98: verified Kouga planning source artifacts.
+- PR #99: continuous Easy Erf design system and coherence guardrails.
+- PR #100: public shell, retained public pages and truthful Pricing overhaul.
+- PR #101: My Investigations dashboard rebuilt from durable canonical state.
+- PR #102: Profile rebuilt as truthful Account while retaining compatible routing.
+
+## Current Founder Operations tranche
+
+The existing protected `/admin` architecture is being evolved into **Easy Erf Founder Operations** rather than creating a second admin system.
+
+Founder Operations V1 is deliberately read-first. It uses operational data the existing admin role can already read safely:
+
+- report orders
+- provider audit activity
+- provider settings/health
+- existing provider readiness diagnostics
+- existing public-data diagnostics
+
+The old demo KPIs such as indexed demo-property counts are not valid founder metrics and are being removed.
+
+Cross-user investigation records, evidence, Site Potential jobs, entitlement adjustments, refunds and repair actions are not being exposed through a browser-side privilege bypass. Those need a trusted support boundary with admin authorization, least privilege and an audit trail before they become operational controls.
+
+## Design-system requirement
+
+`docs/EASY_ERF_DESIGN_SYSTEM.md` is the lightweight canonical design reference. Every meaningful UI/product tranche must finish by checking whether it creates visual or terminology drift elsewhere.
+
+Founder Operations may use denser tables, logs and operational status, but typography, semantic colors, card/control patterns, responsive behavior and terminology must still clearly belong to Easy Erf.
 
 ## Current weaknesses and blockers
 
-- Founder Supabase Google OAuth is not yet enabled, so PR #95 remains a gated frontend cutover rather than a production change.
-- The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration; code correctness alone does not prove live provider availability.
-- Site Potential generation depends on the required deployment/runtime flags, worker secret, provider key and Supabase server configuration.
-- Public-source and provider availability remain external dependencies. Missing or uncertain evidence must remain visible rather than being filled with demo values.
-- Older documents and UI/history still contain PropertyAtlas/ErfStoep-era names and roadmap language; they are historical context unless current main and the Master Plan say otherwise.
+- PR #95 remains intentionally gated because Google OAuth is not yet enabled and verified on the founder-owned Supabase project. Do not cut the frontend over until that external dependency is ready.
+- The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration.
+- Site Potential depends on required deployment/runtime configuration and provider availability.
+- Kouga planning sources are stronger, but Easy Erf still does not have a verified parcel-specific zoning adapter for the published St Francis Bay zoning plan.
+- Founder Operations does not yet have a trusted cross-user support API for investigations, assets, Site Potential jobs, entitlements or audited interventions.
+- Provider/public-source availability remains an external dependency. Missing evidence must remain visible rather than being filled with demo values.
 
 ## Systems to reuse
 
-Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, `StrategyLab`/calculator helpers, and Site Potential resolution/snapshot helpers. Do not create parallel property facts, evidence ledgers, readiness engines or navigation selectors.
+Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, Strategy helpers, Site Potential resolution/snapshot helpers, the existing `AdminGuard`, existing `user_roles` authorization and existing provider audit/readiness infrastructure.
+
+Do not create parallel property facts, evidence ledgers, readiness engines, dashboard progress engines, admin-role systems or navigation selectors.
 
 ## Deliberately deferred
 
-Stronger cadastral retrieval, wider municipal/planning integrations, provider APIs, document-intelligence expansion, listing/comparable automation, environmental datasets, a robust deterministic build envelope, richer development/financial intelligence, risk scoring, property passport, monitoring, professional collaboration, transaction rooms, portfolio tools, marketplace/fulfilment, enterprise APIs, additional municipalities, national coverage, Earth-observation intelligence and international expansion remain roadmap work.
-
-## Autonomous investigation state
-
-Planning Investigation Job V1 is the first implementation tranche of Easy Erf's autonomous property-investigation direction. The job is derived from canonical planning state plus the property evidence graph and is first surfaced in the Guided zoning step. It reports sources reviewed, findings, confidence, contradictions, unresolved evidence and the next investigation.
-
-No database schema change is required for V1. Manual working zoning still requires explicit confirmation, and published scheme rules remain distinct from property-specific rights. Dossier and Report continue consuming the same canonical planning assessment and evidence pack, so the job does not create a competing state store.
-
-Canonical regression coverage uses Erf 1570, Portion 0, Sea Vista, Kouga. The implementation branch for PR #96 has passed focused tests, the full test suite, TypeScript, targeted ESLint, production build and whitespace checks.
-
-### Real-source validation, 2026-08-15
-
-Independent source validation against Kouga Municipality confirmed that the municipality currently publishes a Land Use Scheme adoption record, planning/development guidance, and a St Francis Bay town zoning plan in its document library. These are credible municipal planning sources that support Easy Erf's source-registry direction.
-
-The validation also confirmed the important V1 limitation: Easy Erf does not yet have a verified parcel-specific adapter that correlates the published St Francis Bay zoning plan to the selected canonical parcel automatically. Therefore Planning Investigation V1 must continue to label configured/published scheme material separately from property-specific zoning proof and must not claim live parcel zoning detection.
-
-The highest-value next planning automation after V1 is to test a narrow Kouga/St Francis property-specific planning-source adapter before attempting generic national browser automation.
-
-See `docs/EASY_ERF_AGENT_JOBS_V1.md`.
+Broader cadastral/planning automation, additional municipalities, national coverage, stronger environmental datasets, richer development intelligence, monitoring, property passport, professional collaboration, transaction rooms, portfolio tools, marketplace/fulfilment, enterprise APIs and Earth-observation intelligence remain roadmap work unless a nearer MVP problem justifies pulling them forward.
 
 ## Recommended Next Best Project Action
 
-Finish review of PR #96 and, once merged, validate the Planning Investigation panel in the signed-in Erf 1570 Guided zoning step. In parallel, keep PR #95 gated until founder Supabase Google OAuth is enabled. After the first planning-job UI smoke, prototype the cheapest credible Kouga/St Francis property-specific zoning-source correlation and measure whether it materially improves the investigation.
+Finish Founder Operations V1, run the full regression/build gate and merge if green. Then build the narrow trusted support boundary needed for cross-user investigation visibility and audited support actions, while keeping PR #95 gated until founder Supabase Google OAuth is verified.

@@ -172,7 +172,6 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Implementation: The worker stays inert unless both private `site_potential_worker_secret` and `site_potential_worker_url` values are configured. GitHub `main` remains the canonical backend source; no default values are seeded.
 - Do not regress: Do not create `sandbox_exec`, add secret values to migrations, or reintroduce a hard-coded worker URL.
 
-
 ## EE-022 - Autonomous investigation jobs reuse canonical state
 
 - Date: 2026-08-15.
@@ -184,3 +183,14 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Product boundary: Easy Erf remains South Africa-specific. Venture Compass and Deal Skeptic remain separate products; future interoperability may use the structured job contract but does not merge the products.
 - Do not regress: Do not create duplicate property state, duplicate confirmation ledgers, fake agent personas or prose-only conclusions that lose provenance.
 - Related: `docs/EASY_ERF_AGENT_JOBS_V1.md`, EE-020.
+
+## EE-023 - Founder Operations is read-first and privileged actions are audited
+
+- Date: 2026-08-15.
+- Decision: The existing protected `/admin` architecture evolves into Easy Erf Founder Operations. The first tranche is read-first and shows only operational data the current admin role is already authorized to inspect.
+- Rationale: Founder support needs real visibility without turning the browser into a privileged bypass or creating fake controls for refunds, credits, repairs or user impersonation.
+- Implementation: Founder Operations uses existing admin-readable `report_orders`, `provider_audit_log`, `provider_settings` and provider health checks. Existing readiness/debug routes remain available but are clearly separated as developer diagnostics. Demo KPIs are removed.
+- Security boundary: Cross-user investigations, evidence, Site Potential jobs, entitlements and future support actions require a trusted backend boundary with admin authorization, least privilege and an audit trail before they appear as operational controls.
+- Design rule: Founder Operations may be denser than customer pages but must inherit the canonical Easy Erf design system and terminology.
+- Do not regress: Do not expose service-role credentials in the browser, add unaudited entitlement or financial mutations, duplicate the admin-role system, or present unavailable operational coverage as zero activity.
+- Related: `docs/EASY_ERF_DESIGN_SYSTEM.md`, `src/components/admin/AdminGuard.tsx`, `/admin/readiness`, `/admin/public-data-debug`.
