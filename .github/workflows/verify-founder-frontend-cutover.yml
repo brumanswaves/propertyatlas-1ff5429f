@@ -51,3 +51,5 @@ jobs:
 
       - name: Check stacked patch whitespace
         run: git diff --check a83dc3764f0cb84c515b95289603a53ae9a0140c HEAD
+
+# One-time stacked verification workflow. Remove after the branch is green.
