@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
-import {
-  EASY_ERF_AGENT_JOB_CONTRACT_VERSION,
-} from "../agentJobContract";
+import { EASY_ERF_AGENT_JOB_CONTRACT_VERSION } from "../agentJobContract";
 import {
   buildPlanningInvestigationJob,
   PLANNING_INVESTIGATION_JOB_TYPE,
@@ -20,13 +18,19 @@ const canonicalErf1570 = {
   town: "St Francis Bay",
 };
 
-function erf1570Assessment(overrides: Parameters<typeof buildParcelPlanningAssessment>[0] = {}) {
+type PlanningAssessmentInput = Parameters<typeof buildParcelPlanningAssessment>[0];
+
+const erf1570BaseInput: PlanningAssessmentInput = {
+  parcelId: canonicalErf1570.parcelId,
+  municipality: canonicalErf1570.municipality,
+  locationHints: ["Sea Vista", "St Francis Bay", "Eastern Cape"],
+  erfAreaM2: 618.7,
+  manualZoneCode: "RES1",
+};
+
+function erf1570Assessment(overrides: Partial<PlanningAssessmentInput> = {}) {
   return buildParcelPlanningAssessment({
-    parcelId: canonicalErf1570.parcelId,
-    municipality: canonicalErf1570.municipality,
-    locationHints: ["Sea Vista", "St Francis Bay", "Eastern Cape"],
-    erfAreaM2: 618.7,
-    manualZoneCode: "RES1",
+    ...erf1570BaseInput,
     ...overrides,
   });
 }
@@ -47,7 +51,9 @@ describe("Planning Investigation Job V1", () => {
     expect(job.output.sourceSummary.checked).toBeGreaterThan(0);
     expect(job.output.findings.some((finding) => finding.kind === "published_rule")).toBe(true);
     expect(job.output.unresolvedEvidence.length).toBeGreaterThan(0);
-    expect(job.approvalRules.find((rule) => rule.id === "manual-zone-confirmation")?.required).toBe(true);
+    expect(
+      job.approvalRules.find((rule) => rule.id === "manual-zone-confirmation")?.required,
+    ).toBe(true);
     expect(job.status).toBe("needs_review");
     expect(job.process.map((step) => step.id)).toContain("propagate-shared-result");
   });
@@ -58,9 +64,13 @@ describe("Planning Investigation Job V1", () => {
       planningAssessment: erf1570Assessment(),
     });
 
-    const publishedRules = job.output.findings.filter((finding) => finding.kind === "published_rule");
+    const publishedRules = job.output.findings.filter(
+      (finding) => finding.kind === "published_rule",
+    );
     expect(publishedRules.length).toBeGreaterThan(0);
-    expect(publishedRules.every((finding) => finding.status === "published_general_rule")).toBe(true);
+    expect(
+      publishedRules.every((finding) => finding.status === "published_general_rule"),
+    ).toBe(true);
     expect(job.output.headlineWarning).toMatch(/not yet been confirmed|not confirmed/i);
   });
 
@@ -70,8 +80,12 @@ describe("Planning Investigation Job V1", () => {
       planningAssessment: erf1570Assessment({ userConfirmedZoneCode: "RES1" }),
     });
 
-    expect(job.approvalRules.find((rule) => rule.id === "manual-zone-confirmation")?.required).toBe(false);
-    expect(job.actions.find((action) => action.id === "confirm-working-zoning")?.status).toBe("applied");
+    expect(
+      job.approvalRules.find((rule) => rule.id === "manual-zone-confirmation")?.required,
+    ).toBe(false);
+    expect(job.actions.find((action) => action.id === "confirm-working-zoning")?.status).toBe(
+      "applied",
+    );
   });
 
   it("detects planning contradictions and lowers confidence", () => {
@@ -104,6 +118,8 @@ describe("Planning Investigation Job V1", () => {
     expect(job.status).toBe("blocked");
     expect(job.confidence).toBe("unverified");
     expect(job.output.findings).toHaveLength(0);
-    expect(job.process.find((step) => step.id === "inspect-configured-sources")?.status).toBe("skipped");
+    expect(job.process.find((step) => step.id === "inspect-configured-sources")?.status).toBe(
+      "skipped",
+    );
   });
 });
