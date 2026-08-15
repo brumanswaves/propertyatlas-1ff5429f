@@ -41,11 +41,15 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(server).not.toMatch(/select\([^)]*metadata/);
   });
 
-  it("is read-only and does not expose support mutations yet", () => {
+  it("keeps the Users support screen read-only while the API mutation surface remains narrow", () => {
     expect(api).toContain("GET:");
-    expect(api).not.toContain("POST:");
+    expect(api).toContain("POST:");
     expect(api).not.toContain("PATCH:");
     expect(api).not.toContain("DELETE:");
+    expect(api).toContain('body.action === "grant-complimentary-site-potential"');
+    expect(api).not.toMatch(/refund/i);
+    expect(api).not.toMatch(/retry/i);
+    expect(api).not.toMatch(/impersonat/i);
     expect(page).toMatch(/This screen is read-only/i);
     expect(page).not.toMatch(/grant credits/i);
     expect(page).not.toMatch(/refund payment/i);
@@ -56,6 +60,7 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(guard).toContain('aria-label="Founder Operations"');
     expect(guard).toContain('href="/admin"');
     expect(guard).toContain('href="/admin/users"');
+    expect(guard).toContain('href="/admin/entitlements"');
     expect(guard).toContain('href="/admin/readiness"');
     expect(guard).toContain('href="/admin/public-data-debug"');
   });
