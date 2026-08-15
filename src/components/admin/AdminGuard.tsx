@@ -76,5 +76,29 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <nav
+        aria-label="Founder Operations"
+        className="fixed left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
+      >
+        <OperationsLink href="/admin">Overview</OperationsLink>
+        <OperationsLink href="/admin/users">Users</OperationsLink>
+        <OperationsLink href="/admin/readiness">Readiness</OperationsLink>
+        <OperationsLink href="/admin/public-data-debug">Data debug</OperationsLink>
+      </nav>
+      {children}
+    </>
+  );
+}
+
+function OperationsLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      className="shrink-0 rounded-full px-3 py-1.5 text-[10px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      {children}
+    </a>
+  );
 }
