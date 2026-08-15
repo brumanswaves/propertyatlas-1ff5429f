@@ -19,9 +19,9 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(server).toContain('.eq("user_id", user.id)');
     expect(server).toContain('.eq("role", "admin")');
     expect(server).toContain("createServiceRoleSupabaseClient()");
-    expect(server.indexOf("authenticateApiRequest(request)")).toBeLessThan(
-      server.indexOf("createServiceRoleSupabaseClient()"),
-    );
+    expect(
+      server.indexOf("const { user } = await authenticateApiRequest(request);"),
+    ).toBeLessThan(server.indexOf("const serviceSupabase = createServiceRoleSupabaseClient();"));
   });
 
   it("keeps the service role behind the trusted server boundary", () => {
