@@ -184,3 +184,14 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Product boundary: Easy Erf remains South Africa-specific. Venture Compass and Deal Skeptic remain separate products; future interoperability may use the structured job contract but does not merge the products.
 - Do not regress: Do not create duplicate property state, duplicate confirmation ledgers, fake agent personas or prose-only conclusions that lose provenance.
 - Related: `docs/EASY_ERF_AGENT_JOBS_V1.md`, EE-020.
+
+
+## EE-023 - Published zone rules and parcel zoning are separate evidence questions
+
+- Date: 2026-08-15.
+- Decision: Easy Erf may promote a planning rule from `manual_candidate` to an active published general rule only after the authoritative source has been directly retrieved, read and cited. This does not promote the parcel's zoning detection status.
+- Kouga implementation: The February 2021 Kouga Land Use Scheme section 25 RES1 controls are now verified and cited. Area-conditioned controls are modelled separately for `<400 m²` and `>400 m²` and selected from canonical parcel area.
+- Boundary safety: Where the source itself uses an open split, Easy Erf does not invent a rule at the exact boundary. Unknown parcel area also withholds area-conditioned controls.
+- Parcel identity safety: Public municipal datasets that contain repeated erf numbers must never be joined by erf number alone. Strong parcel identity such as canonical LPI/parcel key, municipality and area context is required.
+- Erf 1570 result: The canonical Sea Vista parcel is absent from the public `Land_Parcel_Property_Report_Developed` dataset, so zoning from another Erf 1570 record must never be borrowed. Parcel-specific zoning remains unresolved even though the general RES1 rules are now official.
+- Do not regress: Never equate a verified zone definition with proof that a specific parcel has that zoning.

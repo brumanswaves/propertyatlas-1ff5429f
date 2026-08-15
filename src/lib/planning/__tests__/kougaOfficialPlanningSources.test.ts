@@ -30,10 +30,7 @@ describe("Kouga official planning source metadata", () => {
 
   it("records the official St Francis Bay zoning-plan artifact without claiming parcel zoning", () => {
     expect(registry).not.toBeNull();
-    const source = findPlanningSource(
-      registry!,
-      "kouga-st-francis-bay-town-zoning-plan-2020-12",
-    );
+    const source = findPlanningSource(registry!, "kouga-st-francis-bay-town-zoning-plan-2020-12");
 
     expect(source?.status).toBe("active");
     expect(source?.jurisdiction).toBe("municipal");

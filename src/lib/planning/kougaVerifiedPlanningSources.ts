@@ -9,7 +9,8 @@ import type { ZoningRuleWithApplicability } from "./zoningRuleApplicability";
 const VERIFIED_AT = "2026-08-15";
 const KOUGA_SCHEME_URL = "https://www.kouga.gov.za/download/4539";
 const ST_FRANCIS_ZONING_PLAN_URL = "https://www.kouga.gov.za/download/4531";
-const RES1_CITATION = "Kouga Land Use Scheme, February 2021, section 25, printed page 23 (PDF page 26)";
+const RES1_CITATION =
+  "Kouga Land Use Scheme, February 2021, section 25, printed page 23 (PDF page 26)";
 
 const KOUGA_LAND_USE_SCHEME_2021: MunicipalityPlanningSource = {
   id: "kouga-land-use-scheme-2021",
@@ -85,8 +86,12 @@ const OFFICIAL_RES1_RULES: ZoningRuleWithApplicability[] = [
     label: "Lateral building line",
     value: 1,
     unit: "m",
-    statement: "Residential Zone 1 lateral building line is 1 m on one boundary for erven smaller than 400 m².",
-    conditions: ["Applies only to erven smaller than 400 m².", "The scheme states 1 m on one lateral boundary."],
+    statement:
+      "Residential Zone 1 lateral building line is 1 m on one boundary for erven smaller than 400 m².",
+    conditions: [
+      "Applies only to erven smaller than 400 m².",
+      "The scheme states 1 m on one lateral boundary.",
+    ],
     sourceId: KOUGA_LAND_USE_SCHEME_2021.id,
     citation: RES1_CITATION,
     status: "active",
@@ -189,7 +194,8 @@ const OFFICIAL_RES1_RULES: ZoningRuleWithApplicability[] = [
     label: "Dwelling units",
     value: 1,
     unit: "units",
-    statement: "Residential Zone 1 allows one dwelling unit per erf, with one additional dwelling unit subject to consent.",
+    statement:
+      "Residential Zone 1 allows one dwelling unit per erf, with one additional dwelling unit subject to consent.",
     conditions: ["One additional dwelling unit is subject to municipal consent."],
     sourceId: KOUGA_LAND_USE_SCHEME_2021.id,
     citation: RES1_CITATION,

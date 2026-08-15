@@ -220,3 +220,13 @@ Planning Investigation V1 is successful when:
 - the same canonical planning state continues to drive Dossier and Report
 - Erf 1570 regression tests pass
 - no duplicate planning or agent state store is introduced
+
+
+## Verified Kouga rule upgrade
+
+Planning Investigation V1 can now distinguish two different kinds of planning certainty for Kouga:
+
+- **Published rule certainty:** the February 2021 municipal scheme has been directly retrieved and section 25 RES1 controls are stored with source citations and parcel-area applicability.
+- **Parcel zoning certainty:** still separate. Easy Erf must not state that a parcel is RES1 merely because RES1 rules are known. A manual working selection remains low confidence until property-specific municipal evidence or a reliable zoning correlation supports it.
+
+This separation is deliberate. Knowing exactly what RES1 means is not the same as proving that a particular erf is RES1.

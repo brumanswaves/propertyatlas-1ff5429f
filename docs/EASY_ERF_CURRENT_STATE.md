@@ -84,3 +84,12 @@ No database schema change is required for V1. Manual working zoning still requir
 Canonical regression coverage uses Erf 1570, Portion 0, Sea Vista, Kouga. The current known limitation remains property-specific official planning evidence: the Kouga registry is useful, but no verified zoning-polygon adapter exists, so automatic parcel zoning detection must not be implied.
 
 See `docs/EASY_ERF_AGENT_JOBS_V1.md`.
+
+
+## Kouga official RES1 source verification
+
+On 2026-08-15 Easy Erf directly retrieved and machine-read the official February 2021 Kouga Land Use Scheme PDF from the municipal download endpoint. Section 25, Residential Zone 1, printed page 23 (PDF page 26), confirms two explicit erf-area bands. For erven smaller than 400 m² the published controls are 1 m street, 1 m lateral on one boundary, 1 m rear, 8.5 m height and 70% coverage. For erven larger than 400 m² they are 3 m street, 1.5 m lateral, 1.5 m rear, 8.5 m height and 50% coverage. The section also states one dwelling unit per erf and one additional dwelling unit subject to consent.
+
+The registry now treats those values as cited active **general zone rules** and applies the correct band from canonical parcel area. It deliberately withholds area-conditioned controls when parcel area is unknown or exactly 400 m² because the published table uses open `<400` and `>400` wording.
+
+This does **not** confirm that Erf 1570 is Residential Zone 1. The canonical Sea Vista parcel is present in the Kouga SG layer under ID `C03400140000157000000` / parcel key `E108C034001400001570000000`, but is absent from Kouga's public `Land_Parcel_Property_Report_Developed` dataset. The official St Francis Bay zoning-plan PDF is directly downloadable, but its extracted text does not provide a defensible parcel-to-zone correlation for Erf 1570. Parcel zoning therefore remains a separate unresolved evidence question.

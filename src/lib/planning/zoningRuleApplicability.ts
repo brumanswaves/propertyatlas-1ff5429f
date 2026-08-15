@@ -11,10 +11,7 @@ export type ZoningRuleWithApplicability = ZoningRule & {
   };
 };
 
-function appliesToErfArea(
-  rule: ZoningRuleWithApplicability,
-  erfAreaM2: number | null,
-): boolean {
+function appliesToErfArea(rule: ZoningRuleWithApplicability, erfAreaM2: number | null): boolean {
   const areaRule = rule.applicability?.erfAreaM2;
   if (!areaRule) return true;
   if (erfAreaM2 == null) return false;
@@ -28,9 +25,6 @@ function appliesToErfArea(
  * satisfied. Area-conditioned controls are withheld when parcel area is unknown
  * or falls exactly on an unresolved open boundary such as the scheme's <400 / >400 split.
  */
-export function zoningRulesForErfArea(
-  rules: ZoningRule[],
-  erfAreaM2: number | null,
-): ZoningRule[] {
+export function zoningRulesForErfArea(rules: ZoningRule[], erfAreaM2: number | null): ZoningRule[] {
   return rules.filter((rule) => appliesToErfArea(rule as ZoningRuleWithApplicability, erfAreaM2));
 }

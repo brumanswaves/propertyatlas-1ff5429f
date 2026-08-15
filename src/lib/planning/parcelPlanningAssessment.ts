@@ -1,4 +1,5 @@
 import { calculateBuildableEnvelope } from "./buildableEnvelope";
+import { zoningRulesForErfArea } from "./zoningRuleApplicability";
 import {
   canAttemptOfficialZoningDetection,
   findMunicipalityPlanningRegistry,
@@ -144,7 +145,7 @@ export function buildParcelPlanningAssessment(
   const zone = entry ? findZone(entry, requestedZoneCode) : null;
   const detection = buildDetection(input, registryMatched, zone?.code ?? null, zone?.name ?? null);
 
-  const publishedRules = zone ? zone.rules : [];
+  const publishedRules = zone ? zoningRulesForErfArea(zone.rules, input.erfAreaM2) : [];
   const guidelines = entry ? guidelinesForPlanningArea(entry, planningArea) : [];
   const sources = entry ? planningSourcesFor(entry, planningArea) : [];
 
@@ -232,7 +233,8 @@ export function buildParcelPlanningAssessment(
       title: "Property-specific zoning not confirmed",
       severity: "high",
       why: detection.statement,
-      nextAction: "Confirm the zoning of this erf with Kouga planning or attach a zoning certificate.",
+      nextAction:
+        "Confirm the zoning of this erf with Kouga planning or attach a zoning certificate.",
     });
   }
   if (
@@ -282,7 +284,8 @@ export function buildParcelPlanningAssessment(
       title: "Consent required for an additional dwelling",
       severity: "low",
       why: "The published zone rules treat an additional dwelling unit as a consent use, which requires a municipal application.",
-      nextAction: "Confirm the consent-use process with Kouga planning before assuming a second dwelling.",
+      nextAction:
+        "Confirm the consent-use process with Kouga planning before assuming a second dwelling.",
     });
   }
   if (guidelines.length) {
@@ -313,7 +316,11 @@ export function buildParcelPlanningAssessment(
     });
   }
   // Boundary/setback flags require geometry. Without it, no flag is raised.
-  if (input.hasParcelPolygon && input.hasStreetEdgeReference && signals.approvedBuildingPlansUploaded) {
+  if (
+    input.hasParcelPolygon &&
+    input.hasStreetEdgeReference &&
+    signals.approvedBuildingPlansUploaded
+  ) {
     riskFlags.push({
       id: "risk-setback-geometry-review",
       title: "Building line positions should be reviewed against geometry",

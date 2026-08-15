@@ -13,7 +13,12 @@ function assessment(areaM2: number | null) {
 
 function ruleValue(
   result: ReturnType<typeof buildParcelPlanningAssessment>,
-  ruleType: "street_building_line" | "side_building_line" | "rear_building_line" | "height" | "coverage",
+  ruleType:
+    | "street_building_line"
+    | "side_building_line"
+    | "rear_building_line"
+    | "height"
+    | "coverage",
 ) {
   return result.publishedRules.find((rule) => rule.ruleType === ruleType)?.value ?? null;
 }
