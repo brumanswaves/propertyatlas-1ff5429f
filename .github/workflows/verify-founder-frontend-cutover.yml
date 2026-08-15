@@ -20,6 +20,24 @@ jobs:
           ref: codex/founder-frontend-cutover-config
           fetch-depth: 0
 
+      - name: Probe founder Google OAuth readiness
+        run: |
+          set -a
+          source .env
+          set +a
+          node <<'NODE'
+          const url = new URL('/auth/v1/authorize', process.env.SUPABASE_URL)
+          url.searchParams.set('provider', 'google')
+          url.searchParams.set('redirect_to', 'https://easyerf.lovable.app')
+          const response = await fetch(url, {
+            headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY },
+            redirect: 'manual',
+          })
+          const location = response.headers.get('location') || ''
+          const ready = response.status >= 300 && response.status < 400 && location.startsWith('https://accounts.google.com/')
+          console.log(`Google OAuth readiness: ${ready ? 'READY' : `NOT_READY (HTTP ${response.status})`}`)
+          NODE
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
