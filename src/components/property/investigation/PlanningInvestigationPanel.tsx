@@ -54,7 +54,7 @@ export function PlanningInvestigationPanel({ job }: PlanningInvestigationPanelPr
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
-            Sources checked
+            Sources reviewed
           </div>
           <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">
             {job.output.sourceSummary.checked}
@@ -131,8 +131,10 @@ export function PlanningInvestigationPanel({ job }: PlanningInvestigationPanelPr
       ) : null}
 
       <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-        Easy Erf keeps published scheme rules, working conclusions and property-specific proof
-        separate. Assumptions are never promoted to municipal confirmation automatically.
+        Source counts here mean configured or attached planning source records reviewed by this
+        job. Easy Erf only claims live retrieval when a job actually fetched the source. Published
+        scheme rules, working conclusions and property-specific proof remain separate, and
+        assumptions are never promoted to municipal confirmation automatically.
       </p>
     </section>
   );
