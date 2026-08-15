@@ -105,7 +105,7 @@ jobs:
         run: npm run build
 
       - name: Check stacked patch whitespace
-        run: git diff --check codex/kouga-planning-source-artifacts-v1 HEAD
+        run: git diff --check origin/codex/kouga-planning-source-artifacts-v1 HEAD
 
       - name: Commit verified wiring and docs
         run: |
