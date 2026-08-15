@@ -84,6 +84,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
       >
         <OperationsLink href="/admin">Overview</OperationsLink>
         <OperationsLink href="/admin/users">Users</OperationsLink>
+        <OperationsLink href="/admin/entitlements">Entitlements</OperationsLink>
         <OperationsLink href="/admin/readiness">Readiness</OperationsLink>
         <OperationsLink href="/admin/public-data-debug">Data debug</OperationsLink>
       </nav>
