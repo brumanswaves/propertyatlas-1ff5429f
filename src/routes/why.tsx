@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
-import { FileSearch2, ShieldCheck, Calculator, Route } from "lucide-react";
+import { FileSearch2, ShieldCheck, Calculator, Route as RouteIcon } from "lucide-react";
 
 export const Route = createFileRoute("/why")({
   head: () => ({
@@ -35,7 +35,7 @@ function Why() {
         <Card icon={<Calculator className="h-5 w-5" />} title="Maths before narrative">
           Strategy uses deterministic calculations and transparent assumptions. AI explains the result rather than inventing the arithmetic.
         </Card>
-        <Card icon={<Route className="h-5 w-5" />} title="One Next Best Step">
+        <Card icon={<RouteIcon className="h-5 w-5" />} title="One Next Best Step">
           Guided Investigation and report intelligence should tell the user what is worth doing next rather than dumping every possible property task on one screen.
         </Card>
       </div>
