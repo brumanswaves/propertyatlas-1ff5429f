@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { BRAND } from "../lib/brand";
-
+import { WorkspaceCloudSync } from "@/components/workbench/WorkspaceCloudSync";
 
 const OG_IMAGE_URL = "/easy-erf/social/easy-erf-og-banner.png";
 const FAVICON_ICO_URL = "/easy-erf/icons/favicon.ico";
@@ -87,15 +87,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: `${BRAND.site} - ${BRAND.tagline}` },
-      { name: "description", content: `${BRAND.copy.shortPitch} Search any South African erf, understand public facts, compare the market, and save evidence.` },
+      { name: "description", content: BRAND.copy.whatItDoes },
       { name: "author", content: BRAND.site },
       { property: "og:title", content: `${BRAND.site} - ${BRAND.tagline}` },
-      { property: "og:description", content: `${BRAND.copy.whatItDoes} Public-source research, assumptions, reports, and due diligence steps in one map-first workspace.` },
+      { property: "og:description", content: BRAND.copy.whatItDoes },
       { property: "og:type", content: "website" },
       { property: "og:image", content: OG_IMAGE_URL },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: `${BRAND.site} - ${BRAND.tagline}` },
-      { name: "twitter:description", content: `${BRAND.copy.shortPitch} Facts, market context, evidence, and due diligence.` },
+      { name: "twitter:description", content: BRAND.copy.shortPitch },
       { name: "twitter:image", content: OG_IMAGE_URL },
     ],
     links: [
@@ -112,7 +112,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap",
       },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -139,6 +138,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <WorkspaceCloudSync />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
