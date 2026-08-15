@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { resolveGoogleAuthTransport } from "@/lib/auth/googleAuthTransport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,7 +61,25 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const redirectTo = window.location.origin;
+
+    if (resolveGoogleAuthTransport() === "supabase") {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
+        setLoading(false);
+        return;
+      }
+      if (data.url) return;
+      toast.error("Google sign-in did not start.");
+      setLoading(false);
+      return;
+    }
+
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectTo });
     if (result.error) {
       toast.error(result.error.message || "Google sign-in failed");
       setLoading(false);
