@@ -1,6 +1,6 @@
 # Easy Erf Current State
 
-Baseline entering Founder Operations V1: 2026-08-15, GitHub `main` at `c21115ed99a02a1f971e93f46ae1392529271369` after merged PR #102.
+Baseline entering trusted Founder support: 2026-08-15, GitHub `main` at `98adc515ff3c674d371911a09ee103bed2747846` after merged PR #103.
 
 ## Current MVP objective
 
@@ -41,6 +41,7 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - Public-page and Pricing overhaul with no current subscription and no invented payment workflows.
 - Durable My Investigations dashboard derived from canonical investigation state.
 - Account experience with truthful identity, preferences, billing/access boundaries and admin-only Founder Operations entry.
+- Founder Operations V1 with real report-order/provider operational visibility, shared admin navigation and separated developer diagnostics.
 
 ## Recently completed significant work
 
@@ -59,22 +60,25 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - PR #100: public shell, retained public pages and truthful Pricing overhaul.
 - PR #101: My Investigations dashboard rebuilt from durable canonical state.
 - PR #102: Profile rebuilt as truthful Account while retaining compatible routing.
+- PR #103: Founder Operations V1 replacing demo KPIs with real admin-readable operational data.
 
-## Current Founder Operations tranche
+## Current Founder Operations support tranche
 
-The existing protected `/admin` architecture is being evolved into **Easy Erf Founder Operations** rather than creating a second admin system.
+PR #104 implements the first trusted cross-user support workflow without changing the current auth/backend cutover state.
 
-Founder Operations V1 is deliberately read-first. It uses operational data the existing admin role can already read safely:
+The design is deliberately read-only:
 
-- report orders
-- provider audit activity
-- provider settings/health
-- existing provider readiness diagnostics
-- existing public-data diagnostics
+- admin searches users by email, name or exact user ID
+- the browser sends the current signed-in access token to a same-origin TanStack server route
+- the server authenticates the token and verifies the existing `user_roles` admin role
+- only after that check may the trusted server use its service-role Supabase client for bounded cross-user reads
+- the returned support record includes durable saved investigation state, evidence-processing status, Site Potential jobs/packs, Site Potential access, report orders and recent provider errors
+- storage paths, raw asset metadata, secrets and raw file contents are not returned
+- the support UI reuses `readSavedInvestigationProjection(...)`; it does not create a second investigation/progress engine
 
-The old demo KPIs such as indexed demo-property counts are not valid founder metrics and are being removed.
+This route works with the current pre-cutover frontend/auth path. It does not depend on or alter PR #95.
 
-Cross-user investigation records, evidence, Site Potential jobs, entitlement adjustments, refunds and repair actions are not being exposed through a browser-side privilege bypass. Those need a trusted support boundary with admin authorization, least privilege and an audit trail before they become operational controls.
+No refund, credit grant/restore, job retry, destructive repair or impersonation control is exposed yet. Those remain a later audited-mutation tranche.
 
 ## Design-system requirement
 
@@ -88,12 +92,12 @@ Founder Operations may use denser tables, logs and operational status, but typog
 - The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration.
 - Site Potential depends on required deployment/runtime configuration and provider availability.
 - Kouga planning sources are stronger, but Easy Erf still does not have a verified parcel-specific zoning adapter for the published St Francis Bay zoning plan.
-- Founder Operations does not yet have a trusted cross-user support API for investigations, assets, Site Potential jobs, entitlements or audited interventions.
+- Founder Operations support mutations still need an audited trusted action model before grants, restores, refunds, retries or repair controls are exposed.
 - Provider/public-source availability remains an external dependency. Missing evidence must remain visible rather than being filled with demo values.
 
 ## Systems to reuse
 
-Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, Strategy helpers, Site Potential resolution/snapshot helpers, the existing `AdminGuard`, existing `user_roles` authorization and existing provider audit/readiness infrastructure.
+Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, Strategy helpers, Site Potential resolution/snapshot helpers, `readSavedInvestigationProjection`, the existing `AdminGuard`, existing `user_roles` authorization, trusted server auth/service-role helpers and existing provider audit/readiness infrastructure.
 
 Do not create parallel property facts, evidence ledgers, readiness engines, dashboard progress engines, admin-role systems or navigation selectors.
 
@@ -103,4 +107,4 @@ Broader cadastral/planning automation, additional municipalities, national cover
 
 ## Recommended Next Best Project Action
 
-Finish Founder Operations V1, run the full regression/build gate and merge if green. Then build the narrow trusted support boundary needed for cross-user investigation visibility and audited support actions, while keeping PR #95 gated until founder Supabase Google OAuth is verified.
+Finish PR #104 through the full regression/build gate and merge only if green. Then design the smallest auditable Founder Operations mutation layer for real support needs such as Site Potential credit restoration or failed-job retry, while keeping financial/refund controls absent until a real payment-provider workflow supports them and keeping PR #95 gated until founder Supabase Google OAuth is verified.
