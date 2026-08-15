@@ -54,6 +54,9 @@ jobs:
       - name: Run full test suite
         run: npx vitest run
 
+      - name: Build production bundle and generate routes
+        run: npm run build
+
       - name: Check TypeScript
         run: npx tsc --noEmit
 
@@ -62,6 +65,7 @@ jobs:
           npx eslint
           --no-warn-ignored
           --rule 'prettier/prettier: off'
+          src/components/admin/AdminGuard.tsx
           src/components/property/investigation/AddAddressStep.tsx
           src/components/property/investigation/GuidedSitePotentialStep.tsx
           src/components/property/investigation/GuidedTitleStep.tsx
@@ -77,16 +81,19 @@ jobs:
           src/features/marketEvidence/hooks/useAddressSuggestions.ts
           src/features/marketEvidence/types.ts
           src/features/marketEvidence/__tests__/addressSuggestions.test.ts
+          src/lib/admin/founderSupportClient.ts
+          src/lib/admin/founderSupportServer.ts
+          src/lib/admin/founderSupportTypes.ts
+          src/lib/__tests__/founderSupportGuardrails.test.ts
           src/lib/investigation/guidedJourney.ts
           src/lib/investigation/__tests__/guidedJourney.test.ts
           src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
+          src/routes/admin_.users.tsx
+          src/routes/api/admin.support.ts
           supabase/functions/_shared/erfExtractionMedia.ts
           supabase/functions/_shared/generalPlanSubjectEvidence.ts
           supabase/functions/extract-erf-asset/index.ts
           supabase/functions/extract-erf-asset/tiffDecode.ts
-
-      - name: Build production bundle
-        run: npm run build
 
       - name: Check patch whitespace
         run: git diff --check origin/main HEAD
