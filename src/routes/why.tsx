@@ -1,68 +1,50 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MarketingPage, CTASection, SectionHeading } from "@/components/layout/MarketingPage";
-import { X, Check } from "lucide-react";
+import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
+import { FileSearch2, ShieldCheck, Calculator, Route as RouteIcon } from "lucide-react";
 
 export const Route = createFileRoute("/why")({
   head: () => ({
     meta: [
       { title: "Why Easy Erf?" },
-      { name: "description", content: "Traditional property websites focus on listings. Easy Erf focuses on intelligence — research, analysis, and understanding." },
-      { property: "og:title", content: "Why Easy Erf?" },
-      { property: "og:description", content: "Listings vs intelligence. Browsing vs understanding." },
+      {
+        name: "description",
+        content:
+          "Easy Erf is built around one evidence-backed property investigation rather than listings, unsupported scores or disconnected research tools.",
+      },
     ],
   }),
   component: Why,
 });
 
-const COMPARISON: Array<{ axis: string; old: string; pa: string }> = [
-  { axis: "Focus", old: "Listings", pa: "Intelligence" },
-  { axis: "Content", old: "Photos and price tags", pa: "Research, scores, and signals" },
-  { axis: "Behaviour", old: "Browsing", pa: "Analysis" },
-  { axis: "Goal", old: "Searching for what's for sale", pa: "Understanding what's there" },
-  { axis: "Coverage", old: "Only properties on the market", pa: "Every parcel, every story" },
-  { axis: "Bias", old: "Optimised for the seller", pa: "Optimised for the researcher" },
-  { axis: "Disclosure", old: "Sparse or marketing-led", pa: "Transparent, informational, disclosed" },
-];
-
 function Why() {
   return (
     <MarketingPage
-      eyebrow="Why Easy Erf?"
-      title="Listings show you what's for sale. We show you what's there."
-      subtitle="Two very different products. Two very different outcomes."
-      intro="Easy Erf exists because property decisions deserve more than thumbnails and asking prices. Every parcel has a story — ownership tenure, sales history, location signals, and modelled potential. That's what we surface."
-      heroCta={{ label: "Open the Map", to: "/" }}
+      eyebrow="Why Easy Erf"
+      title="Property research is scattered. The decision should not be."
+      subtitle="Easy Erf organizes the investigation around the erf and preserves the evidence behind the answer."
+      intro="The useful distinction is not listings versus intelligence. It is fragmented research versus one canonical property file that keeps identity, evidence, planning, calculations, Site Potential and the next action connected."
+      heroCta={{ label: "How It Works", to: "/how-it-works" }}
     >
-      <section>
-        <SectionHeading title="Traditional property websites vs Easy Erf" />
-        <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
-          <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border bg-muted/50 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <div className="px-4 py-3">Dimension</div>
-            <div className="flex items-center gap-1.5 border-x border-border px-4 py-3">
-              <X className="h-3.5 w-3.5" /> Traditional sites
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-3 text-primary">
-              <Check className="h-3.5 w-3.5" /> Easy Erf
-            </div>
-          </div>
-          {COMPARISON.map((row, i) => (
-            <div
-              key={row.axis}
-              className={`grid grid-cols-[1fr_1fr_1fr] text-sm ${i % 2 ? "bg-background/40" : "bg-card"}`}
-            >
-              <div className="px-4 py-3 font-semibold text-foreground">{row.axis}</div>
-              <div className="border-x border-border px-4 py-3 text-muted-foreground">{row.old}</div>
-              <div className="px-4 py-3 font-medium text-foreground">{row.pa}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card icon={<FileSearch2 className="h-5 w-5" />} title="One property file" accent>
+          Evidence and analysis stay bound to the selected parcel instead of being copied between separate research tools.
+        </Card>
+        <Card icon={<ShieldCheck className="h-5 w-5" />} title="Confidence stays visible">
+          Easy Erf should show uncertainty and missing evidence instead of converting incomplete data into a confident-looking score.
+        </Card>
+        <Card icon={<Calculator className="h-5 w-5" />} title="Maths before narrative">
+          Strategy uses deterministic calculations and transparent assumptions. AI explains the result rather than inventing the arithmetic.
+        </Card>
+        <Card icon={<RouteIcon className="h-5 w-5" />} title="One Next Best Step">
+          Guided Investigation and report intelligence should tell the user what is worth doing next rather than dumping every possible property task on one screen.
+        </Card>
+      </div>
 
       <CTASection
-        title="See the difference for yourself"
-        description="Open the live map and click any parcel — listed or not — to see what Easy Erf can surface."
-        primary={{ label: "Open the Map", to: "/" }}
-        secondary={{ label: "How it works", to: "/how-it-works" }}
+        title="The product story now lives in one place"
+        description="How It Works is the canonical public explanation of the current Easy Erf experience."
+        primary={{ label: "How It Works", to: "/how-it-works" }}
+        secondary={{ label: "Find a Property", to: "/" }}
       />
     </MarketingPage>
   );

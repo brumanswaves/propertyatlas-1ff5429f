@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
-import { Home, Compass, LineChart, Users, MapPin } from "lucide-react";
+import { FileSearch2, Home, ShieldCheck, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/for-homeowners")({
   head: () => ({
     meta: [
       { title: "Easy Erf for Homeowners" },
-      { name: "description", content: "Research your property, understand your neighbourhood, track value over time, and stay informed about your local market." },
-      { property: "og:title", content: "Easy Erf for Homeowners" },
-      { property: "og:description", content: "Understand your home and your neighbourhood — clearly and honestly." },
+      {
+        name: "description",
+        content:
+          "Use Easy Erf to understand your erf, organize property documents, investigate planning questions and see what still needs official confirmation.",
+      },
     ],
   }),
   component: ForHomeowners,
@@ -17,38 +19,32 @@ export const Route = createFileRoute("/for-homeowners")({
 function ForHomeowners() {
   return (
     <MarketingPage
-      eyebrow="For Homeowners"
-      title="Know your property. Know your neighbourhood."
-      subtitle="Property research that actually helps you understand your home."
-      intro="Easy Erf gives homeowners a clear, map-based view of their own property and the area around it — so you can stay informed without sifting through listings."
+      eyebrow="For homeowners"
+      title="Understand the property you already own."
+      subtitle="The same evidence discipline used for a purchase can help you understand your own erf."
+      intro="Easy Erf can organize the parcel identity, uploaded property documents, planning questions, property checks and unresolved evidence around your home. It does not invent a live valuation, ownership history or transaction-monitoring service when those sources are not connected."
       heroCta={{ label: "Find Your Property", to: "/" }}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card icon={<Home className="h-5 w-5" />} title="Property research">
-          Pull up your erf, see its size, zoning, last sale, estimated value, and how long it has been held.
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card icon={<Home className="h-5 w-5" />} title="Confirm the erf" accent>
+          Start with the official parcel identity and working address so documents and later findings stay attached to the right property.
         </Card>
-        <Card icon={<Compass className="h-5 w-5" />} title="Neighbourhood insights">
-          Understand the suburb around you — ownership patterns, turnover, beachfront proximity, and walkability.
+        <Card icon={<FileSearch2 className="h-5 w-5" />} title="Organize evidence">
+          Add SG, title, planning or other supported documents and see what each source actually supports.
         </Card>
-        <Card icon={<LineChart className="h-5 w-5" />} title="Valuation tracking">
-          Monitor the modelled value of your property over time, with clear disclosures that this is an informational estimate — not a certified valuation.
+        <Card icon={<ShieldCheck className="h-5 w-5" />} title="Understand planning confidence">
+          Published rules, working zoning, property-specific evidence and missing municipal confirmation remain visibly distinct.
         </Card>
-        <Card icon={<Users className="h-5 w-5" />} title="Ownership information">
-          Understand the ownership profile of properties around you — individual, trust, or company — using public-record style intelligence.
-        </Card>
-        <Card icon={<MapPin className="h-5 w-5" />} title="Market awareness">
-          Know when comparable properties transact nearby and how your micro-pocket is trending.
-        </Card>
-        <Card icon={<Home className="h-5 w-5" />} title="Built for you, not the agent" accent>
-          We do not sell your data to brokers. Easy Erf is research-first — you stay in control.
+        <Card icon={<FileText className="h-5 w-5" />} title="Keep a living property file">
+          Use the Easy Erf Report as an understandable summary of what is known, what is uncertain and what to check next.
         </Card>
       </div>
 
       <CTASection
-        title="Start with your own property"
-        description="Open the map, search your address, and see what Easy Erf knows about your home."
-        primary={{ label: "Search the Map", to: "/" }}
-        secondary={{ label: "Why Easy Erf", to: "/why" }}
+        title="Start with your own erf"
+        description="Find the property, review Property Overview, and begin Guided Investigation only when you want to work through the evidence."
+        primary={{ label: "Find a Property", to: "/" }}
+        secondary={{ label: "How It Works", to: "/how-it-works" }}
       />
     </MarketingPage>
   );

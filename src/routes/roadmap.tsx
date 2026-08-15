@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MarketingPage, SectionHeading } from "@/components/layout/MarketingPage";
-import { CheckCircle2, Circle, Sparkles } from "lucide-react";
+import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
+import { FileSearch2, Network, BrainCircuit, Layers3 } from "lucide-react";
 
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
     meta: [
       { title: "Easy Erf Roadmap" },
-      { name: "description", content: "Current pilot in St Francis Bay, planned expansion across the Eastern Cape, Western Cape, and national coverage, plus future features." },
-      { property: "og:title", content: "Easy Erf Roadmap" },
-      { property: "og:description", content: "Where Easy Erf is today and where it's going next." },
+      {
+        name: "description",
+        content:
+          "A high-level, non-binding view of Easy Erf's product direction: strengthen the core investigation, automate evidence acquisition, deepen decision intelligence, then expand coverage and platform capabilities.",
+      },
     ],
   }),
   component: Roadmap,
@@ -18,72 +20,35 @@ function Roadmap() {
   return (
     <MarketingPage
       eyebrow="Roadmap"
-      title="Where we are. Where we're going."
-      subtitle="A high-level view of how Easy Erf is expanding."
-      intro="We share our direction openly so users, partners, and municipalities can plan around it. Specific timelines and proprietary strategy are intentionally not included."
+      title="Build the investigation first. Expand from evidence."
+      subtitle="This is product direction, not a delivery calendar or promise of specific dates."
+      intro="Easy Erf is deliberately proving the end-to-end property investigation before chasing national breadth. The deepest current validation remains the Kouga/St Francis pilot and the canonical Erf 1570 journey."
     >
-      <section className="grid gap-6 md:grid-cols-3">
-        <Column
-          state="now"
-          title="Current Pilot"
-          items={["St Francis Bay region", "Full parcel coverage", "Investor-grade scoring", "Premium research tools"]}
-        />
-        <Column
-          state="next"
-          title="Future Expansion"
-          items={["Eastern Cape", "Western Cape", "National Coverage"]}
-        />
-        <Column
-          state="later"
-          title="Future Features"
-          items={[
-            "Ownership History",
-            "Historical Imagery",
-            "Market Analytics",
-            "Portfolio Tracking",
-            "Advanced Investor Tools",
-          ]}
-        />
-      </section>
-
-      <section className="mt-12 rounded-3xl border border-accent/30 bg-accent/5 p-6 text-sm leading-relaxed text-foreground">
-        Roadmap items are directional and may change. Nothing on this page is a commitment, a forecast, or an obligation to deliver
-        any specific feature in any specific timeframe.
-      </section>
-    </MarketingPage>
-  );
-}
-
-function Column({
-  state,
-  title,
-  items,
-}: {
-  state: "now" | "next" | "later";
-  title: string;
-  items: string[];
-}) {
-  const meta = {
-    now: { label: "Live now", className: "border-primary/40 bg-gradient-to-br from-primary/10 via-card to-accent/5", icon: <Sparkles className="h-4 w-4 text-accent" /> },
-    next: { label: "Coming soon", className: "border-border bg-card", icon: <Circle className="h-4 w-4 text-accent" /> },
-    later: { label: "On the horizon", className: "border-border bg-card", icon: <Circle className="h-4 w-4 text-muted-foreground" /> },
-  }[state];
-
-  return (
-    <div className={`rounded-3xl border p-6 shadow-soft ${meta.className}`}>
-      <div className="flex items-center gap-2">
-        {meta.icon}
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">{meta.label}</span>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card icon={<FileSearch2 className="h-5 w-5" />} title="Now: make the core investigation excellent" accent>
+          Strengthen Property Overview, Guided Investigation, canonical evidence, planning, Market Evidence, Strategy, Site Potential, Ask Easy Erf and the living report as one coherent property experience.
+        </Card>
+        <Card icon={<Network className="h-5 w-5" />} title="Next: automate evidence acquisition">
+          Improve cadastral retrieval, municipal planning sources, document extraction, address intelligence, provider evidence and market/comparable ingestion without weakening provenance.
+        </Card>
+        <Card icon={<BrainCircuit className="h-5 w-5" />} title="Then: deepen decision intelligence">
+          Improve build-envelope reasoning, development scenarios, financial comparisons, risk framing and investor decision summaries using the same canonical property file.
+        </Card>
+        <Card icon={<Layers3 className="h-5 w-5" />} title="Later: expand the platform">
+          Broader municipal coverage, monitoring, professional collaboration, property passport, transaction-room workflows, portfolio tools, marketplace capabilities and enterprise/API products remain later-stage opportunities.
+        </Card>
       </div>
-      <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
-      <ul className="mt-4 space-y-2">
-        {items.map((it) => (
-          <li key={it} className="flex items-start gap-2 text-sm text-foreground/85">
-            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${state === "now" ? "text-primary" : "text-muted-foreground"}`} />
-            {it}
-          </li>
-        ))}
-      </ul>
-    </div>
+
+      <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground shadow-soft">
+        Roadmap items are directional. Easy Erf should not label a capability “live,” “coming soon,” or paid until the actual product and supporting data/provider infrastructure justify that statement.
+      </div>
+
+      <CTASection
+        title="Judge Easy Erf by what works today"
+        description="The current product journey is explained in How It Works."
+        primary={{ label: "How It Works", to: "/how-it-works" }}
+        secondary={{ label: "Find a Property", to: "/" }}
+      />
+    </MarketingPage>
   );
 }
