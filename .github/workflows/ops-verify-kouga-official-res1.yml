@@ -1,0 +1,128 @@
+name: Verify official Kouga RES1 rules
+
+on:
+  push:
+    branches:
+      - codex/kouga-official-res1-rules-v1
+    paths:
+      - .github/workflows/ops-verify-kouga-official-res1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/kouga-official-res1-rules-v1
+          fetch-depth: 0
+
+      - name: Wire parcel-area rule applicability and document verification
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          assessment_path = Path('src/lib/planning/parcelPlanningAssessment.ts')
+          assessment = assessment_path.read_text()
+          applicability_import = 'import { zoningRulesForErfArea } from "./zoningRuleApplicability";\n'
+          if applicability_import not in assessment:
+              assessment = assessment.replace(
+                  'import { calculateBuildableEnvelope } from "./buildableEnvelope";\n',
+                  'import { calculateBuildableEnvelope } from "./buildableEnvelope";\n' + applicability_import,
+                  1,
+              )
+          old_rules = '  const publishedRules = zone ? zone.rules : [];'
+          new_rules = '  const publishedRules = zone ? zoningRulesForErfArea(zone.rules, input.erfAreaM2) : [];'
+          if old_rules in assessment:
+              assessment = assessment.replace(old_rules, new_rules, 1)
+          elif new_rules not in assessment:
+              raise SystemExit('Could not find publishedRules assignment')
+          assessment_path.write_text(assessment)
+
+          current_state = Path('docs/EASY_ERF_CURRENT_STATE.md')
+          current_text = current_state.read_text()
+          marker = '## Kouga official RES1 source verification'
+          if marker not in current_text:
+              current_text += '''\n\n## Kouga official RES1 source verification\n\nOn 2026-08-15 Easy Erf directly retrieved and machine-read the official February 2021 Kouga Land Use Scheme PDF from the municipal download endpoint. Section 25, Residential Zone 1, printed page 23 (PDF page 26), confirms two explicit erf-area bands. For erven smaller than 400 m² the published controls are 1 m street, 1 m lateral on one boundary, 1 m rear, 8.5 m height and 70% coverage. For erven larger than 400 m² they are 3 m street, 1.5 m lateral, 1.5 m rear, 8.5 m height and 50% coverage. The section also states one dwelling unit per erf and one additional dwelling unit subject to consent.\n\nThe registry now treats those values as cited active **general zone rules** and applies the correct band from canonical parcel area. It deliberately withholds area-conditioned controls when parcel area is unknown or exactly 400 m² because the published table uses open `<400` and `>400` wording.\n\nThis does **not** confirm that Erf 1570 is Residential Zone 1. The canonical Sea Vista parcel is present in the Kouga SG layer under ID `C03400140000157000000` / parcel key `E108C034001400001570000000`, but is absent from Kouga's public `Land_Parcel_Property_Report_Developed` dataset. The official St Francis Bay zoning-plan PDF is directly downloadable, but its extracted text does not provide a defensible parcel-to-zone correlation for Erf 1570. Parcel zoning therefore remains a separate unresolved evidence question.\n'''
+              current_state.write_text(current_text)
+
+          agent_doc = Path('docs/EASY_ERF_AGENT_JOBS_V1.md')
+          agent_text = agent_doc.read_text()
+          agent_marker = '## Verified Kouga rule upgrade'
+          if agent_marker not in agent_text:
+              agent_text += '''\n\n## Verified Kouga rule upgrade\n\nPlanning Investigation V1 can now distinguish two different kinds of planning certainty for Kouga:\n\n- **Published rule certainty:** the February 2021 municipal scheme has been directly retrieved and section 25 RES1 controls are stored with source citations and parcel-area applicability.\n- **Parcel zoning certainty:** still separate. Easy Erf must not state that a parcel is RES1 merely because RES1 rules are known. A manual working selection remains low confidence until property-specific municipal evidence or a reliable zoning correlation supports it.\n\nThis separation is deliberate. Knowing exactly what RES1 means is not the same as proving that a particular erf is RES1.\n'''
+              agent_doc.write_text(agent_text)
+
+          decision_log = Path('docs/EASY_ERF_DECISION_LOG.md')
+          decision_text = decision_log.read_text()
+          decision_marker = '## EE-023 - Published zone rules and parcel zoning are separate evidence questions'
+          if decision_marker not in decision_text:
+              decision_text += '''\n\n## EE-023 - Published zone rules and parcel zoning are separate evidence questions\n\n- Date: 2026-08-15.\n- Decision: Easy Erf may promote a planning rule from `manual_candidate` to an active published general rule only after the authoritative source has been directly retrieved, read and cited. This does not promote the parcel's zoning detection status.\n- Kouga implementation: The February 2021 Kouga Land Use Scheme section 25 RES1 controls are now verified and cited. Area-conditioned controls are modelled separately for `<400 m²` and `>400 m²` and selected from canonical parcel area.\n- Boundary safety: Where the source itself uses an open split, Easy Erf does not invent a rule at the exact boundary. Unknown parcel area also withholds area-conditioned controls.\n- Parcel identity safety: Public municipal datasets that contain repeated erf numbers must never be joined by erf number alone. Strong parcel identity such as canonical LPI/parcel key, municipality and area context is required.\n- Erf 1570 result: The canonical Sea Vista parcel is absent from the public `Land_Parcel_Property_Report_Developed` dataset, so zoning from another Erf 1570 record must never be borrowed. Parcel-specific zoning remains unresolved even though the general RES1 rules are now official.\n- Do not regress: Never equate a verified zone definition with proof that a specific parcel has that zoning.\n'''
+              decision_log.write_text(decision_text)
+          PY
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Format changed implementation files
+        run: >-
+          npx prettier --write
+          src/lib/planning/zoningRuleApplicability.ts
+          src/lib/planning/kougaVerifiedPlanningSources.ts
+          src/lib/planning/parcelPlanningAssessment.ts
+          src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts
+          src/lib/planning/__tests__/officialRes1Applicability.test.ts
+
+      - name: Run focused official-rule tests
+        run: >-
+          npx vitest run
+          src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts
+          src/lib/planning/__tests__/officialRes1Applicability.test.ts
+          src/lib/planning/__tests__/parcelPlanningAssessment.test.ts
+          src/lib/investigation/__tests__/planningInvestigationJob.test.ts
+          src/lib/evidence/__tests__/buildPropertyEvidencePack.test.ts
+
+      - name: Run full test suite
+        run: npx vitest run
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run targeted ESLint
+        run: >-
+          npx eslint
+          src/lib/planning/zoningRuleApplicability.ts
+          src/lib/planning/kougaVerifiedPlanningSources.ts
+          src/lib/planning/parcelPlanningAssessment.ts
+          src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts
+          src/lib/planning/__tests__/officialRes1Applicability.test.ts
+          --rule 'prettier/prettier: off'
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check stacked patch whitespace
+        run: git diff --check codex/kouga-planning-source-artifacts-v1 HEAD
+
+      - name: Commit verified wiring and docs
+        run: |
+          git config user.name "Easy Erf Build Driver"
+          git config user.email "brumanswaves@gmail.com"
+          git add \
+            src/lib/planning/zoningRuleApplicability.ts \
+            src/lib/planning/kougaVerifiedPlanningSources.ts \
+            src/lib/planning/parcelPlanningAssessment.ts \
+            src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts \
+            src/lib/planning/__tests__/officialRes1Applicability.test.ts \
+            docs/EASY_ERF_CURRENT_STATE.md \
+            docs/EASY_ERF_AGENT_JOBS_V1.md \
+            docs/EASY_ERF_DECISION_LOG.md
+          if git diff --cached --quiet; then
+            echo "No product patch to commit."
+          else
+            git commit -m "Verify official Kouga RES1 planning rules"
+            git push origin HEAD:codex/kouga-official-res1-rules-v1
+          fi
