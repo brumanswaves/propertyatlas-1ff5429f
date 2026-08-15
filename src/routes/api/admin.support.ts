@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readFounderOperationsJobs } from "@/lib/admin/founderJobsServer";
 import { grantComplimentarySitePotentialCredit } from "@/lib/admin/founderSupportActions";
 import {
   readFounderSupportUser,
@@ -34,6 +35,11 @@ export async function handleFounderSupportRequest(request: Request) {
       const userId = url.searchParams.get("userId") ?? "";
       const detail = await readFounderSupportUser(request, userId);
       return json({ success: true, detail }, 200);
+    }
+
+    if (mode === "jobs") {
+      const jobs = await readFounderOperationsJobs(request);
+      return json({ success: true, jobs }, 200);
     }
 
     return json({ success: false, error: "Unknown Founder Operations support request." }, 400);
