@@ -280,7 +280,7 @@ function AccountPage() {
             {isAdmin && (
               <AccountCard icon={<ShieldCheck className="h-4 w-4" />} title="Founder Operations">
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  This account has the Easy Erf admin role. Operational tools remain protected by the same server-backed role check used by the admin area.
+                  This account has the Easy Erf admin role. Founder Operations remains protected by the same admin-role guard used throughout the existing admin area.
                 </p>
                 <Link
                   to="/admin"
