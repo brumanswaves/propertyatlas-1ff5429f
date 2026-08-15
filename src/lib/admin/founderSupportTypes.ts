@@ -60,6 +60,15 @@ export interface FounderSupportDesignPackSummary {
   updatedAt: string;
 }
 
+export interface FounderSupportEntitlements {
+  purchasedCredits: {
+    balance: number;
+    lifetimePurchased: number;
+    lifetimeConsumed: number;
+  } | null;
+  activeBetaCredits: number;
+}
+
 export interface FounderSupportReportOrderSummary {
   id: string;
   parcelId: string;
@@ -89,6 +98,7 @@ export interface FounderSupportUserDetail {
   assets: FounderSupportAssetSummary[];
   sitePotentialProjects: FounderSupportSitePotentialSummary[];
   designPacks: FounderSupportDesignPackSummary[];
+  entitlements: FounderSupportEntitlements;
   reportOrders: FounderSupportReportOrderSummary[];
   providerEvents: FounderSupportProviderEventSummary[];
 }
