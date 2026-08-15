@@ -827,15 +827,18 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).not.toContain("Concept image not selected");
   });
 
-  it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {
-    const dashboard = read("src/routes/dashboard.tsx");
+  it("keeps My Investigations market evidence conditional and routes property work into canonical surfaces", () => {
+  const dashboard = read("src/routes/dashboard.tsx");
 
-    expect(dashboard).toContain("savedMarketEvidence(row).length > 0");
-    expect(dashboard).not.toContain("No listing evidence saved yet");
-    expect(dashboard).not.toContain("Calculators live inside each property dossier");
-    expect(dashboard).toContain("Run calculator");
-    expect(dashboard).toContain("tab=calc");
-  });
+  expect(dashboard).toContain("marketEvidence.length > 0");
+  expect(dashboard).not.toContain("No listing evidence saved yet");
+  expect(dashboard).not.toContain("Calculators live inside each property dossier");
+  expect(dashboard).not.toContain("Run calculator");
+  expect(dashboard).not.toContain("tab=calc");
+  expect(dashboard).toContain("Continue Investigation");
+  expect(dashboard).toContain('withTab(href, "investigation")');
+  expect(dashboard).toContain('withTab(href, "stoep-report")');
+});
 
   it("keeps saved comps storage compatible with saved market evidence", () => {
     const hook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
