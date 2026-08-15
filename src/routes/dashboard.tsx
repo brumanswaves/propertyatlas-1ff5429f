@@ -1,10 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import {
-  AlertTriangle,
   Bookmark,
   Building2,
-  CheckCircle2,
   ChevronRight,
   FileText,
   Link2,
