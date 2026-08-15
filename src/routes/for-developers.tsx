@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MarketingPage, Card, CTASection, SectionHeading } from "@/components/layout/MarketingPage";
-import { Layers, Ruler, Map, Building2, FileStack, Compass } from "lucide-react";
+import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
+import { Building2, Calculator, FileSearch2, Ruler, ShieldCheck, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/for-developers")({
   head: () => ({
     meta: [
-      { title: "Easy Erf for Developers" },
-      { name: "description", content: "Land analysis, development opportunities, parcel exploration, location intelligence, and zoning insights — built for property developers." },
-      { property: "og:title", content: "Easy Erf for Developers" },
-      { property: "og:description", content: "From parcel to feasibility — research land the modern way." },
+      { title: "Easy Erf for Property Developers" },
+      {
+        name: "description",
+        content:
+          "Investigate parcel evidence, planning controls, development assumptions, Site Potential and feasibility scenarios in one Easy Erf property file.",
+      },
     ],
   }),
   component: ForDevelopers,
@@ -17,46 +19,38 @@ export const Route = createFileRoute("/for-developers")({
 function ForDevelopers() {
   return (
     <MarketingPage
-      eyebrow="For Developers"
-      title="From parcel to feasibility — on one map."
-      subtitle="Land analysis, location intelligence, and zoning context where you do your research."
-      intro="Easy Erf helps developers move faster from idea to opportunity — by surfacing the spatial, ownership, and regulatory signals you actually need at each parcel."
-      heroCta={{ label: "Explore Parcels", to: "/" }}
+      eyebrow="For developers"
+      title="Connect planning evidence to development feasibility."
+      subtitle="Site Potential and Strategy are strongest when the property constraints underneath them are explicit."
+      intro="Easy Erf helps a developer move from parcel identity and planning evidence into build-envelope assumptions, concept exploration and deterministic financial scenarios. It does not claim automatic development scores, complete ownership histories or parcel rights that have not been proved."
+      heroCta={{ label: "Find a Property", to: "/" }}
     >
-      <section>
-        <SectionHeading title="What developers do on Easy Erf" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card icon={<Ruler className="h-5 w-5" />} title="Land analysis">
-            Size, geometry, frontage, and corner status for every parcel — clearly visible at a glance.
-          </Card>
-          <Card icon={<Layers className="h-5 w-5" />} title="Development opportunities">
-            Filter for large erven, vacant land, long-held ownership, and high development scores.
-          </Card>
-          <Card icon={<Map className="h-5 w-5" />} title="Parcel exploration">
-            Click any erf for its full intelligence profile — no listings layer required.
-          </Card>
-          <Card icon={<Compass className="h-5 w-5" />} title="Location intelligence">
-            Beachfront, ocean view, walkability, and proximity signals captured on every property.
-          </Card>
-          <Card icon={<Building2 className="h-5 w-5" />} title="Zoning intelligence">
-            Indicative zoning, coverage, and bulk — to frame feasibility before you commission a formal study.
-          </Card>
-          <Card icon={<FileStack className="h-5 w-5" />} title="Comparable evidence" accent>
-            Sales history, transfer prices, and ownership timelines support your assumptions with public-record style data.
-          </Card>
-        </div>
-      </section>
-
-      <section className="mt-12 rounded-3xl border border-accent/30 bg-accent/5 p-6 text-sm leading-relaxed text-foreground">
-        Easy Erf is a research and information platform. Zoning, bulk, coverage, and indicative GDV figures are informational
-        only and must be confirmed with the relevant municipality and a qualified town planner before any development decision.
-      </section>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card icon={<Ruler className="h-5 w-5" />} title="Start with the parcel" accent>
+          Use the canonical cadastral identity, geometry and SG material as the base for later development work.
+        </Card>
+        <Card icon={<FileSearch2 className="h-5 w-5" />} title="Investigate planning">
+          Review the best available municipal sources, working zoning, published general rules, property-specific evidence and unresolved constraints.
+        </Card>
+        <Card icon={<Building2 className="h-5 w-5" />} title="Explore Site Potential">
+          Convert verified or explicitly assumed building controls into understandable build-envelope and concept work without presenting it as approval.
+        </Card>
+        <Card icon={<Calculator className="h-5 w-5" />} title="Run feasibility">
+          Use Strategy to model acquisition, build costs, soft costs, contingency, GDV, residual land value, profit and sensitivity with transparent maths.
+        </Card>
+        <Card icon={<ShieldCheck className="h-5 w-5" />} title="Keep provenance attached">
+          A general scheme rule, user-confirmed working conclusion and official property-specific right remain different inputs even when they produce the same number.
+        </Card>
+        <Card icon={<FileText className="h-5 w-5" />} title="Carry it into the report">
+          Accepted Site Potential and the chosen Strategy scenario flow into the same living Easy Erf Report rather than becoming isolated workbenches.
+        </Card>
+      </div>
 
       <CTASection
-        title="Find your next site"
-        description="Open the map and filter for development-grade parcels in the St Francis Bay pilot region."
-        primary={{ label: "Open the Map", to: "/" }}
-        secondary={{ label: "Partner with us", to: "/partnerships" }}
+        title="See the complete development path"
+        description="How It Works explains where planning, Strategy and Site Potential fit inside the broader property investigation."
+        primary={{ label: "How It Works", to: "/how-it-works" }}
+        secondary={{ label: "See Pricing", to: "/pricing" }}
       />
     </MarketingPage>
   );
