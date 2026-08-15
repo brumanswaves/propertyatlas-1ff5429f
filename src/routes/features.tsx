@@ -1,51 +1,56 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingPage, Card, CTASection } from "@/components/layout/MarketingPage";
-import {
-  Map, FileText, Layers, Link2, Bookmark, Calculator, NotebookPen, ShieldCheck, Landmark,
-} from "lucide-react";
+import { FileSearch2, Calculator, Building2, FileText, ShieldCheck, MessageCircleQuestion } from "lucide-react";
 
 export const Route = createFileRoute("/features")({
   head: () => ({
     meta: [
       { title: "Easy Erf Features" },
-      { name: "description", content: "CSG parcel map, erf research, Kouga public GIS context, research links, listing workspace, notes, calculators, and a future report marketplace." },
-      { property: "og:title", content: "Easy Erf Features" },
-      { property: "og:description", content: "Public-data property research for South Africa — what Easy Erf does today." },
+      {
+        name: "description",
+        content:
+          "Easy Erf features now form one guided property investigation: evidence, planning, Market Evidence, Strategy, Site Potential, Ask Easy Erf and a living report.",
+      },
     ],
   }),
   component: Features,
 });
 
-const FEATURES = [
-  { icon: Map, title: "Official Parcel Map", desc: "Click CSG parcels and view public cadastral details." },
-  { icon: FileText, title: "Erf Research Panel", desc: "See erf number, LPI, parcel key, area, region, and coordinates." },
-  { icon: Landmark, title: "Kouga Public GIS Context", desc: "View Kouga public mapping records, municipal context, and zoning where available." },
-  { icon: Link2, title: "Research Links", desc: "Open official and municipal sources from one place." },
-  { icon: Bookmark, title: "Listing Workspace", desc: "Save listing URLs, asking prices, agents, and notes — manually, from any portal." },
-  { icon: Layers, title: "Report Marketplace", desc: "Prepare to order Lightstone, WinDeed, and SG document reports once those connections are live." },
-  { icon: NotebookPen, title: "Notes and Due Diligence", desc: "Track questions, checks, risks, and property notes." },
-  { icon: Calculator, title: "Calculators", desc: "Run yield, holding cost, flip, and development scenarios using your own numbers." },
-  { icon: ShieldCheck, title: "Public Data First", desc: "No fake ownership, no fake valuations, no fake sales history. Every record is labelled by source." },
-];
-
 function Features() {
   return (
     <MarketingPage
-      eyebrow="Features"
-      title="Public-data property research, done properly."
-      subtitle="One map. One panel. Real public sources — honestly labelled."
-      heroCta={{ label: "Try the Map", to: "/" }}
+      eyebrow="Product"
+      title="Easy Erf is one investigation, not a menu of disconnected features."
+      subtitle="The detailed product walkthrough now lives in How It Works."
+      intro="As Easy Erf has evolved, the old Features page became a duplicate product directory. The current product is better understood as one property journey where each capability improves the same canonical property file."
+      heroCta={{ label: "See How It Works", to: "/how-it-works" }}
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map((f) => (
-          <Card key={f.title} icon={<f.icon className="h-5 w-5" />} title={f.title}>{f.desc}</Card>
-        ))}
+        <Card icon={<FileSearch2 className="h-5 w-5" />} title="Investigate the evidence" accent>
+          Property identity, SG and cadastral material, planning sources, uploaded documents and missing evidence remain connected to the selected erf.
+        </Card>
+        <Card icon={<ShieldCheck className="h-5 w-5" />} title="Keep confidence visible">
+          Verified facts, working conclusions, assumptions, conflicts and unknowns are deliberately not collapsed into one answer.
+        </Card>
+        <Card icon={<Calculator className="h-5 w-5" />} title="Run Strategy">
+          Deterministic calculations turn property facts and explicit assumptions into acquisition, development, resale, rental and sensitivity scenarios.
+        </Card>
+        <Card icon={<Building2 className="h-5 w-5" />} title="Explore Site Potential">
+          Where available, build-envelope assumptions and generated concepts help explain what the property could become without masquerading as approval.
+        </Card>
+        <Card icon={<FileText className="h-5 w-5" />} title="Build the living report">
+          The Easy Erf Report improves as the investigation improves rather than becoming a separate static product.
+        </Card>
+        <Card icon={<MessageCircleQuestion className="h-5 w-5" />} title="Ask Easy Erf">
+          Grounded questions and explanations use the current property file, evidence and calculations instead of acting like a generic chatbot.
+        </Card>
       </div>
+
       <CTASection
-        title="Start with the live map"
-        description="Open the Kouga pilot and click any parcel to see public-data research in action."
-        primary={{ label: "Open the Map", to: "/" }}
-        secondary={{ label: "See pricing", to: "/pricing" }}
+        title="See the complete journey"
+        description="How It Works explains the current Easy Erf experience from property search through Guided Investigation, Strategy, Site Potential and report."
+        primary={{ label: "How It Works", to: "/how-it-works" }}
+        secondary={{ label: "Find a Property", to: "/" }}
       />
     </MarketingPage>
   );
