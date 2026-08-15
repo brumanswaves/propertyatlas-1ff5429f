@@ -33,11 +33,12 @@ describe("PlanningInvestigationPanel", () => {
     const html = renderToStaticMarkup(<PlanningInvestigationPanel job={jobForErf1570()} />);
 
     expect(html).toContain("Easy Erf investigated the planning position");
-    expect(html).toContain("Sources checked");
+    expect(html).toContain("Sources reviewed");
     expect(html).toContain("Findings");
     expect(html).toContain("Confidence");
     expect(html).toContain("Still unresolved");
     expect(html).toContain("Next investigation");
+    expect(html).toContain("only claims live retrieval when a job actually fetched the source");
     expect(html).not.toContain("agentJobContract");
   });
 });
