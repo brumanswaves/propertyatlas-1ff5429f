@@ -21,18 +21,15 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
+
           path = Path('src/components/property/__tests__/dossierUx.test.ts')
           source = path.read_text()
-          old = '''  it("hides empty market evidence/calculator dashboard sections and keeps run calculator action", () => {
-            const dashboard = read("src/routes/dashboard.tsx");
-
-            expect(dashboard).toContain("savedMarketEvidence(row).length > 0");
-            expect(dashboard).not.toContain("No listing evidence saved yet");
-            expect(dashboard).not.toContain("Calculators live inside each property dossier");
-            expect(dashboard).toContain("Run calculator");
-            expect(dashboard).toContain("tab=calc");
-          });'''
-          new = '''  it("keeps My Investigations market evidence conditional and routes property work into canonical surfaces", () => {
+          pattern = re.compile(
+              r'  it\("hides empty market evidence/calculator dashboard sections and keeps run calculator action", \(\) => \{.*?^  \}\);',
+              re.MULTILINE | re.DOTALL,
+          )
+          replacement = '''  it("keeps My Investigations market evidence conditional and routes property work into canonical surfaces", () => {
             const dashboard = read("src/routes/dashboard.tsx");
 
             expect(dashboard).toContain("marketEvidence.length > 0");
@@ -44,9 +41,10 @@ jobs:
             expect(dashboard).toContain('withTab(href, "investigation")');
             expect(dashboard).toContain('withTab(href, "stoep-report")');
           });'''
-          if old not in source:
-              raise SystemExit('Expected stale guardrail block was not found')
-          path.write_text(source.replace(old, new, 1))
+          updated, count = pattern.subn(replacement, source, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one stale guardrail block, found {count}')
+          path.write_text(updated)
       - name: Remove one-time workflow
         run: rm .github/workflows/patch-my-investigations-guardrail.yml
       - name: Commit branch-only guardrail update
