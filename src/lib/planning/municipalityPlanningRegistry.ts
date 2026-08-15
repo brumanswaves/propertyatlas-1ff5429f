@@ -1,4 +1,4 @@
-import { KOUGA_PLANNING_REGISTRY } from "./kougaPlanningRegistry";
+import { KOUGA_PLANNING_REGISTRY } from "./kougaVerifiedPlanningSources";
 import type {
   LocalDesignGuideline,
   MunicipalityPlanningRegistryEntry,
