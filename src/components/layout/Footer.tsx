@@ -8,6 +8,11 @@ import {
   MAP_FOOTER_LINKS,
 } from "@/lib/navigation";
 
+type FooterLink =
+  | (typeof FOOTER_PRODUCT_LINKS)[number]
+  | (typeof FOOTER_RESOURCE_LINKS)[number]
+  | (typeof FOOTER_LEGAL_LINKS)[number];
+
 export function Footer() {
   return (
     <footer className="border-t border-border bg-card/80">
@@ -54,7 +59,7 @@ function FooterCol({
   className,
 }: {
   title: string;
-  links: ReadonlyArray<{ to: string; label: string }>;
+  links: readonly FooterLink[];
   className?: string;
 }) {
   return (
