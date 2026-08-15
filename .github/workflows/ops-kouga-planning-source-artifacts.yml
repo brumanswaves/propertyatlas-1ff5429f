@@ -28,47 +28,24 @@ jobs:
           registry_path = Path('src/lib/planning/kougaPlanningRegistry.ts')
           registry = registry_path.read_text()
 
-          old_note = ''' * SOURCE VERIFICATION NOTE (important, do not remove):
-           * The Kouga website returned HTTP 403 to automated retrieval while this
-           * registry was built, so the Residential Zone 1 numeric controls below could
-           * NOT be confirmed against the official Land Use Scheme text. They are stored
-           * with status `manual_candidate` — a review-required published-rule candidate.
-           * They must never be rendered as active official rules until a maintainer sets
-           * `status: "active"` with a real citation and `lastVerifiedAt`.
-           */'''.replace('           *', ' *')
-
+          note_start = registry.index(' * SOURCE VERIFICATION NOTE (important, do not remove):')
+          note_end = registry.index(' */', note_start) + len(' */')
           new_note = ''' * SOURCE VERIFICATION NOTE (important, do not remove):
            * The official Kouga website currently lists the 2021 Land Use Scheme and the
            * St Francis Bay town zoning-plan PDF. Their presence was re-verified on
            * 2026-08-15. Easy Erf has not yet retrieved and parsed the scheme PDF or town
            * zoning-plan PDF inside the product, so the Residential Zone 1 numeric controls
            * below remain `manual_candidate` review-required values. They must never be
-           * rendered as active official parcel rules until the relevant text/map has been
-           * read, cited and correlated to the correct property.
+           * rendered as active official parcel rules until the relevant text or map has
+           * been read, cited and correlated to the correct property.
            */'''.replace('           *', ' *')
+          registry = registry[:note_start] + new_note + registry[note_end:]
 
-          if old_note not in registry:
-              raise SystemExit('Expected source verification note not found')
-          registry = registry.replace(old_note, new_note, 1)
-
-          old_source = '''  {
-            id: "kouga-land-use-scheme-2021",
-            municipality: KOUGA,
-            title: "Kouga Land Use Scheme 2021 and town zoning plans",
-            sourceType: "land_use_scheme",
-            url: "https://www.kouga.gov.za/document-library",
-            jurisdiction: "municipal",
-            status: "active",
-            version: "2021",
-            effectiveDate: null,
-            publishedDate: "2021-01-01",
-            lastVerifiedAt: null,
-            planningAreas: ["St Francis Bay Village", "Cape St Francis", "Oyster Bay", "Jeffreys Bay"],
-            notes:
-              "Scheme text plus town zoning plan PDFs listed in the document library. Numeric zone controls in Easy Erf are still review-required candidates until read off this document.",
-          },'''
-
-          new_source = '''  {
+          source_start_marker = '  {\n    id: "kouga-land-use-scheme-2021",'
+          source_end_marker = '  {\n    id: "kouga-building-aesthetics-2025",'
+          source_start = registry.index(source_start_marker)
+          source_end = registry.index(source_end_marker, source_start)
+          new_sources = '''  {
             id: "kouga-land-use-scheme-2021",
             municipality: KOUGA,
             title: "Kouga Land Use Scheme 2021",
@@ -96,18 +73,16 @@ jobs:
             effectiveDate: null,
             publishedDate: null,
             lastVerifiedAt: "2026-08-15",
-            planningAreas: ["Sea Vista", "St Francis Bay Village", "St Francis Bay Canals", "Santareme"],
+            planningAreas: ["Sea Vista"],
             notes:
               "Official document library lists PDF '202 - Kouga ILUS 2020-12 - Town Zoning Plan_6 St Francis Bay.pdf'. Presence verified 2026-08-15. Easy Erf has not yet fetched or parsed the PDF in-product, so this source must not be used alone to assert a parcel zoning.",
-          },'''
-
-          if old_source not in registry:
-              raise SystemExit('Expected 2021 land-use source block not found')
-          registry = registry.replace(old_source, new_source, 1)
+          },
+'''
+          registry = registry[:source_start] + new_sources + registry[source_end:]
           registry_path.write_text(registry)
 
           test_path = Path('src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts')
-          test_path.write_text('''import { describe, expect, it } from "vitest";\nimport { KOUGA_PLANNING_REGISTRY } from "../kougaPlanningRegistry";\nimport {\n  canAttemptOfficialZoningDetection,\n  findPlanningSource,\n  findZone,\n  planningSourcesFor,\n} from "../municipalityPlanningRegistry";\n\ndescribe("Kouga official planning source metadata", () => {\n  it("makes the municipality-wide 2021 scheme available to Sea Vista investigations", () => {\n    const sourceIds = planningSourcesFor(KOUGA_PLANNING_REGISTRY, "Sea Vista").map(\n      (source) => source.id,\n    );\n\n    expect(sourceIds).toContain("kouga-land-use-scheme-2021");\n    expect(sourceIds).toContain("kouga-st-francis-bay-town-zoning-plan-2020-12");\n  });\n\n  it("records the official St Francis Bay zoning-plan artifact without claiming parcel zoning", () => {\n    const source = findPlanningSource(\n      KOUGA_PLANNING_REGISTRY,\n      "kouga-st-francis-bay-town-zoning-plan-2020-12",\n    );\n\n    expect(source?.status).toBe("active");\n    expect(source?.jurisdiction).toBe("municipal");\n    expect(source?.sourceType).toBe("zoning_map");\n    expect(source?.lastVerifiedAt).toBe("2026-08-15");\n    expect(source?.planningAreas).toContain("Sea Vista");\n    expect(source?.notes).toMatch(/must not be used alone to assert a parcel zoning/i);\n    expect(canAttemptOfficialZoningDetection(KOUGA_PLANNING_REGISTRY)).toBe(false);\n  });\n\n  it("keeps the unparsed RES1 numbers review-required", () => {\n    const zone = findZone(KOUGA_PLANNING_REGISTRY, "RES1");\n\n    expect(zone?.status).toBe("manual_candidate");\n    expect(zone?.rules.length).toBeGreaterThan(0);\n    expect(zone?.rules.every((rule) => rule.status === "manual_candidate")).toBe(true);\n    expect(zone?.rules.every((rule) => rule.citation == null)).toBe(true);\n  });\n});\n''')
+          test_path.write_text('''import { describe, expect, it } from "vitest";\nimport { KOUGA_PLANNING_REGISTRY } from "../kougaPlanningRegistry";\nimport {\n  canAttemptOfficialZoningDetection,\n  findPlanningSource,\n  findZone,\n  planningSourcesFor,\n} from "../municipalityPlanningRegistry";\n\ndescribe("Kouga official planning source metadata", () => {\n  it("makes the municipality-wide 2021 scheme available to Sea Vista investigations", () => {\n    const sourceIds = planningSourcesFor(KOUGA_PLANNING_REGISTRY, "Sea Vista").map(\n      (source) => source.id,\n    );\n\n    expect(sourceIds).toContain("kouga-land-use-scheme-2021");\n    expect(sourceIds).toContain("kouga-st-francis-bay-town-zoning-plan-2020-12");\n  });\n\n  it("records the official St Francis Bay zoning-plan artifact without claiming parcel zoning", () => {\n    const source = findPlanningSource(\n      KOUGA_PLANNING_REGISTRY,\n      "kouga-st-francis-bay-town-zoning-plan-2020-12",\n    );\n\n    expect(source?.status).toBe("active");\n    expect(source?.jurisdiction).toBe("municipal");\n    expect(source?.sourceType).toBe("zoning_map");\n    expect(source?.lastVerifiedAt).toBe("2026-08-15");\n    expect(source?.planningAreas).toEqual(["Sea Vista"]);\n    expect(source?.notes).toMatch(/must not be used alone to assert a parcel zoning/i);\n    expect(canAttemptOfficialZoningDetection(KOUGA_PLANNING_REGISTRY)).toBe(false);\n  });\n\n  it("keeps the unparsed RES1 numbers review-required", () => {\n    const zone = findZone(KOUGA_PLANNING_REGISTRY, "RES1");\n\n    expect(zone?.status).toBe("manual_candidate");\n    expect(zone?.rules.length).toBeGreaterThan(0);\n    expect(zone?.rules.every((rule) => rule.status === "manual_candidate")).toBe(true);\n    expect(zone?.rules.every((rule) => rule.citation == null)).toBe(true);\n  });\n});\n''')
           PY
 
       - name: Install dependencies
