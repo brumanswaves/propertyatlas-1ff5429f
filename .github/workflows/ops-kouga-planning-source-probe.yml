@@ -17,29 +17,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Query Kouga parcel report for canonical Erf 1570
+      - name: Verify exact canonical SG match in municipal parcel report
         run: |
           python <<'PY'
+          import datetime
           import json
           import urllib.parse
           import urllib.request
 
-          layer = "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/ArcGIS/rest/services/Land_Parcel_Property_Report_Developed/FeatureServer/0"
+          service = "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/ArcGIS/rest/services/Land_Parcel_Property_Report_Developed/FeatureServer"
+          layer = service + "/0"
+          canonical_sg = "C03400140000157000000"
 
           def get_json(url):
               with urllib.request.urlopen(url, timeout=30) as response:
                   return json.load(response)
 
-          meta = get_json(layer + "?f=json")
-          print("LAYER_NAME", meta.get("name"))
-          for field in meta.get("fields", []):
-              if field.get("name") in {
-                  "F0SGNumber", "F1ErfFarmAr", "F2ErfFarmNu", "F3Portion", "F4Address",
-                  "F11ExtentSQ", "F12LandUsag", "F13ZoningSc", "F14Zoning", "F15ZoningFi",
-                  "UDZoning", "UDIssue", "UDAreaSQM", "UDSplitZn", "SG_NUMBER", "SUBURB",
-                  "TOWN", "ERF", "PORTION_SECTION"
-              }:
-                  print("FIELD", field.get("name"), "ALIAS", field.get("alias"), "TYPE", field.get("type"))
+          service_meta = get_json(service + "?f=json")
+          layer_meta = get_json(layer + "?f=json")
+          print("SERVICE_ITEM_ID", service_meta.get("serviceItemId"))
+          print("SERVICE_DESCRIPTION", (service_meta.get("serviceDescription") or "").replace("\n", " ")[:1000])
+          editing = layer_meta.get("editingInfo") or {}
+          last_edit = editing.get("lastEditDate")
+          if last_edit:
+              print("LAST_EDIT_MS", last_edit)
+              print("LAST_EDIT_UTC", datetime.datetime.fromtimestamp(last_edit/1000, datetime.timezone.utc).isoformat())
+          print("FEATURE_COUNT_ESTIMATE", layer_meta.get("maxRecordCount"))
 
           def query(where):
               params = {
@@ -48,61 +51,48 @@ jobs:
                   "returnGeometry": "false",
                   "f": "json",
               }
-              url = layer + "/query?" + urllib.parse.urlencode(params)
-              return get_json(url)
+              return get_json(layer + "/query?" + urllib.parse.urlencode(params))
 
-          queries = [
-              "ERF = '1570'",
-              "F2ErfFarmNu = '1570'",
-              "ERF = '1570' AND PORTION_SECTION IN ('0','00000','')",
-              "F0SGNumber LIKE '%1570%'",
-              "SG_NUMBER LIKE '%1570%'",
-          ]
-          seen = set()
-          for where in queries:
-              data = query(where)
-              print("QUERY", where, "COUNT", len(data.get("features", [])), "ERROR", data.get("error"))
+          for field in ["F0SGNumber", "SG_NUMBER"]:
+              data = query(f"{field} = '{canonical_sg}'")
+              print("EXACT_QUERY", field, "COUNT", len(data.get("features", [])), "ERROR", data.get("error"))
               for feature in data.get("features", []):
-                  attrs = feature.get("attributes", {})
-                  identity = json.dumps(attrs, sort_keys=True, default=str)
-                  if identity in seen:
-                      continue
-                  seen.add(identity)
-                  print("MATCH", json.dumps(attrs, sort_keys=True, default=str))
+                  print("EXACT_MATCH", json.dumps(feature.get("attributes", {}), sort_keys=True, default=str))
+
+          # Also prove the exact CSG parcel exists in Kouga's SG layer so absence
+          # from the developed-property report can be classified correctly.
+          sg_layer = "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/ArcGIS/rest/services/Kouga_SG_Properties/FeatureServer/32"
+          sg_params = {
+              "where": f"DSG_NO = '{canonical_sg}'",
+              "outFields": "DSG_NO,PRCL_KEY,GEOM_AREA,MIN_REGION,MAJ_REGION,PARCEL_NO,PORTION",
+              "returnGeometry": "false",
+              "f": "json",
+          }
+          sg_data = get_json(sg_layer + "/query?" + urllib.parse.urlencode(sg_params))
+          print("SG_LAYER_EXACT_COUNT", len(sg_data.get("features", [])), "ERROR", sg_data.get("error"))
+          for feature in sg_data.get("features", []):
+              print("SG_LAYER_MATCH", json.dumps(feature.get("attributes", {}), sort_keys=True, default=str))
           PY
 
-      - name: Resolve exact Kouga document download ids
+      - name: Verify direct official document downloads
         run: |
           python <<'PY'
-          import html as html_lib
-          import re
+          import hashlib
           import urllib.request
-          from urllib.parse import urljoin
 
-          page = "https://www.kouga.gov.za/document-library"
-          req = urllib.request.Request(page, headers={"User-Agent": "Mozilla/5.0 EasyErfSourceProbe/1.0"})
-          with urllib.request.urlopen(req, timeout=30) as response:
-              html = response.read().decode("utf-8", "replace")
-
-          targets = [
-              "KOUGA LAND USE SCHEME.pdf",
-              "202 - Kouga ILUS 2020-12 - Town Zoning Plan_6 St Francis Bay.pdf",
-          ]
-          for target in targets:
-              idx = html.lower().find(target.lower())
-              print("TARGET", target, "INDEX", idx)
-              if idx < 0:
-                  continue
-              before = html[max(0, idx - 4000):idx + 1000]
-              anchors = list(re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', before, flags=re.I|re.S))
-              scored = []
-              for match in anchors:
-                  href = urljoin(page, match.group(1))
-                  text = re.sub(r'<[^>]+>', ' ', match.group(2))
-                  text = html_lib.unescape(re.sub(r'\s+', ' ', text)).strip()
-                  distance = len(before) - match.end()
-                  if "/download/" in href:
-                      scored.append((distance, href, text[:180]))
-              for distance, href, text in sorted(scored)[:5]:
-                  print("CANDIDATE", distance, href, text)
+          targets = {
+              "scheme": "https://www.kouga.gov.za/download/4539",
+              "st_francis_zoning_plan": "https://www.kouga.gov.za/download/4531",
+          }
+          for label, url in targets.items():
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 EasyErfSourceProbe/1.0"})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  data = response.read()
+                  print("DOWNLOAD", label)
+                  print("  FINAL_URL", response.geturl())
+                  print("  CONTENT_TYPE", response.headers.get("Content-Type"))
+                  print("  CONTENT_DISPOSITION", response.headers.get("Content-Disposition"))
+                  print("  BYTES", len(data))
+                  print("  SHA256", hashlib.sha256(data).hexdigest())
+                  print("  PDF_MAGIC", data[:5] == b"%PDF-")
           PY
