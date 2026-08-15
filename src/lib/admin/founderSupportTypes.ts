@@ -60,6 +60,19 @@ export interface FounderSupportDesignPackSummary {
   updatedAt: string;
 }
 
+export interface FounderSupportBetaCreditGrant {
+  id: string;
+  creditsGranted: number;
+  creditsUsed: number;
+  remainingCredits: number;
+  grantedBy: string | null;
+  grantedByLabel: string | null;
+  reason: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  isExpired: boolean;
+}
+
 export interface FounderSupportEntitlements {
   purchasedCredits: {
     balance: number;
@@ -67,6 +80,7 @@ export interface FounderSupportEntitlements {
     lifetimeConsumed: number;
   } | null;
   activeBetaCredits: number;
+  betaCreditGrants: FounderSupportBetaCreditGrant[];
 }
 
 export interface FounderSupportReportOrderSummary {
