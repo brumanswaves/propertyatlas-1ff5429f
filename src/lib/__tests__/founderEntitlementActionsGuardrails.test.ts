@@ -9,8 +9,10 @@ function read(...parts: string[]) {
 describe("Founder Operations entitlement action guardrails", () => {
   const action = read("src", "lib", "admin", "founderSupportActions.ts");
   const client = read("src", "lib", "admin", "founderSupportActionsClient.ts");
+  const server = read("src", "lib", "admin", "founderSupportServer.ts");
   const api = read("src", "routes", "api", "admin.support.ts");
   const page = read("src", "routes", "admin_.entitlements.tsx");
+  const history = read("src", "components", "admin", "EntitlementGrantHistory.tsx");
   const guard = read("src", "components", "admin", "AdminGuard.tsx");
 
   it("reuses canonical Founder Operations authorization and the existing entitlement store", () => {
@@ -54,6 +56,19 @@ describe("Founder Operations entitlement action guardrails", () => {
     expect(mutationSurface).not.toMatch(/impersonate user/i);
     expect(mutationSurface).not.toMatch(/delete user/i);
     expect(page).toMatch(/does not expose revoke, refund or destructive repair controls/i);
+  });
+
+  it("shows the existing beta-credit audit record instead of inventing another intervention ledger", () => {
+    expect(server).toContain('from("site_potential_beta_credits")');
+    expect(server).toContain("id,credits_granted,credits_used,granted_by,reason,expires_at,created_at");
+    expect(server).toContain("grantedByLabel");
+    expect(server).not.toContain("admin_interventions");
+    expect(page).toContain("selected.entitlements.betaCreditGrants");
+    expect(history).toContain("Complimentary grant history");
+    expect(history).toContain("grant.grantedByLabel");
+    expect(history).toContain("grant.reason");
+    expect(history).toContain("grant.creditsUsed");
+    expect(history).toContain("grant.remainingCredits");
   });
 
   it("adds Entitlements to the shared Easy Erf Operations navigation", () => {
