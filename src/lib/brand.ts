@@ -1,35 +1,31 @@
 /**
- * Easy Erf brand & naming system.
+ * Easy Erf brand and naming system.
  *
  * Single source of truth for product names, taglines, and short approved copy.
- * Import from here rather than hard-coding strings in screens so future
- * rebrands or copy tweaks land in one place.
- *
- * NOTE: This module is foundation-only — it does not modify any production
- * screen, route, map, parcel, or dossier behavior.
+ * Import from here rather than hard-coding strings in screens so terminology
+ * stays coherent as the product evolves.
  */
 
-// ── Official naming system ──────────────────────────────────────────────────
 export const SITE_NAME = "Easy Erf" as const;
 export const AI_NAME = "Easy Erf AI" as const;
 export const AI_ACTION = "Ask Easy Erf" as const;
-export const WORKFLOW_NAME = "Easy Erf Steps" as const;
-export const REPORTS_NAME = "Easy Erf Reports" as const;
-export const SAVED_AREA_NAME = "My Erfs" as const;
+export const WORKFLOW_NAME = "Guided Investigation" as const;
+export const REPORTS_NAME = "Easy Erf Report" as const;
+export const SAVED_AREA_NAME = "My Investigations" as const;
 
-// ── Tagline ─────────────────────────────────────────────────────────────────
 export const TAGLINE = "Every erf. All the facts." as const;
 
-// ── Approved short product copy ─────────────────────────────────────────────
 export const COPY = {
-  shortPitch: "Research any South African erf with AI.",
+  shortPitch:
+    "Investigate South African property with evidence, calculations, and clear next steps.",
   whatItDoes:
-    "Click an erf, understand the risks, run the numbers, and generate investor-ready reports.",
+    "Find an erf, see what is known and unknown, investigate the evidence, run the numbers, explore Site Potential, and build a living Easy Erf Report.",
   paidReportsNote:
-    "Paid reports improve confidence, but Easy Erf is useful before purchase.",
+    "Paid reports can strengthen the evidence when needed, but they are optional and Easy Erf remains useful before purchase.",
+  pilotNote:
+    "Coverage and source availability vary by municipality. Easy Erf labels verified evidence, working conclusions, assumptions, and missing information separately.",
 } as const;
 
-// ── Convenience grouped export ──────────────────────────────────────────────
 export const BRAND = {
   site: SITE_NAME,
   ai: AI_NAME,
