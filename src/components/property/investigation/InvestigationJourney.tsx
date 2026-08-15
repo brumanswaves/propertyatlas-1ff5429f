@@ -5,6 +5,8 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
 import type { MasterInvestigationPlan } from "@/lib/investigation/masterPlan";
 import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";
+import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
+import { buildPlanningInvestigationJob } from "@/lib/investigation/planningInvestigationJob";
 import type {
   GuidedInvestigationStep,
   GuidedInvestigationStepId,
@@ -21,6 +23,7 @@ import { GuidedSitePotentialStep } from "./GuidedSitePotentialStep";
 import { GuidedStrategyStep } from "./GuidedStrategyStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
+import { PlanningInvestigationPanel } from "./PlanningInvestigationPanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { InvestigationStepNavigator } from "./InvestigationStepNavigator";
 import { InvestigationStepShell } from "./InvestigationStepShell";
@@ -31,6 +34,7 @@ interface InvestigationJourneyProps {
   workspaceState: ErfWorkspaceState;
   plan: MasterInvestigationPlan;
   report: ReportViewModel;
+  planningAssessment: ParcelPlanningAssessment;
   chosenScenario: ErfStrategyScenario | null;
   savedScenarioCount: number;
   acceptedBuildEnvelope: BuildEnvelopeResult | null;
@@ -55,6 +59,7 @@ export function InvestigationJourney({
   workspaceState,
   plan,
   report,
+  planningAssessment,
   chosenScenario,
   savedScenarioCount,
   acceptedBuildEnvelope,
@@ -69,6 +74,22 @@ export function InvestigationJourney({
   onSkipStep,
   onOpenExpertWorkspace,
 }: InvestigationJourneyProps) {
+  const planningInvestigationJob = buildPlanningInvestigationJob({
+    property: {
+      parcelId: parcel.id,
+      erfNumber: parcel.erfNumber,
+      portion: parcel.portion,
+      lpi: parcel.lpi,
+      parcelKey: parcel.parcelKey,
+      municipality: parcel.municipality,
+      province: parcel.province,
+      suburbOrArea: parcel.suburbOrArea,
+      town: parcel.town,
+    },
+    planningAssessment,
+    evidencePack: report.evidencePack ?? null,
+  });
+
   return (
     <div className="space-y-4 md:space-y-5">
       <InvestigationProgress steps={steps} />
@@ -108,12 +129,12 @@ export function InvestigationJourney({
             onOpenPaidReports={() => onOpenExpertWorkspace("reports")}
           />
         ) : activeStep.id === "zoning" ? (
-          <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
+          <div className="space-y-4">
+            <PlanningInvestigationPanel job={planningInvestigationJob} />
+            <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
+          </div>
         ) : activeStep.id === "property-checks" ? (
-          <GuidedPropertyChecksStep
-            parcel={parcel}
-            onContinue={() => onSelectStep("market")}
-          />
+          <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />
         ) : activeStep.id === "market" ? (
           <GuidedMarketEvidenceStep parcel={parcel} onContinue={() => onSelectStep("strategy")} />
         ) : activeStep.id === "strategy" ? (

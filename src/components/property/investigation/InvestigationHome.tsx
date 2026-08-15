@@ -260,12 +260,13 @@ export function InvestigationHome({
 
   return (
     <div className="space-y-4 md:space-y-5">
-        <InvestigationJourney
-          parcel={parcel}
-          userId={userId}
+      <InvestigationJourney
+        parcel={parcel}
+        userId={userId}
         workspaceState={workspaceState}
         plan={plan}
         report={report}
+        planningAssessment={planning}
         chosenScenario={chosenScenario}
         savedScenarioCount={scenarios.length}
         acceptedBuildEnvelope={acceptedBuildEnvelope}

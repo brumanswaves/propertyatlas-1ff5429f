@@ -589,3 +589,16 @@ When a major product direction changes:
 4. Only then open implementation work.
 
 This prevents repeated redesign, duplicated code, fragmented Lovable projects, and unnecessary engineering / AI spend.
+
+
+## Autonomous property-investigation workforce
+
+Easy Erf is evolving from a collection of property information and AI features into a South Africa-specific autonomous property-investigation workforce. The user assigns understandable jobs while the product performs as much evidence-grounded work as the available tools and sources allow.
+
+The first real job is **Investigate this property's planning position**. It reuses the canonical parcel, `ParcelPlanningAssessment`, municipality planning registries, uploaded evidence and `PropertyEvidencePack`. It returns a machine-readable Agent Job Contract V1 result with goal, inputs, context, tools, process, evidence, confidence, actions, approval rules, output and next job.
+
+V1 deliberately adds no new agent-memory or planning-results table. Guided Investigation, Dossier and Report remain interfaces over the same canonical planning and evidence state. A persisted investigation-run ledger is deferred until asynchronous continuation, audit history, professional review or API consumers prove the need.
+
+The user-facing rule remains **One screen. One clear job.** Internal worker architecture is not exposed as fake personalities.
+
+See `docs/EASY_ERF_AGENT_JOBS_V1.md`.

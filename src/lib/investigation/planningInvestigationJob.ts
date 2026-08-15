@@ -93,7 +93,11 @@ function formatRuleValue(value: number | null, unit: string | null, statement: s
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(
+      values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)),
+    ),
+  ];
 }
 
 function sourceQuality(source: MunicipalityPlanningSource) {
@@ -102,7 +106,9 @@ function sourceQuality(source: MunicipalityPlanningSource) {
   return "strong";
 }
 
-function planningEvidenceFromAssessment(assessment: ParcelPlanningAssessment): EasyErfAgentJobEvidence[] {
+function planningEvidenceFromAssessment(
+  assessment: ParcelPlanningAssessment,
+): EasyErfAgentJobEvidence[] {
   const ruleLabelsBySource = new Map<string, string[]>();
   for (const rule of assessment.publishedRules) {
     ruleLabelsBySource.set(rule.sourceId, [
@@ -128,9 +134,13 @@ function planningEvidenceFromAssessment(assessment: ParcelPlanningAssessment): E
   }));
 }
 
-function planningEvidenceFromPack(pack: PropertyEvidencePack | null | undefined): EasyErfAgentJobEvidence[] {
+function planningEvidenceFromPack(
+  pack: PropertyEvidencePack | null | undefined,
+): EasyErfAgentJobEvidence[] {
   if (!pack) return [];
-  const planningClaims = pack.claims.filter((claim) => claim.domain === "planning" && !claim.excluded);
+  const planningClaims = pack.claims.filter(
+    (claim) => claim.domain === "planning" && !claim.excluded,
+  );
   const claimLabelsBySource = new Map<string, string[]>();
   for (const claim of planningClaims) {
     for (const sourceId of claim.sourceIds) {
@@ -144,15 +154,17 @@ function planningEvidenceFromPack(pack: PropertyEvidencePack | null | undefined)
   return [...claimLabelsBySource.entries()].flatMap(([sourceId, labels]) => {
     const source = pack.sources.find((candidate) => candidate.id === sourceId);
     if (!source) return [];
-    return [{
-      id: source.id,
-      label: source.label,
-      authority: source.authorityType,
-      quality: source.sourceQuality,
-      status: source.status,
-      url: source.url ?? null,
-      supports: uniqueStrings(labels),
-    }];
+    return [
+      {
+        id: source.id,
+        label: source.label,
+        authority: source.authorityType,
+        quality: source.sourceQuality,
+        status: source.status,
+        url: source.url ?? null,
+        supports: uniqueStrings(labels),
+      },
+    ];
   });
 }
 
@@ -183,10 +195,14 @@ function buildFindings(
       id: "planning-zoning",
       kind: "zoning",
       label: "Working zoning",
-      value: [assessment.detection.zoneCode, assessment.detection.zoneName].filter(Boolean).join(" · "),
+      value: [assessment.detection.zoneCode, assessment.detection.zoneName]
+        .filter(Boolean)
+        .join(" · "),
       status: assessment.detection.method,
       confidence: asJobConfidence(assessment.detection.confidence),
-      sourceIds: assessment.detection.supportingAssetId ? [assessment.detection.supportingAssetId] : [],
+      sourceIds: assessment.detection.supportingAssetId
+        ? [assessment.detection.supportingAssetId]
+        : [],
     });
   }
 
@@ -296,7 +312,9 @@ function propertyLabel(property: PlanningInvestigationPropertyInput) {
   return uniqueStrings(parts).join(", ") || property.parcelId;
 }
 
-export function buildPlanningInvestigationJob(input: PlanningInvestigationJobInput): PlanningInvestigationJobV1 {
+export function buildPlanningInvestigationJob(
+  input: PlanningInvestigationJobInput,
+): PlanningInvestigationJobV1 {
   const { property, planningAssessment: assessment, evidencePack = null } = input;
   const findings = buildFindings(assessment, evidencePack);
   const contradictions = buildContradictions(assessment, evidencePack);
@@ -317,7 +335,8 @@ export function buildPlanningInvestigationJob(input: PlanningInvestigationJobInp
     Boolean(assessment.detection.zoneCode) &&
     assessment.userConfirmedZoneCode !== assessment.detection.zoneCode;
   const confidence = overallConfidence(assessment, contradictions);
-  const noInvestigationMaterial = !assessment.registryMatched && evidence.length === 0 && findings.length === 0;
+  const noInvestigationMaterial =
+    !assessment.registryMatched && evidence.length === 0 && findings.length === 0;
   const status: EasyErfAgentJobStatus = noInvestigationMaterial
     ? "blocked"
     : approvalRequired || contradictions.length > 0 || unresolvedEvidence.length > 0
@@ -362,24 +381,30 @@ export function buildPlanningInvestigationJob(input: PlanningInvestigationJobInp
         id: "canonical-property-state",
         label: "Canonical Easy Erf property state",
         kind: "canonical_state",
-        detail: "Uses the already-selected parcel and official identifiers instead of creating a second property record.",
+        detail:
+          "Uses the already-selected parcel and official identifiers instead of creating a second property record.",
       },
       {
         id: "planning-assessment-engine",
         label: "Planning assessment engine",
         kind: "deterministic_engine",
-        detail: "Applies the reviewed municipality registry, zoning detection state, rules, restrictions, checklist and risk logic.",
+        detail:
+          "Applies the reviewed municipality registry, zoning detection state, rules, restrictions, checklist and risk logic.",
       },
       {
         id: "property-evidence-graph",
         label: "Property evidence graph",
         kind: "evidence_graph",
-        detail: "Reads source-linked planning claims, contradictions and unresolved evidence already attached to this parcel.",
+        detail:
+          "Reads source-linked planning claims, contradictions and unresolved evidence already attached to this parcel.",
       },
       ...assessment.sources.slice(0, 8).map((source) => ({
         id: `source-${source.id}`,
         label: source.title,
-        kind: source.jurisdiction === "municipal" ? "municipal_source" as const : "official_source" as const,
+        kind:
+          source.jurisdiction === "municipal"
+            ? ("municipal_source" as const)
+            : ("official_source" as const),
         detail: `${source.status} ${source.sourceType.replaceAll("_", " ")} source for ${source.municipality}.`,
       })),
     ],
@@ -446,7 +471,8 @@ export function buildPlanningInvestigationJob(input: PlanningInvestigationJobInp
         id: "propagate-shared-result",
         label: "Propagate the shared result",
         status: "completed",
-        detail: "The job is derived from the same canonical planning assessment and evidence graph already used by Guided Investigation, Dossier and Report, so no duplicate state write is required.",
+        detail:
+          "The job is derived from the same canonical planning assessment and evidence graph already used by Guided Investigation, Dossier and Report, so no duplicate state write is required.",
       },
     ],
     evidence,
@@ -456,7 +482,8 @@ export function buildPlanningInvestigationJob(input: PlanningInvestigationJobInp
         id: "surface-planning-result",
         label: "Surface the planning investigation result",
         status: "applied",
-        detail: "The structured result can be rendered in Guided Investigation while Dossier and Report continue reading the same canonical planning state and evidence graph.",
+        detail:
+          "The structured result can be rendered in Guided Investigation while Dossier and Report continue reading the same canonical planning state and evidence graph.",
       },
       {
         id: "confirm-working-zoning",

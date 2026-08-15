@@ -73,3 +73,14 @@ Stronger cadastral retrieval, wider municipal/planning integrations, provider AP
 Run one signed-in review-environment smoke from exact search through Report with the required Google Places and Site Potential runtime configuration, then fix only defects found in that canonical journey.
 
 Why next: PR #63 has closed the known code-path failures and added the missing Strategy and address plumbing. A real signed-in smoke is now the highest-value check before expanding automation or adding new product surfaces.
+
+
+## Autonomous investigation state
+
+Planning Investigation Job V1 is the first implementation tranche of Easy Erf's autonomous property-investigation direction. The job is derived from canonical planning state plus the property evidence graph and is first surfaced in the Guided zoning step. It reports sources checked, findings, confidence, contradictions, unresolved evidence and the next investigation.
+
+No database schema change is required for V1. Manual working zoning still requires explicit confirmation, and published scheme rules remain distinct from property-specific rights. Dossier and Report continue consuming the same canonical planning assessment and evidence pack, so the job does not create a competing state store.
+
+Canonical regression coverage uses Erf 1570, Portion 0, Sea Vista, Kouga. The current known limitation remains property-specific official planning evidence: the Kouga registry is useful, but no verified zoning-polygon adapter exists, so automatic parcel zoning detection must not be implied.
+
+See `docs/EASY_ERF_AGENT_JOBS_V1.md`.

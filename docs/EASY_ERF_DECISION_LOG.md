@@ -171,3 +171,16 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Rationale: Founder-owned standard Supabase projects do not provide Lovable's `sandbox_exec` role, and no deployment-specific endpoint belongs in canonical database history.
 - Implementation: The worker stays inert unless both private `site_potential_worker_secret` and `site_potential_worker_url` values are configured. GitHub `main` remains the canonical backend source; no default values are seeded.
 - Do not regress: Do not create `sandbox_exec`, add secret values to migrations, or reintroduce a hard-coded worker URL.
+
+
+## EE-022 - Autonomous investigation jobs reuse canonical state
+
+- Date: 2026-08-15.
+- Decision: Easy Erf evolves toward a South Africa-specific autonomous property-investigation workforce built from real jobs, not agent personalities. The first job is Planning Investigation V1.
+- Rationale: Users should assign a property question and receive evidence-grounded work without learning a collection of disconnected tools. The product moat remains South African property identity, source reliability, planning reasoning, evidence relationships and trusted outputs.
+- Implementation: Agent Job Contract V1 is machine-readable and contains goal, inputs, context, tools, process, evidence, confidence, actions, approval rules, output and next job. Planning Investigation V1 derives its result from the canonical `ParcelPlanningAssessment` and `PropertyEvidencePack`, then surfaces it in the existing Guided zoning step.
+- Schema: No new agent-run or planning-result table for V1. Persisted run history is deferred until a proven workflow requires asynchronous continuation, immutable audit history, professional review or API history.
+- Approval rule: A manually selected working zone is never promoted to user-confirmed or municipal proof without the existing explicit confirmation. Published rules remain general scheme rules unless property-specific evidence supports a right.
+- Product boundary: Easy Erf remains South Africa-specific. Venture Compass and Deal Skeptic remain separate products; future interoperability may use the structured job contract but does not merge the products.
+- Do not regress: Do not create duplicate property state, duplicate confirmation ledgers, fake agent personas or prose-only conclusions that lose provenance.
+- Related: `docs/EASY_ERF_AGENT_JOBS_V1.md`, EE-020.

@@ -53,15 +53,25 @@ export function PlanningInvestigationPanel({ job }: PlanningInvestigationPanelPr
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">Sources checked</div>
-          <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">{job.output.sourceSummary.checked}</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+            Sources checked
+          </div>
+          <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">
+            {job.output.sourceSummary.checked}
+          </div>
         </div>
         <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">Findings</div>
-          <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">{job.output.findings.length}</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+            Findings
+          </div>
+          <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">
+            {job.output.findings.length}
+          </div>
         </div>
         <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">Confidence</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+            Confidence
+          </div>
           <div className="mt-1 text-xl font-semibold text-[#0D1B2A]">{confidenceLabel(job)}</div>
         </div>
       </div>
@@ -91,7 +101,9 @@ export function PlanningInvestigationPanel({ job }: PlanningInvestigationPanelPr
           <div className="text-xs font-semibold text-rose-900">Contradictions found</div>
           <ul className="mt-2 space-y-1.5 text-xs leading-5 text-rose-900/80">
             {job.output.contradictions.slice(0, 3).map((item) => (
-              <li key={item.id}>• {item.title}: {item.detail}</li>
+              <li key={item.id}>
+                • {item.title}: {item.detail}
+              </li>
             ))}
           </ul>
         </div>
@@ -110,14 +122,17 @@ export function PlanningInvestigationPanel({ job }: PlanningInvestigationPanelPr
 
       {job.nextJob ? (
         <div className="mt-4 rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">Next investigation</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
+            Next investigation
+          </div>
           <div className="mt-1 text-sm font-semibold text-[#0D1B2A]">{job.nextJob.title}</div>
           <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">{job.nextJob.reason}</p>
         </div>
       ) : null}
 
       <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-        Easy Erf keeps published scheme rules, working conclusions and property-specific proof separate. Assumptions are never promoted to municipal confirmation automatically.
+        Easy Erf keeps published scheme rules, working conclusions and property-specific proof
+        separate. Assumptions are never promoted to municipal confirmation automatically.
       </p>
     </section>
   );

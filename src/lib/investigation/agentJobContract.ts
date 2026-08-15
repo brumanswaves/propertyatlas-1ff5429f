@@ -8,7 +8,14 @@ export type EasyErfAgentJobActionStatus = "applied" | "proposed" | "withheld";
 export interface EasyErfAgentJobTool {
   id: string;
   label: string;
-  kind: "canonical_state" | "evidence_graph" | "official_source" | "municipal_source" | "document" | "deterministic_engine" | "ai_model";
+  kind:
+    | "canonical_state"
+    | "evidence_graph"
+    | "official_source"
+    | "municipal_source"
+    | "document"
+    | "deterministic_engine"
+    | "ai_model";
   detail: string;
 }
 
