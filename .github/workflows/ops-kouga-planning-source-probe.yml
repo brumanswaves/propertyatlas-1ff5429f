@@ -17,63 +17,64 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Probe Kouga ArcGIS services
+      - name: Query Kouga parcel report for canonical Erf 1570
         run: |
           python <<'PY'
           import json
           import urllib.parse
           import urllib.request
 
-          root = "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/ArcGIS/rest/services"
+          layer = "https://services6.arcgis.com/HrQQGPZkIr5BuMyY/ArcGIS/rest/services/Land_Parcel_Property_Report_Developed/FeatureServer/0"
 
           def get_json(url):
-              with urllib.request.urlopen(url, timeout=20) as response:
+              with urllib.request.urlopen(url, timeout=30) as response:
                   return json.load(response)
 
-          catalog = get_json(root + "?f=json")
-          services = [s for s in catalog.get("services", []) if s.get("type") == "FeatureServer"]
-          targets = []
-          for service in services:
-              name = service.get("name", "")
-              if name == "St_Francis_Test" or name.startswith("service_") or name in {
-                  "Land_Parcel_Property_Report_Developed",
-                  "Map_WFL1",
-                  "Kouga_SG_Properties",
+          meta = get_json(layer + "?f=json")
+          print("LAYER_NAME", meta.get("name"))
+          for field in meta.get("fields", []):
+              if field.get("name") in {
+                  "F0SGNumber", "F1ErfFarmAr", "F2ErfFarmNu", "F3Portion", "F4Address",
+                  "F11ExtentSQ", "F12LandUsag", "F13ZoningSc", "F14Zoning", "F15ZoningFi",
+                  "UDZoning", "UDIssue", "UDAreaSQM", "UDSplitZn", "SG_NUMBER", "SUBURB",
+                  "TOWN", "ERF", "PORTION_SECTION"
               }:
-                  targets.append(name)
+                  print("FIELD", field.get("name"), "ALIAS", field.get("alias"), "TYPE", field.get("type"))
 
-          print("ARC_GIS_TARGET_COUNT", len(targets))
-          for name in targets:
-              url = f"{root}/{urllib.parse.quote(name, safe='')}/FeatureServer?f=json"
-              try:
-                  data = get_json(url)
-              except Exception as exc:
-                  print("SERVICE_FETCH_ERROR", name, type(exc).__name__)
-                  continue
-              print("SERVICE", name)
-              print("  description", (data.get("serviceDescription") or data.get("description") or "")[:500].replace("\n", " "))
-              print("  itemId", data.get("serviceItemId"))
-              for layer in data.get("layers", []):
-                  layer_name = layer.get("name", "")
-                  layer_id = layer.get("id")
-                  print("  LAYER", layer_id, layer_name)
-                  try:
-                      layer_data = get_json(f"{root}/{urllib.parse.quote(name, safe='')}/FeatureServer/{layer_id}?f=json")
-                  except Exception as exc:
-                      print("    LAYER_FETCH_ERROR", type(exc).__name__)
+          def query(where):
+              params = {
+                  "where": where,
+                  "outFields": "F0SGNumber,F1ErfFarmAr,F2ErfFarmNu,F3Portion,F4Address,F11ExtentSQ,F12LandUsag,F13ZoningSc,F14Zoning,F15ZoningFi,UDZoning,UDIssue,UDAreaSQM,UDSplitZn,SG_NUMBER,SUBURB,TOWN,ERF,PORTION_SECTION",
+                  "returnGeometry": "false",
+                  "f": "json",
+              }
+              url = layer + "/query?" + urllib.parse.urlencode(params)
+              return get_json(url)
+
+          queries = [
+              "ERF = '1570'",
+              "F2ErfFarmNu = '1570'",
+              "ERF = '1570' AND PORTION_SECTION IN ('0','00000','')",
+              "F0SGNumber LIKE '%1570%'",
+              "SG_NUMBER LIKE '%1570%'",
+          ]
+          seen = set()
+          for where in queries:
+              data = query(where)
+              print("QUERY", where, "COUNT", len(data.get("features", [])), "ERROR", data.get("error"))
+              for feature in data.get("features", []):
+                  attrs = feature.get("attributes", {})
+                  identity = json.dumps(attrs, sort_keys=True, default=str)
+                  if identity in seen:
                       continue
-                  field_names = [f.get("name", "") for f in layer_data.get("fields", [])]
-                  aliases = [f.get("alias", "") for f in layer_data.get("fields", [])]
-                  haystack = " ".join([layer_name, *field_names, *aliases]).lower()
-                  keywords = [k for k in ["zoning", "zone", "land use", "landuse", "scheme", "ilus"] if k in haystack]
-                  if keywords:
-                      print("    PLANNING_KEYWORDS", ",".join(keywords))
-                      print("    FIELDS", ",".join(field_names[:80]))
+                  seen.add(identity)
+                  print("MATCH", json.dumps(attrs, sort_keys=True, default=str))
           PY
 
-      - name: Probe Kouga document library download links
+      - name: Resolve exact Kouga document download ids
         run: |
           python <<'PY'
+          import html as html_lib
           import re
           import urllib.request
           from urllib.parse import urljoin
@@ -82,20 +83,26 @@ jobs:
           req = urllib.request.Request(page, headers={"User-Agent": "Mozilla/5.0 EasyErfSourceProbe/1.0"})
           with urllib.request.urlopen(req, timeout=30) as response:
               html = response.read().decode("utf-8", "replace")
-          print("DOCUMENT_LIBRARY_BYTES", len(html))
-          needles = [
+
+          targets = [
               "KOUGA LAND USE SCHEME.pdf",
-              "Town Zoning Plan_6 St Francis Bay.pdf",
+              "202 - Kouga ILUS 2020-12 - Town Zoning Plan_6 St Francis Bay.pdf",
           ]
-          for needle in needles:
-              idx = html.lower().find(needle.lower())
-              print("DOCUMENT", needle, "FOUND" if idx >= 0 else "NOT_FOUND")
+          for target in targets:
+              idx = html.lower().find(target.lower())
+              print("TARGET", target, "INDEX", idx)
               if idx < 0:
                   continue
-              snippet = html[max(0, idx-2500):idx+2500]
-              hrefs = re.findall(r'href=["\']([^"\']+)["\']', snippet, flags=re.I)
-              for href in hrefs:
-                  absolute = urljoin(page, href)
-                  if "document" in absolute.lower() or ".pdf" in absolute.lower() or "download" in absolute.lower():
-                      print("  CANDIDATE_HREF", absolute)
+              before = html[max(0, idx - 4000):idx + 1000]
+              anchors = list(re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', before, flags=re.I|re.S))
+              scored = []
+              for match in anchors:
+                  href = urljoin(page, match.group(1))
+                  text = re.sub(r'<[^>]+>', ' ', match.group(2))
+                  text = html_lib.unescape(re.sub(r'\s+', ' ', text)).strip()
+                  distance = len(before) - match.end()
+                  if "/download/" in href:
+                      scored.append((distance, href, text[:180]))
+              for distance, href, text in sorted(scored)[:5]:
+                  print("CANDIDATE", distance, href, text)
           PY
