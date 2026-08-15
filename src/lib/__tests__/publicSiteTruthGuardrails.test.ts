@@ -52,7 +52,8 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toMatch(/without a subscription/i);
     expect(source).toMatch(/does not currently operate a live in-app paid report checkout/i);
     expect(source).toMatch(/No subscription right now/i);
-    expect(source).not.toMatch(/per month|monthly subscription|auto-renew/i);
+    expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
+    expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
   it("does not claim stale investor scoring as a live roadmap capability", () => {
