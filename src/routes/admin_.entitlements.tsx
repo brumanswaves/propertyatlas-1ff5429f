@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { EntitlementGrantHistory } from "@/components/admin/EntitlementGrantHistory";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { grantComplimentarySitePotentialCredit } from "@/lib/admin/founderSupportActionsClient";
@@ -194,75 +195,78 @@ function FounderEntitlements() {
         {loadingUser ? (
           <div className="mt-7 h-52 animate-pulse rounded-2xl border border-border bg-card" />
         ) : selected ? (
-          <section className="mt-7 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-accent">
-                  <Sparkles className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="truncate text-base font-semibold text-foreground">
-                    {selected.user.fullName || selected.user.email || "Easy Erf user"}
-                  </h2>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{selected.user.email || selected.user.id}</p>
+          <>
+            <section className="mt-7 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-accent">
+                    <Sparkles className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-semibold text-foreground">
+                      {selected.user.fullName || selected.user.email || "Easy Erf user"}
+                    </h2>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{selected.user.email || selected.user.id}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <EntitlementMetric
-                  label="Purchased credits"
-                  value={selected.entitlements.purchasedCredits?.balance ?? 0}
-                />
-                <EntitlementMetric
-                  label="Beta credits"
-                  value={selected.entitlements.activeBetaCredits}
-                />
-              </div>
-              <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-                The complimentary grant adds one beta credit. It does not start generation automatically and does not charge the image provider until the customer later redeems an eligible Site Potential generation.
-              </p>
-            </div>
-
-            <form onSubmit={grant} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
-                  <Gift className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">Grant 1 complimentary generation</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Use for support recovery, a goodwill exception or an approved beta allowance. A reason is required for the audit record.
-                  </p>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <EntitlementMetric
+                    label="Purchased credits"
+                    value={selected.entitlements.purchasedCredits?.balance ?? 0}
+                  />
+                  <EntitlementMetric
+                    label="Beta credits"
+                    value={selected.entitlements.activeBetaCredits}
+                  />
                 </div>
+                <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+                  The complimentary grant adds one beta credit. It does not start generation automatically and does not charge the image provider until the customer later redeems an eligible Site Potential generation.
+                </p>
               </div>
 
-              <label className="mt-5 block">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Support reason
-                </span>
-                <textarea
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  rows={4}
-                  maxLength={500}
-                  placeholder="Example: Restore access after a failed support workflow."
-                  className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                />
-              </label>
+              <form onSubmit={grant} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                    <Gift className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">Grant 1 complimentary generation</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Use for support recovery, a goodwill exception or an approved beta allowance. A reason is required for the audit record.
+                    </p>
+                  </div>
+                </div>
 
-              <div className="mt-4 rounded-xl border border-warning/25 bg-warning/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
-                This action creates a real entitlement record. Confirm the customer and reason before granting. This tranche does not expose revoke, refund or destructive repair controls.
-              </div>
+                <label className="mt-5 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Support reason
+                  </span>
+                  <textarea
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    rows={4}
+                    maxLength={500}
+                    placeholder="Example: Restore access after a failed support workflow."
+                    className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </label>
 
-              <button
-                type="submit"
-                disabled={granting || reason.trim().length < 8}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Gift className="h-3.5 w-3.5" />
-                {granting ? "Granting..." : "Grant 1 generation"}
-              </button>
-            </form>
-          </section>
+                <div className="mt-4 rounded-xl border border-warning/25 bg-warning/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                  This action creates a real entitlement record. Confirm the customer and reason before granting. This tranche does not expose revoke, refund or destructive repair controls.
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={granting || reason.trim().length < 8}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Gift className="h-3.5 w-3.5" />
+                  {granting ? "Granting..." : "Grant 1 generation"}
+                </button>
+              </form>
+            </section>
+            <EntitlementGrantHistory grants={selected.entitlements.betaCreditGrants} />
+          </>
         ) : null}
       </main>
       <Footer />

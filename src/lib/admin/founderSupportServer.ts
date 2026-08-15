@@ -2,6 +2,7 @@ import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClien
 import { readSavedInvestigationProjection } from "@/lib/workbench/savedInvestigationProjection";
 import type {
   FounderSupportAssetSummary,
+  FounderSupportBetaCreditGrant,
   FounderSupportDesignPackSummary,
   FounderSupportProviderEventSummary,
   FounderSupportReportOrderSummary,
@@ -204,8 +205,10 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
       .maybeSingle(),
     serviceSupabase
       .from("site_potential_beta_credits")
-      .select("credits_granted,credits_used,expires_at")
-      .eq("user_id", targetUserId),
+      .select("id,credits_granted,credits_used,granted_by,reason,expires_at,created_at")
+      .eq("user_id", targetUserId)
+      .order("created_at", { ascending: false })
+      .limit(50),
     serviceSupabase
       .from("report_orders")
       .select("id,parcel_id,report_type,provider_id,status,status_enum,price_cents,failure_reason,created_at,updated_at")
@@ -233,6 +236,27 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
   ].find(Boolean);
   if (failure) throw new ApiRequestError("Could not load this Easy Erf support record.", 500);
   if (!profileResult.data) throw new ApiRequestError("Easy Erf user not found.", 404);
+
+  const grantActorIds = [
+    ...new Set(
+      (betaCreditsResult.data ?? [])
+        .map((row) => nullableString(row.granted_by))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const grantActorLabels = new Map<string, string>();
+  if (grantActorIds.length) {
+    const { data: actorProfiles } = await serviceSupabase
+      .from("profiles")
+      .select("id,email,full_name")
+      .in("id", grantActorIds)
+      .limit(50);
+    for (const profile of actorProfiles ?? []) {
+      const id = String(profile.id);
+      const label = nullableString(profile.full_name) ?? nullableString(profile.email) ?? id;
+      grantActorLabels.set(id, label);
+    }
+  }
 
   const savedProperties: FounderSupportSavedProperty[] = (savedResult.data ?? []).map((row) => ({
     parcelId: String(row.parcel_id),
@@ -306,11 +330,29 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
     at: String(row.at),
   }));
 
-  const activeBetaCredits = (betaCreditsResult.data ?? []).reduce((total, row) => {
+  const now = Date.now();
+  const betaCreditGrants: FounderSupportBetaCreditGrant[] = (betaCreditsResult.data ?? []).map((row) => {
+    const grantedBy = nullableString(row.granted_by);
     const expiresAt = nullableString(row.expires_at);
-    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) return total;
-    return total + Math.max(0, numberValue(row.credits_granted) - numberValue(row.credits_used));
-  }, 0);
+    const creditsGranted = numberValue(row.credits_granted);
+    const creditsUsed = numberValue(row.credits_used);
+    return {
+      id: String(row.id),
+      creditsGranted,
+      creditsUsed,
+      remainingCredits: Math.max(0, creditsGranted - creditsUsed),
+      grantedBy,
+      grantedByLabel: grantedBy ? (grantActorLabels.get(grantedBy) ?? grantedBy) : null,
+      reason: nullableString(row.reason),
+      expiresAt,
+      createdAt: String(row.created_at),
+      isExpired: Boolean(expiresAt && new Date(expiresAt).getTime() <= now),
+    };
+  });
+  const activeBetaCredits = betaCreditGrants.reduce(
+    (total, grant) => total + (grant.isExpired ? 0 : grant.remainingCredits),
+    0,
+  );
 
   const detail: FounderSupportUserDetail = {
     user: profileSummary(profileResult.data as Record<string, unknown>, savedProperties.length, reportOrders.length),
@@ -327,6 +369,7 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
           }
         : null,
       activeBetaCredits,
+      betaCreditGrants,
     },
     reportOrders,
     providerEvents,

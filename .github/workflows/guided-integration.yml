@@ -66,6 +66,7 @@ jobs:
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           src/components/admin/AdminGuard.tsx
+          src/components/admin/EntitlementGrantHistory.tsx
           src/components/property/investigation/AddAddressStep.tsx
           src/components/property/investigation/GuidedSitePotentialStep.tsx
           src/components/property/investigation/GuidedTitleStep.tsx
