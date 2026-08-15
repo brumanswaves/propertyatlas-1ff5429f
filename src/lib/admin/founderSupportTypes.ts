@@ -60,6 +60,25 @@ export interface FounderSupportDesignPackSummary {
   updatedAt: string;
 }
 
+export interface FounderOperationsSitePotentialJob {
+  designPackId: string;
+  userId: string;
+  userLabel: string | null;
+  parcelId: string;
+  siteProjectId: string;
+  provider: string | null;
+  entitlementStatus: string;
+  status: string;
+  requestedCount: number;
+  completedCount: number;
+  failureCode: string | null;
+  failureMessage: string | null;
+  nextAttemptAt: string | null;
+  workerHeartbeatAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FounderSupportBetaCreditGrant {
   id: string;
   creditsGranted: number;
@@ -123,4 +142,8 @@ export type FounderSupportSearchResponse =
 
 export type FounderSupportUserResponse =
   | { success: true; detail: FounderSupportUserDetail }
+  | { success: false; error: string };
+
+export type FounderOperationsJobsResponse =
+  | { success: true; jobs: FounderOperationsSitePotentialJob[] }
   | { success: false; error: string };
