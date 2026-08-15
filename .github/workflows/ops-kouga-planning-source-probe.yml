@@ -33,82 +33,81 @@ jobs:
                   return json.load(response)
 
           def query(layer, where, out_fields):
-              params = {
-                  "where": where,
-                  "outFields": out_fields,
-                  "returnGeometry": "false",
-                  "f": "json",
-              }
+              params = {"where": where, "outFields": out_fields, "returnGeometry": "false", "f": "json"}
               return get_json(layer + "/query?" + urllib.parse.urlencode(params))
 
-          sg = query(
-              sg_layer,
-              "PARCEL_NO = 1570 AND PORTION = 0 AND UPPER(MIN_REGION) = 'SEA VISTA'",
-              "*",
-          )
+          sg = query(sg_layer, "PARCEL_NO = 1570 AND PORTION = 0 AND UPPER(MIN_REGION) = 'SEA VISTA'", "*")
           print("SEA_VISTA_ERF1570_SG_COUNT", len(sg.get("features", [])), "ERROR", sg.get("error"))
           for feature in sg.get("features", []):
               attrs = feature.get("attributes", {})
-              selected = {k: attrs.get(k) for k in [
-                  "GID", "PRCL_KEY", "GEOM_AREA", "ID", "MIN_REGION", "MAJ_REGION",
-                  "PARCEL_NO", "PORTION", "SG_DIAGRAM", "DSG_NO", "TAG_VALUE"
-              ]}
+              selected = {k: attrs.get(k) for k in ["GID", "PRCL_KEY", "GEOM_AREA", "ID", "MIN_REGION", "MAJ_REGION", "PARCEL_NO", "PORTION", "SG_DIAGRAM", "DSG_NO", "TAG_VALUE"]}
               print("SG_MATCH", json.dumps(selected, sort_keys=True, default=str))
 
-          developed = query(
-              developed_layer,
-              "F2ErfFarmNu = 1570 AND F3Portion = 0 AND UPPER(F1ErfFarmAr) = 'SEA VISTA'",
-              "F0SGNumber,F1ErfFarmAr,F2ErfFarmNu,F3Portion,F4Address,F11ExtentSQ,F13ZoningSc,F14Zoning,F15ZoningFi,UDZoning,SG_NUMBER,TOWN,ERF",
-          )
+          developed = query(developed_layer, "F2ErfFarmNu = 1570 AND F3Portion = 0 AND UPPER(F1ErfFarmAr) = 'SEA VISTA'", "F0SGNumber,F1ErfFarmAr,F2ErfFarmNu,F3Portion,F4Address,F11ExtentSQ,F13ZoningSc,F14Zoning,F15ZoningFi,UDZoning,SG_NUMBER,TOWN,ERF")
           print("SEA_VISTA_ERF1570_DEVELOPED_COUNT", len(developed.get("features", [])), "ERROR", developed.get("error"))
-          for feature in developed.get("features", []):
-              print("DEVELOPED_MATCH", json.dumps(feature.get("attributes", {}), sort_keys=True, default=str))
           PY
 
-      - name: Extract official 2021 scheme and St Francis zoning map text
+      - name: Install lightweight PDF parser
+        run: python -m pip install --quiet pypdf
+
+      - name: Extract official scheme rules and zoning-map text
         run: |
-          set -euo pipefail
-          curl -fsSL -A 'Mozilla/5.0 EasyErfSourceProbe/1.0' https://www.kouga.gov.za/download/4539 -o /tmp/kouga-scheme.pdf
-          curl -fsSL -A 'Mozilla/5.0 EasyErfSourceProbe/1.0' https://www.kouga.gov.za/download/4531 -o /tmp/st-francis-zoning.pdf
-          command -v pdftotext
-          pdfinfo /tmp/kouga-scheme.pdf | grep -E '^(Pages|Page size|PDF version|File size)'
-          pdfinfo /tmp/st-francis-zoning.pdf | grep -E '^(Pages|Page size|PDF version|File size)'
-          pdftotext -layout /tmp/kouga-scheme.pdf /tmp/kouga-scheme.txt
-          pdftotext -layout /tmp/st-francis-zoning.pdf /tmp/st-francis-zoning.txt
           python <<'PY'
-          from pathlib import Path
+          import io
           import re
+          import urllib.request
+          from pypdf import PdfReader
 
-          scheme = Path('/tmp/kouga-scheme.txt').read_text(errors='replace')
-          zoning = Path('/tmp/st-francis-zoning.txt').read_text(errors='replace')
-          print('SCHEME_TEXT_CHARS', len(scheme))
-          print('ZONING_MAP_TEXT_CHARS', len(zoning))
+          def fetch(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 EasyErfSourceProbe/1.0"})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  return response.read()
 
-          normalized = re.sub(r'\r', '', scheme)
-          patterns = [
-              r'RESIDENTIAL\s+ZONE\s+1',
-              r'Residential\s+Zone\s+1',
-              r'RESIDENTIAL\s+ZONE\s+I',
-          ]
-          hits = []
-          for pattern in patterns:
-              for match in re.finditer(pattern, normalized, flags=re.I):
-                  hits.append(match.start())
-          hits = sorted(set(hits))
-          print('RES1_HIT_COUNT', len(hits))
-          for n, pos in enumerate(hits[:8], 1):
-              print(f'--- RES1_CONTEXT_{n} ---')
-              print(normalized[max(0, pos-1200):pos+6000])
+          def extract_pages(data):
+              reader = PdfReader(io.BytesIO(data))
+              pages = []
+              for index, page in enumerate(reader.pages, 1):
+                  try:
+                      text = page.extract_text() or ""
+                  except Exception as exc:
+                      print("PAGE_EXTRACT_ERROR", index, type(exc).__name__)
+                      text = ""
+                  pages.append(text)
+              return pages
 
-          for keyword in ['coverage', 'building line', 'height', 'street boundary', 'side boundary', 'rear boundary']:
-              lines = [line.strip() for line in normalized.splitlines() if keyword.lower() in line.lower()]
-              print('KEYWORD', keyword, 'COUNT', len(lines))
-              for line in lines[:20]:
-                  print(' ', line[:500])
+          scheme_pages = extract_pages(fetch("https://www.kouga.gov.za/download/4539"))
+          map_pages = extract_pages(fetch("https://www.kouga.gov.za/download/4531"))
+          print("SCHEME_PAGES", len(scheme_pages), "TEXT_CHARS", sum(map(len, scheme_pages)))
+          print("MAP_PAGES", len(map_pages), "TEXT_CHARS", sum(map(len, map_pages)))
 
-          print('ZONING_MAP_1570_OCCURRENCES', len(re.findall(r'(?<!\d)1570(?!\d)', zoning)))
-          for match in list(re.finditer(r'(?<!\d)1570(?!\d)', zoning))[:10]:
+          res1_pages = []
+          for page_no, text in enumerate(scheme_pages, 1):
+              if re.search(r"residential\s+zone\s+1", text, flags=re.I):
+                  res1_pages.append(page_no)
+                  compact = re.sub(r"\s+", " ", text).strip()
+                  print("--- RES1_PAGE", page_no, "---")
+                  match = re.search(r"residential\s+zone\s+1", compact, flags=re.I)
+                  if match:
+                      pos = match.start()
+                      print(compact[max(0, pos-1200):pos+9000])
+          print("RES1_PAGES", res1_pages)
+
+          scheme = "\n".join(scheme_pages)
+          for keyword in ["coverage", "building line", "height", "street boundary", "side boundary", "rear boundary"]:
+              contexts = []
+              for match in re.finditer(re.escape(keyword), scheme, flags=re.I):
+                  pos = match.start()
+                  context = re.sub(r"\s+", " ", scheme[max(0, pos-500):pos+1200]).strip()
+                  contexts.append(context)
+              print("KEYWORD", keyword, "COUNT", len(contexts))
+              for context in contexts[:10]:
+                  print(" ", context)
+
+          zoning = "\n".join(map_pages)
+          matches = list(re.finditer(r"(?<!\d)1570(?!\d)", zoning))
+          print("ZONING_MAP_1570_OCCURRENCES", len(matches))
+          for match in matches[:10]:
               pos = match.start()
-              print('--- MAP_1570_CONTEXT ---')
-              print(zoning[max(0, pos-500):pos+500])
+              print("--- MAP_1570_CONTEXT ---")
+              print(re.sub(r"\s+", " ", zoning[max(0, pos-1000):pos+1000]).strip())
           PY
