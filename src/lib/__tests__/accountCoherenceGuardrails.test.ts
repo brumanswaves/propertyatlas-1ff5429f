@@ -22,7 +22,9 @@ describe("Easy Erf Account coherence guardrails", () => {
 
     expect(source).toMatch(/does not currently sell a recurring subscription/i);
     expect(source).toMatch(/does not invent a balance or payment history/i);
-    expect(source).not.toMatch(/credit balance|payment history|subscription status|cancel subscription/i);
+    expect(source).not.toMatch(
+      />\s*(credit balance|payment history|subscription status|cancel subscription)\s*</i,
+    );
   });
 
   it("keeps editable preferences in auth metadata instead of property evidence", () => {
