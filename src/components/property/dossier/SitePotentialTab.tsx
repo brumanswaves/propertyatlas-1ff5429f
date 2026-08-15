@@ -23,6 +23,7 @@ import {
   type SitePotentialRuntimeProgress,
 } from "@/lib/sitePotential/generationProgress";
 import { createSitePotentialPackStatusPoller } from "@/lib/sitePotential/packStatusPolling";
+import { fetchSitePotentialApi } from "@/lib/sitePotential/sitePotentialApiClient";
 import {
   loadParcelBetaStatus,
   resolveSitePotentialGenerationAvailability,
@@ -824,9 +825,11 @@ export function SitePotentialTab({
         siteProjectId: project.id,
       });
       if (designPackId) params.set("designPackId", designPackId);
-      const response = await fetch(`/api/site-potential/pack-status?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal,
+      const response = await fetchSitePotentialApi({
+        route: "pack-status",
+        token,
+        searchParams: params,
+        init: { signal },
       });
       if (response.status === 404) return null;
       const payload = await response.json().catch(() => null);
@@ -852,14 +855,18 @@ export function SitePotentialTab({
         toast.error("Sign in to retry Site Potential generation.");
         return;
       }
-      const response = await fetch("/api/site-potential/retry-pack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          parcelId: parcel.id,
-          siteProjectId: project.id,
-          designPackId: packStatus.designPackId,
-        }),
+      const response = await fetchSitePotentialApi({
+        route: "retry-pack",
+        token,
+        init: {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parcelId: parcel.id,
+            siteProjectId: project.id,
+            designPackId: packStatus.designPackId,
+          }),
+        },
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
@@ -1112,14 +1119,18 @@ export function SitePotentialTab({
     setGenerating(true);
     await saveProject({ generation_status: "generating" });
     try {
-      const response = await fetch("/api/site-potential/beta-redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          parcelId: parcel.id,
-          siteProjectId: current.id,
-          requestId: crypto.randomUUID(),
-        }),
+      const response = await fetchSitePotentialApi({
+        route: "beta-redeem",
+        token,
+        init: {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parcelId: parcel.id,
+            siteProjectId: current.id,
+            requestId: crypto.randomUUID(),
+          }),
+        },
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {

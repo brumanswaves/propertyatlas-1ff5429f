@@ -969,6 +969,7 @@ describe("Local Property Team MVP guardrails", () => {
     const localTeam = read("src/components/property/dossier/LocalPropertyTeam.tsx");
     const localCatalog = read("src/lib/localServices/catalog.ts");
     const sitePotential = read("src/components/property/dossier/SitePotentialTab.tsx");
+    const sitePotentialApi = read("src/lib/sitePotential/sitePotentialApiClient.ts");
     const serverRoute = read("src/routes/api/local-services.search.ts");
 
     expect(panel.indexOf('label: "Easy Erf Report"')).toBeLessThan(
@@ -1061,7 +1062,9 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).toContain("Site Potential generation progress");
     expect(sitePotential).toContain("Refresh status");
     expect(sitePotential).toContain("Retry current pack");
-    expect(sitePotential).toContain("/api/site-potential/retry-pack");
+    expect(sitePotential).toContain("fetchSitePotentialApi");
+    expect(sitePotentialApi).toContain('"retry-pack"');
+    expect(sitePotentialApi).toContain('`/api/site-potential/${input.route}`');
     expect(sitePotential).toContain('role="status"');
     expect(sitePotential).toContain('aria-live="polite"');
     expect(sitePotential).toContain("Eligible concepts can be retried.");

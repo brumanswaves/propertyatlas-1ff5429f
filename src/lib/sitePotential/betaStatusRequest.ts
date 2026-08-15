@@ -2,6 +2,7 @@ import {
   sitePotentialRuntimeMessage,
   type SitePotentialRuntimeStatus,
 } from "./betaEntitlements";
+import { buildSitePotentialApiRequest } from "./sitePotentialApiClient";
 
 export type AllowanceStatusLifecycle = "loading" | "ready" | "error";
 
@@ -141,11 +142,13 @@ export async function loadParcelBetaStatus({
       };
     }
 
-    const params = new URLSearchParams({ parcelId });
-    const response = await fetchImpl(`/api/site-potential/beta-status?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal,
+    const request = buildSitePotentialApiRequest({
+      route: "beta-status",
+      token,
+      searchParams: new URLSearchParams({ parcelId }),
+      init: { signal },
     });
+    const response = await fetchImpl(request.url, request.init);
     if (!isCurrentRequest()) return { kind: "stale" };
 
     const payload = await response.json().catch(() => null);
