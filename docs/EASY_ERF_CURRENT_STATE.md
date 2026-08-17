@@ -12,9 +12,10 @@ The product shell, account experience, autonomous jobs and operations tooling mu
 
 - GitHub `main` is canonical code truth.
 - `docs/EASY_ERF_MASTER_PLAN.md` is canonical product truth.
-- The founder-owned Easy Erf Supabase project is the canonical backend target for repository/CLI and future production cutover work.
+- The founder-owned Easy Erf Supabase project is the only canonical remote backend target for future Easy Erf production work.
 - The older Lovable-managed Supabase project is rollback/runtime infrastructure only during the controlled frontend migration window.
-- `docs/EASY_ERF_BACKEND_OWNERSHIP.md` defines the ownership and cutover boundary.
+- `supabase/config.toml` is local-stack configuration and does not by itself select or prove the remote project targeted by linked CLI commands.
+- `docs/EASY_ERF_BACKEND_OWNERSHIP.md` defines the explicit remote-link and cutover boundary.
 - Do not create a parallel Easy Erf database or treat Lovable-generated environment configuration as a new source of ownership truth.
 
 ## Canonical acceptance property
@@ -123,7 +124,7 @@ Founder Operations may use denser tables, logs and operational status, but typog
 
 - PR #95 remains draft and must not be merged while founder Supabase Google OAuth is unverified. It contains the actual browser/frontend cutover configuration and therefore stays separate from repository ownership safety.
 - PR #107 is a separate draft commercial experiment for the R999 Early Access Property Investigation. It must remain fail-closed unless a verified Easy Erf Stripe checkout is configured.
-- PR #108 is the repository-ownership guardrail tranche. It moves only repository/CLI ownership to the canonical founder backend and removes misleading Lovable ownership instructions. It does not change the browser runtime target, deploy, publish or migrate data.
+- PR #108 is the backend-ownership guardrail tranche. It documents the existing founder project as the only canonical remote Easy Erf target, replaces the remote-looking local `config.toml` identifier with a neutral local identifier, and requires explicit remote linking/verification. It does not link a CLI, change the browser runtime target, deploy, publish or migrate data.
 
 ## Single biggest MVP bottleneck
 
