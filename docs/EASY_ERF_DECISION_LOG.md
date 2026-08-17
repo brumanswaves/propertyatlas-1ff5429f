@@ -194,3 +194,13 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Design rule: Founder Operations may be denser than customer pages but must inherit the canonical Easy Erf design system and terminology.
 - Do not regress: Do not expose service-role credentials in the browser, add unaudited entitlement or financial mutations, duplicate the admin-role system, or present unavailable operational coverage as zero activity.
 - Related: `docs/EASY_ERF_DESIGN_SYSTEM.md`, `src/components/admin/AdminGuard.tsx`, `/admin/readiness`, `/admin/public-data-debug`.
+
+## EE-024 - Canonical backend ownership is separate from browser cutover
+
+- Date: 2026-08-17.
+- Decision: The founder-owned Easy Erf Supabase project is the canonical backend target for repository/CLI and future production work. The older Lovable-managed project is rollback/runtime infrastructure only during the controlled cutover window.
+- Rationale: Repository ownership must not drift merely because the current browser environment still points at the rollback backend. Leaving canonical CLI configuration on the rollback project creates an avoidable risk that future migration or function work targets the wrong database.
+- Implementation: `supabase/config.toml` points at the founder-owned Easy Erf project and `docs/EASY_ERF_BACKEND_OWNERSHIP.md` defines the boundary. Browser Supabase/auth environment values remain unchanged until Google OAuth and the signed-in Erf 1570 acceptance gates pass.
+- Safety: This ownership correction does not deploy, publish, migrate data, change the live browser backend or authorize any consequential production action.
+- Do not regress: Do not create a parallel Easy Erf backend, do not treat Lovable-generated environment configuration as ownership truth, and do not bundle safe repository ownership fixes with an unsafe premature frontend cutover.
+- Related: EE-005, EE-021, PR #95.
