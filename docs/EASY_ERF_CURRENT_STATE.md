@@ -50,7 +50,7 @@ No duplicate Guided-versus-Dossier planning store or separate Report confirmatio
 - Precision official erf/portion search and canonical parcel opening.
 - Property Overview as the zero-commit selected-property entry.
 - Versioned Guided Investigation with canonical task definitions and Next Best Step logic.
-- Shared evidence/File Vault patterns for SG diagrams, paid reports, title evidence and Site Potential assets.
+- Shared evidence/file vault patterns for SG diagrams, paid reports, title evidence and Site Potential assets.
 - Evidence provenance, identity trust, contradictions, missing evidence and confidence states.
 - Market Evidence, Strategy & Calculators, Site Potential and living Easy Erf Report integration.
 - SG TIFF fast extraction path plus safe report preview when available.
@@ -59,9 +59,15 @@ No duplicate Guided-versus-Dossier planning store or separate Report confirmatio
 - Verified Kouga planning-source metadata for the municipality-wide 2021 Land Use Scheme and St Francis Bay town zoning plan without claiming parcel-level zoning proof.
 - Founder-owned Site Potential worker/API/client transport foundations with rollback paths.
 - Rollback-safe founder Supabase Google-auth bridge.
-- Canonical Easy Erf design system and simplified public/account information architecture.
-- Durable My Investigations derived from canonical investigation state.
-- Founder Operations read/support foundations and an audited one-generation complimentary Site Potential grant.
+- Canonical Easy Erf design system and semantic styling guidance.
+- Simplified primary information architecture: Find a Property, How It Works, Pricing; signed-in My Investigations and Account.
+- Public-page and Pricing overhaul with no current subscription and no invented payment workflows.
+- Durable My Investigations dashboard derived from canonical investigation state.
+- Account experience with truthful identity, preferences, billing/access boundaries and admin-only Founder Operations entry.
+- Founder Operations V1 with real report-order/provider operational visibility, shared admin navigation and separated developer diagnostics.
+- Trusted Founder user support search/detail through a same-origin server boundary with existing `user_roles` admin authorization.
+- One controlled Founder support write: grant exactly one complimentary Site Potential beta credit for a recorded support reason, with acting admin stored in the existing entitlement record.
+- Founder entitlement intervention history exposing the existing beta-credit grant audit record without introducing another ledger.
 
 ## Recently completed significant work
 
@@ -77,19 +83,47 @@ No duplicate Guided-versus-Dossier planning store or separate Report confirmatio
 - PR #96: autonomous Planning Investigation V1.
 - PR #98: verified Kouga planning source artifacts.
 - PR #99: continuous Easy Erf design system and coherence guardrails.
-- PR #100: public shell and truthful Pricing overhaul.
-- PR #101: My Investigations rebuilt from durable canonical state.
-- PR #102: truthful Account experience.
-- PR #103: Founder Operations V1.
-- PR #104: trusted cross-user Founder support reads.
-- PR #105: audited one-generation complimentary Site Potential grants.
+- PR #100: public shell, retained public pages and truthful Pricing overhaul.
+- PR #101: My Investigations dashboard rebuilt from durable canonical state.
+- PR #102: Profile rebuilt as truthful Account while retaining compatible routing.
+- PR #103: Founder Operations V1 replacing demo KPIs with real admin-readable operational data.
+- PR #104: trusted cross-user Founder support reads for users, properties, evidence processing, Site Potential, entitlements, report orders and provider errors.
+- PR #105: audited one-generation complimentary Site Potential grants through the existing beta-credit entitlement store.
 - PR #106: visible Founder entitlement intervention history.
+
+## Current Founder Operations state
+
+Founder Operations now extends the existing protected `/admin` architecture rather than running a parallel admin system.
+
+Current operational capabilities:
+
+- real report-order/provider overview
+- provider readiness and public-data diagnostics separated from normal operations
+- user search by email, name or exact user id
+- bounded customer support detail
+- durable saved-investigation position derived through `readSavedInvestigationProjection(...)`
+- evidence-processing status without exposing storage paths or raw file contents
+- Site Potential project/pack status
+- purchased and beta Site Potential access
+- report orders and recent provider errors
+- one controlled entitlement action: grant exactly one complimentary Site Potential generation for a required support reason
+- visible beta-credit intervention history with actor, reason, granted/used/remaining credits, expiry and timestamp
+
+The grant action uses the existing `site_potential_beta_credits` record, including `granted_by` and `reason`. It does not create another entitlement ledger and does not trigger Site Potential generation automatically.
+
+No refund, revoke, job retry, destructive repair or impersonation control is exposed.
+
+## Design-system requirement
+
+`docs/EASY_ERF_DESIGN_SYSTEM.md` is the lightweight canonical design reference. Every meaningful UI/product tranche must finish by checking whether it creates visual or terminology drift elsewhere.
+
+Founder Operations may use denser tables, logs and operational status, but typography, semantic colors, card/control patterns, responsive behavior and terminology must still clearly belong to Easy Erf.
 
 ## Current open work
 
 - PR #95 remains draft and must not be merged while founder Supabase Google OAuth is unverified. It contains the actual browser/frontend cutover configuration and therefore stays separate from repository ownership safety.
 - PR #107 is a separate draft commercial experiment for the R999 Early Access Property Investigation. It must remain fail-closed unless a verified Easy Erf Stripe checkout is configured.
-- The current ownership-guardrail tranche moves only repository/CLI ownership to the canonical founder backend and removes misleading Lovable ownership instructions. It does not change the browser runtime target, deploy, publish or migrate data.
+- PR #108 is the repository-ownership guardrail tranche. It moves only repository/CLI ownership to the canonical founder backend and removes misleading Lovable ownership instructions. It does not change the browser runtime target, deploy, publish or migrate data.
 
 ## Single biggest MVP bottleneck
 
@@ -110,28 +144,31 @@ Once that gate is cleared, the immediate acceptance run must prove:
 
 Repository green is not a substitute for this signed-in runtime acceptance run.
 
-## Secondary product bottlenecks after runtime proof
+## Current weaknesses and secondary blockers
 
-- No verified parcel-specific zoning adapter yet for the published St Francis Bay zoning plan.
+- PR #95 remains intentionally gated because Google OAuth is not yet enabled and verified on the founder-owned Supabase project. Do not cut the frontend over until that external dependency is ready.
+- The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration.
+- Site Potential depends on required deployment/runtime configuration and provider availability.
+- Kouga planning sources are stronger, but Easy Erf still does not have a verified parcel-specific zoning adapter for the published St Francis Bay zoning plan.
 - Planning Investigation V1 classifies configured evidence but does not yet retrieve/parse enough new official evidence autonomously.
-- Address suggestions depend on production Google Places configuration/quota.
-- Site Potential remains provider/runtime dependent.
-- Broader paid-provider evidence acquisition is not yet integrated.
+- Founder Operations job retry or destructive support repairs still need an appropriate audited action model before controls are exposed.
+- Financial/refund controls remain unavailable until a real payment-provider workflow supports them.
+- Provider/public-source availability remains an external dependency. Missing evidence must remain visible rather than being filled with demo values.
 - Performance cleanup is warranted before broader traffic because the production bundle contains large client chunks and Mapbox is not effectively split, but this is secondary to proving the real property journey.
 
 ## Systems to reuse
 
-Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, Strategy helpers, Site Potential project/snapshot/build-envelope helpers, `readSavedInvestigationProjection`, the existing `AdminGuard`, existing `user_roles` authorization and trusted server/provider infrastructure.
+Reuse `NormalizedOfficialParcel`, `ErfWorkspaceState`, the Erf File Vault, `SavedMarketEvidence`, `ParcelPlanningAssessment`, `deriveInvestigationFacts`, `GUIDED_TASK_DEFINITIONS`, `canonicalReportAction`, `buildPropertyEvidencePack`, `ReportViewModel`, Strategy helpers, Site Potential project/resolution/snapshot/build-envelope helpers, `readSavedInvestigationProjection`, the existing `AdminGuard`, existing `user_roles` authorization, trusted server auth/service-role helpers and existing provider audit/readiness infrastructure.
 
 Do not create parallel property facts, evidence ledgers, readiness engines, dashboard progress engines, planning confirmation stores, Site Potential selection stores, admin-role systems or navigation selectors.
 
 ## Deliberately deferred
 
-Additional municipalities, national coverage, speculative agent personalities, broad generic browser automation, richer environmental datasets, monitoring, property passport, transaction rooms, portfolio tools, marketplace fulfilment, enterprise APIs and international expansion remain roadmap work unless a nearer MVP problem justifies pulling them forward.
+Broader cadastral/planning automation beyond the next evidence-driven pilot step, additional municipalities, national coverage, stronger environmental datasets, richer development intelligence, speculative agent personalities, generic browser automation, monitoring, property passport, professional collaboration, transaction rooms, portfolio tools, marketplace/fulfilment, enterprise APIs and Earth-observation intelligence remain roadmap work unless a nearer MVP problem justifies pulling them forward.
 
 ## Recommended Next Best Project Action
 
-1. Merge the repository-ownership guardrail only after its full verification gate and explicit merge approval.
+1. Merge PR #108 only after its full verification gate and explicit merge approval.
 2. Enable and verify Google OAuth on the existing founder-owned Easy Erf Supabase project without creating new infrastructure.
 3. Rebuild/refresh the frontend cutover PR from current `main`, then run the signed-in Erf 1570 acceptance journey against the canonical backend before publishing.
 4. Fix defects discovered by that real run before adding broader autonomous workers or more Founder Operations features.
