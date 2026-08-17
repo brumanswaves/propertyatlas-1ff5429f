@@ -1,17 +1,16 @@
 name: Easy Erf ownership doc sync
 
 on:
-  push:
-    branches:
-      - codex/canonical-backend-ownership-guardrail
-    paths:
-      - .github/workflows/easy-erf-ownership-doc-sync.yml
+  pull_request:
+    types: [opened]
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   sync-docs:
+    if: github.head_ref == 'codex/canonical-backend-ownership-guardrail'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +53,7 @@ jobs:
                   raise SystemExit("NOW marker not found in backlog")
               backlog.write_text(backlog_text.replace(marker, marker + priority, 1))
 
-          workflow = Path(".github/workflows/easy-erf-ownership-doc-sync.yml")
-          workflow.unlink()
+          Path(".github/workflows/easy-erf-ownership-doc-sync.yml").unlink()
       - name: Commit synced canonical docs
         run: |
           git config user.name "github-actions[bot]"
