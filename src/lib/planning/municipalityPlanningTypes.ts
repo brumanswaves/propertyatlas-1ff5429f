@@ -75,6 +75,16 @@ export type ZoningRuleType =
 
 export type ZoningRuleUnit = "m" | "percent" | "ratio" | "units" | "units_per_ha" | "bays";
 
+/**
+ * Optional parcel-area gate copied from the source itself. Exclusive bounds
+ * are deliberate: when a source says "< 400 m²" and "> 400 m²", Easy Erf must
+ * not guess which row applies to an exactly 400 m² erf.
+ */
+export interface ZoningRuleErfAreaCondition {
+  minExclusiveM2?: number;
+  maxExclusiveM2?: number;
+}
+
 export interface ZoningRule {
   id: string;
   ruleType: ZoningRuleType;
@@ -86,6 +96,8 @@ export interface ZoningRule {
   statement: string;
   /** Conditions/qualifiers published alongside the rule. */
   conditions: string[];
+  /** Parcel-area applicability when the published table changes by erf size. */
+  erfAreaCondition?: ZoningRuleErfAreaCondition | null;
   sourceId: string;
   /** Section or page citation inside the source document, when known. */
   citation: string | null;
