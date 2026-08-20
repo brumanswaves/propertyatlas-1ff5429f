@@ -1,0 +1,47 @@
+name: Apply Kouga RES1 area-rule patch
+
+on:
+  push:
+    branches:
+      - codex/kouga-res1-official-scheme-evidence
+    paths:
+      - .github/workflows/apply-kouga-res1-area-rules.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/kouga-res1-official-scheme-evidence
+      - name: Apply parcel-area rule filtering
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/planning/parcelPlanningAssessment.ts')
+          text = path.read_text()
+          marker = '''function ruleOfType(rules: ZoningRule[], type: ZoningRule["ruleType"]) {\n  return rules.find((rule) => rule.ruleType === type) ?? null;\n}\n'''
+          replacement = '''function ruleOfType(rules: ZoningRule[], type: ZoningRule["ruleType"]) {\n  return rules.find((rule) => rule.ruleType === type) ?? null;\n}\n\nexport function zoningRuleAppliesToErfArea(\n  rule: ZoningRule,\n  erfAreaM2: number | null,\n): boolean {\n  const condition = rule.erfAreaCondition;\n  if (!condition) return true;\n  if (erfAreaM2 == null || !Number.isFinite(erfAreaM2)) return false;\n  if (condition.minExclusiveM2 != null && erfAreaM2 <= condition.minExclusiveM2) return false;\n  if (condition.maxExclusiveM2 != null && erfAreaM2 >= condition.maxExclusiveM2) return false;\n  return true;\n}\n\nfunction applicablePublishedRules(rules: ZoningRule[], erfAreaM2: number | null) {\n  return rules.filter((rule) => zoningRuleAppliesToErfArea(rule, erfAreaM2));\n}\n'''
+          if marker not in text:
+              raise SystemExit('ruleOfType marker not found')
+          text = text.replace(marker, replacement, 1)
+          old = '  const publishedRules = zone ? zone.rules : [];'
+          new = '  const publishedRules = zone ? applicablePublishedRules(zone.rules, input.erfAreaM2) : [];'
+          if old not in text:
+              raise SystemExit('publishedRules marker not found')
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "TuismoreAI"
+          git config user.email "brumanswaves@gmail.com"
+          git add src/lib/planning/parcelPlanningAssessment.ts
+          git diff --cached --check
+          git commit -m "Apply published planning rules by erf area"
+          git push origin HEAD:codex/kouga-res1-official-scheme-evidence
