@@ -173,7 +173,7 @@ describe("buildReportViewModel", () => {
     const vm = buildReportViewModel(baseInput({ planningAssessment }));
 
     expect(vm.planning.find((field) => field.label === "Zoning")).toMatchObject({
-      value: "Residential Zone 1 (single residential)",
+      value: "Residential Zone 1",
       badge: "user_confirmed",
     });
     expect(vm.planning.find((field) => field.label === "Coverage %")?.badge).toBe("assumption");

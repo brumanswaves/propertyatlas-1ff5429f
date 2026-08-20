@@ -65,7 +65,7 @@ describe("Planning Investigation Job V1", () => {
     });
     const scheme = job.evidence.find((item) => item.id === "kouga-land-use-scheme-2021");
     const coverage = job.output.findings.find(
-      (finding) => finding.kind === "published_rule" && finding.label.includes("Coverage"),
+      (finding) => finding.kind === "published_rule" && finding.label.toLowerCase().includes("coverage"),
     );
 
     expect(scheme?.url).toBe("https://www.kouga.gov.za/download/4539");
