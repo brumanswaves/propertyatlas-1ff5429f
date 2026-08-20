@@ -74,6 +74,22 @@ function ruleOfType(rules: ZoningRule[], type: ZoningRule["ruleType"]) {
   return rules.find((rule) => rule.ruleType === type) ?? null;
 }
 
+export function zoningRuleAppliesToErfArea(
+  rule: ZoningRule,
+  erfAreaM2: number | null,
+): boolean {
+  const condition = rule.erfAreaCondition;
+  if (!condition) return true;
+  if (erfAreaM2 == null || !Number.isFinite(erfAreaM2)) return false;
+  if (condition.minExclusiveM2 != null && erfAreaM2 <= condition.minExclusiveM2) return false;
+  if (condition.maxExclusiveM2 != null && erfAreaM2 >= condition.maxExclusiveM2) return false;
+  return true;
+}
+
+function applicablePublishedRules(rules: ZoningRule[], erfAreaM2: number | null) {
+  return rules.filter((rule) => zoningRuleAppliesToErfArea(rule, erfAreaM2));
+}
+
 function buildDetection(
   input: ParcelPlanningAssessmentInput,
   registryMatched: boolean,
@@ -144,7 +160,7 @@ export function buildParcelPlanningAssessment(
   const zone = entry ? findZone(entry, requestedZoneCode) : null;
   const detection = buildDetection(input, registryMatched, zone?.code ?? null, zone?.name ?? null);
 
-  const publishedRules = zone ? zone.rules : [];
+  const publishedRules = zone ? applicablePublishedRules(zone.rules, input.erfAreaM2) : [];
   const guidelines = entry ? guidelinesForPlanningArea(entry, planningArea) : [];
   const sources = entry ? planningSourcesFor(entry, planningArea) : [];
 
