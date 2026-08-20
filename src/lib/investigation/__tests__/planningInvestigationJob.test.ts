@@ -58,6 +58,26 @@ describe("Planning Investigation Job V1", () => {
     expect(job.process.map((step) => step.id)).toContain("propagate-shared-result");
   });
 
+  it("uses the verified official Kouga scheme as general evidence for Erf 1570", () => {
+    const job = buildPlanningInvestigationJob({
+      property: canonicalErf1570,
+      planningAssessment: erf1570Assessment(),
+    });
+    const scheme = job.evidence.find((item) => item.id === "kouga-land-use-scheme-2021");
+    const coverage = job.output.findings.find(
+      (finding) => finding.kind === "published_rule" && finding.label.includes("Coverage"),
+    );
+
+    expect(scheme?.url).toBe("https://www.kouga.gov.za/download/4539");
+    expect(scheme?.quality).toBe("direct");
+    expect(coverage?.value).toBe("50%");
+    expect(coverage?.status).toBe("published_general_rule");
+    expect(coverage?.confidence).toBe("medium");
+    expect(job.output.sourceSummary.propertySpecificEvidence).toBe(0);
+    expect(job.output.zoning.method).toBe("manual_selection");
+    expect(job.confidence).toBe("low");
+  });
+
   it("keeps published rules distinct from property-specific rights", () => {
     const job = buildPlanningInvestigationJob({
       property: canonicalErf1570,
