@@ -194,3 +194,13 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Design rule: Founder Operations may be denser than customer pages but must inherit the canonical Easy Erf design system and terminology.
 - Do not regress: Do not expose service-role credentials in the browser, add unaudited entitlement or financial mutations, duplicate the admin-role system, or present unavailable operational coverage as zero activity.
 - Related: `docs/EASY_ERF_DESIGN_SYSTEM.md`, `src/components/admin/AdminGuard.tsx`, `/admin/readiness`, `/admin/public-data-debug`.
+
+## EE-025 - Verified general scheme rules never prove parcel zoning
+
+- Date: 2026-08-20.
+- Decision: Easy Erf may promote a municipal planning rule from review-required candidate to active published general rule only after the official source has been retrieved/read and the rule has a durable source citation. That promotion never proves that a specific parcel is in the zone.
+- Rationale: A trustworthy planning engine needs to distinguish two separate questions: what the official scheme says for a zone, and which zone actually applies to the erf. Solving the first must not silently answer the second.
+- Implementation: The official Kouga Land Use Scheme 2021 is the verified source for RES1 primary/consent uses and Chapter 7 clause 24 development parameters. Size-banded controls are applied only when the canonical erf area fits the published band. The St Francis Bay zoning-plan source remains a separate unresolved parcel-correlation problem, and automatic zoning detection remains disabled.
+- Boundary handling: Where the published scheme expresses exclusive `< 400 m²` and `> 400 m²` rows, Easy Erf does not guess the applicable size-band controls for an exactly 400 m² erf or when area is unavailable.
+- Do not regress: Never label a general scheme rule as a property-specific right; never infer RES1 from Sea Vista, erf size, scheme presence or a manually selected zone; never enable automatic zoning detection until the parcel correlation source is verified end to end.
+- Related: EE-008, EE-010, EE-020, EE-022.

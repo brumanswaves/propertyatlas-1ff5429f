@@ -4,6 +4,13 @@ This is an ordered inventory of future ideas, not a replacement for the Master P
 
 ## NOW
 
+### Correlate St Francis Bay zoning-plan evidence to the canonical parcel
+
+- Idea: Determine whether the official Kouga St Francis Bay zoning plan can be reliably correlated to an Easy Erf parcel, starting with Erf 1570, without inferring zoning from locality or scheme rules.
+- Expected value: Converts the remaining planning bottleneck from a manual working-zone conclusion toward property-specific municipal evidence.
+- Dependencies: Official zoning-plan artifact, canonical parcel geometry/identity, a reproducible correlation method and explicit confidence/provenance.
+- Why now: The general RES1 scheme rules are now source-verified. The unresolved high-value question is whether the official zoning map can prove which zone applies to the parcel.
+
 ### Validate Erf 1570 end to end in the real product
 
 - Idea: Validate search -> Property Overview -> Guided -> Strategy -> Site Potential -> Market -> Report with a signed-in smoke after the PR #63 rescue.
@@ -36,10 +43,10 @@ This is an ordered inventory of future ideas, not a replacement for the Master P
 
 ### Municipal planning and zoning integrations
 
-- Idea: Add property-specific municipal zoning, planning controls and official documents.
+- Idea: Extend the verified planning-source pattern to property-specific municipal zoning, overlays, applications and official documents, then additional municipalities.
 - Expected value: Replace working assumptions with stronger evidence for build-envelope and strategy decisions.
 - Dependencies: Municipal data access, document provenance, jurisdiction mapping and legal review.
-- Why now: Published rules are currently context, not proof of a property-specific right.
+- Why next: Kouga RES1 general scheme controls are now source-verified; parcel-specific zoning correlation and broader municipal coverage remain unresolved.
 
 ### Paid-provider integration
 

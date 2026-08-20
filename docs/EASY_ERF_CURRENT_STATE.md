@@ -1,6 +1,6 @@
 # Easy Erf Current State
 
-Baseline entering Founder entitlement-history work: 2026-08-15, GitHub `main` at `9df0c1fa7ad6c5bf72684473272bffc040249e48` after merged PR #105.
+Baseline entering verified Kouga scheme-evidence work: 2026-08-20, GitHub `main` at `1069f315c1fd867cf5608bdf89b1575ea1d99623` after merged PR #106.
 
 ## Current MVP objective
 
@@ -34,6 +34,7 @@ Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C0340014000015
 - Shared planning confirmation across Guided Investigation, expert Dossier and Report.
 - Planning Investigation Job V1 as the first real autonomous Easy Erf investigation job.
 - Verified Kouga planning-source metadata for the municipality-wide 2021 Land Use Scheme and St Francis Bay town zoning plan without claiming parcel-level zoning proof.
+- Current tranche retrieves and cites the official Kouga Land Use Scheme 2021 and promotes only its verified general RES1 scheme controls, with parcel-area applicability preserved and no automatic parcel zoning claim.
 - Founder-owned Site Potential worker/API/client transport foundations with rollback paths.
 - Rollback-safe founder Supabase Google-auth bridge.
 - Canonical Easy Erf design system and semantic styling guidance.
@@ -100,7 +101,7 @@ Founder Operations may use denser tables, logs and operational status, but typog
 - PR #95 remains intentionally gated because Google OAuth is not yet enabled and verified on the founder-owned Supabase project. Do not cut the frontend over until that external dependency is ready.
 - The server address route still depends on production `GOOGLE_PLACES_API_KEY`, quota and runtime configuration.
 - Site Potential depends on required deployment/runtime configuration and provider availability.
-- Kouga planning sources are stronger, but Easy Erf still does not have a verified parcel-specific zoning adapter for the published St Francis Bay zoning plan.
+- Kouga RES1 general scheme rules are now source-verified, but Easy Erf still does not have a verified parcel-specific zoning adapter/correlation for the published St Francis Bay zoning plan. The scheme rules must remain separate from proof that any specific erf is RES1.
 - Founder Operations job retry or destructive support repairs still need an appropriate audited action model before controls are exposed.
 - Financial/refund controls remain unavailable until a real payment-provider workflow supports them.
 - Provider/public-source availability remains an external dependency. Missing evidence must remain visible rather than being filled with demo values.
@@ -117,4 +118,6 @@ Broader cadastral/planning automation, additional municipalities, national cover
 
 ## Recommended Next Best Project Action
 
-Finish the entitlement intervention-history tranche through the full regression/build gate and merge only if green. After that, inspect the existing failed Site Potential retry path and only expose a Founder support retry if it can preserve ownership validation, retryability rules, generation-spend safety and a durable admin intervention audit. Keep refund/payment actions absent and keep PR #95 gated until founder Supabase Google OAuth is verified.
+Complete and verify the official Kouga RES1 scheme-evidence tranche, then tackle the remaining property-specific planning gap: correlate the official St Francis Bay zoning-plan evidence to the canonical parcel without guessing. Erf 1570 should be the first acceptance case. Keep the result explicit if the map cannot be reliably correlated, and preserve manual/document zoning confirmation as the only working parcel conclusion until stronger evidence exists.
+
+Keep infrastructure work separate: PR #108 remains an open ownership guardrail, PR #107 remains the R999 Early Access commercial shell, and founder Supabase frontend cutover stays gated until Google OAuth is verified. No deployment, live migration or new backend is required for the planning-evidence tranche.
