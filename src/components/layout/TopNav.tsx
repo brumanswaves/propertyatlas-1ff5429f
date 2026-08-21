@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { BRAND } from "@/lib/brand";
 import { PRIMARY_NAV_LINKS, SIGNED_IN_NAV_LINKS } from "@/lib/navigation";
+import "@/styles/mvp-repairs.css";
 
 interface TopNavProps {
   center?: ReactNode;
