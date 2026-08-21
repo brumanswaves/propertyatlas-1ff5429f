@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CheckCircle2, Lightbulb, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, Lightbulb } from "lucide-react";
 import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import {
   createErfAssetSignedUrl,
@@ -41,7 +41,7 @@ function AcceptedConceptPreview({ asset }: { asset: ErfAsset }) {
   if (!url || unavailable) {
     return (
       <div className="grid aspect-[4/3] place-items-center rounded-xl bg-[#F2F4F7] px-3 text-center text-xs text-[#0D1B2A]/60">
-        Preview unavailable. Open Site Potential to view the selected concept.
+        Preview unavailable. Open Site Potential to view the saved image.
       </div>
     );
   }
@@ -49,7 +49,7 @@ function AcceptedConceptPreview({ asset }: { asset: ErfAsset }) {
   return (
     <img
       src={url}
-      alt="Selected Site Potential concept"
+      alt="Saved Site Potential image"
       className="aspect-[4/3] w-full rounded-xl object-cover"
       onError={() => {
         setUrl(null);
@@ -69,20 +69,18 @@ export function GuidedSitePotentialStep({
 }: GuidedSitePotentialStepProps) {
   const site = workspaceState.sitePotential;
   const skipped = stepSkipped || site.skipped || site.progressState === "skipped";
-  const designSelected = Boolean(site.selectedDesignAssetId);
   const acceptedSiteDesign =
     selectedSiteDesign?.id === site.selectedDesignAssetId ? selectedSiteDesign : null;
-  const conceptCount = site.conceptCount;
-  const complete = designSelected || skipped;
-  const partial = !complete && conceptCount > 0;
+  const hasAcceptedWork = Boolean(acceptedBuildEnvelope || acceptedSiteDesign);
+  const complete = hasAcceptedWork || skipped;
 
   const statusLabel = skipped
     ? "Skipped for now"
-    : designSelected
-      ? "Preferred concept selected"
-      : partial
-        ? `${conceptCount} concept${conceptCount === 1 ? "" : "s"} generated, choose one`
-        : "No concepts yet";
+    : acceptedBuildEnvelope
+      ? "Building area map ready"
+      : acceptedSiteDesign
+        ? "Saved Site Potential image"
+        : "Building area not confirmed yet";
 
   return (
     <div className="space-y-4">
@@ -93,12 +91,12 @@ export function GuidedSitePotentialStep({
               Site potential
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Explore what this erf could become
+              Review the practical building area for this erf
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Generate visual concepts for a new build, renovation, or another use. Concepts are
-              illustrative only. They are not architectural plans, are not approved, and do not
-              establish the legal build envelope.
+              Use the parcel boundary, street frontage and available planning controls to understand
+              the approximate area that may be available for building. Easy Erf keeps verified rules,
+              working assumptions and unknowns visibly separate.
             </p>
           </div>
           <span
@@ -106,9 +104,7 @@ export function GuidedSitePotentialStep({
               "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
               complete
                 ? "bg-emerald-100 text-emerald-800"
-                : partial
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-slate-100 text-slate-700",
+                : "bg-slate-100 text-slate-700",
             )}
           >
             {complete ? (
@@ -123,32 +119,35 @@ export function GuidedSitePotentialStep({
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <h4 className="text-sm font-semibold text-[#0D1B2A]">How Site Potential works</h4>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">Property / build envelope</div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">Easy Erf uses the parcel boundary plus the planning information available to show the approximate area that may be available for building. Verified rules and working assumptions remain visibly different.</p>
+        <div className="mt-3 rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">
+            Property / build envelope
           </div>
-          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">AI visual concepts</div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">Easy Erf can create three visual ideas for what a home or renovation could look like using your brief, parcel context and uploaded photos or plans.</p>
-          </div>
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
+            Easy Erf uses the parcel boundary plus the planning information available to show the
+            approximate area that may be available for building. Verified rules and working
+            assumptions remain visibly different.
+          </p>
         </div>
         <ol className="mt-3 grid gap-2 text-sm leading-6 text-[#0D1B2A]/70">
           {[
-            "A. Choose the current site state: vacant land, existing house, other, or not sure.",
-            "B. Review the parcel and approximate build envelope.",
-            "C. Optionally upload site photos, topography, existing plans or inspiration.",
-            "D. Set the style, bedrooms, features and your custom brief.",
-            "E. Generate three concepts using the available free allowance or credits.",
-            "F. Choose the preferred concept for the Easy Erf Report.",
+            "Confirm the current site state and the subject parcel.",
+            "Review or confirm the street-facing property boundaries.",
+            "Review the available zoning controls, building lines, coverage and height assumptions.",
+            "Save the building area map once the working inputs are useful enough for the investigation.",
           ].map((line, index) => (
             <li key={line} className="flex gap-3">
-              <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">{index + 1}</span>
+              <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
+                {index + 1}
+              </span>
               <span>{line}</span>
             </li>
           ))}
         </ol>
-        <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">AI images are illustrative. The build envelope is not an approval. Neither replaces an architect or municipal confirmation.</p>
+        <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+          The building area is a due-diligence aid, not an approval. It does not replace an architect,
+          surveyor, town planner or municipal confirmation where those are required.
+        </p>
 
         {acceptedBuildEnvelope || acceptedSiteDesign ? (
           <section className="mt-4 rounded-xl border border-emerald-300/40 bg-emerald-50/45 p-3">
@@ -180,10 +179,12 @@ export function GuidedSitePotentialStep({
               {acceptedSiteDesign ? (
                 <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
                   <div className="text-sm font-semibold text-[#0D1B2A]">
-                    Accepted Site Potential concept
+                    Previously saved Site Potential image
                   </div>
                   <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-                    Selected for this erf. It is illustrative only, not an approved building plan.
+                    This image was already saved for the erf. It remains available as illustrative
+                    context, but generating or selecting concepts is no longer required to complete
+                    this step.
                   </p>
                   <div className="mt-3">
                     <AcceptedConceptPreview asset={acceptedSiteDesign} />
@@ -193,7 +194,7 @@ export function GuidedSitePotentialStep({
                     onClick={onOpenSitePotential}
                     className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
                   >
-                    View selected concept
+                    View saved image
                   </button>
                 </article>
               ) : null}
@@ -201,17 +202,17 @@ export function GuidedSitePotentialStep({
           </section>
         ) : null}
 
-        {partial ? (
-          <p className="mt-4 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Concepts have been generated, but none is selected yet. Open Site Potential and choose a
-            preferred concept, or use Skip for now to continue without one.
+        {!complete ? (
+          <p className="mt-4 rounded-xl border border-sky-300/45 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-950">
+            Open Site Potential and save the building area map when the parcel and working planning
+            inputs are useful enough. You can also skip this step and return later.
           </p>
         ) : null}
 
         {skipped ? (
           <p className="mt-4 rounded-xl border border-emerald-300/45 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950">
-            You skipped Site Potential for now. You can still open it, create or select a concept,
-            and add that concept to the report later.
+            You skipped Site Potential for now. You can return later to review and save the building
+            area map.
           </p>
         ) : null}
 
@@ -221,8 +222,7 @@ export function GuidedSitePotentialStep({
             onClick={onOpenSitePotential}
             className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F]"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            Open Site Potential
+            Review Site Potential
           </button>
           <button
             type="button"
