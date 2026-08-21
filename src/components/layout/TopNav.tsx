@@ -24,18 +24,16 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
   const mapHeader = Boolean(center || mobileCenter || subtitle);
 
   const navLinkBase =
-    "relative rounded-lg px-3 py-1.5 text-[12px] font-semibold text-primary-foreground/70 transition hover:text-primary-foreground";
+    "relative rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white/80 transition hover:bg-white/[0.06] hover:text-white";
   const navLinkActive =
-    "text-primary-foreground after:absolute after:inset-x-2 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-accent";
+    "bg-white/[0.06] text-white after:absolute after:inset-x-2 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-accent";
 
-  // Legacy source-test marker only. The active map-header style is the semantic
-  // bg-primary/90 token below, replacing the old literal bg-[#06152A]/85 class.
   return (
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-primary-foreground/10 bg-primary/90 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-panel backdrop-blur-xl md:px-6 md:pt-2"
-          : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-white/10 bg-primary/95 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-panel backdrop-blur-xl md:px-6 md:pt-2"
+          : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 border-b border-white/10 bg-primary/95 px-4 py-3 shadow-sm backdrop-blur-xl md:px-6"
       }
     >
       <div
@@ -46,7 +44,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
         <Link
           to="/"
           onClick={onLogoClick}
-          className="group inline-flex h-10 w-[148px] shrink-0 items-center justify-center rounded-full border border-border/70 bg-card px-4 shadow-soft ring-1 ring-primary/5 transition hover:bg-background hover:shadow-panel md:w-[156px]"
+          className="group inline-flex h-10 w-[148px] shrink-0 items-center justify-center rounded-full border border-white/20 bg-white px-4 shadow-soft ring-1 ring-white/10 transition hover:bg-white/95 hover:shadow-panel md:w-[156px]"
           aria-label="Easy Erf home"
         >
           <AtlasPin
@@ -86,7 +84,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
               <Button
                 size="sm"
                 variant="ghost"
-                className="ml-1 h-8 rounded-full border border-primary-foreground/15 bg-primary-foreground/[0.04] text-[12px] font-semibold text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                className="ml-1 h-8 rounded-full border border-white/20 bg-white/[0.06] text-[12px] font-semibold text-white hover:bg-white/12 hover:text-white"
                 onClick={() => supabase.auth.signOut()}
               >
                 Sign out
@@ -103,7 +101,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                   className="h-8 rounded-full bg-accent text-[12px] font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
                 >
                   <Sparkles className="mr-1 h-3.5 w-3.5" />
-                  Start free
+                  Investigate
                 </Button>
               </Link>
             </>
@@ -112,7 +110,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
 
         <button
           onClick={() => setOpen((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/[0.06] text-primary-foreground ring-1 ring-primary-foreground/15 backdrop-blur md:hidden"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.08] text-white ring-1 ring-white/20 backdrop-blur md:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
         >
@@ -124,7 +122,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
         <div className="mt-2 grid gap-1.5 md:hidden">
           {mobileCenter}
           {subtitle && (
-            <div className="hidden rounded-xl bg-primary-foreground/[0.05] px-3 py-1.5 text-center text-[11px] font-medium text-primary-foreground/75 ring-1 ring-primary-foreground/10 sm:block">
+            <div className="hidden rounded-xl bg-white/[0.06] px-3 py-1.5 text-center text-[11px] font-medium text-white/80 ring-1 ring-white/10 sm:block">
               {subtitle}
             </div>
           )}
@@ -132,7 +130,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
       )}
 
       {mapHeader && subtitle && (
-        <div className="mx-auto mt-1.5 hidden max-w-3xl text-center text-[12px] font-medium text-primary-foreground/70 md:block">
+        <div className="mx-auto mt-1.5 hidden max-w-3xl text-center text-[12px] font-medium text-white/75 md:block">
           {subtitle}
         </div>
       )}
@@ -208,7 +206,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                     onClick={() => setOpen(false)}
                     className="rounded-lg bg-accent px-3 py-2 text-center text-xs font-semibold text-accent-foreground"
                   >
-                    Start free
+                    Investigate
                   </Link>
                 </div>
               )}
