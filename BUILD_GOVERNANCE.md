@@ -49,6 +49,10 @@ Never choose a paid builder because it is easier for the AI. Never shift work to
 
 `keep building`, `continue automatically`, `do the next smart thing`, and similar instructions do not authorize Lovable credits. Default engineering is repository-first. Lovable may be used only for specifically approved visual refinement, preview, or publishing work where it provides clear value.
 
+## 6A. Vercel prohibition
+
+**Do not use Vercel for Easy Erf.** Do not create a Vercel project, deployment, preview, domain, integration, or migration. Do not suggest Vercel as a fallback hosting or preview path. This prohibition remains in force unless the owner explicitly reverses it in a future instruction.
+
 ## 7. Tool capability honesty
 
 Never claim access to a tool that is not actually available in the current environment. Never claim Codex, Claude, Lovable, GitHub, Supabase, CI, a browser, a deployed worker, or any other system is running or being operated unless that capability is actually available and was used. When unavailable, say BLOCKED and name the missing capability. Do not silently substitute an expensive tool.
@@ -85,9 +89,21 @@ Prefer additive and reversible changes. Use extra caution with deletion, truncat
 
 These rules apply recursively to every sub-agent, coding agent, autonomous worker, AI employee, reviewer, external builder, and tool call. A supervising worker must treat subordinate reports as REPORTED until verified.
 
-## 16. Required status format
+## 16. Permanent build communication format
 
-When asked `check`, `how are we doing?`, or equivalent, report: VERIFIED, REPORTED, CURRENT BLOCKER, NEXT ACTION, OWNER ACTION REQUIRED, and SPEND. If spend is unavailable, say UNKNOWN. Never invent it.
+Optimize every build/status update so the owner can scan it in under 10 seconds and immediately see what happened, what is blocked, what happens next, and whether owner action is required.
+
+Use this order:
+
+1. `STATUS` - one short sentence using the appropriate truth state.
+2. `WHAT I DID` - maximum 3 to 5 bullets containing only material EXECUTED or VERIFIED actions.
+3. `WHAT THIS MEANS` - maximum 2 short bullets explaining practical product consequence.
+4. `NEXT STEP` - one sentence naming the single highest-value next action.
+5. `YOU NEED TO DO` - if nothing is required, write exactly `YOU NEED TO DO: NOTHING`. If owner action is required, begin the entire response with `ACTION NEEDED FROM YOU`, then list exact steps and what to send back.
+6. `SPEND` - always include `$0`, `$X used / $Y approved remaining`, or `UNKNOWN`.
+7. `DETAILS` - optional, short, and only when useful.
+
+Do not lead with architecture, test counts, technical details, history, or motivational progress narrative unless they are the current blocker. Do not bury owner action. For `check`, use the same compact format.
 
 ## 17. Stop conditions
 
