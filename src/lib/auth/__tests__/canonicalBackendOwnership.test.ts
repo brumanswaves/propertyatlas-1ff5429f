@@ -26,10 +26,15 @@ describe("canonical Easy Erf backend ownership", () => {
     expect(ownership).toMatch(/Do not create another Easy Erf Supabase project/i);
   });
 
-  it("keeps browser cutover separate while founder Google OAuth is still gated", () => {
+  it("allows the verified OAuth cutover config while keeping publication gated on real acceptance", () => {
     const envFile = read(".env");
+    const cutoverEvidence = read("docs/CUTOVER_EVIDENCE_2026_08_21.md");
 
-    expect(envFile).toContain("VITE_FOUNDER_SUPABASE_AUTH=false");
+    expect(envFile).toContain(`VITE_SUPABASE_PROJECT_ID="${FOUNDER_PROJECT_REF}"`);
+    expect(envFile).toContain("VITE_FOUNDER_SUPABASE_AUTH=true");
+    expect(cutoverEvidence).toMatch(/reached the Google OAuth flow/i);
+    expect(cutoverEvidence).toMatch(/Browser callback completion/i);
+    expect(cutoverEvidence).toMatch(/production publication remains gated on the signed-in Erf 1570 acceptance run/i);
   });
 
   it("does not tell engineers to create or connect a Lovable-owned backend", () => {

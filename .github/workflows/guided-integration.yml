@@ -54,6 +54,28 @@ jobs:
       - name: Run full test suite
         run: npx vitest run
 
+      - name: Verify founder OAuth transport when enabled
+        run: node scripts/verify-founder-oauth.mjs
+
+      - name: Verify founder OAuth through real browser UI
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          npm run dev -- --host 127.0.0.1 --port 4173 > /tmp/easyerf-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill ${SERVER_PID} 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/auth >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/easyerf-vite.log
+              exit 1
+            fi
+            sleep 1
+          done
+          EASY_ERF_BROWSER_URL=http://127.0.0.1:4173/auth node scripts/verify-founder-browser-oauth.mjs
+
       - name: Build production bundle and generate routes
         run: npm run build
 
