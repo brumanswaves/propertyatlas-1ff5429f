@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -41,6 +41,25 @@ function AuthPage() {
   const [signupEmailSent, setSignupEmailSent] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (mode === "reset") return;
+
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active && data.session) navigate({ to: "/" });
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active || !session || event === "PASSWORD_RECOVERY") return;
+      navigate({ to: "/" });
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [mode, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
