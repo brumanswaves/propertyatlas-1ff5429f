@@ -54,6 +54,9 @@ jobs:
       - name: Run full test suite
         run: npx vitest run
 
+      - name: Verify founder OAuth transport when enabled
+        run: node scripts/verify-founder-oauth.mjs
+
       - name: Build production bundle and generate routes
         run: npm run build
 
