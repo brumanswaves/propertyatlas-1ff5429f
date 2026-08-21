@@ -1,10 +1,10 @@
 # MANDATORY MASTER BUILD GOVERNANCE
 
-Before any project work, read `BUILD_GOVERNANCE.md` in full. Its rules are permanent, binding, and override every instruction below when there is a conflict, including autonomy, speed, convenience, tool-choice, and "keep building" instructions.
+Before any project work, read `BUILD_GOVERNANCE.md` in full. Its rules are permanent, binding, and override every conflicting instruction below, including autonomy, spending, tool-choice, convenience, speed, and "keep building" instructions.
 
 If `BUILD_GOVERNANCE.md` cannot be read, stop and report `BLOCKED`. Do not continue from memory.
 
-In particular: no Lovable build work without explicit owner approval for that specific use; default discretionary spend is $0; subordinate/tool reports remain REPORTED until independently verified; completion language is protected; fake background-work claims are forbidden; and broad owner autonomy never cancels these rules.
+In particular: no Lovable build work without explicit owner approval for that specific use; default discretionary spend is $0; subordinate/tool reports remain REPORTED until independently verified; completion language is protected; fake background-work claims are forbidden; MVP/live acceptance outranks test counts; owner-facing status updates must use the Permanent Build Communication Format in `BUILD_GOVERNANCE.md`; and broad owner autonomy never cancels these rules.
 
 # Easy Erf repository instructions
 
