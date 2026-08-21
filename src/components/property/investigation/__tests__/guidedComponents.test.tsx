@@ -13,7 +13,6 @@ import type { InvestigationFacts } from "@/lib/investigation/guidedTaskRegistry"
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { calculateBuildEnvelope, createEmptyBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelope";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
 const noop = vi.fn();
 
@@ -74,7 +73,7 @@ function facts(): InvestigationFacts {
 }
 
 describe("guided investigation components", () => {
-  it("shows only canonical accepted Site Potential outputs", () => {
+  it("uses the deterministic building area as the canonical Guided Site Potential output", () => {
     const buildEnvelope = calculateBuildEnvelope({
       ...createEmptyBuildEnvelopeInputs(
         "parcel:erf-1021",
@@ -96,45 +95,8 @@ describe("guided investigation components", () => {
       rearSetbackM: 2,
       maxHeightM: 8,
     });
-    const selectedAsset: ErfAsset = {
-      id: "selected-concept",
-      user_id: "user-1",
-      parcel_id: "parcel:erf-1021",
-      asset_category: "generated_design",
-      asset_type: "image",
-      source_label: "Selected concept",
-      storage_bucket: "erf-files",
-      storage_path: "selected.png",
-      original_file_name: "selected.png",
-      mime_type: "image/png",
-      size_bytes: 1,
-      checksum_sha256: null,
-      status: "ready",
-      metadata: {},
-      local_migration_fingerprint: null,
-      created_at: "2026-08-13T00:00:00.000Z",
-      updated_at: "2026-08-13T00:00:00.000Z",
-    };
-    const workspace = createEmptyErfWorkspaceState();
-    workspace.sitePotential.selectedDesignAssetId = selectedAsset.id;
 
     const html = renderToStaticMarkup(
-      <GuidedSitePotentialStep
-        workspaceState={workspace}
-        acceptedBuildEnvelope={buildEnvelope}
-        selectedSiteDesign={selectedAsset}
-        onOpenSitePotential={noop}
-        onContinue={noop}
-      />,
-    );
-
-    expect(html).toContain("Accepted building area map");
-    expect(html).toContain("Accepted Site Potential concept");
-    expect(html).toContain("View building area");
-    expect(html).toContain("View selected concept");
-    expect(html).toContain("Continue to Review report");
-
-    const buildingOnly = renderToStaticMarkup(
       <GuidedSitePotentialStep
         workspaceState={createEmptyErfWorkspaceState()}
         acceptedBuildEnvelope={buildEnvelope}
@@ -142,19 +104,13 @@ describe("guided investigation components", () => {
         onContinue={noop}
       />,
     );
-    expect(buildingOnly).toContain("Accepted building area map");
-    expect(buildingOnly).not.toContain("Accepted Site Potential concept");
 
-    const conceptOnly = renderToStaticMarkup(
-      <GuidedSitePotentialStep
-        workspaceState={workspace}
-        selectedSiteDesign={selectedAsset}
-        onOpenSitePotential={noop}
-        onContinue={noop}
-      />,
-    );
-    expect(conceptOnly).toContain("Accepted Site Potential concept");
-    expect(conceptOnly).not.toContain("Accepted building area map");
+    expect(html).toContain("Accepted building area map");
+    expect(html).toContain("View building area");
+    expect(html).toContain("Continue to Review report");
+    expect(html).not.toContain("Accepted Site Potential concept");
+    expect(html).not.toContain("View selected concept");
+    expect(html).not.toContain("Generate three independent Site Potential concepts");
 
     const neither = renderToStaticMarkup(
       <GuidedSitePotentialStep
@@ -164,16 +120,7 @@ describe("guided investigation components", () => {
       />,
     );
     expect(neither).not.toContain("Accepted work for this erf");
-
-    const historical = renderToStaticMarkup(
-      <GuidedSitePotentialStep
-        workspaceState={workspace}
-        selectedSiteDesign={{ ...selectedAsset, id: "historical-concept" }}
-        onOpenSitePotential={noop}
-        onContinue={noop}
-      />,
-    );
-    expect(historical).not.toContain("Accepted Site Potential concept");
+    expect(neither).toContain("Open Site Potential");
   });
 
   it("renders Step 1 as a direct property confirmation action", () => {
