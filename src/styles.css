@@ -43,27 +43,19 @@
 
 :root {
   --radius: 0.875rem;
-
-  /* === Easy Erf Navy / Orange brand palette === */
-  /* Navy #0D1B2A (primary), Slate #1E293B, Orange #FF6A00 (accent CTA),
-     Cool Gray #F2F4F7 (page), White #FFFFFF, Ink #111827, Muted #64748B */
   --brand: #0D1B2A;
   --brand-foreground: #FFFFFF;
-  --teal: #1E293B;        /* slate — legacy token name kept for compatibility */
-  --gold: #FF6A00;        /* orange — legacy token name kept for compatibility */
-  --sand: #F2F4F7;        /* cool gray — page surface */
-
+  --teal: #1E293B;
+  --gold: #FF6A00;
+  --sand: #F2F4F7;
   --ocean: var(--brand);
   --coast: var(--teal);
-
-  /* Semantic mappings */
   --background: #F2F4F7;
   --foreground: #111827;
   --card: #FFFFFF;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-
   --primary: var(--brand);
   --primary-foreground: #FFFFFF;
   --accent: #FF6A00;
@@ -72,28 +64,21 @@
   --secondary-foreground: var(--foreground);
   --muted: #E5E9F0;
   --muted-foreground: #64748B;
-
   --success: #1E9E6A;
   --destructive: oklch(0.58 0.16 27);
   --destructive-foreground: #FFFFFF;
-
   --border: #E2E8F0;
   --input: #E2E8F0;
   --ring: #FF6A00;
-
-  /* Premium gradients — Navy → Slate, Orange accent */
   --gradient-brand: linear-gradient(135deg, #0D1B2A 0%, #1E293B 100%);
   --gradient-ocean: linear-gradient(135deg, #0A1624 0%, #0D1B2A 50%, #1E293B 100%);
   --gradient-sunrise: linear-gradient(135deg, #FF6A00 0%, #FF8A33 100%);
   --gradient-premium: linear-gradient(135deg, #0D1B2A 0%, #1E293B 60%, #FF6A00 100%);
   --gradient-sand: linear-gradient(180deg, #FFFFFF 0%, #F2F4F7 100%);
-
-  --shadow-panel: 0 24px 60px -24px rgba(13, 27, 42, 0.28),
-                  0 2px 6px -2px rgba(13, 27, 42, 0.08);
+  --shadow-panel: 0 24px 60px -24px rgba(13, 27, 42, 0.28), 0 2px 6px -2px rgba(13, 27, 42, 0.08);
   --shadow-soft: 0 4px 14px -4px rgba(13, 27, 42, 0.16);
   --shadow-glow: 0 0 0 4px rgba(255, 106, 0, 0.22), 0 8px 24px -6px rgba(255, 106, 0, 0.40);
 }
-
 
 .dark {
   --background: oklch(0.16 0.025 240);
@@ -139,41 +124,56 @@
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .text-balance { text-wrap: balance; }
   .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: oklch(0.84 0.02 80); border-radius: 999px;
-  }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: oklch(0.84 0.02 80); border-radius: 999px; }
   .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
 }
 
-/* === Micro-interactions === */
+/* Guided zoning is a decision point, not a secondary form field. */
+label[for="guided-zone-code"] {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #0D1B2A;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+#guided-zone-code {
+  min-height: 3.4rem;
+  border: 2px solid #FF6A00;
+  background: #FFFFFF;
+  color: #0D1B2A;
+  font-size: 0.95rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px rgba(255, 106, 0, 0.10);
+}
+
+#guided-zone-code:focus {
+  outline: none;
+  box-shadow: 0 0 0 5px rgba(255, 106, 0, 0.18);
+}
+
 @keyframes pa-pulse-ring {
-  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.85; }
-  80%  { opacity: 0; }
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.85; }
+  80% { opacity: 0; }
   100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
 }
 @keyframes pa-pulse-dot {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50%      { transform: translate(-50%, -50%) scale(1.12); }
+  50% { transform: translate(-50%, -50%) scale(1.12); }
 }
 @keyframes pa-fade-up {
   from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
-@keyframes pa-score-fill {
-  from { width: 0%; }
-}
+@keyframes pa-score-fill { from { width: 0%; } }
 @keyframes pa-shimmer {
-  0%   { background-position: -200% 0; }
+  0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-.pa-pulse-marker {
-  position: relative;
-  width: 18px;
-  height: 18px;
-  pointer-events: none;
-}
+.pa-pulse-marker { position: relative; width: 18px; height: 18px; pointer-events: none; }
 .pa-pulse-marker::before,
 .pa-pulse-marker::after {
   content: "";
@@ -197,23 +197,13 @@
 
 .pa-fade-up { animation: pa-fade-up 0.35s ease-out both; }
 .pa-fade-up-delayed { animation: pa-fade-up 0.45s ease-out 0.08s both; }
-
-.pa-score-bar {
-  animation: pa-score-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
+.pa-score-bar { animation: pa-score-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .pa-locked-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    oklch(1 0 0 / 0.35) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, oklch(1 0 0 / 0.35) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: pa-shimmer 2.4s linear infinite;
 }
 
-/* Mapbox popup branding */
 .pa-popup .mapboxgl-popup-content {
   border-radius: 12px;
   padding: 10px 12px;
@@ -222,7 +212,6 @@
 }
 .pa-popup .mapboxgl-popup-tip { display: none; }
 
-/* Property Intelligence Report — print stylesheet */
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
   .report-no-print { display: none !important; }
@@ -238,9 +227,7 @@
     color: #0D1B2A !important;
     border-color: #cbd5e1 !important;
   }
-  .report-page .report-decision-hero * {
-    color: #0D1B2A !important;
-  }
+  .report-page .report-decision-hero * { color: #0D1B2A !important; }
   .report-page .report-investor-brief {
     background: #ffffff !important;
     color: #0D1B2A !important;
@@ -248,9 +235,7 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  .report-page .report-investor-brief * {
-    color: #0D1B2A !important;
-  }
+  .report-page .report-investor-brief * { color: #0D1B2A !important; }
   .report-page #report-ask-easy-erf {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
