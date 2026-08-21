@@ -218,11 +218,24 @@ export function InvestigationHome({
   );
 
   const facts = useMemo(() => deriveInvestigationFacts(investigationInput), [investigationInput]);
-  const guidedSteps = useMemo(
-    () => buildGuidedInvestigationJourney(facts, workspaceState),
-    [facts, workspaceState],
+  const guidedFacts = useMemo(
+    () =>
+      acceptedBuildEnvelope
+        ? {
+            ...facts,
+            // Compatibility bridge: the legacy fact name still says "design selected".
+            // For the Guided journey only, an accepted deterministic build envelope now
+            // satisfies Site Potential completion without claiming a concept was generated.
+            siteDesignSelected: true,
+          }
+        : facts,
+    [acceptedBuildEnvelope, facts],
   );
-  const activeStepId = selectGuidedInvestigationStep(facts, workspaceState.investigation);
+  const guidedSteps = useMemo(
+    () => buildGuidedInvestigationJourney(guidedFacts, workspaceState),
+    [guidedFacts, workspaceState],
+  );
+  const activeStepId = selectGuidedInvestigationStep(guidedFacts, workspaceState.investigation);
   const activeStep =
     guidedSteps.find((step) => step.id === activeStepId) ??
     guidedSteps.find((step) => step.current) ??
