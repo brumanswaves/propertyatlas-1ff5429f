@@ -34,7 +34,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
     <header
       className={
         mapHeader
-          ? "fixed inset-x-0 top-0 z-[70] border-b border-primary-foreground/10 bg-primary/95 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-panel backdrop-blur-xl md:px-6 md:pt-2"
+          ? "fixed inset-x-0 top-0 z-[70] border-b border-primary-foreground/10 bg-[#06152A]/85 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-panel backdrop-blur-xl md:px-6 md:pt-2"
           : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 text-foreground md:px-6"
       }
     >
