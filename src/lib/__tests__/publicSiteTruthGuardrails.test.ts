@@ -49,9 +49,11 @@ describe("public Easy Erf product truth guardrails", () => {
   it("keeps the current commercial decision explicit on Pricing", () => {
     const source = routeSource("pricing.tsx");
 
-    expect(source).toMatch(/without a subscription/i);
-    expect(source).toMatch(/does not currently operate a live in-app paid report checkout/i);
-    expect(source).toMatch(/No subscription right now/i);
+    expect(source).toMatch(/R999/);
+    expect(source).toMatch(/once-off/i);
+    expect(source).toMatch(/no subscription required/i);
+    expect(source).toMatch(/Human-reviewed before delivery/i);
+    expect(source).toMatch(/purchase step will only be shown when the connected payment flow is live/i);
     expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
