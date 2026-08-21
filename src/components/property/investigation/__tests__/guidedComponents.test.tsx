@@ -74,7 +74,7 @@ function facts(): InvestigationFacts {
 }
 
 describe("guided investigation components", () => {
-  it("shows only canonical accepted Site Potential outputs", () => {
+  it("shows canonical building-area output and preserves old Site Potential images as history", () => {
     const buildEnvelope = calculateBuildEnvelope({
       ...createEmptyBuildEnvelopeInputs(
         "parcel:erf-1021",
@@ -129,10 +129,12 @@ describe("guided investigation components", () => {
     );
 
     expect(html).toContain("Accepted building area map");
-    expect(html).toContain("Accepted Site Potential concept");
+    expect(html).toContain("Previously saved Site Potential image");
     expect(html).toContain("View building area");
-    expect(html).toContain("View selected concept");
+    expect(html).toContain("View saved image");
     expect(html).toContain("Continue to Review report");
+    expect(html).not.toContain("Generate three independent Site Potential concepts");
+    expect(html).not.toContain("Accepted Site Potential concept");
 
     const buildingOnly = renderToStaticMarkup(
       <GuidedSitePotentialStep
@@ -143,9 +145,9 @@ describe("guided investigation components", () => {
       />,
     );
     expect(buildingOnly).toContain("Accepted building area map");
-    expect(buildingOnly).not.toContain("Accepted Site Potential concept");
+    expect(buildingOnly).not.toContain("Previously saved Site Potential image");
 
-    const conceptOnly = renderToStaticMarkup(
+    const historicalImageOnly = renderToStaticMarkup(
       <GuidedSitePotentialStep
         workspaceState={workspace}
         selectedSiteDesign={selectedAsset}
@@ -153,8 +155,8 @@ describe("guided investigation components", () => {
         onContinue={noop}
       />,
     );
-    expect(conceptOnly).toContain("Accepted Site Potential concept");
-    expect(conceptOnly).not.toContain("Accepted building area map");
+    expect(historicalImageOnly).toContain("Previously saved Site Potential image");
+    expect(historicalImageOnly).not.toContain("Accepted building area map");
 
     const neither = renderToStaticMarkup(
       <GuidedSitePotentialStep
@@ -165,7 +167,7 @@ describe("guided investigation components", () => {
     );
     expect(neither).not.toContain("Accepted work for this erf");
 
-    const historical = renderToStaticMarkup(
+    const unrelatedHistorical = renderToStaticMarkup(
       <GuidedSitePotentialStep
         workspaceState={workspace}
         selectedSiteDesign={{ ...selectedAsset, id: "historical-concept" }}
@@ -173,7 +175,7 @@ describe("guided investigation components", () => {
         onContinue={noop}
       />,
     );
-    expect(historical).not.toContain("Accepted Site Potential concept");
+    expect(unrelatedHistorical).not.toContain("Previously saved Site Potential image");
   });
 
   it("renders Step 1 as a direct property confirmation action", () => {
