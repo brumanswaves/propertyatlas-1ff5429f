@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, FileText, Sparkles, WandSparkles } from "lucide-react";
+import { Check, FileSearch, ShieldCheck, Sparkles, UserCheck } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
@@ -10,12 +10,13 @@ export const Route = createFileRoute("/pricing")({
       {
         name: "description",
         content:
-          "Start an Easy Erf property investigation without a subscription. Optional third-party evidence and beta Site Potential allowances may have separate costs or access rules.",
+          "Investigate a South African property yourself for free, or order the R999 Early Access Easy Erf Property Investigation for a human-reviewed decision report.",
       },
       { property: "og:title", content: "Easy Erf pricing" },
       {
         property: "og:description",
-        content: "Start investigating without a subscription. Pay only when optional evidence or paid capabilities are actually needed and available.",
+        content:
+          "Free self-serve investigation plus the R999 Early Access human-reviewed Easy Erf Property Investigation.",
       },
       { property: "og:url", content: "/pricing" },
     ],
@@ -24,15 +25,24 @@ export const Route = createFileRoute("/pricing")({
   component: PricingPage,
 });
 
-const INCLUDED = [
+const HUMAN_REVIEWED_OUTPUT = [
+  "Property Truth: what the current evidence actually establishes",
+  "Property Potential: what appears possible and which inputs are still assumptions",
+  "Deal killers and material risks that could change the decision",
+  "Conflicts between sources or property information",
+  "Important unknowns that remain unresolved",
+  "Clear next steps to improve confidence or move the deal forward",
+];
+
+const SELF_SERVE_INCLUDED = [
   "Find and open a property",
   "Property Overview and Guided Investigation",
   "Evidence organization and supported document uploads",
-  "Planning investigation where reviewed sources are available",
-  "Property checks and Market Evidence workspace",
+  "Working zoning and planning investigation",
+  "Property checks and Market Evidence",
   "Strategy and deterministic calculators",
+  "Building-area Site Potential review",
   "Living Easy Erf Report",
-  "Ask Easy Erf where the configured AI service is available",
 ];
 
 function PricingPage() {
@@ -41,31 +51,74 @@ function PricingPage() {
       <TopNav />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-32">
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3 w-3 text-accent" /> Pricing
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#C65300]">
+            <Sparkles className="h-3 w-3 text-[#FF6A00]" /> Early access
           </span>
-          <h1 className="mx-auto mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-5xl">
-            Start investigating without a subscription.
+          <h1 className="mx-auto mt-4 max-w-4xl text-balance text-4xl font-semibold tracking-tight text-[#0D1B2A] md:text-5xl">
+            Know what you are dealing with before you commit.
           </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Easy Erf is keeping the MVP commercial model simple. Start with the core property investigation. Optional third-party evidence or beta capabilities only matter when your property actually needs them.
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Use Easy Erf yourself, or have Easy Erf investigate the property and add human review where automation is not yet enough.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          <section className="flex flex-col rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/5 via-card to-accent/5 p-6 shadow-panel lg:col-span-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-              Core Easy Erf investigation
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          <section className="relative overflow-hidden rounded-3xl border-2 border-[#FF6A00]/45 bg-white p-6 shadow-panel md:p-8">
+            <div className="absolute right-0 top-0 rounded-bl-2xl bg-[#FF6A00] px-4 py-2 text-xs font-bold text-white">
+              R999 once-off
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tracking-tight">Start free</span>
-              <span className="text-xs text-muted-foreground">No recurring plan required</span>
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[#C65300]">
+              <UserCheck className="h-4 w-4" /> Human-reviewed property investigation
             </div>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Use Easy Erf to build and understand the property file. Coverage and provider availability vary by municipality, so missing evidence remains visible instead of being replaced with unsupported data.
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-[#0D1B2A]">
+              Easy Erf Property Investigation
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-[#475569]">
+              Tell us what you are trying to do with the property and what you most need to know before deciding. Easy Erf uses the property file, available evidence, public sources, calculations and AI-assisted research, then a human reviewer closes the important gaps and checks the decision report.
             </p>
-            <ul className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
-              {INCLUDED.map((item) => (
+
+            <div className="mt-6 rounded-2xl bg-[#F8FAFC] p-5">
+              <div className="text-sm font-semibold text-[#0D1B2A]">Your investigation report focuses on:</div>
+              <ul className="mt-3 grid gap-2.5 text-sm text-[#334155]">
+                {HUMAN_REVIEWED_OUTPUT.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#1E9E6A]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-[#E95F00]"
+              >
+                Choose the property to start
+              </Link>
+              <span className="text-xs leading-5 text-muted-foreground">
+                Early Access is one property investigation, not a subscription.
+              </span>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">
+              Checkout is being connected to the restored R999 investigation flow. Easy Erf will not create a fake order or claim payment is live until the real payment and fulfilment path is verified.
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-card p-6 shadow-soft md:p-8">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <FileSearch className="h-4 w-4 text-accent" /> Self-serve
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <h2 className="text-2xl font-semibold tracking-tight">Investigate yourself</h2>
+              <span className="text-lg font-bold text-[#1E9E6A]">Free</span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Build the property file yourself and use the guided investigation. Evidence availability varies by municipality, and Easy Erf keeps missing evidence visible rather than inventing answers.
+            </p>
+            <ul className="mt-5 grid gap-2 text-sm">
+              {SELF_SERVE_INCLUDED.map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                   <span>{item}</span>
@@ -74,61 +127,41 @@ function PricingPage() {
             </ul>
             <Link
               to="/"
-              className="mt-7 inline-flex w-fit items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+              className="mt-6 inline-flex rounded-full border border-[#0D1B2A]/15 bg-white px-5 py-2.5 text-sm font-semibold text-[#0D1B2A] hover:bg-muted"
             >
-              Find a Property
+              Find a property
             </Link>
-          </section>
-
-          <section className="rounded-3xl border border-border bg-card p-6 shadow-soft">
-            <FileText className="h-5 w-5 text-accent" />
-            <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Optional paid evidence
-            </div>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">Third-party reports</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              A Lightstone, WinDeed or other provider report can strengthen ownership, deed, valuation, transfer or comparable evidence when that information is needed.
-            </p>
-            <div className="mt-4 rounded-2xl bg-muted/60 p-4 text-xs leading-relaxed text-muted-foreground">
-              Easy Erf does not currently operate a live in-app paid report checkout. Where the workflow supports a provider report, Easy Erf can guide you to obtain it and upload it back to the same property file. Provider fees, if any, are separate.
-            </div>
           </section>
         </div>
 
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
           <section className="rounded-3xl border border-border bg-card p-6 shadow-soft">
-            <WandSparkles className="h-5 w-5 text-accent" />
-            <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Site Potential
-            </div>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">Beta allowance, not a public price plan</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Site Potential concept generation is currently controlled by beta availability, runtime readiness and generation allowances or credits. Easy Erf does not publish a normal paid Site Potential price yet. If your account has access, the product shows the real allowance and generation status.
+            <ShieldCheck className="h-5 w-5 text-accent" />
+            <h2 className="mt-3 text-lg font-semibold tracking-tight">Evidence stays honest</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Human review does not turn missing evidence into verified facts. The investigation must still distinguish official evidence, user-supplied evidence, working assumptions, conflicts and unresolved questions.
             </p>
           </section>
 
           <section className="rounded-3xl border border-border bg-card p-6 shadow-soft">
             <Sparkles className="h-5 w-5 text-accent" />
-            <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Commercial model
-            </div>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">No subscription right now</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Easy Erf is not selling a recurring monthly subscription in the current MVP. Multi-property bundles, professional volume packages or subscriptions may be evaluated later when real usage proves they are useful. They are not part of the current purchase decision.
+            <h2 className="mt-3 text-lg font-semibold tracking-tight">No subscription right now</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              The current commercial test is simple: a R999 human-reviewed investigation for one property. Broader packages, subscriptions and professional marketplace services come later only if real customer demand justifies them.
             </p>
           </section>
         </div>
 
         <section className="mx-auto mt-10 max-w-3xl rounded-3xl border border-border bg-card p-6 text-center shadow-soft">
-          <h2 className="text-lg font-semibold tracking-tight">What happens when something costs money?</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Easy Erf should tell you before you pay, explain what you receive, and keep optional evidence separate from the core investigation. If a payment workflow is not live, Easy Erf should say so rather than showing a fake checkout or invented price.
+          <h2 className="text-lg font-semibold tracking-tight">Already investigating a property?</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Keep using the same property file. The paid human-reviewed investigation is designed to build on the evidence and questions already collected rather than making you start again.
           </p>
           <Link
-            to="/how-it-works"
-            className="mt-5 inline-flex rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+            to="/dashboard"
+            className="mt-5 inline-flex rounded-full bg-[#0D1B2A] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#16283D]"
           >
-            See how the investigation works
+            Open My Investigations
           </Link>
         </section>
       </main>
