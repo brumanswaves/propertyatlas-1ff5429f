@@ -194,3 +194,13 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Design rule: Founder Operations may be denser than customer pages but must inherit the canonical Easy Erf design system and terminology.
 - Do not regress: Do not expose service-role credentials in the browser, add unaudited entitlement or financial mutations, duplicate the admin-role system, or present unavailable operational coverage as zero activity.
 - Related: `docs/EASY_ERF_DESIGN_SYSTEM.md`, `src/components/admin/AdminGuard.tsx`, `/admin/readiness`, `/admin/public-data-debug`.
+
+## EE-024 - Canonical backend ownership is separate from browser cutover
+
+- Date: 2026-08-17.
+- Decision: The founder-owned Easy Erf Supabase project is the only canonical remote backend target for future Easy Erf production work. The older Lovable-managed project is rollback/runtime infrastructure only during the controlled cutover window.
+- Rationale: Remote ownership must be explicit and must not drift merely because the current browser environment still points at the rollback backend. Supabase CLI remote commands act on an explicitly linked or supplied project ref, while top-level `supabase/config.toml` is local-stack configuration and is not sufficient proof of remote target.
+- Implementation: `supabase/config.toml` uses the neutral local identifier `easy-erf`. `docs/EASY_ERF_BACKEND_OWNERSHIP.md` records the founder project ref and requires `supabase link --project-ref ...` plus linked-target verification before remote operations. Browser Supabase/auth environment values remain unchanged until Google OAuth and the signed-in Erf 1570 acceptance gates pass.
+- Safety: This ownership correction does not deploy, publish, migrate data, change the live browser backend or authorize any consequential production action.
+- Do not regress: Do not create a parallel Easy Erf backend, do not treat Lovable-generated environment configuration or a local `config.toml` project_id as proof of remote ownership, and do not bundle safe repository ownership fixes with an unsafe premature frontend cutover.
+- Related: EE-005, EE-021, PR #95.

@@ -4,6 +4,13 @@ This is an ordered inventory of future ideas, not a replacement for the Master P
 
 ## NOW
 
+### Complete canonical founder-backend cutover and signed-in acceptance
+
+- Idea: Keep repository/CLI ownership on the founder-owned Easy Erf backend, enable and verify Google OAuth there, then run the full signed-in Erf 1570 journey before publishing the frontend cutover.
+- Expected value: Removes the largest gap between repository confidence and a genuinely usable production investigation while preventing new work from drifting back onto rollback infrastructure.
+- Dependencies: Existing founder Supabase project, Google OAuth configuration, rollback-safe auth bridge, current Site Potential API/client transport and a signed-in acceptance account.
+- Why now: Guided, Dossier and Report already share canonical planning, evidence, Strategy and Site Potential state. The remaining highest-risk gap is proving those paths together on the canonical backend.
+
 ### Validate Erf 1570 end to end in the real product
 
 - Idea: Validate search -> Property Overview -> Guided -> Strategy -> Site Potential -> Market -> Report with a signed-in smoke after the PR #63 rescue.
