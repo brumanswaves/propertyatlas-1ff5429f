@@ -28,7 +28,8 @@ describe("official dossier UX guardrails", () => {
     expect(home).toContain("headerSubtitle");
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
-    expect(nav).toContain("bg-[#06152A]/85");
+    expect(nav).toContain("bg-primary/95");
+    expect(nav).toContain("text-white/80");
     expect(nav).toContain("pt-[calc(env(safe-area-inset-top)+0.5rem)]");
     expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
@@ -767,45 +768,21 @@ describe("official dossier UX guardrails", () => {
     expect(vaultFiles).toContain('export const ERF_FILE_BUCKET = "erf-files"');
     expect(vaultFiles).toContain("migrateLocalWorkspaceAttachmentsToVault");
     expect(vaultFiles).toContain("createSignedUrl");
-    expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(sitePotential).toContain("Guided Investigation / Site Potential");
     expect(sitePotential).toContain("Back to Investigation");
     expect(sitePotential).toContain("Continue to Easy Erf Report");
-    expect(sitePotential).toContain("Review what could potentially fit on this site");
-    expect(sitePotential).toContain("Confirm the street-facing boundaries");
-    expect(sitePotential).not.toContain(
-      "Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 9 of 10",
-    );
-    expect(sitePotential).toContain("Guided completion · Site Potential");
-    expect(sitePotential).toContain("Select a concept or explicitly skip this step");
-    expect(sitePotential).toContain("projectMode === \"skipped\"");
-    expect(sitePotential).toContain("useErfFileVault");
-    expect(sitePotential).toContain("/api/site-potential/generate");
-    expect(sitePotential).toContain("generationInFlightRef");
-    expect(sitePotential).toContain("activeDesignPackId");
-    expect(sitePotential).toContain("assetDesignPackId(asset) === activeDesignPackId");
-    expect(sitePotentialIntegrityMigration).toContain(
-      "erf_site_projects_selected_design_integrity",
-    );
+    expect(sitePotential).toContain("approximate buildable area");
+    expect(sitePotential).toContain("Topographical survey");
+    expect(sitePotential).toContain("Architectural or existing plans");
+    expect(sitePotential).toContain("Other site evidence");
+    expect(sitePotential).toContain('uploadFiles(files, "architectural_plan")');
+    expect(sitePotential).toContain('uploadFiles(files, "other")');
+    expect(sitePotential).not.toContain("Generate three independent Site Potential concepts");
+    expect(sitePotential).not.toContain("Generate 3 concepts");
+    expect(sitePotentialIntegrityMigration).toContain("erf_site_projects_selected_design_integrity");
     expect(sitePotentialIntegrityMigration).toContain("asset_row.user_id <> NEW.user_id");
     expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
-    expect(sitePotential).toContain("GENERATION_UI_ENABLED");
-    expect(sitePotential).toContain("generationAvailability.message");
-    expect(sitePotential).toContain("Topographical survey");
-    expect(sitePotential).toContain("Architectural plans");
-    expect(sitePotential).toContain("Inspiration images");
-    expect(sitePotential).toContain("Supporting documents");
-    expect(sitePotential).toContain('uploadFiles(files, "architectural_plan")');
-    expect(sitePotential).toContain('uploadFiles(files, "inspiration_image")');
-    expect(sitePotential).toContain('uploadFiles(files, "other")');
-    expect(sitePotential).not.toContain("Street View");
-    expect(read("src/routes/api/site-potential.generate.ts")).toContain(
-      "queueSitePotentialGeneration",
-    );
-    expect(read("src/routes/api/site-potential.generate.ts")).not.toContain(
-      "requestImageGenerationWithOpenAI",
-    );
-    expect(read("src/lib/sitePotential/generationWorker.ts")).toContain("downloadReferenceAsset");
+
     expect(dossier).toContain("buildEvidenceAppendixRows");
 
     expect(dossier).toContain("getChosenStrategyScenario");
@@ -1061,20 +1038,11 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).not.toContain('"Google place result"');
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
-    expect(sitePotential).toContain("buildSitePotentialRuntimeProgress");
-    expect(sitePotential).toContain("Site Potential generation progress");
-    expect(sitePotential).toContain("Refresh status");
-    expect(sitePotential).toContain("Retry current pack");
-    expect(sitePotential).toContain("fetchSitePotentialApi");
-    expect(sitePotentialApi).toContain('"retry-pack"');
-    expect(sitePotentialApi).toContain('`/api/site-potential/${input.route}`');
-    expect(sitePotential).toContain('role="status"');
-    expect(sitePotential).toContain('aria-live="polite"');
-    expect(sitePotential).toContain("Eligible concepts can be retried.");
-    expect(sitePotential).toContain("Waiting for eligible concepts to be retried.");
-    expect(sitePotential).toContain(
-      "failedish && packStatus.terminal && !retryable && !activeWorker",
-    );
+    expect(sitePotential).not.toContain("Site Potential generation progress");
+    expect(sitePotential).not.toContain("Retry current pack");
+    expect(sitePotential).not.toContain("Generate 3 concepts");
+    expect(sitePotential).toContain("Review the approximate buildable area");
+    expect(sitePotential).toContain("Supporting evidence");
   });
 });
 

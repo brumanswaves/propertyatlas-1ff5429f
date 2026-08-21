@@ -135,20 +135,17 @@ describe("Site Potential selected concept persistence", () => {
     });
   });
 
-  it("uses explicit selection to replace or deselect the preferred concept", () => {
+  it("removes concept selection controls from the simplified R999 Site Potential UI", () => {
     const sitePotentialTab = read("src/components/property/dossier/SitePotentialTab.tsx");
-
-    expect(sitePotentialTab).toContain("selected_design_asset_id: asset?.id ?? null");
-    expect(sitePotentialTab).toContain("generation_status: asset");
+    expect(sitePotentialTab).not.toContain("selected_design_asset_id: asset?.id ?? null");
+    expect(sitePotentialTab).not.toContain("Select for Easy Erf Report");
   });
 
-  it("resolves the Site Potential hook against all generated assets, not the active pack filter", () => {
+  it("keeps generated-concept hook plumbing out of the simplified R999 Site Potential UI", () => {
     const sitePotentialTab = read("src/components/property/dossier/SitePotentialTab.tsx");
     const service = read("src/lib/sitePotential/sitePotentialService.ts");
-
-    expect(sitePotentialTab).toContain("useSitePotentialProject(parcel.id, allGeneratedDesigns)");
-    expect(sitePotentialTab).toContain("buildSelectedDesignDeletionPatch");
-    expect(sitePotentialTab).toContain("removeGeneratedDesign(asset)");
+    expect(sitePotentialTab).not.toContain("useSitePotentialProject(parcel.id, allGeneratedDesigns)");
+    expect(sitePotentialTab).not.toContain("removeGeneratedDesign(asset)");
     expect(service).not.toContain("clearMissingSelectedDesign");
   });
 
