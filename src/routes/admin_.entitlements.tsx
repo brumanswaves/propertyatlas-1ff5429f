@@ -23,7 +23,7 @@ import type {
   FounderSupportUserSummary,
 } from "@/lib/admin/founderSupportTypes";
 
-export const Route = createFileRoute("/admin/entitlements")({
+export const Route = createFileRoute("/admin_/entitlements")({
   head: () => ({
     meta: [
       { title: "Entitlements | Easy Erf Operations" },

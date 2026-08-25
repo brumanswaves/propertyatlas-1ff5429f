@@ -28,7 +28,7 @@ import type {
 } from "@/lib/admin/founderSupportTypes";
 import { GUIDED_INVESTIGATION_STEPS } from "@/lib/investigation/guidedJourney";
 
-export const Route = createFileRoute("/admin/users")({
+export const Route = createFileRoute("/admin_/users")({
   head: () => ({
     meta: [
       { title: "User Support | Easy Erf Operations" },
