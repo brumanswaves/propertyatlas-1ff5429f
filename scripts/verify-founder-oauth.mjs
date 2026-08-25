@@ -36,9 +36,16 @@ if (!projectRef || !supabaseUrl || !publishableKey) {
   throw new Error("Founder auth is enabled but required Supabase browser config is missing.");
 }
 
-const expectedOrigin = `https://${projectRef}.supabase.co`;
-if (new URL(supabaseUrl).origin !== expectedOrigin) {
-  throw new Error("Supabase URL does not match the configured project ref.");
+const supabaseOrigin = new URL(supabaseUrl).origin;
+const allowedOrigins = new Set([
+  `https://${projectRef}.supabase.co`,
+  "https://easyerf.supabase.co",
+]);
+
+if (!allowedOrigins.has(supabaseOrigin)) {
+  throw new Error(
+    "Supabase URL does not match the canonical founder project or approved Easy Erf vanity hostname.",
+  );
 }
 
 const client = createClient(supabaseUrl, publishableKey, {
@@ -63,8 +70,8 @@ if (!data?.url) {
 }
 
 const authorizeUrl = new URL(data.url);
-if (authorizeUrl.origin !== expectedOrigin) {
-  throw new Error("OAuth authorization URL does not target the founder Supabase project.");
+if (authorizeUrl.origin !== supabaseOrigin) {
+  throw new Error("OAuth authorization URL does not target the configured founder Supabase origin.");
 }
 if (authorizeUrl.searchParams.get("provider") !== "google") {
   throw new Error("OAuth authorization URL is not configured for Google.");
@@ -83,5 +90,5 @@ if (googleUrl.hostname !== "accounts.google.com") {
 }
 
 console.log(
-  `Founder OAuth transport verified: project ${projectRef}, Supabase authorize endpoint -> Google Accounts.`,
+  `Founder OAuth transport verified: project ${projectRef}, origin ${supabaseOrigin}, Supabase authorize endpoint -> Google Accounts.`,
 );
