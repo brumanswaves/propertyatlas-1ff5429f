@@ -1,9 +1,11 @@
 /**
  * Erf File Vault document extraction — browser client.
  *
- * The browser calls the deployed `extract-erf-asset` Supabase Edge Function
- * directly with the signed-in user's access token. No service-role key, shared
- * function secret, or OpenAI key is ever present in browser code.
+ * The normal browser path invokes the deployed `extract-erf-asset` Supabase
+ * Edge Function through the authenticated Supabase client. Test-only injected
+ * transport remains available so the request contract can be verified without
+ * a live backend. No service-role key, shared function secret, or OpenAI key is
+ * ever present in browser code.
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -67,6 +69,18 @@ export interface ExtractErfAssetDeps {
   accessToken?: string;
 }
 
+interface ExtractionPayload {
+  success?: boolean;
+  code?: string;
+  error?: string;
+  claimCount?: number;
+  documentType?: string | null;
+  warning?: string | null;
+  extractionStatus?: ErfExtractionStatus;
+  identityMatchStatus?: ErfIdentityMatchStatus | null;
+  identityMatchReason?: string | null;
+}
+
 function defaultFunctionsUrl() {
   const base =
     (import.meta.env?.VITE_SUPABASE_URL as string | undefined) ??
@@ -83,8 +97,29 @@ function defaultApiKey() {
   );
 }
 
+function failureFromPayload(payload: ExtractionPayload | null): ExtractErfAssetResult {
+  return {
+    success: false,
+    code: typeof payload?.code === "string" ? payload.code : null,
+    error:
+      typeof payload?.error === "string" && payload.error
+        ? payload.error
+        : "This document could not be read right now.",
+    extractionStatus: payload?.extractionStatus ?? null,
+    identityMatchStatus: payload?.identityMatchStatus ?? null,
+  };
+}
 
-
+function successFromPayload(payload: ExtractionPayload): ExtractErfAssetResult {
+  return {
+    success: true,
+    extractionStatus: payload.extractionStatus ?? "ready",
+    claimCount: typeof payload.claimCount === "number" ? payload.claimCount : 0,
+    documentType: payload.documentType ?? null,
+    warning: payload.warning ?? null,
+    identityMatchStatus: payload.identityMatchStatus ?? null,
+  };
+}
 
 /**
  * Requests server-side extraction for one vault asset. Resolves with the
@@ -105,9 +140,6 @@ export async function extractErfAsset(
       extractionStatus: null,
     };
   }
-  const fetchImpl = deps.fetchImpl ?? fetch;
-  const url = deps.functionsUrl ?? defaultFunctionsUrl();
-  const apiKey = deps.apiKey ?? defaultApiKey();
 
   let accessToken = deps.accessToken ?? "";
   if (!accessToken) {
@@ -115,8 +147,64 @@ export async function extractErfAsset(
     accessToken = data.session?.access_token ?? "";
   }
   if (!accessToken) {
-    return { success: false, code: "AUTH_REQUIRED", error: "Sign in to read this document.", extractionStatus: null };
+    return {
+      success: false,
+      code: "AUTH_REQUIRED",
+      error: "Sign in to read this document.",
+      extractionStatus: null,
+    };
   }
+
+  const body = {
+    assetId,
+    expectedParcelId,
+    ...(options.retry ? { retry: true } : {}),
+  };
+
+  // Production/browser path: use the same initialized Supabase client that
+  // already owns auth, database, storage, and the canonical project URL. This
+  // prevents document reading from silently diverging onto a separately built
+  // functions URL or hand-managed auth headers.
+  const usesInjectedTransport = Boolean(
+    deps.fetchImpl || deps.functionsUrl || deps.apiKey || deps.accessToken,
+  );
+  if (!usesInjectedTransport) {
+    try {
+      const { data, error } = await supabase.functions.invoke(EXTRACT_ERF_ASSET_FUNCTION_NAME, {
+        body,
+      });
+      if (error) {
+        let serverPayload: ExtractionPayload | null = null;
+        const context = (error as { context?: Response }).context;
+        if (context && typeof context.clone === "function") {
+          serverPayload = (await context.clone().json().catch(() => null)) as ExtractionPayload | null;
+        }
+        if (serverPayload) return failureFromPayload(serverPayload);
+        return {
+          success: false,
+          code: "SERVER_UNAVAILABLE",
+          error: error.message || "Document reading is temporarily unavailable.",
+          extractionStatus: null,
+        };
+      }
+
+      const payload = data as ExtractionPayload | null;
+      if (!payload || payload.success !== true) return failureFromPayload(payload);
+      return successFromPayload(payload);
+    } catch {
+      return {
+        success: false,
+        code: "SERVER_UNAVAILABLE",
+        error: "Document reading is temporarily unavailable.",
+        extractionStatus: null,
+      };
+    }
+  }
+
+  // Injected transport is retained for deterministic request-contract tests.
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const url = deps.functionsUrl ?? defaultFunctionsUrl();
+  const apiKey = deps.apiKey ?? defaultApiKey();
 
   let response: Response;
   try {
@@ -127,11 +215,7 @@ export async function extractErfAsset(
         Authorization: `Bearer ${accessToken}`,
         apikey: apiKey,
       },
-      body: JSON.stringify({
-        assetId,
-        expectedParcelId,
-        ...(options.retry ? { retry: true } : {}),
-      }),
+      body: JSON.stringify(body),
     });
   } catch {
     return {
@@ -142,37 +226,7 @@ export async function extractErfAsset(
     };
   }
 
-  const payload = (await response.json().catch(() => null)) as {
-    success?: boolean;
-    code?: string;
-    error?: string;
-    claimCount?: number;
-    documentType?: string | null;
-    warning?: string | null;
-    extractionStatus?: ErfExtractionStatus;
-    identityMatchStatus?: ErfIdentityMatchStatus | null;
-    identityMatchReason?: string | null;
-  } | null;
-
-  if (!response.ok || !payload || payload.success !== true) {
-    return {
-      success: false,
-      code: typeof payload?.code === "string" ? payload.code : null,
-      error:
-        typeof payload?.error === "string" && payload.error
-          ? payload.error
-          : "This document could not be read right now.",
-      extractionStatus: payload?.extractionStatus ?? null,
-      identityMatchStatus: payload?.identityMatchStatus ?? null,
-    };
-  }
-
-  return {
-    success: true,
-    extractionStatus: payload.extractionStatus ?? "ready",
-    claimCount: typeof payload.claimCount === "number" ? payload.claimCount : 0,
-    documentType: payload.documentType ?? null,
-    warning: payload.warning ?? null,
-    identityMatchStatus: payload.identityMatchStatus ?? null,
-  };
+  const payload = (await response.json().catch(() => null)) as ExtractionPayload | null;
+  if (!response.ok || !payload || payload.success !== true) return failureFromPayload(payload);
+  return successFromPayload(payload);
 }
