@@ -35,6 +35,8 @@ export {
 };
 
 export const EXTRACT_ERF_ASSET_FUNCTION_NAME = "extract-erf-asset";
+export const DOCUMENT_READER_UNAVAILABLE_MESSAGE =
+  "Easy Erf's document reader could not start. Your uploaded file remains stored. Try reading it again shortly.";
 
 export type ExtractErfAssetResult =
   | {
@@ -137,7 +139,7 @@ export async function extractErfAsset(
     return {
       success: false,
       code: "SERVER_UNAVAILABLE",
-      error: "Document reading is temporarily unavailable.",
+      error: DOCUMENT_READER_UNAVAILABLE_MESSAGE,
       extractionStatus: null,
     };
   }
@@ -146,6 +148,7 @@ export async function extractErfAsset(
     success?: boolean;
     code?: string;
     error?: string;
+    message?: string;
     claimCount?: number;
     documentType?: string | null;
     warning?: string | null;
@@ -155,13 +158,21 @@ export async function extractErfAsset(
   } | null;
 
   if (!response.ok || !payload || payload.success !== true) {
+    const serverUnavailable = response.status >= 500 && !payload?.error;
     return {
       success: false,
-      code: typeof payload?.code === "string" ? payload.code : null,
+      code:
+        typeof payload?.code === "string"
+          ? payload.code
+          : serverUnavailable
+            ? "SERVER_UNAVAILABLE"
+            : null,
       error:
         typeof payload?.error === "string" && payload.error
           ? payload.error
-          : "This document could not be read right now.",
+          : serverUnavailable
+            ? DOCUMENT_READER_UNAVAILABLE_MESSAGE
+            : "This document could not be read right now.",
       extractionStatus: payload?.extractionStatus ?? null,
       identityMatchStatus: payload?.identityMatchStatus ?? null,
     };

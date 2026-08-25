@@ -1444,6 +1444,10 @@ function addGaps(
   selectedSiteDesign: ErfAsset | null,
 ) {
   const planningClaims = (key: string) => pack.claims.some((claim) => claim.domain === "planning" && claim.key === key && claim.status === "supported");
+  const recordedPlanningClaim = (key: string) =>
+    pack.claims.some(
+      (claim) => claim.domain === "planning" && claim.key === key && !claim.excluded,
+    );
   const gap = (id: string, domain: EvidenceDomain, importance: "low" | "medium" | "high", title: string, explanation: string, basis: string, nextAction: string, targetTab: string, blocking = false) =>
     pack.gaps.push({ id, parcelId: input.parcel.id, domain, importance, title, explanation, basis, nextAction, targetTab, blocking });
 
@@ -1452,7 +1456,18 @@ function addGaps(
   }
   if (!pack.claims.some((claim) => claim.key === "areaM2")) gap("missing-erf-area", "identity", "medium", "Erf area missing", "No official erf area claim is available.", "No recognized area alias on parcel raw properties.", "Upload or open the SG diagram.", "research");
   for (const [key, label] of [["zoning", "Zoning"], ["coverage", "Coverage"], ["far", "FAR"], ["height", "Height"], ["setbacks", "Setbacks or building lines"], ["permittedUses", "Permitted uses"]] as const) {
-    if (!planningClaims(key)) gap(`missing-${key}`, "planning", key === "zoning" ? "high" : "medium", `${label} missing`, `${label} has not been captured from a supported source.`, `No supported planning claim for ${key}.`, `Verify ${label.toLowerCase()} with municipal planning records.`, "research", key === "zoning");
+    if (!planningClaims(key)) {
+      const recorded = recordedPlanningClaim(key);
+      const title = recorded
+        ? key === "zoning"
+          ? "Municipal zoning evidence missing"
+          : `${label} verification missing`
+        : `${label} missing`;
+      const explanation = recorded
+        ? `${label} is recorded as a working or published value, but no supported property-specific source confirms it.`
+        : `${label} has not been captured from a supported source.`;
+      gap(`missing-${key}`, "planning", key === "zoning" ? "high" : "medium", title, explanation, `No supported planning claim for ${key}.`, `Verify ${label.toLowerCase()} with municipal planning records.`, "research", key === "zoning");
+    }
   }
   if (!pack.claims.some((claim) => claim.domain === "ownership" && claim.status === "supported")) {
     gap("ownership-not-verified", "ownership", "high", "Ownership not verified", "No structured ownership claim exists for this erf.", "Uploaded reports alone do not verify ownership without extracted ownership text.", "Upload or review title deed, WinDeed or Lightstone ownership evidence.", "reports", true);

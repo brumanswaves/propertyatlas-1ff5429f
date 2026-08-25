@@ -92,8 +92,16 @@ function AuthPage() {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-gradient-brand p-10 text-white md:flex">
-        <Link to="/" className="inline-flex items-center">
-          <AtlasPin variant="white" className="h-9 w-auto" title={BRAND.site} />
+        <Link
+          to="/"
+          aria-label="Easy Erf home"
+          className="inline-flex h-10 w-[156px] items-center justify-center rounded-full border border-white/20 bg-[#FCFAF6] px-4 shadow-panel ring-1 ring-black/5"
+        >
+          <AtlasPin
+            variant="horizontal"
+            className="block h-[26px] w-auto max-w-[132px] object-contain"
+            title={BRAND.site}
+          />
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">
@@ -108,6 +116,17 @@ function AuthPage() {
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
+          <Link
+            to="/"
+            aria-label="Easy Erf home"
+            className="mb-8 inline-flex h-10 w-[148px] items-center justify-center rounded-full border border-border/70 bg-[#FCFAF6] px-4 shadow-soft ring-1 ring-primary/5 md:hidden"
+          >
+            <AtlasPin
+              variant="horizontal"
+              className="block h-[24px] w-auto max-w-[124px] object-contain"
+              title={BRAND.site}
+            />
+          </Link>
           <h1 className="text-2xl font-semibold tracking-tight">
             {mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>

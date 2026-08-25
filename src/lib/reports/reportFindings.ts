@@ -667,7 +667,11 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
 
   // 9. Zoning / planning completeness --------------------------------------
   // Canonical domain state + source quality decide this, never a claim count.
-  const planningClaims = supported(claimsFor(pack, "planning", PLANNING_CONTROL_KEYS));
+  const recordedPlanningClaims = claimsFor(pack, "planning", PLANNING_CONTROL_KEYS);
+  const planningClaims = supported(recordedPlanningClaims);
+  const workingPlanningClaims = recordedPlanningClaims.filter(
+    (claim) => claim.nature === "assumption" || claim.status === "not_reviewed",
+  );
   const planningGaps = pack.gaps.filter((gap) => gap.domain === "planning");
   const planningState = domainState(pack, "planning");
   const planningQualified =
@@ -680,25 +684,46 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
       ? "conflicting"
       : planningQualified
         ? "supported"
-        : planningClaims.length
+        : recordedPlanningClaims.length
           ? "not_checked"
           : "missing";
   add({
     id: "finding-planning-completeness",
     category: "planning",
     status: planningStatus,
-    severity: planningQualified ? "information" : planningClaims.length ? "medium" : "high",
-    headline: planningClaims.length
-      ? `${distinctKeyCount(planningClaims)} planning control(s) recorded`
-      : "No planning controls recorded",
-    whatWeFound: planningClaims.length
-      ? planningClaims.map((claim) => `${claim.label}: ${claim.value}`).join(" · ")
+    severity: planningQualified ? "information" : recordedPlanningClaims.length ? "medium" : "high",
+    headline: planningQualified
+      ? `${distinctKeyCount(planningClaims)} planning control(s) supported`
+      : workingPlanningClaims.length
+        ? "Working planning assumptions recorded"
+        : recordedPlanningClaims.length
+          ? `${distinctKeyCount(recordedPlanningClaims)} planning control(s) recorded, verification still required`
+          : "No planning controls recorded",
+    whatWeFound: recordedPlanningClaims.length
+      ? recordedPlanningClaims
+          .map((claim) => {
+            const qualifier =
+              claim.nature === "assumption" || claim.status === "not_reviewed"
+                ? claim.userConfirmed
+                  ? "user-confirmed working conclusion"
+                  : "working assumption"
+                : claim.status === "partial"
+                  ? "published context, property-specific verification pending"
+                  : "supported evidence";
+            return `${claim.label}: ${claim.value} (${qualifier})`;
+          })
+          .join(" · ")
       : "No zoning, coverage, FAR or height value exists for this erf.",
-    whatItMeans:
-      "What may legally be built cannot be established until the municipal zoning certificate and scheme controls are confirmed. Repeating the same source does not strengthen this.",
-    confidence: planningClaims.length ? weakestConfidence(planningClaims) : "unverified",
-    claimIds: planningClaims.map((claim) => claim.id),
-    sourceIds: sourceIdsOf(planningClaims),
+    whatItMeans: planningQualified
+      ? "The available evidence supports these planning controls, but title conditions, departures and municipal approvals still need property-specific review."
+      : recordedPlanningClaims.length
+        ? "A working planning basis exists for the investigation, but it is not municipal confirmation or an approval to build. Obtain the property-specific zoning and planning records before relying on it."
+        : "What may legally be built cannot be established until the municipal zoning certificate and scheme controls are confirmed. Repeating the same source does not strengthen this.",
+    confidence: recordedPlanningClaims.length
+      ? weakestConfidence(recordedPlanningClaims)
+      : "unverified",
+    claimIds: recordedPlanningClaims.map((claim) => claim.id),
+    sourceIds: sourceIdsOf(recordedPlanningClaims),
     gapIds: planningGaps.map((gap) => gap.id),
   });
 

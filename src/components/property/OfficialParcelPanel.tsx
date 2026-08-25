@@ -2654,7 +2654,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                         "flex min-h-10 w-full items-center rounded-2xl px-4 py-2.5 text-left text-xs font-semibold transition",
                         active
                           ? "bg-white/14 text-white"
-                          : "text-white/58 hover:bg-white/8 hover:text-white",
+                          : "text-white/72 hover:bg-white/8 hover:text-white",
                       )}
                       aria-current={active ? "page" : undefined}
                     >

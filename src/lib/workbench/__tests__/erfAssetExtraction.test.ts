@@ -9,6 +9,7 @@ import {
   sanitizeExtractedText,
 } from "../../../../supabase/functions/_shared/erfExtractionContract";
 import {
+  DOCUMENT_READER_UNAVAILABLE_MESSAGE,
   erfAssetExtractionLabel,
   erfAssetExtractionStatus,
   extractErfAsset,
@@ -211,5 +212,47 @@ describe("erf asset extraction client", () => {
       { fetchImpl: fetchImpl as unknown as typeof fetch, accessToken: "user-token" },
     );
     expect(result).toMatchObject({ success: false, code: "TIMEOUT", error: "Reading this document timed out." });
+  });
+
+  it("turns a failed reader invocation into a specific retryable terminal result", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+      { fetchImpl: fetchImpl as unknown as typeof fetch, accessToken: "user-token" },
+    );
+
+    expect(result).toEqual({
+      success: false,
+      code: "SERVER_UNAVAILABLE",
+      error: DOCUMENT_READER_UNAVAILABLE_MESSAGE,
+      extractionStatus: null,
+    });
+    if (result.success) throw new Error("Expected document reader failure");
+    expect(result.error).toMatch(/uploaded file remains stored/i);
+    expect(result.error).toMatch(/try reading it again/i);
+  });
+
+  it("does not expose an untyped infrastructure error from a failed worker", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ code: "WORKER_ERROR", message: "Function exited due to an error" }), {
+        status: 500,
+      }),
+    );
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+      { fetchImpl: fetchImpl as unknown as typeof fetch, accessToken: "user-token" },
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      code: "WORKER_ERROR",
+      error: DOCUMENT_READER_UNAVAILABLE_MESSAGE,
+    });
+    if (result.success) throw new Error("Expected worker failure");
+    expect(result.error).not.toContain("Function exited");
   });
 });

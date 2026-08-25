@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { InvestigationStepShell } from "@/components/property/investigation/InvestigationStepShell";
@@ -107,6 +108,21 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
 }
 
 describe("guided zoning evidence gate", () => {
+  it("presents zoning as deliberate cards with explicit confirmation authority", () => {
+    const source = readFileSync(
+      "src/components/property/investigation/GuidedZoningStep.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain('role="radiogroup"');
+    expect(source).toContain('role="radio"');
+    expect(source).toContain("min-h-[5.25rem]");
+    expect(source).toContain("Confirmed by user");
+    expect(source).toContain("Municipally verified");
+    expect(source).toContain("Working zoning confirmed");
+    expect(source).toContain("Continue to Property checks");
+  });
+
   it("matches common zoning wording to the selected registry zone", () => {
     expect(zoningClaimSupportsZone("Residential Zone 1", zone)).toBe(true);
     expect(zoningClaimSupportsZone("RES1", zone)).toBe(true);
