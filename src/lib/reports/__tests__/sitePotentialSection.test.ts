@@ -38,18 +38,21 @@ function envelope(overrides: Partial<BuildEnvelopeResult> = {}): BuildEnvelopeRe
 const base = { skipped: false, disclaimer: "Confirm with the municipality." };
 
 describe("buildSitePotentialReportPanel", () => {
-  it("shows both visuals when envelope and concept exist", () => {
+  it("ignores legacy concept records and reports the accepted building area only", () => {
     const panel = buildSitePotentialReportPanel({
       ...base,
       envelope: envelope(),
       hasConceptImage: true,
       conceptStyle: "Coastal modern",
+      brief: "Legacy saved concept",
     });
-    expect(panel.mode).toBe("both");
+    expect(panel.mode).toBe("capacity_only");
     expect(panel.hasCapacity).toBe(true);
-    expect(panel.hasConcept).toBe(true);
-    expect(panel.title).toBe("What could potentially be built here?");
-    expect(panel.conceptName).toBe("Selected concept — Coastal modern");
+    expect(panel.hasConcept).toBe(false);
+    expect(panel.title).toBe("Approximate building area");
+    expect(panel.capacityHeading).toBe("Accepted building-area result");
+    expect(panel.conceptName).toBeNull();
+    expect(panel.brief).toBeNull();
     expect(panel.emptyMessage).toBeNull();
   });
 
@@ -84,27 +87,20 @@ describe("buildSitePotentialReportPanel", () => {
     });
   });
 
-  it("falls back to capacity only when no concept was selected", () => {
-    const panel = buildSitePotentialReportPanel({
-      ...base,
-      envelope: envelope(),
-      hasConceptImage: false,
-    });
-    expect(panel.mode).toBe("capacity_only");
-    expect(panel.conceptName).toBeNull();
-  });
-
-  it("falls back to concept only when the envelope cannot be calculated", () => {
+  it("shows no Site Potential output when a building area cannot be calculated", () => {
     const panel = buildSitePotentialReportPanel({
       ...base,
       envelope: envelope({ state: "more_information_required" }),
       hasConceptImage: true,
     });
-    expect(panel.mode).toBe("concept_only");
+    expect(panel.mode).toBe("none");
+    expect(panel.hasCapacity).toBe(false);
+    expect(panel.hasConcept).toBe(false);
     expect(panel.metrics).toEqual([]);
+    expect(panel.emptyMessage).toBe("No accepted building-area map has been produced for this erf yet.");
   });
 
-  it("never invents a visual and explains an empty section honestly", () => {
+  it("never invents a visual and explains a skipped section honestly", () => {
     const panel = buildSitePotentialReportPanel({
       ...base,
       envelope: null,
