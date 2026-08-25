@@ -13,6 +13,7 @@ import {
   readSavedInvestigationProjection,
   shouldHydrateSavedInvestigationProjection,
 } from "@/lib/workbench/savedInvestigationProjection";
+import { PLANNING_ZONE_UPDATED_EVENT } from "@/lib/planning/storedPlanningZone";
 
 interface WorkspaceUpdatedDetail {
   parcelId?: unknown;
@@ -79,6 +80,11 @@ export function WorkspaceCloudSync() {
           projection,
         );
         writeErfWorkspaceState(parcelId, hydrated, window.localStorage, userId);
+        window.dispatchEvent(
+          new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
+            detail: { parcelId, userId, zoneCode: hydrated.planning.zoneCode },
+          }),
+        );
       }
     };
 
