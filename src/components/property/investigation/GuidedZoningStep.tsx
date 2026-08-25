@@ -111,7 +111,9 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
         ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      if ((detail?.userId ?? null) !== userId) return;
+      // Initial hydration has no event detail. Only apply the user filter to
+      // actual update events, otherwise signed-in users never read saved zoning.
+      if (detail && (detail.userId ?? null) !== userId) return;
       const planningState = readStoredPlanningZoneState(parcel.id, userId);
       setSelectedZoneCode(planningState.zoneCode);
       setUserConfirmedZoneCode(planningState.userConfirmedZoneCode);
@@ -131,7 +133,6 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   const documentBacked = usableDocuments.length > 0;
   const userConfirmedWorkingZone =
     Boolean(selectedZoneCode) && userConfirmedZoneCode === selectedZoneCode;
-  const canContinue = documentBacked || userConfirmedWorkingZone;
   const extractedPlanningClaims = useMemo(
     () =>
       vault.assets
@@ -153,10 +154,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     setUserConfirmedZoneCode(next.userConfirmedZoneCode);
   }
 
-  function confirmWorkingZone() {
+  function confirmAndContinue() {
     const next = confirmStoredPlanningZone(parcel.id, userId);
     setSelectedZoneCode(next.zoneCode);
     setUserConfirmedZoneCode(next.userConfirmedZoneCode);
+    if (next.zoneCode && next.userConfirmedZoneCode === next.zoneCode) onContinue();
   }
 
   async function readZoningDocument(asset: ErfAsset, retry = false) {
@@ -259,11 +261,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     ? "Document-backed zoning confirmed"
     : userConfirmedWorkingZone
       ? "Working zoning confirmed by you"
-    : selectedZone
-      ? "Working zoning selected, unverified"
-      : vault.assets.length
-        ? "Select the zoning shown by the record"
-        : "No working zoning selected";
+      : selectedZone
+        ? "Working zoning selected, unverified"
+        : vault.assets.length
+          ? "Select the zoning shown by the record"
+          : "No working zoning selected";
 
   return (
     <div className="space-y-4">
@@ -274,12 +276,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
               Working zoning and supporting evidence
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Select the zoning, then strengthen it with the municipal record
+              Choose the zoning that applies to this erf
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Select the zoning shown by your source, then confirm it as your working conclusion
-              before continuing. A readable, property-specific record is still stronger evidence;
-              Easy Erf keeps user-confirmed zoning clearly distinct from municipal proof.
+              Choose the zoning shown by your source. Easy Erf will save it as your working conclusion;
+              a readable property-specific municipal record remains stronger evidence.
             </p>
           </div>
           <span
@@ -290,8 +291,8 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                 : userConfirmedWorkingZone
                   ? "bg-sky-100 text-sky-900"
                   : selectedZone || vault.assets.length
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-slate-100 text-slate-700",
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-slate-100 text-slate-700",
             )}
           >
             {documentBacked ? (
@@ -313,8 +314,8 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         <ol className="mt-3 grid gap-3 md:grid-cols-3">
           {[
             "Open a municipal source or property report and identify the zoning stated for this erf.",
-            "Choose that zoning below, then confirm it as your working conclusion before continuing.",
-            "Upload the erf-specific municipal record when available to upgrade the zoning to document-backed.",
+            "Choose that zoning in the large selector below.",
+            "Confirm and continue. Upload the erf-specific municipal record when available to strengthen the evidence.",
           ].map((line, index) => (
             <li key={line} className="flex gap-3 rounded-xl border border-[#0D1B2A]/8 bg-white p-3">
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
@@ -326,18 +327,21 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         </ol>
       </section>
 
-      <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <section className="rounded-[1.25rem] border-2 border-[#0D1B2A]/12 bg-white p-5 shadow-sm">
+        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
-            <label className="block text-xs font-semibold text-[#0D1B2A]" htmlFor="guided-zone-code">
-              Working zoning for this erf
+            <label className="block text-sm font-bold text-[#0D1B2A]" htmlFor="guided-zone-code">
+              Choose working zoning
             </label>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
+              This is the zoning Easy Erf will carry through the investigation and report.
+            </p>
             <select
               id="guided-zone-code"
               value={selectedZoneCode ?? ""}
               onChange={(event) => selectZone(event.target.value || null)}
               disabled={!zoneOptions.length}
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10 disabled:bg-slate-100 disabled:text-slate-500"
+              className="mt-3 min-h-14 w-full rounded-2xl border-2 border-[#0D1B2A]/24 bg-white px-4 py-3 text-base font-semibold text-[#0D1B2A] outline-none transition focus:border-[#FF6A00] focus:ring-4 focus:ring-[#FF6A00]/12 disabled:bg-slate-100 disabled:text-slate-500"
             >
               <option value="">Select the zoning shown by your source</option>
               {zoneOptions.map((zone) => (
@@ -355,23 +359,43 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             {selectedZone ? (
               <div
                 className={cn(
-                  "mt-3 rounded-xl border p-3",
+                  "mt-4 rounded-2xl border-2 p-4",
                   documentBacked
-                    ? "border-emerald-300/45 bg-emerald-50"
-                    : "border-amber-300/45 bg-amber-50",
+                    ? "border-emerald-300/70 bg-emerald-50"
+                    : userConfirmedWorkingZone
+                      ? "border-sky-300/70 bg-sky-50"
+                      : "border-amber-300/70 bg-amber-50",
                 )}
               >
-                <div className="text-xs font-semibold text-[#0D1B2A]">
-                  {selectedZone.code} · {selectedZone.name}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-base font-bold text-[#0D1B2A]">
+                    {selectedZone.code} · {selectedZone.name}
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                      documentBacked
+                        ? "bg-emerald-600 text-white"
+                        : userConfirmedWorkingZone
+                          ? "bg-sky-700 text-white"
+                          : "bg-amber-200 text-amber-950",
+                    )}
+                  >
+                    {documentBacked
+                      ? "Document backed"
+                      : userConfirmedWorkingZone
+                        ? "Confirmed"
+                        : "Selected"}
+                  </span>
                 </div>
-                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
+                <p className="mt-2 text-sm leading-5 text-[#0D1B2A]/68">
                   {documentBacked
                     ? "A readable matched document supports this selection."
                     : userConfirmedWorkingZone
                       ? "You confirmed this as the working zoning for this erf. It is not municipal proof yet."
-                      : "Saved as an unverified working zoning. It is not municipal proof yet."}
+                      : "Ready to confirm. The button below will save this selection and move you forward."}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">
+                <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/60">
                   Zoning alone does not confirm height, coverage, building lines, consent uses,
                   departures, title restrictions or approval to build.
                 </p>
@@ -409,23 +433,6 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
             )}
           </div>
         </div>
-
-        {selectedZone && !documentBacked ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[#0D1B2A]/8 pt-4">
-            <button
-              type="button"
-              disabled={userConfirmedWorkingZone}
-              onClick={confirmWorkingZone}
-              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/12 bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:cursor-default disabled:opacity-55"
-            >
-              {userConfirmedWorkingZone ? "Working zoning confirmed" : "Confirm working zoning"}
-            </button>
-            <p className="max-w-xl text-xs leading-5 text-[#0D1B2A]/62">
-              This records your working conclusion for this erf. Published rules and municipal proof
-              remain separate.
-            </p>
-          </div>
-        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[#0D1B2A]/8 pt-4">
           <button
@@ -660,18 +667,16 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={!canContinue}
-          onClick={onContinue}
-          title={
-            selectedZone && !canContinue
-              ? "Confirm this working zoning or attach a matching municipal record before continuing."
-              : undefined
-          }
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!selectedZoneCode}
+          onClick={documentBacked || userConfirmedWorkingZone ? onContinue : confirmAndContinue}
+          title={!selectedZoneCode ? "Choose a zoning above before continuing." : undefined}
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#FF6A00] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#e95f00] disabled:cursor-not-allowed disabled:opacity-45"
         >
           {documentBacked || userConfirmedWorkingZone
             ? "Continue to Property checks"
-            : "Confirm working zoning to continue"}
+            : selectedZoneCode
+              ? `Confirm ${selectedZoneCode} and continue`
+              : "Choose a zoning above to continue"}
         </button>
       </div>
     </div>
