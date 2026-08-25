@@ -1,9 +1,19 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { readErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import {
+  erfWorkspaceStateKey,
+  readErfWorkspaceState,
+  writeErfWorkspaceState,
+} from "@/lib/workbench/erfWorkspaceState";
 import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
-import { buildSavedInvestigationUserDataPatch } from "@/lib/workbench/savedInvestigationProjection";
+import {
+  buildSavedInvestigationUserDataPatch,
+  mergeSavedInvestigationProjectionIntoWorkspace,
+  readSavedInvestigationProjection,
+  shouldHydrateSavedInvestigationProjection,
+} from "@/lib/workbench/savedInvestigationProjection";
+import { PLANNING_ZONE_UPDATED_EVENT } from "@/lib/planning/storedPlanningZone";
 
 interface WorkspaceUpdatedDetail {
   parcelId?: unknown;
@@ -14,10 +24,12 @@ const WORKSPACE_UPDATED_EVENT = "erfstoep:workspace-updated";
 const CLOUD_SYNC_DEBOUNCE_MS = 900;
 
 /**
- * Mirrors the browser workspace into the existing saved-property user_data row.
+ * Keeps the browser workspace and the durable saved-property investigation
+ * projection aligned for signed-in users.
  *
- * This is a dashboard projection only. The canonical workspace/evidence engines
- * remain unchanged and no second progress engine or database table is created.
+ * The existing workspace remains the only in-app state model. Supabase stores
+ * the durable projection so zoning confirmation, Site Potential selection and
+ * report progress can be restored after a refresh or on another browser.
  */
 export function WorkspaceCloudSync() {
   const { user } = useAuth();
@@ -27,6 +39,54 @@ export function WorkspaceCloudSync() {
     const timers = timersRef.current;
     const userId = user?.id ?? null;
     if (!userId || typeof window === "undefined") return;
+    let cancelled = false;
+
+    const hydrateSavedInvestigations = async () => {
+      const { data, error } = await supabase
+        .from("saved_properties")
+        .select("parcel_id, user_data")
+        .eq("user_id", userId);
+      if (cancelled || error || !data) return;
+
+      for (const row of data) {
+        const parcelId = typeof row.parcel_id === "string" ? row.parcel_id : null;
+        if (!parcelId) continue;
+        const projection = readSavedInvestigationProjection(row.user_data);
+        if (!projection || projection.parcelId !== parcelId) continue;
+
+        let hasStoredBrowserWorkspace = false;
+        try {
+          hasStoredBrowserWorkspace =
+            window.localStorage.getItem(erfWorkspaceStateKey(parcelId, userId)) !== null;
+        } catch {
+          // If browser storage is unavailable there is nowhere safe to hydrate.
+          continue;
+        }
+
+        const browserWorkspace = readErfWorkspaceState(parcelId, window.localStorage, userId);
+        if (
+          !shouldHydrateSavedInvestigationProjection({
+            hasStoredBrowserWorkspace,
+            browserWorkspace,
+            projection,
+          })
+        ) {
+          continue;
+        }
+
+        const hydrated = mergeSavedInvestigationProjectionIntoWorkspace(
+          parcelId,
+          browserWorkspace,
+          projection,
+        );
+        writeErfWorkspaceState(parcelId, hydrated, window.localStorage, userId);
+        window.dispatchEvent(
+          new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, {
+            detail: { parcelId, userId, zoneCode: hydrated.planning.zoneCode },
+          }),
+        );
+      }
+    };
 
     const syncParcel = async (parcelId: string) => {
       const { data, error } = await supabase
@@ -47,7 +107,7 @@ export function WorkspaceCloudSync() {
           buildSavedInvestigationUserDataPatch(parcelId, workspace),
         );
       } catch {
-        // Dashboard mirroring must never interrupt the property investigation.
+        // Cloud mirroring must never interrupt the property investigation.
         // A later workspace update will retry naturally.
       }
     };
@@ -70,7 +130,10 @@ export function WorkspaceCloudSync() {
     };
 
     window.addEventListener(WORKSPACE_UPDATED_EVENT, onWorkspaceUpdated);
+    void hydrateSavedInvestigations();
+
     return () => {
+      cancelled = true;
       window.removeEventListener(WORKSPACE_UPDATED_EVENT, onWorkspaceUpdated);
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
