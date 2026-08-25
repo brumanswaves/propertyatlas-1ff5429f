@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ERF_EXTRACTION_MAX_QUOTE_CHARS,
   erfExtractionResponseFormat,
@@ -15,8 +15,16 @@ import {
   isExtractableErfAsset,
 } from "../erfAssetExtraction";
 
+const { getSessionMock, functionsInvokeMock } = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  functionsInvokeMock: vi.fn(),
+}));
+
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
+  supabase: {
+    auth: { getSession: getSessionMock },
+    functions: { invoke: functionsInvokeMock },
+  },
 }));
 
 const validClaim = {
@@ -30,6 +38,12 @@ const validClaim = {
   quote: "Registered owner: J A Smith",
   confidence: "high",
 };
+
+beforeEach(() => {
+  getSessionMock.mockReset();
+  functionsInvokeMock.mockReset();
+  getSessionMock.mockResolvedValue({ data: { session: null } });
+});
 
 describe("erf extraction contract", () => {
   it("accepts a well-formed claim", () => {
@@ -89,7 +103,6 @@ describe("erf extraction contract", () => {
     });
     expect(result?.claims).toHaveLength(1);
     expect(result?.pageCount).toBe(4);
-    // An empty-but-valid payload is reported as "no readable text", not malformed.
     expect(normalizeExtractionResult({ extractedText: "", claims: [] })).toMatchObject({
       extractedText: "",
       claims: [],
@@ -173,10 +186,44 @@ describe("erf asset extraction client", () => {
       { fetchImpl },
     );
     expect(fetchImpl).not.toHaveBeenCalled();
+    expect(functionsInvokeMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({ success: false, code: "AUTH_REQUIRED" });
   });
 
-  it("sends the user access token and returns the claim count", async () => {
+  it("uses the authenticated canonical Supabase client in the normal browser path", async () => {
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: "user-token" } } });
+    functionsInvokeMock.mockResolvedValue({
+      data: {
+        success: true,
+        extractionStatus: "ready",
+        identityMatchStatus: "matched",
+        claimCount: 7,
+        documentType: "paid_report",
+      },
+      error: null,
+    });
+
+    const result = await extractErfAsset(
+      "6a8a1f2c-0000-4000-8000-000000000000",
+      { expectedParcelId: "csg:lpi:C03400140000157000000" },
+    );
+
+    expect(functionsInvokeMock).toHaveBeenCalledTimes(1);
+    expect(functionsInvokeMock).toHaveBeenCalledWith("extract-erf-asset", {
+      body: {
+        assetId: "6a8a1f2c-0000-4000-8000-000000000000",
+        expectedParcelId: "csg:lpi:C03400140000157000000",
+      },
+    });
+    expect(result).toMatchObject({
+      success: true,
+      extractionStatus: "ready",
+      identityMatchStatus: "matched",
+      claimCount: 7,
+    });
+  });
+
+  it("sends the user access token in the injected request-contract test path", async () => {
     const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
       new Response(JSON.stringify({ success: true, extractionStatus: "ready", claimCount: 7 }), { status: 200 }),
     );
