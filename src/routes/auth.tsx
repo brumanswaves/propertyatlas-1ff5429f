@@ -45,7 +45,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created — you're signed in.");
+        toast.success("Account created - you're signed in.");
         navigate({ to: "/" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -92,8 +92,16 @@ function AuthPage() {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between bg-gradient-brand p-10 text-white md:flex">
-        <Link to="/" className="inline-flex items-center">
-          <AtlasPin variant="white" className="h-9 w-auto" title={BRAND.site} />
+        <Link
+          to="/"
+          className="inline-flex w-fit items-center rounded-full border border-white/20 bg-white px-5 py-3 shadow-panel"
+          aria-label="Easy Erf home"
+        >
+          <AtlasPin
+            variant="horizontal"
+            className="block h-8 w-auto max-w-[180px] object-contain"
+            title={BRAND.site}
+          />
         </Link>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">
@@ -108,6 +116,19 @@ function AuthPage() {
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
+          <div className="mb-6 md:hidden">
+            <Link
+              to="/"
+              className="inline-flex w-fit items-center rounded-full border border-border bg-card px-4 py-2 shadow-soft"
+              aria-label="Easy Erf home"
+            >
+              <AtlasPin
+                variant="horizontal"
+                className="block h-7 w-auto max-w-[160px] object-contain"
+                title={BRAND.site}
+              />
+            </Link>
+          </div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
@@ -124,6 +145,9 @@ function AuthPage() {
           >
             <GoogleIcon /> Continue with Google
           </Button>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+            Secure Google sign-in for your Easy Erf account. You return to Easy Erf after authentication.
+          </p>
 
           <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
             <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
