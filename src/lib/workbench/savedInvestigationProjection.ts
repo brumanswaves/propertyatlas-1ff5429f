@@ -17,6 +17,7 @@ export interface SavedInvestigationProjectionV1 {
   planning: {
     zoneCode: string | null;
     userConfirmedZoneCode: string | null;
+    userConfirmedAt: string | null;
   };
   sitePotential: {
     skipped: boolean;
@@ -45,6 +46,29 @@ function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function timestamp(value: string | null | undefined) {
+  const parsed = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasMaterialBrowserProgress(workspace: ErfWorkspaceState) {
+  return (
+    workspace.identityStatus !== "none" ||
+    workspace.sgDiagramAttachmentCount > 0 ||
+    workspace.marketEvidenceStarted ||
+    workspace.strategyScenarioCount > 0 ||
+    Boolean(workspace.chosenScenarioId) ||
+    workspace.reportStarted ||
+    Boolean(workspace.planning.zoneCode) ||
+    Boolean(workspace.planning.userConfirmedZoneCode) ||
+    workspace.sitePotential.progressState !== "not_started" ||
+    workspace.sitePotential.conceptCount > 0 ||
+    Boolean(workspace.sitePotential.selectedDesignAssetId) ||
+    workspace.investigation.skippedStepIds.length > 0 ||
+    Boolean(workspace.investigation.lastMeaningfulActionAt)
+  );
+}
+
 export function buildSavedInvestigationProjection(
   parcelId: string,
   workspace: ErfWorkspaceState,
@@ -64,6 +88,7 @@ export function buildSavedInvestigationProjection(
     planning: {
       zoneCode: workspace.planning.zoneCode,
       userConfirmedZoneCode: workspace.planning.userConfirmedZoneCode,
+      userConfirmedAt: workspace.planning.userConfirmedAt,
     },
     sitePotential: {
       skipped: workspace.sitePotential.skipped,
@@ -146,6 +171,7 @@ export function readSavedInvestigationProjection(
     planning: {
       zoneCode: nullableString(planning.zoneCode),
       userConfirmedZoneCode: nullableString(planning.userConfirmedZoneCode),
+      userConfirmedAt: nullableString(planning.userConfirmedAt),
     },
     sitePotential: {
       skipped: Boolean(sitePotential.skipped),
@@ -160,5 +186,70 @@ export function readSavedInvestigationProjection(
       skippedStepIds: strings(investigation.skippedStepIds),
       lastMeaningfulActionAt: nullableString(investigation.lastMeaningfulActionAt),
     },
+  };
+}
+
+/**
+ * A saved investigation is the restore source when this browser has no scoped
+ * workspace yet. If both copies exist, only replace material browser progress
+ * when the saved projection is newer. Navigation-only browser writes do not
+ * block restoration of durable progress.
+ */
+export function shouldHydrateSavedInvestigationProjection(args: {
+  hasStoredBrowserWorkspace: boolean;
+  browserWorkspace: ErfWorkspaceState;
+  projection: SavedInvestigationProjectionV1;
+}) {
+  const { hasStoredBrowserWorkspace, browserWorkspace, projection } = args;
+  if (!hasStoredBrowserWorkspace) return true;
+  if (!hasMaterialBrowserProgress(browserWorkspace)) return true;
+
+  const browserUpdatedAt = timestamp(browserWorkspace.updatedAt);
+  const projectionUpdatedAt = timestamp(projection.workspaceUpdatedAt);
+  if (projectionUpdatedAt === null) return false;
+  if (browserUpdatedAt === null) return true;
+  return projectionUpdatedAt > browserUpdatedAt;
+}
+
+/** Restore the durable projection into the existing workspace state model. */
+export function mergeSavedInvestigationProjectionIntoWorkspace(
+  parcelId: string,
+  browserWorkspace: ErfWorkspaceState,
+  projection: SavedInvestigationProjectionV1,
+): ErfWorkspaceState {
+  if (projection.parcelId !== parcelId) return browserWorkspace;
+
+  return {
+    ...browserWorkspace,
+    saved: true,
+    dirty: false,
+    identityStatus: projection.identityStatus,
+    sgDiagramAttachmentCount: projection.sgDiagramAttachmentCount,
+    marketEvidenceStarted: projection.marketEvidenceStarted,
+    strategyScenarioCount: projection.strategyScenarioCount,
+    chosenScenarioId: projection.chosenScenarioId,
+    reportStarted: projection.reportStarted,
+    planning: {
+      ...browserWorkspace.planning,
+      zoneCode: projection.planning.zoneCode,
+      userConfirmedZoneCode: projection.planning.userConfirmedZoneCode,
+      userConfirmedAt: projection.planning.userConfirmedAt,
+    },
+    sitePotential: {
+      ...browserWorkspace.sitePotential,
+      skipped: projection.sitePotential.skipped,
+      conceptCount: projection.sitePotential.conceptCount,
+      selectedDesignAssetId: projection.sitePotential.selectedDesignAssetId,
+      progressState: projection.sitePotential.progressState,
+    },
+    investigation: {
+      ...browserWorkspace.investigation,
+      startedAt: projection.investigation.startedAt,
+      lastViewedAt: projection.investigation.lastViewedAt,
+      currentStepId: projection.investigation.currentStepId,
+      skippedStepIds: [...projection.investigation.skippedStepIds],
+      lastMeaningfulActionAt: projection.investigation.lastMeaningfulActionAt,
+    },
+    updatedAt: projection.workspaceUpdatedAt,
   };
 }
