@@ -2,18 +2,21 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const FOUNDER_PROJECT_REF = "xiqpfhsdlvwrwhclonsg";
+const FOUNDER_VANITY_ORIGIN = "https://easyerf.supabase.co";
 
 function read(path: string) {
   return readFileSync(path, "utf8");
 }
 
 describe("founder-owned backend cutover config", () => {
-  it("points browser runtime configuration at the canonical founder project", () => {
+  it("points browser runtime configuration at the canonical founder project through the branded vanity hostname", () => {
     const envFile = read(".env");
 
     expect(envFile).toContain(`SUPABASE_PROJECT_ID="${FOUNDER_PROJECT_REF}"`);
     expect(envFile).toContain(`VITE_SUPABASE_PROJECT_ID="${FOUNDER_PROJECT_REF}"`);
-    expect(envFile).toContain(`VITE_SUPABASE_URL="https://${FOUNDER_PROJECT_REF}.supabase.co"`);
+    expect(envFile).toContain(`SUPABASE_URL="${FOUNDER_VANITY_ORIGIN}"`);
+    expect(envFile).toContain(`VITE_SUPABASE_URL="${FOUNDER_VANITY_ORIGIN}"`);
+    expect(envFile).not.toContain(`https://${FOUNDER_PROJECT_REF}.supabase.co`);
   });
 
   it("activates founder auth and Site Potential transport together", () => {
