@@ -1,9 +1,9 @@
 /**
  * Site Potential report panel model.
  *
- * The report tells one connected story: what the rules calculate as site
- * capacity, and — separately — what a saved AI concept imagines. Both are
- * shown when both exist. Neither is ever invented.
+ * Site Potential now has one reportable job: show the accepted building-area
+ * result when it exists. Legacy generated concept records can remain stored for
+ * audit/history, but they no longer drive the guided journey or the report.
  */
 
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
@@ -36,13 +36,15 @@ export interface SitePotentialReportPanel {
   emptyMessage: string | null;
 }
 
-export const SITE_POTENTIAL_REPORT_TITLE = "What could potentially be built here?";
+export const SITE_POTENTIAL_REPORT_TITLE = "Approximate building area";
 
 export const SITE_POTENTIAL_CAPACITY_CAPTION =
-  "Calculated from parcel geometry and recorded rule inputs. Unverified controls are shown as working assumptions, not official property rights.";
+  "Calculated from parcel geometry and the planning inputs recorded for this erf. Unverified controls remain working assumptions, not official property rights.";
 
+// Kept as an exported compatibility constant for older tests/imports. New
+// report composition deliberately does not render a generated concept.
 export const SITE_POTENTIAL_CONCEPT_CAPTION =
-  "AI concept visualisation saved to this erf. An interpretation, not a photograph or approved plan.";
+  "Legacy concept visualisations are not part of the current Easy Erf report workflow.";
 
 function m2(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -86,8 +88,11 @@ export function buildSitePotentialMetrics(
 
 export function buildSitePotentialReportPanel(input: {
   envelope: BuildEnvelopeResult | null;
+  /** Legacy field retained for call-site compatibility; generated concepts are ignored. */
   hasConceptImage: boolean;
+  /** Legacy field retained for call-site compatibility. */
   conceptStyle?: string | null;
+  /** Legacy field retained for call-site compatibility. */
   brief?: string | null;
   skipped: boolean;
   disclaimer: string;
@@ -96,47 +101,27 @@ export function buildSitePotentialReportPanel(input: {
     input.envelope && input.envelope.state !== "more_information_required" ? input.envelope : null;
   const metrics = buildSitePotentialMetrics(envelope);
   const hasCapacity = Boolean(envelope) && metrics.length > 0;
-  const hasConcept = input.hasConceptImage;
-
-  const mode: SitePotentialPanelMode =
-    hasCapacity && hasConcept
-      ? "both"
-      : hasCapacity
-        ? "capacity_only"
-        : hasConcept
-          ? "concept_only"
-          : "none";
 
   return {
-    mode,
+    mode: hasCapacity ? "capacity_only" : "none",
     title: SITE_POTENTIAL_REPORT_TITLE,
-    lede:
-      mode === "both"
-        ? "Calculated site capacity, alongside the concept saved for this erf."
-        : mode === "capacity_only"
-          ? "Calculated site capacity from the rules recorded for this erf."
-          : mode === "concept_only"
-            ? "The concept saved for this erf. Site capacity has not been calculated yet."
-            : "Nothing has been calculated or saved for this erf yet.",
+    lede: hasCapacity
+      ? "The accepted building-area result currently attached to this erf."
+      : "No accepted building-area result is attached to this erf yet.",
     hasCapacity,
-    hasConcept,
-    capacityHeading: "Calculated site capacity",
+    hasConcept: false,
+    capacityHeading: "Accepted building-area result",
     capacityCaption: SITE_POTENTIAL_CAPACITY_CAPTION,
-    conceptHeading: "Concept visualisation",
+    conceptHeading: "",
     conceptCaption: SITE_POTENTIAL_CONCEPT_CAPTION,
-    conceptName: hasConcept
-      ? input.conceptStyle
-        ? `Selected concept — ${input.conceptStyle}`
-        : "Selected property concept"
-      : null,
-    brief: hasConcept ? input.brief?.trim() || null : null,
+    conceptName: null,
+    brief: null,
     metrics,
     disclaimer: `Theoretical and estimated. Not approved plans. ${input.disclaimer}`.trim(),
-    emptyMessage:
-      mode !== "none"
-        ? null
-        : input.skipped
-          ? "Site Potential was skipped for this report."
-          : "No build envelope or concept has been produced for this erf yet.",
+    emptyMessage: hasCapacity
+      ? null
+      : input.skipped
+        ? "Site Potential was skipped for this report."
+        : "No accepted building-area map has been produced for this erf yet.",
   };
 }
