@@ -32,8 +32,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminUsersRouteImport } from './routes/admin_.users'
-import { Route as AdminEntitlementsRouteImport } from './routes/admin_.entitlements'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
 import { Route as ApiSitePotentialRetryPackRouteImport } from './routes/api/site-potential.retry-pack'
@@ -48,7 +46,6 @@ import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site
 import { Route as ApiReportsAskEasyErfRouteImport } from './routes/api/reports.ask-easy-erf'
 import { Route as ApiLocalServicesSearchRouteImport } from './routes/api/local-services.search'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
-import { Route as ApiAdminSupportRouteImport } from './routes/api/admin.support'
 import { Route as ApiAddressSuggestionsRouteImport } from './routes/api/address.suggestions'
 import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
 
@@ -167,16 +164,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/admin_/users',
-  path: '/admin/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminEntitlementsRoute = AdminEntitlementsRouteImport.update({
-  id: '/admin_/entitlements',
-  path: '/admin/entitlements',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminReadinessRoute = AdminReadinessRouteImport.update({
   id: '/readiness',
   path: '/readiness',
@@ -255,11 +242,6 @@ const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   path: '/api/listings/import',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminSupportRoute = ApiAdminSupportRouteImport.update({
-  id: '/api/admin/support',
-  path: '/api/admin/support',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAddressSuggestionsRoute = ApiAddressSuggestionsRouteImport.update({
   id: '/api/address/suggestions',
   path: '/api/address/suggestions',
@@ -298,10 +280,7 @@ export interface FileRoutesByFullPath {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
-  '/admin/entitlements': typeof AdminEntitlementsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
-  '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -342,10 +321,7 @@ export interface FileRoutesByTo {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
-  '/admin/entitlements': typeof AdminEntitlementsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
-  '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -387,10 +363,7 @@ export interface FileRoutesById {
   '/why': typeof WhyRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
-  '/admin_/entitlements': typeof AdminEntitlementsRoute
-  '/admin_/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
-  '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -433,10 +406,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
-    | '/admin/entitlements'
-    | '/admin/users'
     | '/api/address/suggestions'
-    | '/api/admin/support'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -477,10 +447,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
-    | '/admin/entitlements'
-    | '/admin/users'
     | '/api/address/suggestions'
-    | '/api/admin/support'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -521,10 +488,7 @@ export interface FileRouteTypes {
     | '/why'
     | '/admin/public-data-debug'
     | '/admin/readiness'
-    | '/admin_/entitlements'
-    | '/admin_/users'
     | '/api/address/suggestions'
-    | '/api/admin/support'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -564,10 +528,7 @@ export interface RootRouteChildren {
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
-  AdminEntitlementsRoute: typeof AdminEntitlementsRoute
-  AdminUsersRoute: typeof AdminUsersRoute
   ApiAddressSuggestionsRoute: typeof ApiAddressSuggestionsRoute
-  ApiAdminSupportRoute: typeof ApiAdminSupportRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
   ApiLocalServicesSearchRoute: typeof ApiLocalServicesSearchRoute
   ApiReportsAskEasyErfRoute: typeof ApiReportsAskEasyErfRoute
@@ -746,20 +707,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/users': {
-      id: '/admin_/users'
-      path: '/admin/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin_/entitlements': {
-      id: '/admin_/entitlements'
-      path: '/admin/entitlements'
-      fullPath: '/admin/entitlements'
-      preLoaderRoute: typeof AdminEntitlementsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/readiness': {
       id: '/admin/readiness'
       path: '/readiness'
@@ -858,13 +805,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiListingsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/support': {
-      id: '/api/admin/support'
-      path: '/api/admin/support'
-      fullPath: '/api/admin/support'
-      preLoaderRoute: typeof ApiAdminSupportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/address/suggestions': {
       id: '/api/address/suggestions'
       path: '/api/address/suggestions'
@@ -918,10 +858,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
-  AdminEntitlementsRoute: AdminEntitlementsRoute,
-  AdminUsersRoute: AdminUsersRoute,
   ApiAddressSuggestionsRoute: ApiAddressSuggestionsRoute,
-  ApiAdminSupportRoute: ApiAdminSupportRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
   ApiLocalServicesSearchRoute: ApiLocalServicesSearchRoute,
   ApiReportsAskEasyErfRoute: ApiReportsAskEasyErfRoute,
