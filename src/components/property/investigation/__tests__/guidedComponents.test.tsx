@@ -133,6 +133,11 @@ describe("guided investigation components", () => {
     expect(html).toContain("View building area");
     expect(html).toContain("View selected concept");
     expect(html).toContain("Continue to Review report");
+    expect(html).toContain("Open advanced Site Potential");
+    expect(html).toContain("What matters for this decision");
+    expect(html).not.toContain("How Site Potential works");
+    expect(html).not.toContain("Set the style, bedrooms, features");
+    expect(html).not.toContain("free allowance or credits");
 
     const buildingOnly = renderToStaticMarkup(
       <GuidedSitePotentialStep
@@ -164,6 +169,8 @@ describe("guided investigation components", () => {
       />,
     );
     expect(neither).not.toContain("Accepted work for this erf");
+    expect(neither).toContain("No accepted Site Potential artifact yet");
+    expect(neither).toContain("Use Skip for now to continue without a concept");
 
     const historical = renderToStaticMarkup(
       <GuidedSitePotentialStep

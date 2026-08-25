@@ -29,6 +29,7 @@ describe("official dossier UX guardrails", () => {
     expect(home).not.toContain("max-w-xl rounded-[1.35rem]");
     expect(nav).toContain("fixed inset-x-0 top-0 z-[70]");
     expect(nav).toContain("bg-[#06152A]/85");
+    expect(nav).toContain("bg-primary/95");
     expect(nav).toContain("pt-[calc(env(safe-area-inset-top)+0.5rem)]");
     expect(nav).toContain("hidden rounded-xl");
     expect(nav).toContain("center?: ReactNode");
@@ -501,6 +502,7 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Add report documents");
     expect(panel).toContain('onClick={() => selectWorkbenchTab("reports", { markStarted: true })}');
     expect(panel).toContain("bg-[linear-gradient(135deg,#FF6A00_0%,#B64A09_45%,#0D1B2A_100%)]");
+    expect(panel).toContain("text-white/72 hover:bg-white/8 hover:text-white");
     expect(reportBuilder).toContain("InvestigationJourney");
     expect(reportBuilder).toContain("buildGuidedInvestigationJourney");
     expect(read("src/components/property/investigation/InvestigationProgress.tsx")).toContain(

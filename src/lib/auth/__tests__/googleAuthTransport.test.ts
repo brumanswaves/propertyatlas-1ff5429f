@@ -22,4 +22,14 @@ describe("Google auth transport", () => {
     expect(authRoute).toContain('provider: "google"');
     expect(authRoute).toContain('lovable.auth.signInWithOAuth("google"');
   });
+
+  it("uses the approved readable Easy Erf wordmark on desktop and mobile auth", () => {
+    const authRoute = readFileSync("src/routes/auth.tsx", "utf8");
+
+    expect(authRoute.match(/variant="horizontal"/g)).toHaveLength(2);
+    expect(authRoute.match(/aria-label="Easy Erf home"/g)).toHaveLength(2);
+    expect(authRoute).toContain("w-[156px]");
+    expect(authRoute).toContain("w-[148px]");
+    expect(authRoute).not.toContain('variant="white"');
+  });
 });

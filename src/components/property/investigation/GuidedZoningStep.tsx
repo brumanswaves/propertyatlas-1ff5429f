@@ -329,23 +329,66 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
-            <label className="block text-xs font-semibold text-[#0D1B2A]" htmlFor="guided-zone-code">
+            <div className="text-sm font-semibold text-[#0D1B2A]">
               Working zoning for this erf
-            </label>
-            <select
-              id="guided-zone-code"
-              value={selectedZoneCode ?? ""}
-              onChange={(event) => selectZone(event.target.value || null)}
-              disabled={!zoneOptions.length}
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-[#0D1B2A]/12 bg-white px-3 py-2 text-sm text-[#0D1B2A] outline-none transition focus:border-[#FF6A00]/55 focus:ring-2 focus:ring-[#FF6A00]/10 disabled:bg-slate-100 disabled:text-slate-500"
-            >
-              <option value="">Select the zoning shown by your source</option>
-              {zoneOptions.map((zone) => (
-                <option key={zone.code} value={zone.code}>
-                  {zone.code} · {zone.name}
-                </option>
-              ))}
-            </select>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
+              Choose the zone stated by your source. This records a working conclusion, not a
+              municipal certificate.
+            </p>
+            {zoneOptions.length ? (
+              <div
+                className="mt-3 grid gap-2"
+                role="radiogroup"
+                aria-label="Working zoning for this erf"
+              >
+                {zoneOptions.map((zone) => {
+                  const selected = selectedZoneCode === zone.code;
+                  return (
+                    <button
+                      key={zone.code}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => selectZone(zone.code)}
+                      className={cn(
+                        "flex min-h-[5.25rem] w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6A00]/45",
+                        selected
+                          ? "border-[#FF6A00]/65 bg-[#fff8ec] shadow-[0_14px_30px_-24px_rgba(255,106,0,0.8)] ring-1 ring-[#FF6A00]/20"
+                          : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/30 hover:bg-[#fffaf5]",
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-base font-bold text-[#0D1B2A]">{zone.code}</span>
+                        <span className="mt-1 block text-sm leading-5 text-[#0D1B2A]/68">
+                          {zone.name}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]",
+                          selected
+                            ? "bg-[#FF6A00] text-white"
+                            : "bg-slate-100 text-slate-600",
+                        )}
+                      >
+                        {selected
+                          ? documentBacked
+                            ? "Document supported"
+                            : userConfirmedWorkingZone
+                              ? "Confirmed by you"
+                              : "Selected"
+                          : "Choose"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-2xl border border-dashed border-[#0D1B2A]/16 bg-slate-50 p-4 text-sm text-slate-600">
+                No reviewed zoning options are available for this municipality yet.
+              </div>
+            )}
             {!registry ? (
               <p className="mt-2 text-xs leading-5 text-amber-800">
                 Easy Erf does not yet have a reviewed zoning list for {parcel.municipality ?? "this municipality"}.
@@ -375,6 +418,30 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
                   Zoning alone does not confirm height, coverage, building lines, consent uses,
                   departures, title restrictions or approval to build.
                 </p>
+                <dl className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
+                      Selected
+                    </dt>
+                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">Yes</dd>
+                  </div>
+                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
+                      Confirmed by user
+                    </dt>
+                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">
+                      {userConfirmedWorkingZone ? "Yes" : "Not yet"}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
+                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
+                      Municipally verified
+                    </dt>
+                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">
+                      {documentBacked ? "Record attached" : "Not yet"}
+                    </dd>
+                  </div>
+                </dl>
               </div>
             ) : null}
           </div>
@@ -416,7 +483,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
               type="button"
               disabled={userConfirmedWorkingZone}
               onClick={confirmWorkingZone}
-              className="inline-flex min-h-10 items-center rounded-full border border-[#0D1B2A]/12 bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:cursor-default disabled:opacity-55"
+              className="inline-flex min-h-12 items-center rounded-full border border-[#FF6A00] bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F] disabled:cursor-default disabled:border-emerald-700 disabled:bg-emerald-700 disabled:opacity-100"
             >
               {userConfirmedWorkingZone ? "Working zoning confirmed" : "Confirm working zoning"}
             </button>

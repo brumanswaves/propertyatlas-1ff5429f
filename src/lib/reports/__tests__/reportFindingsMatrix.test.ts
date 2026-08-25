@@ -13,6 +13,7 @@ import {
   evidenceParcel,
 } from "@/lib/evidence/__tests__/propertyEvidenceTestUtils";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 
 /** A matched, ready document carrying structured extracted claims. */
 function documentWithClaims(
@@ -389,5 +390,29 @@ describe("weak evidence can never become supported", () => {
     const planning = buildReportFindings(pack).find((item) => item.category === "planning");
     expect(planning).toBeDefined();
     expect(isPositiveFindingStatus(planning!.status)).toBe(false);
+  });
+
+  it("reports a user-confirmed zoning as a working basis without claiming municipal proof", () => {
+    const planningAssessment = buildParcelPlanningAssessment({
+      parcelId: "parcel-a",
+      municipality: "Kouga Local Municipality",
+      locationHints: ["Sea Vista, St Francis Bay"],
+      erfAreaM2: 618.7,
+      manualZoneCode: "RES1",
+      userConfirmedZoneCode: "RES1",
+    });
+    const pack = buildEvidencePackFixture({ planningAssessment });
+    const planning = findingById(pack, "finding-planning-completeness");
+
+    expect(planning.status).toBe("not_checked");
+    expect(planning.headline).toBe("Working planning assumptions recorded");
+    expect(planning.whatWeFound).toContain("Residential Zone 1");
+    expect(planning.whatWeFound).toContain("user-confirmed working conclusion");
+    expect(planning.whatWeFound).not.toContain("No zoning");
+    expect(planning.whatItMeans).toMatch(/not municipal confirmation/i);
+    expect(isPositiveFindingStatus(planning.status)).toBe(false);
+    expect(pack.gaps.find((gap) => gap.id === "missing-zoning")?.title).toBe(
+      "Municipal zoning evidence missing",
+    );
   });
 });
