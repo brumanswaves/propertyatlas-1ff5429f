@@ -2,10 +2,7 @@ import { chromium } from "playwright";
 
 const appUrl = process.env.EASY_ERF_BROWSER_URL || "http://127.0.0.1:4173/auth";
 const expectedProjectRef = "xiqpfhsdlvwrwhclonsg";
-const expectedAuthHosts = new Set([
-  `${expectedProjectRef}.supabase.co`,
-  "easyerf.supabase.co",
-]);
+const brandedAuthHost = "easyerf.supabase.co";
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
@@ -29,13 +26,13 @@ try {
     page.waitForURL((url) => {
       return (
         url.hostname === "accounts.google.com" ||
-        (expectedAuthHosts.has(url.hostname) && url.pathname.includes("/auth/v1/authorize"))
+        (url.hostname === brandedAuthHost && url.pathname.includes("/auth/v1/authorize"))
       );
     }, { timeout: 60000 }),
     googleButton.click(),
   ]);
 
-  if (expectedAuthHosts.has(new URL(page.url()).hostname)) {
+  if (new URL(page.url()).hostname === brandedAuthHost) {
     await page.waitForURL((url) => url.hostname === "accounts.google.com", { timeout: 60000 });
   }
 
@@ -44,8 +41,22 @@ try {
     throw new Error(`Expected Google Accounts redirect, got ${finalUrl.hostname}`);
   }
 
+  await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
+  const googleBody = await page.locator("body").innerText({ timeout: 30000 });
+  if (googleBody.includes(expectedProjectRef)) {
+    throw new Error(
+      `Google OAuth screen still exposes the raw Supabase project ref ${expectedProjectRef}.`,
+    );
+  }
+
+  if (!/easyerf\.supabase\.co|Easy Erf/i.test(googleBody)) {
+    throw new Error(
+      "Google OAuth screen did not visibly identify the branded Easy Erf auth destination.",
+    );
+  }
+
   console.log(
-    `Browser auth smoke verified: visible Easy Erf logo + ${appUrl} -> founder Supabase -> Google Accounts.`,
+    `Browser auth verified: visible Easy Erf logo + ${appUrl} -> ${brandedAuthHost} -> Google Accounts with branded destination visible.`,
   );
 } finally {
   await browser.close();
