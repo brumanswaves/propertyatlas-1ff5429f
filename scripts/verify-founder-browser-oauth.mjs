@@ -12,7 +12,7 @@ try {
   const forgotPassword = page.getByRole("button", { name: /forgot your password/i });
   await forgotPassword.waitFor({ state: "visible", timeout: 30000 });
 
-  const passwordInput = page.getByLabel("Password");
+  const passwordInput = page.locator("#password");
   if ((await passwordInput.getAttribute("type")) !== "password") {
     throw new Error("Password field must default to hidden text.");
   }
@@ -28,7 +28,7 @@ try {
     throw new Error(`Expected the readable Easy Erf horizontal logo, got ${logoSrc ?? "no logo source"}.`);
   }
   const logoBox = await desktopLogo.boundingBox();
-  if (!logoBox || logoBox.width < 80 || logoBox.height < 24) {
+  if (!logoBox || logoBox.width < 100 || logoBox.height < 28) {
     throw new Error(`Easy Erf sign-in logo is too small: ${JSON.stringify(logoBox)}.`);
   }
 
