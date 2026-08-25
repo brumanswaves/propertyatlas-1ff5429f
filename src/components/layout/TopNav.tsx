@@ -28,14 +28,14 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
   const navLinkActive =
     "text-primary-foreground after:absolute after:inset-x-2 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-accent";
 
-  // Legacy source-test marker only. The active map-header style is the semantic
-  // bg-primary/90 token below, replacing the old literal bg-[#06152A]/85 class.
+  // Keep every primary header on the same dark Easy Erf surface so navigation
+  // retains readable contrast on both map and content pages.
   return (
     <header
       className={
         mapHeader
           ? "fixed inset-x-0 top-0 z-[70] border-b border-primary-foreground/10 bg-primary/90 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-panel backdrop-blur-xl md:px-6 md:pt-2"
-          : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 md:px-6"
+          : "absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 border-b border-primary-foreground/10 bg-primary/95 px-4 py-3 shadow-panel backdrop-blur-xl md:px-6"
       }
     >
       <div
