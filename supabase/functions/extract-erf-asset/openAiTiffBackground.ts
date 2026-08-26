@@ -6,6 +6,7 @@ const TIFF_DEEP_BACKGROUND_MAX_OUTPUT_TOKENS = 24_000;
 const TIFF_DEEP_BACKGROUND_REASONING_EFFORT = "high";
 const TIFF_FAST_PREPROCESS_MAX_OUTPUT_TOKENS = 4_000;
 const TIFF_FAST_PREPROCESS_REASONING_EFFORT = "low";
+const CODE_INTERPRETER_OUTPUT_INCLUDE = "code_interpreter_call.outputs";
 
 export const OPENAI_TIFF_EXTRACTION_PROVIDER = "openai_code_interpreter" as const;
 export const OPENAI_TIFF_FAST_PREPROCESS_PROVIDER = "openai_sg_tiff_fast_preprocess" as const;
@@ -139,11 +140,7 @@ export function codeInterpreterTiffInstructions(mode: OpenAiTiffBackgroundMode =
     : codeInterpreterDeepTiffInstructions();
 }
 
-async function deleteResource(
-  fetchImpl: typeof fetch,
-  apiKey: string,
-  path: string,
-) {
+async function deleteResource(fetchImpl: typeof fetch, apiKey: string, path: string) {
   try {
     const response = await fetchImpl(`${OPENAI_API_BASE}${path}`, {
       method: "DELETE",
@@ -211,6 +208,7 @@ export async function startOpenAiTiffBackground(input: {
       model: input.model,
       background: true,
       store: true,
+      include: [CODE_INTERPRETER_OUTPUT_INCLUDE],
       // The fast job creates bounded images only. The deep fallback keeps the
       // larger budget needed for full Code Interpreter document review.
       max_output_tokens:
@@ -246,15 +244,17 @@ export async function startOpenAiTiffBackground(input: {
   return { responseId: id, fileId, containerId: responseContainerId(payload) };
 }
 
-export async function pollOpenAiTiffBackground(input: {
-  fetchImpl?: typeof fetch;
+async function retrieveOpenAiResponse(input: {
+  fetchImpl: typeof fetch;
   apiKey: string;
   responseId: string;
-  fileId?: string | null;
-  containerId?: string | null;
-}): Promise<OpenAiTiffPollResult> {
-  const fetchImpl = input.fetchImpl ?? fetch;
-  const response = await fetchImpl(`${OPENAI_API_BASE}/responses/${input.responseId}`, {
+  includeCodeInterpreterOutputs?: boolean;
+}) {
+  const url = new URL(`${OPENAI_API_BASE}/responses/${input.responseId}`);
+  if (input.includeCodeInterpreterOutputs) {
+    url.searchParams.append("include[]", CODE_INTERPRETER_OUTPUT_INCLUDE);
+  }
+  const response = await input.fetchImpl(url, {
     headers: authHeaders(input.apiKey),
   }).catch(() => null);
   const payload = response
@@ -263,12 +263,38 @@ export async function pollOpenAiTiffBackground(input: {
   if (!response?.ok || !payload) {
     throw new OpenAiTiffBackgroundError("retrieve", response?.status ?? null);
   }
+  return { response, payload };
+}
+
+export async function pollOpenAiTiffBackground(input: {
+  fetchImpl?: typeof fetch;
+  apiKey: string;
+  responseId: string;
+  fileId?: string | null;
+  containerId?: string | null;
+}): Promise<OpenAiTiffPollResult> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  let { response, payload } = await retrieveOpenAiResponse({
+    fetchImpl,
+    apiKey: input.apiKey,
+    responseId: input.responseId,
+  });
+
+  let status = responseStatus(payload);
+  if (status === "completed" && responseImageOutputUrls(payload).length === 0) {
+    ({ response, payload } = await retrieveOpenAiResponse({
+      fetchImpl,
+      apiKey: input.apiKey,
+      responseId: input.responseId,
+      includeCodeInterpreterOutputs: true,
+    }));
+    status = responseStatus(payload);
+  }
 
   const resources = {
     fileId: input.fileId ?? null,
     containerId: responseContainerId(payload) ?? input.containerId ?? null,
   };
-  const status = responseStatus(payload);
   if (status === "queued" || status === "in_progress") {
     return { state: "processing", status, ...resources };
   }
