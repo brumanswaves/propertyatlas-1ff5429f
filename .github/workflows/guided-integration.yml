@@ -82,45 +82,15 @@ jobs:
       - name: Check TypeScript
         run: npx tsc --noEmit
 
-      - name: Run targeted ESLint
-        run: >-
-          npx eslint
-          --no-warn-ignored
-          --rule 'prettier/prettier: off'
-          src/components/admin/AdminGuard.tsx
-          src/components/admin/EntitlementGrantHistory.tsx
-          src/components/property/investigation/AddAddressStep.tsx
-          src/components/property/investigation/GuidedSitePotentialStep.tsx
-          src/components/property/investigation/GuidedTitleStep.tsx
-          src/components/property/investigation/GuidedZoningStep.tsx
-          src/components/property/investigation/InvestigationJourney.tsx
-          src/components/property/investigation/InvestigationStepShell.tsx
-          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
-          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
-          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
-          src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx
-          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
-          src/features/marketEvidence/addressIntelligence.ts
-          src/features/marketEvidence/hooks/useAddressSuggestions.ts
-          src/features/marketEvidence/types.ts
-          src/features/marketEvidence/__tests__/addressSuggestions.test.ts
-          src/lib/admin/founderSupportActions.ts
-          src/lib/admin/founderSupportActionsClient.ts
-          src/lib/admin/founderSupportClient.ts
-          src/lib/admin/founderSupportServer.ts
-          src/lib/admin/founderSupportTypes.ts
-          src/lib/__tests__/founderEntitlementActionsGuardrails.test.ts
-          src/lib/__tests__/founderSupportGuardrails.test.ts
-          src/lib/investigation/guidedJourney.ts
-          src/lib/investigation/__tests__/guidedJourney.test.ts
-          src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
-          src/routes/admin_.entitlements.tsx
-          src/routes/admin_.users.tsx
-          src/routes/api/admin.support.ts
-          supabase/functions/_shared/erfExtractionMedia.ts
-          supabase/functions/_shared/generalPlanSubjectEvidence.ts
-          supabase/functions/extract-erf-asset/index.ts
-          supabase/functions/extract-erf-asset/tiffDecode.ts
+      - name: Lint changed TypeScript files
+        run: |
+          mapfile -t CHANGED_TS_FILES < <(git diff --name-only --diff-filter=ACMR origin/main HEAD -- '*.ts' '*.tsx')
+          if [ "${#CHANGED_TS_FILES[@]}" -eq 0 ]; then
+            echo "No changed TypeScript files to lint."
+            exit 0
+          fi
+          printf 'Linting changed TypeScript files:\n%s\n' "${CHANGED_TS_FILES[*]}"
+          npx eslint --no-warn-ignored --rule 'prettier/prettier: off' "${CHANGED_TS_FILES[@]}"
 
       - name: Check patch whitespace
         run: git diff --check origin/main HEAD
