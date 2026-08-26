@@ -106,6 +106,20 @@ export type ErfAssetValidation =
   | { ok: true }
   | { ok: false; reason: "too_large" | "unsupported_type" | "empty_file" };
 
+export function buildErfAssetUploadMetadata(
+  input: Pick<UploadErfAssetInput, "parcelId" | "category" | "metadata">,
+  confirmedAt = new Date().toISOString(),
+) {
+  const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.category !== "sg_diagram") return metadata;
+  return {
+    ...metadata,
+    identityBinding: "user_confirmed",
+    identityUserConfirmedParcelId: input.parcelId,
+    identityUserConfirmedAt: confirmedAt,
+  };
+}
+
 const MAX_BYTES_BY_CATEGORY: Record<ErfAssetCategory, number> = {
   official_document: 25 * 1024 * 1024,
   sg_diagram: 25 * 1024 * 1024,
@@ -356,12 +370,6 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
   if (uploadError) throw new Error(uploadError.message);
 
   input.onProgress?.(75, "Saving file metadata");
-  const uploadMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
-  if (input.category === "sg_diagram") {
-    uploadMetadata.identityBinding = "user_confirmed";
-    uploadMetadata.identityUserConfirmedParcelId = input.parcelId;
-    uploadMetadata.identityUserConfirmedAt = new Date().toISOString();
-  }
   const payload: TablesInsert<"erf_assets"> = {
     id: assetId,
     user_id: userId,
@@ -375,7 +383,7 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
     mime_type: input.file.type || "application/octet-stream",
     size_bytes: input.file.size,
     status: input.status ?? "uploaded_reference_only",
-    metadata: toSupabaseJson(uploadMetadata),
+    metadata: toSupabaseJson(buildErfAssetUploadMetadata(input)),
     local_migration_fingerprint: input.localMigrationFingerprint ?? null,
   };
 
