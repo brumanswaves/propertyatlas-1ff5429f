@@ -20,6 +20,7 @@ import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
 import { GuidedReportStep } from "./GuidedReportStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedSitePotentialStep } from "./GuidedSitePotentialStep";
+import { GuidedSitePotentialWorkspaceSync } from "./GuidedSitePotentialWorkspaceSync";
 import { GuidedStrategyStep } from "./GuidedStrategyStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
@@ -147,16 +148,19 @@ export function InvestigationJourney({
             onContinue={() => onSelectStep("site-potential")}
           />
         ) : activeStep.id === "site-potential" ? (
-          <GuidedSitePotentialStep
-            workspaceState={workspaceState}
-            acceptedBuildEnvelope={acceptedBuildEnvelope}
-            selectedSiteDesign={selectedSiteDesign}
-            stepSkipped={activeStep.skipped}
-            onOpenSitePotential={() =>
-              onOpenExpertWorkspace("site-potential", { guidedReturnStepId: "site-potential" })
-            }
-            onContinue={() => onSelectStep("report")}
-          />
+          <>
+            <GuidedSitePotentialWorkspaceSync parcelId={parcel.id} userId={userId} />
+            <GuidedSitePotentialStep
+              workspaceState={workspaceState}
+              acceptedBuildEnvelope={acceptedBuildEnvelope}
+              selectedSiteDesign={selectedSiteDesign}
+              stepSkipped={activeStep.skipped}
+              onOpenSitePotential={() =>
+                onOpenExpertWorkspace("site-potential", { guidedReturnStepId: "site-potential" })
+              }
+              onContinue={() => onSelectStep("report")}
+            />
+          </>
         ) : activeStep.id === "report" ? (
           <GuidedReportStep
             plan={plan}
