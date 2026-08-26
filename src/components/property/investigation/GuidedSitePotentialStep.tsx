@@ -73,16 +73,23 @@ export function GuidedSitePotentialStep({
   const acceptedSiteDesign =
     selectedSiteDesign?.id === site.selectedDesignAssetId ? selectedSiteDesign : null;
   const conceptCount = site.conceptCount;
+  const conceptsReady =
+    site.progressState === "concepts_ready" || site.progressState === "design_selected";
+  const generationActive = site.progressState === "generating";
   const complete = designSelected || skipped;
-  const partial = !complete && conceptCount > 0;
+  const partial = !complete && (conceptCount > 0 || conceptsReady);
 
   const statusLabel = skipped
     ? "Skipped for now"
     : designSelected
       ? "Preferred concept selected"
       : partial
-        ? `${conceptCount} concept${conceptCount === 1 ? "" : "s"} generated, choose one`
-        : "No concepts yet";
+        ? conceptCount > 0
+          ? `${conceptCount} concept${conceptCount === 1 ? "" : "s"} generated, choose one`
+          : "Concepts ready, choose one"
+        : generationActive
+          ? "Concept generation in progress"
+          : "No concepts yet";
 
   return (
     <div className="space-y-4">
