@@ -356,6 +356,12 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
   if (uploadError) throw new Error(uploadError.message);
 
   input.onProgress?.(75, "Saving file metadata");
+  const uploadMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.category === "sg_diagram") {
+    uploadMetadata.identityBinding = "user_confirmed";
+    uploadMetadata.identityUserConfirmedParcelId = input.parcelId;
+    uploadMetadata.identityUserConfirmedAt = new Date().toISOString();
+  }
   const payload: TablesInsert<"erf_assets"> = {
     id: assetId,
     user_id: userId,
@@ -369,7 +375,7 @@ export async function uploadErfAsset(input: UploadErfAssetInput) {
     mime_type: input.file.type || "application/octet-stream",
     size_bytes: input.file.size,
     status: input.status ?? "uploaded_reference_only",
-    metadata: toSupabaseJson(input.metadata ?? {}),
+    metadata: toSupabaseJson(uploadMetadata),
     local_migration_fingerprint: input.localMigrationFingerprint ?? null,
   };
 
