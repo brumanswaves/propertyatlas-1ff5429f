@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assetGroupForCategory,
   buildErfAssetStoragePath,
+  buildErfAssetUploadMetadata,
   canonicalErfAssetStoragePath,
   erfAssetStoragePathCandidates,
   groupErfAssets,
@@ -106,6 +107,49 @@ describe("erfFileVault", () => {
     expect(source).toContain("createSignedUrl(storagePath, ERF_FILE_SIGNED_URL_TTL_SECONDS)");
     expect(source).toContain("for (const storagePath of erfAssetStoragePathCandidates");
     expect(source).toContain(".remove(erfAssetStoragePathCandidates(asset.storage_path))");
+  });
+
+  it("binds an SG upload to the selected erf without applying that shortcut to other documents", () => {
+    const confirmedAt = "2026-08-26T15:00:00.000Z";
+    expect(
+      buildErfAssetUploadMetadata(
+        {
+          parcelId: "csg:lpi:c03400140000157000000",
+          category: "sg_diagram",
+          metadata: {
+            source: "guided-sg-diagram-step",
+            expectedIdentityContext: { erfNumber: "1570", streetAddress: "24 Padrone Crescent" },
+          },
+        },
+        confirmedAt,
+      ),
+    ).toEqual({
+      source: "guided-sg-diagram-step",
+      expectedIdentityContext: { erfNumber: "1570", streetAddress: "24 Padrone Crescent" },
+      identityBinding: "user_confirmed",
+      identityUserConfirmedParcelId: "csg:lpi:c03400140000157000000",
+      identityUserConfirmedAt: confirmedAt,
+    });
+
+    expect(
+      buildErfAssetUploadMetadata(
+        {
+          parcelId: "csg:lpi:c03400140000157000000",
+          category: "paid_report",
+          metadata: { source: "paid-report-upload" },
+        },
+        confirmedAt,
+      ),
+    ).toEqual({ source: "paid-report-upload" });
+  });
+
+  it("keeps Guided SG from asking for a second identity decision after a user-bound upload", () => {
+    const source = read("src/components/property/investigation/GuidedSgDiagramStep.tsx");
+
+    expect(source).toContain("const userBoundToThisErf = erfAssetIdentityUserConfirmed(asset)");
+    expect(source).toContain('result.identityMatchStatus !== "matched" && !userBoundToThisErf');
+    expect(source).toContain('userConfirmed && identityStatus === "unverified" ? "user-attached"');
+    expect(source).toContain("The findings are ready to use as user-supplied evidence.");
   });
 
   it("validates category-aware file limits and MIME types", () => {
