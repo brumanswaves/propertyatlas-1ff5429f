@@ -228,14 +228,19 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
         );
         return;
       }
-      if (result.identityMatchStatus !== "matched") {
+      const userBoundToThisErf = erfAssetIdentityUserConfirmed(asset);
+      if (result.identityMatchStatus !== "matched" && !userBoundToThisErf) {
         toast.warning(
           "The diagram was read, but its identity still needs confirmation before this step is complete.",
         );
         return;
       }
 
-      toast.success("SG diagram read and matched to this erf. You can continue to Check title.");
+      toast.success(
+        result.identityMatchStatus === "matched"
+          ? "SG diagram read and matched to this erf. You can continue to Check title."
+          : "SG diagram read for this erf. The findings are ready to use as user-supplied evidence.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The SG diagram could not be read.");
     } finally {
@@ -338,8 +343,8 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                 : "Use the official CSG Property Viewer to search for this erf. The prepared official SG document search could not be built from the identifiers currently recorded for this parcel."}{" "}
               If the government document search does not load or returns an error, use the CSG
               Property Viewer or upload an SG diagram or General Plan you already have. Easy Erf
-              only marks this step complete after the file is readable and matched to the selected
-              erf.
+              uses readable findings when the document is consistent with this erf; a detected
+              property mismatch is still rejected.
             </p>
           </div>
           <span
@@ -363,7 +368,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               ? hasMatchedDiagram
                 ? "Matched diagram ready"
                 : hasUserConfirmedDiagram
-                  ? "Supporting diagram attached by you"
+                  ? "Uploaded diagram findings ready"
                   : hasParentPlanEvidence
                     ? "Supporting cadastral evidence attached"
                     : "Supporting diagram attached"
@@ -402,10 +407,11 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               3. Upload
             </div>
             <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">
-              Easy Erf reads and checks it
+              Easy Erf reads it for this erf
             </p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              The file stays in your private Erf File Vault and is checked against this parcel
+              Uploading here attaches the document to this selected erf. Easy Erf analyzes the file,
+              uses the confirmed property context, and rejects it if the document contradicts that
               identity.
             </p>
           </li>
@@ -515,7 +521,8 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           <div>
             <h4 className="text-sm font-semibold text-[#0D1B2A]">Attached SG diagrams</h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              A file can be saved but still fail the identity or readability check.
+              Easy Erf uses readable findings from documents you attach to this erf. A detected
+              property mismatch is still blocked.
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
@@ -595,7 +602,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                               : erfAssetExtractionLabel(asset, "diagram")}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
-                          Identity: {identityStatus}
+                          Identity: {userConfirmed && identityStatus === "unverified" ? "user-attached" : identityStatus}
                         </span>
                       </div>
                       {reviewingLargeTiff ? (
@@ -611,7 +618,11 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                           </div>
                           {summary ? <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/75">{summary}</p> : null}
                           {identityStatus === "unverified" ? (
-                            <p className="mt-2 text-xs leading-5 text-amber-950">Easy Erf read this document, but it has not been automatically bound to this erf.</p>
+                            <p className="mt-2 text-xs leading-5 text-amber-950">
+                              {userConfirmed
+                                ? "You attached this document to this erf. Its readable findings are used as user-supplied evidence; this does not replace official cadastral verification."
+                                : "Easy Erf read this document, but it has not been automatically bound to this erf."}
+                            </p>
                           ) : null}
                           {findings.length > 0 ? (
                             <ul className="mt-2 space-y-1.5">
