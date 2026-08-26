@@ -4,7 +4,7 @@ import { repairSgPreview } from "../sgPreviewRepair";
 
 describe("SG preview repair", () => {
   it("calls the deterministic preview function with the signed-in parcel binding", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify({ success: true, previewAvailable: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -38,7 +38,7 @@ describe("SG preview repair", () => {
   });
 
   it("fails closed when preview generation is unavailable", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify({ success: false, code: "PREVIEW_UNSUPPORTED" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
