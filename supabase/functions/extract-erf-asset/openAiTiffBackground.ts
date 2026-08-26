@@ -7,6 +7,13 @@ const TIFF_DEEP_BACKGROUND_REASONING_EFFORT = "high";
 const TIFF_FAST_PREPROCESS_MAX_OUTPUT_TOKENS = 4_000;
 const TIFF_FAST_PREPROCESS_REASONING_EFFORT = "low";
 const CODE_INTERPRETER_OUTPUT_INCLUDE = "code_interpreter_call.outputs";
+const TIFF_CONTAINER_IMAGE_NAMES = [
+  "sg-overview.png",
+  "sg-detail-top-left.png",
+  "sg-detail-top-right.png",
+  "sg-detail-bottom-left.png",
+  "sg-detail-bottom-right.png",
+] as const;
 
 export const OPENAI_TIFF_EXTRACTION_PROVIDER = "openai_code_interpreter" as const;
 export const OPENAI_TIFF_FAST_PREPROCESS_PROVIDER = "openai_sg_tiff_fast_preprocess" as const;
@@ -26,6 +33,16 @@ interface OpenAiResponsePayload {
   id?: unknown;
   status?: unknown;
   output?: unknown;
+}
+
+interface OpenAiContainerFilePayload {
+  id?: unknown;
+  path?: unknown;
+  created_at?: unknown;
+}
+
+interface OpenAiContainerFileListPayload {
+  data?: unknown;
 }
 
 export interface OpenAiTiffResources {
@@ -105,6 +122,57 @@ export function responseImageOutputUrl(payload: OpenAiResponsePayload | null) {
   return responseImageOutputUrls(payload)[0] ?? null;
 }
 
+function containerFileName(path: string) {
+  return path.split("/").filter(Boolean).pop()?.toLowerCase() ?? "";
+}
+
+function containerImageRank(path: string) {
+  const name = containerFileName(path);
+  const exact = TIFF_CONTAINER_IMAGE_NAMES.indexOf(name as (typeof TIFF_CONTAINER_IMAGE_NAMES)[number]);
+  if (exact >= 0) return exact;
+  return /\.(png|jpe?g|webp)$/i.test(name) ? TIFF_CONTAINER_IMAGE_NAMES.length : null;
+}
+
+async function containerImageOutputUrls(
+  fetchImpl: typeof fetch,
+  apiKey: string,
+  containerId: string,
+) {
+  const response = await fetchImpl(
+    `${OPENAI_API_BASE}/containers/${encodeURIComponent(containerId)}/files?limit=100&order=asc`,
+    { headers: authHeaders(apiKey) },
+  ).catch(() => null);
+  const payload = response
+    ? ((await response.json().catch(() => null)) as OpenAiContainerFileListPayload | null)
+    : null;
+  if (!response?.ok || !Array.isArray(payload?.data)) return [];
+
+  const files = payload.data
+    .filter((item): item is OpenAiContainerFilePayload => Boolean(item && typeof item === "object"))
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : "",
+      path: typeof item.path === "string" ? item.path : "",
+      createdAt: typeof item.created_at === "number" ? item.created_at : 0,
+    }))
+    .map((item) => ({ ...item, rank: containerImageRank(item.path) }))
+    .filter(
+      (item): item is typeof item & { rank: number } =>
+        Boolean(item.id && item.path) && item.rank !== null,
+    )
+    .sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        a.createdAt - b.createdAt ||
+        a.path.localeCompare(b.path) ||
+        a.id.localeCompare(b.id),
+    );
+
+  return files.map(
+    (file) =>
+      `${OPENAI_API_BASE}/containers/${encodeURIComponent(containerId)}/files/${encodeURIComponent(file.id)}/content`,
+  );
+}
+
 function codeInterpreterDeepTiffInstructions() {
   return [
     "Review the attached Surveyor-General TIFF using Code Interpreter and return only the required structured extraction result.",
@@ -113,7 +181,7 @@ function codeInterpreterDeepTiffInstructions() {
     "Use memory-safe strip, tile, downscale and crop processing.",
     "Create a low-resolution overview, then inspect bounded native-resolution crops for small printed labels.",
     "Create exactly one low-resolution whole-sheet overview for human review, with the longest edge between 1200 and 1600 pixels, grayscale but readable, and no annotations.",
-    "Do not merely save the overview to disk: explicitly DISPLAY it inline from Code Interpreter so its output contains exactly one image. Never display the full-resolution source TIFF.",
+    "Save that overview as /mnt/data/sg-overview.png, then explicitly DISPLAY it inline from Code Interpreter so its output contains exactly one image. Never display the full-resolution source TIFF.",
     "Search the full sheet for the requested erf number.",
     "Distinguish the subject erf from its parent General Plan and neighbouring erven.",
     "Dossier identifiers are comparison context only. Never infer that the target erf is present.",
@@ -128,9 +196,10 @@ function codeInterpreterFastTiffInstructions() {
     "This is conversion only: do not extract facts, identify the property, reason about evidence, or return structured extraction JSON.",
     "Never render or copy the full-resolution TIFF into one large image or matrix.",
     "Use memory-safe strip, tile, downscale and crop processing.",
-    "Create and DISPLAY exactly five PNG images in this exact order: one readable low-resolution whole-sheet overview (longest edge about 1800px), then overlapping high-detail crops for top-left, top-right, bottom-left, and bottom-right quadrants (longest edge no more than 2400px).",
+    "Create exactly five PNG images in this exact order: one readable low-resolution whole-sheet overview (longest edge about 1800px), then overlapping high-detail crops for top-left, top-right, bottom-left, and bottom-right quadrants (longest edge no more than 2400px).",
+    "Save them exactly as /mnt/data/sg-overview.png, /mnt/data/sg-detail-top-left.png, /mnt/data/sg-detail-top-right.png, /mnt/data/sg-detail-bottom-left.png, and /mnt/data/sg-detail-bottom-right.png.",
     "The four detail images must be a 2 by 2 grid with modest overlap so small labels at boundaries remain visible.",
-    "Display the five derived images inline as Code Interpreter image outputs. Do not display the original TIFF. Do not include another image or text answer.",
+    "DISPLAY those five derived images inline in that same order as Code Interpreter image outputs. Do not display the original TIFF. Do not include another image or text answer.",
   ].join("\n");
 }
 
@@ -312,10 +381,18 @@ export async function pollOpenAiTiffBackground(input: {
       parsed = null;
     }
   }
+  let previewUrls = responseImageOutputUrls(payload);
+  if (previewUrls.length === 0 && resources.containerId) {
+    previewUrls = await containerImageOutputUrls(
+      fetchImpl,
+      input.apiKey,
+      resources.containerId,
+    );
+  }
   return {
     state: "completed",
     parsed,
-    previewUrls: responseImageOutputUrls(payload),
+    previewUrls,
     ...resources,
   };
 }
