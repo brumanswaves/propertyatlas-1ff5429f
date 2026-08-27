@@ -1,5 +1,6 @@
 import postgres from "npm:postgres@3.4.7";
 import { handleSitePotentialEdgeApiRequest } from "https://raw.githubusercontent.com/brumanswaves/propertyatlas-1ff5429f/66640ce499f5be9bab1385e2edb8fb6c29b5b083/supabase/functions/site-potential-api/handler.bundle.mjs";
+import { pinLatestPaidDesignPackRequest } from "./latestPaidPack.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -18,16 +19,20 @@ class StartupError extends Error {
   }
 }
 
-async function loadRuntimeConfiguration() {
-  const dbUrl = Deno.env.get("SUPABASE_DB_URL");
-  if (!dbUrl) throw new StartupError("RUNTIME_ENV");
-
-  const sql = postgres(dbUrl, {
+function openRuntimeDatabase(dbUrl: string) {
+  return postgres(dbUrl, {
     max: 1,
     prepare: false,
     connect_timeout: 8,
     idle_timeout: 2,
   });
+}
+
+async function loadRuntimeConfiguration() {
+  const dbUrl = Deno.env.get("SUPABASE_DB_URL");
+  if (!dbUrl) throw new StartupError("RUNTIME_ENV");
+
+  const sql = openRuntimeDatabase(dbUrl);
 
   try {
     try {
@@ -73,6 +78,29 @@ async function loadRuntimeConfiguration() {
   }
 }
 
+async function resolveLatestPaidDesignPackId(parcelId: string, siteProjectId: string) {
+  const dbUrl = Deno.env.get("SUPABASE_DB_URL");
+  if (!dbUrl) throw new StartupError("RUNTIME_ENV");
+  const sql = openRuntimeDatabase(dbUrl);
+
+  try {
+    const rows = await sql`
+      select id
+      from erf_design_packs
+      where parcel_id = ${parcelId}
+        and site_project_id = ${siteProjectId}
+        and entitlement_status = 'paid'
+        and status in ('queued', 'generating', 'partial_failed', 'failed', 'complete')
+      order by created_at desc
+      limit 1
+    `;
+    const id = rows[0]?.id;
+    return id ? String(id) : null;
+  } finally {
+    await sql.end({ timeout: 1 }).catch(() => {});
+  }
+}
+
 const runtimeConfigurationPromise = loadRuntimeConfiguration();
 
 Deno.serve(async (request: Request) => {
@@ -82,7 +110,11 @@ Deno.serve(async (request: Request) => {
 
   try {
     await runtimeConfigurationPromise;
-    return handleSitePotentialEdgeApiRequest(request);
+    const routedRequest = await pinLatestPaidDesignPackRequest(
+      request,
+      resolveLatestPaidDesignPackId,
+    );
+    return handleSitePotentialEdgeApiRequest(routedRequest);
   } catch (error) {
     console.error("Site Potential API startup failed", error);
     return new Response(
