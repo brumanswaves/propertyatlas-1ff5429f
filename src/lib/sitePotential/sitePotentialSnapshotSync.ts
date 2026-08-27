@@ -1,5 +1,6 @@
 import { SITE_POTENTIAL_PACK_SIZE } from "@/lib/sitePotential/config";
-import type { SitePotentialGenerationStatus, SitePotentialMode } from "@/lib/sitePotential/types";
+import type { SitePotentialGenerationStatus, SitePotentialMode, SitePotentialProject } from "@/lib/sitePotential/types";
+import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type {
   SitePotentialProgressState,
   SitePotentialSnapshot,
@@ -17,6 +18,8 @@ interface BuildSyncedSitePotentialSnapshotInput {
   rightsConfirmedAt: string | null;
   activePackProjectState: SitePotentialProgressState | null;
 }
+
+type CanonicalSitePotentialAsset = Pick<ErfAsset, "asset_category" | "status">;
 
 const SNAPSHOT_KEYS: Array<keyof SitePotentialSnapshot> = [
   "mode",
@@ -61,4 +64,41 @@ export function buildSyncedSitePotentialSnapshot(
   };
 
   return sitePotentialSnapshotsMatch(current, next) ? null : next;
+}
+
+export function buildCanonicalSitePotentialSnapshot(
+  current: SitePotentialSnapshot,
+  project: SitePotentialProject | null,
+  assets: CanonicalSitePotentialAsset[],
+): SitePotentialSnapshot | null {
+  if (!project) return null;
+
+  const activeAssets = assets.filter((asset) => asset.status !== "deleted");
+  const photoCount = activeAssets.filter(
+    (asset) =>
+      asset.asset_category === "site_photo" || asset.asset_category === "existing_house_photo",
+  ).length;
+  const planCount = activeAssets.filter(
+    (asset) =>
+      asset.asset_category === "topography" ||
+      asset.asset_category === "architectural_plan" ||
+      asset.asset_category === "inspiration_image" ||
+      asset.asset_category === "other",
+  ).length;
+  const conceptCount = activeAssets.filter(
+    (asset) => asset.asset_category === "generated_design",
+  ).length;
+
+  return buildSyncedSitePotentialSnapshot(current, {
+    projectId: project.id,
+    photoCount,
+    planCount,
+    conceptCount,
+    selectedDesignAssetId: project.selected_design_asset_id,
+    mode: project.mode,
+    generationStatus: project.generation_status,
+    imageRightsConfirmed: Boolean(project.rights_confirmed_at),
+    rightsConfirmedAt: project.rights_confirmed_at,
+    activePackProjectState: null,
+  });
 }
