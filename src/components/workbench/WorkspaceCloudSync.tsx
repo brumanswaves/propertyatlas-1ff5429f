@@ -146,6 +146,14 @@ export function WorkspaceCloudSync() {
           continue;
         }
 
+        const hasUsableProjection = Boolean(projection && projection.parcelId === parcelId);
+        if (!hasUsableProjection && !hasStoredBrowserWorkspace) {
+          // Preserve the pre-existing behavior for rows without a readable
+          // durable projection. Do not manufacture a new workspace from only
+          // one backend subsystem and risk replacing unrelated investigation state.
+          continue;
+        }
+
         let browserWorkspace = readErfWorkspaceState(parcelId, window.localStorage, userId);
         if (
           projection &&
