@@ -86,9 +86,7 @@ export function SitePotentialTab({
     });
   }, [manualZoneCode, parcel, vault.assets, workspaceState.planning.userConfirmedZoneCode]);
 
-  const documentRuleEvidence =
-    planningAssessment.detection.method === "document_supported" ||
-    planningAssessment.detection.method === "official_polygon";
+  const documentRuleEvidence = planningAssessment.detection.method === "document_supported";
 
   const handleEnvelopeResult = useCallback(
     (result: BuildEnvelopeResult) => {
