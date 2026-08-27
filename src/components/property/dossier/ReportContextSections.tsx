@@ -18,6 +18,7 @@ import {
 import type { SgEvidenceBlock, SgSectionModel } from "@/lib/reports/sgSection";
 import type { StillToVerifySummary } from "@/lib/reports/contextSections";
 import { createErfAssetPreviewSignedUrl } from "@/lib/workbench/erfFileVault";
+import { repairSgPreview } from "@/lib/workbench/sgPreviewRepair";
 
 function sectionShell(extra?: string) {
   return cn(
@@ -182,14 +183,32 @@ function SgPreview({
       settleRef.current = resolve;
     });
     registerSgPreviewSettlement(onPreviewSettlement, settlement);
-    void createErfAssetPreviewSignedUrl(block.asset).then((signedUrl) => {
+
+    void (async () => {
+      let signedUrl = await createErfAssetPreviewSignedUrl(block.asset);
+      const mime = String(block.asset.mime_type ?? "").split(";", 1)[0].trim().toLowerCase();
+      const canRepairTiff = mime === "image/tiff" || mime === "image/tif";
+      if (!signedUrl && canRepairTiff) {
+        const repaired = await repairSgPreview(block.asset.id, block.asset.parcel_id);
+        if (repaired.previewAvailable) {
+          signedUrl = await createErfAssetPreviewSignedUrl({
+            ...block.asset,
+            metadata: {
+              ...block.asset.metadata,
+              sgPreviewStoragePath: `${block.asset.storage_path.slice(0, block.asset.storage_path.lastIndexOf("/"))}/derived/sg-overview.png`,
+              sgPreviewMimeType: "image/png",
+            },
+          });
+        }
+      }
       if (!alive) return;
       if (signedUrl) setUrl(signedUrl);
       else {
         setFailed(true);
         settleRef.current?.();
       }
-    });
+    })();
+
     return () => {
       alive = false;
       settleRef.current?.();
@@ -243,10 +262,7 @@ export function ReportSgLineageSection({
 
   return (
     <section id={anchorId} className={sectionShell()}>
-      <ReportSectionTitleBlock
-        eyebrow="Cadastral evidence"
-        title="SG Diagram Summary"
-      />
+      <ReportSectionTitleBlock eyebrow="Cadastral evidence" title="SG Diagram Summary" />
 
       {model.contextNote && (
         <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#FFFBEB] px-4 py-3 text-xs leading-5 text-[#92400E]">
@@ -346,33 +362,68 @@ export function ReportSgLineageSection({
             What Easy Erf found
           </div>
           {model.evidence.map((block) => (
-            <article key={block.asset.id} className="grid gap-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 lg:grid-cols-[0.85fr_1.15fr]">
+            <article
+              key={block.asset.id}
+              className="grid gap-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 lg:grid-cols-[0.85fr_1.15fr]"
+            >
               <div>
                 <SgPreview block={block} onPreviewSettlement={onPreviewSettlement} />
-                <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{block.asset.original_file_name}</div>
+                <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">
+                  {block.asset.original_file_name}
+                </div>
                 <div className="mt-1 text-[11px] text-[#64748B]">{block.readLabel}</div>
-                {block.isParentContext && <div className="mt-2 text-[11px] font-semibold text-[#92400E]">PLAN / PARENT CONTEXT only</div>}
-                {block.isUserConfirmed && <div className="mt-2 text-[11px] font-semibold text-[#92400E]">User-confirmed attachment, not official verification</div>}
+                {block.isParentContext && (
+                  <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                    PLAN / PARENT CONTEXT only
+                  </div>
+                )}
+                {block.isUserConfirmed && (
+                  <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                    User-confirmed attachment, not official verification
+                  </div>
+                )}
                 {onOpenAsset && (
-                  <button type="button" onClick={() => onOpenAsset(block.asset.id)} className="report-no-print mt-3 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-white">
+                  <button
+                    type="button"
+                    onClick={() => onOpenAsset(block.asset.id)}
+                    className="report-no-print mt-3 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-white"
+                  >
                     Open source file <ExternalLink className="h-3 w-3" />
                   </button>
                 )}
               </div>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">Findings</div>
-                {block.isUserConfirmed && <p className="mt-2 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">Easy Erf read this document, but it has not been automatically bound to this erf.</p>}
-                {block.summary && <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/75">{block.summary}</p>}
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+                  Findings
+                </div>
+                {block.isUserConfirmed && (
+                  <p className="mt-2 rounded-xl border border-amber-300/50 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+                    You attached this document to this erf. Its readable findings are user-supplied evidence; this does not replace official cadastral verification.
+                  </p>
+                )}
+                {block.summary && (
+                  <p className="mt-3 text-sm leading-6 text-[#0D1B2A]/75">{block.summary}</p>
+                )}
                 {block.findings.length ? (
                   <ul className="mt-3 space-y-2">
                     {block.findings.slice(0, 6).map((finding) => (
-                      <li key={`${finding.label}-${finding.value}`} className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2 text-xs">
-                        <span className="font-semibold text-[#0D1B2A]">{finding.label}:</span> {finding.value}
-                        <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">{finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence</span>
+                      <li
+                        key={`${finding.label}-${finding.value}`}
+                        className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2 text-xs"
+                      >
+                        <span className="font-semibold text-[#0D1B2A]">{finding.label}:</span>{" "}
+                        {finding.value}
+                        <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">
+                          {finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence
+                        </span>
                       </li>
                     ))}
                   </ul>
-                ) : <p className="mt-3 text-sm text-[#64748B]">No structured findings were stored for this document.</p>}
+                ) : (
+                  <p className="mt-3 text-sm text-[#64748B]">
+                    No structured findings were stored for this document.
+                  </p>
+                )}
                 {block.findings.length > 6 && (
                   <details className="report-no-print mt-3 rounded-xl border border-[#D9E6F2] bg-white px-3 py-2">
                     <summary className="cursor-pointer text-xs font-semibold text-[#B24A00]">
@@ -380,9 +431,14 @@ export function ReportSgLineageSection({
                     </summary>
                     <ul className="mt-2 space-y-1.5">
                       {block.findings.slice(6).map((finding) => (
-                        <li key={`${finding.label}-${finding.value}`} className="text-xs leading-5 text-[#0D1B2A]/75">
+                        <li
+                          key={`${finding.label}-${finding.value}`}
+                          className="text-xs leading-5 text-[#0D1B2A]/75"
+                        >
                           <span className="font-semibold">{finding.label}:</span> {finding.value}
-                          <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">{finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence</span>
+                          <span className="ml-2 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">
+                            {finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -406,7 +462,6 @@ export function ReportSgLineageSection({
     </section>
   );
 }
-
 
 export function ReportStillToVerifySection({
   anchorId,
