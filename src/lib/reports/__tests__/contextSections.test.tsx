@@ -315,7 +315,7 @@ describe("SG lineage section model", () => {
     expect(html).toContain("readable-sg-test-fixture.tif");
     expect(html).not.toContain("No identity-gated Surveyor-General diagram is selected for this report.");
     expect(html).toContain("User-confirmed attachment, not official verification");
-    expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
+    expect(html).toContain("You attached this document to this erf. Its readable findings are user-supplied evidence; this does not replace official cadastral verification.");
     expect(html).toContain("parent context");
     expect(html).toContain("No visual preview was generated for this diagram.");
     expect(html).toContain("The document shows a cadastral diagram reference.");
