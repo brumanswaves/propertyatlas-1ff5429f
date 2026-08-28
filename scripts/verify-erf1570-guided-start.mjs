@@ -134,7 +134,7 @@ try {
   );
   await confirmButton.click();
 
-  await firstVisible(
+  const addressHeading = await firstVisible(
     page.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
     "active Guided working-address heading",
   );
@@ -146,12 +146,19 @@ try {
     );
   }
 
-  const addressBody = await page.locator("body").innerText();
-  if (!addressBody.includes("Working address")) {
-    throw new Error("Guided Investigation did not advance to the working-address step.");
+  const addressStep = addressHeading.locator(
+    "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' space-y-4 ')][1]",
+  );
+  const addressText = await addressStep.innerText();
+  if (!/working address/i.test(addressText)) {
+    throw new Error(
+      `Guided working-address step is missing its section label. Step excerpt: ${JSON.stringify(addressText.slice(0, 1500))}`,
+    );
   }
-  if (!addressBody.includes("separate from the official")) {
-    throw new Error("Address step no longer explains that working address is separate from official identity.");
+  if (!/separate from the official/i.test(addressText)) {
+    throw new Error(
+      `Address step no longer explains that working address is separate from official identity. Step excerpt: ${JSON.stringify(addressText.slice(0, 1500))}`,
+    );
   }
 
   console.log(
