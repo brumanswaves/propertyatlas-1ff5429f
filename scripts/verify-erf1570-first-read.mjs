@@ -37,6 +37,10 @@ try {
     state: "visible",
     timeout: 30000,
   });
+  await page.getByText(/CSG parcels loaded:/i).first().waitFor({
+    state: "visible",
+    timeout: 30000,
+  });
 
   const searchLauncher = await firstVisible(
     page.locator("button").filter({
