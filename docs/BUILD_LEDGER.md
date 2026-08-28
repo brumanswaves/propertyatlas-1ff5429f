@@ -1,122 +1,127 @@
 # Easy Erf Build Ledger
 
+Ledger refreshed: 2026-08-28.
+
 ## Original product promise
 
-Make one real South African property investigation work extremely well end to end. Easy Erf should help a user find a property, organize trustworthy evidence, understand planning and development potential, test strategy and financial assumptions, identify unknowns and risks, and leave with one clear next action.
+Make one real South African property investigation work extremely well end to end. Easy Erf should help a user identify a property, organize trustworthy evidence, understand planning and development potential, test strategy and financial assumptions, identify unknowns and risks, and leave with one clear next action.
+
+The immediate commercial proof is the first real **R999 Early Access Easy Erf Property Investigation** for one property, fulfilled with the canonical Easy Erf investigation plus human review rather than waiting for complete automation.
 
 ## Canonical systems
 
 - Application code: GitHub `brumanswaves/propertyatlas-1ff5429f`, branch `main`.
-- Product direction: `docs/EASY_ERF_MASTER_PLAN.md`.
-- Current state: `docs/EASY_ERF_CURRENT_STATE.md`.
+- Product direction: `docs/EASY_ERF_MASTER_PLAN.md` plus explicit owner decisions recorded in current project state.
+- Operational state: `docs/EASY_ERF_CURRENT_STATE.md`.
 - Canonical remote backend: founder-owned Supabase project `xiqpfhsdlvwrwhclonsg` (`Easy Erf`).
 - Local Supabase config: `supabase/config.toml` is local-stack configuration only and is not remote ownership proof.
-- Published runtime: existing EasyErf Lovable-hosted production surface remains a rollback/runtime target during the controlled migration window. Lovable is not the engineering source of truth.
+- Erf 1570 is the canonical end-to-end acceptance property.
 
-## MVP acceptance property
+## Current repository baseline
 
-Erf 1570, Portion 0, LPI `C03400140000157000000`, parcel key `E108C034001400001570000000`, approximately 618.7 m2, Sea Vista, Kouga Local Municipality, Eastern Cape.
+Verified before this tranche:
+
+- GitHub `main` at `6030b4b2071fc86059ce07095350438eaa9192e9`.
+- No open pull requests at the start of the 2026-08-28 inspection.
+- PR #127 merged the deterministic parcel/map plus street-side Site Potential direction.
+- PR #128 removed retired generated-concept semantics from the active runtime.
+
+The current implementation branch is `chatgpt/restore-commercial-mvp-and-project-truth`. It is not production merely because commits exist on the branch.
+
+## Locked active Site Potential direction
+
+The active MVP Site Potential surface is:
+
+`parcel/map build envelope -> street-side build lines / height envelope -> explicit accept or skip -> same state in Guided and Report`
+
+Active Site Potential does not generate house concepts, rendered buildings, facade concepts or AI architectural images. Historical generated-design assets, tables and fields may remain for compatibility, but they do not define the active user journey.
+
+A deterministic envelope remains only as authoritative as the zoning, building lines, coverage, height, frontage and geometry evidence beneath it.
+
+## Current commercial MVP
+
+Offer:
+
+- **R999** introductory price.
+- **One property**.
+- Human-assisted and human-reviewed Easy Erf Property Investigation.
+- Uses the same canonical property file, public/official sources, uploaded evidence, deterministic analysis, AI-assisted research where configured, and human review.
+- Deliverable emphasis: Property Truth, Property Potential, deal killers/key risks, conflicts, unknowns, next steps, and Strategy/financial analysis where relevant.
+- No recurring subscription.
+- Not a zoning certificate, legal/title opinion, valuation, approved building plan or professional sign-off.
+- Checkout must fail closed unless a verified HTTPS Stripe-hosted `buy.stripe.com` payment link is configured.
+
+At the start of this tranche, this offer was absent from `main`. The prior implementation existed only in closed, unmerged PR #107.
 
 ## Current MVP acceptance test
 
-A signed-in user must be able to complete and later reopen the canonical Erf 1570 investigation against the founder-owned backend, including:
+A signed-in user must be able to complete and later reopen the canonical Erf 1570 investigation against the founder backend:
 
-1. Google sign-in and persisted session.
-2. Search/open Erf 1570 and durable investigation reopen.
-3. Address state and visible provider errors.
-4. SG/File Vault read and evidence extraction state.
-5. Shared zoning confirmation and Planning Investigation output.
-6. Market Evidence and Strategy persistence.
-7. Site Potential entitlement/status, accepted concept and deterministic envelope state.
-8. Final Report assembly with previews, provenance, unknowns and canonical next action.
+1. Sign in and retain the session.
+2. Search/open Erf 1570 and reopen durable investigation state.
+3. Establish/review working address with visible provider failures.
+4. Upload/bind/read SG evidence and see extracted findings plus a safe preview when available.
+5. Establish and persist working zoning while preserving the distinction between user confirmation and municipal evidence.
+6. Complete property checks, Market Evidence and Strategy persistence.
+7. Complete or skip deterministic Site Potential using the parcel/map and street-side build envelope, without generated concepts.
+8. Open the living Easy Erf Report with the same evidence, provenance, assumptions, risks, unknowns and canonical next action.
+9. For commercial acceptance, enter the R999 Early Access fulfillment path through a real verified checkout and receive the promised human-reviewed investigation.
 
-Repository tests, database rows, build output and OAuth initiation alone do not satisfy this acceptance test.
+Repository tests, database rows, commits and isolated API success do not satisfy this acceptance test by themselves.
 
-## Governance and cost controls
+## Live founder-backend evidence checked 2026-08-28
 
-- Proof is required before product-status claims are promoted to verified.
-- Additional discretionary spend defaults to $0.
-- Lovable build/deploy work requires explicit owner approval for that specific use.
-- Prefer direct repository engineering and the founder-owned Supabase project.
-- Preserve rollback paths for the backend cutover.
-- Do not perform destructive production operations without a specific safety review and appropriate approval.
+Read-only inspection established:
 
-## Verified state as of 2026-08-21
+- Supabase project `xiqpfhsdlvwrwhclonsg` reports `ACTIVE_HEALTHY`.
+- `extract-erf-asset` version 11 is active.
+- `site-potential-api` version 8 is active.
+- `render-sg-preview` version 1 is active with JWT verification enabled.
+- The checked deployed `render-sg-preview` implementation is deterministic TIFF-to-PNG processing and contains no AI-provider call.
+- Newest checked canonical Erf 1570 SG TIFF: 17 extracted claims and a persisted `sgPreviewStoragePath` PNG.
+- That asset carries `identityBinding = user_confirmed` for canonical Erf 1570.
+- Its automated `identityMatchStatus` remains `unverified`; the user-confirmed binding is evidence attachment, not independent cadastral verification.
 
-### GitHub and cutover branch
+These facts establish backend progress on the SG visual/report-support path. They do not independently prove that the current published browser report renders the preview correctly.
 
-- GitHub `main` is at merge commit `56743a30183c8963cd34cde32324769cb14d4ff9` after PR #108.
-- Fresh cutover branch: `chatgpt/founder-backend-cutover-refresh`.
-- Draft PR #110 points browser runtime configuration at the founder Easy Erf backend while keeping `supabase/config.toml` neutral and local-only.
-- The first #110 CI run failed because PR #108 still contained a stale guardrail requiring founder auth to remain off while OAuth was previously gated.
-- Commit `33c6d86fe36fc2ac172a8b84dadb5ddb1817298b` replaced that stale condition with the evidence-based rule that founder auth may be enabled after verified OAuth initiation while publication remains gated on the signed-in Erf 1570 browser acceptance run.
-- Stale draft PR #95 was closed without merge after PR #110 superseded it.
-- `scripts/verify-founder-oauth.mjs` now exercises the branch's actual `@supabase/supabase-js` auth transport against the configured founder backend.
-- GitHub Actions run `32478020948` on head `8f09471c168ebeff40d795c7dde7af94f1ee87db` completed successfully. The live OAuth transport step verified founder Supabase redirected the Google authorization request to `accounts.google.com`. Focused Guided tests, full tests, production build, TypeScript, targeted ESLint and whitespace verification also completed successfully in that run.
+## Current saved-state observation
 
-### Founder Supabase backend
+The current Erf 1570 saved-investigation projection still contains historical Site Potential fields such as `progressState: concepts_ready` on one record. This is legacy persisted state from the retired generation flow.
 
-- The founder-owned Supabase project is accessible as `Easy Erf` and reports active status.
-- The expected migrated public schema footprint is present, including saved investigations, evidence assets and Site Potential tables.
-- Auth contains two users and two Google identity rows.
-- Both users have a non-null historical `last_sign_in_at`; the latest recorded completed sign-in was 2026-08-10 15:50:09 UTC.
-- A direct auth initiation probe issued from the founder database reached the Google OAuth flow, establishing that the old `provider is not enabled` blocker is no longer current.
-- Founder Site Potential/API functions are present.
-- Canonical Erf 1570 is persisted under parcel id `csg:lpi:c03400140000157000000`.
-- Erf 1570 has 2 saved-property rows across 2 pilot users, 1 property-notes row, 25 evidence asset rows, 2 Site Potential project rows and 3 completed design-pack rows.
-- Both saved-property rows contain persisted Market Evidence and Strategy workspace state. Both Strategy workspaces contain a scenario and a chosen scenario id.
-- Both pilot users with a saved Erf 1570 record also have persisted assets, a Site Potential project, a selected design and at least one fully completed design pack.
-- The three completed design packs total 12 requested designs and 12 completed designs.
-- All 25 Erf 1570 asset rows have storage pointers and all 25 pointers resolve to actual Supabase Storage objects. No missing storage object was found.
-- RLS policies on the checked investigation, evidence and Site Potential tables constrain authenticated user data by `auth.uid() = user_id`.
-- `public.user_roles` currently contains zero admin rows. Founder Operations authorization on the founder backend is therefore not yet accepted.
-- `report_orders` currently contains zero Erf 1570 rows. This does not by itself establish whether the in-app final Report assembly works because the product may assemble that report from investigation state rather than a paid report-order row.
+Current classification: compatibility debt. It becomes a defect only if the active UI/report interprets that legacy state incorrectly after PR #128. Do not rewrite production state preemptively without a reproduced user-facing problem.
 
-### Security review
+## Current tranche executed
 
-- Supabase security advisors warn that `public.has_role` and `public.patch_saved_property_user_data` are authenticated-callable `SECURITY DEFINER` functions and that leaked-password protection is disabled.
-- `patch_saved_property_user_data` was independently inspected. It derives its acting user from `auth.uid()`, rejects unauthenticated calls and reads/writes only rows matching that user id. The generic advisor warning does not by itself establish a cross-user write vulnerability.
-- `has_role` was independently inspected. It accepts an arbitrary user id while callable by authenticated users, so role-presence probing is a hardening opportunity even though no admin rows currently exist. It is not being changed during the MVP cutover tranche without a focused authorization-impact review.
+On branch `chatgpt/restore-commercial-mvp-and-project-truth`:
 
-### Published runtime and deployment paths
+- Pricing restores the R999 one-property human-reviewed Early Access investigation.
+- Checkout remains disabled unless a valid Stripe-hosted HTTPS payment link is configured.
+- Pricing removes stale active Site Potential concept-generation language and states the deterministic map/street-side build-envelope direction.
+- Public product-truth tests now guard the R999 offer, fail-closed checkout and no-generated-concept Site Potential copy.
+- `docs/EASY_ERF_CURRENT_STATE.md` and this ledger are refreshed from current repository and live-backend evidence.
 
-- Read-only inspection of the published EasyErf project shows it is synced through GitHub merge commit `56743a30183c8963cd34cde32324769cb14d4ff9` (#108).
-- The published runtime still targets the rollback Supabase backend and has founder auth disabled.
-- Therefore the live site does not prove the founder-backend cutover or the signed-in Erf 1570 acceptance test.
-- The connected Vercel account contains no projects.
-- Repository inspection found no existing Vercel, Netlify, Cloudflare/Wrangler or Firebase deployment configuration.
+These branch changes still require CI/build verification and review before merge acceptance.
 
 ## Current blocker
 
-The branch and founder backend now have strong automated and integration evidence, but there is no deployed preview of PR #110. The current published site remains on the rollback backend. The remaining MVP acceptance gate requires a real browser configured for the founder backend to complete Google callback/session persistence and the full signed-in Erf 1570 journey.
+The repository has materially more capability than the currently verified product acceptance evidence.
 
-A Lovable preview/build/deploy action could provide that surface, but the exact credit impact is currently unknown. Under the project governance rules, no such action will be invoked without specific owner approval and a safe spend boundary.
+The single largest remaining proof gap is a fresh, real signed-in browser run of the current published Easy Erf journey from Erf 1570 search through the living report after the latest Site Potential and SG changes.
+
+A second commercial gap remains until a real R999 checkout is configured and verified. The code must not invent that checkout.
 
 ## Next action
 
-Use the cheapest safe deployed preview path for PR #110, then perform the signed-in Erf 1570 browser acceptance run. Merge or production publication should be considered only after that evidence exists.
+Complete repository verification for the current R999/product-truth branch, merge only if the evidence is clean, then perform the real signed-in Erf 1570 production acceptance run and fix defects found in that path before starting broader features.
 
 ## Owner action required
 
-If Lovable is selected as the preview path, explicit approval is required for that specific Lovable use. The approval should not authorize buying credits or incurring a new charge unless a defined spend cap is separately approved.
+None for the current zero-cost repository verification tranche.
 
-Separately, Founder Operations requires an intentional decision about which authenticated user should receive the first `admin` role before that surface can be accepted. No role has been granted autonomously.
+A later real payment-link activation or production publication may require explicit owner action/approval depending on the system being changed.
 
 ## Spend
 
-Known additional discretionary spend for the 2026-08-21 governance/cutover tranche: $0.
+Additional discretionary spend for this 2026-08-28 tranche: **$0**.
 
-- No Lovable build/deploy action was invoked.
-- No new hosting project was created.
-- No production publish was performed.
-- No migration, destructive database write or admin-role grant was performed.
-- GitHub Actions verification used the public repository's standard hosted workflow path.
-
-## Unverified claims requiring confirmation
-
-- Current PR #110 end-to-end Google callback and persisted browser session.
-- Full signed-in Erf 1570 workflow on the founder backend.
-- Planning confirmation persistence through the founder-backend browser path.
-- Founder Operations access on the founder backend.
-- Production Site Potential generation through the browser cutover path.
-- Final Report assembly against the founder backend in a real browser session.
+No Lovable build action, paid provider, database mutation, billing change, credential change or production publish has been performed in this tranche.
