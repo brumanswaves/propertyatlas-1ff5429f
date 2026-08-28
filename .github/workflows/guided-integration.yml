@@ -76,6 +76,7 @@ jobs:
           done
           EASY_ERF_BROWSER_URL=http://127.0.0.1:4173/auth node scripts/verify-founder-browser-oauth.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-commercial-browser.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-first-read.mjs
 
       - name: Build production bundle and generate routes
         run: npm run build

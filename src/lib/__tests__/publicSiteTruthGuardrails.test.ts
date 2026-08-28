@@ -6,6 +6,10 @@ function routeSource(name: string) {
   return readFileSync(join(process.cwd(), "src", "routes", name), "utf8");
 }
 
+function componentSource(name: string) {
+  return readFileSync(join(process.cwd(), "src", "components", "property", name), "utf8");
+}
+
 describe("public Easy Erf product truth guardrails", () => {
   it("does not revive the retired fake report-order flow", () => {
     const source = routeSource("reports.tsx");
@@ -77,6 +81,17 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toMatch(/parcel map and a street-side view/i);
     expect(source).toMatch(/does not generate house designs, facades or AI building concepts/i);
     expect(source).not.toMatch(/Site Potential concept generation is currently controlled/i);
+  });
+
+  it("keeps the active workbench free of generated-concept completion semantics", () => {
+    const source = componentSource("OfficialParcelPanel.tsx");
+
+    expect(source).toMatch(/parcel\/map build envelope and street-side build lines/i);
+    expect(source).toMatch(/review and accept the deterministic build envelope/i);
+    expect(source).toMatch(/Accept the deterministic build envelope or skip Site Potential/i);
+    expect(source).not.toMatch(/Concepts are visual starting points/i);
+    expect(source).not.toMatch(/generate a visual concept pack/i);
+    expect(source).not.toMatch(/Select a preferred concept/i);
   });
 
   it("does not claim stale investor scoring as a live roadmap capability", () => {

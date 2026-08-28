@@ -221,7 +221,7 @@ const WORKBENCH_SECTIONS: Record<Tab, { title: string; subtitle: string; guidanc
     title: "Site Potential",
     subtitle: "Explore renovation and new-build possibilities for this erf.",
     guidance:
-      "Concepts are visual starting points, not architectural plans or municipal approvals. This section is optional and can be skipped without blocking the Easy Erf Report.",
+      "The parcel/map build envelope and street-side build lines are indicative decision support, not architectural plans or municipal approvals. This section is optional and can be skipped without blocking the Easy Erf Report.",
   },
   listings: {
     title: "Market Evidence",
@@ -353,7 +353,7 @@ function buildWorkbenchPageNextStep(
     case "calculators":
       return {
         title: "Explore Site Potential",
-        body: "After the numbers, choose whether to generate a visual concept pack or explicitly skip this optional step.",
+        body: "After the numbers, review and accept the deterministic build envelope, or explicitly skip this optional step.",
         cta: "Go to Site Potential",
         tab: "site-potential",
         markStarted: true,
@@ -377,7 +377,7 @@ function buildWorkbenchPageNextStep(
     case "site-potential":
       return {
         title: "Build the Easy Erf Report",
-        body: "Select a preferred concept or skip Site Potential, then assemble the final report.",
+        body: "Accept the deterministic build envelope or skip Site Potential, then assemble the final report.",
         cta: "Go to Easy Erf Report",
         tab: "stoep-report",
         markStarted: true,
