@@ -153,6 +153,7 @@ export function InvestigationHome({
         savedEvidence: evidence,
         marketAddress: marketAddressIntelligence ?? null,
         assets,
+        selectedSiteDesign: null,
         chosenScenario,
         strategyScenarios: scenarios,
         strategyWorkspace,

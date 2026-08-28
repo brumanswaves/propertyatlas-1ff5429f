@@ -769,38 +769,28 @@ describe("official dossier UX guardrails", () => {
     expect(vaultFiles).toContain('export const ERF_FILE_BUCKET = "erf-files"');
     expect(vaultFiles).toContain("migrateLocalWorkspaceAttachmentsToVault");
     expect(vaultFiles).toContain("createSignedUrl");
-    expect(sitePotential).toContain("SITE_POTENTIAL_DISCLAIMER");
     expect(sitePotential).toContain("Guided Investigation / Site Potential");
-    expect(sitePotential).toContain("Back to Investigation");
-    expect(sitePotential).toContain("Continue to Easy Erf Report");
-    expect(sitePotential).toContain("Review what could potentially fit on this site");
-    expect(sitePotential).toContain("Confirm the street-facing boundaries");
+    expect(sitePotential).toContain("Confirm the buildable part of the erf");
+    expect(sitePotential).toContain("VacantLandBuildEnvelope");
+    expect(sitePotential).toContain("StreetSideBuildEnvelope");
+    expect(sitePotential).toContain("Build envelope accepted");
+    expect(sitePotential).toContain("Continue to report");
     expect(sitePotential).not.toContain(
       "Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 9 of 10",
     );
-    expect(sitePotential).toContain("Guided completion · Site Potential");
-    expect(sitePotential).toContain("Select a concept or explicitly skip this step");
-    expect(sitePotential).toContain("projectMode === \"skipped\"");
     expect(sitePotential).toContain("useErfFileVault");
-    expect(sitePotential).toContain("/api/site-potential/generate");
-    expect(sitePotential).toContain("generationInFlightRef");
-    expect(sitePotential).toContain("activeDesignPackId");
-    expect(sitePotential).toContain("assetDesignPackId(asset) === activeDesignPackId");
+    expect(sitePotential).not.toContain("/api/site-potential/generate");
+    expect(sitePotential).not.toContain("generationInFlightRef");
+    expect(sitePotential).not.toContain("activeDesignPackId");
+    expect(sitePotential).not.toContain("selected_design_asset_id");
     expect(sitePotentialIntegrityMigration).toContain(
       "erf_site_projects_selected_design_integrity",
     );
     expect(sitePotentialIntegrityMigration).toContain("asset_row.user_id <> NEW.user_id");
     expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
-    expect(sitePotential).toContain("GENERATION_UI_ENABLED");
-    expect(sitePotential).toContain("generationAvailability.message");
-    expect(sitePotential).toContain("Topographical survey");
-    expect(sitePotential).toContain("Architectural plans");
-    expect(sitePotential).toContain("Inspiration images");
-    expect(sitePotential).toContain("Supporting documents");
-    expect(sitePotential).toContain('uploadFiles(files, "architectural_plan")');
-    expect(sitePotential).toContain('uploadFiles(files, "inspiration_image")');
-    expect(sitePotential).toContain('uploadFiles(files, "other")');
-    expect(sitePotential).not.toContain("Street View");
+    expect(sitePotential).not.toContain("GENERATION_UI_ENABLED");
+    expect(sitePotential).not.toContain("generationAvailability.message");
+    expect(sitePotential).toContain("There are no AI house concepts, generated renders, or facade images");
     expect(read("src/routes/api/site-potential.generate.ts")).toContain(
       "queueSitePotentialGeneration",
     );
@@ -1063,20 +1053,17 @@ describe("Local Property Team MVP guardrails", () => {
     expect(serverRoute).not.toContain('"Google place result"');
     expect(sitePotential).not.toContain('id="site-potential-credits"');
     expect(sitePotential).not.toContain("Checkout connection pending");
-    expect(sitePotential).toContain("buildSitePotentialRuntimeProgress");
-    expect(sitePotential).toContain("Site Potential generation progress");
-    expect(sitePotential).toContain("Refresh status");
-    expect(sitePotential).toContain("Retry current pack");
-    expect(sitePotential).toContain("fetchSitePotentialApi");
+    expect(sitePotential).toContain("VacantLandBuildEnvelope");
+    expect(sitePotential).toContain("StreetSideBuildEnvelope");
+    expect(sitePotential).toContain("Confirm the site inputs");
+    expect(sitePotential).toContain("There are no AI house concepts, generated renders, or facade images");
+    expect(sitePotential).not.toContain("buildSitePotentialRuntimeProgress");
+    expect(sitePotential).not.toContain("Site Potential generation progress");
+    expect(sitePotential).not.toContain("Refresh status");
+    expect(sitePotential).not.toContain("Retry current pack");
+    expect(sitePotential).not.toContain("fetchSitePotentialApi");
     expect(sitePotentialApi).toContain('"retry-pack"');
     expect(sitePotentialApi).toContain('`/api/site-potential/${input.route}`');
-    expect(sitePotential).toContain('role="status"');
-    expect(sitePotential).toContain('aria-live="polite"');
-    expect(sitePotential).toContain("Eligible concepts can be retried.");
-    expect(sitePotential).toContain("Waiting for eligible concepts to be retried.");
-    expect(sitePotential).toContain(
-      "failedish && packStatus.terminal && !retryable && !activeWorker",
-    );
   });
 });
 

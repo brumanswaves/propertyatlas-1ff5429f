@@ -135,20 +135,24 @@ describe("Site Potential selected concept persistence", () => {
     });
   });
 
-  it("uses explicit selection to replace or deselect the preferred concept", () => {
+  it("uses the deterministic envelope components instead of a concept-selection UI", () => {
     const sitePotentialTab = read("src/components/property/dossier/SitePotentialTab.tsx");
 
-    expect(sitePotentialTab).toContain("selected_design_asset_id: asset?.id ?? null");
-    expect(sitePotentialTab).toContain("generation_status: asset");
+    expect(sitePotentialTab).toContain("VacantLandBuildEnvelope");
+    expect(sitePotentialTab).toContain("StreetSideBuildEnvelope");
+    expect(sitePotentialTab).toContain("Build envelope accepted");
+    expect(sitePotentialTab).not.toContain("useSitePotentialProject");
+    expect(sitePotentialTab).not.toContain("selected_design_asset_id");
   });
 
-  it("resolves the Site Potential hook against all generated assets, not the active pack filter", () => {
-    const sitePotentialTab = read("src/components/property/dossier/SitePotentialTab.tsx");
+  it("does not pass a selected design into the Guided investigation", () => {
+    const investigationHome = read(
+      "src/components/property/investigation/InvestigationHome.tsx",
+    );
     const service = read("src/lib/sitePotential/sitePotentialService.ts");
 
-    expect(sitePotentialTab).toContain("useSitePotentialProject(parcel.id, allGeneratedDesigns)");
-    expect(sitePotentialTab).toContain("buildSelectedDesignDeletionPatch");
-    expect(sitePotentialTab).toContain("removeGeneratedDesign(asset)");
+    expect(investigationHome).toContain("selectedSiteDesign={null}");
+    expect(investigationHome).not.toContain("selectedSiteDesign={selectedDesign}");
     expect(service).not.toContain("clearMissingSelectedDesign");
   });
 
