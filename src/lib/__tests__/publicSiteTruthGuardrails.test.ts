@@ -56,6 +56,29 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
+  it("keeps the R999 Early Access investigation real and fail-closed", () => {
+    const source = routeSource("pricing.tsx");
+
+    expect(source).toMatch(/Easy Erf Property Investigation/);
+    expect(source).toMatch(/R999/);
+    expect(source).toMatch(/one property, introductory price/i);
+    expect(source).toContain("VITE_EASY_ERF_R999_PAYMENT_LINK");
+    expect(source).toContain('url.hostname !== "buy.stripe.com"');
+    expect(source).toMatch(/Secure checkout is being connected/);
+    expect(source).toMatch(/human review/i);
+    expect(source).toMatch(/Anything we cannot verify is labelled as unresolved/i);
+    expect(source).not.toMatch(/guaranteed|official zoning certificate|approved building plan included/i);
+  });
+
+  it("keeps active Site Potential deterministic", () => {
+    const source = routeSource("pricing.tsx");
+
+    expect(source).toMatch(/Build envelope, not generated house concepts/i);
+    expect(source).toMatch(/parcel map and a street-side view/i);
+    expect(source).toMatch(/does not generate house designs, facades or AI building concepts/i);
+    expect(source).not.toMatch(/Site Potential concept generation is currently controlled/i);
+  });
+
   it("does not claim stale investor scoring as a live roadmap capability", () => {
     const source = routeSource("roadmap.tsx");
 
