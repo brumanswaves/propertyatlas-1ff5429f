@@ -167,15 +167,17 @@ export function canonicalAreaM2(
 }
 
 /**
- * Display formatting: rounds to whole square metres and never emits `0`.
+ * Display formatting: preserves meaningful cadastral precision up to one decimal
+ * place and never emits `0`. Integer areas remain integers.
  * Returns null when there is nothing trustworthy to show.
  */
 export function formatAreaM2Value(area: number | null | undefined): string | null {
   const value = toValidAreaM2(area);
   if (value == null) return null;
-  const rounded = Math.round(value);
-  if (rounded <= 0) return null;
-  return rounded.toLocaleString();
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
 }
 
 /** Same as {@link formatAreaM2Value} but with the `m²` unit appended. */
