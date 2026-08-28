@@ -7,43 +7,92 @@ const PARCEL_KEY = "E108C034001400001570000000";
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 
+async function firstVisible(locator, description, timeout = 30000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const count = await locator.count();
+    for (let index = 0; index < count; index += 1) {
+      const candidate = locator.nth(index);
+      if (await candidate.isVisible().catch(() => false)) return candidate;
+    }
+    await page.waitForTimeout(100);
+  }
+
+  const visibleButtons = await page
+    .locator("button:visible")
+    .allInnerTexts()
+    .catch(() => []);
+  const bodyText = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  throw new Error(
+    `Could not find visible ${description}. Visible buttons: ${JSON.stringify(visibleButtons.slice(0, 30))}. Body excerpt: ${JSON.stringify(bodyText.slice(0, 2500))}`,
+  );
+}
+
 try {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-
-  const searchLauncher = page.getByRole("button", {
-    name: /search address, erf number, suburb, lpi, or parcel key/i,
+  await page.getByRole("link", { name: /easy erf home/i }).first().waitFor({
+    state: "visible",
+    timeout: 30000,
   });
-  await searchLauncher.waitFor({ state: "visible", timeout: 30000 });
+
+  const searchLauncher = await firstVisible(
+    page.locator("button").filter({
+      hasText: /Search address, erf number, suburb, LPI, or parcel key/i,
+    }),
+    "main property search launcher",
+  );
   await searchLauncher.click();
 
-  const erfSearch = page.getByRole("button", { name: /Erf Search/i });
-  await erfSearch.waitFor({ state: "visible", timeout: 30000 });
+  const erfSearch = await firstVisible(
+    page.locator("button").filter({ hasText: /Erf Search/i }),
+    "Erf Search option",
+  );
   await erfSearch.click();
 
-  await page.getByText(/Pilot registry loaded:/i).waitFor({ state: "visible", timeout: 30000 });
+  await firstVisible(
+    page.locator('input[placeholder="LPI or parcel key"]'),
+    "LPI or parcel key input",
+  );
+  await page.getByText(/Pilot registry loaded:/i).first().waitFor({
+    state: "visible",
+    timeout: 30000,
+  });
 
-  const codeInput = page.getByPlaceholder("LPI or parcel key");
+  const codeInput = await firstVisible(
+    page.locator('input[placeholder="LPI or parcel key"]'),
+    "LPI or parcel key input",
+  );
   await codeInput.fill(LPI);
-  await page.getByRole("button", { name: /Search official parcel identity/i }).click();
 
-  const result = page.getByRole("button", { name: /Open Erf 1570/i }).first();
-  await result.waitFor({ state: "visible", timeout: 30000 });
+  const searchIdentity = await firstVisible(
+    page.locator("button").filter({ hasText: /Search official parcel identity/i }),
+    "official parcel identity search button",
+  );
+  await searchIdentity.click();
 
-  const resultGroup = page.getByRole("group", { name: /Erf 1570.*official search result/i }).first();
+  const result = await firstVisible(
+    page.locator("button").filter({ hasText: /Erf 1570/i }),
+    "Erf 1570 official result",
+  );
+
+  const resultGroup = result.locator("xpath=ancestor::*[@role='group'][1]");
   const resultText = await resultGroup.innerText();
   for (const expected of ["Exact official match", LPI, PARCEL_KEY]) {
     if (!resultText.includes(expected)) {
-      throw new Error(`Erf 1570 search result is missing ${expected}.`);
+      throw new Error(`Erf 1570 search result is missing ${expected}. Result: ${resultText}`);
     }
   }
 
   await result.click();
 
   await page.getByText(/Property overview/i).first().waitFor({ state: "visible", timeout: 30000 });
-  await page.getByRole("button", { name: /Investigate this property|Continue investigation/i }).waitFor({
-    state: "visible",
-    timeout: 30000,
-  });
+  await firstVisible(
+    page.locator("button").filter({ hasText: /Investigate this property|Continue investigation/i }),
+    "investigation start/continue button",
+  );
 
   const body = await page.locator("body").innerText();
   for (const expected of ["Erf 1570", LPI, PARCEL_KEY, "618.7 m²"]) {
