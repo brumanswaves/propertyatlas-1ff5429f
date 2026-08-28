@@ -102,14 +102,18 @@ try {
     timeout: 30000,
   });
   const confirmBody = await page.locator("body").innerText();
-  const normalizedConfirmBody = confirmBody.toUpperCase();
   for (const expected of ["Erf number", "1570", "Extent", "618.7 m²"]) {
     if (!confirmBody.includes(expected)) {
       throw new Error(`Guided property confirmation is missing ${expected}.`);
     }
   }
+
+  const advancedDetails = page.locator("summary").filter({ hasText: /Advanced parcel details/i }).first();
+  await advancedDetails.waitFor({ state: "visible", timeout: 30000 });
+  await advancedDetails.click();
+  const advancedText = (await advancedDetails.locator("xpath=.. ").innerText()).toUpperCase();
   for (const expected of [LPI, PARCEL_KEY]) {
-    if (!normalizedConfirmBody.includes(expected.toUpperCase())) {
+    if (!advancedText.includes(expected.toUpperCase())) {
       throw new Error(`Guided property confirmation is missing canonical identifier ${expected}.`);
     }
   }
