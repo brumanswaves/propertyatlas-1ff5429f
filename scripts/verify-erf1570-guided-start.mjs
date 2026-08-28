@@ -111,7 +111,7 @@ try {
   const advancedDetails = page.locator("summary").filter({ hasText: /Advanced parcel details/i }).first();
   await advancedDetails.waitFor({ state: "visible", timeout: 30000 });
   await advancedDetails.click();
-  const advancedText = (await advancedDetails.locator("xpath=.. ").innerText()).toUpperCase();
+  const advancedText = (await advancedDetails.locator("xpath=..").innerText()).toUpperCase();
   for (const expected of [LPI, PARCEL_KEY]) {
     if (!advancedText.includes(expected.toUpperCase())) {
       throw new Error(`Guided property confirmation is missing canonical identifier ${expected}.`);
