@@ -57,7 +57,7 @@ jobs:
       - name: Verify founder OAuth transport when enabled
         run: node scripts/verify-founder-oauth.mjs
 
-      - name: Verify founder OAuth through real browser UI
+      - name: Verify public browser acceptance
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.55.0
           npx playwright install chromium
@@ -75,6 +75,7 @@ jobs:
             sleep 1
           done
           EASY_ERF_BROWSER_URL=http://127.0.0.1:4173/auth node scripts/verify-founder-browser-oauth.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-commercial-browser.mjs
 
       - name: Build production bundle and generate routes
         run: npm run build
