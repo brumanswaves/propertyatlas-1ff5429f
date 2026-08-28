@@ -97,16 +97,26 @@ try {
   monitorMutations = true;
   await investigateButton.click();
 
-  await page.getByText(/Confirm this is the correct erf/i).first().waitFor({
-    state: "visible",
-    timeout: 30000,
-  });
-  const confirmBody = await page.locator("body").innerText();
-  for (const expected of ["Erf number", "1570", "Extent", "618.7 m²"]) {
-    if (!confirmBody.includes(expected)) {
-      throw new Error(`Guided property confirmation is missing ${expected}.`);
-    }
-  }
+  await firstVisible(
+    page.locator("h4").filter({ hasText: /^Confirm this is the correct erf$/i }),
+    "active Guided property confirmation heading",
+  );
+  await firstVisible(
+    page.locator("dt").filter({ hasText: /^Erf number$/i }),
+    "Guided Erf number label",
+  );
+  await firstVisible(
+    page.locator("dd").filter({ hasText: /^1570$/ }),
+    "Guided Erf 1570 value",
+  );
+  await firstVisible(
+    page.locator("dt").filter({ hasText: /^Extent$/i }),
+    "Guided extent label",
+  );
+  await firstVisible(
+    page.locator("dd").filter({ hasText: /618\.7 m²/i }),
+    "Guided 618.7 m² extent value",
+  );
 
   const advancedDetails = page.locator("summary").filter({ hasText: /Advanced parcel details/i }).first();
   await advancedDetails.waitFor({ state: "visible", timeout: 30000 });
@@ -124,10 +134,10 @@ try {
   );
   await confirmButton.click();
 
-  await page.getByText(/Add the address people use to find this erf/i).first().waitFor({
-    state: "visible",
-    timeout: 30000,
-  });
+  await firstVisible(
+    page.locator("h4").filter({ hasText: /^Add the address people use to find this erf$/i }),
+    "active Guided working-address heading",
+  );
   await page.waitForTimeout(750);
 
   if (unexpectedSupabaseMutations.length > 0) {
