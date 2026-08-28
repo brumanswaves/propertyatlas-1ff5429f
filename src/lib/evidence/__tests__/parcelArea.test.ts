@@ -6,7 +6,11 @@ import {
   formatAreaM2WithUnit,
   resolveParcelArea,
 } from "../parcelArea";
-import { buildEvidencePackFixture, evidenceParcel, evidenceMarket } from "./propertyEvidenceTestUtils";
+import {
+  buildEvidencePackFixture,
+  evidenceMarket,
+  evidenceParcel,
+} from "./propertyEvidenceTestUtils";
 
 /** Real live attributes observed on the CSG mirror for Erf 1570. */
 const ERF_1570_RAW = {
@@ -19,7 +23,7 @@ const ERF_1570_RAW = {
 };
 
 describe("canonical parcel area", () => {
-  it("resolves Erf 1570 GEOM_AREA 618.7 and displays 619 m²", () => {
+  it("resolves and displays Erf 1570 GEOM_AREA as 618.7 m²", () => {
     const resolved = resolveParcelArea(ERF_1570_RAW);
     expect(resolved).toMatchObject({
       areaM2: 618.7,
@@ -29,7 +33,8 @@ describe("canonical parcel area", () => {
       confidence: "high",
     });
     expect(canonicalAreaM2(ERF_1570_RAW)).toBe(618.7);
-    expect(formatAreaM2WithUnit(618.7)).toBe("619 m²");
+    expect(formatAreaM2WithUnit(618.7)).toBe("618.7 m²");
+    expect(formatAreaM2WithUnit(620)).toBe("620 m²");
   });
 
   it("prefers GEOM_AREA over Shape__Area", () => {
@@ -92,7 +97,9 @@ describe("evidence pack uses the canonical area helper", () => {
     const pack = buildEvidencePackFixture({
       parcel: evidenceParcel({ rawProperties: ERF_1570_RAW }),
     });
-    const areaClaims = pack.claims.filter((claim) => claim.key === "areaM2" && claim.domain === "identity");
+    const areaClaims = pack.claims.filter(
+      (claim) => claim.key === "areaM2" && claim.domain === "identity",
+    );
     expect(areaClaims).toHaveLength(1);
     expect(areaClaims[0]).toMatchObject({
       domain: "identity",
@@ -126,7 +133,9 @@ describe("evidence pack uses the canonical area helper", () => {
         }),
       ],
     });
-    const areaClaim = pack.claims.find((claim) => claim.domain === "identity" && claim.key === "areaM2");
+    const areaClaim = pack.claims.find(
+      (claim) => claim.domain === "identity" && claim.key === "areaM2",
+    );
     expect(areaClaim?.normalizedValue).toBe(618.7);
     // The listing size lives in its own market claim, never in identity.
     expect(
