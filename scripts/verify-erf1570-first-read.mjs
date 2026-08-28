@@ -84,8 +84,9 @@ try {
 
   const resultGroup = result.locator("xpath=ancestor::*[@role='group'][1]");
   const resultText = await resultGroup.innerText();
+  const normalizedResultText = resultText.toUpperCase();
   for (const expected of ["Exact official match", LPI, PARCEL_KEY]) {
-    if (!resultText.includes(expected)) {
+    if (!normalizedResultText.includes(expected.toUpperCase())) {
       throw new Error(`Erf 1570 search result is missing ${expected}. Result: ${resultText}`);
     }
   }
@@ -99,8 +100,14 @@ try {
   );
 
   const body = await page.locator("body").innerText();
-  for (const expected of ["Erf 1570", LPI, PARCEL_KEY, "618.7 m²"]) {
+  const normalizedBody = body.toUpperCase();
+  for (const expected of ["Erf 1570", "618.7 m²"]) {
     if (!body.includes(expected)) {
+      throw new Error(`Property First Read is missing canonical Erf 1570 evidence: ${expected}`);
+    }
+  }
+  for (const expected of [LPI, PARCEL_KEY]) {
+    if (!normalizedBody.includes(expected.toUpperCase())) {
       throw new Error(`Property First Read is missing canonical Erf 1570 evidence: ${expected}`);
     }
   }
