@@ -267,7 +267,7 @@ describe("Ask Easy Erf evidence payload", () => {
     expect(JSON.stringify(current)).not.toContain("99000000");
   });
 
-  it("filters uploaded assets and selected concepts to the current parcel only", () => {
+  it("excludes legacy generated concepts while keeping assets parcel-scoped", () => {
     const currentConcept = asset({
       id: "current-concept",
       asset_category: "generated_design",
@@ -295,13 +295,12 @@ describe("Ask Easy Erf evidence payload", () => {
       selectedSiteDesign: currentConcept,
     });
 
-    expect(current.uploadedAssets.map((item) => item.id)).toEqual(["current-concept"]);
-    expect(current.sitePotential.selectedConcept?.id).toBe("current-concept");
-    expect(current.sitePotential.selectedConcept?.parcelId).toBe("parcel-current");
-    expect(current.uploadedAssets[0].parcelId).toBe("parcel-current");
-    expect(current.sitePotential.conceptCount).toBe(1);
+    expect(current.uploadedAssets).toEqual([]);
+    expect(current.sitePotential.selectedConcept).toBeNull();
+    expect(current.sitePotential.conceptCount).toBe(0);
     expect(JSON.stringify(current)).not.toContain("wrong-parcel.pdf");
     expect(JSON.stringify(current)).not.toContain("Other parcel secret instructions");
+    expect(JSON.stringify(current)).not.toContain("Current parcel concept");
   });
 
   it("keeps adversarial evidence payloads deterministically below the transport budget", () => {

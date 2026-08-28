@@ -285,21 +285,17 @@ function buildEvidenceStatuses(
     {
       id: "site-potential",
       label: "Site Potential",
-      status: facts.siteDesignSelected
-        ? "Concept selected"
+      status: facts.sitePotentialAccepted
+        ? "Build envelope accepted"
         : facts.siteSkipped
           ? "Skipped by user"
-          : facts.siteConceptCount > 0
-            ? "Concepts available"
-            : "Not started",
-      detail: facts.siteDesignSelected
-        ? "A preferred concept is linked to this erf. Concepts are not approved plans."
+          : "Not started",
+      detail: facts.sitePotentialAccepted
+        ? "An indicative build envelope is accepted from the confirmed site inputs. It is not an approved plan."
         : facts.siteSkipped
           ? "This optional step was deliberately skipped."
-          : facts.siteConceptCount > 0
-            ? `${facts.siteConceptCount} concept${facts.siteConceptCount === 1 ? "" : "s"} generated; none selected.`
-            : "No Site Potential concept has been selected.",
-      tone: facts.siteDesignSelected ? "progress" : facts.siteSkipped ? "supported" : "missing",
+          : "No accepted Site Potential build envelope is recorded.",
+      tone: facts.sitePotentialAccepted ? "progress" : facts.siteSkipped ? "supported" : "missing",
     },
   ];
 }
@@ -401,12 +397,6 @@ export function buildPropertyFirstReadModel({
     (item) => item.listingRole === "comparable_evidence" && item.includeInSummary,
   ).length;
   const storedAssets = liveAssets(assets);
-  const generatedConcepts = storedAssets.filter(
-    (asset) => asset.asset_category === "generated_design",
-  );
-  const selectedDesign = generatedConcepts.find(
-    (asset) => asset.id === investigationInput.workspaceState.sitePotential.selectedDesignAssetId,
-  );
 
   return {
     title: displayTitle,
@@ -436,13 +426,11 @@ export function buildPropertyFirstReadModel({
       : facts.scenarioCount > 0
         ? `${facts.scenarioCount} draft scenario${facts.scenarioCount === 1 ? "" : "s"} saved; none chosen for the report.`
         : "No strategy scenario has been saved.",
-    sitePotentialSummary: selectedDesign
-      ? `${selectedDesign.original_file_name} is the selected concept. It is not an approved plan.`
+    sitePotentialSummary: facts.sitePotentialAccepted
+      ? "An indicative build envelope has been accepted from the confirmed site inputs. It is not an approved plan."
       : facts.siteSkipped
         ? "Site Potential was skipped for this investigation."
-        : generatedConcepts.length > 0
-          ? `${generatedConcepts.length} concept${generatedConcepts.length === 1 ? "" : "s"} stored; no preferred concept is selected.`
-          : "No Site Potential concept is stored.",
+        : "No accepted Site Potential build envelope is recorded.",
     investigateLabel: investigationInput.workspaceState.investigation.startedAt
       ? "Continue investigation"
       : "Investigate this property",

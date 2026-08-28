@@ -797,12 +797,14 @@ export function buildReportFindings(pack: PropertyEvidencePack): ReportFinding[]
     category: "buildings",
     status: siteClaims.length ? "not_checked" : "missing",
     severity: "low",
-    headline: siteClaims.length ? "Site Potential concepts generated" : "No Site Potential concept generated",
+    headline: siteClaims.length
+      ? "Site Potential context recorded"
+      : "No accepted Site Potential build envelope recorded",
     whatWeFound: siteClaims.length
       ? siteClaims.slice(0, 3).map((claim) => claim.label).join(" · ")
-      : "No AI site concept has been generated or selected for this erf.",
+      : "Confirm the parcel and street-facing boundaries before accepting an indicative build envelope.",
     whatItMeans:
-      "Site Potential output is an AI concept visualisation. It is not an architectural plan, approval or proof of buildability.",
+      "Site Potential is an indicative deterministic build envelope. It is not an architectural plan, approval or proof of buildability.",
     confidence: "unverified",
     claimIds: siteClaims.map((claim) => claim.id),
     sourceIds: sourceIdsOf(siteClaims),

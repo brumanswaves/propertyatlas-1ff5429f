@@ -67,6 +67,7 @@ describe("reportProgress", () => {
         strategyScenarioCount: 1,
       },
       savedMarketEvidenceCount: 0,
+      sitePotentialAccepted: true,
     });
 
     expect(rows).toEqual(
@@ -84,7 +85,7 @@ describe("reportProgress", () => {
         expect.objectContaining({
           label: "Site",
           status: "Done",
-          evidence: "6 concepts generated, 1 selected",
+          evidence: "Confirmed site inputs and recorded planning controls",
         }),
         expect.objectContaining({
           label: "Strategy",

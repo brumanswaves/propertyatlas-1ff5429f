@@ -803,13 +803,13 @@ describe("official dossier UX guardrails", () => {
     expect(dossier).toContain("getChosenStrategyScenario");
     expect(dossier).toContain("buildStrategySectionModel");
     expect(dossier).toContain("ReportSitePotentialSection");
-    expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
+    expect(dossier).not.toContain("<SignedAssetPreview asset={selectedDesign} />");
     expect(dossier).toContain("onOpenSitePotential");
     expect(dossier).toContain("sitePotentialSkipped");
     expect(dossier).toContain("buildSitePotentialReportPanel");
     expect(dossier).toContain("capacityVisual");
-    expect(dossier).toContain("conceptVisual");
-    expect(dossier).toContain("SITE_POTENTIAL_DISCLAIMER");
+    expect(dossier).not.toContain("conceptVisual={");
+    expect(dossier).toContain("Indicative only. Confirm property-specific planning controls");
     expect(dossier).toContain("savedStatus");
     expect(dossier).toContain("Open original");
     expect(dossier).toContain("whether Easy Erf actually read the");

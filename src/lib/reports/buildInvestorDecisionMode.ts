@@ -1372,7 +1372,9 @@ function supportingEvidence(report: ReportViewModel, marketSupport: MarketSuppor
       `${marketSupport.pricedExitComparableCount} priced exit comparable${marketSupport.pricedExitComparableCount === 1 ? "" : "s"} saved.`,
     );
   }
-  if (report.site.selectedDesign) items.add("A selected Site Potential concept is linked.");
+  if (report.site.acceptedBuildEnvelope) {
+    items.add("An indicative Site Potential build envelope has been accepted.");
+  }
   if (report.documents.uploadedReportCount > 0)
     items.add("Paid report documents are uploaded for reference.");
   return Array.from(items);

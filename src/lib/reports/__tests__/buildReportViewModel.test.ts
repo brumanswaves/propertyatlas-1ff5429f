@@ -255,9 +255,9 @@ describe("buildReportViewModel", () => {
     expect(planningLabels).not.toContain("\ufffd");
     expect(planningLabels).not.toContain("\u00ef\u00bf\u00bd");
     expect(vm.market.evidenceCount).toBe(3);
-    expect(vm.documents.assetCount).toBe(1);
+    expect(vm.documents.assetCount).toBe(0);
     expect(vm.strategy.chosen?.id).toBe("scenario-1");
-    expect(vm.site.selectedDesign?.id).toBe("design-1");
+    expect(vm.site.acceptedBuildEnvelope).toBe(false);
   });
 
   it("keeps report Strategy chosen scenario parcel-scoped", () => {
@@ -382,7 +382,7 @@ describe("buildReportViewModel", () => {
     expect(vm.documents.uploadedReportCount).toBe(1);
   });
 
-  it("attaches the concept-only disclaimer whenever a Site Potential design is selected", () => {
+  it("uses the deterministic envelope disclaimer without treating legacy concepts as report state", () => {
     const vm = buildReportViewModel(
       baseInput({
         selectedSiteDesign: {
@@ -399,8 +399,8 @@ describe("buildReportViewModel", () => {
         } as never,
       }),
     );
-    expect(vm.site.selectedDesign).not.toBeNull();
-    expect(vm.site.disclaimer).toMatch(/Not an architectural plan/i);
+    expect(vm.site.acceptedBuildEnvelope).toBe(false);
+    expect(vm.site.disclaimer).toMatch(/Indicative build envelope/i);
   });
 
   it("exposes stable anchor section metadata for navigation", () => {

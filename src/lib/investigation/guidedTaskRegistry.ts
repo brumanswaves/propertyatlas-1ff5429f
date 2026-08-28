@@ -36,8 +36,8 @@ export interface InvestigationFacts {
   marketAddressSaved: boolean;
   scenarioCount: number;
   hasChosenScenario: boolean;
-  siteConceptCount: number;
-  siteDesignSelected: boolean;
+  /** The deterministic build envelope was accepted from confirmed site inputs. */
+  sitePotentialAccepted: boolean;
   usableTopographySurveyCount: number;
   sitePhotoCount: number;
   existingHousePhotoCount: number;
@@ -261,28 +261,29 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
     id: "review-site-potential",
     stageId: "site_potential",
     priority: 80,
-    title: "Review the Site Potential concepts",
+    title: "Confirm the Site Potential build envelope",
     shortExplanation:
-      "Generate or review a visual concept for this erf, or skip the step if it is not relevant.",
+      "Confirm where a building could potentially fit using the parcel boundary, street-facing boundary and recorded planning controls.",
     whyItMatters:
-      "A concept makes the build or renovation option concrete once planning context is known. It is optional and never blocks the report.",
+      "The envelope shows where a building may potentially fit after applying the currently supported planning controls. It is optional and never blocks the report.",
     improves: ["Site Potential", "Report"],
     estimatedMinutes: 8,
     primaryActionLabel: "Open Site Potential",
     targetTab: "site-potential",
     steps: [
       "Open the Site Potential tab.",
-      "Choose whether this is vacant land, a renovation, or another building type.",
-      "Add photos or plans if you have them, then generate concepts.",
-      "Select a preferred concept, or skip the step.",
+      "Confirm the parcel boundary.",
+      "Confirm the street-facing boundary.",
+      "Review the buildable envelope on the map and the same limits in the street-side view.",
+      "Accept the envelope, or skip this optional step.",
     ],
     afterCompletion:
-      "Easy Erf saves the selected concept to this erf and shows it in the report as a concept, not a plan.",
+      "Easy Erf records the accepted indicative build envelope for this erf.",
     canSkip: true,
-    confidenceAfterLabel: "Concept saved and clearly labelled as conceptual",
+    confidenceAfterLabel: "Accepted indicative build envelope recorded from the confirmed site inputs",
     limitations:
-      "Concepts are visual interpretations. They are not architectural plans, not approved, and not a build envelope.",
-    isComplete: (facts) => facts.siteDesignSelected || facts.siteSkipped,
+      "The envelope is indicative. It is not a land-surveyor determination, architectural plan, municipal approval, confirmation of title conditions or servitudes, or permission to build.",
+    isComplete: (facts) => facts.sitePotentialAccepted || facts.siteSkipped,
     confidenceBefore: () => "unconfirmed",
   },
   {

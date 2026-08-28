@@ -1,9 +1,8 @@
 /**
  * Site Potential report panel model.
  *
- * The report tells one connected story: what the rules calculate as site
- * capacity, and — separately — what a saved AI concept imagines. Both are
- * shown when both exist. Neither is ever invented.
+ * The active report shows the deterministic build envelope derived from the
+ * parcel, confirmed street-facing boundaries and recorded planning controls.
  */
 
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
@@ -86,7 +85,8 @@ export function buildSitePotentialMetrics(
 
 export function buildSitePotentialReportPanel(input: {
   envelope: BuildEnvelopeResult | null;
-  hasConceptImage: boolean;
+  /** Legacy concept inputs are intentionally ignored by the active report. */
+  hasConceptImage?: boolean;
   conceptStyle?: string | null;
   brief?: string | null;
   skipped: boolean;
@@ -96,7 +96,7 @@ export function buildSitePotentialReportPanel(input: {
     input.envelope && input.envelope.state !== "more_information_required" ? input.envelope : null;
   const metrics = buildSitePotentialMetrics(envelope);
   const hasCapacity = Boolean(envelope) && metrics.length > 0;
-  const hasConcept = input.hasConceptImage;
+  const hasConcept = false;
 
   const mode: SitePotentialPanelMode =
     hasCapacity && hasConcept
@@ -114,13 +114,11 @@ export function buildSitePotentialReportPanel(input: {
       mode === "both"
         ? "Calculated site capacity, alongside the concept saved for this erf."
         : mode === "capacity_only"
-          ? "Calculated site capacity from the rules recorded for this erf."
-          : mode === "concept_only"
-            ? "The concept saved for this erf. Site capacity has not been calculated yet."
-            : "Nothing has been calculated or saved for this erf yet.",
+          ? "Indicative build envelope from the parcel geometry and planning controls recorded for this erf."
+          : "No accepted build envelope has been recorded for this erf yet.",
     hasCapacity,
     hasConcept,
-    capacityHeading: "Calculated site capacity",
+    capacityHeading: "Indicative build envelope",
     capacityCaption: SITE_POTENTIAL_CAPACITY_CAPTION,
     conceptHeading: "Concept visualisation",
     conceptCaption: SITE_POTENTIAL_CONCEPT_CAPTION,
@@ -137,6 +135,6 @@ export function buildSitePotentialReportPanel(input: {
         ? null
         : input.skipped
           ? "Site Potential was skipped for this report."
-          : "No build envelope or concept has been produced for this erf yet.",
+          : "No accepted build envelope has been recorded for this erf yet.",
   };
 }

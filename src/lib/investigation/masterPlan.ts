@@ -421,26 +421,27 @@ export function buildMasterInvestigationPlan(
     importance: "optional",
     status: facts.siteSkipped
       ? "not_applicable"
-      : facts.siteDesignSelected
+      : facts.sitePotentialAccepted
         ? "complete"
-        : facts.siteConceptCount > 0
-          ? "partial"
-          : "not_started",
+        : "not_started",
     summary: facts.siteSkipped
       ? "You skipped Site Potential for this erf."
-      : facts.siteDesignSelected
-        ? "A concept is saved. It is conceptual, not an approved plan."
-        : facts.siteConceptCount > 0
-          ? "Concepts are generated but none is selected."
-          : "No concept has been generated for this erf yet.",
-    missingItem: facts.siteDesignSelected || facts.siteSkipped ? null : "A selected concept",
-    whyItMatters: "A concept makes the build or renovation option concrete.",
-    completionCriteria: "A concept is selected, or the step is skipped.",
+      : facts.sitePotentialAccepted
+        ? "An indicative build envelope has been accepted for this erf."
+        : "No accepted build envelope has been recorded for this erf yet.",
+    missingItem:
+      facts.sitePotentialAccepted || facts.siteSkipped
+        ? null
+        : "Confirm the parcel and street-facing boundaries and accept the resulting build envelope.",
+    whyItMatters:
+      "The envelope shows where a building may potentially fit after applying the currently supported planning controls.",
+    completionCriteria:
+      "The deterministic build envelope is accepted, or Site Potential is explicitly skipped.",
     reportSections: ["Site Potential"],
     actionLabel: "Open Site Potential",
     targetTab: "site-potential",
     taskId: "review-site-potential",
-    supportedEvidenceCount: facts.siteConceptCount,
+    supportedEvidenceCount: facts.sitePotentialAccepted ? 1 : 0,
     requiredEvidenceCount: 1,
     conflicts: [],
   });
