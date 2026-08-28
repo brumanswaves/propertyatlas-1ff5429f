@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-This document is the canonical product and delivery plan for Easy Erf. It exists to keep product direction, UX, architecture, evidence standards, strategy tools, engineering work, Lovable work, and QA on one controlled path.
+This document is the canonical product and delivery plan for Easy Erf. It exists to keep product direction, UX, architecture, evidence standards, strategy tools, engineering work, approved external-tool work, and QA on one controlled path.
 
-When a future idea, branch, PR, Lovable prompt, or design decision conflicts with this document, the conflict must be resolved here first.
+When a future idea, branch, PR, external-builder prompt, or design decision conflicts with this document, the conflict must be resolved here first.
 
 GitHub `main` is the code source of truth. This document is the product source of truth.
 
@@ -64,7 +64,7 @@ The canonical user journey is:
 8. User supplies missing evidence only when needed, with clear instructions on how to obtain it
 9. Easy Erf interprets the evidence and updates the property file
 10. Easy Erf runs strategy and calculator scenarios using transparent maths and assumptions
-11. Site Potential turns verified constraints into understandable development possibilities
+11. Site Potential turns verified or explicitly assumed constraints into a deterministic parcel/build envelope and street-side build-line view
 12. Market Evidence adds comparable and market context
 13. Easy Erf Report continuously improves as evidence and analysis improve
 14. Ask Easy Erf explains, compares, calculates, and guides actions throughout
@@ -152,7 +152,13 @@ The user should be able to see the numbers, formulas, assumptions, and sensitivi
 
 ### Layer 6: Site Potential
 
-Site Potential converts verified or explicitly assumed constraints into visual and strategic property-use concepts.
+Site Potential converts verified or explicitly assumed constraints into a **deterministic build envelope**, not a generated architectural concept.
+
+The active MVP output is limited to:
+- a parcel/map view showing the potential build envelope or build lines
+- a street-side / street-level view showing the relevant build lines, height and envelope limits
+- explicit assumptions, evidence confidence and source provenance
+- an accept or skip state that is shared with Guided Investigation and the Easy Erf Report
 
 Inputs may include:
 - parcel geometry
@@ -166,9 +172,10 @@ Inputs may include:
 - environmental constraints
 - topography
 - access / street frontage
-- user goals
 
-Site Potential outputs must never appear more authoritative than the evidence beneath them.
+**The active product does not generate house designs, facades, rendered buildings, architectural concepts or AI building images.** Historical generated-design tables, assets, APIs and fields may remain temporarily for backward compatibility, but they are not the active user journey, completion contract or product promise.
+
+Site Potential outputs must never appear more authoritative than the evidence beneath them. A build envelope is not an approved building plan, municipal approval or professional design.
 
 ### Layer 7: Market Evidence
 
@@ -214,7 +221,7 @@ Examples:
 - published zoning rules are not automatically property-specific verified rights
 - a General Plan is not automatically the selected erf's individual SG diagram
 - a paid property report is not automatically the certified title deed
-- a generated Site Potential concept is not an approved building plan
+- a Site Potential build envelope is not an approved building plan or municipal approval
 - AI interpretation is not official evidence
 - a user-entered assumption is not a verified property fact
 
@@ -391,7 +398,7 @@ The report should be understandable at a glance, then deepen page by page.
 - documents and paid reports
 - source / evidence appendix
 
-Paid reports, uploaded SG diagrams, strategy outputs, calculations, and selected Site Potential concepts should flow into the report automatically where relevant.
+Paid reports, uploaded SG diagrams, strategy outputs, calculations, and the accepted deterministic Site Potential envelope/build-line state should flow into the report automatically where relevant.
 
 ---
 
@@ -425,18 +432,18 @@ Expert workspaces remain available underneath for users who want depth and direc
 
 The MVP is not "every property in South Africa."
 
-The MVP is:
+The product MVP is:
 
 **One real property investigation works extremely well end-to-end, using Erf 1570 as the gold-standard case, within the Kouga / St Francis pilot geography.**
 
-A successful MVP allows a user to:
+A successful product MVP allows a user to:
 - identify the property
 - establish a working address
 - bind and read cadastral / SG evidence
 - add title / ownership evidence
 - establish working zoning with transparent confidence
 - complete core property checks
-- understand build constraints and Site Potential
+- understand build constraints and deterministic Site Potential
 - add Market Evidence
 - run powerful strategy calculators
 - compare scenarios
@@ -444,13 +451,20 @@ A successful MVP allows a user to:
 - ask grounded questions
 - produce a useful Easy Erf Report
 
+The immediate commercial MVP is:
+
+**Sell and fulfill the first real R999 Early Access Easy Erf Property Investigation for one property using the canonical Easy Erf property file plus human review.**
+
+Do not delay this commercial proof until every evidence source or investigation step is automated.
+
 ---
 
 ## 12. Roadmap
 
-### NOW: Make the core investigation excellent
+### NOW: Make the core investigation excellent and prove willingness to pay
 
 - Erf 1570 end-to-end
+- first real R999 Early Access human-reviewed property investigation
 - one canonical property file
 - evidence registry and confidence discipline
 - one clear Next Best Step
@@ -460,7 +474,7 @@ A successful MVP allows a user to:
 - zoning and planning confidence states
 - property checks
 - Strategy & Calculators integrated into the property
-- Site Potential integrated into strategy
+- deterministic Site Potential integrated into strategy
 - Market Evidence integrated into strategy
 - living Easy Erf Report
 - Ask Easy Erf across the workflow
@@ -482,8 +496,8 @@ A successful MVP allows a user to:
 
 ### THEN: Decision intelligence
 
-- robust build envelope
-- development scenarios
+- stronger deterministic build envelope
+- development scenarios using explicit numerical assumptions, not generated architectural renders
 - financial scenario comparison
 - investor strategy recommendations
 - risk scoring
@@ -522,12 +536,14 @@ A successful MVP allows a user to:
 - Ask Easy Erf is grounded in the property file, not a generic chatbot
 - Strategy & Calculators are a core product pillar
 - Calculations are deterministic maths first, AI explanation second
+- **Active Site Potential is deterministic parcel/map build envelope plus street-side build lines only. No generated house concepts, rendered buildings, facades or AI architectural imagery are part of the active product. This supersedes the earlier generated-concept direction.**
 - Site Potential must inherit evidence confidence and assumptions
 - Paid reports are an important evidence and commercial pathway
 - Evidence provenance and confidence must be preserved
 - Visual evidence traceability: when a stored SG document has a safe derived preview, the living report may show that preview beside identity-gated findings. Preview generation is convenience evidence display only; it never changes identity, lineage or planning provenance, and a missing preview remains an honest limitation.
 - Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch
-- Current commercial positioning does not introduce a subscription. Pay-per-use or pay-per-property offers must remain truthful to real entitlement and payment infrastructure.
+- **Current commercial MVP includes a once-off R999 Early Access human-reviewed Easy Erf Property Investigation for one property. It is not a subscription. Checkout remains fail-closed until a real verified payment path is configured.**
+- Pay-per-use or pay-per-property offers must remain truthful to real entitlement and payment infrastructure.
 - My Investigations derives from canonical property/investigation state and must not create a separate progress engine.
 - Founder Operations extends the existing protected admin architecture and must not create a second admin-role system.
 - Privileged admin mutations require a trusted backend boundary and audit trail before UI controls are exposed.
@@ -552,7 +568,7 @@ Before starting a feature, answer:
 - Does it create design or terminology drift elsewhere?
 - Is it NOW, NEXT, THEN, or LATER?
 
-No new chat, Lovable project, agent, admin system or branch gets to create a competing roadmap.
+No new chat, external builder, agent, admin system or branch gets to create a competing roadmap.
 
 ---
 
@@ -567,23 +583,17 @@ Absolute source of truth for production code.
 ### Design System
 `docs/EASY_ERF_DESIGN_SYSTEM.md` is the canonical lightweight reference for visual roles, reusable patterns, navigation, terminology and responsive coherence.
 
-### Codex
-Primary engineering implementation, debugging, code review, and test work.
+### Repository engineering
+Repository-first engineering is the default implementation, debugging, review and test path. Use one focused branch / implementation tranche at a time. Avoid overlapping agents solving the same problem.
 
-Use one focused branch / implementation tranche at a time. Avoid overlapping agents solving the same problem.
+### Codex
+Codex may be used for focused engineering under the model, reasoning, credit-risk, scope and stop-condition controls in `AGENTS.md`. Do not use broad archaeology or high-cost models when direct repository inspection can narrow the task first.
 
 ### Lovable
-Use primarily for:
-- visual product work where Lovable is genuinely advantageous
-- preview / browser QA
-- production publishing
+Lovable is **not authorized for build work by default**. It may only be used for a specifically approved task after the owner explicitly authorizes that exact use. General instructions to continue building do not authorize Lovable credits or implementation work.
 
-Do not use Lovable as a parallel product roadmap or competing codebase.
-
-Use the minimum practical agent credits.
-
-### QA environment
-Maintain at most one canonical QA Lovable project when isolation is genuinely needed.
+### Vercel
+Do not use Vercel for Easy Erf unless the owner explicitly reverses the repository governance prohibition.
 
 ### ChatGPT project / control room
 Product strategy, architecture, roadmap, decisions, and orchestration should be consolidated into one Easy Erf control-room conversation/project.
@@ -601,7 +611,14 @@ When a major product direction changes:
 3. Identify impacted UX, data model, report, calculators, operations and existing features.
 4. Only then open implementation work.
 
-This prevents repeated redesign, duplicated code, fragmented Lovable projects, unsafe operational shortcuts and unnecessary engineering / AI spend.
+2026-08-28 change-control correction:
+
+- The earlier generated Site Potential concept direction is superseded by deterministic map/build-envelope plus street-side build lines only.
+- The active generated-concept user flow was removed in PRs #127 and #128 before this Master Plan was refreshed. This document now resolves that drift and governs future work.
+- Historical generation data may remain for compatibility, but future active UX, report completion and commercial copy must not depend on generated concepts.
+- The R999 one-property human-reviewed Early Access investigation is now part of the NOW commercial MVP and must not disappear from the active build without an explicit product decision here.
+
+This change-control rule prevents repeated redesign, duplicated code, fragmented external-builder projects, unsafe operational shortcuts and unnecessary engineering / AI spend.
 
 ---
 
@@ -639,7 +656,7 @@ Do not substitute demo-property counts for registered users, active investigatio
 
 ### Trusted support layer
 
-Cross-user investigation detail, uploaded evidence, Site Potential generations, entitlements, support notes, refunds, grants, retries and repairs are privileged support capabilities. They require a trusted backend boundary with:
+Cross-user investigation detail, uploaded evidence, legacy Site Potential job state, entitlements, support notes, refunds, grants, retries and repairs are privileged support capabilities. They require a trusted backend boundary with:
 
 - existing admin-role authorization
 - least privilege
@@ -655,3 +672,38 @@ Cross-user investigation detail, uploaded evidence, Site Potential generations, 
 No service-role credential may reach the browser. Do not expose a refund, credit-grant, destructive repair or impersonation control before a real audited backend action exists.
 
 Developer/debug tools must remain clearly separated from normal operations even when linked from the same Founder Operations shell.
+
+---
+
+## 19. R999 Early Access commercial proof
+
+The R999 Early Access Easy Erf Property Investigation is the shortest path to validating real customer value without waiting for full automation.
+
+### Offer
+
+- R999 introductory once-off price
+- one property
+- human-assisted and human-reviewed
+- uses the canonical Easy Erf property file and evidence already gathered
+- supplements automation with public/official research and human review when the product cannot yet complete the work autonomously
+
+### Reviewed output emphasis
+
+- Property Truth
+- Property Potential
+- deal killers and key risks
+- conflicts and unknowns
+- clear next steps and professional confirmation points
+- Strategy and financial analysis where relevant
+
+### Trust boundary
+
+The Early Access investigation is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Anything Easy Erf cannot verify remains unresolved or clearly labelled as an assumption.
+
+### Checkout boundary
+
+The public purchase action must remain disabled unless a real verified payment path is configured. A checkout link, payment-provider response or test charge alone does not prove the complete purchase-to-fulfilment workflow.
+
+### Commercial acceptance
+
+Commercial MVP acceptance requires one real customer to pay through the verified payment path and receive the promised human-reviewed investigation. The product should learn from that fulfillment before expanding plans, subscriptions, marketplaces or national automation.
