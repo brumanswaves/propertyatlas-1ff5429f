@@ -428,9 +428,9 @@ export function buildAskEasyErfEvidencePayload(
   input: BuildAskEasyErfPayloadInput,
 ): AskEasyErfEvidencePayload {
   const parcelId = input.report.parcelId;
-  const selectedDesignId = input.report.site.selectedDesign?.id ?? null;
+  const selectedDesignId = null;
   const currentAssets = input.assets
-    .filter((asset) => asset.parcel_id === parcelId)
+    .filter((asset) => asset.parcel_id === parcelId && asset.asset_category !== "generated_design")
     .sort(
       (a, b) => assetRelevanceRank(a, selectedDesignId) - assetRelevanceRank(b, selectedDesignId),
     )
@@ -511,10 +511,9 @@ export function buildAskEasyErfEvidencePayload(
     uploadedAssets,
     sitePotential: {
       selectedConcept,
-      conceptCount: currentAssets.filter((asset) => asset.asset_category === "generated_design")
-        .length,
+      conceptCount: 0,
       skipped: input.report.site.skipped,
-      hasBrief: Boolean(selectedConcept?.conceptRationale),
+      hasBrief: false,
     },
     strategy: {
       chosen,
@@ -758,8 +757,8 @@ export function suggestedAskEasyErfQuestions(
   }
   const stateAwareQuestion = payload.strategy.chosen
     ? "What do my numbers say?"
-    : payload.sitePotential.selectedConcept
-      ? "What does the selected concept assume?"
+    : payload.sitePotential.skipped
+      ? "What Site Potential checks remain?"
       : payload.market.evidenceCount > 0
         ? "What does the market evidence show?"
         : !payload.ownership.isVerified
@@ -797,7 +796,7 @@ export function askEasyErfEvidenceWeight(payload: AskEasyErfEvidencePayload): nu
   if (payload.uploadedAssets.length > 0) weight += 1;
   if (payload.risks.length > 0 || payload.decision.stillNeeded.length > 0) weight += 1;
   if (payload.strategy.chosen || payload.strategy.scenarios.length > 0) weight += 1;
-  if (payload.sitePotential.selectedConcept || payload.sitePotential.skipped) weight += 1;
+  if (payload.sitePotential.skipped) weight += 1;
   return weight;
 }
 

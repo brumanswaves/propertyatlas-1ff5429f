@@ -151,18 +151,17 @@ describe("Site Potential selected concept persistence", () => {
     );
     const service = read("src/lib/sitePotential/sitePotentialService.ts");
 
-    expect(investigationHome).toContain("selectedSiteDesign={null}");
-    expect(investigationHome).not.toContain("selectedSiteDesign={selectedDesign}");
+    expect(investigationHome).toContain("sitePotentialAccepted: Boolean(acceptedBuildEnvelope)");
+    expect(investigationHome).not.toContain("selectedSiteDesign");
     expect(service).not.toContain("clearMissingSelectedDesign");
   });
 
-  it("keeps the Easy Erf Report selected concept view tied to persisted project state", () => {
+  it("keeps the Easy Erf Report on the accepted deterministic envelope", () => {
     const dossier = read("src/components/property/ErfResearchDossier.tsx");
 
-    expect(dossier).toContain(
-      "const siteProject = useSitePotentialProject(parcel.id, generatedDesigns)",
-    );
-    expect(dossier).toContain("<SignedAssetPreview asset={selectedDesign} />");
+    expect(dossier).toContain("sitePotentialAccepted: Boolean(acceptedBuildEnvelope)");
+    expect(dossier).not.toContain("useSitePotentialProject");
+    expect(dossier).not.toContain("<SignedAssetPreview asset={selectedDesign} />");
     expect(dossier).not.toContain("clearMissingSelectedDesign");
   });
 });

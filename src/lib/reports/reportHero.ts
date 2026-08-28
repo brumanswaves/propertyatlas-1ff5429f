@@ -13,10 +13,8 @@ export type ReportHeroKind =
   | "neutral_card";
 
 export interface ReportHeroInput {
-  /** A saved AI concept or a deterministic build-envelope visual exists. */
+  /** A deterministic build-envelope visual exists. */
   hasSitePotentialVisual: boolean;
-  /** The site potential visual is the deterministic build envelope, not AI. */
-  sitePotentialVisualIsDeterministic?: boolean;
   /** Real parcel geometry is available, so a parcel overview can be drawn. */
   hasParcelGeometry: boolean;
   /** A user-supplied property photograph with confirmed usage rights exists. */
@@ -32,9 +30,8 @@ export function selectReportHero(input: ReportHeroInput): ReportHeroSelection {
   if (input.hasSitePotentialVisual) {
     return {
       kind: "site_potential",
-      caption: input.sitePotentialVisualIsDeterministic
-        ? "Build envelope calculated from official parcel geometry and the planning rules recorded for this erf. Theoretical, not an approved plan."
-        : "AI-generated concept visualisation saved to this erf. It is an interpretation, not a photograph or approved plan.",
+      caption:
+        "Build envelope calculated from official parcel geometry and the planning rules recorded for this erf. Theoretical, not an approved plan.",
     };
   }
   if (input.hasParcelGeometry) {

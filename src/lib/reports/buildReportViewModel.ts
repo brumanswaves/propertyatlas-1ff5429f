@@ -177,10 +177,8 @@ export interface MarketView {
 }
 
 export interface SiteView {
-  selectedDesign: ErfAsset | null;
-  conceptCount: number;
+  acceptedBuildEnvelope: boolean;
   skipped: boolean;
-  hasBrief: boolean;
   disclaimer: string;
 }
 
@@ -231,7 +229,10 @@ export interface BuildReportInput {
   assets: ErfAsset[];
   chosenScenario: ErfStrategyScenario | null;
   strategyScenarios: ErfStrategyScenario[];
-  selectedSiteDesign: ErfAsset | null;
+  /** Accepted deterministic Site Potential build envelope from confirmed site inputs. */
+  sitePotentialAccepted?: boolean;
+  /** @deprecated Legacy input retained for callers that still deserialize historic concepts. */
+  selectedSiteDesign?: ErfAsset | null;
   evidencePack?: PropertyEvidencePack;
   researchSources?: BuildPropertyEvidencePackInput["researchSources"];
   propertyNotes?: BuildPropertyEvidencePackInput["propertyNotes"];
@@ -244,7 +245,7 @@ export interface BuildReportInput {
 }
 
 const DEFAULT_DISCLAIMER =
-  "AI-generated concept visualisation. Not an architectural plan, municipal approval, quotation or representation of what may legally be built.";
+  "Indicative build envelope only. Not a land-surveyor determination, architectural plan, municipal approval, confirmation of title conditions or servitudes, or permission to build.";
 
 function pickConfirmedAddress(address: MarketAddressIntelligence | null): AddressCandidate | null {
   if (!address) return null;
@@ -577,38 +578,22 @@ function confRank(c: SavedMarketEvidence["confidence"]) {
   return c === "high" ? 3 : c === "medium" ? 2 : c === "low" ? 1 : 0;
 }
 
-function buildSite(
-  workspaceState: ErfWorkspaceState,
-  selectedDesign: ErfAsset | null,
-  siteBrief?: string | null,
-): SiteView {
+function buildSite(workspaceState: ErfWorkspaceState, acceptedBuildEnvelope: boolean): SiteView {
   return {
-    selectedDesign,
-    conceptCount: workspaceState.sitePotential.conceptCount,
+    acceptedBuildEnvelope,
     skipped:
       workspaceState.sitePotential.skipped ||
       workspaceState.sitePotential.progressState === "skipped" ||
       workspaceState.sitePotential.mode === "skipped",
-    hasBrief: Boolean(siteBrief && siteBrief.trim().length > 0),
     disclaimer: DEFAULT_DISCLAIMER,
   };
 }
 
 function buildSiteFromPack(
-  pack: PropertyEvidencePack,
   workspaceState: ErfWorkspaceState,
-  selectedDesign: ErfAsset | null,
-  siteBrief?: string | null,
+  acceptedBuildEnvelope: boolean,
 ): SiteView {
-  const selectedClaim = firstSupportedOrObservedClaim(pack, "site", "selectedSitePotentialConcept");
-  const countClaim = firstSupportedOrObservedClaim(pack, "site", "sitePotentialConceptCount");
-  return {
-    ...buildSite(workspaceState, selectedClaim || !selectedDesign?.parcel_id ? selectedDesign : null, siteBrief),
-    conceptCount: numberOrNull(countClaim?.normalizedValue ?? countClaim?.value) ?? workspaceState.sitePotential.conceptCount,
-    hasBrief:
-      Boolean(siteBrief && siteBrief.trim().length > 0) ||
-      pack.sources.some((source) => source.id.startsWith("site-project-") && source.fragments.length > 0),
-  };
+  return buildSite(workspaceState, acceptedBuildEnvelope);
 }
 
 function buildStrategy(
@@ -650,6 +635,7 @@ function buildDocuments(
   assets: ErfAsset[],
   workspaceState: ErfWorkspaceState,
   savedEvidence: SavedMarketEvidence[],
+  sitePotentialAccepted: boolean,
 ): DocumentsView {
   const sg = assets.filter((a) => a.asset_category === "sg_diagram").length;
   const paid = assets.filter((a) => a.asset_category === "paid_report").length;
@@ -659,7 +645,7 @@ function buildDocuments(
     workspaceState.reviewedSourceIds.length > 0 || sg > 0,
     savedEvidence.length > 0 || workspaceState.marketAddressSaved,
     workspaceState.strategyScenarioCount > 0,
-    workspaceState.sitePotential.selectedDesignAssetId != null || workspaceState.sitePotential.skipped,
+    sitePotentialAccepted || workspaceState.sitePotential.skipped,
     paid > 0,
   ];
   const filled = buckets.filter(Boolean).length;
@@ -684,7 +670,7 @@ function buildDocumentsFromPack(
       .filter((domain) => domain.state === "supported" || domain.state === "partial")
       .map((domain) => domain.domain),
   );
-  const buckets = ["identity", "documents", "market", "strategy", "site", "deeds"].map((domain) =>
+  const buckets = ["identity", "documents", "market", "strategy", "deeds"].map((domain) =>
     supportedDomains.has(domain as EvidenceDomain),
   );
   const filled = buckets.filter(Boolean).length;
@@ -693,7 +679,9 @@ function buildDocumentsFromPack(
     savedEvidenceCount: pack.sources.filter((source) => source.kind === "market_listing").length || savedEvidence.length,
     sgDiagramCount: assets.filter((asset) => asset.category === "sg_diagram").length,
     uploadedReportCount: assets.filter((asset) => asset.category === "paid_report").length,
-    completenessPercent: Math.round((filled / buckets.length) * 100) || buildDocuments([], workspaceState, savedEvidence).completenessPercent,
+    completenessPercent:
+      Math.round((filled / buckets.length) * 100) ||
+      buildDocuments([], workspaceState, savedEvidence, false).completenessPercent,
   };
 }
 
@@ -758,7 +746,7 @@ function buildReadinessCategoriesFromPack(pack: PropertyEvidencePack): Readiness
     { id: "ownership", label: "Ownership", domains: ["ownership", "deeds", "transfers"] },
     { id: "market", label: "Market", domains: ["market", "valuation"] },
     { id: "risk", label: "Risk review", domains: ["identity", "planning", "market", "documents"] },
-    { id: "strategy", label: "Strategy", domains: ["strategy", "site"] },
+    { id: "strategy", label: "Strategy", domains: ["strategy"] },
     { id: "documents", label: "Documents", domains: ["documents"] },
   ];
   return categories.map((category) => {
@@ -854,18 +842,14 @@ function buildRisks(input: BuildReportInput, market: MarketView, ownership: Owne
     });
   }
 
-  if (
-    !ws.sitePotential.selectedDesignAssetId &&
-    !ws.sitePotential.skipped &&
-    ws.sitePotential.conceptCount === 0
-  ) {
+  if (!input.sitePotentialAccepted && !ws.sitePotential.skipped) {
     risks.push({
       id: "site-not-reviewed",
       title: "Site and environment not reviewed",
       severity: "low",
       why: "Slope, access, orientation and site constraints can materially change value and buildability.",
-      evidence: "No Site Potential concept generated or explicit skip recorded.",
-      nextAction: "Explore Site Potential or mark it not relevant.",
+      evidence: "No accepted deterministic build envelope or explicit skip recorded.",
+      nextAction: "Confirm the Site Potential build envelope or mark it not relevant.",
       actionTab: "site-potential",
     });
   }
@@ -972,8 +956,8 @@ function buildBrief(
   if (input.workspaceState.chosenScenarioId) {
     positives.push("A strategy scenario has been chosen.");
   }
-  if (input.workspaceState.sitePotential.selectedDesignAssetId) {
-    positives.push("A Site Potential concept has been selected.");
+  if (input.sitePotentialAccepted) {
+    positives.push("An indicative Site Potential build envelope has been accepted.");
   }
   if (positives.length === 0) {
     positives.push("Report shell created for this erf. Add evidence to strengthen it.");
@@ -1003,14 +987,7 @@ function buildBrief(
   };
 }
 
-function buildHero(input: BuildReportInput, site: SiteView): ReportViewModel["heroImage"] {
-  if (site.selectedDesign?.storage_path) {
-    return {
-      src: "",
-      caption: "Selected Site Potential concept — AI-generated visualisation.",
-      source: "ai_interpretation",
-    };
-  }
+function buildHero(input: BuildReportInput, _site: SiteView): ReportViewModel["heroImage"] {
   const subject = input.savedEvidence.find((e) => e.listingRole === "subject_active_listing");
   if (subject) {
     return {
@@ -1027,18 +1004,24 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
     input.evidencePack ??
     buildPropertyEvidencePack({
       parcel: input.parcel,
-      workspaceState: input.workspaceState,
+      workspaceState: {
+        ...input.workspaceState,
+        sitePotential: {
+          ...input.workspaceState.sitePotential,
+          conceptCount: 0,
+          preferredConceptId: null,
+          selectedDesignAssetId: null,
+          progressState: input.workspaceState.sitePotential.skipped ? "skipped" : "not_started",
+        },
+      },
       researchSources: input.researchSources ?? buildPublicResearchSources(input.parcel),
       savedMarketEvidence: input.savedEvidence,
       marketAddressIntelligence: input.marketAddress,
-      assets: input.assets,
+      assets: input.assets.filter((asset) => asset.asset_category !== "generated_design"),
       propertyNotes: input.propertyNotes,
       strategyWorkspace: input.strategyWorkspace,
       strategyScenarios: input.strategyScenarios,
       chosenScenario: input.chosenScenario,
-      selectedSiteDesign: input.selectedSiteDesign,
-      sitePotentialProject: input.sitePotentialProject,
-      siteBrief: input.siteBrief,
       planningAssessment: input.planningAssessment,
       now: input.now,
     });
@@ -1046,7 +1029,7 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
   const ownership = buildOwnershipFromPack(evidencePack, input.assets);
   const planning = buildPlanningFromPack(evidencePack, input.parcel);
   const market = buildMarketFromPack(evidencePack, input.savedEvidence);
-  const site = buildSiteFromPack(evidencePack, input.workspaceState, input.selectedSiteDesign, input.siteBrief);
+  const site = buildSiteFromPack(input.workspaceState, Boolean(input.sitePotentialAccepted));
   const strategy = buildStrategyFromPack(evidencePack, input.chosenScenario, input.strategyScenarios);
   const documents = buildDocumentsFromPack(evidencePack, input.workspaceState, input.savedEvidence);
   const categories = buildReadinessCategories(input, market, documents, ownership, evidencePack);

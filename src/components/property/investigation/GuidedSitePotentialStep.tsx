@@ -11,8 +11,6 @@ import { cn } from "@/lib/utils";
 interface GuidedSitePotentialStepProps {
   workspaceState: ErfWorkspaceState;
   acceptedBuildEnvelope?: BuildEnvelopeResult | null;
-  /** Legacy prop retained so older callers compile. Generated concepts are no longer shown here. */
-  selectedSiteDesign?: unknown;
   stepSkipped?: boolean;
   onOpenSitePotential: () => void;
   onContinue: () => void;

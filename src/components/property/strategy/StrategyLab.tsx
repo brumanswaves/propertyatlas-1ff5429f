@@ -42,8 +42,6 @@ import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecord
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
 import {
-  readSitePotentialStrategyDraft,
-  type SitePotentialStrategyDraft,
 } from "@/lib/sitePotential/sitePotentialStrategyDraftStore";
 import { cn } from "@/lib/utils";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
@@ -612,7 +610,6 @@ export function StrategyLab({
   }, [parcelId, userId]);
 
   const initialWorkspace = readStrategyWorkspace(parcelId, undefined, userId);
-  const initialSitePotentialDraft = readSitePotentialStrategyDraft(parcelId, userId);
   const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
   const initialResolvedSitePotentialInputs = resolveSitePotentialInputs({
     overrides: initialBuildEnvelopeOverrides,
@@ -622,7 +619,6 @@ export function StrategyLab({
   const initialPropertyFacts = buildStrategyPropertyInputFacts({
     parcel,
     resolvedSitePotentialInputs: initialResolvedSitePotentialInputs,
-    sitePotentialDraft: initialSitePotentialDraft,
   });
   const initialPropertyDefaults = strategyDefaultsFromPropertyFacts(initialPropertyFacts);
   const [active, setActive] = useState<StrategyType>(() =>
@@ -641,9 +637,6 @@ export function StrategyLab({
     getChosenStrategyScenario(parcelId, undefined, userId),
   );
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
-  const [sitePotentialDraft, setSitePotentialDraft] = useState(() =>
-    initialSitePotentialDraft,
-  );
   const [buildEnvelopeOverrides, setBuildEnvelopeOverrides] = useState(
     () => initialBuildEnvelopeOverrides,
   );
@@ -729,9 +722,8 @@ export function StrategyLab({
       buildStrategyPropertyInputFacts({
         parcel,
         resolvedSitePotentialInputs,
-        sitePotentialDraft,
       }),
-    [parcel, resolvedSitePotentialInputs, sitePotentialDraft],
+    [parcel, resolvedSitePotentialInputs],
   );
   const propertyDefaults = useMemo(
     () => strategyDefaultsFromPropertyFacts(propertyInputFacts),
@@ -741,7 +733,6 @@ export function StrategyLab({
   useLayoutEffect(() => {
     const workspace = readStrategyWorkspace(parcelId, undefined, userId);
     const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
-    const nextSitePotentialDraft = readSitePotentialStrategyDraft(parcelId, userId);
     const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
     const nextPropertyDefaults = strategyDefaultsFromPropertyFacts(
       buildStrategyPropertyInputFacts({
@@ -753,7 +744,6 @@ export function StrategyLab({
           documentRuleEvidence: Boolean(documentZone),
           recordedAreaM2: canonicalAreaM2(parcel.rawProperties),
         }),
-        sitePotentialDraft: nextSitePotentialDraft,
       }),
     );
     setSavedScenarios(workspace.scenarios);
@@ -768,7 +758,6 @@ export function StrategyLab({
       ...workspace.draftInputs,
     });
     setShowChosenState(Boolean(chosen));
-    setSitePotentialDraft(nextSitePotentialDraft);
     setBuildEnvelopeOverrides(nextBuildEnvelopeOverrides);
     latestWorkspaceRef.current = workspace;
     setSaveError(null);
@@ -1266,36 +1255,6 @@ export function StrategyLab({
     setShowChosenState(false);
   }
 
-  function applySitePotentialDraft() {
-    if (!sitePotentialDraft) return;
-    const conceptBuildable = toNumber(sitePotentialDraft.buildableSqm);
-    const notes = [
-      sitePotentialDraft.conceptTitle
-        ? `Site Potential concept: ${sitePotentialDraft.conceptTitle}`
-        : null,
-      ...(sitePotentialDraft.notes ?? []),
-      sitePotentialDraft.selectedDesignAssetId
-        ? `Selected design asset: ${sitePotentialDraft.selectedDesignAssetId}`
-        : null,
-    ].filter((note): note is string => Boolean(note));
-    const nextActive = "development_sell";
-    setActive(nextActive);
-    const next = {
-      ...values,
-      ...(conceptBuildable > 0
-        ? {
-            buildAreaM2: String(conceptBuildable),
-            floorAreaM2: String(conceptBuildable),
-          }
-        : {}),
-      customNotes: [values.customNotes, ...notes].filter(Boolean).join("\n"),
-    };
-    setValues(next);
-    persistDraft(nextActive, next, true);
-    setShowChosenState(false);
-    toast.success("Site Potential draft applied. Review the numbers before saving.");
-  }
-
   function saveScenario(asNew = false) {
     const option = optionFor(active);
     const { scenario, scenarios, workspace } = saveStrategyScenario(
@@ -1394,36 +1353,6 @@ export function StrategyLab({
           </div>
         </section>
       ) : null}
-
-      {sitePotentialDraft && (
-        <section className="rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#fff8ec] p-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-            Site Potential draft ready
-          </div>
-          <h4 className="mt-2 text-lg font-semibold text-[#0D1B2A]">
-            Review concept assumptions before saving a strategy
-          </h4>
-          <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/66">
-            Easy Erf can copy the selected concept title and brief notes into a development
-            scenario. It will not invent build costs, rental income or resale value.
-          </p>
-          <div className="mt-3 rounded-2xl border border-[#FF6A00]/15 bg-white p-3 text-xs leading-5 text-[#0D1B2A]/70">
-            <div className="font-semibold text-[#0D1B2A]">
-              {sitePotentialDraft.conceptTitle ?? "Selected Site Potential concept"}
-            </div>
-            {(sitePotentialDraft.notes ?? []).slice(0, 3).map((note) => (
-              <div key={note}>{note}</div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={applySitePotentialDraft}
-            className="mt-3 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
-          >
-            Apply draft to Strategy
-          </button>
-        </section>
-      )}
 
       {actionAvailability.showExpertScenarioManagement && showChosenState && chosenScenario && (
         <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">

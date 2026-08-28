@@ -16,6 +16,7 @@ interface Props {
   parcel: NormalizedOfficialParcel;
   onSelectView?: (view: InvestorWorkflowView) => void;
   workspaceState?: ErfWorkspaceState;
+  sitePotentialAccepted?: boolean;
 }
 
 type StepId = "identity" | "sources" | "site" | "market" | "strategy" | "report";
@@ -43,7 +44,12 @@ function chipTone(complete: boolean, warn: boolean) {
   return "bg-slate-500/10 text-slate-600 ring-1 ring-slate-500/20";
 }
 
-export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: Props) {
+export function ReportBuilderOverview({
+  parcel,
+  onSelectView,
+  workspaceState,
+  sitePotentialAccepted = false,
+}: Props) {
   const { evidence } = useSavedMarketEvidence(parcel.id);
   const compsCount = evidence?.length ?? 0;
   const effectiveWorkspaceState = useMemo(
@@ -67,8 +73,9 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
         parcel,
         workspaceState: effectiveWorkspaceState,
         savedMarketEvidenceCount: compsCount,
+        sitePotentialAccepted,
       }),
-    [parcel, effectiveWorkspaceState, compsCount],
+    [parcel, effectiveWorkspaceState, compsCount, sitePotentialAccepted],
   );
   const actionCards = useMemo(
     () =>
@@ -291,14 +298,14 @@ export function ReportBuilderOverview({ parcel, onSelectView, workspaceState }: 
                 ok={site.photoCount + site.planCount > 0}
               />
               <SitePotentialStat
-                label="Concepts"
-                value={String(site.conceptCount)}
-                ok={site.conceptCount > 0}
+                label="Build envelope"
+                value={sitePotentialAccepted ? "Accepted" : "Not accepted"}
+                ok={sitePotentialAccepted}
               />
               <SitePotentialStat
-                label="Preferred design"
-                value={site.preferredConceptId ? "Selected" : "None"}
-                ok={Boolean(site.preferredConceptId)}
+                label="Street boundaries"
+                value="Confirm on map"
+                ok={sitePotentialAccepted}
               />
             </dl>
           </div>

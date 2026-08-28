@@ -16,21 +16,23 @@ import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
+/** Canonical acceptance fixture: CSG Erf 1570, Portion 0, Sea Vista. */
 function erf1570(overrides: Partial<NormalizedOfficialParcel> = {}): NormalizedOfficialParcel {
   return {
     id: "parcel:erf-1570",
     sourceLabel: "Chief Surveyor-General",
     erfNumber: 1570,
     portion: 0,
-    lpi: "C01900010000157000000",
-    parcelKey: "C01900010000157000000",
-    municipality: "Kouga",
+    lpi: "C03400140000157000000",
+    parcelKey: "E108C034001400001570000000",
+    municipality: "Kouga Local Municipality",
     province: "Eastern Cape",
-    suburbOrArea: "Cape St Francis",
+    suburbOrArea: "SEA VISTA",
+    town: "St Francis Bay",
     knownFields: [{ label: "Erf", value: "1570", source: "csg" }],
     missingFields: [],
-    rawProperties: { SHAPE_Area: 619 },
-    coordinates: { lng: 24.83, lat: -34.19 },
+    rawProperties: { SHAPE_Area: 618.7 },
+    coordinates: { lng: 24.84226, lat: -34.17924 },
     ...overrides,
   } as NormalizedOfficialParcel;
 }
@@ -152,7 +154,7 @@ describe("investigation model", () => {
     expect(investigation.parcelId).toBe("parcel:erf-1570");
     expect(investigation.identitySummary).toContain("Erf 1570");
     expect(investigation.messages.length).toBeGreaterThan(3);
-    expect(investigation.messages[0].text).toBe("I identified Erf 1570 in Cape St Francis.");
+    expect(investigation.messages[0].text).toBe("I identified Erf 1570 in SEA VISTA.");
     expect(investigation.messages.every((message) => message.text.trim().length > 0)).toBe(true);
   });
 
@@ -298,6 +300,43 @@ describe("investigation model", () => {
     expect(facts.paidReportSearchable).toBe(true);
     expect(facts.usableTopographySurveyCount).toBe(1);
     expect(facts.existingHousePhotoCount).toBe(1);
+  });
+
+  it("keeps the canonical Erf 1570 journey deterministic through an accepted build envelope", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.identityStatus = "looks_correct";
+    workspace.strategyScenarioCount = 1;
+    workspace.chosenScenarioId = "scenario-erf-1570";
+    const assets = [
+      searchableSubjectAsset("sg_diagram"),
+      searchableSubjectAsset("title_deed"),
+      searchableSubjectAsset("paid_report"),
+      searchableSubjectAsset("topography"),
+      evidenceAsset({
+        id: "asset-approved-plan",
+        metadata: { planApprovalStatus: "verified_municipal_approval" },
+      }),
+      evidenceAsset({ id: "asset-existing-house-photo", asset_category: "existing_house_photo" }),
+    ];
+    const input = baseInput({
+      workspaceState: workspace,
+      assets,
+      planning: verifiedPlanningAssessment(),
+      savedEvidence: [savedComparableEvidence()],
+      sitePotentialAccepted: true,
+    });
+
+    const facts = deriveInvestigationFacts(input);
+    const investigationAction = buildCanonicalNextAction(facts, []);
+    const reportAction = canonicalReportAction(input);
+
+    expect(input.parcel.lpi).toBe("C03400140000157000000");
+    expect(input.parcel.parcelKey).toBe("E108C034001400001570000000");
+    expect(input.parcel.rawProperties?.SHAPE_Area).toBe(618.7);
+    expect(facts.sitePotentialAccepted).toBe(true);
+    expect(investigationAction?.id).toBe("review-report");
+    expect(reportAction?.id).toBe("investigation-review-report");
+    expect(reportAction?.targetTab).toBe(investigationAction?.targetTab);
   });
 
   it("lets user-confirmed readable documents advance Guided without calling them official matches", () => {

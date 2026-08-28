@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveParcelArea } from "@/lib/evidence/parcelArea";
 import { extractExteriorRing } from "@/lib/sitePotential/parcelRing";
+import { deriveAcceptedBuildEnvelope } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import {
@@ -2450,6 +2451,17 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     () => getChosenStrategyScenario(parcelId, undefined, userId),
     [parcelId, userId],
   );
+  const acceptedBuildEnvelope = useMemo(
+    () =>
+      deriveAcceptedBuildEnvelope({
+        parcel: normalizedParcel,
+        parcelRing,
+        planning: planningAssessment,
+        recordedAreaM2,
+        userId,
+      }),
+    [normalizedParcel, parcelRing, planningAssessment, recordedAreaM2, userId],
+  );
   const workbenchInvestigationInput = useMemo<BuildPropertyInvestigationInput>(
     () => ({
       parcel: normalizedParcel,
@@ -2459,11 +2471,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       planning: planningAssessment,
       scenarioCount: strategyScenarios.length,
       chosenScenarioId: chosenScenario?.id ?? null,
+      sitePotentialAccepted: Boolean(acceptedBuildEnvelope),
       marketAddressLine: savedMarketAddress?.formattedAddress ?? propertyIdentity?.address ?? null,
       skippedTaskIds: workspaceState.investigation.skippedTaskIds,
       startedAt: workspaceState.investigation.startedAt,
     }),
     [
+      acceptedBuildEnvelope,
       chosenScenario?.id,
       erfFileVault.assets,
       normalizedParcel,
@@ -2475,15 +2489,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       workspaceState,
     ],
   );
-  const overviewSelectedSiteDesign = useMemo(
-    () =>
-      erfFileVault.assets.find(
-        (asset) =>
-          asset.id === workspaceState.sitePotential.selectedDesignAssetId &&
-          asset.asset_category === "generated_design",
-      ) ?? null,
-    [erfFileVault.assets, workspaceState.sitePotential.selectedDesignAssetId],
-  );
   const overviewReport = useMemo(
     () =>
       buildReportViewModel({
@@ -2494,15 +2499,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         assets: erfFileVault.assets,
         chosenScenario,
         strategyScenarios,
-        selectedSiteDesign: overviewSelectedSiteDesign,
+        sitePotentialAccepted: Boolean(acceptedBuildEnvelope),
         planningAssessment,
       }),
     [
+      acceptedBuildEnvelope,
       chosenScenario,
       erfFileVault.assets,
       marketAddressIntelligence,
       normalizedParcel,
-      overviewSelectedSiteDesign,
       planningAssessment,
       savedMarketEvidence,
       strategyScenarios,

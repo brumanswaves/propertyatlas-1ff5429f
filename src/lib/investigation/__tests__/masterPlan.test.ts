@@ -295,7 +295,7 @@ describe("master investigation plan", () => {
       }),
     );
 
-    expect(row(plan.rows, "site-potential").status).toBe("complete");
+    expect(row(plan.rows, "site-potential").status).toBe("not_started");
     expect(row(plan.rows, "site-conditions").status).toBe("not_started");
     expect(row(plan.rows, "site-conditions").supportedEvidenceCount).toBe(0);
   });

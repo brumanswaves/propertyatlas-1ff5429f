@@ -165,7 +165,7 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     relatedTaskIds: ["review-site-potential"],
     canSkip: true,
     isApplicable: () => true,
-    isComplete: (facts) => facts.siteDesignSelected || facts.siteSkipped,
+    isComplete: (facts) => facts.sitePotentialAccepted || facts.siteSkipped,
   },
   {
     id: "report",

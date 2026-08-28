@@ -193,7 +193,9 @@ function buildKnown(report: ReportViewModel): string[] {
   if (report.market.includedCount > 0) {
     known.add(`${report.market.includedCount} included market evidence item(s)`);
   }
-  if (report.site.selectedDesign) known.add("A Site Potential concept has been selected");
+  if (report.site.acceptedBuildEnvelope) {
+    known.add("An indicative Site Potential build envelope has been accepted");
+  }
   if (report.strategy.chosen) known.add("A Strategy Lab scenario has been chosen");
   if (report.documents.assetCount > 0) {
     known.add(`${report.documents.assetCount} saved document or image asset(s)`);
@@ -409,16 +411,6 @@ function buildTimeline(report: ReportViewModel): EvidenceTimelineItem[] {
       label: "Market evidence updated",
       detail: `${report.market.evidenceCount} market evidence item(s) saved.`,
       source: "market",
-    });
-  }
-
-  if (report.site.selectedDesign?.created_at) {
-    items.push({
-      id: "site-concept-selected",
-      occurredAt: report.site.selectedDesign.created_at,
-      label: "Site Potential concept available",
-      detail: report.site.selectedDesign.original_file_name,
-      source: "workspace",
     });
   }
 

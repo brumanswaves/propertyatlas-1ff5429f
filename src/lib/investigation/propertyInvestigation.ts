@@ -52,6 +52,8 @@ export interface BuildPropertyInvestigationInput {
   vendorAssignmentCount?: number;
   marketAddressLine?: string | null;
   skippedTaskIds?: string[];
+  /** Canonical deterministic Site Potential completion state from the accepted build envelope. */
+  sitePotentialAccepted?: boolean;
   /** Contradictions recorded in the PropertyEvidencePack for this parcel. */
   contradictions?: InvestigationContradictionInput[];
   startedAt?: string | null;
@@ -137,8 +139,7 @@ export function deriveInvestigationFacts(
     marketAddressSaved: Boolean(workspaceState.marketAddressSaved || input.marketAddressLine),
     scenarioCount: input.scenarioCount ?? workspaceState.strategyScenarioCount,
     hasChosenScenario: Boolean(input.chosenScenarioId ?? workspaceState.chosenScenarioId),
-    siteConceptCount: workspaceState.sitePotential.conceptCount,
-    siteDesignSelected: Boolean(workspaceState.sitePotential.selectedDesignAssetId),
+    sitePotentialAccepted: Boolean(input.sitePotentialAccepted),
     usableTopographySurveyCount: usableSubjectTopographicalSurveys.length,
     sitePhotoCount: sitePhotos.length,
     existingHousePhotoCount: existingHousePhotos.length,
@@ -244,19 +245,15 @@ function buildStages(
     "Site potential",
     facts.siteSkipped
       ? "complete"
-      : facts.siteDesignSelected
+      : facts.sitePotentialAccepted
         ? "complete"
-        : facts.siteConceptCount > 0
-          ? "in_progress"
-          : "waiting",
+        : "waiting",
     facts.siteSkipped
       ? "You skipped Site Potential for this erf."
-      : facts.siteDesignSelected
-        ? "A concept is saved to this erf. It is conceptual, not an approved plan."
-        : facts.siteConceptCount > 0
-          ? "Concepts are generated but none is selected yet."
-          : "No concept has been generated for this erf yet.",
-    facts.siteConceptCount,
+      : facts.sitePotentialAccepted
+        ? "The deterministic build envelope has been accepted for this erf. It remains indicative, not an approved plan."
+        : "The parcel and street-facing boundaries still need to support an accepted build envelope.",
+    facts.sitePotentialAccepted ? 1 : 0,
     "unconfirmed",
     "site-potential",
   );

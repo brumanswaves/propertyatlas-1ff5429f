@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ErfStrategyScenario, ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
-import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
 import type { MasterInvestigationPlan } from "@/lib/investigation/masterPlan";
 import type { ReportViewModel } from "@/lib/reports/buildReportViewModel";
@@ -20,7 +19,6 @@ import { GuidedPropertyChecksStep } from "./GuidedPropertyChecksStep";
 import { GuidedReportStep } from "./GuidedReportStep";
 import { GuidedSgDiagramStep } from "./GuidedSgDiagramStep";
 import { GuidedSitePotentialStep } from "./GuidedSitePotentialStep";
-import { GuidedSitePotentialWorkspaceSync } from "./GuidedSitePotentialWorkspaceSync";
 import { GuidedStrategyStep } from "./GuidedStrategyStep";
 import { GuidedTitleStep } from "./GuidedTitleStep";
 import { GuidedZoningStep } from "./GuidedZoningStep";
@@ -39,7 +37,6 @@ interface InvestigationJourneyProps {
   chosenScenario: ErfStrategyScenario | null;
   savedScenarioCount: number;
   acceptedBuildEnvelope: BuildEnvelopeResult | null;
-  selectedSiteDesign: ErfAsset | null;
   steps: GuidedInvestigationStep[];
   activeStep: GuidedInvestigationStep;
   mapSlot?: ReactNode;
@@ -64,7 +61,6 @@ export function InvestigationJourney({
   chosenScenario,
   savedScenarioCount,
   acceptedBuildEnvelope,
-  selectedSiteDesign,
   steps,
   activeStep,
   mapSlot,
@@ -148,19 +144,15 @@ export function InvestigationJourney({
             onContinue={() => onSelectStep("site-potential")}
           />
         ) : activeStep.id === "site-potential" ? (
-          <>
-            <GuidedSitePotentialWorkspaceSync parcelId={parcel.id} userId={userId} />
-            <GuidedSitePotentialStep
-              workspaceState={workspaceState}
-              acceptedBuildEnvelope={acceptedBuildEnvelope}
-              selectedSiteDesign={selectedSiteDesign}
-              stepSkipped={activeStep.skipped}
-              onOpenSitePotential={() =>
-                onOpenExpertWorkspace("site-potential", { guidedReturnStepId: "site-potential" })
-              }
-              onContinue={() => onSelectStep("report")}
-            />
-          </>
+          <GuidedSitePotentialStep
+            workspaceState={workspaceState}
+            acceptedBuildEnvelope={acceptedBuildEnvelope}
+            stepSkipped={activeStep.skipped}
+            onOpenSitePotential={() =>
+              onOpenExpertWorkspace("site-potential", { guidedReturnStepId: "site-potential" })
+            }
+            onContinue={() => onSelectStep("report")}
+          />
         ) : activeStep.id === "report" ? (
           <GuidedReportStep
             plan={plan}

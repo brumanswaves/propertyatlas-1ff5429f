@@ -107,9 +107,8 @@ function snapshot(overrides: SnapshotOverrides = {}): ReportSnapshot {
         { id: "asset-sg", category: "sg_diagram" },
       ],
     },
-    sitePotential: {
-      selectedConceptAssetId: null,
-      conceptCount: 0,
+  sitePotential: {
+      acceptedBuildEnvelope: false,
       skipped: false,
     },
     strategy: {
@@ -221,10 +220,8 @@ function report(overrides: Partial<ReportViewModel> = {}): ReportViewModel {
       latestUpdatedAt: null,
     },
     site: {
-      selectedDesign: null,
-      conceptCount: 0,
+      acceptedBuildEnvelope: false,
       skipped: false,
-      hasBrief: false,
       disclaimer: "Not an architectural plan.",
     },
     strategy: {
@@ -586,11 +583,10 @@ describe("Easy Erf report snapshots", () => {
       changedTypes(snapshot(), snapshot({ documents: { assets: [] } })),
     ).toContainEqual({ type: "removed", label: "Document or file removed" });
     expect(
-      changedTypes(snapshot(), snapshot({ sitePotential: { selectedConceptAssetId: "concept-1", conceptCount: 1 } })),
+      changedTypes(snapshot(), snapshot({ sitePotential: { acceptedBuildEnvelope: true } })),
     ).toEqual(
       expect.arrayContaining([
-        { type: "added", label: "Selected Site Potential concept" },
-        { type: "changed", label: "Site Potential concept count" },
+        { type: "changed", label: "Accepted Site Potential build envelope" },
       ]),
     );
     expect(
@@ -674,7 +670,7 @@ describe("Easy Erf report snapshots", () => {
     const source = readFileSync(resolve(__dirname, "../reportSnapshots.ts"), "utf8");
     expect(JSON.stringify(snapshot())).not.toMatch(/question|answer|Ask Easy Erf/i);
     expect(source).toContain(".filter((asset) => asset.parcel_id === parcelId)");
-    expect(source).toContain("report.site.selectedDesign?.parcel_id === parcelId");
+    expect(source).toContain("acceptedBuildEnvelope: report.site.acceptedBuildEnvelope");
     const migrationNames = readdirSync(resolve(__dirname, "../../../../supabase/migrations"));
     expect(migrationNames.filter((name) => /report[-_]?snapshot|change[-_]?tracking/i.test(name))).toEqual([]);
   });

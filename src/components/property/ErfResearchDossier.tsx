@@ -82,8 +82,6 @@ import {
   type ErfAssetGroup,
 } from "@/lib/workbench/erfFileVault";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
-import { useSitePotentialProject } from "@/lib/sitePotential/sitePotentialService";
-import { SITE_POTENTIAL_DISCLAIMER } from "@/lib/sitePotential/config";
 import type { InvestorWorkflowView } from "./dossier/investorWorkflow";
 import { StrategyLab } from "./strategy/StrategyLab";
 import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
@@ -1502,12 +1500,6 @@ function StoepAiReportView({
   const strategyWorkspace = readStrategyWorkspace(parcel.id, undefined, userId);
   const scenarios = readStrategyScenarios(parcel.id, undefined, userId);
   const chosenScenario = getChosenStrategyScenario(parcel.id, undefined, userId);
-  const generatedDesigns = fileVault.assets.filter(
-    (asset) => asset.asset_category === "generated_design",
-  );
-  const siteProject = useSitePotentialProject(parcel.id, generatedDesigns);
-  const selectedDesign = siteProject.selectedDesign;
-
   /**
    * Deterministic report hero. The envelope is only drawn from real geometry
    * plus rules the user actually recorded — never invented.
@@ -1530,33 +1522,28 @@ function StoepAiReportView({
     () =>
       selectReportHero({
         hasSitePotentialVisual:
-          Boolean(selectedDesign) ||
           acceptedBuildEnvelope?.state === "verified" ||
           acceptedBuildEnvelope?.state === "estimated",
-        sitePotentialVisualIsDeterministic: !selectedDesign,
         hasParcelGeometry: Boolean(acceptedBuildEnvelope),
         hasPropertyPhotograph: false,
       }),
-    [acceptedBuildEnvelope, selectedDesign],
+    [acceptedBuildEnvelope],
   );
 
   const groupedAssets = groupErfAssets(fileVault.assets);
-  const selectedSiteMode = siteProject.project?.mode ?? workspaceState.sitePotential.mode;
   const sitePotentialSkipped =
-    selectedSiteMode === "skipped" ||
+    workspaceState.sitePotential.mode === "skipped" ||
     workspaceState.sitePotential.skipped ||
     workspaceState.sitePotential.progressState === "skipped";
   const sitePotentialPanel = useMemo(
     () =>
       buildSitePotentialReportPanel({
         envelope: acceptedBuildEnvelope,
-        hasConceptImage: Boolean(selectedDesign),
-        conceptStyle: siteProject.project?.selected_style ?? null,
-        brief: siteProject.project?.design_brief ?? null,
         skipped: sitePotentialSkipped,
-        disclaimer: SITE_POTENTIAL_DISCLAIMER,
+        disclaimer:
+          "Indicative only. Confirm property-specific planning controls, title conditions and approvals before relying on this envelope.",
       }),
-    [acceptedBuildEnvelope, selectedDesign, siteProject.project, sitePotentialSkipped],
+    [acceptedBuildEnvelope, sitePotentialSkipped],
   );
   const notesRequestRef = useRef(0);
   const [reportNotes, setReportNotes] = useState<PropertyNotes | null>(null);
@@ -1591,11 +1578,9 @@ function StoepAiReportView({
     assets: fileVault.assets,
     chosenScenario,
     strategyScenarios: scenarios,
-    selectedSiteDesign: selectedDesign,
+    sitePotentialAccepted: Boolean(acceptedBuildEnvelope),
     propertyNotes: reportNotes,
     strategyWorkspace,
-    sitePotentialProject: siteProject.project ?? null,
-    siteBrief: siteProject.project?.design_brief ?? null,
     planningAssessment,
   });
   const decision = buildDecisionIntelligence(report);
@@ -2115,13 +2100,7 @@ function StoepAiReportView({
                 />
               ) : undefined
             }
-            conceptVisual={
-              selectedDesign ? <SignedAssetPreview asset={selectedDesign} /> : undefined
-            }
             onOpenSitePotential={() => onSelectView?.("site-potential")}
-            onOpenSourceFile={
-              selectedDesign ? () => void openVaultAsset(selectedDesign) : undefined
-            }
           />
         </>
       ),
@@ -2555,9 +2534,7 @@ function StoepAiReportView({
           onPrint={handlePrint}
           onOpenTab={(tab, options) => onSelectView?.(routeTabFor(tab), options)}
           heroSlot={
-            reportHero.kind === "site_potential" && selectedDesign ? (
-              <SignedAssetPreview asset={selectedDesign} />
-            ) : reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
+            reportHero.kind === "site_potential" || reportHero.kind === "parcel_overview" ? (
               <ReportBuildableAreaVisual
                 ring={parcelRing}
                 result={acceptedBuildEnvelope!}

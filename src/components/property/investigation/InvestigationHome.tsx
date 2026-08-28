@@ -153,13 +153,14 @@ export function InvestigationHome({
         savedEvidence: evidence,
         marketAddress: marketAddressIntelligence ?? null,
         assets,
-        selectedSiteDesign: null,
+        sitePotentialAccepted: Boolean(acceptedBuildEnvelope),
         chosenScenario,
         strategyScenarios: scenarios,
         strategyWorkspace,
         planningAssessment: planning,
       }),
     [
+      acceptedBuildEnvelope,
       assets,
       chosenScenario,
       evidence,
@@ -183,6 +184,7 @@ export function InvestigationHome({
       chosenScenarioId: chosenScenario?.id ?? null,
       vendorAssignmentCount: vendorWorkspace.loading ? 0 : vendorWorkspace.assignments.length,
       marketAddressLine: savedMarketAddress?.formattedAddress ?? propertyIdentity?.address ?? null,
+      sitePotentialAccepted: Boolean(acceptedBuildEnvelope),
       skippedTaskIds: workspaceState.investigation.skippedTaskIds,
       startedAt: workspaceState.investigation.startedAt,
       contradictions: (report.evidencePack?.contradictions ?? []).map((item) => ({
@@ -194,6 +196,7 @@ export function InvestigationHome({
       })),
     }),
     [
+      acceptedBuildEnvelope,
       assets,
       chosenScenario,
       evidence,
@@ -209,16 +212,10 @@ export function InvestigationHome({
     ],
   );
 
-  const facts = useMemo(() => {
-    const derived = deriveInvestigationFacts(investigationInput);
-    return {
-      ...derived,
-      // Site Potential is complete only when the deterministic build envelope
-      // has been accepted. Legacy generated designs no longer complete this step.
-      siteDesignSelected: Boolean(acceptedBuildEnvelope),
-      siteConceptCount: 0,
-    };
-  }, [acceptedBuildEnvelope, investigationInput]);
+  const facts = useMemo(
+    () => deriveInvestigationFacts(investigationInput),
+    [investigationInput],
+  );
   const guidedSteps = useMemo(
     () => buildGuidedInvestigationJourney(facts, workspaceState),
     [facts, workspaceState],
@@ -271,7 +268,6 @@ export function InvestigationHome({
         chosenScenario={chosenScenario}
         savedScenarioCount={scenarios.length}
         acceptedBuildEnvelope={acceptedBuildEnvelope}
-        selectedSiteDesign={null}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}

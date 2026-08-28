@@ -459,7 +459,7 @@ describe("buildPropertyEvidencePack", () => {
       selectedSiteDesign: selectedDesign,
       now: NOW,
     });
-    expect(report.documents.assetCount).toBe(4);
+    expect(report.documents.assetCount).toBe(3);
     expect(report.documents.sgDiagramCount).toBe(1);
     expect(report.documents.uploadedReportCount).toBe(1);
   });

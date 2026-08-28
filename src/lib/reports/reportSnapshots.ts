@@ -70,8 +70,7 @@ export interface ReportSnapshot {
     assets: Array<{ id: string; category: string }>;
   };
   sitePotential: {
-    selectedConceptAssetId: string | null;
-    conceptCount: number;
+    acceptedBuildEnvelope: boolean;
     skipped: boolean;
   };
   strategy: {
@@ -243,9 +242,7 @@ export function buildReportSnapshot(input: BuildReportSnapshotInput): ReportSnap
       assets: currentAssets,
     },
     sitePotential: {
-      selectedConceptAssetId:
-        report.site.selectedDesign?.parcel_id === parcelId ? report.site.selectedDesign.id : null,
-      conceptCount: currentAssets.filter((asset) => asset.category === "generated_design").length,
+      acceptedBuildEnvelope: report.site.acceptedBuildEnvelope,
       skipped: report.site.skipped,
     },
     strategy: {
@@ -400,21 +397,13 @@ function detectChanges(previous: ReportSnapshot, current: ReportSnapshot): Repor
     previous.documents.assets.map((asset) => asset.id),
     current.documents.assets.map((asset) => asset.id),
   );
-  compareNullableField(
-    changes,
-    "site-potential",
-    "selected-concept",
-    "Selected Site Potential concept",
-    previous.sitePotential.selectedConceptAssetId,
-    current.sitePotential.selectedConceptAssetId,
-  );
   compareChanged(
     changes,
     "site-potential",
-    "concept-count",
-    "Site Potential concept count",
-    String(previous.sitePotential.conceptCount),
-    String(current.sitePotential.conceptCount),
+    "accepted-build-envelope",
+    "Accepted Site Potential build envelope",
+    String(previous.sitePotential.acceptedBuildEnvelope),
+    String(current.sitePotential.acceptedBuildEnvelope),
   );
   compareNullableField(
     changes,
@@ -757,11 +746,9 @@ function coerceDocuments(value: unknown): ReportSnapshot["documents"] | null {
 function coerceSitePotentialSnapshot(value: unknown): ReportSnapshot["sitePotential"] | null {
   const raw = objectRecord(value);
   if (!raw) return null;
-  const conceptCount = safeCount(raw.conceptCount);
-  if (conceptCount == null || typeof raw.skipped !== "boolean") return null;
+  if (typeof raw.skipped !== "boolean") return null;
   return {
-    selectedConceptAssetId: safeNullableString(raw.selectedConceptAssetId, 160),
-    conceptCount,
+    acceptedBuildEnvelope: raw.acceptedBuildEnvelope === true,
     skipped: raw.skipped,
   };
 }

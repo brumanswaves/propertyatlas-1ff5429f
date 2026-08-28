@@ -38,18 +38,18 @@ function envelope(overrides: Partial<BuildEnvelopeResult> = {}): BuildEnvelopeRe
 const base = { skipped: false, disclaimer: "Confirm with the municipality." };
 
 describe("buildSitePotentialReportPanel", () => {
-  it("shows both visuals when envelope and concept exist", () => {
+  it("keeps the deterministic envelope when legacy concept metadata exists", () => {
     const panel = buildSitePotentialReportPanel({
       ...base,
       envelope: envelope(),
       hasConceptImage: true,
       conceptStyle: "Coastal modern",
     });
-    expect(panel.mode).toBe("both");
+    expect(panel.mode).toBe("capacity_only");
     expect(panel.hasCapacity).toBe(true);
-    expect(panel.hasConcept).toBe(true);
+    expect(panel.hasConcept).toBe(false);
     expect(panel.title).toBe("What could potentially be built here?");
-    expect(panel.conceptName).toBe("Selected concept — Coastal modern");
+    expect(panel.conceptName).toBeNull();
     expect(panel.emptyMessage).toBeNull();
   });
 
@@ -94,13 +94,13 @@ describe("buildSitePotentialReportPanel", () => {
     expect(panel.conceptName).toBeNull();
   });
 
-  it("falls back to concept only when the envelope cannot be calculated", () => {
+  it("does not render legacy concept metadata when the envelope cannot be calculated", () => {
     const panel = buildSitePotentialReportPanel({
       ...base,
       envelope: envelope({ state: "more_information_required" }),
       hasConceptImage: true,
     });
-    expect(panel.mode).toBe("concept_only");
+    expect(panel.mode).toBe("none");
     expect(panel.metrics).toEqual([]);
   });
 

@@ -51,18 +51,20 @@ export interface ReportProgressInput {
   >;
   savedMarketEvidenceCount: number;
   attachedEvidenceCount?: number;
+  sitePotentialAccepted?: boolean;
 }
 
 function plural(value: number, single: string, many = `${single}s`) {
   return `${value} ${value === 1 ? single : many}`;
 }
 
-function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
+function buildSiteRow(
+  site: SitePotentialSnapshot,
+  sitePotentialAccepted = false,
+): ReportProgressRow {
   const files = site.photoCount + site.planCount;
   const hasMode = site.mode !== null;
   const hasFiles = files > 0;
-  const hasConcepts = site.conceptCount > 0;
-  const selectedConcept = Boolean(site.selectedDesignAssetId || site.preferredConceptId);
 
   if (site.skipped) {
     return {
@@ -73,22 +75,13 @@ function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
       evidence: "Skipped by user",
     };
   }
-  if (selectedConcept) {
+  if (sitePotentialAccepted) {
     return {
       id: "site",
       label: "Site",
       status: "Done",
-      detail: "A preferred site concept has been selected for the Easy Erf Report.",
-      evidence: `${site.conceptCount} concept${site.conceptCount === 1 ? "" : "s"} generated, 1 selected`,
-    };
-  }
-  if (hasConcepts) {
-    return {
-      id: "site",
-      label: "Site",
-      status: "In progress",
-      detail: "Concepts have been generated. Select one to feature in the report.",
-      evidence: `${site.conceptCount} concept${site.conceptCount === 1 ? "" : "s"} generated`,
+      detail: "An indicative build envelope has been accepted for this erf.",
+      evidence: "Confirmed site inputs and recorded planning controls",
     };
   }
   if (hasFiles || hasMode) {
@@ -97,8 +90,8 @@ function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
       label: "Site",
       status: "In progress",
       detail: hasFiles
-        ? "Photos or plans have been added. Generate concepts to move this step forward."
-        : "Property state selected. Add photographs or plans next.",
+        ? "Photos or plans have been added. Confirm the build envelope when the site inputs are ready."
+        : "Property state selected. Confirm the parcel and street-facing boundaries next.",
       evidence: hasFiles
         ? `${files} file${files === 1 ? "" : "s"} in Erf File`
         : "No files added yet",
@@ -108,13 +101,19 @@ function buildSiteRow(site: SitePotentialSnapshot): ReportProgressRow {
     id: "site",
     label: "Site",
     status: "Not started",
-    detail: "Explore renovation or new-build possibilities for this erf, or skip if not relevant.",
+    detail: "Confirm the parcel and street-facing boundaries to review an indicative build envelope, or skip if not relevant.",
     evidence: "Property state not set",
   };
 }
 
 export function buildReportBuilderProgress(input: ReportProgressInput): ReportProgressRow[] {
-  const { parcel, workspaceState, savedMarketEvidenceCount, attachedEvidenceCount = 0 } = input;
+  const {
+    parcel,
+    workspaceState,
+    savedMarketEvidenceCount,
+    attachedEvidenceCount = 0,
+    sitePotentialAccepted = false,
+  } = input;
   const reviewedCount = workspaceState.reviewedSourceIds.length;
   const openedCount = workspaceState.openedSourceIds.length;
   const sgAttachmentCount = workspaceState.sgDiagramAttachmentCount ?? 0;
@@ -202,7 +201,7 @@ export function buildReportBuilderProgress(input: ReportProgressInput): ReportPr
           ? plural(strategyScenarioCount, "saved scenario")
           : "No scenario saved",
     },
-    buildSiteRow(workspaceState.sitePotential),
+    buildSiteRow(workspaceState.sitePotential, sitePotentialAccepted),
     {
       id: "report",
       label: "Report",
