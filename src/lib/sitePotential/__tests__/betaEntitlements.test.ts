@@ -294,87 +294,44 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).toContain('.eq("status", "open")');
   });
 
-  it("shows free allowance and inline report-only concept selection while purchase UI is hidden", () => {
+  it("keeps legacy beta services separate from the deterministic Site Potential UI", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
     const statusRequest = read("src/lib/sitePotential/betaStatusRequest.ts");
-    const progress = read("src/lib/sitePotential/generationProgress.ts");
     const apiClient = read("src/lib/sitePotential/sitePotentialApiClient.ts");
 
-    expect(tab).toContain("VITE_SITE_POTENTIAL_BETA_UI");
-    expect(tab).toContain("Three site-grounded concepts");
-    expect(tab).toContain("Generate 3 free concepts");
-    expect(tab).toContain("Use 1 credit for 3 concepts");
+    expect(tab).toContain("VacantLandBuildEnvelope");
+    expect(tab).toContain("StreetSideBuildEnvelope");
+    expect(tab).toContain("There are no AI house concepts, generated renders, or facade images");
+    expect(tab).not.toContain("VITE_SITE_POTENTIAL_BETA_UI");
+    expect(tab).not.toContain("Three site-grounded concepts");
+    expect(tab).not.toContain("Generate 3 free concepts");
+    expect(tab).not.toContain("Use 1 credit for 3 concepts");
     expect(statusRequest).toContain("No purchased or beta/test credits are available.");
-    expect(tab).toContain("Purchased credits");
-    expect(tab).toContain("Daily packs");
-    expect(tab).toContain("Weekly packs");
-    expect(tab).toContain("Monthly packs");
-    expect(tab).toContain("Repeat use on this erf");
-    expect(tab).toContain("Beta/test credits");
-    expect(tab).toContain("generationUnavailableReason");
-    expect(tab).toContain("resolveSitePotentialGenerationAvailability");
-    expect(tab).toContain("1 / day · 3 / week · 6 / month free");
-    expect(tab).toContain(
-      "You may use your available packs on the same erf or across different properties.",
-    );
-    expect(tab).not.toContain("Free allowance already used for this erf");
-    expect(tab).not.toContain("This erf: Not eligible");
-    expect(tab).not.toContain("one free pack for the same parcel");
-    expect(tab).not.toContain("purchasedCreditsRemaining + betaCreditsRemaining");
+    expect(tab).not.toContain("Purchased credits");
+    expect(tab).not.toContain("Daily packs");
+    expect(tab).not.toContain("Weekly packs");
+    expect(tab).not.toContain("Monthly packs");
     expect(tab).not.toContain("Buy more Site Potential credits");
     expect(tab).not.toContain("Checkout connection pending");
-    expect(tab).toContain("Select for Easy Erf Report");
-    expect(tab).toContain("createErfAssetSignedUrl");
-    expect(tab).toContain("<img");
-    expect(tab).toContain("Preview unavailable. The stored concept image could not be loaded.");
-    expect(tab).toContain("Retry display");
-    expect(tab).toContain("setImageUrl(null);");
-    expect(tab).not.toContain("Use selected concept in Strategy");
-    expect(tab).not.toContain("onOpenStrategy");
-    expect(tab).toContain("fetchSitePotentialApi");
+    expect(tab).not.toContain("Select for Easy Erf Report");
+    expect(tab).not.toContain("createErfAssetSignedUrl");
+    expect(tab).not.toContain("fetchSitePotentialApi");
     expect(apiClient).toContain('"beta-redeem"');
     expect(apiClient).toContain('"pack-status"');
     expect(apiClient).toContain('"retry-pack"');
     expect(apiClient).toContain("VITE_SITE_POTENTIAL_EDGE_API");
     expect(apiClient).toContain('`/api/site-potential/${input.route}`');
-    expect(tab).toContain("Site Potential generation progress");
-    expect(progress).toContain("Waiting for generator");
-    expect(progress).toContain("Waiting for the image generator to start.");
-    expect(tab).toContain("Refresh status");
-    expect(tab).toContain("Retry current pack");
-    expect(tab).toContain("createSitePotentialPackStatusPoller");
-    expect(tab).toContain("poller.start(false)");
-    expect(tab).toContain("poller.stop()");
-    expect(tab).toContain("assetDesignPackId(asset) === activeDesignPackId");
-    expect(tab).toContain("packCompletedCount} of {packRequestedCount}");
   });
 
-  it("keeps Site Potential allowance status parcel-safe before showing eligibility", () => {
+  it("does not show beta allowance eligibility in the deterministic Site Potential UI", () => {
     const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
     const request = read("src/lib/sitePotential/betaStatusRequest.ts");
 
     expect(request).toContain('export type AllowanceStatusLifecycle = "loading" | "ready" | "error"');
-    expect(tab).toContain('BETA_UI_ENABLED ? "loading" : "ready"');
-    expect(tab).toContain("const betaStatusRequestIdRef = useRef(0)");
-    expect(tab).toContain("setBetaStatus(null)");
-    expect(tab).toContain("setBetaStatusError(null)");
-    expect(tab).toContain('setBetaStatusLifecycle("loading")');
-    expect(tab).toContain("const isCurrentRequest = () =>");
-    expect(tab).toContain("requestId === betaStatusRequestIdRef.current");
-    expect(tab).toContain("!signal?.aborted");
-    expect(tab).toContain("new AbortController()");
-    expect(tab).toContain("return () => controller.abort()");
-    expect(tab).toContain('setBetaStatusLifecycle("ready")');
-    expect(tab).toContain('setBetaStatusLifecycle("error")');
-    expect(tab).toContain("Checking allowance…");
-    expect(tab).toContain("Checking…");
-    expect(tab).toContain("Could not check Site Potential allowance.");
-    expect(tab).toContain("Retry allowance check");
-    expect(tab).toContain("onClick={() => void refreshBetaStatus()}");
-    expect(tab).toContain('betaStatusLifecycle === "ready" && !generationEntitled');
-    expect(tab).toContain("generationAvailability.message");
-    expect(tab).not.toContain('BETA_UI_ENABLED && !betaStatus?.enabled\n                    ? "Site Potential generation is disabled in this environment"');
-    expect(tab).not.toContain('BETA_UI_ENABLED && !generationEntitled\n                      ? "Free allowance used. Purchase credits');
+    expect(tab).not.toContain("Checking allowance");
+    expect(tab).not.toContain("This erf: Eligible");
+    expect(tab).not.toContain("Retry allowance check");
+    expect(tab).not.toContain("generationAvailability.message");
 
     expect(request).toContain("const payload = await response.json().catch(() => null)");
     expect(request).toContain('if (!isCurrentRequest()) return { kind: "stale" }');
@@ -383,12 +340,6 @@ describe("Site Potential private beta entitlements", () => {
     expect(request).toContain('status: "UI_DISABLED"');
     expect(request).toContain('status: "ENTITLEMENT_UNAVAILABLE"');
 
-    const retryButtonIndex = tab.indexOf("Retry allowance check");
-    const redeemIndex = tab.indexOf("/api/site-potential/beta-redeem", retryButtonIndex);
-    const packCreateIndex = tab.indexOf("/api/site-potential/generate", retryButtonIndex);
-    expect(retryButtonIndex).toBeGreaterThan(-1);
-    expect(redeemIndex).toBe(-1);
-    expect(packCreateIndex).toBe(-1);
   });
 
   it("ignores a stale previous-parcel beta-status response after the current parcel succeeds", async () => {
@@ -528,10 +479,9 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).not.toContain("workerId: String");
   });
 
-  it("retries the current pack without consuming another entitlement or worker secret", () => {
+  it("keeps retrying a legacy pack separate from entitlement consumption", () => {
     const route = read("src/routes/api/site-potential.retry-pack.ts");
     const server = read("src/lib/sitePotential/betaServer.ts");
-    const tab = read("src/components/property/dossier/SitePotentialTab.tsx");
 
     expect(route).toContain('createFileRoute("/api/site-potential/retry-pack")');
     expect(route).toContain("authenticateApiRequest");
@@ -543,7 +493,6 @@ describe("Site Potential private beta entitlements", () => {
     expect(server).toContain("export async function retrySitePotentialPack");
     expect(server).toContain('status: "queued"');
     expect(server).toContain('generation_status: "generating"');
-    expect(tab).toContain("No additional credit was used.");
   });
 
   it("keeps real staging proof separate from mocked/local tests", () => {

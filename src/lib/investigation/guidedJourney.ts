@@ -159,7 +159,7 @@ export const GUIDED_INVESTIGATION_STEPS: GuidedInvestigationStepDefinition[] = [
     label: "Site Potential",
     shortLabel: "Potential",
     description:
-      "Review the approximate build envelope, then optionally generate and select an illustrative concept.",
+      "Confirm the parcel and street-facing boundaries, then review the build envelope on the map and from the street side.",
     prerequisites: ["confirm-property"],
     masterPlanRowIds: ["site-potential"],
     relatedTaskIds: ["review-site-potential"],

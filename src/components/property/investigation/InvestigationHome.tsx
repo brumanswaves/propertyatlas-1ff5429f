@@ -133,13 +133,6 @@ export function InvestigationHome({
     workspaceState.planning.zoneCode,
   ]);
 
-  const selectedSiteDesign = useMemo(
-    () =>
-      assets.find((asset) => asset.id === workspaceState.sitePotential.selectedDesignAssetId) ??
-      null,
-    [assets, workspaceState.sitePotential.selectedDesignAssetId],
-  );
-
   const acceptedBuildEnvelope = useMemo(
     () =>
       deriveAcceptedBuildEnvelope({
@@ -160,9 +153,9 @@ export function InvestigationHome({
         savedEvidence: evidence,
         marketAddress: marketAddressIntelligence ?? null,
         assets,
+        selectedSiteDesign: null,
         chosenScenario,
         strategyScenarios: scenarios,
-        selectedSiteDesign,
         strategyWorkspace,
         planningAssessment: planning,
       }),
@@ -174,7 +167,6 @@ export function InvestigationHome({
       parcel,
       planning,
       scenarios,
-      selectedSiteDesign,
       strategyWorkspace,
       workspaceState,
     ],
@@ -217,7 +209,16 @@ export function InvestigationHome({
     ],
   );
 
-  const facts = useMemo(() => deriveInvestigationFacts(investigationInput), [investigationInput]);
+  const facts = useMemo(() => {
+    const derived = deriveInvestigationFacts(investigationInput);
+    return {
+      ...derived,
+      // Site Potential is complete only when the deterministic build envelope
+      // has been accepted. Legacy generated designs no longer complete this step.
+      siteDesignSelected: Boolean(acceptedBuildEnvelope),
+      siteConceptCount: 0,
+    };
+  }, [acceptedBuildEnvelope, investigationInput]);
   const guidedSteps = useMemo(
     () => buildGuidedInvestigationJourney(facts, workspaceState),
     [facts, workspaceState],
@@ -270,7 +271,7 @@ export function InvestigationHome({
         chosenScenario={chosenScenario}
         savedScenarioCount={scenarios.length}
         acceptedBuildEnvelope={acceptedBuildEnvelope}
-        selectedSiteDesign={selectedSiteDesign}
+        selectedSiteDesign={null}
         steps={guidedSteps}
         activeStep={activeStep}
         mapSlot={mapSlot}

@@ -1,95 +1,46 @@
-import { useEffect, useState } from "react";
-import { ArrowRight, CheckCircle2, Lightbulb, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, CheckCircle2, MapPinned, SlidersHorizontal } from "lucide-react";
 import type { ErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import {
-  createErfAssetSignedUrl,
-  type ErfAsset,
-} from "@/lib/workbench/erfFileVault";
-import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
-import { BuildEnvelopeDiagram } from "@/components/property/sitePotential/BuildEnvelopeDiagram";
+  localPolygonToWgs84,
+  type BuildEnvelopeResult,
+} from "@/lib/sitePotential/buildEnvelope";
+import { SatelliteParcelMap } from "@/components/property/sitePotential/SatelliteParcelMap";
+import { StreetSideBuildEnvelope } from "@/components/property/sitePotential/StreetSideBuildEnvelope";
 import { cn } from "@/lib/utils";
 
 interface GuidedSitePotentialStepProps {
   workspaceState: ErfWorkspaceState;
   acceptedBuildEnvelope?: BuildEnvelopeResult | null;
-  selectedSiteDesign?: ErfAsset | null;
+  /** Legacy prop retained so older callers compile. Generated concepts are no longer shown here. */
+  selectedSiteDesign?: unknown;
   stepSkipped?: boolean;
   onOpenSitePotential: () => void;
   onContinue: () => void;
 }
 
-function AcceptedConceptPreview({ asset }: { asset: ErfAsset }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [unavailable, setUnavailable] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    setUrl(null);
-    setUnavailable(false);
-    void createErfAssetSignedUrl(asset)
-      .then((nextUrl) => {
-        if (alive) setUrl(nextUrl || null);
-      })
-      .catch(() => {
-        if (alive) setUnavailable(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [asset]);
-
-  if (!url || unavailable) {
-    return (
-      <div className="grid aspect-[4/3] place-items-center rounded-xl bg-[#F2F4F7] px-3 text-center text-xs text-[#0D1B2A]/60">
-        Preview unavailable. Open Site Potential to view the selected concept.
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={url}
-      alt="Selected Site Potential concept"
-      className="aspect-[4/3] w-full rounded-xl object-cover"
-      onError={() => {
-        setUrl(null);
-        setUnavailable(true);
-      }}
-    />
-  );
-}
-
 export function GuidedSitePotentialStep({
   workspaceState,
   acceptedBuildEnvelope = null,
-  selectedSiteDesign = null,
   stepSkipped = false,
   onOpenSitePotential,
   onContinue,
 }: GuidedSitePotentialStepProps) {
   const site = workspaceState.sitePotential;
   const skipped = stepSkipped || site.skipped || site.progressState === "skipped";
-  const designSelected = Boolean(site.selectedDesignAssetId);
-  const acceptedSiteDesign =
-    selectedSiteDesign?.id === site.selectedDesignAssetId ? selectedSiteDesign : null;
-  const conceptCount = site.conceptCount;
-  const conceptsReady =
-    site.progressState === "concepts_ready" || site.progressState === "design_selected";
-  const generationActive = site.progressState === "generating";
-  const complete = designSelected || skipped;
-  const partial = !complete && (conceptCount > 0 || conceptsReady);
+  const complete = Boolean(acceptedBuildEnvelope) || skipped;
+  const acceptedRing =
+    acceptedBuildEnvelope?.projection && acceptedBuildEnvelope.parcelPolygon.length >= 3
+      ? localPolygonToWgs84(
+          acceptedBuildEnvelope.parcelPolygon,
+          acceptedBuildEnvelope.projection,
+        )
+      : null;
 
   const statusLabel = skipped
     ? "Skipped for now"
-    : designSelected
-      ? "Preferred concept selected"
-      : partial
-        ? conceptCount > 0
-          ? `${conceptCount} concept${conceptCount === 1 ? "" : "s"} generated, choose one`
-          : "Concepts ready, choose one"
-        : generationActive
-          ? "Concept generation in progress"
-          : "No concepts yet";
+    : acceptedBuildEnvelope
+      ? "Build envelope accepted"
+      : "Confirm the site inputs";
 
   return (
     <div className="space-y-4">
@@ -97,161 +48,89 @@ export function GuidedSitePotentialStep({
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-              Site potential
+              Site Potential
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Review the opportunity, then decide whether to continue
+              Confirm where a building could potentially fit
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Site Potential combines the saved parcel boundary with the planning evidence and
-              assumptions currently on file. It can orient a decision, but it is not an approval
-              or an architectural plan.
+              Site Potential uses the saved parcel boundary and planning controls to show the
+              buildable envelope on the map and from the street side. It does not generate a house
+              or architectural concept.
             </p>
           </div>
           <span
             className={cn(
               "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-              complete
-                ? "bg-emerald-100 text-emerald-800"
-                : partial
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-slate-100 text-slate-700",
+              complete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700",
             )}
           >
             {complete ? (
               <CheckCircle2 className="h-3.5 w-3.5" />
             ) : (
-              <Lightbulb className="h-3.5 w-3.5" />
+              <MapPinned className="h-3.5 w-3.5" />
             )}
             {statusLabel}
           </span>
         </div>
       </section>
 
-      <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-        <h4 className="text-sm font-semibold text-[#0D1B2A]">What matters for this decision</h4>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">
-              Approximate building area
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
-              Review any accepted boundary and building-area result below. Verified rules and
-              working assumptions remain visibly different.
-            </p>
+      {acceptedBuildEnvelope ? (
+        <section className="rounded-[1.25rem] border border-emerald-300/40 bg-emerald-50/45 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800">
+            Accepted Site Potential for this erf
           </div>
-          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FF6A00]">
-              Optional visual concept
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/66">
-              A selected concept can help communicate an idea. It remains illustrative and does
-              not establish a legal right or approved design.
-            </p>
+          <div className="mt-3 grid gap-4 xl:grid-cols-2">
+            <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
+              <div className="text-sm font-semibold text-[#0D1B2A]">Accepted building area map</div>
+              <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+                The orange envelope comes from the saved boundary, street-facing confirmation and
+                current planning controls.
+              </p>
+              <div className="mt-3 overflow-hidden rounded-xl border border-[#0D1B2A]/10">
+                <SatelliteParcelMap ring={acceptedRing} result={acceptedBuildEnvelope} />
+              </div>
+            </article>
+
+            <StreetSideBuildEnvelope result={acceptedBuildEnvelope} />
           </div>
-        </div>
-        <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-          This step is optional. Use Skip for now to continue without a concept, or open the
-          advanced tools deliberately when you want to review the full Site Potential workspace.
+        </section>
+      ) : (
+        <section className="rounded-[1.25rem] border border-dashed border-[#0D1B2A]/16 bg-white p-4">
+          <div className="text-sm font-semibold text-[#0D1B2A]">No accepted build envelope yet</div>
+          <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
+            Open Site Potential and confirm the parcel boundary and street-facing boundary. The map
+            and street-side build lines will appear here once those inputs support an envelope.
+          </p>
+        </section>
+      )}
+
+      {skipped ? (
+        <p className="rounded-xl border border-emerald-300/45 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950">
+          You skipped Site Potential for now. You can return later and confirm the map and
+          street-side build lines.
         </p>
+      ) : null}
 
-        {acceptedBuildEnvelope || acceptedSiteDesign ? (
-          <section className="mt-4 rounded-xl border border-emerald-300/40 bg-emerald-50/45 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800">
-              Accepted work for this erf
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {acceptedBuildEnvelope ? (
-                <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
-                  <div className="text-sm font-semibold text-[#0D1B2A]">
-                    Accepted building area map
-                  </div>
-                  <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-                    Built from the saved boundary and street-facing confirmations. Rules and
-                    assumptions remain visible in Site Potential.
-                  </p>
-                  <div className="mt-3 overflow-hidden rounded-xl border border-[#0D1B2A]/10 bg-[#F8FAFC] p-2">
-                    <BuildEnvelopeDiagram result={acceptedBuildEnvelope} compact />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onOpenSitePotential}
-                    className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
-                  >
-                    View building area
-                  </button>
-                </article>
-              ) : null}
-              {acceptedSiteDesign ? (
-                <article className="overflow-hidden rounded-xl border border-emerald-300/45 bg-white p-3">
-                  <div className="text-sm font-semibold text-[#0D1B2A]">
-                    Accepted Site Potential concept
-                  </div>
-                  <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-                    Selected for this erf. It is illustrative only, not an approved building plan.
-                  </p>
-                  <div className="mt-3">
-                    <AcceptedConceptPreview asset={acceptedSiteDesign} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onOpenSitePotential}
-                    className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A]"
-                  >
-                    View selected concept
-                  </button>
-                </article>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        {!acceptedBuildEnvelope && !acceptedSiteDesign ? (
-          <div className="mt-4 rounded-xl border border-dashed border-[#0D1B2A]/16 bg-[#F8FAFC] p-4">
-            <div className="text-sm font-semibold text-[#0D1B2A]">
-              No accepted Site Potential artifact yet
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              You can continue without one. If Site Potential matters to this decision, open the
-              advanced workspace and save only the result you want attached to the erf.
-            </p>
-          </div>
-        ) : null}
-
-        {partial ? (
-          <p className="mt-4 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Concepts have been generated, but none is selected yet. Open Site Potential and choose a
-            preferred concept, or use Skip for now to continue without one.
-          </p>
-        ) : null}
-
-        {skipped ? (
-          <p className="mt-4 rounded-xl border border-emerald-300/45 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950">
-            You skipped Site Potential for now. You can still open it, create or select a concept,
-            and add that concept to the report later.
-          </p>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!complete}
-            onClick={onContinue}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-          >
-            Continue to Review report
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenSitePotential}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Open advanced Site Potential
-          </button>
-        </div>
-      </section>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!complete}
+          onClick={onContinue}
+          className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          Continue to Review report
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenSitePotential}
+          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Open Site Potential
+        </button>
+      </div>
     </div>
   );
 }

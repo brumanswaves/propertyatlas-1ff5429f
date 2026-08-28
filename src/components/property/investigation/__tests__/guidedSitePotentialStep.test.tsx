@@ -6,10 +6,8 @@ import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState"
 const noop = vi.fn();
 
 describe("GuidedSitePotentialStep", () => {
-  it("shows canonical concepts-ready state even when generated asset count is not yet available", () => {
+  it("shows the deterministic envelope action while no accepted envelope is available", () => {
     const workspace = createEmptyErfWorkspaceState();
-    workspace.sitePotential.progressState = "concepts_ready";
-    workspace.sitePotential.conceptCount = 0;
 
     const html = renderToStaticMarkup(
       <GuidedSitePotentialStep
@@ -19,13 +17,15 @@ describe("GuidedSitePotentialStep", () => {
       />,
     );
 
-    expect(html).toContain("Concepts ready, choose one");
-    expect(html).toContain("Concepts have been generated, but none is selected yet.");
-    expect(html).not.toContain("No concepts yet");
+    expect(html).toContain("Confirm where a building could potentially fit");
+    expect(html).toContain("No accepted build envelope yet");
+    expect(html).toContain("Open Site Potential");
+    expect(html).toContain("does not generate a house or architectural concept");
+    expect(html).not.toContain("Concepts ready, choose one");
     expect(html).toContain("disabled");
   });
 
-  it("does not call an active generation state no concepts", () => {
+  it("does not treat legacy generation state as the Guided completion condition", () => {
     const workspace = createEmptyErfWorkspaceState();
     workspace.sitePotential.progressState = "generating";
 
@@ -37,7 +37,9 @@ describe("GuidedSitePotentialStep", () => {
       />,
     );
 
-    expect(html).toContain("Concept generation in progress");
+    expect(html).toContain("Confirm the site inputs");
+    expect(html).toContain("No accepted build envelope yet");
+    expect(html).not.toContain("Concept generation in progress");
     expect(html).not.toContain("No concepts yet");
   });
 });
