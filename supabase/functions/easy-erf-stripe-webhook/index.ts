@@ -43,7 +43,7 @@ function looksLikeUuid(value: string | null): value is string {
   );
 }
 
-type AdminClient = ReturnType<typeof createClient>;
+type AdminClient = ReturnType<typeof createClient<any>>;
 
 type AccountMatch = {
   userId: string | null;
