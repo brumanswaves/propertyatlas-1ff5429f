@@ -9,6 +9,7 @@ import {
   validateEasyErfCheckoutSession,
 } from "../../../../supabase/functions/_shared/easyErfStripePaymentContract";
 
+// These identifiers are synthetic fixtures and never reference live Stripe objects.
 const PAYMENT_LINK_ID = "plink_easy_erf_test";
 const SESSION_ID = "cs_test_easy_erf";
 const LPI = "C03400140000157000000";
