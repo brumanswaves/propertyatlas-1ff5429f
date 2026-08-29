@@ -58,7 +58,7 @@ async function resolveAccountMatch(
   const { data: profiles, error: profileError } = await admin
     .from("profiles")
     .select("id,email")
-    .ilike("email", order.customerEmail)
+    .eq("email", order.customerEmail)
     .limit(2);
 
   if (profileError) {
