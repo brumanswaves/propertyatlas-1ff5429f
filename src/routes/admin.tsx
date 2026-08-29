@@ -34,12 +34,14 @@ export const Route = createFileRoute("/admin")({
 
 type ReportOrderRow = {
   id: string;
-  user_id: string;
-  parcel_id: string;
+  user_id: string | null;
+  parcel_id: string | null;
   report_type: string;
   status: string;
   status_enum: string | null;
   provider_id: string | null;
+  provider: string;
+  payload: unknown;
   price_cents: number;
   created_at: string;
   updated_at: string;
@@ -100,7 +102,7 @@ function FounderOperations() {
         supabase
           .from("report_orders")
           .select(
-            "id,user_id,parcel_id,report_type,status,status_enum,provider_id,price_cents,created_at,updated_at,failure_reason,completed_at",
+            "id,user_id,parcel_id,report_type,status,status_enum,provider_id,provider,payload,price_cents,created_at,updated_at,failure_reason,completed_at",
           )
           .order("created_at", { ascending: false })
           .limit(40),
@@ -154,7 +156,7 @@ function FounderOperations() {
     const recentErrors = auditRows.filter((row) => row.status !== "ok").length;
     const failedOrders = orders.filter((order) => orderStatus(order) === "failed").length;
     const users = new Set<string>();
-    for (const order of orders) users.add(order.user_id);
+    for (const order of orders) if (order.user_id) users.add(order.user_id);
     for (const row of auditRows) if (row.user_id) users.add(row.user_id);
     const enabledProviders = providerSettings.filter((provider) => provider.enabled).length;
 
@@ -255,8 +257,8 @@ function FounderOperations() {
         <section id="orders" className="scroll-mt-28 pt-10">
           <SectionHeading
             icon={<FileText className="h-4 w-4" />}
-            title="Report orders"
-            description="Recent order records already available to admins through the existing report-order policy."
+            title="Investigation and report orders"
+            description="Read-only payment and fulfilment truth from the secured order ledger."
           />
           <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             {loading ? (
@@ -295,12 +297,18 @@ function FounderOperations() {
                           ) : null}
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] text-foreground">
-                          {order.parcel_id}
+                          {order.parcel_id ??
+                            orderPayloadText(order, "propertyReference") ??
+                            "Property reference pending"}
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
-                          {shortId(order.user_id)}
+                          {order.user_id
+                            ? shortId(order.user_id)
+                            : orderPayloadText(order, "customerEmail") ?? "Unmatched"}
                         </td>
-                        <td className="px-4 py-3">{order.provider_id ?? "Not recorded"}</td>
+                        <td className="px-4 py-3">
+                          {readableLabel(order.provider || order.provider_id || "Not recorded")}
+                        </td>
                         <td className="px-4 py-3">
                           <StatusChip status={orderStatus(order)} />
                         </td>
@@ -657,6 +665,14 @@ function BooleanChip({ label, active }: { label: string; active: boolean }) {
       {label}
     </span>
   );
+}
+
+function orderPayloadText(order: ReportOrderRow, key: string) {
+  if (!order.payload || typeof order.payload !== "object" || Array.isArray(order.payload)) {
+    return null;
+  }
+  const value = (order.payload as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function orderStatus(order: ReportOrderRow) {
