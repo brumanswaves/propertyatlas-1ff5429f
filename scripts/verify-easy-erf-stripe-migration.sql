@@ -161,7 +161,7 @@ select public.record_easy_erf_stripe_payment(
   false,
   null,
   'csg:lpi:c03400140000157000000'
-) as first_order_id \gset
+);
 
 select public.record_easy_erf_stripe_payment(
   'cs_test_easy_erf_1',
@@ -179,13 +179,18 @@ select public.record_easy_erf_stripe_payment(
   false,
   null,
   'csg:lpi:c03400140000157000000'
-) as retry_order_id \gset
+);
 
 do $$
 declare
   v_order public.report_orders%rowtype;
+  v_order_count integer;
 begin
-  if :'first_order_id' <> :'retry_order_id' then
+  select count(*) into v_order_count
+  from public.report_orders
+  where provider_order_ref = 'cs_test_easy_erf_1';
+
+  if v_order_count <> 1 then
     raise exception 'Stripe retry created a duplicate report order';
   end if;
 
@@ -228,7 +233,7 @@ select public.record_easy_erf_stripe_payment(
   false,
   null,
   'csg:lpi:c03400140000157000000'
-) as late_retry_order_id \gset
+);
 
 do $$
 declare
