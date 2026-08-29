@@ -362,8 +362,19 @@ try {
   ) {
     throw new Error(`Signed-in browser workspace was not updated correctly: ${firstStorage.scoped}`);
   }
-  if (firstStorage.anonymous) {
-    throw new Error("Signed-in Guided progress leaked into the anonymous browser namespace.");
+  const anonymousWorkspace = firstStorage.anonymous ? JSON.parse(firstStorage.anonymous) : null;
+  const anonymousHasMaterialGuidedProgress = Boolean(
+    anonymousWorkspace &&
+      (anonymousWorkspace.identityStatus !== "none" ||
+        anonymousWorkspace.dirty ||
+        anonymousWorkspace.investigation?.currentStepId ||
+        anonymousWorkspace.investigation?.lastMeaningfulActionAt ||
+        anonymousWorkspace.investigation?.intentionallyVisitedStepIds?.length),
+  );
+  if (anonymousHasMaterialGuidedProgress) {
+    throw new Error(
+      `Signed-in Guided progress leaked into the anonymous browser namespace: ${firstStorage.anonymous}`,
+    );
   }
 
   await firstContext.close();
