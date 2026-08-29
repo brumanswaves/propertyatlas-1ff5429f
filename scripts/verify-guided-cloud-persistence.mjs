@@ -4,7 +4,7 @@ const baseUrl = process.env.EASY_ERF_BROWSER_BASE_URL || "http://127.0.0.1:4173"
 const USER_ID = "00000000-0000-4000-8000-000000000157";
 const USER_EMAIL = "guided-cloud-acceptance@easyerf.invalid";
 const LPI = "C03400140000157000000";
-const PARCEL_KEY = "E108C034001400001570000000";
+const PARCEL_KEY = "E108C034001570000000";
 const PARCEL_ID = "csg:lpi:c03400140000157000000";
 const AUTH_STORAGE_KEYS = ["sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
 const ACCEPTANCE_AT = "2026-08-29T08:00:00.000Z";
@@ -328,7 +328,7 @@ try {
     (call) =>
       call.parcelId === PARCEL_ID &&
       call.patch?.easyErfInvestigation?.identityStatus === "looks_correct" &&
-      call.patch?.easyErfInvestigation?.investigation?.currentStepId === "address",
+      call.patch?.easyErfInvestigation?.investigation?.currentStepId === "add-address",
     firstPage,
   );
 
@@ -358,7 +358,7 @@ try {
   const firstWorkspace = firstStorage.scoped ? JSON.parse(firstStorage.scoped) : null;
   if (
     firstWorkspace?.identityStatus !== "looks_correct" ||
-    firstWorkspace?.investigation?.currentStepId !== "address"
+    firstWorkspace?.investigation?.currentStepId !== "add-address"
   ) {
     throw new Error(`Signed-in browser workspace was not updated correctly: ${firstStorage.scoped}`);
   }
@@ -400,7 +400,7 @@ try {
     hydratedWorkspace = raw ? JSON.parse(raw) : null;
     if (
       hydratedWorkspace?.identityStatus === "looks_correct" &&
-      hydratedWorkspace?.investigation?.currentStepId === "address"
+      hydratedWorkspace?.investigation?.currentStepId === "add-address"
     ) {
       break;
     }
@@ -408,7 +408,7 @@ try {
   }
   if (
     hydratedWorkspace?.identityStatus !== "looks_correct" ||
-    hydratedWorkspace?.investigation?.currentStepId !== "address"
+    hydratedWorkspace?.investigation?.currentStepId !== "add-address"
   ) {
     throw new Error(`Fresh browser context did not hydrate durable Guided progress.`);
   }
