@@ -98,10 +98,10 @@ export function parseAcceptedPaymentLinkIds(raw: string | undefined): Set<string
 
 export function parseCanonicalParcelId(propertyReference: string): string | null {
   const value = propertyReference.trim();
-  const canonical = /^csg:lpi:([a-z0-9]+)$/i.exec(value);
+  const canonical = /^csg:lpi:([a-z]\d{20})$/i.exec(value);
   if (canonical) return `csg:lpi:${canonical[1].toLowerCase()}`;
 
-  const lpi = /^([a-z][a-z0-9]{15,30})$/i.exec(value);
+  const lpi = /^([a-z]\d{20})$/i.exec(value);
   if (lpi) return `csg:lpi:${lpi[1].toLowerCase()}`;
 
   return null;
