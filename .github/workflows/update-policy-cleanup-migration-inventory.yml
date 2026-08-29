@@ -31,19 +31,23 @@ jobs:
 
           path = Path("src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts")
           source = path.read_text(encoding="utf-8")
-          old = '''    expect(migrationNames).toHaveLength(29);
-    expect(migrationNames).toEqual([
-      ...historicalMigrationNames,
-      "20260813090000_make_site_potential_worker_portable.sql",
-      "20260829113000_secure_easy_erf_stripe_fulfillment.sql",
-    ]);'''
-          new = '''    expect(migrationNames).toHaveLength(30);
-    expect(migrationNames).toEqual([
-      ...historicalMigrationNames,
-      "20260813090000_make_site_potential_worker_portable.sql",
-      "20260829113000_secure_easy_erf_stripe_fulfillment.sql",
-      "20260829140000_remove_legacy_report_order_policies.sql",
-    ]);'''
+          old = (
+              "    expect(migrationNames).toHaveLength(29);\n"
+              "    expect(migrationNames).toEqual([\n"
+              "      ...historicalMigrationNames,\n"
+              "      \"20260813090000_make_site_potential_worker_portable.sql\",\n"
+              "      \"20260829113000_secure_easy_erf_stripe_fulfillment.sql\",\n"
+              "    ]);"
+          )
+          new = (
+              "    expect(migrationNames).toHaveLength(30);\n"
+              "    expect(migrationNames).toEqual([\n"
+              "      ...historicalMigrationNames,\n"
+              "      \"20260813090000_make_site_potential_worker_portable.sql\",\n"
+              "      \"20260829113000_secure_easy_erf_stripe_fulfillment.sql\",\n"
+              "      \"20260829140000_remove_legacy_report_order_policies.sql\",\n"
+              "    ]);"
+          )
           if source.count(old) != 1:
               raise SystemExit("Expected one exact migration inventory assertion")
           path.write_text(source.replace(old, new, 1), encoding="utf-8")
