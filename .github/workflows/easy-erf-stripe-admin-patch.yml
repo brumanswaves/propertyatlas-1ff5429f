@@ -67,15 +67,14 @@ jobs:
               ),
               (
                   "function orderStatus(order: ReportOrderRow) {",
-                  '''function orderPayloadText(order: ReportOrderRow, key: string) {
-  if (!order.payload || typeof order.payload !== "object" || Array.isArray(order.payload)) {
-    return null;
-  }
-  const value = (order.payload as Record<string, unknown>)[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function orderStatus(order: ReportOrderRow) {''',
+                  "function orderPayloadText(order: ReportOrderRow, key: string) {\n"
+                  "  if (!order.payload || typeof order.payload !== \"object\" || Array.isArray(order.payload)) {\n"
+                  "    return null;\n"
+                  "  }\n"
+                  "  const value = (order.payload as Record<string, unknown>)[key];\n"
+                  "  return typeof value === \"string\" && value.trim() ? value.trim() : null;\n"
+                  "}\n\n"
+                  "function orderStatus(order: ReportOrderRow) {",
               ),
           ]
 
