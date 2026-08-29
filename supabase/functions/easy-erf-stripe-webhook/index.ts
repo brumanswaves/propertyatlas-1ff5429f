@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.0";
-import Stripe from "npm:stripe@^22.0.0";
+import Stripe from "npm:stripe@22.6.0";
 
 import {
   parseAcceptedPaymentLinkIds,
