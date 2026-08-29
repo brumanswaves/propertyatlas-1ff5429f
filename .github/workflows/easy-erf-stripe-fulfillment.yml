@@ -48,7 +48,11 @@ jobs:
           ./deno --version
 
       - name: Type-check signed Stripe webhook
-        run: ./deno check --no-lock supabase/functions/easy-erf-stripe-webhook/index.ts
+        run: >-
+          ./deno check
+          --node-modules-dir=auto
+          --no-lock
+          supabase/functions/easy-erf-stripe-webhook/index.ts
 
       - name: Run focused payment contract tests
         run: |
