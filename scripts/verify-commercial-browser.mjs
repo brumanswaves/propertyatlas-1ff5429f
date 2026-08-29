@@ -6,12 +6,35 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 
 try {
-  await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
-
-  await page.getByRole("heading", { name: /Easy Erf Property Investigation/i }).waitFor({
-    state: "visible",
-    timeout: 30000,
+  const response = await page.goto(`${baseUrl}/pricing`, {
+    waitUntil: "networkidle",
+    timeout: 60000,
   });
+
+  try {
+    await page.getByRole("heading", { name: /Easy Erf Property Investigation/i }).waitFor({
+      state: "visible",
+      timeout: 30000,
+    });
+  } catch (error) {
+    const title = await page.title().catch(() => "");
+    const bodyExcerpt = await page
+      .locator("body")
+      .innerText()
+      .then((body) => body.slice(0, 3000))
+      .catch(() => "");
+    const originalMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      [
+        "Pricing acceptance heading was not visible.",
+        `HTTP status: ${response?.status() ?? "unknown"}`,
+        `Final URL: ${page.url()}`,
+        `Document title: ${JSON.stringify(title)}`,
+        `Public body excerpt: ${JSON.stringify(bodyExcerpt)}`,
+        `Original error: ${originalMessage}`,
+      ].join("\n"),
+    );
+  }
 
   const body = await page.locator("body").innerText();
 
