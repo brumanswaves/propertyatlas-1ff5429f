@@ -2,3 +2,8 @@
 # Remote ownership is established explicitly with `supabase link --project-ref <ref>`.
 # See docs/EASY_ERF_BACKEND_OWNERSHIP.md before any linked/remote command.
 project_id = "easy-erf"
+
+# Stripe authenticates this public endpoint with the Stripe-Signature header.
+# The function rejects unsigned or invalid events before any database write.
+[functions.easy-erf-stripe-webhook]
+verify_jwt = false
