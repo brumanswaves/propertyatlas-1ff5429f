@@ -43,7 +43,13 @@ function looksLikeUuid(value: string | null): value is string {
   );
 }
 
-type AdminClient = ReturnType<typeof createClient<any>>;
+function createAdminClient(supabaseUrl: string, serviceRoleKey: string) {
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+type AdminClient = ReturnType<typeof createAdminClient>;
 
 type AccountMatch = {
   userId: string | null;
@@ -193,9 +199,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const order = validation.order;
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const admin = createAdminClient(supabaseUrl, serviceRoleKey);
   const accountMatch = await resolveAccountMatch(admin, order, requestId);
 
   const { data: orderId, error: recordError } = await admin.rpc(
