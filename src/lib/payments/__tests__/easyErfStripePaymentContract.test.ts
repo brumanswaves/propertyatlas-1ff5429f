@@ -6,6 +6,7 @@ import {
   EASY_ERF_R999_AMOUNT_TOTAL,
   parseAcceptedPaymentLinkIds,
   parseCanonicalParcelId,
+  parseStandaloneErfNumber,
   validateEasyErfCheckoutSession,
 } from "../../../../supabase/functions/_shared/easyErfStripePaymentContract";
 
@@ -57,10 +58,11 @@ const acceptedLinks = new Set([PAYMENT_LINK_ID]);
 
 describe("Easy Erf Stripe payment-link allowlist", () => {
   it("trims, deduplicates and drops empty values", () => {
-    expect([...parseAcceptedPaymentLinkIds(` ${PAYMENT_LINK_ID},,${PAYMENT_LINK_ID},plink_live `)]).toEqual([
-      PAYMENT_LINK_ID,
-      "plink_live",
-    ]);
+    expect([
+      ...parseAcceptedPaymentLinkIds(
+        ` ${PAYMENT_LINK_ID},,${PAYMENT_LINK_ID},plink_live `,
+      ),
+    ]).toEqual([PAYMENT_LINK_ID, "plink_live"]);
   });
 
   it("fails closed when no Easy Erf Payment Link is configured", () => {
@@ -137,7 +139,10 @@ describe("Easy Erf R999 Checkout Session validation", () => {
 
   it("rejects subscription mode", () => {
     expect(
-      validateEasyErfCheckoutSession(checkoutSession({ mode: "subscription" }), acceptedLinks),
+      validateEasyErfCheckoutSession(
+        checkoutSession({ mode: "subscription" }),
+        acceptedLinks,
+      ),
     ).toMatchObject({ ok: false, code: "WRONG_MODE" });
   });
 
@@ -148,7 +153,9 @@ describe("Easy Erf R999 Checkout Session validation", () => {
       { currency: "usd" },
       { amount_total: null },
     ]) {
-      expect(validateEasyErfCheckoutSession(checkoutSession(overrides), acceptedLinks)).toMatchObject({
+      expect(
+        validateEasyErfCheckoutSession(checkoutSession(overrides), acceptedLinks),
+      ).toMatchObject({
         ok: false,
         code: "WRONG_AMOUNT",
       });
@@ -205,7 +212,7 @@ describe("Easy Erf property-reference parsing", () => {
     expect(parseCanonicalParcelId(`CSG:LPI:${LPI}`)).toBe(PARCEL_ID);
   });
 
-  it("does not infer a parcel from an address, erf number or arbitrary identifier", () => {
+  it("keeps addresses, erf numbers and arbitrary identifiers out of LPI parsing", () => {
     for (const value of [
       "24 Padrone Crescent",
       "Erf 1570",
@@ -215,6 +222,27 @@ describe("Easy Erf property-reference parsing", () => {
       "A1234567890ABCDEFGHIJ",
     ]) {
       expect(parseCanonicalParcelId(value)).toBeNull();
+    }
+  });
+
+  it("extracts only standalone unportioned erf-number references", () => {
+    expect(parseStandaloneErfNumber("1570")).toBe("1570");
+    expect(parseStandaloneErfNumber("Erf 1570")).toBe("1570");
+    expect(parseStandaloneErfNumber("ERF: 001570")).toBe("1570");
+    expect(parseStandaloneErfNumber("1570 / 0")).toBe("1570");
+  });
+
+  it("does not reduce an address, LPI or nonzero portion to an erf number", () => {
+    for (const value of [
+      "24 Padrone Crescent",
+      LPI,
+      `csg:lpi:${LPI}`,
+      "1570/1",
+      "Erf 1570, St Francis Bay",
+      "Erf",
+      "reference-1570",
+    ]) {
+      expect(parseStandaloneErfNumber(value)).toBeNull();
     }
   });
 });
