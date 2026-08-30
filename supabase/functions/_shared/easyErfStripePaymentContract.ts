@@ -107,6 +107,15 @@ export function parseCanonicalParcelId(propertyReference: string): string | null
   return null;
 }
 
+export function parseStandaloneErfNumber(propertyReference: string): string | null {
+  const match = /^(?:erf[\s:#-]*)?(\d{1,10})(?:\s*\/\s*0)?$/i.exec(
+    propertyReference.trim(),
+  );
+  if (!match) return null;
+
+  return match[1].replace(/^0+(?=\d)/, "");
+}
+
 export function validateEasyErfCheckoutSession(
   value: unknown,
   acceptedPaymentLinkIds: ReadonlySet<string>,

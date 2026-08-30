@@ -32,7 +32,9 @@ describe("Easy Erf Stripe payment authority", () => {
     );
     expect(migration).toMatch(/security definer/);
     expect(migration).toMatch(/revoke all on function public\.record_easy_erf_stripe_payment/);
-    expect(migration).toMatch(/grant execute on function public\.record_easy_erf_stripe_payment[\s\S]*to service_role/);
+    expect(migration).toMatch(
+      /grant execute on function public\.record_easy_erf_stripe_payment[\s\S]*to service_role/,
+    );
     expect(migration).toMatch(/unique \(provider_order_ref\)/);
     expect(migration).toMatch(/on conflict \(provider_order_ref\) do update/);
   });
@@ -81,6 +83,15 @@ describe("Easy Erf signed Stripe webhook", () => {
     expect(webhook).not.toContain('.ilike("email", order.customerEmail)');
     expect(webhook).toContain('admin.rpc(\n    "record_easy_erf_stripe_payment"');
     expect(webhook).not.toMatch(/user[_-]?id.*request\.json/i);
+  });
+
+  it("resolves a standalone erf only through one unique saved-property parcel", () => {
+    expect(webhook).toContain("parseStandaloneErfNumber(order.propertyReference)");
+    expect(webhook).toContain('.contains("user_data", userDataFilter)');
+    expect(webhook).toContain("parcelIds.size === 1");
+    expect(webhook).toContain("saved_property_erf_ambiguous");
+    expect(webhook).toContain("saved_property_erf_unresolved");
+    expect(webhook).not.toMatch(/parcelIds\.values\(\)\.next\(\)\.value\s+as\s+string/);
   });
 
   it("exposes the webhook without weakening its authentication boundary", () => {

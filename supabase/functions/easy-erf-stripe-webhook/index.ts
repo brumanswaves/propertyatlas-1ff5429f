@@ -3,6 +3,7 @@ import Stripe from "npm:stripe@22.6.0";
 
 import {
   parseAcceptedPaymentLinkIds,
+  parseStandaloneErfNumber,
   validateEasyErfCheckoutSession,
   type EasyErfStripeOrderInput,
 } from "../_shared/easyErfStripePaymentContract.ts";
@@ -56,6 +57,49 @@ type AccountMatch = {
   parcelId: string | null;
 };
 
+async function resolveUniqueSavedParcelByErfNumber(
+  admin: AdminClient,
+  userId: string,
+  erfNumber: string,
+  requestId: string,
+): Promise<string | null> {
+  const parcelIds = new Set<string>();
+
+  for (const userDataFilter of [{ erfNumber }, { erf: erfNumber }]) {
+    const { data: savedProperties, error: savedPropertiesError } = await admin
+      .from("saved_properties")
+      .select("parcel_id")
+      .eq("user_id", userId)
+      .contains("user_data", userDataFilter)
+      .limit(2);
+
+    if (savedPropertiesError) {
+      log("saved_property_erf_match_failed", requestId, {
+        errorCode: savedPropertiesError.code ?? null,
+      });
+      return null;
+    }
+
+    for (const savedProperty of savedProperties ?? []) {
+      if (typeof savedProperty?.parcel_id === "string" && savedProperty.parcel_id.trim()) {
+        parcelIds.add(savedProperty.parcel_id);
+      }
+    }
+  }
+
+  if (parcelIds.size === 1) {
+    const [parcelId] = parcelIds;
+    log("saved_property_erf_matched", requestId, { erfNumber, parcelId });
+    return parcelId;
+  }
+
+  log(parcelIds.size > 1 ? "saved_property_erf_ambiguous" : "saved_property_erf_unresolved", requestId, {
+    erfNumber,
+    matchCount: parcelIds.size,
+  });
+  return null;
+}
+
 async function resolveAccountMatch(
   admin: AdminClient,
   order: EasyErfStripeOrderInput,
@@ -94,6 +138,18 @@ async function resolveAccountMatch(
       });
     } else if (savedProperty && typeof savedProperty.parcel_id === "string") {
       parcelId = savedProperty.parcel_id;
+    }
+  }
+
+  if (!parcelId) {
+    const erfNumber = parseStandaloneErfNumber(order.propertyReference);
+    if (erfNumber) {
+      parcelId = await resolveUniqueSavedParcelByErfNumber(
+        admin,
+        userId,
+        erfNumber,
+        requestId,
+      );
     }
   }
 
