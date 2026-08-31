@@ -1,0 +1,64 @@
+name: Repair founder migration inventory exactly
+
+on:
+  push:
+    branches:
+      - chatgpt/easy-erf-fulfillment-ops
+    paths:
+      - .github/workflows/repair-founder-migration-inventory.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags origin "${GITHUB_REF_NAME}"
+          git checkout -B "${GITHUB_REF_NAME}" FETCH_HEAD
+          git fetch --no-tags origin main:refs/remotes/origin/main
+
+      - name: Restore canonical test and patch only inventory
+        run: |
+          git checkout origin/main -- src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts")
+          source = path.read_text(encoding="utf-8")
+          old = '''    expect(migrationNames).toHaveLength(30);
+    expect(migrationNames).toEqual([
+      ...historicalMigrationNames,
+      "20260813090000_make_site_potential_worker_portable.sql",
+      "20260829113000_secure_easy_erf_stripe_fulfillment.sql",
+      "20260829140000_remove_legacy_report_order_policies.sql",
+    ]);'''
+          new = '''    expect(migrationNames).toHaveLength(31);
+    expect(migrationNames).toEqual([
+      ...historicalMigrationNames,
+      "20260813090000_make_site_potential_worker_portable.sql",
+      "20260829113000_secure_easy_erf_stripe_fulfillment.sql",
+      "20260829140000_remove_legacy_report_order_policies.sql",
+      "20260831090000_easy_erf_founder_fulfillment_controls.sql",
+    ]);'''
+          if source.count(old) != 1:
+              raise SystemExit("Expected exactly one canonical migration inventory block")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          Path(".github/workflows/repair-founder-migration-inventory.yml").unlink()
+          PY
+
+      - name: Commit exact repair
+        run: |
+          git config user.name "Easy Erf CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts .github/workflows/repair-founder-migration-inventory.yml
+          git diff --cached --check
+          git commit -m "Repair founder migration inventory exactly"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
