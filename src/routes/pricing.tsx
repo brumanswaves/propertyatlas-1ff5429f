@@ -281,7 +281,7 @@ function PricingPage() {
             <div className="flex flex-col justify-center border-t border-[#0D1B2A]/10 bg-[#F7FBFF] p-5 lg:border-l lg:border-t-0 sm:p-7">
               <div className="flex items-end gap-2">
                 <span className="text-4xl font-semibold tracking-tight text-[#0D1B2A]">R999</span>
-                <span className="pb-1 text-xs text-[#64748B]">one property</span>
+                <span className="pb-1 text-xs text-[#64748B]">once-off · one property · no subscription</span>
               </div>
               <button
                 type="button"
