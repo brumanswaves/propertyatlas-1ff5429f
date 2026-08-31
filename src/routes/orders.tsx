@@ -7,12 +7,19 @@ import {
   CircleDashed,
   Download,
   ReceiptText,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
+import { HumanReviewedReport } from "@/components/humanReview/HumanReviewedReport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import {
+  humanReviewFocusLabel,
+  humanReviewIntendedUseLabel,
+} from "@/lib/humanReview/scope";
+import { parseHumanReviewReportContent } from "@/lib/humanReview/reportContent";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -36,6 +43,10 @@ type ReportOrder = {
   failure_reason: string | null;
   created_at: string;
   completed_at: string | null;
+  review_focus: string | null;
+  intended_use: string | null;
+  review_context: string | null;
+  review_content: unknown;
 };
 
 function CustomerOrdersPage() {
@@ -52,15 +63,16 @@ function CustomerOrdersPage() {
     if (!user) return;
     let active = true;
     void (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("report_orders")
         .select(
-          "id,parcel_id,report_type,status,status_enum,payload,price_cents,pdf_storage_path,failure_reason,created_at,completed_at",
+          "id,parcel_id,report_type,status,status_enum,payload,price_cents,pdf_storage_path,failure_reason,created_at,completed_at,review_focus,intended_use,review_context,review_content",
         )
         .eq("user_id", user.id)
         .eq("provider", "stripe")
         .order("created_at", { ascending: false });
       if (!active) return;
+      if (error) toast.error("Could not load your Human Review investigations.");
       setOrders((data ?? []) as ReportOrder[]);
       setLoadingOrders(false);
     })();
@@ -72,36 +84,44 @@ function CustomerOrdersPage() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-28 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-28 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <ReceiptText className="h-3 w-3 text-accent" /> Human-reviewed investigations
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <ShieldCheck className="h-3 w-3 text-[#FF8A33]" /> Human Review
             </span>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Your review status</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Follow each paid Easy Erf investigation from payment receipt through human review and report completion.
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
+              My Human-Reviewed Investigations
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748B]">
+              Follow the review while it is underway, then read the finished Human-Reviewed Easy Erf Report here. The PDF is a secondary export, not the primary product.
             </p>
           </div>
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> My Investigations
           </Link>
         </div>
 
-        <section className="mt-8 space-y-4">
+        <section className="mt-8 space-y-6">
           {loadingOrders ? (
-            <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Loading review status…</div>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading Human Review status…</div>
           ) : orders.length === 0 ? (
-            <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-soft">
-              <div className="text-sm font-semibold text-foreground">No paid human-reviewed investigations yet</div>
-              <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-muted-foreground">
-                When a payment is verified, its status will appear here automatically.
+            <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-8 text-center shadow-soft">
+              <div className="text-sm font-semibold text-[#0D1B2A]">No paid Human Review investigations yet</div>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-[#64748B]">
+                You can start Human Review from any Easy Erf property investigation without losing the work already gathered.
               </p>
+              <Link
+                to="/pricing"
+                className="mt-5 inline-flex rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                See Human Review · R999
+              </Link>
             </div>
           ) : (
             orders.map((order) => <CustomerOrderCard key={order.id} order={order} />)
@@ -116,17 +136,14 @@ function CustomerOrdersPage() {
 function CustomerOrderCard({ order }: { order: ReportOrder }) {
   const [downloading, setDownloading] = useState(false);
   const status = orderStatus(order);
-  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
-  const request = payloadText(order.payload, "investigationRequest");
-  const steps = [
-    { key: "paid", label: "Payment received", done: ["paid", "processing", "ready"].includes(status) },
-    { key: "processing", label: "Human review", done: ["processing", "ready"].includes(status) },
-    { key: "ready", label: "Report ready", done: status === "ready" },
-  ];
+  const propertyReference =
+    payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+  const legacyRequest = payloadText(order.payload, "investigationRequest");
+  const content = parseHumanReviewReportContent(order.review_content);
 
   async function downloadReport() {
     if (!order.pdf_storage_path) {
-      toast.error("The completed report file is not attached yet.");
+      toast.error("The completed PDF export is not attached yet.");
       return;
     }
 
@@ -144,49 +161,88 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
     window.location.assign(data.signedUrl);
   }
 
+  const downloadButton = order.pdf_storage_path ? (
+    <button
+      type="button"
+      disabled={downloading}
+      onClick={() => void downloadReport()}
+      className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+    >
+      <Download className="h-3.5 w-3.5" /> {downloading ? "Preparing PDF…" : "Download PDF"}
+    </button>
+  ) : null;
+
+  if (status === "ready" && content) {
+    return (
+      <HumanReviewedReport
+        propertyReference={propertyReference}
+        focus={order.review_focus}
+        intendedUse={order.intended_use}
+        context={order.review_context}
+        content={content}
+        completedAt={order.completed_at}
+        downloadAction={downloadButton}
+      />
+    );
+  }
+
+  const steps = [
+    { key: "paid", label: "Payment received", done: ["paid", "processing", "ready"].includes(status) },
+    { key: "processing", label: "Human review", done: ["processing", "ready"].includes(status) },
+    { key: "ready", label: "Report ready", done: status === "ready" },
+  ];
+
   return (
-    <article className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+    <article className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <StatusBadge status={status} />
-          <h2 className="mt-3 text-base font-semibold text-foreground">{propertyReference}</h2>
-          {request ? <p className="mt-1 text-xs text-muted-foreground">{request}</p> : null}
+          <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">{propertyReference}</h2>
+          <p className="mt-1 text-xs text-[#64748B]">
+            {order.review_focus
+              ? humanReviewFocusLabel(order.review_focus)
+              : "Legacy Human Review order"}
+            {humanReviewIntendedUseLabel(order.intended_use)
+              ? ` · ${humanReviewIntendedUseLabel(order.intended_use)}`
+              : ""}
+          </p>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums text-foreground">R{(order.price_cents / 100).toFixed(0)}</div>
-          <div className="mt-1 text-[10px] text-muted-foreground">Paid investigation</div>
+          <div className="text-sm font-semibold tabular-nums text-[#0D1B2A]">R{(order.price_cents / 100).toFixed(0)}</div>
+          <div className="mt-1 text-[10px] text-[#64748B]">One property</div>
         </div>
       </div>
 
+      {order.review_context ? (
+        <div className="mt-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 text-xs leading-5 text-[#0D1B2A]/72">
+          <strong className="text-[#0D1B2A]">Situation context:</strong> {order.review_context}
+        </div>
+      ) : legacyRequest ? (
+        <div className="mt-4 rounded-2xl border border-[#F59E0B]/25 bg-[#fffbeb] p-4 text-xs leading-5 text-[#0D1B2A]/72">
+          <strong className="text-[#0D1B2A]">Legacy checkout note:</strong> {legacyRequest}. This note does not expand the current Human Review scope.
+        </div>
+      ) : null}
+
       <div className="mt-5 grid gap-2 sm:grid-cols-3">
         {steps.map((step) => (
-          <div key={step.key} className="rounded-2xl bg-muted/60 p-3">
+          <div key={step.key} className="rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
             <div className="flex items-center gap-2">
-              {step.done ? <CheckCircle2 className="h-4 w-4 text-success" /> : <CircleDashed className="h-4 w-4 text-muted-foreground" />}
-              <span className="text-xs font-semibold text-foreground">{step.label}</span>
+              {step.done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <CircleDashed className="h-4 w-4 text-[#94A3B8]" />}
+              <span className="text-xs font-semibold text-[#0D1B2A]">{step.label}</span>
             </div>
           </div>
         ))}
       </div>
 
       {status === "ready" ? (
-        <div className="mt-4 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs text-foreground">
-          <div className="font-semibold">Your human-reviewed investigation is ready.</div>
-          {order.pdf_storage_path ? (
-            <div className="mt-3">
-              <button
-                type="button"
-                disabled={downloading}
-                onClick={() => void downloadReport()}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                <Download className="h-3.5 w-3.5" /> {downloading ? "Preparing download…" : "Download report"}
-              </button>
-              <p className="mt-2 text-muted-foreground">The download link is private and expires after 5 minutes.</p>
-            </div>
-          ) : (
-            <p className="mt-1 text-muted-foreground">The report is marked ready, but the file is not attached. Easy Erf support has been notified.</p>
+        <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-xs text-[#0D1B2A]">
+          <div className="font-semibold">Your Human Review is complete.</div>
+          {content ? null : (
+            <p className="mt-1 leading-5 text-[#0D1B2A]/65">
+              This is a legacy completion with a PDF but no structured web report yet. New Human Reviews use the web-first report format.
+            </p>
           )}
+          {downloadButton ? <div className="mt-3">{downloadButton}</div> : null}
         </div>
       ) : null}
 
@@ -204,11 +260,25 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
-  const label = status === "paid" ? "Payment received" : status === "processing" ? "Human review underway" : status === "ready" ? "Report ready" : status;
+  const Icon =
+    status === "ready"
+      ? CheckCircle2
+      : status === "failed"
+        ? AlertCircle
+        : status === "processing"
+          ? CircleDashed
+          : ReceiptText;
+  const label =
+    status === "paid"
+      ? "Payment received"
+      : status === "processing"
+        ? "Human review underway"
+        : status === "ready"
+          ? "Report ready"
+          : status;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground">
-      <Icon className="h-3 w-3 text-accent" /> {label}
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+      <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
     </span>
   );
 }
