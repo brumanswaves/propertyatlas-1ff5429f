@@ -76,7 +76,7 @@ describe("Easy Erf founder fulfillment Edge Function", () => {
 
   it("accepts only the four explicit fulfillment actions", () => {
     expect(founderFunction).toContain(
-      'new Set(["start_review", "mark_ready", "mark_failed"])',
+      'new Set(["start_review", "reopen_review", "mark_ready", "mark_failed"])',
     );
     expect(founderFunction).toContain("Unsupported fulfillment action.");
   });
