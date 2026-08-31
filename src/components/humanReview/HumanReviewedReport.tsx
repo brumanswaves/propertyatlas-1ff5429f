@@ -42,7 +42,9 @@ export function HumanReviewedReport({
               {humanReviewIntendedUseLabel(intendedUse) ? (
                 <span>· {humanReviewIntendedUseLabel(intendedUse)}</span>
               ) : null}
-              {completedAt ? <span>· Reviewed {new Date(completedAt).toLocaleDateString("en-ZA")}</span> : null}
+              {completedAt ? (
+                <span>· Reviewed {new Date(completedAt).toLocaleDateString("en-ZA")}</span>
+              ) : null}
             </div>
           </div>
           {downloadAction ? <div className="report-no-print">{downloadAction}</div> : null}
@@ -63,9 +65,7 @@ export function HumanReviewedReport({
             </div>
             <div className="mt-2 text-lg font-semibold">{humanReviewFocusLabel(focus)}</div>
             {context ? (
-              <p className="mt-2 text-xs leading-5 text-white/60">
-                Customer context: {context}
-              </p>
+              <p className="mt-2 text-xs leading-5 text-white/60">Customer context: {context}</p>
             ) : (
               <p className="mt-2 text-xs leading-5 text-white/50">
                 The report stays within the selected Easy Erf investigation scope.
@@ -82,7 +82,10 @@ export function HumanReviewedReport({
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {HUMAN_REVIEW_CORE_QUESTIONS.map((question) => (
-              <span key={question} className="rounded-full bg-[#F7FBFF] px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] ring-1 ring-[#D9E6F2]">
+              <span
+                key={question}
+                className="rounded-full bg-[#F7FBFF] px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] ring-1 ring-[#D9E6F2]"
+              >
                 {question}
               </span>
             ))}
@@ -98,13 +101,11 @@ export function HumanReviewedReport({
             nextSteps: content.nextSteps,
           }}
         />
-
-        </div>
-
-        <footer className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 text-xs leading-5 text-[#64748B]">
-          <strong className="text-[#0D1B2A]">Scope boundary:</strong> {HUMAN_REVIEW_SCOPE_BOUNDARY}
-        </footer>
       </div>
+
+      <footer className="border-t border-[#0D1B2A]/10 bg-white px-5 py-4 text-xs leading-5 text-[#64748B] sm:px-8">
+        <strong className="text-[#0D1B2A]">Scope boundary:</strong> {HUMAN_REVIEW_SCOPE_BOUNDARY}
+      </footer>
     </article>
   );
 }
