@@ -22,7 +22,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17-alpine
@@ -73,6 +73,9 @@ jobs:
           --username postgres
           --dbname postgres
           --file scripts/verify-easy-erf-founder-fulfillment.sql
+
+      - name: Build production bundle and generate routes
+        run: npm run build
 
       - name: Check TypeScript
         run: npx tsc --noEmit --pretty false
