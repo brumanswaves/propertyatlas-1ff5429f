@@ -87,6 +87,7 @@ import { StrategyLab } from "./strategy/StrategyLab";
 import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
+import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
 import {
   ReportEvidenceAppendix,
   ReportMarketSection,
@@ -2556,6 +2557,32 @@ function StoepAiReportView({
           }
         />
 
+        {!printOnly ? (
+          <HumanReviewTakeoverCard
+            parcelId={parcel.id}
+            propertyReference={parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : parcel.id}
+            source="self-service-report"
+          />
+        ) : null}
+
+        <details
+          open={printOnly ? true : undefined}
+          className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white/92 p-4 shadow-[0_18px_48px_-38px_rgba(13,27,42,0.42)] sm:p-5"
+        >
+          {!printOnly ? (
+            <summary className="report-no-print cursor-pointer list-none rounded-[1.25rem] bg-[#F7FBFF] px-4 py-4 text-[#0D1B2A] ring-1 ring-[#D9E6F2]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                Full evidence dossier
+              </div>
+              <div className="mt-1 text-base font-semibold tracking-tight">
+                Open the detailed evidence, planning, market and due-diligence sections
+              </div>
+              <p className="mt-1 text-xs leading-5 text-[#64748B]">
+                The report opening above is the readable summary. Use this section when you want the full working evidence behind it.
+              </p>
+            </summary>
+          ) : null}
+          <div className={cn("space-y-5", !printOnly && "mt-5")}>
         {/* STICKY REPORT NAV — five primary destinations, ordered by the decision lens */}
         <nav className="report-nav-sticky report-no-print sticky top-16 z-10 -mx-2 flex items-center gap-2 overflow-x-auto rounded-full border border-[#0D1B2A]/10 bg-white/95 px-2 py-2 backdrop-blur">
           <ul className="flex min-w-max gap-1 text-xs">
@@ -2576,6 +2603,8 @@ function StoepAiReportView({
         {composition.groupOrder.map((groupId) => (
           <Fragment key={groupId}>{groupNodes[groupId]}</Fragment>
         ))}
+          </div>
+        </details>
       </div>
     );
   };
