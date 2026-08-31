@@ -1,5 +1,7 @@
+import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 import Stripe from "npm:stripe@22.6.0";
 
+import { validateHumanReviewCheckoutRequest } from "../_shared/easyErfHumanReviewContract.ts";
 import { parseAcceptedPaymentLinkIds } from "../_shared/easyErfStripePaymentContract.ts";
 
 declare const Deno: {
@@ -23,15 +25,28 @@ Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
 
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ ok: false, error: "Choose a Human Review focus before checkout." }, 400);
+  }
+  const validation = validateHumanReviewCheckoutRequest(body);
+  if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
+
   const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
   const acceptedIds = parseAcceptedPaymentLinkIds(
     Deno.env.get("EASY_ERF_R999_PAYMENT_LINK_IDS"),
   );
-  if (!stripeSecretKey || acceptedIds.size === 0) {
+  if (!stripeSecretKey || !supabaseUrl || !serviceRoleKey || acceptedIds.size === 0) {
     return json({ ok: false, error: "Human Review checkout is not configured." }, 503);
   }
 
   const stripe = new Stripe(stripeSecretKey);
+  let verifiedUrl: URL | null = null;
+
   for (const paymentLinkId of acceptedIds) {
     try {
       const link = await stripe.paymentLinks.retrieve(paymentLinkId);
@@ -46,13 +61,50 @@ Deno.serve(async (request: Request) => {
         price.currency.toLowerCase() !== "zar" ||
         price.type !== "one_time"
       ) continue;
-      const url = new URL(link.url);
-      if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") continue;
-      return json({ ok: true, mode: "test", url: url.toString() });
+      const candidate = new URL(link.url);
+      if (candidate.protocol !== "https:" || candidate.hostname !== "buy.stripe.com") continue;
+      verifiedUrl = candidate;
+      break;
     } catch {
       continue;
     }
   }
 
-  return json({ ok: false, error: "Verified TEST Human Review checkout is unavailable." }, 503);
+  if (!verifiedUrl) {
+    return json({ ok: false, error: "Verified TEST Human Review checkout is unavailable." }, 503);
+  }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const brief = validation.request;
+  const { data: requestRow, error: requestError } = await admin
+    .from("human_review_requests")
+    .insert({
+      parcel_id: brief.parcelId,
+      property_reference_hint: brief.propertyReferenceHint,
+      focus: brief.focus,
+      intended_use: brief.intendedUse,
+      context: brief.context,
+      source_surface: brief.sourceSurface,
+      status: "checkout_started",
+    })
+    .select("id")
+    .single();
+
+  if (requestError || typeof requestRow?.id !== "string") {
+    return json({ ok: false, error: "The Human Review brief could not be prepared." }, 500);
+  }
+
+  // Stripe Payment Links carry this opaque request UUID into the completed
+  // Checkout Session. The webhook uses it to attach the controlled brief to
+  // the paid report order; no legal/advice question is encoded in the URL.
+  verifiedUrl.searchParams.set("client_reference_id", requestRow.id);
+
+  return json({
+    ok: true,
+    mode: "test",
+    url: verifiedUrl.toString(),
+    reviewRequestId: requestRow.id,
+  });
 });
