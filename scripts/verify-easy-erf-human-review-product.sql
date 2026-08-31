@@ -47,6 +47,7 @@ begin
     'second_dwelling',
     'Considering the property and want the evidence checked against an additional dwelling use.',
     'workbench-zoning-build',
+    now(),
     'checkout_started'
   )
   returning id into v_request_id;
@@ -124,23 +125,49 @@ begin
 
   begin
     insert into public.human_review_requests (focus, status)
-    values ('legal_advice', 'checkout_started');
+    values ('property_check', 'checkout_started');
+    raise exception 'Human Review request omitted required scope acknowledgement';
+  exception
+    when not_null_violation then null;
+  end;
+
+  begin
+    insert into public.human_review_requests (focus, scope_acknowledged_at, status)
+    values ('legal_advice', now(), 'checkout_started');
     raise exception 'Unsupported Human Review focus bypassed database constraint';
   exception
     when check_violation then null;
   end;
 
   begin
-    insert into public.human_review_requests (focus, intended_use, status)
-    values ('property_check', 'second_dwelling', 'checkout_started');
+    insert into public.human_review_requests (
+      focus,
+      intended_use,
+      scope_acknowledged_at,
+      status
+    ) values (
+      'property_check',
+      'second_dwelling',
+      now(),
+      'checkout_started'
+    );
     raise exception 'Intended use was accepted outside the intended_use focus';
   exception
     when check_violation then null;
   end;
 
   begin
-    insert into public.human_review_requests (focus, context, status)
-    values ('property_check', repeat('x', 501), 'checkout_started');
+    insert into public.human_review_requests (
+      focus,
+      context,
+      scope_acknowledged_at,
+      status
+    ) values (
+      'property_check',
+      repeat('x', 501),
+      now(),
+      'checkout_started'
+    );
     raise exception 'Overlong customer context bypassed database constraint';
   exception
     when check_violation then null;
