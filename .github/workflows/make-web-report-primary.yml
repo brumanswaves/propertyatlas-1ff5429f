@@ -1,0 +1,33 @@
+name: Make Human Review web report primary
+
+on:
+  push:
+    branches:
+      - chatgpt/human-review-product-v2
+    paths:
+      - .github/workflows/make-web-report-primary.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make structured web report the ready artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REF: chatgpt/human-review-product-v2
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=100 origin "${HEAD_REF}"
+          git checkout -B "${HEAD_REF}" FETCH_HEAD
+          python scripts/make-web-report-primary.py
+          git diff --check
+          git config user.name "Easy Erf CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/migrations/20260831160318_controlled_human_review_product_v2.sql supabase/functions/easy-erf-founder-fulfillment/index.ts src/routes/admin.fulfillment.tsx scripts/verify-easy-erf-human-review-product.sql src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+          git commit -m "Make Human Review web report the ready artifact"
+          git push origin "HEAD:${HEAD_REF}"
