@@ -18,6 +18,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PartnershipsRouteImport } from './routes/partnerships'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
@@ -36,6 +37,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin_.users'
 import { Route as AdminEntitlementsRouteImport } from './routes/admin_.entitlements'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as AdminFulfillmentRouteImport } from './routes/admin.fulfillment'
 import { Route as ApiSitePotentialRetryPackRouteImport } from './routes/api/site-potential.retry-pack'
 import { Route as ApiSitePotentialProcessRouteImport } from './routes/api/site-potential.process'
 import { Route as ApiSitePotentialPackStatusRouteImport } from './routes/api/site-potential.pack-status'
@@ -95,6 +97,11 @@ const PricingRoute = PricingRouteImport.update({
 const PartnershipsRoute = PartnershipsRouteImport.update({
   id: '/partnerships',
   path: '/partnerships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -185,6 +192,11 @@ const AdminReadinessRoute = AdminReadinessRouteImport.update({
 const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   id: '/public-data-debug',
   path: '/public-data-debug',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFulfillmentRoute = AdminFulfillmentRouteImport.update({
+  id: '/fulfillment',
+  path: '/fulfillment',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiSitePotentialRetryPackRoute =
@@ -287,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -296,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
@@ -331,6 +345,7 @@ export interface FileRoutesByTo {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -340,6 +355,7 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
@@ -376,6 +392,7 @@ export interface FileRoutesById {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -385,6 +402,7 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin_/entitlements': typeof AdminEntitlementsRoute
@@ -422,6 +440,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/orders'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -431,6 +450,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
@@ -466,6 +486,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/orders'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -475,6 +496,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
@@ -510,6 +532,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/orders'
     | '/partnerships'
     | '/pricing'
     | '/privacy'
@@ -519,6 +542,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin_/entitlements'
@@ -555,6 +579,7 @@ export interface RootRouteChildren {
   ForHomeownersRoute: typeof ForHomeownersRoute
   ForInvestorsRoute: typeof ForInvestorsRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  OrdersRoute: typeof OrdersRoute
   PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -646,6 +671,13 @@ declare module '@tanstack/react-router' {
       path: '/partnerships'
       fullPath: '/partnerships'
       preLoaderRoute: typeof PartnershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -774,6 +806,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/fulfillment': {
+      id: '/admin/fulfillment'
+      path: '/fulfillment'
+      fullPath: '/admin/fulfillment'
+      preLoaderRoute: typeof AdminFulfillmentRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/site-potential/retry-pack': {
       id: '/api/site-potential/retry-pack'
       path: '/api/site-potential/retry-pack'
@@ -883,11 +922,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminFulfillmentRoute: typeof AdminFulfillmentRoute
   AdminPublicDataDebugRoute: typeof AdminPublicDataDebugRoute
   AdminReadinessRoute: typeof AdminReadinessRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminFulfillmentRoute: AdminFulfillmentRoute,
   AdminPublicDataDebugRoute: AdminPublicDataDebugRoute,
   AdminReadinessRoute: AdminReadinessRoute,
 }
@@ -909,6 +950,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForHomeownersRoute: ForHomeownersRoute,
   ForInvestorsRoute: ForInvestorsRoute,
   HowItWorksRoute: HowItWorksRoute,
+  OrdersRoute: OrdersRoute,
   PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
