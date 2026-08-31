@@ -38,6 +38,7 @@ begin
     intended_use,
     context,
     source_surface,
+    scope_acknowledged_at,
     status
   ) values (
     'csg:lpi:c03400140000157000000',
@@ -70,6 +71,7 @@ begin
      or v_order.review_focus <> 'intended_use'
      or v_order.intended_use <> 'second_dwelling'
      or v_order.review_context is null
+     or v_order.review_scope_acknowledged_at is null
      or v_order.parcel_id <> 'csg:lpi:c03400140000157000000' then
     raise exception 'Paid order did not receive the controlled Human Review brief';
   end if;
@@ -138,7 +140,7 @@ begin
 
   begin
     insert into public.human_review_requests (focus, context, status)
-    values ('property_check', repeat('x', 601), 'checkout_started');
+    values ('property_check', repeat('x', 501), 'checkout_started');
     raise exception 'Overlong customer context bypassed database constraint';
   exception
     when check_violation then null;

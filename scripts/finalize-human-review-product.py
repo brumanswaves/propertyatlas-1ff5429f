@@ -675,6 +675,5 @@ for check_path in [
     "src/routes/pricing.tsx",
     "supabase/functions/_shared/easyErfHumanReviewContract.ts",
     "supabase/migrations/20260831160318_controlled_human_review_product_v2.sql",
-    "src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts",
 ]:
     require_absent(check_path, "before_i_buy")

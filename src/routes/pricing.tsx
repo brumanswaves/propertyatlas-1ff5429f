@@ -18,6 +18,7 @@ import {
   HUMAN_REVIEW_FOCUS_OPTIONS,
   HUMAN_REVIEW_INTENDED_USE_OPTIONS,
   HUMAN_REVIEW_NOT_INCLUDED,
+  HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT,
   HUMAN_REVIEW_SCOPE_BOUNDARY,
   type HumanReviewFocus,
   type HumanReviewIntendedUse,
@@ -49,6 +50,7 @@ function PricingPage() {
   const [focus, setFocus] = useState<HumanReviewFocus | null>(null);
   const [intendedUse, setIntendedUse] = useState<HumanReviewIntendedUse | null>(null);
   const [context, setContext] = useState("");
+  const [scopeAcknowledged, setScopeAcknowledged] = useState(false);
   const [parcelId, setParcelId] = useState<string | null>(null);
   const [propertyReferenceHint, setPropertyReferenceHint] = useState<string | null>(null);
   const [sourceSurface, setSourceSurface] = useState<string | null>(null);
@@ -68,7 +70,10 @@ function PricingPage() {
   }, [focus]);
 
   const canCheckout = Boolean(
-    focus && (focus !== "intended_use" || intendedUse) && context.length <= HUMAN_REVIEW_CONTEXT_MAX_LENGTH,
+    focus &&
+      (focus !== "intended_use" || intendedUse) &&
+      context.length <= HUMAN_REVIEW_CONTEXT_MAX_LENGTH &&
+      scopeAcknowledged,
   );
 
   const selectedFocus = useMemo(
@@ -89,6 +94,7 @@ function PricingPage() {
           parcelId,
           propertyReferenceHint,
           sourceSurface,
+          scopeAcknowledged,
         },
       });
       if (error || !data?.ok || data?.mode !== "test" || typeof data?.url !== "string") {
@@ -115,7 +121,7 @@ function PricingPage() {
             <ShieldCheck className="h-3.5 w-3.5" /> Human Review · R999
           </div>
           <h1 className="mt-4 max-w-4xl text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-            Hand the property investigation to Easy Erf — without turning it into an open-ended advice service.
+            Hand the property investigation to Easy Erf for a focused Human Review.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/68 sm:text-base">
             Choose one controlled investigation focus. Easy Erf reviews the property evidence already gathered, records what is supported, separates uncertainty from fact, and tells you what still needs verification.
@@ -144,7 +150,7 @@ function PricingPage() {
               What are you trying to understand about this property?
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              The focus controls what the Human Review is allowed to answer. Customer context cannot expand the scope into professional advice.
+              Choose the property question Easy Erf should investigate. Your optional context helps the reviewer understand your situation, but it cannot expand the review into professional advice.
             </p>
           </div>
 
@@ -258,6 +264,17 @@ function PricingPage() {
           <p className="mt-4 text-xs leading-5 text-[#92400E]">
             Build-cost rule: Easy Erf may use a builder/QS/customer-supplied cost in deterministic scenario calculations, but Human Review does not invent a construction quotation or per-m² build-cost estimate.
           </p>
+          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[#F59E0B]/25 bg-white/90 p-4">
+            <input
+              type="checkbox"
+              checked={scopeAcknowledged}
+              onChange={(event) => setScopeAcknowledged(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#FF6A00]"
+            />
+            <span className="text-sm leading-6 text-[#0D1B2A]">
+              <strong>Required:</strong> {HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT}
+            </span>
+          </label>
         </section>
 
         <section className="mt-5 overflow-hidden rounded-[2rem] border border-[#FF6A00]/30 bg-white shadow-soft">
@@ -294,6 +311,9 @@ function PricingPage() {
               </button>
               {!focus ? <p className="mt-2 text-xs text-[#64748B]">Choose one investigation focus first.</p> : null}
               {focus === "intended_use" && !intendedUse ? <p className="mt-2 text-xs text-[#64748B]">Choose the intended use first.</p> : null}
+              {focus && (focus !== "intended_use" || intendedUse) && !scopeAcknowledged ? (
+                <p className="mt-2 text-xs text-[#64748B]">Acknowledge the Human Review scope before checkout.</p>
+              ) : null}
               {checkoutError ? <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p> : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
                 Secure Stripe-hosted checkout. Current launch configuration remains TEST mode until the separate live-launch approval.

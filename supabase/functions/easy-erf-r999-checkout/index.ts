@@ -87,6 +87,7 @@ Deno.serve(async (request: Request) => {
       intended_use: brief.intendedUse,
       context: brief.context,
       source_surface: brief.sourceSurface,
+      scope_acknowledged_at: new Date().toISOString(),
       status: "checkout_started",
     })
     .select("id")

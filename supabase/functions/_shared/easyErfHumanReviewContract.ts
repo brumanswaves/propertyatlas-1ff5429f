@@ -1,6 +1,5 @@
 export const HUMAN_REVIEW_FOCUS_VALUES = [
   "property_check",
-  "before_i_buy",
   "property_potential",
   "intended_use",
 ] as const;
@@ -17,7 +16,7 @@ export const HUMAN_REVIEW_INTENDED_USE_VALUES = [
 export type HumanReviewFocus = (typeof HUMAN_REVIEW_FOCUS_VALUES)[number];
 export type HumanReviewIntendedUse = (typeof HUMAN_REVIEW_INTENDED_USE_VALUES)[number];
 
-const MAX_CONTEXT_LENGTH = 600;
+const MAX_CONTEXT_LENGTH = 500;
 const MAX_PROPERTY_REFERENCE_LENGTH = 255;
 const MAX_SOURCE_LENGTH = 80;
 
@@ -30,6 +29,7 @@ export type HumanReviewCheckoutRequest = {
   parcelId: string | null;
   propertyReferenceHint: string | null;
   sourceSurface: string | null;
+  scopeAcknowledged: true;
 };
 
 export type HumanReviewCheckoutValidation =
@@ -62,6 +62,9 @@ export function validateHumanReviewCheckoutRequest(value: unknown): HumanReviewC
 
   if (!isFocus(value.focus)) {
     return { ok: false, error: "Choose one supported Human Review focus." };
+  }
+  if (value.scopeAcknowledged !== true) {
+    return { ok: false, error: "Acknowledge the Human Review scope before checkout." };
   }
 
   const intendedUse = value.intendedUse == null || value.intendedUse === ""
@@ -100,6 +103,7 @@ export function validateHumanReviewCheckoutRequest(value: unknown): HumanReviewC
       parcelId,
       propertyReferenceHint,
       sourceSurface,
+      scopeAcknowledged: true,
     },
   };
 }

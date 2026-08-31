@@ -41,7 +41,7 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).toContain("Report ready");
     expect(customerRoute).toContain('.from("erf-files")');
     expect(customerRoute).toContain("createSignedUrl(order.pdf_storage_path, 300, { download: true })");
-    expect(customerRoute).toContain("Download report");
+    expect(customerRoute).toContain("Download PDF");
     expect(customerRoute).not.toContain("Secure report delivery is the next connection before launch.");
   });
 });

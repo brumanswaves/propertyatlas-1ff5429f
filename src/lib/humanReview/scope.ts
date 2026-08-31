@@ -7,13 +7,6 @@ export const HUMAN_REVIEW_FOCUS_OPTIONS = [
       "The important property facts, risks, conflicts, unknowns and checks still worth completing.",
   },
   {
-    id: "before_i_buy",
-    label: "Before I Buy",
-    shortLabel: "Before I Buy",
-    description:
-      "Property-related issues and evidence to understand or verify before you proceed with a purchase.",
-  },
-  {
     id: "property_potential",
     label: "Property Potential",
     shortLabel: "Property Potential",
@@ -51,10 +44,13 @@ export const HUMAN_REVIEW_CORE_QUESTIONS = [
   "What should be verified next?",
 ] as const;
 
-export const HUMAN_REVIEW_CONTEXT_MAX_LENGTH = 600;
+export const HUMAN_REVIEW_CONTEXT_MAX_LENGTH = 500;
 
 export const HUMAN_REVIEW_SCOPE_BOUNDARY =
   "Easy Erf provides property research and due-diligence support. It does not provide legal, tax, engineering, architectural, valuation or other professional advice, municipal approval, a zoning certificate, a construction quotation, or a buy / do-not-buy recommendation.";
+
+export const HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT =
+  "I understand Easy Erf provides property research and due-diligence support, not legal, engineering, architectural, valuation, tax, municipal or approval advice.";
 
 export const HUMAN_REVIEW_NOT_INCLUDED = [
   "Legal opinions or confirmation of legal rights",

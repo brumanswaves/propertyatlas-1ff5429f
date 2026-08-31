@@ -9,12 +9,13 @@ create table public.human_review_requests (
   intended_use text null,
   context text null,
   source_surface text null,
+  scope_acknowledged_at timestamptz not null,
   status text not null default 'checkout_started',
   report_order_id uuid null unique references public.report_orders(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint human_review_requests_focus_check check (
-    focus in ('property_check', 'before_i_buy', 'property_potential', 'intended_use')
+    focus in ('property_check', 'property_potential', 'intended_use')
   ),
   constraint human_review_requests_intended_use_check check (
     (focus = 'intended_use' and intended_use in (
@@ -28,7 +29,7 @@ create table public.human_review_requests (
     or (focus <> 'intended_use' and intended_use is null)
   ),
   constraint human_review_requests_context_length check (
-    context is null or char_length(context) <= 600
+    context is null or char_length(context) <= 500
   ),
   constraint human_review_requests_reference_length check (
     property_reference_hint is null or char_length(property_reference_hint) <= 255
@@ -56,13 +57,13 @@ alter table public.report_orders
   add column review_focus text null,
   add column intended_use text null,
   add column review_context text null,
+  add column review_scope_acknowledged_at timestamptz null,
   add column review_content jsonb null,
   add column reviewed_by uuid null references auth.users(id) on delete set null,
   add column review_content_updated_at timestamptz null,
   add constraint report_orders_review_focus_check check (
     review_focus is null or review_focus in (
       'property_check',
-      'before_i_buy',
       'property_potential',
       'intended_use'
     )
@@ -79,7 +80,7 @@ alter table public.report_orders
     or (coalesce(review_focus, '') <> 'intended_use' and intended_use is null)
   ),
   add constraint report_orders_review_context_length check (
-    review_context is null or char_length(review_context) <= 600
+    review_context is null or char_length(review_context) <= 500
   ),
   add constraint report_orders_review_content_object check (
     review_content is null or jsonb_typeof(review_content) = 'object'
@@ -142,6 +143,7 @@ begin
       review_focus = v_request.focus,
       intended_use = v_request.intended_use,
       review_context = v_request.context,
+      review_scope_acknowledged_at = v_request.scope_acknowledged_at,
       parcel_id = coalesce(public.report_orders.parcel_id, v_request.parcel_id),
       updated_at = now()
   where id = p_report_order_id;

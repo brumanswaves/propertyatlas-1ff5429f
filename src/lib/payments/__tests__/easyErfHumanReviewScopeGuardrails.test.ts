@@ -10,6 +10,7 @@ import {
 import {
   HUMAN_REVIEW_CORE_QUESTIONS,
   HUMAN_REVIEW_NOT_INCLUDED,
+  HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT,
   HUMAN_REVIEW_SCOPE_BOUNDARY,
 } from "@/lib/humanReview/scope";
 import { BRAND } from "@/lib/brand";
@@ -31,12 +32,13 @@ const workbench = source("src/components/property/OfficialParcelPanel.tsx");
 const dossier = source("src/components/property/ErfResearchDossier.tsx");
 const orders = source("src/routes/orders.tsx");
 const founderQueue = source("src/routes/admin.fulfillment.tsx");
+const reportOpening = source("src/components/property/dossier/ReportOpening.tsx");
+const humanReviewedReport = source("src/components/humanReview/HumanReviewedReport.tsx");
 
 describe("Easy Erf controlled Human Review scope", () => {
-  it("locks the product to four supported focuses and six supported intended uses", () => {
+  it("locks the product to three supported focuses and six supported intended uses", () => {
     expect(HUMAN_REVIEW_FOCUS_VALUES).toEqual([
       "property_check",
-      "before_i_buy",
       "property_potential",
       "intended_use",
     ]);
@@ -62,6 +64,7 @@ describe("Easy Erf controlled Human Review scope", () => {
       validateHumanReviewCheckoutRequest({
         focus: "property_check",
         context: "Considering buying the erf.",
+        scopeAcknowledged: true,
       }),
     ).toMatchObject({ ok: true });
 
@@ -69,6 +72,7 @@ describe("Easy Erf controlled Human Review scope", () => {
       validateHumanReviewCheckoutRequest({
         focus: "legal_advice",
         context: "Tell me my legal rights.",
+        scopeAcknowledged: true,
       }),
     ).toMatchObject({ ok: false });
 
@@ -76,6 +80,7 @@ describe("Easy Erf controlled Human Review scope", () => {
       validateHumanReviewCheckoutRequest({
         focus: "intended_use",
         intendedUse: null,
+        scopeAcknowledged: true,
       }),
     ).toMatchObject({ ok: false });
 
@@ -83,13 +88,23 @@ describe("Easy Erf controlled Human Review scope", () => {
       validateHumanReviewCheckoutRequest({
         focus: "property_check",
         intendedUse: "second_dwelling",
+        scopeAcknowledged: true,
       }),
     ).toMatchObject({ ok: false });
 
     expect(
       validateHumanReviewCheckoutRequest({
         focus: "property_check",
-        context: "x".repeat(601),
+        context: "x".repeat(501),
+        scopeAcknowledged: true,
+      }),
+    ).toMatchObject({ ok: false });
+
+    expect(
+      validateHumanReviewCheckoutRequest({
+        focus: "property_check",
+        context: "Brief context only.",
+        scopeAcknowledged: false,
       }),
     ).toMatchObject({ ok: false });
   });
@@ -121,12 +136,15 @@ describe("Easy Erf controlled Human Review scope", () => {
   it("keeps customer copy inside due-diligence scope and outside professional advice", () => {
     expect(pricing).toContain("Tell us about your situation — not a new question");
     expect(pricing).toContain("{HUMAN_REVIEW_SCOPE_BOUNDARY}");
+    expect(pricing).toContain("{HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT}");
+    expect(pricing).toContain("scopeAcknowledged");
     expect(pricing).toContain("HUMAN_REVIEW_NOT_INCLUDED.map");
     expect(pricing).toContain("does not invent a construction quotation or per-m² build-cost estimate");
     expect(HUMAN_REVIEW_SCOPE_BOUNDARY).toContain(
       "does not provide legal, tax, engineering, architectural, valuation",
     );
     expect(HUMAN_REVIEW_SCOPE_BOUNDARY).toContain("buy / do-not-buy recommendation");
+    expect(HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT).toContain("not legal, engineering");
     expect(HUMAN_REVIEW_NOT_INCLUDED).toContain("Formal property valuations");
     expect(HUMAN_REVIEW_NOT_INCLUDED).toContain(
       "Construction quotations or Easy Erf-generated build-cost estimates",
@@ -140,6 +158,7 @@ describe("Easy Erf controlled Human Review payment handoff", () => {
   it("persists an opaque brief before returning the verified TEST Payment Link", () => {
     expect(checkout).toContain("validateHumanReviewCheckoutRequest(body)");
     expect(checkout).toContain('.from("human_review_requests")');
+    expect(checkout).toContain("scope_acknowledged_at: new Date().toISOString()");
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).toContain("link.livemode");
     expect(checkout).toContain("price.unit_amount !== 99900");
@@ -164,6 +183,9 @@ describe("Easy Erf controlled Human Review payment handoff", () => {
     expect(migration).toContain(
       "grant select, insert, update, delete on table public.human_review_requests to service_role",
     );
+    expect(migration).toContain("scope_acknowledged_at timestamptz not null");
+    expect(migration).toContain("review_scope_acknowledged_at timestamptz null");
+    expect(migration).not.toContain("before_i_buy");
     expect(migration).toContain(
       "revoke all on function public.attach_easy_erf_human_review_request(uuid, uuid)\nfrom public, anon, authenticated",
     );
@@ -185,6 +207,9 @@ describe("Human Review appears where users actually work", () => {
     expect(dossier).toContain("Full evidence dossier");
     expect(dossier).toContain("The report opening above is the readable summary");
     expect(dossier).toContain("open={printOnly ? true : undefined}");
+    expect(reportOpening).toContain("<FiveQuestionReportGrid");
+    expect(reportOpening).toContain("buildSelfServiceFiveQuestionContent(doc)");
+    expect(humanReviewedReport).toContain("<FiveQuestionReportGrid");
   });
 });
 

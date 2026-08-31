@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, HelpCircle, Lightbulb, ListChecks, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import {
   HUMAN_REVIEW_CORE_QUESTIONS,
   HUMAN_REVIEW_SCOPE_BOUNDARY,
@@ -7,6 +7,7 @@ import {
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
 import type { HumanReviewReportContent } from "@/lib/humanReview/reportContent";
+import { FiveQuestionReportGrid } from "@/components/reports/FiveQuestionReportGrid";
 
 export function HumanReviewedReport({
   propertyReference,
@@ -25,49 +26,6 @@ export function HumanReviewedReport({
   completedAt?: string | null;
   downloadAction?: ReactNode;
 }) {
-  const sections = [
-    {
-      id: "known",
-      title: "What we know",
-      eyebrow: "Property Truth",
-      icon: CheckCircle2,
-      items: content.known,
-      empty: "No reviewed property facts have been recorded in this section yet.",
-    },
-    {
-      id: "potential",
-      title: "What appears possible",
-      eyebrow: "Property Potential",
-      icon: Lightbulb,
-      items: content.potential,
-      empty: "No evidence-supported property potential has been recorded yet.",
-    },
-    {
-      id: "risks",
-      title: "What could be a problem",
-      eyebrow: "Risks & deal killers",
-      icon: AlertTriangle,
-      items: content.risks,
-      empty: "No material reviewed risks have been recorded in this section yet.",
-    },
-    {
-      id: "unknowns",
-      title: "What we do not know yet",
-      eyebrow: "Unknowns & conflicts",
-      icon: HelpCircle,
-      items: content.unknowns,
-      empty: "No unresolved evidence gaps have been recorded in this section yet.",
-    },
-    {
-      id: "next",
-      title: "What should be verified next",
-      eyebrow: "Next actions",
-      icon: ListChecks,
-      items: content.nextSteps,
-      empty: "No next verification steps have been recorded yet.",
-    },
-  ] as const;
-
   return (
     <article className="overflow-hidden rounded-[2rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] shadow-[0_28px_80px_-55px_rgba(13,27,42,0.65)]">
       <header className="bg-[#0D1B2A] px-5 py-7 text-white sm:px-8 sm:py-9">
@@ -131,38 +89,16 @@ export function HumanReviewedReport({
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-2">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            return (
-              <section key={section.id} className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5">
-                <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-white">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-                      {section.eyebrow}
-                    </div>
-                    <h3 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-                      {section.title}
-                    </h3>
-                  </div>
-                </div>
-                {section.items.length ? (
-                  <ul className="mt-4 space-y-2">
-                    {section.items.map((item, index) => (
-                      <li key={`${section.id}-${index}-${item}`} className="rounded-2xl bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A]/78 ring-1 ring-[#D9E6F2]/80">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-4 text-sm leading-6 text-[#64748B]">{section.empty}</p>
-                )}
-              </section>
-            );
-          })}
+        <FiveQuestionReportGrid
+          content={{
+            known: content.known,
+            potential: content.potential,
+            risks: content.risks,
+            unknowns: content.unknowns,
+            nextSteps: content.nextSteps,
+          }}
+        />
+
         </div>
 
         <footer className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-5 text-xs leading-5 text-[#64748B]">

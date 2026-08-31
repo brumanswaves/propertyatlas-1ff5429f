@@ -661,6 +661,7 @@ export type Database = {
           property_reference_hint: string | null
           report_order_id: string | null
           source_surface: string | null
+          scope_acknowledged_at: string
           status: string
           updated_at: string
           user_id: string | null
@@ -675,6 +676,7 @@ export type Database = {
           property_reference_hint?: string | null
           report_order_id?: string | null
           source_surface?: string | null
+          scope_acknowledged_at: string
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -689,6 +691,7 @@ export type Database = {
           property_reference_hint?: string | null
           report_order_id?: string | null
           source_surface?: string | null
+          scope_acknowledged_at?: string
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -723,6 +726,7 @@ export type Database = {
           review_context: string | null
           review_focus: string | null
           review_request_id: string | null
+          review_scope_acknowledged_at: string | null
           reviewed_by: string | null
           status: string
           status_enum: Database["public"]["Enums"]["report_order_status"]
@@ -748,6 +752,7 @@ export type Database = {
           review_context?: string | null
           review_focus?: string | null
           review_request_id?: string | null
+          review_scope_acknowledged_at?: string | null
           reviewed_by?: string | null
           status?: string
           status_enum?: Database["public"]["Enums"]["report_order_status"]
@@ -773,6 +778,7 @@ export type Database = {
           review_context?: string | null
           review_focus?: string | null
           review_request_id?: string | null
+          review_scope_acknowledged_at?: string | null
           reviewed_by?: string | null
           status?: string
           status_enum?: Database["public"]["Enums"]["report_order_status"]
