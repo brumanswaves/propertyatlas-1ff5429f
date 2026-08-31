@@ -28,7 +28,9 @@ jobs:
           MIGRATION_PATH="$(find supabase/migrations -maxdepth 1 -type f -name '*_reopen_easy_erf_human_review.sql' | sort | tail -1)"
           test -n "${MIGRATION_PATH}"
           export MIGRATION_PATH
+          python -c 'from pathlib import Path; p=Path("scripts/human-review-ux-repair.py"); s=p.read_text(); s=s.replace("replace_once(\"src/routes/pricing.tsx\", '\''                Early Access'\'', '\''                Human Review'\'')\n", ""); p.write_text(s)'
           python scripts/human-review-ux-repair.py
+          python -c 'from pathlib import Path; p=Path("src/routes/pricing.tsx"); s=p.read_text(); p.write_text(s.replace("                Early Access", "                Human Review", 1))'
           git diff --check
           git config user.name "Easy Erf CI Repair"
           git config user.email "actions@users.noreply.github.com"
