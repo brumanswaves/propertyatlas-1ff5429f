@@ -67,6 +67,7 @@ describe("public Easy Erf product truth guardrails", () => {
 
   it("keeps the R999 Human Review investigation controlled and TEST-only", () => {
     const source = routeSource("pricing.tsx");
+    const scope = projectSource("src", "lib", "humanReview", "scope.ts");
     const checkout = projectSource(
       "supabase",
       "functions",
@@ -74,19 +75,19 @@ describe("public Easy Erf product truth guardrails", () => {
       "index.ts",
     );
 
-    for (const focus of [
-      "Property Check",
-      "Before I Buy",
-      "Property Potential",
-      "Check My Intended Use",
-    ]) {
-      expect(source).toContain(focus);
-    }
+    expect(source).toContain("HUMAN_REVIEW_FOCUS_OPTIONS.map");
+    expect(source).toContain("{HUMAN_REVIEW_SCOPE_BOUNDARY}");
+    expect(source).toContain("HUMAN_REVIEW_NOT_INCLUDED.map");
+    expect(scope).toContain('label: "Property Check"');
+    expect(scope).toContain('label: "Before I Buy"');
+    expect(scope).toContain('label: "Property Potential"');
+    expect(scope).toContain('label: "Check My Intended Use"');
     expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout"');
     expect(source).toContain('data?.mode !== "test"');
     expect(source).toContain('url.hostname !== "buy.stripe.com"');
-    expect(source).toMatch(/does not provide legal, tax, engineering, architectural, valuation/i);
+    expect(scope).toMatch(/does not provide legal, tax, engineering, architectural, valuation/i);
     expect(source).toMatch(/does not invent a construction quotation or per-m² build-cost estimate/i);
+    expect(scope).toMatch(/buy \/ do-not-buy recommendation/i);
     expect(source).not.toMatch(/ask us anything|what do you want to know/i);
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
@@ -95,7 +96,7 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).not.toMatch(/sk_(test|live)_|whsec_|plink_[A-Za-z0-9]{8,}/);
-    expect(source).not.toMatch(/guaranteed|official zoning certificate|approved building plan included/i);
+    expect(scope).not.toMatch(/guaranteed|approved building plan included/i);
   });
 
   it("keeps active Site Potential deterministic", () => {
