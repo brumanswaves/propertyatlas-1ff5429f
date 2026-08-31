@@ -1,0 +1,102 @@
+name: Easy Erf Human Review product verification
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/easy-erf-human-review-product.yml
+      - scripts/verify-easy-erf-human-review-product.sql
+      - src/components/admin/FounderHumanReviewEditor.tsx
+      - src/components/humanReview/**
+      - src/components/property/ErfResearchDossier.tsx
+      - src/components/property/OfficialParcelPanel.tsx
+      - src/integrations/supabase/types.ts
+      - src/lib/brand.ts
+      - src/lib/humanReview/**
+      - src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+      - src/routes/admin.fulfillment.tsx
+      - src/routes/orders.tsx
+      - src/routes/pricing.tsx
+      - supabase/config.toml
+      - supabase/functions/_shared/easyErfHumanReviewContract.ts
+      - supabase/functions/easy-erf-founder-review-content/**
+      - supabase/functions/easy-erf-r999-checkout/**
+      - supabase/functions/easy-erf-stripe-webhook/**
+      - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easy-erf-human-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository with built-in Git
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git fetch --no-tags --depth=100 origin "${REF}"
+          git checkout --detach FETCH_HEAD
+          git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
+
+      - name: Install verified Deno 2.9.6 binary
+        run: |
+          curl --fail --location --silent --show-error \
+            --output deno.zip \
+            https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip
+          echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2  deno.zip" | sha256sum --check
+          unzip -q deno.zip
+          ./deno --version
+
+      - name: Type-check Human Review Edge Functions
+        run: |
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-r999-checkout/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-stripe-webhook/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-review-content/index.ts
+
+      - name: Install dependencies and run Human Review guardrails
+        run: |
+          npm install --no-audit --no-fund
+          npx vitest run src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+
+      - name: Prove Human Review migration in isolated PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: >-
+          psql
+          --host 127.0.0.1
+          --port 54329
+          --username postgres
+          --dbname postgres
+          --file scripts/verify-easy-erf-human-review-product.sql
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit --pretty false
+
+      - name: Check patch whitespace
+        run: git diff --check origin/main...HEAD
