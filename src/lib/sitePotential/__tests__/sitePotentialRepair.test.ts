@@ -122,12 +122,13 @@ describe("Site Potential production-blocker repair", () => {
       "SELECT private.invoke_site_potential_worker(1);",
     );
 
-    expect(migrationNames).toHaveLength(30);
+    expect(migrationNames).toHaveLength(31);
     expect(migrationNames).toEqual([
       ...historicalMigrationNames,
       "20260813090000_make_site_potential_worker_portable.sql",
       "20260829113000_secure_easy_erf_stripe_fulfillment.sql",
       "20260829140000_remove_legacy_report_order_policies.sql",
+      "20260831090000_easy_erf_founder_fulfillment_controls.sql",
     ]);
   });
 

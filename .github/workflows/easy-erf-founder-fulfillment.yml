@@ -1,0 +1,84 @@
+name: Easy Erf founder fulfillment verification
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/easy-erf-founder-fulfillment.yml
+      - scripts/verify-easy-erf-founder-fulfillment.sql
+      - supabase/config.toml
+      - supabase/functions/easy-erf-founder-fulfillment/**
+      - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
+      - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
+      - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+      - src/routes/admin.fulfillment.tsx
+      - src/routes/orders.tsx
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository with built-in Git
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git fetch --no-tags --depth=100 origin "${REF}"
+          git checkout --detach FETCH_HEAD
+          git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
+
+      - name: Install verified Deno 2.9.6 binary
+        run: |
+          curl --fail --location --silent --show-error \
+            --output deno.zip \
+            https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip
+          echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2  deno.zip" | sha256sum --check
+          unzip -q deno.zip
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
+
+      - name: Install dependencies and run focused guardrails
+        run: |
+          npm install --no-audit --no-fund
+          npx vitest run \
+            src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
+            src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+
+      - name: Apply and prove founder fulfillment migration
+        env:
+          PGPASSWORD: postgres
+        run: >-
+          psql
+          --host 127.0.0.1
+          --port 54329
+          --username postgres
+          --dbname postgres
+          --file scripts/verify-easy-erf-founder-fulfillment.sql
+
+      - name: Build production bundle and generate routes
+        run: npm run build
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit --pretty false
+
+      - name: Check patch whitespace
+        run: git diff --check origin/main...HEAD
