@@ -32,6 +32,7 @@ jobs:
           p.write_text(s)
           PY
           python scripts/finalize-human-review-product.py
+          git checkout -- .github/workflows/easy-erf-human-review-product.yml
           git diff --check
           if grep -R "before_i_buy" \
             src/lib/humanReview \
