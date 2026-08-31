@@ -7,3 +7,8 @@ project_id = "easy-erf"
 # The function rejects unsigned or invalid events before any database write.
 [functions.easy-erf-stripe-webhook]
 verify_jwt = false
+
+# Founder fulfillment requires an authenticated Easy Erf session first, then
+# performs an explicit admin-role check before any service-role transition.
+[functions.easy-erf-founder-fulfillment]
+verify_jwt = true
