@@ -186,12 +186,20 @@ function FounderOperations() {
               Erf authorization or inventing business controls.
             </p>
           </div>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"
-          >
-            My Investigations <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/admin/fulfillment"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              <ReceiptText className="h-3.5 w-3.5" /> Human-review fulfillment
+            </Link>
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"
+            >
+              My Investigations <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </header>
 
         <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 text-xs font-semibold">
