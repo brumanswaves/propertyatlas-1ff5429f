@@ -117,7 +117,7 @@ describe("Easy Erf controlled Human Review scope", () => {
   it("keeps customer copy inside due-diligence scope and outside professional advice", () => {
     expect(pricing).toContain("Tell us about your situation — not a new question");
     expect(pricing).toContain("does not provide legal, tax, engineering, architectural, valuation");
-    expect(pricing).toContain("does NOT invent a quote/per-m² cost estimate");
+    expect(pricing).toContain("does not invent a construction quotation or per-m² build-cost estimate");
     expect(pricing).toContain("buy / do-not-buy recommendation");
     expect(pricing).not.toMatch(/what do you want to know/i);
     expect(pricing).not.toMatch(/ask us anything/i);
