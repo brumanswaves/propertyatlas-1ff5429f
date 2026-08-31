@@ -1,11 +1,12 @@
 export const PRIMARY_NAV_LINKS = [
   { to: "/", label: "Find a Property" },
   { to: "/how-it-works", label: "How It Works" },
-  { to: "/pricing", label: "Pricing" },
+  { to: "/pricing", label: "R999 Review" },
 ] as const;
 
 export const SIGNED_IN_NAV_LINKS = [
   { to: "/dashboard", label: "My Investigations" },
+  { to: "/orders", label: "My Reports" },
   { to: "/profile", label: "Account" },
 ] as const;
 
@@ -14,6 +15,7 @@ export const FOOTER_PRODUCT_LINKS = [
   { to: "/how-it-works", label: "How It Works" },
   { to: "/pricing", label: "Pricing" },
   { to: "/dashboard", label: "My Investigations" },
+  { to: "/orders", label: "My Reports" },
 ] as const;
 
 export const FOOTER_RESOURCE_LINKS = [

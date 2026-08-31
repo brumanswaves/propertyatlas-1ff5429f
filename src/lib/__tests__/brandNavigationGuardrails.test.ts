@@ -23,13 +23,14 @@ describe("Easy Erf brand and navigation guardrails", () => {
     expect(PRIMARY_NAV_LINKS).toEqual([
       { to: "/", label: "Find a Property" },
       { to: "/how-it-works", label: "How It Works" },
-      { to: "/pricing", label: "Pricing" },
+      { to: "/pricing", label: "R999 Review" },
     ]);
   });
 
   it("keeps account navigation separate and consistently named", () => {
     expect(SIGNED_IN_NAV_LINKS).toEqual([
       { to: "/dashboard", label: "My Investigations" },
+      { to: "/orders", label: "My Reports" },
       { to: "/profile", label: "Account" },
     ]);
   });
@@ -48,6 +49,7 @@ describe("Easy Erf brand and navigation guardrails", () => {
       ...FOOTER_LEGAL_LINKS,
     ].map((link) => link.to));
 
+    expect(footerRoutes).toContain("/orders");
     expect(footerRoutes).toContain("/faq");
     expect(footerRoutes).toContain("/data-sources");
     expect(footerRoutes).toContain("/about");

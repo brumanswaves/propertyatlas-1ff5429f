@@ -213,12 +213,20 @@ function Dashboard() {
               Welcome back, {greetingName}. See every property you saved, where you left off, and the investigation work already attached to it.
             </p>
           </div>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-          >
-            <MapPinned className="h-3.5 w-3.5" /> Find another property
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/orders"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> My Reports
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              <MapPinned className="h-3.5 w-3.5" /> Find another property
+            </Link>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

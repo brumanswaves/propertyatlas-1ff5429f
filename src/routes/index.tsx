@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Geometry } from "geojson";
 import { LocateFixed, MousePointerClick, X } from "lucide-react";
@@ -356,6 +356,30 @@ function AtlasHome() {
         }
         subtitle={headerSubtitle}
       />
+
+      {!selected && !selectedOfficial && !showOfficialReopenCard && !searchHighlight && (
+        <div className="pointer-events-auto absolute bottom-20 left-1/2 z-20 w-[min(94vw,42rem)] -translate-x-1/2 rounded-2xl border border-accent/30 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                R999 · Human-reviewed
+              </div>
+              <div className="mt-1 text-sm font-semibold text-foreground">
+                Want Easy Erf to investigate the property with human review?
+              </div>
+              <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                One property. Property Truth, potential, risks, unknowns and clear next steps.
+              </div>
+            </div>
+            <Link
+              to="/pricing"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
+            >
+              See the R999 review
+            </Link>
+          </div>
+        </div>
+      )}
 
       {debugReopenEnabled && (
         <DebugReopenPanel
