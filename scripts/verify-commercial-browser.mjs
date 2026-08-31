@@ -49,7 +49,6 @@ try {
     "Human Review · R999",
     "Choose one investigation focus",
     "Property Check",
-    "Before I Buy",
     "Property Potential",
     "Check My Intended Use",
     "Tell us about your situation — not a new question",
@@ -60,6 +59,7 @@ try {
     "What should be verified next?",
     "Clear scope boundary",
     "does not provide legal, tax, engineering, architectural, valuation",
+    "I understand Easy Erf provides property research and due-diligence support",
     "no subscription",
   ]) {
     if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
@@ -69,6 +69,7 @@ try {
 
   for (const forbiddenText of [
     "R999 Review",
+    "Before I Buy",
     "Ask us anything",
     "What do you want to know?",
     "R199/month",
@@ -86,27 +87,36 @@ try {
   }
 
   await page.getByRole("button", { name: /^Property Check/i }).click();
+  if (!(await checkoutButton.isDisabled())) {
+    throw new Error("Human Review checkout must remain disabled until the required scope acknowledgement is checked.");
+  }
+
+  const scopeAcknowledgement = page.getByRole("checkbox", {
+    name: /I understand Easy Erf provides property research and due-diligence support/i,
+  });
+  await scopeAcknowledgement.waitFor({ state: "visible", timeout: 30000 });
+  await scopeAcknowledgement.check();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Property Check should satisfy the controlled scope gate.");
+    throw new Error("Property Check plus scope acknowledgement should satisfy the controlled checkout gate.");
   }
 
   await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Intended-use checkout must remain disabled until one intended use is selected.");
+    throw new Error("Intended-use checkout must remain disabled until one supported intended use is selected.");
   }
 
   const secondDwelling = page.getByRole("button", { name: /^Add a second dwelling$/i });
   await secondDwelling.waitFor({ state: "visible", timeout: 30000 });
   await secondDwelling.click();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("A supported intended use should satisfy the controlled scope gate.");
+    throw new Error("A supported intended use plus acknowledgement should satisfy the controlled scope gate.");
   }
 
   const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
   await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
 
   console.log(
-    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review requires a controlled focus; intended use requires a supported sub-choice; checkout is not invoked; and open-ended advice copy is absent.",
+    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review exposes exactly the approved three goals; checkout requires the scope acknowledgement; intended use requires a supported sub-choice; checkout is not invoked; and open-ended or retired advice copy is absent.",
   );
 } finally {
   await browser.close();
