@@ -11,6 +11,9 @@ on:
       - supabase/functions/easy-erf-founder-fulfillment/**
       - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
+      - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+      - src/routes/admin.fulfillment.tsx
+      - src/routes/orders.tsx
   workflow_dispatch:
 
 permissions:
@@ -56,7 +59,9 @@ jobs:
       - name: Install dependencies and run focused guardrails
         run: |
           npm install --no-audit --no-fund
-          npx vitest run src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
+          npx vitest run \
+            src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
+            src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
 
       - name: Apply and prove founder fulfillment migration
         env:
@@ -68,6 +73,9 @@ jobs:
           --username postgres
           --dbname postgres
           --file scripts/verify-easy-erf-founder-fulfillment.sql
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit --pretty false
 
       - name: Check patch whitespace
         run: git diff --check origin/main...HEAD
