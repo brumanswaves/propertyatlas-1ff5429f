@@ -10,6 +10,10 @@ function componentSource(name: string) {
   return readFileSync(join(process.cwd(), "src", "components", "property", name), "utf8");
 }
 
+function projectSource(...parts: string[]) {
+  return readFileSync(join(process.cwd(), ...parts), "utf8");
+}
+
 describe("public Easy Erf product truth guardrails", () => {
   it("does not revive the retired fake report-order flow", () => {
     const source = routeSource("reports.tsx");
@@ -50,27 +54,40 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toMatch(/Easy Erf Report/);
   });
 
-  it("keeps the current commercial decision explicit on Pricing", () => {
+  it("keeps the current commercial decision explicit on Human Review", () => {
     const source = routeSource("pricing.tsx");
 
-    expect(source).toMatch(/without a subscription/i);
-    expect(source).toMatch(/does not currently operate a live in-app paid report checkout/i);
+    expect(source).toMatch(/Human Review/);
+    expect(source).toMatch(/No recurring plan required/i);
     expect(source).toMatch(/No subscription right now/i);
+    expect(source).toMatch(/does not currently operate a live in-app paid report checkout/i);
     expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
-  it("keeps the R999 Early Access investigation real and fail-closed", () => {
+  it("keeps the R999 Human Review investigation real and TEST-only", () => {
     const source = routeSource("pricing.tsx");
+    const checkout = projectSource(
+      "supabase",
+      "functions",
+      "easy-erf-r999-checkout",
+      "index.ts",
+    );
 
     expect(source).toMatch(/Easy Erf Property Investigation/);
     expect(source).toMatch(/R999/);
     expect(source).toMatch(/one property, introductory price/i);
-    expect(source).toContain("VITE_EASY_ERF_R999_PAYMENT_LINK");
+    expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout")');
+    expect(source).toContain('data?.mode !== "test"');
     expect(source).toContain('url.hostname !== "buy.stripe.com"');
-    expect(source).toMatch(/Secure checkout is being connected/);
     expect(source).toMatch(/human review/i);
     expect(source).toMatch(/Anything we cannot verify is labelled as unresolved/i);
+    expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
+    expect(checkout).toContain("STRIPE_SECRET_KEY");
+    expect(checkout).toContain("link.livemode");
+    expect(checkout).toContain("price.unit_amount !== 99900");
+    expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).not.toMatch(/sk_(test|live)_|whsec_|plink_[A-Za-z0-9]{8,}/);
     expect(source).not.toMatch(/guaranteed|official zoning certificate|approved building plan included/i);
   });
 
