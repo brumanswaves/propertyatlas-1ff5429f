@@ -77,11 +77,12 @@ describe("public Easy Erf product truth guardrails", () => {
 
     expect(source).toContain("HUMAN_REVIEW_FOCUS_OPTIONS.map");
     expect(source).toContain("{HUMAN_REVIEW_SCOPE_BOUNDARY}");
+    expect(source).toContain("{HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT}");
     expect(source).toContain("HUMAN_REVIEW_NOT_INCLUDED.map");
     expect(scope).toContain('label: "Property Check"');
-    expect(scope).toContain('label: "Before I Buy"');
     expect(scope).toContain('label: "Property Potential"');
     expect(scope).toContain('label: "Check My Intended Use"');
+    expect(scope).not.toContain('label: "Before I Buy"');
     expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout"');
     expect(source).toContain('data?.mode !== "test"');
     expect(source).toContain('url.hostname !== "buy.stripe.com"');
