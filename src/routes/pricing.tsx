@@ -8,17 +8,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing | Easy Erf" },
+      { title: "Human Review | Easy Erf" },
       {
         name: "description",
         content:
-          "Start an Easy Erf property investigation without a subscription, or choose the R999 Early Access human-reviewed Property Investigation. Optional third-party evidence remains separate.",
+          "Choose the R999 Easy Erf Human Review investigation for one property, or continue with the self-service investigation. Optional third-party evidence remains separate.",
       },
-      { property: "og:title", content: "Easy Erf pricing" },
+      { property: "og:title", content: "Easy Erf Human Review" },
       {
         property: "og:description",
         content:
-          "Start investigating without a subscription. Early Access customers can choose a R999 human-reviewed Easy Erf Property Investigation when secure checkout is available.",
+          "Hand the property investigation to Easy Erf for human review at the R999 introductory one-property price.",
       },
       { property: "og:url", content: "/pricing" },
     ],
@@ -38,7 +38,7 @@ const INCLUDED = [
   "Ask Easy Erf where the configured AI service is available",
 ];
 
-const EARLY_ACCESS_INCLUDED = [
+const HUMAN_REVIEW_INCLUDED = [
   "Property Truth: identity, evidence and important known facts",
   "Property Potential: planning, constraints and plausible opportunities",
   "Deal killers and key risks that deserve attention",
@@ -131,7 +131,7 @@ function PricingPage() {
             <div className="p-7">
               <div className="text-sm font-semibold">Your reviewed investigation includes</div>
               <ul className="mt-4 grid gap-3 text-sm">
-                {EARLY_ACCESS_INCLUDED.map((item) => (
+                {HUMAN_REVIEW_INCLUDED.map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                     <span>{item}</span>
@@ -139,7 +139,7 @@ function PricingPage() {
                 ))}
               </ul>
               <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4 text-xs leading-relaxed text-muted-foreground">
-                Early Access is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Easy Erf should make the investigation easier, show its evidence and tell you exactly where professional confirmation is still appropriate.
+                Human Review is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Easy Erf should make the investigation easier, show its evidence and tell you exactly where professional confirmation is still appropriate.
               </div>
             </div>
           </div>
@@ -148,14 +148,14 @@ function PricingPage() {
         <div className="mt-5 grid gap-5 lg:grid-cols-3">
           <section className="flex flex-col rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/5 via-card to-accent/5 p-6 shadow-panel lg:col-span-2">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-              Core Easy Erf investigation
+              Investigate it yourself
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-3xl font-semibold tracking-tight">Start free</span>
               <span className="text-xs text-muted-foreground">No recurring plan required</span>
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Use Easy Erf to build and understand the property file yourself. Coverage and provider availability vary by municipality, so missing evidence remains visible instead of being replaced with unsupported data.
+              Use Easy Erf to build and understand the property file yourself. If you get tired or want a second set of eyes, Human Review stays available from the navigation on every step.
             </p>
             <ul className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
               {INCLUDED.map((item) => (
@@ -169,7 +169,7 @@ function PricingPage() {
               to="/"
               className="mt-7 inline-flex w-fit items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
             >
-              Find a Property
+              Investigate it myself
             </Link>
           </section>
 
@@ -209,7 +209,7 @@ function PricingPage() {
             </div>
             <h2 className="mt-1 text-xl font-semibold tracking-tight">No subscription right now</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Easy Erf is not selling a recurring monthly subscription in the current MVP. The R999 Early Access investigation is a once-off introductory offer for one property. Future bundles or subscriptions are not part of the current purchase decision.
+              Easy Erf is not selling a recurring monthly subscription in the current MVP. The R999 Human Review investigation is a once-off introductory offer for one property. Future bundles or subscriptions are not part of the current purchase decision.
             </p>
           </section>
         </div>
@@ -217,7 +217,7 @@ function PricingPage() {
         <section className="mx-auto mt-10 max-w-3xl rounded-3xl border border-border bg-card p-6 text-center shadow-soft">
           <h2 className="text-lg font-semibold tracking-tight">What happens when something costs money?</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Easy Erf should tell you before you pay, explain what you receive, and keep optional evidence separate from the core investigation. If a payment workflow is not live, Easy Erf should say so rather than showing a fake checkout or invented price.
+            Easy Erf should tell you before you pay, explain what you receive, and keep optional evidence separate from the core investigation. Human Review uses Stripe-hosted checkout; third-party evidence, if needed, is separate.
           </p>
           <Link
             to="/how-it-works"
