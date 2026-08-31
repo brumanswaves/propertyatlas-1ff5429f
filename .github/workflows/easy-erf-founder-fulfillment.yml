@@ -13,6 +13,7 @@ on:
       - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
       - supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
       - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql
+      - supabase/migrations/20260831142610_reopen_easy_erf_human_review.sql
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
