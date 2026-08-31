@@ -1,0 +1,123 @@
+name: Fulfillment status enum repair
+
+on:
+  push:
+    branches:
+      - chatgpt/fix-fulfillment-status-enum
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply exact production-enum compatibility edits
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=50 origin chatgpt/fix-fulfillment-status-enum
+          git checkout -B chatgpt/fix-fulfillment-status-enum FETCH_HEAD
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}: {old!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          stripe = Path("scripts/verify-easy-erf-stripe-migration.sql")
+          text = stripe.read_text()
+          old_enum = "create type public.report_order_status as enum ('pending', 'paid', 'processing', 'ready', 'failed');"
+          new_enum = "create type public.report_order_status as enum ('pending', 'paid', 'fulfilling', 'complete', 'failed', 'cancelled');"
+          if text.count(old_enum) != 1:
+              raise SystemExit("Stripe verifier enum baseline did not match exactly once")
+          text = text.replace(old_enum, new_enum, 1)
+          if text.count("'processing'::public.report_order_status") != 2:
+              raise SystemExit("Stripe verifier expected exactly two processing enum casts")
+          text = text.replace("'processing'::public.report_order_status", "'fulfilling'::public.report_order_status")
+          stripe.write_text(text)
+
+          founder = Path("scripts/verify-easy-erf-founder-fulfillment.sql")
+          text = founder.read_text()
+          anchor = "\\i supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql\n"
+          addition = anchor + "\\i supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql\n"
+          if "20260831130000_align_easy_erf_fulfillment_status_enum.sql" not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit("Founder verifier migration anchor mismatch")
+              text = text.replace(anchor, addition, 1)
+          if text.count("'processing'::public.report_order_status") != 1:
+              raise SystemExit("Founder verifier expected one processing enum cast")
+          text = text.replace("'processing'::public.report_order_status", "'fulfilling'::public.report_order_status", 1)
+          if text.count("'ready'::public.report_order_status") != 1:
+              raise SystemExit("Founder verifier expected one ready enum cast")
+          text = text.replace("'ready'::public.report_order_status", "'complete'::public.report_order_status", 1)
+          founder.write_text(text)
+
+          old_order_status = '''function orderStatus(order: ReportOrder) {
+            return (order.status_enum || order.status || "pending").toLowerCase();
+          }'''
+          new_order_status = '''function orderStatus(order: ReportOrder) {
+            const status = (order.status_enum || order.status || "pending").toLowerCase();
+            return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
+          }'''
+          for route in ["src/routes/admin.fulfillment.tsx", "src/routes/orders.tsx"]:
+              replace_once(route, old_order_status, new_order_status)
+
+          workflow = Path(".github/workflows/easy-erf-founder-fulfillment.yml")
+          text = workflow.read_text()
+          path_anchor = "      - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql\n"
+          path_add = path_anchor + "      - supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql\n      - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql\n"
+          # PR #141 already added the delivery migration. Add only the new compatibility migration if needed.
+          if "      - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql\n" not in text:
+              existing_delivery = "      - supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql\n"
+              if text.count(existing_delivery) != 1:
+                  raise SystemExit("Founder workflow delivery migration path anchor mismatch")
+              text = text.replace(existing_delivery, existing_delivery + "      - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql\n", 1)
+          test_path = "      - src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts\n"
+          if test_path not in text:
+              existing_test = "      - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts\n"
+              if text.count(existing_test) != 1:
+                  raise SystemExit("Founder workflow test path anchor mismatch")
+              text = text.replace(existing_test, existing_test + test_path, 1)
+          test_cmd = "            src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts\n"
+          if "easyErfFulfillmentStatusEnum.test.ts" not in text.split("- name: Apply and prove", 1)[0]:
+              if text.count(test_cmd) != 1:
+                  raise SystemExit("Founder workflow test command anchor mismatch")
+              text = text.replace(test_cmd, test_cmd.rstrip("\n") + " \\\n            src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts\n", 1)
+          workflow.write_text(text)
+
+          inventory = Path("src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts")
+          text = inventory.read_text()
+          if text.count("expect(migrationNames).toHaveLength(32);") != 1:
+              raise SystemExit("Migration inventory expected 32 count exactly once")
+          text = text.replace("expect(migrationNames).toHaveLength(32);", "expect(migrationNames).toHaveLength(33);", 1)
+          anchor = '      "20260831113000_secure_easy_erf_report_delivery.sql",\n'
+          addition = anchor + '      "20260831130000_align_easy_erf_fulfillment_status_enum.sql",\n'
+          if "20260831130000_align_easy_erf_fulfillment_status_enum.sql" not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit("Migration inventory delivery anchor mismatch")
+              text = text.replace(anchor, addition, 1)
+          inventory.write_text(text)
+          PY
+          git diff --check
+          if git diff --quiet; then
+            echo "No compatibility edits required."
+            exit 0
+          fi
+          git config user.name "Easy Erf CI Repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add scripts/verify-easy-erf-stripe-migration.sql \
+            scripts/verify-easy-erf-founder-fulfillment.sql \
+            src/routes/admin.fulfillment.tsx \
+            src/routes/orders.tsx \
+            .github/workflows/easy-erf-founder-fulfillment.yml \
+            src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts
+          git commit -m "Align fulfillment status verification with production enum"
+          git push origin HEAD:chatgpt/fix-fulfillment-status-enum
