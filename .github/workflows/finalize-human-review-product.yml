@@ -1,0 +1,34 @@
+name: Finalize Human Review product
+
+on:
+  push:
+    branches:
+      - chatgpt/human-review-product-v2
+    paths:
+      - .github/workflows/finalize-human-review-product.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply final Human Review product contract
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REF: chatgpt/human-review-product-v2
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=100 origin "${HEAD_REF}"
+          git checkout -B "${HEAD_REF}" FETCH_HEAD
+          python scripts/finalize-human-review-product.py
+          git diff --check
+          grep -R "before_i_buy" src supabase scripts/verify-easy-erf-human-review-product.sql && exit 1 || true
+          git config user.name "Easy Erf CI Finalizer"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Finalize controlled Human Review product and report lens"
+          git push origin "HEAD:${HEAD_REF}"
