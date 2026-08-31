@@ -39,50 +39,74 @@ try {
 
   await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
 
-  await page.getByRole("heading", { name: /Easy Erf Property Investigation/i }).waitFor({
+  await page.getByRole("heading", { name: /Hand the property investigation to Easy Erf/i }).waitFor({
     state: "visible",
     timeout: 30000,
   });
 
   const body = await page.locator("body").innerText();
-
   for (const requiredText of [
-    "Human Review",
-    "R999",
-    "one property, introductory price",
-    "Anything we cannot verify is labelled as unresolved",
-    "Build envelope, not generated house concepts",
-    "does not generate house designs, facades or AI building concepts",
-    "No subscription right now",
+    "Human Review · R999",
+    "Choose one investigation focus",
+    "Property Check",
+    "Before I Buy",
+    "Property Potential",
+    "Check My Intended Use",
+    "Tell us about your situation — not a new question",
+    "What do we know?",
+    "What appears possible?",
+    "What could be a problem?",
+    "What do we not know yet?",
+    "What should be verified next?",
+    "Clear scope boundary",
+    "does not provide legal, tax, engineering, architectural, valuation",
+    "no subscription",
   ]) {
     if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Human Review page is missing required commercial truth: ${requiredText}`);
+      throw new Error(`Human Review page is missing required scoped-product truth: ${requiredText}`);
     }
   }
 
   for (const forbiddenText of [
     "R999 Review",
-    "Secure checkout is being connected",
-    "Site Potential concept generation is currently controlled",
+    "Ask us anything",
+    "What do you want to know?",
     "R199/month",
     "R499/month",
   ]) {
     if (body.toLowerCase().includes(forbiddenText.toLowerCase())) {
-      throw new Error(`Human Review page still exposes retired commercial/product copy: ${forbiddenText}`);
+      throw new Error(`Human Review page exposes forbidden or retired copy: ${forbiddenText}`);
     }
   }
 
-  const checkoutButton = page.getByRole("button", { name: /^Start Human Review — R999$/i });
+  const checkoutButton = page.getByRole("button", { name: /^Continue to secure checkout$/i });
   await checkoutButton.waitFor({ state: "visible", timeout: 30000 });
+  if (!(await checkoutButton.isDisabled())) {
+    throw new Error("Human Review checkout must remain disabled until a controlled focus is selected.");
+  }
+
+  await page.getByRole("button", { name: /^Property Check/i }).click();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Human Review TEST checkout entry must be enabled before invocation.");
+    throw new Error("Property Check should satisfy the controlled scope gate.");
+  }
+
+  await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
+  if (!(await checkoutButton.isDisabled())) {
+    throw new Error("Intended-use checkout must remain disabled until one intended use is selected.");
+  }
+
+  const secondDwelling = page.getByRole("button", { name: /^Add a second dwelling$/i });
+  await secondDwelling.waitFor({ state: "visible", timeout: 30000 });
+  await secondDwelling.click();
+  if (await checkoutButton.isDisabled()) {
+    throw new Error("A supported intended use should satisfy the controlled scope gate.");
   }
 
   const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
   await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
 
   console.log(
-    "Commercial browser smoke verified: map offers self-service or Human Review, self-service opens Address/Erf choice, Human Review R999 page is visible, TEST checkout entry is enabled, deterministic Site Potential remains explicit, and subscription copy is absent.",
+    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review requires a controlled focus; intended use requires a supported sub-choice; checkout is not invoked; and open-ended advice copy is absent.",
   );
 } finally {
   await browser.close();
