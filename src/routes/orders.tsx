@@ -214,7 +214,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function orderStatus(order: ReportOrder) {
-  return (order.status_enum || order.status || "pending").toLowerCase();
+  const status = (order.status_enum || order.status || "pending").toLowerCase();
+  return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
 }
 
 function payloadText(payload: unknown, key: string): string | null {

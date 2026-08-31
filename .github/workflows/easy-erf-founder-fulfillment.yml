@@ -12,8 +12,10 @@ on:
       - supabase/functions/easy-erf-founder-report-upload/**
       - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
       - supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
+      - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+      - src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
       - src/routes/admin.fulfillment.tsx
       - src/routes/orders.tsx
   workflow_dispatch:
@@ -64,7 +66,8 @@ jobs:
           npm install --no-audit --no-fund
           npx vitest run \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
-            src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+            src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
+            src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
 
       - name: Apply and prove founder fulfillment migration
         env:
