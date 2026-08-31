@@ -57,15 +57,15 @@ describe("public Easy Erf product truth guardrails", () => {
   it("keeps the current commercial decision explicit on Human Review", () => {
     const source = routeSource("pricing.tsx");
 
-    expect(source).toMatch(/Human Review/);
-    expect(source).toMatch(/No recurring plan required/i);
-    expect(source).toMatch(/No subscription right now/i);
-    expect(source).toMatch(/does not currently operate a live in-app paid report checkout/i);
+    expect(source).toMatch(/Human Review · R999/);
+    expect(source).toMatch(/once-off · one property · no subscription/i);
+    expect(source).toMatch(/Choose one investigation focus/i);
+    expect(source).toMatch(/Tell us about your situation — not a new question/i);
     expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
-  it("keeps the R999 Human Review investigation real and TEST-only", () => {
+  it("keeps the R999 Human Review investigation controlled and TEST-only", () => {
     const source = routeSource("pricing.tsx");
     const checkout = projectSource(
       "supabase",
@@ -74,30 +74,43 @@ describe("public Easy Erf product truth guardrails", () => {
       "index.ts",
     );
 
-    expect(source).toMatch(/Easy Erf Property Investigation/);
-    expect(source).toMatch(/R999/);
-    expect(source).toMatch(/one property, introductory price/i);
-    expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout")');
+    for (const focus of [
+      "Property Check",
+      "Before I Buy",
+      "Property Potential",
+      "Check My Intended Use",
+    ]) {
+      expect(source).toContain(focus);
+    }
+    expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout"');
     expect(source).toContain('data?.mode !== "test"');
     expect(source).toContain('url.hostname !== "buy.stripe.com"');
-    expect(source).toMatch(/human review/i);
-    expect(source).toMatch(/Anything we cannot verify is labelled as unresolved/i);
+    expect(source).toMatch(/does not provide legal, tax, engineering, architectural, valuation/i);
+    expect(source).toMatch(/does not invent a construction quotation or per-m² build-cost estimate/i);
+    expect(source).not.toMatch(/ask us anything|what do you want to know/i);
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
     expect(checkout).toContain("link.livemode");
     expect(checkout).toContain("price.unit_amount !== 99900");
     expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).not.toMatch(/sk_(test|live)_|whsec_|plink_[A-Za-z0-9]{8,}/);
     expect(source).not.toMatch(/guaranteed|official zoning certificate|approved building plan included/i);
   });
 
   it("keeps active Site Potential deterministic", () => {
-    const source = routeSource("pricing.tsx");
+    const source = projectSource(
+      "src",
+      "components",
+      "property",
+      "dossier",
+      "SitePotentialTab.tsx",
+    );
 
-    expect(source).toMatch(/Build envelope, not generated house concepts/i);
-    expect(source).toMatch(/parcel map and a street-side view/i);
-    expect(source).toMatch(/does not generate house designs, facades or AI building concepts/i);
-    expect(source).not.toMatch(/Site Potential concept generation is currently controlled/i);
+    expect(source).toMatch(/Where could a building potentially fit\?/i);
+    expect(source).toMatch(/buildable envelope on the map and the same limits from the street side/i);
+    expect(source).toMatch(/There are no AI house concepts, generated renders, or facade images/i);
+    expect(source).not.toMatch(/generate a visual concept pack/i);
   });
 
   it("keeps the active workbench free of generated-concept completion semantics", () => {
