@@ -1,0 +1,33 @@
+name: Wire Human Review takeover
+
+on:
+  push:
+    branches:
+      - chatgpt/human-review-product-v2
+    paths:
+      - .github/workflows/wire-human-review-takeover.yml
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wire takeover CTA and self-service report presentation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REF: chatgpt/human-review-product-v2
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=80 origin "${HEAD_REF}"
+          git checkout -B "${HEAD_REF}" FETCH_HEAD
+          python scripts/wire-human-review-takeover.py
+          git diff --check
+          git config user.name "Easy Erf CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/property/OfficialParcelPanel.tsx src/components/property/ErfResearchDossier.tsx
+          git commit -m "Wire Human Review takeover into property workspace"
+          git push origin "HEAD:${HEAD_REF}"
