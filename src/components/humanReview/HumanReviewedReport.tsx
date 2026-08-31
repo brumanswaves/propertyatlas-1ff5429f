@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, HelpCircle, Lightbulb, ListChecks, ShieldCheck } from "lucide-react";
 import {
   HUMAN_REVIEW_CORE_QUESTIONS,
@@ -22,7 +23,7 @@ export function HumanReviewedReport({
   context?: string | null;
   content: HumanReviewReportContent;
   completedAt?: string | null;
-  downloadAction?: React.ReactNode;
+  downloadAction?: ReactNode;
 }) {
   const sections = [
     {
