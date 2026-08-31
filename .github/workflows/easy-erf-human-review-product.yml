@@ -11,10 +11,13 @@ on:
       - src/components/humanReview/**
       - src/components/property/ErfResearchDossier.tsx
       - src/components/property/OfficialParcelPanel.tsx
+      - src/components/property/dossier/ReportOpening.tsx
+      - src/components/reports/FiveQuestionReportGrid.tsx
       - src/integrations/supabase/types.ts
       - src/lib/brand.ts
       - src/lib/humanReview/**
       - src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+      - src/lib/reports/fiveQuestionReport.ts
       - src/routes/admin.fulfillment.tsx
       - src/routes/orders.tsx
       - src/routes/pricing.tsx
