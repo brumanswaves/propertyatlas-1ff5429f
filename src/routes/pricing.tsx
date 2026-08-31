@@ -1,22 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowUpRight, Check, FileText, Sparkles, WandSparkles } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing | Easy Erf" },
+      { title: "Human Review | Easy Erf" },
       {
         name: "description",
         content:
-          "Start an Easy Erf property investigation without a subscription, or choose the R999 Early Access human-reviewed Property Investigation. Optional third-party evidence remains separate.",
+          "Choose the R999 Easy Erf Human Review investigation for one property, or continue with the self-service investigation. Optional third-party evidence remains separate.",
       },
-      { property: "og:title", content: "Easy Erf pricing" },
+      { property: "og:title", content: "Easy Erf Human Review" },
       {
         property: "og:description",
         content:
-          "Start investigating without a subscription. Early Access customers can choose a R999 human-reviewed Easy Erf Property Investigation when secure checkout is available.",
+          "Hand the property investigation to Easy Erf for human review at the R999 introductory one-property price.",
       },
       { property: "og:url", content: "/pricing" },
     ],
@@ -36,7 +38,7 @@ const INCLUDED = [
   "Ask Easy Erf where the configured AI service is available",
 ];
 
-const EARLY_ACCESS_INCLUDED = [
+const HUMAN_REVIEW_INCLUDED = [
   "Property Truth: identity, evidence and important known facts",
   "Property Potential: planning, constraints and plausible opportunities",
   "Deal killers and key risks that deserve attention",
@@ -45,21 +47,29 @@ const EARLY_ACCESS_INCLUDED = [
   "Strategy and financial analysis where it is relevant to your question",
 ];
 
-function configuredEarlyAccessPaymentLink() {
-  const value = import.meta.env.VITE_EASY_ERF_R999_PAYMENT_LINK?.trim();
-  if (!value) return null;
-
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 function PricingPage() {
-  const earlyAccessPaymentLink = configuredEarlyAccessPaymentLink();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  async function startHumanReviewCheckout() {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("easy-erf-r999-checkout");
+      if (error || !data?.ok || data?.mode !== "test" || typeof data?.url !== "string") {
+        throw new Error(data?.error ?? error?.message ?? "Secure checkout is unavailable.");
+      }
+      const url = new URL(data.url);
+      if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") {
+        throw new Error("Secure checkout returned an invalid destination.");
+      }
+      window.location.assign(url.toString());
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Secure checkout is unavailable.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -67,13 +77,13 @@ function PricingPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-32">
         <div className="text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3 w-3 text-accent" /> Pricing
+            <Sparkles className="h-3 w-3 text-accent" /> Human Review
           </span>
           <h1 className="mx-auto mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-5xl">
-            Start investigating without a subscription.
+            Get a human-reviewed property investigation.
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Use the core investigation yourself, or choose Early Access when you want Easy Erf to do more of the investigation with human review.
+            If you want Easy Erf to take over the investigation, choose Human Review. You can still investigate the property yourself at any time.
           </p>
         </div>
 
@@ -81,7 +91,7 @@ function PricingPage() {
           <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="border-b border-border/70 p-7 lg:border-b-0 lg:border-r">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-                Early Access
+                Human Review
               </div>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">
                 Easy Erf Property Investigation
@@ -99,36 +109,29 @@ function PricingPage() {
                 This is deliberately human-assisted while we validate what customers value most. Anything we cannot verify is labelled as unresolved rather than presented as fact.
               </p>
 
-              {earlyAccessPaymentLink ? (
-                <a
-                  href={earlyAccessPaymentLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
+              <div className="mt-6">
+                <button
+                  type="button"
+                  disabled={checkoutLoading}
+                  onClick={() => void startHumanReviewCheckout()}
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90 disabled:opacity-60"
                 >
-                  Start R999 Investigation
+                  {checkoutLoading ? "Opening secure checkout…" : "Start Human Review — R999"}
                   <ArrowUpRight className="h-4 w-4" />
-                </a>
-              ) : (
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-muted px-5 py-2.5 text-sm font-semibold text-muted-foreground"
-                  >
-                    Secure checkout is being connected
-                  </button>
-                  <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
-                    Easy Erf will only enable this button when the verified Stripe-hosted checkout is configured. No payment is collected by this page while checkout is unavailable.
-                  </p>
-                </div>
-              )}
+                </button>
+                <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
+                  Secure Stripe-hosted checkout. The current launch configuration is TEST mode only.
+                </p>
+                {checkoutError ? (
+                  <p className="mt-2 max-w-md text-xs font-medium text-destructive">{checkoutError}</p>
+                ) : null}
+              </div>
             </div>
 
             <div className="p-7">
               <div className="text-sm font-semibold">Your reviewed investigation includes</div>
               <ul className="mt-4 grid gap-3 text-sm">
-                {EARLY_ACCESS_INCLUDED.map((item) => (
+                {HUMAN_REVIEW_INCLUDED.map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                     <span>{item}</span>
@@ -136,7 +139,7 @@ function PricingPage() {
                 ))}
               </ul>
               <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4 text-xs leading-relaxed text-muted-foreground">
-                Early Access is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Easy Erf should make the investigation easier, show its evidence and tell you exactly where professional confirmation is still appropriate.
+                Human Review is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Easy Erf should make the investigation easier, show its evidence and tell you exactly where professional confirmation is still appropriate.
               </div>
             </div>
           </div>
@@ -145,14 +148,14 @@ function PricingPage() {
         <div className="mt-5 grid gap-5 lg:grid-cols-3">
           <section className="flex flex-col rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/5 via-card to-accent/5 p-6 shadow-panel lg:col-span-2">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-              Core Easy Erf investigation
+              Investigate it yourself
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-3xl font-semibold tracking-tight">Start free</span>
               <span className="text-xs text-muted-foreground">No recurring plan required</span>
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Use Easy Erf to build and understand the property file yourself. Coverage and provider availability vary by municipality, so missing evidence remains visible instead of being replaced with unsupported data.
+              Use Easy Erf to build and understand the property file yourself. If you get tired or want a second set of eyes, Human Review stays available from the navigation on every step.
             </p>
             <ul className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
               {INCLUDED.map((item) => (
@@ -166,7 +169,7 @@ function PricingPage() {
               to="/"
               className="mt-7 inline-flex w-fit items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
             >
-              Find a Property
+              Investigate it myself
             </Link>
           </section>
 
@@ -206,7 +209,7 @@ function PricingPage() {
             </div>
             <h2 className="mt-1 text-xl font-semibold tracking-tight">No subscription right now</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Easy Erf is not selling a recurring monthly subscription in the current MVP. The R999 Early Access investigation is a once-off introductory offer for one property. Future bundles or subscriptions are not part of the current purchase decision.
+              Easy Erf is not selling a recurring monthly subscription in the current MVP. The R999 Human Review investigation is a once-off introductory offer for one property. Future bundles or subscriptions are not part of the current purchase decision.
             </p>
           </section>
         </div>
@@ -214,7 +217,7 @@ function PricingPage() {
         <section className="mx-auto mt-10 max-w-3xl rounded-3xl border border-border bg-card p-6 text-center shadow-soft">
           <h2 className="text-lg font-semibold tracking-tight">What happens when something costs money?</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Easy Erf should tell you before you pay, explain what you receive, and keep optional evidence separate from the core investigation. If a payment workflow is not live, Easy Erf should say so rather than showing a fake checkout or invented price.
+            Easy Erf should tell you before you pay, explain what you receive, and keep optional evidence separate from the core investigation. Human Review uses Stripe-hosted checkout; third-party evidence, if needed, is separate.
           </p>
           <Link
             to="/how-it-works"

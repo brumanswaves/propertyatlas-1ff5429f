@@ -266,7 +266,7 @@ function FounderOperations() {
           <SectionHeading
             icon={<FileText className="h-4 w-4" />}
             title="Investigation and report orders"
-            description="Read-only payment and fulfilment truth from the secured order ledger."
+            description="Open an order to review, replace or redeliver the human-reviewed report while keeping payment truth read-only."
           />
           <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             {loading ? (
@@ -294,9 +294,14 @@ function FounderOperations() {
                     {orders.map((order) => (
                       <tr key={order.id} className="align-top">
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-foreground">{order.report_type}</div>
+                          <a
+                            href={`/admin/fulfillment#order-${order.id}`}
+                            className="font-semibold text-accent hover:underline"
+                          >
+                            {order.report_type}
+                          </a>
                           <div className="mt-1 font-mono text-[10px] text-muted-foreground">
-                            {shortId(order.id)}
+                            {shortId(order.id)} · Open / change review
                           </div>
                           {order.failure_reason ? (
                             <div className="mt-2 max-w-xs text-[11px] leading-relaxed text-destructive">

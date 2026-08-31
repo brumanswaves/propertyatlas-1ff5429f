@@ -10,6 +10,7 @@ const migration = source(
   "supabase/migrations/20260829113000_secure_easy_erf_stripe_fulfillment.sql",
 );
 const webhook = source("supabase/functions/easy-erf-stripe-webhook/index.ts");
+const checkout = source("supabase/functions/easy-erf-r999-checkout/index.ts");
 const config = source("supabase/config.toml");
 const admin = source("src/routes/admin.tsx");
 const pricing = source("src/routes/pricing.tsx");
@@ -110,19 +111,27 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("keeps the public checkout disabled until a verified Stripe URL is configured", () => {
-    expect(pricing).toContain("VITE_EASY_ERF_R999_PAYMENT_LINK");
+  it("resolves only the verified TEST R999 Stripe checkout server-side", () => {
+    expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout")');
+    expect(pricing).toContain('data?.mode !== "test"');
     expect(pricing).toContain('url.hostname !== "buy.stripe.com"');
-    expect(pricing).toMatch(/Secure checkout is being connected/);
+    expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
+    expect(checkout).toContain("STRIPE_SECRET_KEY");
+    expect(checkout).toContain("link.livemode");
+    expect(checkout).toContain("price.unit_amount !== 99900");
+    expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).not.toMatch(/sk_(test|live)_|plink_[A-Za-z0-9]{8,}/);
+    expect(config).toMatch(/\[functions\.easy-erf-r999-checkout\][\s\S]*verify_jwt = false/);
   });
 
-  it("lets Founder Operations display guest and matched-user orders safely", () => {
+  it("lets Founder Operations display and open guest or matched-user orders safely", () => {
     expect(admin).toContain("user_id: string | null");
     expect(admin).toContain("parcel_id: string | null");
     expect(admin).toContain("provider: string");
     expect(admin).toContain("payload: unknown");
     expect(admin).toContain('orderPayloadText(order, "propertyReference")');
     expect(admin).toContain('orderPayloadText(order, "customerEmail")');
-    expect(admin).toMatch(/Read-only payment and fulfilment truth/);
+    expect(admin).toContain('/admin/fulfillment#order-${order.id}');
+    expect(admin).toContain("Open / change review");
   });
 });

@@ -6,7 +6,7 @@ declare const Deno: {
 };
 
 const FUNCTION_NAME = "easy-erf-founder-fulfillment";
-const ALLOWED_ACTIONS = new Set(["start_review", "mark_ready", "mark_failed"]);
+const ALLOWED_ACTIONS = new Set(["start_review", "reopen_review", "mark_ready", "mark_failed"]);
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {

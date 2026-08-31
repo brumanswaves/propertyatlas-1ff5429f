@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Geometry } from "geojson";
-import { LocateFixed, MousePointerClick, X } from "lucide-react";
+import { LocateFixed, X } from "lucide-react";
 import {
   MapCanvas,
   type MapDebugStatus,
@@ -109,7 +109,6 @@ function AtlasHome() {
     useState<OfficialParcelReopenRequest | null>(null);
   const [officialReopenStatus, setOfficialReopenStatus] =
     useState<OfficialReopenResolutionStatus>("idle");
-  const [hintDismissed, setHintDismissed] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [showTestGeometry, setShowTestGeometry] = useState(false);
   const [debugReopenEnabled, setDebugReopenEnabled] = useState(false);
@@ -129,7 +128,6 @@ function AtlasHome() {
   });
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");
     const savedDemoMode = window.localStorage.getItem("pa.demoMode") === "1";
     setDemoMode(savedDemoMode);
     if (savedDemoMode) setLayers(DEMO_LAYERS);
@@ -152,14 +150,6 @@ function AtlasHome() {
     setRequestedOfficialParcel(officialRequest);
     setOfficialReopenStatus(officialRequest ? "searching" : "idle");
   }, []);
-  function dismissHint() {
-    setHintDismissed(true);
-    try {
-      window.localStorage.setItem("pa.hintDismissed", "1");
-    } catch {
-      // Ignore storage failures; the hint can safely remain dismissible in memory.
-    }
-  }
   const [filters] = useState<Filters>(DEFAULT_FILTERS);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   const [mapStyle, setMapStyle] = useState<MapStyleId>("satellite");
@@ -358,24 +348,28 @@ function AtlasHome() {
       />
 
       {!selected && !selectedOfficial && !showOfficialReopenCard && !searchHighlight && (
-        <div className="pointer-events-auto absolute bottom-20 left-1/2 z-20 w-[min(94vw,42rem)] -translate-x-1/2 rounded-2xl border border-accent/30 bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-                R999 · Human-reviewed
-              </div>
-              <div className="mt-1 text-sm font-semibold text-foreground">
-                Want Easy Erf to investigate the property with human review?
-              </div>
-              <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                One property. Property Truth, potential, risks, unknowns and clear next steps.
-              </div>
+        <div className="pointer-events-auto absolute bottom-20 left-1/2 z-20 w-[min(94vw,40rem)] -translate-x-1/2 rounded-3xl border border-white/20 bg-card/95 p-4 shadow-panel backdrop-blur md:bottom-8">
+          <div className="text-center">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Choose how you want to investigate
             </div>
+            <div className="mt-1 text-base font-semibold text-foreground">
+              Do it yourself, or hand it to Easy Erf for human review.
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("easy-erf:start-self-review"))}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-soft hover:bg-muted"
+            >
+              Investigate it myself
+            </button>
             <Link
               to="/pricing"
-              className="inline-flex shrink-0 items-center justify-center rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
             >
-              See the R999 review
+              Get Human Review · R999
             </Link>
           </div>
         </div>
@@ -535,31 +529,6 @@ function AtlasHome() {
               ? "No geometry has been fabricated."
               : "No geometry has been fabricated. The live dossier will open if a matching official feature is found."}
           </p>
-        </div>
-      )}
-
-      {!requestedOfficialParcel && !selected && !selectedOfficial && !hintDismissed && (
-        <div className="pointer-events-auto absolute inset-x-4 bottom-20 z-20 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-12 md:left-1/2 md:right-auto md:-translate-x-1/2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-brand text-white">
-            <MousePointerClick className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold leading-tight">
-              {demoMode ? "Click a demo parcel" : "Zoom in and click a CSG parcel"}
-            </div>
-            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-              {demoMode
-                ? "Open the demo property panel: valuation, last sale, ownership, scores."
-                : "Open the official public cadastral record from the Chief Surveyor-General."}
-            </p>
-          </div>
-          <button
-            onClick={dismissHint}
-            className="rounded-full p-1 text-muted-foreground hover:bg-muted"
-            aria-label="Dismiss"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
         </div>
       )}
 
