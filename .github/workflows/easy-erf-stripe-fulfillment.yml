@@ -9,8 +9,10 @@ on:
       - scripts/verify-easy-erf-stripe-migration.sql
       - src/lib/payments/**
       - src/routes/admin.tsx
+      - src/routes/pricing.tsx
       - supabase/config.toml
       - supabase/functions/_shared/easyErfStripePaymentContract.ts
+      - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
       - supabase/migrations/20260829113000_secure_easy_erf_stripe_fulfillment.sql
   workflow_dispatch:
@@ -47,12 +49,16 @@ jobs:
           unzip -q deno.zip
           ./deno --version
 
-      - name: Type-check signed Stripe webhook
-        run: >-
-          ./deno check
-          --node-modules-dir=auto
-          --no-lock
-          supabase/functions/easy-erf-stripe-webhook/index.ts
+      - name: Type-check Stripe webhook and Human Review checkout
+        run: |
+          ./deno check \
+            --node-modules-dir=auto \
+            --no-lock \
+            supabase/functions/easy-erf-stripe-webhook/index.ts
+          ./deno check \
+            --node-modules-dir=auto \
+            --no-lock \
+            supabase/functions/easy-erf-r999-checkout/index.ts
 
       - name: Run focused payment contract tests
         run: |
