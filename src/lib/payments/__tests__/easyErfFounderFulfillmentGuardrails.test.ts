@@ -12,6 +12,9 @@ const migration = source(
 const deliveryMigration = source(
   "supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql",
 );
+const reopenMigration = source(
+  "supabase/migrations/20260831142610_reopen_easy_erf_human_review.sql",
+);
 const founderFunction = source("supabase/functions/easy-erf-founder-fulfillment/index.ts");
 const uploadFunction = source("supabase/functions/easy-erf-founder-report-upload/index.ts");
 const config = source("supabase/config.toml");
@@ -39,6 +42,9 @@ describe("Easy Erf founder fulfillment database authority", () => {
     expect(deliveryMigration).toContain("Only processing orders can be marked ready");
     expect(deliveryMigration).toContain("when 'mark_failed' then");
     expect(deliveryMigration).toContain("Only paid or processing orders can be marked failed");
+    expect(reopenMigration).toContain("when 'reopen_review' then");
+    expect(reopenMigration).toContain("Only ready orders can be reopened for review");
+    expect(reopenMigration).toContain("completed_at = null");
     expect(deliveryMigration).not.toContain("when 'mark_paid'");
   });
 
@@ -68,7 +74,7 @@ describe("Easy Erf founder fulfillment Edge Function", () => {
     );
   });
 
-  it("accepts only the three explicit fulfillment actions", () => {
+  it("accepts only the four explicit fulfillment actions", () => {
     expect(founderFunction).toContain(
       'new Set(["start_review", "mark_ready", "mark_failed"])',
     );

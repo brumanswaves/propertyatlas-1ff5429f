@@ -7,6 +7,7 @@ import {
   CircleDashed,
   PlayCircle,
   ReceiptText,
+  RotateCcw,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,7 +43,7 @@ type ReportOrder = {
   completed_at: string | null;
 };
 
-type FulfillmentAction = "start_review" | "mark_ready" | "mark_failed";
+type FulfillmentAction = "start_review" | "reopen_review" | "mark_ready" | "mark_failed";
 
 function FounderFulfillmentPage() {
   return (
@@ -81,6 +82,14 @@ function FounderFulfillmentQueue() {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (loading || typeof window === "undefined" || !window.location.hash.startsWith("#order-")) return;
+    const id = window.location.hash.slice(1);
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [loading, orders]);
+
   async function transition(
     order: ReportOrder,
     action: FulfillmentAction,
@@ -105,9 +114,11 @@ function FounderFulfillmentQueue() {
     toast.success(
       action === "start_review"
         ? "Human review started"
-        : action === "mark_ready"
-          ? "Report marked ready"
-          : "Order marked failed",
+        : action === "reopen_review"
+          ? "Report reopened for review"
+          : action === "mark_ready"
+            ? "Report marked ready"
+            : "Order marked failed",
     );
     await refresh();
   }
@@ -243,7 +254,7 @@ function OrderCard({
   const investigationRequest = payloadText(order.payload, "investigationRequest");
 
   return (
-    <article className="rounded-3xl border border-border bg-card p-5 shadow-soft">
+    <article id={`order-${order.id}`} className="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -285,6 +296,16 @@ function OrderCard({
         ) : null}
         {status === "processing" ? (
           <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} />
+        ) : null}
+        {status === "ready" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onTransition(order, "reopen_review")}
+            className="inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent/5 px-4 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-accent" /> Reopen / replace report
+          </button>
         ) : null}
         {status === "paid" || status === "processing" ? (
           <FailedAction order={order} busy={busy} onTransition={onTransition} />

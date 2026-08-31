@@ -14,6 +14,7 @@ create table if not exists storage.objects (
 \i supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
 \i supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
 \i supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql
+\i supabase/migrations/20260831142610_reopen_easy_erf_human_review.sql
 
 do $$
 declare
@@ -114,6 +115,28 @@ begin
     raise exception 'mark_ready did not persist verified ready artifact state';
   end if;
 
+  select * into v_row from public.transition_easy_erf_report_order(
+    v_order_id, 'reopen_review', v_actor_id, null, null
+  );
+  if v_row.status <> 'processing'
+     or v_row.status_enum <> 'fulfilling'::public.report_order_status
+     or v_row.completed_at is not null then
+    raise exception 'reopen_review did not move ready order back to processing';
+  end if;
+
+  select * into v_row from public.transition_easy_erf_report_order(
+    v_order_id,
+    'mark_ready',
+    v_actor_id,
+    v_expected_path,
+    null
+  );
+  if v_row.status <> 'ready'
+     or v_row.status_enum <> 'complete'::public.report_order_status
+     or v_row.completed_at is null then
+    raise exception 'reopened report could not be marked ready again';
+  end if;
+
   begin
     perform public.transition_easy_erf_report_order(
       v_order_id, 'start_review', v_actor_id, null, null
@@ -130,8 +153,8 @@ begin
   select count(*) into v_event_count
   from public.report_order_events
   where report_order_id = v_order_id;
-  if v_event_count <> 2 then
-    raise exception 'Expected exactly two successful fulfillment events, got %', v_event_count;
+  if v_event_count <> 4 then
+    raise exception 'Expected exactly four successful fulfillment events, got %', v_event_count;
   end if;
 
   if has_function_privilege(

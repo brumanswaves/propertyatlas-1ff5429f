@@ -153,7 +153,6 @@ replace_once(
     '            Use the core investigation yourself, or choose Early Access when you want Easy Erf to do more of the investigation with human review.',
     '            If you want Easy Erf to take over the investigation, choose Human Review. You can still investigate the property yourself at any time.',
 )
-replace_once("src/routes/pricing.tsx", '                Early Access', '                Human Review')
 old_checkout = '''              {earlyAccessPaymentLink ? (
                 <a
                   href={earlyAccessPaymentLink}

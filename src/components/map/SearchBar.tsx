@@ -201,6 +201,15 @@ export function SearchBar({
   const [pilotRegistryMessage, setPilotRegistryMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const openSelfReview = () => {
+      setLane(null);
+      setOpen(true);
+    };
+    window.addEventListener("easy-erf:start-self-review", openSelfReview);
+    return () => window.removeEventListener("easy-erf:start-self-review", openSelfReview);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     loadPilotParcelRegistry()
       .then((registry) => {

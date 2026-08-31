@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowUpRight, Check, FileText, Sparkles, WandSparkles } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -45,21 +47,29 @@ const EARLY_ACCESS_INCLUDED = [
   "Strategy and financial analysis where it is relevant to your question",
 ];
 
-function configuredEarlyAccessPaymentLink() {
-  const value = import.meta.env.VITE_EASY_ERF_R999_PAYMENT_LINK?.trim();
-  if (!value) return null;
-
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 function PricingPage() {
-  const earlyAccessPaymentLink = configuredEarlyAccessPaymentLink();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  async function startHumanReviewCheckout() {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("easy-erf-r999-checkout");
+      if (error || !data?.ok || data?.mode !== "test" || typeof data?.url !== "string") {
+        throw new Error(data?.error ?? error?.message ?? "Secure checkout is unavailable.");
+      }
+      const url = new URL(data.url);
+      if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") {
+        throw new Error("Secure checkout returned an invalid destination.");
+      }
+      window.location.assign(url.toString());
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Secure checkout is unavailable.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -67,13 +77,13 @@ function PricingPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-32">
         <div className="text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3 w-3 text-accent" /> Pricing
+            <Sparkles className="h-3 w-3 text-accent" /> Human Review
           </span>
           <h1 className="mx-auto mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-5xl">
-            Start investigating without a subscription.
+            Get a human-reviewed property investigation.
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Use the core investigation yourself, or choose Early Access when you want Easy Erf to do more of the investigation with human review.
+            If you want Easy Erf to take over the investigation, choose Human Review. You can still investigate the property yourself at any time.
           </p>
         </div>
 
@@ -81,7 +91,7 @@ function PricingPage() {
           <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="border-b border-border/70 p-7 lg:border-b-0 lg:border-r">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-                Early Access
+                Human Review
               </div>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">
                 Easy Erf Property Investigation
@@ -99,30 +109,23 @@ function PricingPage() {
                 This is deliberately human-assisted while we validate what customers value most. Anything we cannot verify is labelled as unresolved rather than presented as fact.
               </p>
 
-              {earlyAccessPaymentLink ? (
-                <a
-                  href={earlyAccessPaymentLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
+              <div className="mt-6">
+                <button
+                  type="button"
+                  disabled={checkoutLoading}
+                  onClick={() => void startHumanReviewCheckout()}
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90 disabled:opacity-60"
                 >
-                  Start R999 Investigation
+                  {checkoutLoading ? "Opening secure checkout…" : "Start Human Review — R999"}
                   <ArrowUpRight className="h-4 w-4" />
-                </a>
-              ) : (
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-muted px-5 py-2.5 text-sm font-semibold text-muted-foreground"
-                  >
-                    Secure checkout is being connected
-                  </button>
-                  <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
-                    Easy Erf will only enable this button when the verified Stripe-hosted checkout is configured. No payment is collected by this page while checkout is unavailable.
-                  </p>
-                </div>
-              )}
+                </button>
+                <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
+                  Secure Stripe-hosted checkout. The current launch configuration is TEST mode only.
+                </p>
+                {checkoutError ? (
+                  <p className="mt-2 max-w-md text-xs font-medium text-destructive">{checkoutError}</p>
+                ) : null}
+              </div>
             </div>
 
             <div className="p-7">

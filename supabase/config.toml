@@ -17,3 +17,9 @@ verify_jwt = true
 # authenticated admin authorization and exact paid-order validation.
 [functions.easy-erf-founder-report-upload]
 verify_jwt = true
+
+
+# Human Review pricing resolves only the existing verified TEST Stripe Payment Link.
+# The function returns a public Stripe-hosted URL and never creates a payment itself.
+[functions.easy-erf-r999-checkout]
+verify_jwt = false
