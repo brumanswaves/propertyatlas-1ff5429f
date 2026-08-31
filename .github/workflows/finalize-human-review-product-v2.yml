@@ -1,0 +1,33 @@
+name: Finalize Human Review product v2 types
+
+on:
+  push:
+    branches:
+      - chatgpt/human-review-product-v2
+    paths:
+      - .github/workflows/finalize-human-review-product-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update checked-in database types and migration inventory
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_REF: chatgpt/human-review-product-v2
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=80 origin "${HEAD_REF}"
+          git checkout -B "${HEAD_REF}" FETCH_HEAD
+          python scripts/finalize-human-review-product-v2.py
+          git diff --check
+          git config user.name "Easy Erf CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/integrations/supabase/types.ts src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts
+          git commit -m "Align Human Review database types and migration inventory"
+          git push origin "HEAD:${HEAD_REF}"
