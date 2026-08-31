@@ -1,0 +1,53 @@
+from pathlib import Path
+
+path = Path("src/routes/index.tsx")
+text = path.read_text()
+
+replacements = [
+    ('import { LocateFixed, MousePointerClick, X } from "lucide-react";', 'import { LocateFixed, X } from "lucide-react";'),
+    ('  const [hintDismissed, setHintDismissed] = useState(false);\n', ''),
+    ('    setHintDismissed(window.localStorage.getItem("pa.hintDismissed") === "1");\n', ''),
+    ('''  function dismissHint() {
+    setHintDismissed(true);
+    try {
+      window.localStorage.setItem("pa.hintDismissed", "1");
+    } catch {
+      // Ignore storage failures; the hint can safely remain dismissible in memory.
+    }
+  }
+''', ''),
+    ('''      {!requestedOfficialParcel && !selected && !selectedOfficial && !hintDismissed && (
+        <div className="pointer-events-auto absolute inset-x-4 bottom-20 z-20 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-card/95 p-3 shadow-panel backdrop-blur md:bottom-12 md:left-1/2 md:right-auto md:-translate-x-1/2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-brand text-white">
+            <MousePointerClick className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold leading-tight">
+              {demoMode ? "Click a demo parcel" : "Zoom in and click a CSG parcel"}
+            </div>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              {demoMode
+                ? "Open the demo property panel: valuation, last sale, ownership, scores."
+                : "Open the official public cadastral record from the Chief Surveyor-General."}
+            </p>
+          </div>
+          <button
+            onClick={dismissHint}
+            className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+            aria-label="Dismiss"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+''', ''),
+]
+
+for old, new in replacements:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"expected one match, found {count}: {old[:80]!r}")
+    text = text.replace(old, new, 1)
+
+path.write_text(text)
