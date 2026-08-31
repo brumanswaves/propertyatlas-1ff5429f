@@ -124,13 +124,14 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(config).toMatch(/\[functions\.easy-erf-r999-checkout\][\s\S]*verify_jwt = false/);
   });
 
-  it("lets Founder Operations display guest and matched-user orders safely", () => {
+  it("lets Founder Operations display and open guest or matched-user orders safely", () => {
     expect(admin).toContain("user_id: string | null");
     expect(admin).toContain("parcel_id: string | null");
     expect(admin).toContain("provider: string");
     expect(admin).toContain("payload: unknown");
     expect(admin).toContain('orderPayloadText(order, "propertyReference")');
     expect(admin).toContain('orderPayloadText(order, "customerEmail")');
-    expect(admin).toMatch(/Read-only payment and fulfilment truth/);
+    expect(admin).toContain('/admin/fulfillment#order-${order.id}');
+    expect(admin).toContain("Open / change review");
   });
 });
