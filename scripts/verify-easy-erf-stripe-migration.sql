@@ -24,7 +24,7 @@ stable
 as $$ select null::uuid $$;
 
 create type public.app_role as enum ('admin', 'moderator', 'user');
-create type public.report_order_status as enum ('pending', 'paid', 'processing', 'ready', 'failed');
+create type public.report_order_status as enum ('pending', 'paid', 'fulfilling', 'complete', 'failed', 'cancelled');
 create type public.provider_id as enum ('demo', 'lightstone', 'windeed', 'procompare');
 
 create or replace function public.has_role(_user_id uuid, _role public.app_role)
@@ -213,7 +213,7 @@ $$;
 
 update public.report_orders
 set status = 'processing',
-    status_enum = 'processing'::public.report_order_status,
+    status_enum = 'fulfilling'::public.report_order_status,
     payload = payload || '{"founderReviewStarted":true}'::jsonb
 where provider_order_ref = 'cs_test_easy_erf_1';
 
@@ -244,7 +244,7 @@ begin
   where provider_order_ref = 'cs_test_easy_erf_1';
 
   if v_order.status <> 'processing'
-     or v_order.status_enum <> 'processing'::public.report_order_status
+     or v_order.status_enum <> 'fulfilling'::public.report_order_status
      or coalesce((v_order.payload ->> 'founderReviewStarted')::boolean, false) is not true then
     raise exception 'Late Stripe retry regressed fulfillment progress';
   end if;

@@ -13,6 +13,7 @@ create table if not exists storage.objects (
 
 \i supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
 \i supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
+\i supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql
 
 do $$
 declare
@@ -49,7 +50,7 @@ begin
   select * into v_row from public.transition_easy_erf_report_order(
     v_order_id, 'start_review', v_actor_id, null, null
   );
-  if v_row.status <> 'processing' or v_row.status_enum <> 'processing'::public.report_order_status then
+  if v_row.status <> 'processing' or v_row.status_enum <> 'fulfilling'::public.report_order_status then
     raise exception 'start_review did not move paid order to processing';
   end if;
 
@@ -107,7 +108,7 @@ begin
     null
   );
   if v_row.status <> 'ready'
-     or v_row.status_enum <> 'ready'::public.report_order_status
+     or v_row.status_enum <> 'complete'::public.report_order_status
      or v_row.pdf_storage_path <> v_expected_path
      or v_row.completed_at is null then
     raise exception 'mark_ready did not persist verified ready artifact state';
