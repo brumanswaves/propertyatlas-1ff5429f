@@ -1,12 +1,25 @@
 \set ON_ERROR_STOP on
 
 \i scripts/verify-easy-erf-stripe-migration.sql
+
+create schema if not exists storage;
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null,
+  name text not null,
+  metadata jsonb,
+  unique (bucket_id, name)
+);
+
 \i supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
+\i supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
 
 do $$
 declare
   v_order_id uuid;
   v_actor_id uuid := '11111111-1111-4111-8111-111111111111'::uuid;
+  v_customer_id uuid := '22222222-2222-4222-8222-222222222222'::uuid;
+  v_expected_path text;
   v_row public.report_orders%rowtype;
   v_event_count integer;
 begin
@@ -24,9 +37,14 @@ begin
     'zar',
     99900,
     false,
-    null,
+    v_customer_id,
     'csg:lpi:c03400140000157000000'
   ) into v_order_id;
+
+  v_expected_path := v_customer_id::text
+    || '/paid-reports/'
+    || v_order_id::text
+    || '/report.pdf';
 
   select * into v_row from public.transition_easy_erf_report_order(
     v_order_id, 'start_review', v_actor_id, null, null
@@ -48,18 +66,51 @@ begin
       end if;
   end;
 
+  begin
+    perform public.transition_easy_erf_report_order(
+      v_order_id,
+      'mark_ready',
+      v_actor_id,
+      v_customer_id::text || '/paid-reports/not-this-order/report.pdf',
+      null
+    );
+    raise exception 'mark_ready accepted wrong customer-order PDF path';
+  exception
+    when others then
+      if sqlerrm = 'mark_ready accepted wrong customer-order PDF path' then raise; end if;
+      if sqlerrm not like '%storage path does not match the customer order%' then
+        raise exception 'Unexpected wrong-path error: %', sqlerrm;
+      end if;
+  end;
+
+  begin
+    perform public.transition_easy_erf_report_order(
+      v_order_id, 'mark_ready', v_actor_id, v_expected_path, null
+    );
+    raise exception 'mark_ready accepted a PDF path with no stored object';
+  exception
+    when others then
+      if sqlerrm = 'mark_ready accepted a PDF path with no stored object' then raise; end if;
+      if sqlerrm not like '%Report PDF is not present in private storage%' then
+        raise exception 'Unexpected missing-object error: %', sqlerrm;
+      end if;
+  end;
+
+  insert into storage.objects (bucket_id, name, metadata)
+  values ('erf-files', v_expected_path, '{"mimetype":"application/pdf"}'::jsonb);
+
   select * into v_row from public.transition_easy_erf_report_order(
     v_order_id,
     'mark_ready',
     v_actor_id,
-    'report-orders/test/easy-erf-1570.pdf',
+    v_expected_path,
     null
   );
   if v_row.status <> 'ready'
      or v_row.status_enum <> 'ready'::public.report_order_status
-     or v_row.pdf_storage_path <> 'report-orders/test/easy-erf-1570.pdf'
+     or v_row.pdf_storage_path <> v_expected_path
      or v_row.completed_at is null then
-    raise exception 'mark_ready did not persist ready artifact state';
+    raise exception 'mark_ready did not persist verified ready artifact state';
   end if;
 
   begin
@@ -106,4 +157,4 @@ begin
 end
 $$;
 
-select 'Easy Erf founder fulfillment verification passed' as result;
+select 'Easy Erf founder fulfillment and report delivery verification passed' as result;

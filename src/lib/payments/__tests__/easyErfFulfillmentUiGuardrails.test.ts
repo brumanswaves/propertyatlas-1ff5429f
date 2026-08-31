@@ -10,16 +10,20 @@ const founderRoute = source("src/routes/admin.fulfillment.tsx");
 const customerRoute = source("src/routes/orders.tsx");
 
 describe("Easy Erf founder fulfillment UI", () => {
-  it("uses the authenticated founder Edge Function instead of writing report orders directly", () => {
+  it("uses authenticated Edge Functions instead of writing report orders directly", () => {
     expect(founderRoute).toContain('supabase.functions.invoke("easy-erf-founder-fulfillment"');
+    expect(founderRoute).toContain('"easy-erf-founder-report-upload"');
     expect(founderRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
     expect(founderRoute).toContain('action: FulfillmentAction');
   });
 
-  it("only exposes the legal founder actions and requires report path before ready", () => {
-    expect(founderRoute).toContain('"start_review" | "mark_ready" | "mark_failed"');
-    expect(founderRoute).toContain('placeholder="Report PDF storage path"');
-    expect(founderRoute).toContain('disabled={busy || !path.trim()}');
+  it("uploads only a selected PDF through a short-lived signed upload before ready", () => {
+    expect(founderRoute).toContain('accept="application/pdf,.pdf"');
+    expect(founderRoute).toContain("uploadToSignedUrl(prepared.path, prepared.token, file");
+    expect(founderRoute).toContain('contentType: "application/pdf"');
+    expect(founderRoute).toContain('action: "mark_ready"');
+    expect(founderRoute).toContain("pdfStoragePath: prepared.path");
+    expect(founderRoute).not.toContain('placeholder="Report PDF storage path"');
     expect(founderRoute).toContain('placeholder="Failure reason"');
   });
 });
@@ -31,10 +35,13 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
   });
 
-  it("shows the payment, review and report-ready lifecycle without claiming delivery exists", () => {
+  it("shows lifecycle status and creates a five-minute private report download", () => {
     expect(customerRoute).toContain("Payment received");
     expect(customerRoute).toContain("Human review");
     expect(customerRoute).toContain("Report ready");
-    expect(customerRoute).toContain("Secure report delivery is the next connection before launch.");
+    expect(customerRoute).toContain('.from("erf-files")');
+    expect(customerRoute).toContain("createSignedUrl(order.pdf_storage_path, 300, { download: true })");
+    expect(customerRoute).toContain("Download report");
+    expect(customerRoute).not.toContain("Secure report delivery is the next connection before launch.");
   });
 });

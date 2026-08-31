@@ -12,3 +12,8 @@ verify_jwt = false
 # performs an explicit admin-role check before any service-role transition.
 [functions.easy-erf-founder-fulfillment]
 verify_jwt = true
+
+# Founder report upload only creates a short-lived signed upload token after
+# authenticated admin authorization and exact paid-order validation.
+[functions.easy-erf-founder-report-upload]
+verify_jwt = true

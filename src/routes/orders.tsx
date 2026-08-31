@@ -1,6 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, CheckCircle2, CircleDashed, ReceiptText } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  CircleDashed,
+  Download,
+  ReceiptText,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,6 +114,7 @@ function CustomerOrdersPage() {
 }
 
 function CustomerOrderCard({ order }: { order: ReportOrder }) {
+  const [downloading, setDownloading] = useState(false);
   const status = orderStatus(order);
   const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
   const request = payloadText(order.payload, "investigationRequest");
@@ -114,6 +123,26 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
     { key: "processing", label: "Human review", done: ["processing", "ready"].includes(status) },
     { key: "ready", label: "Report ready", done: status === "ready" },
   ];
+
+  async function downloadReport() {
+    if (!order.pdf_storage_path) {
+      toast.error("The completed report file is not attached yet.");
+      return;
+    }
+
+    setDownloading(true);
+    const { data, error } = await supabase.storage
+      .from("erf-files")
+      .createSignedUrl(order.pdf_storage_path, 300, { download: true });
+    setDownloading(false);
+
+    if (error || !data?.signedUrl) {
+      toast.error(error?.message ?? "Could not create a secure report download.");
+      return;
+    }
+
+    window.location.assign(data.signedUrl);
+  }
 
   return (
     <article className="rounded-3xl border border-border bg-card p-5 shadow-soft">
@@ -143,7 +172,21 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
       {status === "ready" ? (
         <div className="mt-4 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs text-foreground">
           <div className="font-semibold">Your human-reviewed investigation is ready.</div>
-          <p className="mt-1 text-muted-foreground">Easy Erf has recorded the completed report. Secure report delivery is the next connection before launch.</p>
+          {order.pdf_storage_path ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                disabled={downloading}
+                onClick={() => void downloadReport()}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" /> {downloading ? "Preparing download…" : "Download report"}
+              </button>
+              <p className="mt-2 text-muted-foreground">The download link is private and expires after 5 minutes.</p>
+            </div>
+          ) : (
+            <p className="mt-1 text-muted-foreground">The report is marked ready, but the file is not attached. Easy Erf support has been notified.</p>
+          )}
         </div>
       ) : null}
 
