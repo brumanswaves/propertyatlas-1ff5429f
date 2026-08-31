@@ -335,7 +335,12 @@ function OrderCard({
           </button>
         ) : null}
         {status === "processing" ? (
-          <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} />
+          <ReadyAction
+            order={order}
+            busy={busy}
+            onUploadReport={onUploadReport}
+            onTransition={onTransition}
+          />
         ) : null}
         {status === "ready" ? (
           <button
@@ -359,10 +364,16 @@ function ReadyAction({
   order,
   busy,
   onUploadReport,
+  onTransition,
 }: {
   order: ReportOrder;
   busy: boolean;
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
+  onTransition: (
+    order: ReportOrder,
+    action: FulfillmentAction,
+    values?: { pdfStoragePath?: string; failureReason?: string },
+  ) => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
 
@@ -376,6 +387,15 @@ function ReadyAction({
 
   return (
     <div className="flex min-w-[300px] flex-1 flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={busy || !order.review_content}
+        onClick={() => void onTransition(order, "mark_ready")}
+        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+        title={order.review_content ? "Deliver the structured Human-Reviewed web report" : "Save the structured web report first"}
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" /> Mark web report ready
+      </button>
       <input
         type="file"
         accept="application/pdf,.pdf"

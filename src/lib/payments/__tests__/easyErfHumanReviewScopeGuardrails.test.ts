@@ -21,6 +21,7 @@ const founderContent = source("supabase/functions/easy-erf-founder-review-conten
 const migration = source(
   "supabase/migrations/20260831160318_controlled_human_review_product_v2.sql",
 );
+const founderFulfillment = source("supabase/functions/easy-erf-founder-fulfillment/index.ts");
 const config = source("supabase/config.toml");
 const workbench = source("src/components/property/OfficialParcelPanel.tsx");
 const dossier = source("src/components/property/ErfResearchDossier.tsx");
@@ -180,6 +181,10 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     expect(orders).toContain("<HumanReviewedReport");
     expect(orders).toContain('downloading ? "Preparing PDF…" : "Download PDF"');
     expect(orders).toContain("The PDF is a secondary export, not the primary product.");
+    expect(migration).toContain("A structured Human Review web report is required before marking ready");
+    expect(migration).toContain("pdf_storage_path = coalesce(v_expected_pdf_path, v_order.pdf_storage_path)");
+    expect(founderFulfillment).not.toContain("pdfStoragePath is required for mark_ready");
+    expect(founderQueue).toContain("Mark web report ready");
   });
 
   it("requires authenticated founder admin authorization before structured report writes", () => {

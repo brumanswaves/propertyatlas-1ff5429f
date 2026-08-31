@@ -146,4 +146,72 @@ begin
 end
 $$;
 
+do $$
+declare
+  v_order_id uuid;
+  v_row public.report_orders%rowtype;
+  v_actor_id uuid := '11111111-1111-4111-8111-111111111111'::uuid;
+begin
+  select public.record_easy_erf_stripe_payment(
+    'cs_test_web_report_only_1',
+    'evt_test_web_report_only_1',
+    'plink_easy_erf_test',
+    null,
+    null,
+    null,
+    'web-report@example.com',
+    'Web Report Test',
+    'Erf 9001',
+    null,
+    'zar',
+    99900,
+    false,
+    '22222222-2222-4222-8222-222222222222'::uuid,
+    'csg:lpi:c03400140000900100000'
+  ) into v_order_id;
+
+  perform public.transition_easy_erf_report_order(
+    v_order_id, 'start_review', v_actor_id, null, null
+  );
+
+  begin
+    perform public.transition_easy_erf_report_order(
+      v_order_id, 'mark_ready', v_actor_id, null, null
+    );
+    raise exception 'mark_ready accepted an empty structured Human Review report';
+  exception
+    when others then
+      if sqlerrm = 'mark_ready accepted an empty structured Human Review report' then raise; end if;
+      if sqlerrm not like '%structured Human Review web report is required%' then
+        raise exception 'Unexpected missing-web-report error: %', sqlerrm;
+      end if;
+  end;
+
+  update public.report_orders
+  set review_focus = 'property_check',
+      review_content = jsonb_build_object(
+        'bottomLine', 'Reviewed bottom line',
+        'known', jsonb_build_array('Known fact'),
+        'potential', jsonb_build_array('Evidence-supported potential'),
+        'risks', jsonb_build_array('Risk'),
+        'unknowns', jsonb_build_array('Unknown'),
+        'nextSteps', jsonb_build_array('Verify next step')
+      ),
+      reviewed_by = v_actor_id,
+      review_content_updated_at = now()
+  where id = v_order_id;
+
+  select * into v_row from public.transition_easy_erf_report_order(
+    v_order_id, 'mark_ready', v_actor_id, null, null
+  );
+
+  if v_row.status <> 'ready'
+     or v_row.status_enum <> 'complete'::public.report_order_status
+     or v_row.pdf_storage_path is not null
+     or v_row.completed_at is null then
+    raise exception 'Structured web report did not become ready without a PDF';
+  end if;
+end
+$$;
+
 select 'Easy Erf controlled Human Review product verification passed' as result;

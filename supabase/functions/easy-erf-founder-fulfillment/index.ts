@@ -92,9 +92,6 @@ Deno.serve(async (request: Request) => {
   if (typeof action !== "string" || !ALLOWED_ACTIONS.has(action)) {
     return json({ ok: false, error: "Unsupported fulfillment action.", requestId }, 400);
   }
-  if (action === "mark_ready" && !pdfStoragePath) {
-    return json({ ok: false, error: "pdfStoragePath is required for mark_ready.", requestId }, 400);
-  }
   if (action === "mark_failed" && !failureReason) {
     return json({ ok: false, error: "failureReason is required for mark_failed.", requestId }, 400);
   }
