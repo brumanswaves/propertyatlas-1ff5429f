@@ -41,6 +41,7 @@ jobs:
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           git fetch --no-tags --depth=1 origin "${REF}"
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
           git checkout --detach FETCH_HEAD
 
       - name: Install verified Deno 2.9.6 binary
