@@ -11,22 +11,23 @@ try {
   await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60000 });
 
   const selfReviewButton = page.getByRole("button", { name: /^Investigate it myself$/i });
-  const humanReviewButton = page.getByRole("link", { name: /^Get Human Review · R999$/i });
+  const doneForYouButton = page.getByRole("link", { name: /^Do it for me · R999$/i });
   await selfReviewButton.waitFor({ state: "visible", timeout: 30000 });
-  await humanReviewButton.waitFor({ state: "visible", timeout: 30000 });
+  await doneForYouButton.waitFor({ state: "visible", timeout: 30000 });
 
   const homeBody = await page.locator("body").innerText();
   for (const requiredText of [
     "Choose how you want to investigate",
     "Investigate it myself",
-    "Get Human Review · R999",
+    "Do it for me · R999",
+    "let Easy Erf do the investigation for you",
   ]) {
     if (!homeBody.toLowerCase().includes(requiredText.toLowerCase())) {
       throw new Error(`Home map is missing required investigation choice: ${requiredText}`);
     }
   }
-  if (homeBody.toLowerCase().includes("r999 review")) {
-    throw new Error('Retired navigation label "R999 Review" is still visible.');
+  if (/r999 review|get human review · r999/i.test(homeBody)) {
+    throw new Error("Retired Human Review sales copy is still visible on the home map.");
   }
 
   await selfReviewButton.click();
@@ -41,14 +42,19 @@ try {
 
   await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
   await page
-    .getByRole("heading", { name: /See what Human Review delivers, then confirm the exact property/i })
+    .getByRole("heading", { name: /You choose the property. We do the investigation./i })
     .waitFor({ state: "visible", timeout: 30000 });
 
   const selectionGateBody = await page.locator("body").innerText();
   for (const requiredText of [
-    "See the deliverable before you pay",
+    "Done-for-You Property Investigation",
+    "R999 is not just a final review",
+    "standard Easy Erf investigation",
+    "See the final deliverable before you pay",
     "Example reviewer bottom line",
     "What R999 includes",
+    "One third-party property data report",
+    "Provider may vary",
     "What do we know?",
     "What appears possible?",
     "What could be a problem?",
@@ -63,17 +69,17 @@ try {
     "Find and confirm property on map",
   ]) {
     if (!selectionGateBody.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Human Review property/value gate is missing required truth: ${requiredText}`);
+      throw new Error(`Done-for-you property/value gate is missing required truth: ${requiredText}`);
     }
   }
-  if (selectionGateBody.toLowerCase().includes("continue to secure payment")) {
-    throw new Error("Human Review payment must not be available before a canonical parcel is confirmed.");
+  if (selectionGateBody.toLowerCase().includes("investigate this property for me · r999")) {
+    throw new Error("Done-for-you payment must not be available before a canonical parcel is confirmed.");
   }
   if (
     (await page.getByRole("textbox").count()) &&
     selectionGateBody.includes("Property address, Erf or LPI reference")
   ) {
-    throw new Error("Human Review must not accept a free-form property reference on the payment brief page.");
+    throw new Error("Done-for-you checkout must not accept a free-form property reference.");
   }
 
   const selectedUrl = new URL(`${baseUrl}/pricing`);
@@ -83,39 +89,37 @@ try {
   await page.goto(selectedUrl.toString(), { waitUntil: "networkidle", timeout: 60000 });
 
   await page
-    .getByRole("heading", { name: /Hand this confirmed property investigation to Easy Erf/i })
+    .getByRole("heading", { name: /You choose the property. We do the investigation./i })
     .waitFor({ state: "visible", timeout: 30000 });
 
   const body = await page.locator("body").innerText();
   for (const requiredText of [
-    "Human Review · R999",
+    "Done-for-You Property Investigation",
     "Confirmed property",
     confirmedPropertyReference,
     confirmedParcelId,
-    "Human Review is locked to this parcel",
-    "See the deliverable before you pay",
+    "done-for-you investigation is locked to this parcel",
+    "standard Easy Erf investigation",
+    "See the final deliverable before you pay",
     "Example reviewer bottom line",
     "What R999 includes",
+    "One third-party property data report",
+    "Provider may vary",
     "about 3 business days",
-    "Your review stays in your Easy Erf account",
-    "Choose one investigation focus",
-    "Property Check",
+    "Your investigation stays in your Easy Erf account",
+    "Tell us what matters most",
+    "Overall Property Check",
     "Property Potential",
     "Check My Intended Use",
-    "Tell us about your situation — not a new question",
-    "What do we know?",
-    "What appears possible?",
-    "What could be a problem?",
-    "What do we not know yet?",
-    "What should be verified next?",
+    "Tell the reviewer what you are considering",
     "Clear scope boundary",
     "does not provide legal, tax, engineering, architectural, valuation",
-    "I understand Easy Erf provides property research and due-diligence support",
+    "I understand the done-for-you Easy Erf investigation provides property research and due-diligence support",
     "One-time R999 payment. No recurring subscription.",
     "Stripe handles payment only",
   ]) {
     if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Human Review page is missing required scoped-product truth: ${requiredText}`);
+      throw new Error(`Done-for-you page is missing required scoped-product truth: ${requiredText}`);
     }
   }
 
@@ -127,30 +131,33 @@ try {
     "R199/month",
     "R499/month",
     "Property address, Erf or LPI reference",
+    "Free Lightstone",
   ]) {
     if (body.toLowerCase().includes(forbiddenText.toLowerCase())) {
-      throw new Error(`Human Review page exposes forbidden or retired copy: ${forbiddenText}`);
+      throw new Error(`Done-for-you page exposes forbidden or retired copy: ${forbiddenText}`);
     }
   }
 
-  const checkoutButton = page.getByRole("button", { name: /^Continue to secure payment$/i });
+  const checkoutButton = page.getByRole("button", {
+    name: /^Investigate this property for me · R999$/i,
+  });
   await checkoutButton.waitFor({ state: "visible", timeout: 30000 });
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review payment must remain disabled until controlled scope is complete.");
+    throw new Error("Payment must remain disabled until the controlled emphasis and scope are complete.");
   }
 
-  await page.getByRole("button", { name: /^Property Check/i }).click();
+  await page.getByRole("button", { name: /^Overall Property Check/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review payment must remain disabled until the scope acknowledgement is checked.");
+    throw new Error("Payment must remain disabled until the scope acknowledgement is checked.");
   }
 
   const scopeAcknowledgement = page.getByRole("checkbox", {
-    name: /I understand Easy Erf provides property research and due-diligence support/i,
+    name: /I understand the done-for-you Easy Erf investigation provides property research/i,
   });
   await scopeAcknowledgement.waitFor({ state: "visible", timeout: 30000 });
   await scopeAcknowledgement.check();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Confirmed parcel, Property Check and scope acknowledgement should satisfy the payment gate.");
+    throw new Error("Confirmed parcel, Overall Property Check and scope acknowledgement should satisfy the payment gate.");
   }
 
   await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
@@ -165,25 +172,26 @@ try {
     throw new Error("Confirmed parcel, supported intended use and acknowledgement should satisfy the payment gate.");
   }
 
-  const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
-  await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
+  const doneForYouNav = page.getByRole("link", { name: /^Done for You$/i }).first();
+  await doneForYouNav.waitFor({ state: "visible", timeout: 30000 });
 
   await page.goto(`${baseUrl}/how-it-works`, { waitUntil: "networkidle", timeout: 60000 });
   const howItWorksBody = await page.locator("body").innerText();
   for (const requiredText of [
-    "Human Review · R999 once-off",
-    "What happens after you choose Human Review",
-    "A human reviews the same property file",
-    "Every Human-Reviewed report answers",
+    "Done-for-You Property Investigation · R999",
+    "Easy Erf does the investigation",
+    "Standard investigation we work through",
+    "one third-party property data report",
+    "The human-reviewed output still answers five simple questions",
     "deterministic build envelope and street-side build-line view",
   ]) {
     if (!howItWorksBody.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`How It Works is missing Human Review truth: ${requiredText}`);
+      throw new Error(`How It Works is missing done-for-you truth: ${requiredText}`);
     }
   }
 
   console.log(
-    "Commercial browser smoke verified: Human Review shows a tangible report preview before payment; cannot start from a typed Erf number; requires a confirmed canonical parcel; keeps the confirmed parcel locked through the controlled brief; Stripe handoff stays payment-only; How It Works explains the R999 Human Review path; checkout is not invoked; and retired open-ended advice copy is absent.",
+    "Commercial browser smoke verified: the R999 product is a done-for-you standard Easy Erf investigation with a human-reviewed final report; it cannot start from a typed Erf number; requires a confirmed canonical parcel; keeps the selected property locked; treats the customer focus as emphasis rather than reduced scope; keeps the included property-data-report promise provider-neutral and rights-aware; Stripe handoff remains payment-only; checkout is not invoked; and retired Human Review/open-ended advice sales copy is absent.",
   );
 } finally {
   await browser.close();
