@@ -15,7 +15,7 @@ export type EasyErfStripeOrderInput = {
   clientReferenceId: string | null;
   customerEmail: string;
   customerName: string | null;
-  propertyReference: string;
+  propertyReference: string | null;
   investigationRequest: string | null;
   amountTotal: number;
   currency: typeof EASY_ERF_R999_CURRENCY;
@@ -41,8 +41,7 @@ export type EasyErfCheckoutValidation =
         | "PAYMENT_LINK_NOT_CONFIGURED"
         | "WRONG_MODE"
         | "WRONG_AMOUNT"
-        | "CUSTOMER_EMAIL_MISSING"
-        | "PROPERTY_REFERENCE_MISSING";
+        | "CUSTOMER_EMAIL_MISSING";
       error: string;
     };
 
@@ -182,14 +181,13 @@ export function validateEasyErfCheckoutSession(
     };
   }
 
+  // Legacy Payment Links may still include these custom fields. New Human
+  // Review checkouts keep property and review questions inside Easy Erf.
   const propertyReference = customTextField(session, EASY_ERF_PROPERTY_REFERENCE_FIELD_KEY);
-  if (!propertyReference) {
-    return {
-      ok: false,
-      code: "PROPERTY_REFERENCE_MISSING",
-      error: "Paid Easy Erf checkout did not include the required property reference.",
-    };
-  }
+  const investigationRequest = customTextField(
+    session,
+    EASY_ERF_INVESTIGATION_REQUEST_FIELD_KEY,
+  );
 
   return {
     ok: true,
@@ -203,14 +201,11 @@ export function validateEasyErfCheckoutSession(
       customerEmail,
       customerName: nonEmptyText(customerDetails?.name),
       propertyReference,
-      investigationRequest: customTextField(
-        session,
-        EASY_ERF_INVESTIGATION_REQUEST_FIELD_KEY,
-      ),
+      investigationRequest,
       amountTotal,
       currency: EASY_ERF_R999_CURRENCY,
       livemode: session.livemode === true,
-      parsedParcelId: parseCanonicalParcelId(propertyReference),
+      parsedParcelId: propertyReference ? parseCanonicalParcelId(propertyReference) : null,
     },
   };
 }
