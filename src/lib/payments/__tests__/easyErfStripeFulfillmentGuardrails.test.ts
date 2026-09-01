@@ -83,7 +83,7 @@ describe("Easy Erf signed Stripe webhook", () => {
     expect(webhook).toContain("acceptedPaymentLinkIds.size === 0");
   });
 
-  it("uses the authenticated Human Review owner before legacy email matching", () => {
+  it("uses the authenticated investigation owner before legacy email matching", () => {
     expect(webhook).toContain("reviewRequest?.user_id ?? null");
     expect(webhook).toContain("human_review_owner_resolved");
     expect(webhook).toContain('.eq("email", order.customerEmail)');
@@ -127,18 +127,18 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("requires map/property confirmation before the controlled payment handoff", () => {
+  it("requires map/property confirmation before the done-for-you payment handoff", () => {
     expect(pricing).toContain("Erf numbers repeat across South Africa");
     expect(pricing).toContain("Find and confirm property on map");
-    expect(pricing).toContain("Human Review is locked to this parcel");
+    expect(pricing).toContain("done-for-you investigation is locked to this parcel");
     expect(pricing).toContain("hasConfirmedParcel");
     expect(pricing).toContain("parcelId,");
     expect(pricing).toContain("propertyReferenceHint: propertyReference");
     expect(pricing).toContain("Stripe handles payment only.");
     expect(pricing).not.toContain("Property address, Erf or LPI reference");
-    expect(takeover).toContain("Want Easy Erf to review this property for you?");
+    expect(takeover).toContain("Want Easy Erf to do the property investigation for you?");
     expect(takeover).toContain("What you get");
-    expect(takeover).toContain("Yes — get Human Review · R999");
+    expect(takeover).toContain("Yes — investigate it for me · R999");
     expect(takeover).toContain("Erf numbers can repeat in different places");
   });
 
@@ -152,8 +152,8 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(checkout).not.toContain("savedPropertyFilters");
   });
 
-  it("binds the confirmed property and review brief to the signed-in Easy Erf user", () => {
-    expect(pricing).toContain("Sign in before payment so the paid Human Review");
+  it("binds the confirmed property and investigation brief to the signed-in Easy Erf user", () => {
+    expect(pricing).toContain("Sign in before payment so the paid done-for-you investigation");
     expect(pricing).toContain("signedInEmail");
     expect(pricing).toContain("authReady && !signedInEmail");
     expect(pricing).toContain('supabase.auth.getUser()');
