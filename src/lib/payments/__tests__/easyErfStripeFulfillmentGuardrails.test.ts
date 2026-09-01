@@ -79,7 +79,9 @@ describe("Easy Erf signed Stripe webhook", () => {
     expect(webhook).toContain("acceptedPaymentLinkIds.size === 0");
   });
 
-  it("uses exact account matching and a server-only payment RPC", () => {
+  it("uses the authenticated Human Review owner before legacy email matching", () => {
+    expect(webhook).toContain("reviewRequest?.user_id ?? null");
+    expect(webhook).toContain("human_review_owner_resolved");
     expect(webhook).toContain('.eq("email", order.customerEmail)');
     expect(webhook).not.toContain('.ilike("email", order.customerEmail)');
     expect(webhook).toContain('admin.rpc(\n    "record_easy_erf_stripe_payment"');
@@ -112,9 +114,14 @@ describe("Easy Erf signed Stripe webhook", () => {
 
 describe("Easy Erf payment operations surfaces", () => {
   it("resolves only a verified R999 Stripe link in the explicitly approved launch mode", () => {
+    expect(pricing).toContain('supabase.auth.getUser()');
+    expect(pricing).toContain("SIGN_IN_REQUIRED_MESSAGE");
     expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout", {');
     expect(pricing).toContain('(checkoutMode !== "test" && checkoutMode !== "live")');
     expect(pricing).toContain('url.hostname !== "buy.stripe.com"');
+    expect(checkout).toContain("bearerToken(request)");
+    expect(checkout).toContain("admin.auth.getUser(token)");
+    expect(checkout).toContain("user_id: user.id");
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
     expect(checkout).toContain("EASY_ERF_R999_CHECKOUT_MODE");
