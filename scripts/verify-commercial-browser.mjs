@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 
 const baseUrl = process.env.EASY_ERF_BROWSER_BASE_URL || "http://127.0.0.1:4173";
+const confirmedParcelId = "csg:lpi:c03400140000157000000";
+const confirmedPropertyReference = "Erf 1570 · Sea Vista · Kouga";
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -38,19 +40,48 @@ try {
   });
 
   await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
+  await page
+    .getByRole("heading", { name: /Choose and confirm the property before Human Review/i })
+    .waitFor({ state: "visible", timeout: 30000 });
 
-  await page.getByRole("heading", { name: /Hand the property investigation to Easy Erf/i }).waitFor({
-    state: "visible",
-    timeout: 30000,
-  });
+  const selectionGateBody = await page.locator("body").innerText();
+  for (const requiredText of [
+    "Erf numbers repeat across South Africa",
+    "Find the exact erf or address on the map first",
+    "Search",
+    "Review on map",
+    "Confirm property",
+    "Find and confirm property on map",
+  ]) {
+    if (!selectionGateBody.toLowerCase().includes(requiredText.toLowerCase())) {
+      throw new Error(`Human Review property gate is missing required truth: ${requiredText}`);
+    }
+  }
+  if (selectionGateBody.toLowerCase().includes("continue to secure payment")) {
+    throw new Error("Human Review payment must not be available before a canonical parcel is confirmed.");
+  }
+  if (page.getByRole("textbox").count() && selectionGateBody.includes("Property address, Erf or LPI reference")) {
+    throw new Error("Human Review must not accept a free-form property reference on the payment brief page.");
+  }
+
+  const selectedUrl = new URL(`${baseUrl}/pricing`);
+  selectedUrl.searchParams.set("parcelId", confirmedParcelId);
+  selectedUrl.searchParams.set("propertyReference", confirmedPropertyReference);
+  selectedUrl.searchParams.set("source", "browser-acceptance");
+  await page.goto(selectedUrl.toString(), { waitUntil: "networkidle", timeout: 60000 });
+
+  await page
+    .getByRole("heading", { name: /Hand this confirmed property investigation to Easy Erf/i })
+    .waitFor({ state: "visible", timeout: 30000 });
 
   const body = await page.locator("body").innerText();
   for (const requiredText of [
     "Human Review · R999",
+    "Confirmed property",
+    confirmedPropertyReference,
+    confirmedParcelId,
+    "Human Review is locked to this parcel",
     "Your review stays in your Easy Erf account",
-    "Confirm the property",
-    "Property address, Erf or LPI reference",
-    "Stripe will only handle payment",
     "Choose one investigation focus",
     "Property Check",
     "Property Potential",
@@ -79,6 +110,7 @@ try {
     "What do you want to know?",
     "R199/month",
     "R499/month",
+    "Property address, Erf or LPI reference",
   ]) {
     if (body.toLowerCase().includes(forbiddenText.toLowerCase())) {
       throw new Error(`Human Review page exposes forbidden or retired copy: ${forbiddenText}`);
@@ -88,21 +120,12 @@ try {
   const checkoutButton = page.getByRole("button", { name: /^Continue to secure payment$/i });
   await checkoutButton.waitFor({ state: "visible", timeout: 30000 });
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review payment must remain disabled until property and controlled scope are complete.");
+    throw new Error("Human Review payment must remain disabled until controlled scope is complete.");
   }
 
   await page.getByRole("button", { name: /^Property Check/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review payment must remain disabled until the property and scope acknowledgement are supplied.");
-  }
-
-  const propertyReference = page.getByRole("textbox", {
-    name: /^Property address, Erf or LPI reference$/i,
-  });
-  await propertyReference.waitFor({ state: "visible", timeout: 30000 });
-  await propertyReference.fill("1570");
-  if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review payment must remain disabled until the required scope acknowledgement is checked.");
+    throw new Error("Human Review payment must remain disabled until the scope acknowledgement is checked.");
   }
 
   const scopeAcknowledgement = page.getByRole("checkbox", {
@@ -111,7 +134,7 @@ try {
   await scopeAcknowledgement.waitFor({ state: "visible", timeout: 30000 });
   await scopeAcknowledgement.check();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Property, Property Check and scope acknowledgement should satisfy the controlled payment gate.");
+    throw new Error("Confirmed parcel, Property Check and scope acknowledgement should satisfy the payment gate.");
   }
 
   await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
@@ -123,14 +146,14 @@ try {
   await secondDwelling.waitFor({ state: "visible", timeout: 30000 });
   await secondDwelling.click();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Property, supported intended use and acknowledgement should satisfy the controlled payment gate.");
+    throw new Error("Confirmed parcel, supported intended use and acknowledgement should satisfy the payment gate.");
   }
 
   const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
   await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
 
   console.log(
-    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review keeps the property and exactly the approved three goals inside Easy Erf; payment requires property, scope acknowledgement and supported intended-use choices; Stripe handoff is payment-only; checkout is not invoked; and open-ended or retired advice copy is absent.",
+    "Commercial browser smoke verified: Human Review cannot start from a typed Erf number; the user must first confirm a canonical parcel through the map/property flow; the confirmed parcel remains locked through the controlled brief; Stripe handoff stays payment-only; checkout is not invoked; and retired open-ended advice copy is absent.",
   );
 } finally {
   await browser.close();
