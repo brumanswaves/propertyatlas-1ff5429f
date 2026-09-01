@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
+import { HumanReviewProof } from "@/components/humanReview/HumanReviewProof";
 import { supabase } from "@/integrations/supabase/client";
 import {
   HUMAN_REVIEW_CONTEXT_MAX_LENGTH,
@@ -32,12 +33,13 @@ export const Route = createFileRoute("/pricing")({
       {
         name: "description",
         content:
-          "Choose one confirmed South African property and one controlled R999 Easy Erf Human Review focus.",
+          "See what the R999 Human Review delivers, then choose one confirmed South African property and one controlled Easy Erf review focus.",
       },
       { property: "og:title", content: "Easy Erf Human Review" },
       {
         property: "og:description",
-        content: "A scoped, human-reviewed property investigation for one confirmed South African erf.",
+        content:
+          "A scoped, human-reviewed property investigation with a structured report, clear risks, unknowns and next verification steps.",
       },
       { property: "og:url", content: "/pricing" },
     ],
@@ -173,12 +175,14 @@ function PricingPage() {
               <ShieldCheck className="h-3.5 w-3.5" /> Human Review · R999
             </div>
             <h1 className="mt-4 max-w-4xl text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-              Choose and confirm the property before Human Review.
+              See what Human Review delivers, then confirm the exact property.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/68 sm:text-base">
-              Erf numbers repeat across South Africa. Easy Erf will not start Human Review from a typed Erf number alone. Search or locate the property on the map, review the highlighted parcel and its official identifiers, then confirm that it is the property you mean.
+              Human Review gives you a structured, evidence-backed property report with risks, unknowns and clear next verification steps. Erf numbers repeat across South Africa, so Easy Erf will not start Human Review from a typed Erf number alone.
             </p>
           </header>
+
+          <HumanReviewProof />
 
           <section className="mt-6 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-soft sm:p-8">
             <div className="flex items-start gap-4">
@@ -193,7 +197,7 @@ function PricingPage() {
                   Find the exact erf or address on the map first.
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748B]">
-                  Search by address or Erf with location context. Easy Erf shows candidate parcels with town, municipality, province, LPI and parcel key where available. Highlight the result on the map, open the correct property overview, then choose “Yes, use this property · R999”.
+                  Search by address or Erf with location context. Easy Erf shows candidate parcels with town, municipality, province, LPI and parcel key where available. Highlight the result on the map, open the correct property overview, then confirm that it is the property you want reviewed.
                 </p>
               </div>
             </div>
@@ -258,6 +262,8 @@ function PricingPage() {
             </Link>
           </div>
         </header>
+
+        <HumanReviewProof />
 
         <section className="mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white px-5 py-4 shadow-soft sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
