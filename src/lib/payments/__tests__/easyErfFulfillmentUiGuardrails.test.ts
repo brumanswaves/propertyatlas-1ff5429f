@@ -17,7 +17,15 @@ describe("Easy Erf founder fulfillment UI", () => {
     expect(founderRoute).toContain('action: FulfillmentAction');
   });
 
-  it("uploads only a selected PDF through a short-lived signed upload before ready", () => {
+  it("makes the founder complete the standard investigation before final report delivery", () => {
+    expect(founderRoute).toContain("Standard done-for-you investigation checklist");
+    expect(founderRoute).toContain("Open full property investigation");
+    expect(founderRoute).toContain("Start Done-for-You Investigation");
+    expect(founderRoute).toContain("Mark web report ready");
+    expect(founderRoute).toContain("do not attach or redistribute the provider PDF");
+  });
+
+  it("uploads only a selected optional Easy Erf PDF through a short-lived signed upload", () => {
     expect(founderRoute).toContain('accept="application/pdf,.pdf"');
     expect(founderRoute).toContain("uploadToSignedUrl(prepared.path, prepared.token, file");
     expect(founderRoute).toContain('contentType: "application/pdf"');
@@ -35,10 +43,11 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
   });
 
-  it("shows lifecycle status and creates a five-minute private report download", () => {
+  it("shows the done-for-you lifecycle and creates a five-minute private report download when a PDF exists", () => {
     expect(customerRoute).toContain("Payment received");
-    expect(customerRoute).toContain("Human review");
+    expect(customerRoute).toContain("Investigation underway");
     expect(customerRoute).toContain("Report ready");
+    expect(customerRoute).toContain("Easy Erf has taken over the property investigation.");
     expect(customerRoute).toContain('.from("erf-files")');
     expect(customerRoute).toContain("createSignedUrl(order.pdf_storage_path, 300, { download: true })");
     expect(customerRoute).toContain("Download PDF");
