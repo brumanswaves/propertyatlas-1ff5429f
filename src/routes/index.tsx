@@ -354,7 +354,7 @@ function AtlasHome() {
               Choose how you want to investigate
             </div>
             <div className="mt-1 text-base font-semibold text-foreground">
-              Do it yourself, or hand it to Easy Erf for human review.
+              Do it yourself, or let Easy Erf do the investigation for you.
             </div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -369,7 +369,7 @@ function AtlasHome() {
               to="/pricing"
               className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
             >
-              Get Human Review · R999
+              Do it for me · R999
             </Link>
           </div>
         </div>
