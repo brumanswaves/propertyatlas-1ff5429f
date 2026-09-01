@@ -6,6 +6,7 @@ import {
   Check,
   CircleAlert,
   FileCheck2,
+  MapPin,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -31,13 +32,12 @@ export const Route = createFileRoute("/pricing")({
       {
         name: "description",
         content:
-          "Choose one controlled R999 Easy Erf Human Review focus. Every review covers what is known, what appears possible, risks, unknowns and what should be verified next.",
+          "Choose one confirmed South African property and one controlled R999 Easy Erf Human Review focus.",
       },
       { property: "og:title", content: "Easy Erf Human Review" },
       {
         property: "og:description",
-        content:
-          "A scoped, human-reviewed property investigation for one South African erf.",
+        content: "A scoped, human-reviewed property investigation for one confirmed South African erf.",
       },
       { property: "og:url", content: "/pricing" },
     ],
@@ -57,6 +57,7 @@ function PricingPage() {
   const [parcelId, setParcelId] = useState<string | null>(null);
   const [propertyReferenceHint, setPropertyReferenceHint] = useState("");
   const [sourceSurface, setSourceSurface] = useState<string | null>(null);
+  const [selectionReady, setSelectionReady] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -65,11 +66,12 @@ function PricingPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const carriedParcelId = params.get("parcelId");
-    const carriedReference = params.get("propertyReference");
+    const carriedParcelId = params.get("parcelId")?.trim() || null;
+    const carriedReference = params.get("propertyReference")?.trim() || "";
     setParcelId(carriedParcelId);
-    setPropertyReferenceHint(carriedReference ?? carriedParcelId ?? "");
+    setPropertyReferenceHint(carriedReference);
     setSourceSurface(params.get("source"));
+    setSelectionReady(true);
   }, []);
 
   useEffect(() => {
@@ -97,9 +99,10 @@ function PricingPage() {
     if (focus !== "intended_use") setIntendedUse(null);
   }, [focus]);
 
-  const propertyReference = propertyReferenceHint.trim();
+  const propertyReference = propertyReferenceHint.trim() || parcelId || "";
+  const hasConfirmedParcel = Boolean(parcelId);
   const canCheckout = Boolean(
-    propertyReference &&
+    hasConfirmedParcel &&
       focus &&
       (focus !== "intended_use" || intendedUse) &&
       context.length <= HUMAN_REVIEW_CONTEXT_MAX_LENGTH &&
@@ -112,7 +115,7 @@ function PricingPage() {
   );
 
   async function startHumanReviewCheckout() {
-    if (!focus || !canCheckout) return;
+    if (!focus || !parcelId || !canCheckout) return;
     setCheckoutLoading(true);
     setCheckoutError(null);
 
@@ -160,6 +163,70 @@ function PricingPage() {
     }
   }
 
+  if (selectionReady && !hasConfirmedParcel) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
+        <TopNav />
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-20 pt-28 sm:px-6">
+          <header className="overflow-hidden rounded-[2rem] bg-[#0D1B2A] px-5 py-8 text-white shadow-[0_28px_80px_-55px_rgba(13,27,42,0.75)] sm:px-8 sm:py-10">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+              <ShieldCheck className="h-3.5 w-3.5" /> Human Review · R999
+            </div>
+            <h1 className="mt-4 max-w-4xl text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
+              Choose and confirm the property before Human Review.
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/68 sm:text-base">
+              Erf numbers repeat across South Africa. Easy Erf will not start Human Review from a typed Erf number alone. Search or locate the property on the map, review the highlighted parcel and its official identifiers, then confirm that it is the property you mean.
+            </p>
+          </header>
+
+          <section className="mt-6 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-6 shadow-soft sm:p-8">
+            <div className="flex items-start gap-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#FFF3E8] text-[#B24A00]">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+                  Property confirmation required
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+                  Find the exact erf or address on the map first.
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748B]">
+                  Search by address or Erf with location context. Easy Erf shows candidate parcels with town, municipality, province, LPI and parcel key where available. Highlight the result on the map, open the correct property overview, then choose “Yes, use this property · R999”.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                ["1", "Search", "Use address search or Erf search with place context."],
+                ["2", "Review on map", "Check the highlighted parcel and official property details."],
+                ["3", "Confirm property", "Only then enter the controlled Human Review brief."],
+              ].map(([number, title, body]) => (
+                <div key={number} className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
+                  <div className="grid h-7 w-7 place-items-center rounded-full bg-[#0D1B2A] text-xs font-bold text-white">
+                    {number}
+                  </div>
+                  <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{title}</div>
+                  <p className="mt-1 text-xs leading-5 text-[#64748B]">{body}</p>
+                </div>
+              ))}
+            </div>
+
+            <Link
+              to="/"
+              className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-6 py-3 text-sm font-semibold text-white hover:bg-[#ff7d1f]"
+            >
+              Find and confirm property on map <ArrowRight className="h-4 w-4" />
+            </Link>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
@@ -169,24 +236,27 @@ function PricingPage() {
             <ShieldCheck className="h-3.5 w-3.5" /> Human Review · R999
           </div>
           <h1 className="mt-4 max-w-4xl text-balance text-3xl font-semibold tracking-tight sm:text-5xl">
-            Hand the property investigation to Easy Erf for a focused Human Review.
+            Hand this confirmed property investigation to Easy Erf.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/68 sm:text-base">
-            Choose one controlled investigation focus. Easy Erf reviews the property evidence already gathered, records what is supported, separates uncertainty from fact, and tells you what still needs verification.
+            The property was selected and confirmed from Easy Erf’s map/property view. Now choose one controlled investigation focus. Easy Erf reviews the evidence already gathered, separates uncertainty from fact, and tells you what still needs verification.
           </p>
-          {parcelId ? (
-            <div className="mt-6 max-w-2xl rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
-                Property carried from your investigation
-              </div>
-              <div className="mt-1 text-sm font-semibold text-white">
-                {propertyReference || parcelId}
-              </div>
-              <p className="mt-1 text-xs leading-5 text-white/55">
-                Your existing Easy Erf property work remains attached. Human Review is a takeover of the investigation, not a restart.
-              </p>
+          <div className="mt-6 max-w-3xl rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+              Confirmed property
             </div>
-          ) : null}
+            <div className="mt-1 text-sm font-semibold text-white">{propertyReference}</div>
+            <div className="mt-1 break-all text-[11px] text-white/50">Parcel ID: {parcelId}</div>
+            <p className="mt-2 text-xs leading-5 text-white/55">
+              Human Review is locked to this parcel. If this is not the correct property, change it on the map before payment.
+            </p>
+            <Link
+              to="/"
+              className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#FFB86B] hover:text-white"
+            >
+              Change property on map <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </header>
 
         <section className="mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white px-5 py-4 shadow-soft sm:px-6">
@@ -215,37 +285,7 @@ function PricingPage() {
         <section className="mt-5 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
           <div className="max-w-3xl">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Step 1 · Confirm the property
-            </div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-              Which property should Easy Erf review?
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Enter the property address, Erf number or LPI here. This stays with your Easy Erf brief. Stripe will only handle payment.
-            </p>
-          </div>
-          <label className="mt-5 block max-w-3xl">
-            <span className="text-xs font-semibold text-[#0D1B2A]">
-              Property address, Erf or LPI reference
-            </span>
-            <input
-              value={propertyReferenceHint}
-              onChange={(event) => setPropertyReferenceHint(event.target.value)}
-              readOnly={Boolean(parcelId)}
-              maxLength={255}
-              placeholder="Example: 24 Padrone Crescent, Erf 1570, or C03400140000157000000"
-              className="mt-2 w-full rounded-[1.1rem] border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A] outline-none focus:border-[#FF6A00] read-only:cursor-default read-only:bg-[#EEF5FA]"
-            />
-          </label>
-          {!propertyReference ? (
-            <p className="mt-2 text-xs text-[#92400E]">Add the property before continuing to payment.</p>
-          ) : null}
-        </section>
-
-        <section className="mt-5 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
-          <div className="max-w-3xl">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Step 2 · Choose one investigation focus
+              Step 1 · Choose one investigation focus
             </div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
               What are you trying to understand about this property?
@@ -315,7 +355,7 @@ function PricingPage() {
         <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]">
           <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Step 3 · Optional context
+              Step 2 · Optional context
             </div>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-[#0D1B2A]">
               Tell us about your situation — not a new question.
@@ -400,13 +440,12 @@ function PricingPage() {
                 {selectedFocus?.label ?? "Choose a focus above"}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">
-                {propertyReference
-                  ? `Property: ${propertyReference}`
-                  : "Add the property above before checkout."}
+                Confirmed property: {propertyReference}
               </p>
+              <p className="mt-1 break-all text-[11px] text-[#64748B]">Parcel ID: {parcelId}</p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">
                 {selectedFocus?.description ??
-                  "Easy Erf will not open checkout until the investigation scope is defined."}
+                  "Easy Erf will not open payment until the investigation scope is defined."}
               </p>
               {focus === "intended_use" && intendedUse ? (
                 <p className="mt-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 text-sm font-semibold text-[#0D1B2A]">
@@ -430,9 +469,6 @@ function PricingPage() {
                 {checkoutLoading ? "Opening secure checkout…" : "Continue to secure payment"}
                 <ArrowUpRight className="h-4 w-4" />
               </button>
-              {!propertyReference ? (
-                <p className="mt-2 text-xs text-[#64748B]">Add the property first.</p>
-              ) : null}
               {!focus ? (
                 <p className="mt-2 text-xs text-[#64748B]">Choose one investigation focus first.</p>
               ) : null}
@@ -456,7 +492,7 @@ function PricingPage() {
                 </Link>
               ) : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-                One-time R999 payment. No recurring subscription. Stripe handles payment only. Your property and Human Review brief stay in Easy Erf. After payment you return to My Reports.
+                One-time R999 payment. No recurring subscription. Stripe handles payment only. Your confirmed property and Human Review brief stay in Easy Erf. After payment you return to My Reports.
               </p>
             </div>
           </div>
@@ -467,20 +503,20 @@ function PricingPage() {
             <FileCheck2 className="h-5 w-5 text-[#FF6A00]" />
             <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">Already doing it yourself?</h2>
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Keep going. Human Review remains available inside the investigation, dossier and report so you can hand the property over later without losing your work.
+              Keep going. Human Review remains available inside the investigation, dossier and report so you can hand the confirmed property over later without losing your work.
             </p>
             <Link
               to="/"
               className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0D1B2A] hover:text-[#FF6A00]"
             >
-              Investigate it myself <ArrowRight className="h-4 w-4" />
+              Return to property map <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-white p-5">
             <Sparkles className="h-5 w-5 text-[#FF6A00]" />
             <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">One report methodology</h2>
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Self-service and Human Review use the same property evidence. Human Review adds reviewer conclusions and a controlled five-part report rather than creating a separate disconnected property file.
+              Self-service and Human Review use the same confirmed parcel and property evidence. Human Review adds reviewer conclusions and a controlled five-part report rather than creating a disconnected property file.
             </p>
           </div>
         </section>
