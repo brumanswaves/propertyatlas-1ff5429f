@@ -19,6 +19,10 @@ import {
   ReceiptText,
   CheckCircle2,
 } from "lucide-react";
+import {
+  DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
+  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
+} from "@/lib/humanReview/scope";
 
 export const Route = createFileRoute("/how-it-works")({
   head: () => ({
@@ -27,13 +31,13 @@ export const Route = createFileRoute("/how-it-works")({
       {
         name: "description",
         content:
-          "Find a South African erf, confirm the exact parcel, investigate it yourself or choose R999 Human Review, and build an evidence-backed Easy Erf Report.",
+          "Find a South African erf, confirm the exact parcel, investigate it yourself or choose the R999 Done-for-You Property Investigation, and build an evidence-backed Easy Erf Report.",
       },
       { property: "og:title", content: "How Easy Erf Works" },
       {
         property: "og:description",
         content:
-          "One property file with two paths: guided self-service investigation or a focused R999 Human Review.",
+          "One property file with two paths: guided self-service investigation or a R999 done-for-you Easy Erf investigation.",
       },
     ],
   }),
@@ -44,7 +48,7 @@ const STEPS = [
   {
     icon: Search,
     title: "Find and confirm the exact property",
-    text: "Search by address or erf details, review the result on the map, and open the exact official parcel. Erf numbers repeat across South Africa, so Human Review and all later evidence stay bound to one canonical parcel identity.",
+    text: "Search by address or erf details, review the result on the map, and open the exact official parcel. Erf numbers repeat across South Africa, so every investigation and all later evidence stay bound to one canonical parcel identity.",
   },
   {
     icon: ClipboardCheck,
@@ -73,12 +77,13 @@ const STEPS = [
   },
 ];
 
-const HUMAN_REVIEW_STEPS = [
-  ["1", "Confirm the property", "Human Review cannot begin from a typed Erf number alone. Confirm the exact parcel on the Easy Erf map first."],
-  ["2", "Choose one review focus", "Choose Property Check, Property Potential, or Check My Intended Use. Optional context helps the reviewer understand your situation without expanding the scope."],
-  ["3", "Pay R999 once-off", "Stripe handles payment only. Your confirmed property and controlled brief stay inside Easy Erf and stay attached to your account."],
-  ["4", "A human reviews the same property file", "The reviewer works from the evidence Easy Erf has already gathered, checks the selected question, and keeps uncertainty visible rather than guessing."],
-  ["5", "Read the Human-Reviewed report", "Your report appears in My Reports with the bottom line, evidence-backed findings, risks, unknowns and next checks. PDF is a secondary export."],
+const DONE_FOR_YOU_STEPS = [
+  ["1", "Confirm the property", "The R999 service cannot begin from a typed Erf number alone. Confirm the exact parcel on the Easy Erf map first."],
+  ["2", "Tell us what matters most", "Choose Overall Property Check, Property Potential, or Check My Intended Use. This directs the review emphasis; the standard investigation is still worked through."],
+  ["3", "Pay R999 once-off", "Stripe handles payment only. Your confirmed property and brief stay inside Easy Erf and remain attached to your account."],
+  ["4", "Easy Erf does the investigation", "We reuse work already completed, work through the standard Easy Erf investigation, review one third-party property data report during Early Access where available, and keep missing evidence explicit."],
+  ["5", "A human reviewer checks the file", "The reviewer checks the evidence, contradictions, assumptions and selected emphasis before the report is delivered."],
+  ["6", "Read the Human-Reviewed report", "Your report appears in My Reports with the bottom line, evidence-backed findings, risks, unknowns and next checks. PDF is a secondary export."],
 ] as const;
 
 const HUMAN_REVIEW_OUTPUT = [
@@ -94,8 +99,8 @@ function HowItWorks() {
     <MarketingPage
       eyebrow="How it works"
       title="One property. One property file. Two ways to investigate."
-      subtitle="Investigate it yourself, or hand the confirmed property to Easy Erf for a focused R999 Human Review."
-      intro="Easy Erf starts with the exact parcel, not a loose Erf number. From there you can work through the evidence yourself or pay once for Human Review. Both paths use the same property file, evidence, assumptions and report instead of creating disconnected work."
+      subtitle="Investigate it yourself, or choose the R999 Done-for-You Property Investigation and let Easy Erf work through it for you."
+      intro="Easy Erf starts with the exact parcel, not a loose Erf number. From there you can work through the investigation yourself or pay once for Easy Erf and a human reviewer to do the standard investigation on your behalf. Both paths use the same property file, evidence, assumptions and report instead of creating disconnected work."
       heroCta={{ label: "Find a Property", to: "/" }}
     >
       <div className="grid gap-5 sm:grid-cols-2">
@@ -115,15 +120,15 @@ function HowItWorks() {
       <section className="mt-14">
         <SectionHeading
           eyebrow="Choose your path"
-          title="Do the investigation yourself or add Human Review"
-          subtitle="Human Review is not a separate research product. It uses the same confirmed parcel and property evidence you already see in Easy Erf."
+          title="Do the investigation yourself or let Easy Erf do it for you"
+          subtitle="Both paths use the same confirmed parcel and canonical Easy Erf property file. The difference is who does the work."
         />
         <div className="grid gap-4 md:grid-cols-2">
           <Card icon={<ClipboardCheck className="h-5 w-5" />} title="Investigate it yourself">
-            Use Guided Investigation, evidence uploads, Market Evidence, Strategy, Site Potential and Ask Easy Erf. You control the pace and can add Human Review later without losing the property file you already built.
+            Use Guided Investigation, evidence uploads, Market Evidence, Strategy, Site Potential and Ask Easy Erf. You control the pace and can switch to the done-for-you service later without losing the property file you already built.
           </Card>
-          <Card icon={<UserCheck className="h-5 w-5" />} title="Human Review · R999 once-off" accent>
-            A human reviewer checks the evidence already gathered for the exact parcel, applies one controlled review focus, and delivers a structured Human-Reviewed Easy Erf Report to your account. No subscription.
+          <Card icon={<UserCheck className="h-5 w-5" />} title="Done-for-You Property Investigation · R999" accent>
+            You choose the exact property and tell us what matters most. Easy Erf and a human reviewer work through the standard investigation, reuse anything already completed, add the included Early Access property data report where available, and deliver the reviewed report to your account. No subscription.
           </Card>
         </div>
       </section>
@@ -132,13 +137,13 @@ function HowItWorks() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
           <div>
             <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-              <ReceiptText className="h-4 w-4" /> R999 Human Review
+              <ReceiptText className="h-4 w-4" /> R999 Done-for-You Investigation
             </div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-              What happens after you choose Human Review
+              What happens after you hand the property to Easy Erf
             </h2>
             <div className="mt-5 space-y-3">
-              {HUMAN_REVIEW_STEPS.map(([number, title, body]) => (
+              {DONE_FOR_YOU_STEPS.map(([number, title, body]) => (
                 <div key={number} className="flex gap-3 rounded-2xl border border-[#0D1B2A]/8 bg-white/80 p-4">
                   <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-xs font-bold text-white">
                     {number}
@@ -154,10 +159,10 @@ function HowItWorks() {
 
           <div className="rounded-[1.5rem] bg-[#0D1B2A] p-5 text-white sm:p-6">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
-              Every Human-Reviewed report answers
+              Standard investigation we work through
             </div>
             <div className="mt-4 space-y-3">
-              {HUMAN_REVIEW_OUTPUT.map((item) => (
+              {DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.map((item) => (
                 <div key={item} className="flex items-start gap-2 text-sm leading-6 text-white/85">
                   <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#FF8A33]" />
                   <span>{item}</span>
@@ -165,9 +170,25 @@ function HowItWorks() {
               ))}
             </div>
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-xs leading-5 text-white/65">
-              The reviewer keeps unsupported conclusions out. Missing zoning, title, municipal, engineering or other professional evidence stays visible as something to verify, not something Easy Erf pretends to know.
+              {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <SectionHeading
+          eyebrow="The final report"
+          title="The human-reviewed output still answers five simple questions"
+          subtitle="The investigation can be broad underneath while the final answer stays easy to understand."
+        />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {HUMAN_REVIEW_OUTPUT.map((item) => (
+            <div key={item} className="rounded-2xl border border-border bg-card p-4 text-sm font-semibold text-foreground shadow-soft">
+              <CheckCircle2 className="mb-2 h-4 w-4 text-accent" />
+              {item}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -202,10 +223,10 @@ function HowItWorks() {
       </section>
 
       <CTASection
-        title="Start with the exact property"
-        description="Find the property on the map first. Then investigate it yourself or choose the R999 Human Review path from that confirmed parcel."
+        title="You choose the property. We do the investigation."
+        description="Find the exact property on the map first. Then investigate it yourself or hand the confirmed parcel to Easy Erf for the R999 done-for-you path."
         primary={{ label: "Find a Property", to: "/" }}
-        secondary={{ label: "See Human Review", to: "/pricing" }}
+        secondary={{ label: "See Done-for-You · R999", to: "/pricing" }}
       />
     </MarketingPage>
   );
