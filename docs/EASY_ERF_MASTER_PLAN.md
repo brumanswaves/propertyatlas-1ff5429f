@@ -1,8 +1,10 @@
 # Easy Erf Master Plan
 
+_Last refreshed: 2026-09-01_
+
 ## 1. Purpose
 
-This document is the canonical product and delivery plan for Easy Erf. It exists to keep product direction, UX, architecture, evidence standards, strategy tools, engineering work, approved external-tool work, and QA on one controlled path.
+This document is the canonical product and delivery plan for Easy Erf. It exists to keep product direction, UX, architecture, evidence standards, strategy tools, commercial scope, engineering work, approved external-tool work, and QA on one controlled path.
 
 When a future idea, branch, PR, external-builder prompt, or design decision conflicts with this document, the conflict must be resolved here first.
 
@@ -17,6 +19,17 @@ GitHub `main` is the code source of truth. This document is the product source o
 Easy Erf should feel simple enough for a normal home buyer to use without training, while exposing serious investor and developer-grade intelligence underneath.
 
 The product should not feel like a collection of GIS tools, forms, reports, calculators, or tabs. Those are capabilities under one guided property-investigation experience.
+
+### Commercial expression of the North Star
+
+The user has two clear ways to use the same canonical property file:
+
+1. **Investigate it myself**: use Guided Investigation and the existing Easy Erf tools.
+2. **Done-for-You Property Investigation · R999 Early Access**: confirm the exact property, tell Easy Erf what matters most, and let Easy Erf plus a human reviewer work through the standard investigation on the user's behalf.
+
+The paid-path customer promise is:
+
+**You choose the property. We do the investigation.**
 
 ---
 
@@ -45,6 +58,14 @@ Reason:
 - useful SG / cadastral evidence
 - market and strategy use cases
 - real acquisition, build, resale, rental, and feasibility numbers can be tested
+- the complete R999 TEST payment, founder investigation, report authoring and delivery journey has been proven against this parcel
+
+Canonical identity:
+- 24 Padrone Crescent, St Francis Bay
+- Erf 1570
+- LPI `C03400140000157000000`
+- parcel key `E108C034001400001570000000`
+- canonical internal parcel ID `csg:lpi:c03400140000157000000`
 
 Major product features should be validated against Erf 1570 before being considered production-ready.
 
@@ -52,7 +73,7 @@ Major product features should be validated against Erf 1570 before being conside
 
 ## 5. Core Product Journey
 
-The canonical user journey is:
+The canonical self-service journey is:
 
 1. Find or click a property
 2. Easy Erf opens a read-only **Property First Read / Property Overview** that orients the user with the selected parcel and intelligence already recorded
@@ -71,7 +92,24 @@ The canonical user journey is:
 
 Property First Read is the default selected-property entry experience. It is a zero-commit orientation surface, not a second investigation state. Guided Investigation is the default normal-user investigation experience once the user explicitly begins investigating. Expert Workbench tools remain available underneath as a secondary path.
 
-The overall product should still feel like one intelligent investigation, not a sequence of disconnected pages or tabs. The Property First Read, Guided Investigation, expert tools, evidence, calculations, Site Potential and report are views over the same property file and investigation state.
+### Done-for-You branch
+
+At any point after the exact parcel is confirmed, the user may choose **Done-for-You Property Investigation · R999**.
+
+The paid path must:
+
+1. preserve the same canonical parcel and property file
+2. reuse anything the user already completed
+3. ask the customer what deserves extra attention, not redefine the entire scope around one narrow question
+4. create the controlled paid order against the signed-in account
+5. keep Stripe payment-only
+6. place the property into the Founder Operations investigation queue
+7. have Easy Erf plus the human reviewer complete or review the standard investigation as far as available evidence and inputs allow
+8. preserve facts, assumptions, conflicts and missing evidence honestly
+9. produce the final **Human-Reviewed Easy Erf Report**
+10. deliver that structured web report to My Reports, with PDF secondary/optional
+
+The paid path is not a second property-data model. It is paid execution of the same Easy Erf investigation.
 
 ---
 
@@ -81,7 +119,7 @@ The overall product should still feel like one intelligent investigation, not a 
 
 One canonical property / parcel identity.
 
-All evidence, calculations, strategies, uploads, reports, market evidence, and AI answers must be bound to the selected property.
+All evidence, calculations, strategies, uploads, reports, market evidence, paid investigation orders, Site Potential and AI answers must be bound to the selected property.
 
 ### Layer 2: Evidence Registry
 
@@ -142,6 +180,8 @@ Each item has a state such as:
 
 The UI should prioritize one **Next Best Step**, rather than dumping every missing item on the user.
 
+The done-for-you founder workflow must work through this same investigation plan rather than substituting a blank report-writing form for the investigation.
+
 ### Layer 5: Strategy & Calculators
 
 Strategy and calculators are a first-class pillar of Easy Erf.
@@ -196,6 +236,13 @@ It begins as soon as a property is identified and improves as evidence and analy
 
 Every important module should feed the report rather than becoming an isolated dead-end workspace.
 
+For the paid path, the final customer deliverable is the same evidence system expressed as a **Human-Reviewed Easy Erf Report** with a concise reviewer bottom line and five controlled sections:
+- What do we know?
+- What appears possible?
+- What could be a problem?
+- What do we not know yet?
+- What should be verified next?
+
 ### Layer 9: Ask Easy Erf
 
 Ask Easy Erf is the conversational interface over the property, evidence, investigation, strategy, calculators, Site Potential, market evidence, and report.
@@ -210,6 +257,23 @@ It must:
 - explain why a conclusion is uncertain
 - recommend the Next Best Step when evidence is missing
 - be able to initiate or navigate useful actions in the product
+
+### Layer 10: Done-for-You Fulfillment
+
+Founder Operations is the human execution layer over the same canonical investigation.
+
+For each paid R999 investigation, the reviewer must complete or review the applicable standard workflow:
+- confirm exact parcel and working address
+- review cadastral, SG and boundary evidence already available or supplied
+- review ownership, transfer, title indicators and paid property-report evidence
+- establish the best-supported working zoning and planning position
+- complete the standard Easy Erf property checks and surface conflicts or missing evidence
+- review useful market evidence and comparable context where available
+- run relevant deterministic Strategy calculations when the required inputs exist
+- complete deterministic Site Potential when the evidence supports a useful envelope
+- write and deliver the Human-Reviewed Easy Erf Report
+
+The final report editor is a synthesis tool after the investigation, not a replacement for investigation work.
 
 ---
 
@@ -228,6 +292,19 @@ Examples:
 Confidence and provenance are product features, not legal disclaimers added at the end.
 
 Document identity must scale nationally without treating administrative geography as a hard parcel gate. Province, municipality, district, town, suburb, locality and address wording are corroborating context only: they can inform confidence, but cannot alone reject a readable document as the wrong property. Automatic mismatch is reserved for an explicit conflicting LPI/cadastral identifier, a different subject erf, or a different subject portion of the same erf. A readable document without a uniquely matching cadastral identifier remains confirmable user-supported evidence; a General Plan can support an erf through safely filtered annotations without becoming that erf's individual SG diagram.
+
+### Third-party property-data-report rule
+
+During Early Access, a R999 done-for-you investigation may include the review of **one third-party property data report at no extra charge where coverage is available**.
+
+Rules:
+- customer-facing copy remains provider-neutral unless a provider-specific commercial right is verified
+- provider may vary
+- the data report may be used as evidence inside the Easy Erf investigation
+- a branded Lightstone, WinDeed or other provider PDF is supplied to the customer only when the applicable provider/report/subscription terms permit redistribution
+- do not advertise `Free Lightstone Report` until redistribution and usage rights are independently verified
+- unlimited paid third-party documents are not included in R999
+- a third-party report does not become certified title, municipal approval, zoning confirmation or valuation merely because it is paid data
 
 ---
 
@@ -365,6 +442,8 @@ Every calculation must show:
 
 AI may explain calculations but may not silently replace deterministic maths.
 
+The done-for-you service may run relevant calculators only when the necessary inputs exist or can be transparently supplied as assumptions. It must not fabricate financial inputs merely to fill the report.
+
 ---
 
 ## 9. Easy Erf Report Structure
@@ -375,12 +454,12 @@ The report should be understandable at a glance, then deepen page by page.
 - property identity
 - address / erf / area / size
 - map / parcel visual
-- Easy Erf verdict
+- Easy Erf verdict / bottom line
 - biggest opportunity
 - biggest risk
 - key strategy numbers
 - report readiness / evidence confidence
-- prominent Ask Easy Erf input
+- prominent Ask Easy Erf input where appropriate
 
 ### Deeper sections
 - property identity
@@ -400,6 +479,8 @@ The report should be understandable at a glance, then deepen page by page.
 
 Paid reports, uploaded SG diagrams, strategy outputs, calculations, and the accepted deterministic Site Potential envelope/build-line state should flow into the report automatically where relevant.
 
+For the paid done-for-you product, the customer-facing Human-Reviewed report is web-first. PDF is secondary and optional unless the product later explicitly changes this rule.
+
 ---
 
 ## 10. Guided UX Rules
@@ -407,7 +488,6 @@ Paid reports, uploaded SG diagrams, strategy outputs, calculations, and the acce
 The default experience should be guided, not expert-first.
 
 The user should frequently see language like:
-
 - "Here is what I found."
 - "Here is what I still need."
 - "This is verified."
@@ -419,12 +499,20 @@ When asking the user to obtain something, Easy Erf should explain exactly how.
 
 Examples:
 - how to obtain an SG diagram
-- how to buy and download a Lightstone / WinDeed report
+- how to buy and download a Lightstone / WinDeed report when the user is self-serving
 - how to upload a title document
 - how to copy a Property24 comparable URL
 - how to obtain municipal planning evidence
 
 Expert workspaces remain available underneath for users who want depth and direct control.
+
+### Done-for-You UX rule
+
+The paid path must feel simpler than the self-service path:
+
+**confirm exact property -> tell us what matters most -> pay -> Easy Erf investigates -> report ready**
+
+Do not make a paid customer manually repeat normal Guided steps unless their input or evidence is genuinely required.
 
 ---
 
@@ -453,21 +541,26 @@ A successful product MVP allows a user to:
 
 The immediate commercial MVP is:
 
-**Sell and fulfill the first real R999 Early Access Easy Erf Property Investigation for one property using the canonical Easy Erf property file plus human review.**
+**Sell and fulfill the first real R999 Early Access Done-for-You Property Investigation for one confirmed property. Easy Erf plus a human reviewer completes or reviews the standard canonical investigation and delivers a Human-Reviewed Easy Erf Report.**
 
-Do not delay this commercial proof until every evidence source or investigation step is automated.
+The R999 product is not a subscription and is not merely a quick final review.
+
+The controlled choices `Overall Property Check`, `Property Potential`, and `Check My Intended Use` set the review emphasis while preserving the full standard investigation scope.
+
+Do not delay this commercial proof until every evidence source or investigation step is automated. Human work fills gaps where the product is not yet automated, while uncertainty remains explicit.
 
 ---
 
 ## 12. Roadmap
 
-### NOW: Make the core investigation excellent and prove willingness to pay
+### NOW: Prove the done-for-you commercial investigation
 
 - Erf 1570 end-to-end
-- first real R999 Early Access human-reviewed property investigation
-- one canonical property file
+- R999 Early Access Done-for-You Property Investigation
+- exact map/property confirmation before checkout
+- one canonical property file shared by self-service and paid fulfillment
 - evidence registry and confidence discipline
-- one clear Next Best Step
+- one clear Next Best Step for self-service users
 - Guided experience that feels like an AI investigator, not a form wizard
 - SG / cadastral evidence
 - title / paid-report workflow
@@ -477,22 +570,26 @@ Do not delay this commercial proof until every evidence source or investigation 
 - deterministic Site Potential integrated into strategy
 - Market Evidence integrated into strategy
 - living Easy Erf Report
+- Human-Reviewed Easy Erf Report for paid fulfillment
 - Ask Easy Erf across the workflow
-- coherent public shell, My Investigations and Account
-- Founder Operations for real support and operational visibility
+- coherent public shell, My Investigations and My Reports
+- Founder Operations as an action-first investigation queue
+- one third-party property data report reviewed during Early Access where available, with provider/redistribution rights respected
+- measure human time, third-party cost and customer value before setting the sustainable post-Early-Access price
 
 ### NEXT: Automate evidence acquisition and support operations
 
 - stronger cadastral retrieval
 - zoning / planning sources
 - municipal data integrations
-- paid-report integrations
+- paid-report integrations with explicit commercial/redistribution rights
 - document extraction improvements
 - address intelligence
 - listing and comparable import
 - environmental and public-data sources
 - trusted cross-user support inspection for Founder Operations
 - audited entitlement, job-retry and support actions where real backend capabilities exist
+- fulfillment checklist/state that can show which standard investigation tasks are complete, blocked or not applicable
 
 ### THEN: Decision intelligence
 
@@ -529,27 +626,32 @@ Do not delay this commercial proof until every evidence source or investigation 
 - Property First Read / Property Overview is the default selected-property entry experience
 - Guided Investigation is the default normal-user investigation experience once investigation begins
 - Expert mode remains available but secondary
-- Selecting or opening an erf does not automatically start Guided Investigation. Property confirmation is the first Guided investigation task after the user explicitly begins or continues the investigation. This supersedes the earlier assumption that property selection immediately starts investigation.
+- Selecting or opening an erf does not automatically start Guided Investigation. Property confirmation is the first Guided investigation task after the user explicitly begins or continues the investigation.
 - Erf 1570 is the gold-standard test property
 - Kouga / St Francis remains the initial pilot geography
 - Easy Erf Report is the living destination of the investigation
 - Ask Easy Erf is grounded in the property file, not a generic chatbot
 - Strategy & Calculators are a core product pillar
 - Calculations are deterministic maths first, AI explanation second
-- **Active Site Potential is deterministic parcel/map build envelope plus street-side build lines only. No generated house concepts, rendered buildings, facades or AI architectural imagery are part of the active product. This supersedes the earlier generated-concept direction.**
+- **Active Site Potential is deterministic parcel/map build envelope plus street-side build lines only. No generated house concepts, rendered buildings, facades or AI architectural imagery are part of the active product.**
 - Site Potential must inherit evidence confidence and assumptions
 - Paid reports are an important evidence and commercial pathway
 - Evidence provenance and confidence must be preserved
 - Visual evidence traceability: when a stored SG document has a safe derived preview, the living report may show that preview beside identity-gated findings. Preview generation is convenience evidence display only; it never changes identity, lineage or planning provenance, and a missing preview remains an honest limitation.
-- Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch
-- **Current commercial MVP includes a once-off R999 Early Access human-reviewed Easy Erf Property Investigation for one property. It is not a subscription. Checkout remains fail-closed until a real verified payment path is configured.**
+- Administrative geography is corroborating document context, not a hard property-identity gate; readable ambiguity is resolved through existing user confirmation, while only strong cadastral contradictions automatically mismatch.
+- **The current R999 Early Access commercial product is Done-for-You Property Investigation: the customer confirms the exact parcel, Easy Erf plus a human reviewer completes/reviews the standard investigation, and the final Human-Reviewed Easy Erf Report is delivered to the account.**
+- **The three controlled focus choices set emphasis, not reduced scope.**
+- **During Early Access, one third-party property data report may be reviewed at no extra charge where coverage is available. Provider may vary. Do not promise or redistribute a branded provider report unless the applicable rights are verified.**
+- **Do not publicly advertise `Free Lightstone Report` until Lightstone-specific redistribution/usage rights are independently verified.**
+- R999 is not a subscription.
+- Checkout remains fail-closed until the real payment path and live-mode gates are separately approved and configured.
 - Pay-per-use or pay-per-property offers must remain truthful to real entitlement and payment infrastructure.
 - My Investigations derives from canonical property/investigation state and must not create a separate progress engine.
 - Founder Operations extends the existing protected admin architecture and must not create a second admin-role system.
 - Privileged admin mutations require a trusted backend boundary and audit trail before UI controls are exposed.
 - `docs/EASY_ERF_DESIGN_SYSTEM.md` is the canonical lightweight visual and terminology reference.
-- GitHub `main` is the code source of truth
-- This document is the product source of truth
+- GitHub `main` is the code source of truth.
+- This document is the product source of truth.
 
 ---
 
@@ -606,104 +708,21 @@ Other chats may generate ideas, but those ideas must be brought back into this M
 
 When a major product direction changes:
 
-1. Update this Master Plan first.
+1. Update this Master Plan.
 2. State what previous decision is being superseded.
 3. Identify impacted UX, data model, report, calculators, operations and existing features.
-4. Only then open implementation work.
+4. Only then merge implementation work.
 
-2026-08-28 change-control correction:
+### 2026-08-28 Site Potential correction
 
 - The earlier generated Site Potential concept direction is superseded by deterministic map/build-envelope plus street-side build lines only.
-- The active generated-concept user flow was removed in PRs #127 and #128 before this Master Plan was refreshed. This document now resolves that drift and governs future work.
 - Historical generation data may remain for compatibility, but future active UX, report completion and commercial copy must not depend on generated concepts.
-- The R999 one-property human-reviewed Early Access investigation is now part of the NOW commercial MVP and must not disappear from the active build without an explicit product decision here.
 
-This change-control rule prevents repeated redesign, duplicated code, fragmented external-builder projects, unsafe operational shortcuts and unnecessary engineering / AI spend.
+### 2026-09-01 R999 commercial-product correction
 
----
-
-## 17. Autonomous property-investigation workforce
-
-Easy Erf is evolving from a collection of property information and AI features into a South Africa-specific autonomous property-investigation workforce. The user assigns understandable jobs while the product performs as much evidence-grounded work as the available tools and sources allow.
-
-The first real job is **Investigate this property's planning position**. It reuses the canonical parcel, `ParcelPlanningAssessment`, municipality planning registries, uploaded evidence and `PropertyEvidencePack`. It returns a machine-readable Agent Job Contract V1 result with goal, inputs, context, tools, process, evidence, confidence, actions, approval rules, output and next job.
-
-V1 deliberately adds no new agent-memory or planning-results table. Guided Investigation, Dossier and Report remain interfaces over the same canonical planning and evidence state. A persisted investigation-run ledger is deferred until asynchronous continuation, audit history, professional review or API consumers prove the need.
-
-The user-facing rule remains **One screen. One clear job.** Internal worker architecture is not exposed as fake personalities.
-
-See `docs/EASY_ERF_AGENT_JOBS_V1.md`.
-
----
-
-## 18. Founder Operations architecture
-
-The existing protected `/admin` area evolves into **Easy Erf Founder Operations**. Do not create a parallel admin application or a second role model.
-
-Founder Operations has a different job from the customer application, so it may use denser tables, logs, filters and operational statuses. It must still inherit Easy Erf typography, semantic colors, controls, status meanings, responsive behavior and terminology.
-
-### V1: read-first operational truth
-
-The first production-quality console should prefer real operational records over vanity metrics. It may surface data already available to the current admin authorization boundary, including:
-
-- report orders and fulfilment failures
-- provider audit activity and latency
-- provider settings/health
-- existing provider readiness diagnostics
-- existing public-data diagnostics
-
-Do not substitute demo-property counts for registered users, active investigations or production activity.
-
-### Trusted support layer
-
-Cross-user investigation detail, uploaded evidence, legacy Site Potential job state, entitlements, support notes, refunds, grants, retries and repairs are privileged support capabilities. They require a trusted backend boundary with:
-
-- existing admin-role authorization
-- least privilege
-- server-side validation
-- actor admin id
-- target user id where applicable
-- action type
-- previous/new state where useful
-- reason or support note
-- timestamp and result
-- reversible behavior where practical
-
-No service-role credential may reach the browser. Do not expose a refund, credit-grant, destructive repair or impersonation control before a real audited backend action exists.
-
-Developer/debug tools must remain clearly separated from normal operations even when linked from the same Founder Operations shell.
-
----
-
-## 19. R999 Early Access commercial proof
-
-The R999 Early Access Easy Erf Property Investigation is the shortest path to validating real customer value without waiting for full automation.
-
-### Offer
-
-- R999 introductory once-off price
-- one property
-- human-assisted and human-reviewed
-- uses the canonical Easy Erf property file and evidence already gathered
-- supplements automation with public/official research and human review when the product cannot yet complete the work autonomously
-
-### Reviewed output emphasis
-
-- Property Truth
-- Property Potential
-- deal killers and key risks
-- conflicts and unknowns
-- clear next steps and professional confirmation points
-- Strategy and financial analysis where relevant
-
-### Trust boundary
-
-The Early Access investigation is not a zoning certificate, title opinion, valuation, approved building plan or professional sign-off. Anything Easy Erf cannot verify remains unresolved or clearly labelled as an assumption.
-
-### Checkout boundary
-
-The public purchase action must remain disabled unless a real verified payment path is configured. A checkout link, payment-provider response or test charge alone does not prove the complete purchase-to-fulfilment workflow.
-
-### Commercial acceptance
-
-Commercial MVP acceptance requires one real customer to pay through the verified payment path and receive the promised human-reviewed investigation. The product should learn from that fulfillment before expanding plans, subscriptions, marketplaces or national automation.
+- The earlier customer-facing `Human Review` framing is superseded by **Done-for-You Property Investigation · R999**.
+- The actual paid service is broader than a final five-part review: Easy Erf plus the human reviewer completes or reviews the standard canonical property investigation first, then writes the five-part Human-Reviewed Easy Erf Report.
+- Existing technical names such as `humanReview`, `review_focus`, `easy-erf-r999-checkout` and fulfillment status values may remain for compatibility; customer-facing product truth follows this Master Plan.
+- The selected customer focus is an emphasis control, not the whole scope.
+- One third-party property data report may be reviewed during Early Access where available, but public marketing stays provider-neutral and branded report redistribution requires verified provider rights.
+- The R999 price remains an Early Access price while Easy Erf measures human fulfillment time, third-party data cost and customer value.
