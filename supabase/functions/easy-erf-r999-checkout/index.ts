@@ -9,6 +9,8 @@ declare const Deno: {
   serve(handler: (request: Request) => Promise<Response>): unknown;
 };
 
+type CheckoutMode = "test" | "live";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -19,6 +21,17 @@ function json(payload: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function resolveCheckoutMode(): CheckoutMode | null {
+  const configured = Deno.env.get("EASY_ERF_R999_CHECKOUT_MODE")?.trim().toLowerCase();
+  if (!configured || configured === "test") return "test";
+  if (configured === "live") return "live";
+  return null;
+}
+
+function liveCheckoutIsArmed() {
+  return Deno.env.get("EASY_ERF_R999_LIVE_ENABLED")?.trim().toLowerCase() === "true";
 }
 
 Deno.serve(async (request: Request) => {
@@ -34,6 +47,14 @@ Deno.serve(async (request: Request) => {
   const validation = validateHumanReviewCheckoutRequest(body);
   if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
 
+  const checkoutMode = resolveCheckoutMode();
+  if (!checkoutMode) {
+    return json({ ok: false, error: "Human Review checkout mode is invalid." }, 503);
+  }
+  if (checkoutMode === "live" && !liveCheckoutIsArmed()) {
+    return json({ ok: false, error: "Live Human Review checkout is not enabled." }, 503);
+  }
+
   const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
   const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
@@ -44,13 +65,14 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "Human Review checkout is not configured." }, 503);
   }
 
+  const expectedLivemode = checkoutMode === "live";
   const stripe = new Stripe(stripeSecretKey);
   let verifiedUrl: URL | null = null;
 
   for (const paymentLinkId of acceptedIds) {
     try {
       const link = await stripe.paymentLinks.retrieve(paymentLinkId);
-      if (!link.active || link.livemode || typeof link.url !== "string") continue;
+      if (!link.active || link.livemode !== expectedLivemode || typeof link.url !== "string") continue;
       const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, { limit: 10 });
       if (lineItems.data.length !== 1) continue;
       const price = lineItems.data[0].price;
@@ -71,7 +93,13 @@ Deno.serve(async (request: Request) => {
   }
 
   if (!verifiedUrl) {
-    return json({ ok: false, error: "Verified TEST Human Review checkout is unavailable." }, 503);
+    return json(
+      {
+        ok: false,
+        error: `Verified ${checkoutMode.toUpperCase()} Human Review checkout is unavailable.`,
+      },
+      503,
+    );
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -104,7 +132,7 @@ Deno.serve(async (request: Request) => {
 
   return json({
     ok: true,
-    mode: "test",
+    mode: checkoutMode,
     url: verifiedUrl.toString(),
     reviewRequestId: requestRow.id,
   });
