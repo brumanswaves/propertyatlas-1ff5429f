@@ -1,115 +1,133 @@
 # Easy Erf Current State
 
-State refreshed: 2026-08-28.
+_Last refreshed: 2026-09-01_
 
-## Canonical sources
+This file is the concise operational snapshot for the Easy Erf control room. The product source of truth remains `docs/EASY_ERF_MASTER_PLAN.md`; GitHub `main` remains the code source of truth.
 
-- Code truth: GitHub `brumanswaves/propertyatlas-1ff5429f`, branch `main`.
-- Current verified `main` baseline before this tranche: `6030b4b2071fc86059ce07095350438eaa9192e9`.
-- Product truth: `docs/EASY_ERF_MASTER_PLAN.md`, with the explicit 2026-08-28 owner direction that active Site Potential is deterministic map/build-envelope plus street-side build lines only and does not generate house concepts.
-- Backend truth: founder-owned Supabase project `xiqpfhsdlvwrwhclonsg` (`Easy Erf`).
-- Erf 1570 remains the gold-standard acceptance property.
+## Canonical baseline before this branch
 
-## Current MVP objective
+- GitHub `main`: `828b4379a31e9beb2f8fb394e956a7b99ff7ec61` after PR #152.
+- Production frontend: Lovable deployment `33c0cd32-e26c-4517-a374-cf1dc56fcbc9`, serving `https://easyerf.co.za`.
+- Canonical backend/runtime project: Supabase `xiqpfhsdlvwrwhclonsg`.
+- Live charging through the Easy Erf application remains OFF unless separately armed through the approved live-mode gates.
+- Active Site Potential remains deterministic parcel/build-envelope plus street-side build lines only. Generated architectural concepts are not part of the active product.
 
-Make one real South African property investigation work extremely well end to end, then sell and fulfill the first real **R999 Early Access Easy Erf Property Investigation** before expanding scope.
+## R999 commercial proof completed in TEST
 
-The commercial MVP is one property for R999, human-assisted and human-reviewed. Easy Erf should use the canonical property file, available public/official evidence, uploaded evidence, deterministic analysis, AI-assisted research where configured, and human review. Unknowns remain unknowns. The offer is once-off, not a subscription.
+The full controlled TEST journey has been executed for Erf 1570:
 
-## Canonical customer journey
+1. exact property selected and confirmed from the Easy Erf map/property flow
+2. controlled R999 brief created while signed in
+3. Stripe TEST R999 payment completed
+4. payment attached to the correct Easy Erf account and canonical parcel
+5. founder fulfillment moved the order from paid to processing through the audited transition contract
+6. the actual property evidence was reviewed
+7. a structured Human-Reviewed Easy Erf Report was saved
+8. the order moved from processing to ready through the audited transition contract
+9. the completed web report appeared as the primary customer deliverable
 
-1. Find or click a property.
-2. Open Property Overview / Property First Read without silently starting an investigation.
-3. Explicitly begin or continue Guided Investigation.
-4. Complete the canonical ten-step journey: Confirm property, Add address, Add SG diagram, Check title, Confirm zoning, Property checks, Market Evidence, Strategy & Calculators, Site Potential, Review report.
-5. Guided, expert Dossier and Easy Erf Report consume the same parcel, workspace, evidence, planning, Strategy and Site Potential state.
-6. Ask Easy Erf remains grounded in the same evidence pack and report intelligence.
-7. My Investigations reopens durable investigation state rather than maintaining a second progress engine.
-8. Early Access human review builds on the same property file instead of creating a separate research product.
+Gold-standard TEST order property:
+- 24 Padrone Crescent, St Francis Bay
+- Erf 1570
+- LPI `C03400140000157000000`
+- canonical parcel `csg:lpi:c03400140000157000000`
 
-## Site Potential product direction
+The TEST proved the payment, ownership, founder queue, report authoring and delivery mechanics. It also exposed a product-positioning issue: the phrase **Human Review** understated the service and implied a quick final check rather than the real customer value.
 
-Active Site Potential is now deliberately deterministic.
+## Current product decision being implemented
 
-- Show the parcel/map view with the potential build envelope or build lines supported by current evidence and assumptions.
-- Show a street-side / street-level representation of potential build lines and height/envelope limits.
-- Do **not** generate house designs, facades, rendered buildings or AI architectural concepts in the active product.
-- Generated-design tables, assets, APIs and historical fields may remain temporarily for backward compatibility, but they are not the active user journey or completion contract.
-- Site Potential output must preserve planning provenance, assumptions and confidence. A build envelope is not an approved building plan or municipal approval.
+The R999 Early Access offer is now:
 
-Merged PRs #127 and #128 moved the active runtime to this direction. Any stale copy, documentation or persisted legacy projection that still describes selected/generated concepts is compatibility debt and must not be treated as current product truth.
+**Done-for-You Property Investigation · R999**
 
-## Current repository state
+**You choose the property. We do the investigation.**
 
-Recent merged work on `main` includes:
+The customer confirms the exact parcel and tells Easy Erf what matters most. Easy Erf plus a human reviewer then completes or reviews the standard Easy Erf investigation on the customer's behalf, reusing work already present in the same canonical property file.
 
-- #118: stabilized the MVP customer journey around auth, zoning, Guided Site Potential, document-reader failure handling, report truthfulness and navigation.
-- #119: restored branded Supabase auth transport after #118.
-- #120 and #125: reconciled Site Potential state into Guided/shared workspace state.
-- #121, #122 and #124: repaired SG preview persistence/recovery and added a deterministic no-model TIFF preview path.
-- #123: made SG upload a single-step user-evidence attachment flow while retaining mismatch protection.
-- #126: prevented refunded Site Potential packs from becoming the implicit latest pack.
-- #127: simplified Site Potential to map and street-side build lines.
-- #128: removed retired generated-concept semantics from the active runtime.
+The standard investigation includes, as applicable and as evidence/inputs allow:
+- parcel and working-address confirmation
+- cadastral / SG / boundary evidence review
+- ownership, transfer, title indicators and paid-report evidence
+- working zoning and planning position
+- standard property checks and evidence-gap review
+- useful market evidence and comparable context
+- relevant deterministic Strategy calculations
+- deterministic Site Potential where sufficiently supported
+- final Human-Reviewed Easy Erf Report showing facts, potential, risks, unknowns and next checks
 
-At the start of this 2026-08-28 tranche, GitHub had no open pull requests.
+The three existing focus choices remain for compatibility but now mean **review emphasis**, not reduced product scope:
+- Overall Property Check
+- Property Potential
+- Check My Intended Use
 
-## Live founder-backend evidence checked 2026-08-28
+## Included property-data-report rule
 
-Read-only inspection established:
+During Early Access, the product may include the review of **one third-party property data report at no extra charge where coverage is available**.
 
-- Supabase project `xiqpfhsdlvwrwhclonsg` reports `ACTIVE_HEALTHY`.
-- `extract-erf-asset` is active at version 11.
-- `site-potential-api` is active at version 8.
-- `render-sg-preview` is active at version 1 with JWT verification enabled.
-- The newest checked Erf 1570 SG TIFF has 17 extracted claims and a stored `sgPreviewStoragePath` PNG.
-- That SG asset is explicitly bound to canonical Erf 1570 through the existing `user_confirmed` identity binding.
-- Its automated `identityMatchStatus` remains `unverified`; user-confirmed binding must not be described as independent cadastral verification.
+Locked truth rules:
+- public customer copy is provider-neutral unless specific provider rights are verified
+- provider may vary
+- Easy Erf may use the report as investigation evidence
+- a branded Lightstone, WinDeed or other provider PDF is supplied to the customer only when the applicable subscription/report terms permit redistribution
+- do not advertise `Free Lightstone Report` until contractual redistribution rights are independently verified
+- unlimited paid third-party documents are not part of the R999 package
 
-This proves meaningful backend progress on the SG/report visual path. It does not by itself prove the complete published browser report experience.
+## Recent commercial/product PR sequence
 
-## Commercial MVP gap found 2026-08-28
+- PR #145: controlled Human Review product, shared report and founder fulfillment foundations
+- PR #146: correct Easy Erf customer domain
+- PR #147: fail-closed checkout mode/live arming gate
+- PR #148: authenticated customer ownership
+- PR #149: payment-only Stripe checkout and account-aware UI
+- PR #150: confirmed map parcel required before R999 checkout
+- PR #151: stronger property-level R999 value proposition
+- PR #152: tangible pre-payment report proof, How It Works explanation, post-payment status, action-first founder queue and guided report editor
 
-The R999 Early Access offer existed in closed, unmerged PR #107 but was absent from current `main`.
+## Active implementation branch
 
-Before this tranche:
+`chatgpt/done-for-you-investigation-offer`
 
-- `src/routes/pricing.tsx` contained no R999 offer.
-- Repository search found no `R999` or `human-reviewed` commercial copy on current `main`.
-- Pricing still described retired Site Potential concept-generation allowances.
+This branch is converting the R999 customer and founder workflow from narrow `Human Review` positioning to the done-for-you investigation product while preserving the proven payment and fulfillment contracts.
 
-The current branch `chatgpt/restore-commercial-mvp-and-project-truth` restores the R999 one-property human-reviewed offer with a fail-closed Stripe-hosted payment-link boundary and updates Pricing to the deterministic Site Potential direction. This branch is not production until merged and published, and its runtime behavior must be verified separately.
+No production publish, backend deployment, Stripe mutation, database schema change or live-payment activation is authorized by this branch itself.
 
-## Current MVP acceptance test
+## Known launch work still separate
 
-A real signed-in user must be able to:
+### Stripe business profile
+The connected LIVE Easy Erf Stripe account still needs a separately approved business-profile cleanup before launch, including replacing the legacy `www.xyzboatsupplies.com` business URL with Easy Erf information.
 
-1. Sign in and retain a session.
-2. Find/open Erf 1570 and later reopen the same investigation.
-3. Establish or review the working address with honest provider failure behavior.
-4. Upload/bind/read SG evidence and see extracted findings plus a safe preview when available.
-5. Establish and persist working zoning with clear user-confirmed versus municipal-evidence distinction.
-6. Complete property checks, Market Evidence and a Strategy scenario with persistence.
-7. Accept or skip the deterministic Site Potential envelope/build-line step without generated concepts.
-8. Open the living Easy Erf Report and see the same evidence, assumptions, provenance, risks, unknowns and canonical next action.
-9. For the commercial MVP, purchase or otherwise enter the R999 Early Access fulfillment path only through a real verified checkout and receive the promised human-reviewed investigation.
+### Live credentials / webhook
+A real live launch still requires separate authorization and verification of:
+- LIVE Stripe secret key in Easy Erf runtime
+- LIVE webhook signing secret for the Easy Erf endpoint
+- accepted LIVE Payment Link ID
+- checkout mode `live`
+- final `EASY_ERF_R999_LIVE_ENABLED=true` arming step
 
-Repository tests, database rows and isolated APIs are not substitutes for this end-to-end acceptance test.
+The existing Stripe API cannot reveal the current webhook signing secret. Do not guess it or silently recreate the webhook.
 
-## Current verified weaknesses / blockers
+### Live canary
+A real R999 live payment is a separate spend/production authorization. TEST success does not authorize a real charge.
 
-- The complete current published browser journey has not been independently re-run in this 2026-08-28 inspection, so full end-to-end production acceptance is still unverified.
-- The current saved Erf 1570 durable projection still contains legacy Site Potential fields such as `concepts_ready` in historical state. Active runtime semantics have changed, so this projection is compatibility debt that should be normalized only if it creates a real user-facing defect.
-- The R999 offer is being restored in a repository branch, but a real Easy Erf R999 Stripe-hosted checkout has not been verified in this tranche. The UI must remain disabled when the environment variable is absent or invalid.
-- Parcel-specific municipal zoning evidence remains weaker than the general Kouga scheme rules. User-confirmed RES1 is not municipal verification.
-- Provider availability and external source coverage remain external dependencies. Missing evidence must remain visible.
+## Gold-standard evidence reality for Erf 1570
 
-## Single highest-value next action
+Useful evidence currently includes:
+- official CSG parcel identity
+- user-confirmed working address 24 Padrone Crescent
+- user-confirmed working `RES1` zoning classification
+- General Plan 12252 evidence visibly showing Erf 1570 and Padrone Crescent, while remaining a parent subdivision plan rather than automatically the individual SG diagram
+- uploaded third-party property report with ownership, transfer, valuation and land-use evidence
+- real discrepancy between approximately 619 m² cadastral extent and 602 m² registered extent shown in the uploaded report
 
-Verify and merge the narrow R999/product-truth restoration, then run the canonical signed-in Erf 1570 browser journey from search through report against the current published runtime. Fix only defects found in that real path before adding broader features.
+The product must preserve these evidence limitations rather than flattening them into false certainty.
 
-## Spend
+## Immediate next execution path
 
-Additional discretionary spend for this tranche: $0.
-
-No Lovable build work, paid service, production deployment, database mutation, credential change or billing action is authorized by this state document.
+1. finish the done-for-you branch
+2. update guardrails and canonical product docs
+3. run full exact-head CI and browser acceptance
+4. open PR
+5. merge only with explicit approval
+6. publish only with explicit approval
+7. review the live customer and founder journey visually
+8. keep live payments OFF until the separate launch checklist is approved and verified
