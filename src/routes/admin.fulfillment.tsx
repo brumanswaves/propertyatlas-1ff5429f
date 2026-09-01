@@ -20,6 +20,8 @@ import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
+  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
   humanReviewFocusLabel,
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
@@ -28,7 +30,7 @@ import { buildSavedParcelMapHref } from "@/lib/parcels/officialParcelId";
 export const Route = createFileRoute("/admin/fulfillment")({
   head: () => ({
     meta: [
-      { title: "Human Review Queue | Easy Erf" },
+      { title: "Done-for-You Investigation Queue | Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -83,7 +85,7 @@ function FounderFulfillmentQueue() {
       .limit(100);
 
     if (error) {
-      toast.error("Could not load the Human Review queue.");
+      toast.error("Could not load the done-for-you investigation queue.");
       setLoading(false);
       return;
     }
@@ -127,9 +129,9 @@ function FounderFulfillmentQueue() {
 
     toast.success(
       action === "start_review"
-        ? "Human Review started"
+        ? "Done-for-you investigation started"
         : action === "reopen_review"
-          ? "Report reopened for review"
+          ? "Investigation reopened"
           : action === "mark_ready"
             ? "Report marked ready"
             : "Order marked failed",
@@ -161,9 +163,7 @@ function FounderFulfillmentQueue() {
 
       const { error: uploadError } = await supabase.storage
         .from("erf-files")
-        .uploadToSignedUrl(prepared.path, prepared.token, file, {
-          contentType: "application/pdf",
-        });
+        .uploadToSignedUrl(prepared.path, prepared.token, file, { contentType: "application/pdf" });
 
       if (uploadError) {
         toast.error(uploadError.message || "Report upload failed.");
@@ -214,13 +214,13 @@ function FounderFulfillmentQueue() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-              <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Human Review operations
+              <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Done-for-You Operations
             </span>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-              Human Review work queue
+              Property investigation work queue
             </h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
-              Work from the top down. Paid reviews waiting for you appear first, then reviews already in progress, then failures. Completed reports are separated below so they do not hide new work.
+              This is not a quick final-check queue. For each paid property, complete or review the standard Easy Erf investigation, then human-review the findings and deliver the structured report.
             </p>
           </div>
           <Link
@@ -232,8 +232,8 @@ function FounderFulfillmentQueue() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Metric label="Waiting for you to start" value={orders.filter((order) => orderStatus(order) === "paid").length} />
-          <Metric label="Review in progress" value={orders.filter((order) => orderStatus(order) === "processing").length} />
+          <Metric label="Waiting to start" value={orders.filter((order) => orderStatus(order) === "paid").length} />
+          <Metric label="Investigation in progress" value={orders.filter((order) => orderStatus(order) === "processing").length} />
           <Metric label="Reports delivered" value={orders.filter((order) => orderStatus(order) === "ready").length} />
         </div>
 
@@ -243,22 +243,20 @@ function FounderFulfillmentQueue() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">Needs action</div>
-              <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">Do these reviews first</h2>
+              <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">Do these property investigations first</h2>
               <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                Each card tells you the next action. Start the review, open the property evidence, write all five report sections, save, then mark the web report ready.
+                Start the investigation, open the canonical property file, work through the standard checklist, write all report sections, save, then mark the web report ready.
               </p>
             </div>
-            <div className="rounded-full bg-[#0D1B2A] px-3 py-1 text-xs font-semibold text-white">
-              {needsAction.length} open
-            </div>
+            <div className="rounded-full bg-[#0D1B2A] px-3 py-1 text-xs font-semibold text-white">{needsAction.length} open</div>
           </div>
 
           <div className="mt-4 space-y-4">
             {loading ? (
-              <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid orders…</div>
+              <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid investigations…</div>
             ) : needsAction.length === 0 ? (
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-6 text-center">
-                <div className="text-sm font-semibold text-[#0D1B2A]">No Human Reviews need action right now</div>
+                <div className="text-sm font-semibold text-[#0D1B2A]">No done-for-you investigations need action right now</div>
                 <p className="mt-1 text-xs text-[#64748B]">New verified Stripe payments will appear here automatically.</p>
               </div>
             ) : (
@@ -279,10 +277,10 @@ function FounderFulfillmentQueue() {
         {completed.length > 0 ? (
           <details className="mt-10 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
-              Delivered Human Reviews · {completed.length}
+              Delivered Done-for-You Investigations · {completed.length}
             </summary>
             <p className="mt-1 text-xs text-[#64748B]">
-              Completed reports are kept here for reopen/replacement work without cluttering the active queue.
+              Completed reports are kept here for correction/replacement work without cluttering the active queue.
             </p>
             <div className="mt-4 space-y-4">
               {completed.map((order) => (
@@ -319,9 +317,9 @@ function NextWorkPanel({ order }: { order: ReportOrder | null }) {
   const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
   const action =
     status === "paid"
-      ? "Start Human Review, open the property evidence, then write the five-part report."
+      ? "Start the investigation, open the canonical property file, then work through the standard Easy Erf checklist."
       : status === "processing"
-        ? "Finish the five-part report below, save it, then mark the web report ready."
+        ? "Finish the standard investigation and evidence review, complete the five-part report, save it, then mark the web report ready."
         : "Resolve the failure before this customer can receive a report.";
 
   return (
@@ -335,11 +333,8 @@ function NextWorkPanel({ order }: { order: ReportOrder | null }) {
           <div className="text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
           <p className="mt-1 text-xs leading-5 text-[#64748B]">{action}</p>
         </div>
-        <a
-          href={`#order-${order.id}`}
-          className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0"
-        >
-          Go to this review
+        <a href={`#order-${order.id}`} className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0">
+          Go to this investigation
         </a>
       </div>
     </div>
@@ -355,11 +350,7 @@ function OrderCard({
 }: {
   order: ReportOrder;
   busy: boolean;
-  onTransition: (
-    order: ReportOrder,
-    action: FulfillmentAction,
-    values?: { pdfStoragePath?: string; failureReason?: string },
-  ) => Promise<void>;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { pdfStoragePath?: string; failureReason?: string }) => Promise<void>;
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
@@ -377,9 +368,7 @@ function OrderCard({
             <StatusBadge status={status} />
             <span className="font-mono text-[10px] text-[#64748B]">{order.id.slice(0, 8)}</span>
           </div>
-          <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">
-            {propertyReference ?? order.parcel_id ?? "Property reference pending"}
-          </h2>
+          <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">{propertyReference ?? order.parcel_id ?? "Property reference pending"}</h2>
           <p className="mt-1 text-xs text-[#64748B]">{customerEmail ?? "Customer email unavailable"}</p>
         </div>
         <div className="text-right">
@@ -392,17 +381,9 @@ function OrderCard({
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <Info label="Canonical parcel" value={order.parcel_id ?? "Not matched"} mono />
-        <Info
-          label="Controlled Human Review focus"
-          value={order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy order — no controlled focus recorded"}
-        />
-        {humanReviewIntendedUseLabel(order.intended_use) ? (
-          <Info label="Intended use" value={humanReviewIntendedUseLabel(order.intended_use)!} />
-        ) : null}
-        <Info
-          label="Situation context"
-          value={order.review_context ?? legacyRequest ?? "No situation context supplied"}
-        />
+        <Info label="Customer emphasis" value={order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy order — no emphasis recorded"} />
+        {humanReviewIntendedUseLabel(order.intended_use) ? <Info label="Intended use" value={humanReviewIntendedUseLabel(order.intended_use)!} /> : null}
+        <Info label="Situation context" value={order.review_context ?? legacyRequest ?? "No situation context supplied"} />
       </div>
 
       {!order.review_focus ? (
@@ -435,17 +416,10 @@ function OrderCard({
             onClick={() => void onTransition(order, "start_review")}
             className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
-            <PlayCircle className="h-3.5 w-3.5" /> Start Human Review
+            <PlayCircle className="h-3.5 w-3.5" /> Start Done-for-You Investigation
           </button>
         ) : null}
-        {status === "processing" ? (
-          <ReadyAction
-            order={order}
-            busy={busy}
-            onUploadReport={onUploadReport}
-            onTransition={onTransition}
-          />
-        ) : null}
+        {status === "processing" ? <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} onTransition={onTransition} /> : null}
         {status === "ready" ? (
           <button
             type="button"
@@ -456,59 +430,50 @@ function OrderCard({
             <RotateCcw className="h-3.5 w-3.5 text-[#FF6A00]" /> Reopen / replace report
           </button>
         ) : null}
-        {status === "paid" || status === "processing" ? (
-          <FailedAction order={order} busy={busy} onTransition={onTransition} />
-        ) : null}
+        {status === "paid" || status === "processing" ? <FailedAction order={order} busy={busy} onTransition={onTransition} /> : null}
       </div>
     </article>
   );
 }
 
 function FounderActionGuide({ status, propertyHref }: { status: string; propertyHref: string | null }) {
-  const steps =
+  const statusIntro =
     status === "paid"
-      ? [
-          "Click Start Human Review.",
-          "Open the confirmed property and read the available evidence plus the customer’s selected focus/context.",
-          "Return here. The report editor will open when the order is in Human Review.",
-          "Write all five report sections, save, then mark the web report ready.",
-        ]
+      ? "Start this order, then complete/review the full standard investigation before writing the final report."
       : status === "processing"
-        ? [
-            "Open the property evidence and finish the review against the customer’s selected focus.",
-            "Complete the bottom line plus all five report sections below.",
-            "Save the web report.",
-            "Click Mark web report ready. Add a PDF only if you want a secondary export.",
-          ]
+        ? "The investigation is underway. Work through every applicable item below, then write and deliver the final report."
         : status === "failed"
-          ? ["Read the failure reason, resolve the underlying issue, then reopen or replace the report workflow as appropriate."]
-          : ["No action required unless the customer needs a correction. Reopen the report only when you intend to replace it."];
+          ? "Resolve the failure before continuing the investigation."
+          : "Delivered. Reopen only when you intend to correct or replace the report.";
 
   return (
     <div className="mt-5 rounded-[1.25rem] border border-[#FF6A00]/20 bg-[#FFF7ED] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#0D1B2A]">
-          <ListChecks className="h-4 w-4 text-[#FF6A00]" /> What you do next
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#0D1B2A]">
+            <ListChecks className="h-4 w-4 text-[#FF6A00]" /> Standard done-for-you investigation checklist
+          </div>
+          <p className="mt-1 text-xs leading-5 text-[#64748B]">{statusIntro}</p>
         </div>
         {propertyHref ? (
-          <a
-            href={propertyHref}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
-          >
-            <FileSearch2 className="h-3.5 w-3.5 text-[#FF6A00]" /> Open property evidence <ExternalLink className="h-3 w-3" />
+          <a href={propertyHref} className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35">
+            <FileSearch2 className="h-3.5 w-3.5 text-[#FF6A00]" /> Open full property investigation <ExternalLink className="h-3 w-3" />
           </a>
         ) : null}
       </div>
-      <ol className="mt-3 grid gap-2 md:grid-cols-2">
-        {steps.map((step, index) => (
+
+      <ol className="mt-4 grid gap-2 md:grid-cols-2">
+        {DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.map((step, index) => (
           <li key={step} className="flex gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs leading-5 text-[#0D1B2A]/72">
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">
-              {index + 1}
-            </span>
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{index + 1}</span>
             {step}
           </li>
         ))}
       </ol>
+
+      <div className="mt-3 rounded-xl border border-[#F59E0B]/25 bg-[#fffbeb] px-3 py-2 text-[11px] leading-5 text-[#92400E]">
+        <strong>Included property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} If Lightstone or another branded provider is used internally, do not attach or redistribute the provider PDF unless the applicable provider/report terms allow it.
+      </div>
     </div>
   );
 }
@@ -522,20 +487,12 @@ function ReadyAction({
   order: ReportOrder;
   busy: boolean;
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
-  onTransition: (
-    order: ReportOrder,
-    action: FulfillmentAction,
-    values?: { pdfStoragePath?: string; failureReason?: string },
-  ) => Promise<void>;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { pdfStoragePath?: string; failureReason?: string }) => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
 
   if (!order.user_id) {
-    return (
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">
-        Match this paid order to a customer account before report delivery.
-      </div>
-    );
+    return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">Match this paid order to a customer account before report delivery.</div>;
   }
 
   return (
@@ -562,7 +519,7 @@ function ReadyAction({
         onClick={() => file && void onUploadReport(order, file)}
         className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
       >
-        <Upload className="h-3.5 w-3.5" /> Upload optional PDF & mark ready
+        <Upload className="h-3.5 w-3.5" /> Upload optional Easy Erf PDF & mark ready
       </button>
     </div>
   );
@@ -575,11 +532,7 @@ function FailedAction({
 }: {
   order: ReportOrder;
   busy: boolean;
-  onTransition: (
-    order: ReportOrder,
-    action: FulfillmentAction,
-    values?: { failureReason?: string },
-  ) => Promise<void>;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { failureReason?: string }) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   return (
@@ -615,30 +568,14 @@ function Info({ label, value, mono = false }: { label: string; value: string; mo
   return (
     <div className="rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{label}</div>
-      <div className={mono ? "mt-1 break-all font-mono text-[11px] text-[#0D1B2A]" : "mt-1 text-xs leading-5 text-[#0D1B2A]"}>
-        {value}
-      </div>
+      <div className={mono ? "mt-1 break-all font-mono text-[11px] text-[#0D1B2A]" : "mt-1 text-xs leading-5 text-[#0D1B2A]"}>{value}</div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const Icon =
-    status === "ready"
-      ? CheckCircle2
-      : status === "failed"
-        ? AlertCircle
-        : status === "processing"
-          ? CircleDashed
-          : ReceiptText;
-  const label =
-    status === "paid"
-      ? "Payment received · waiting for you"
-      : status === "processing"
-        ? "Human review underway"
-        : status === "ready"
-          ? "Report delivered"
-          : status;
+  const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
+  const label = status === "paid" ? "Payment received · waiting to start" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report delivered" : status;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
       <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
