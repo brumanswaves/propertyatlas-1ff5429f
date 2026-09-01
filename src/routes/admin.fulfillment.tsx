@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
   CircleDashed,
+  ExternalLink,
+  FileSearch2,
+  ListChecks,
   PlayCircle,
   ReceiptText,
   RotateCcw,
@@ -20,6 +23,7 @@ import {
   humanReviewFocusLabel,
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
+import { buildSavedParcelMapHref } from "@/lib/parcels/officialParcelId";
 
 export const Route = createFileRoute("/admin/fulfillment")({
   head: () => ({
@@ -189,6 +193,20 @@ function FounderFulfillmentQueue() {
     }
   }
 
+  const prioritizedOrders = useMemo(
+    () => [...orders].sort((a, b) => orderPriority(a) - orderPriority(b) || Date.parse(a.created_at) - Date.parse(b.created_at)),
+    [orders],
+  );
+  const needsAction = useMemo(
+    () => prioritizedOrders.filter((order) => orderStatus(order) !== "ready"),
+    [prioritizedOrders],
+  );
+  const completed = useMemo(
+    () => prioritizedOrders.filter((order) => orderStatus(order) === "ready"),
+    [prioritizedOrders],
+  );
+  const nextOrder = needsAction[0] ?? null;
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
@@ -199,10 +217,10 @@ function FounderFulfillmentQueue() {
               <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Human Review operations
             </span>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-              Paid investigation queue
+              Human Review work queue
             </h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
-              Review the controlled customer brief, write the five-part web report, then move the order through the audited fulfillment lifecycle. PDF is an optional export layer, not the report itself.
+              Work from the top down. Paid reviews waiting for you appear first, then reviews already in progress, then failures. Completed reports are separated below so they do not hide new work.
             </p>
           </div>
           <Link
@@ -214,34 +232,116 @@ function FounderFulfillmentQueue() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Metric label="Waiting for review" value={orders.filter((order) => orderStatus(order) === "paid").length} />
-          <Metric label="In Human Review" value={orders.filter((order) => orderStatus(order) === "processing").length} />
-          <Metric label="Ready" value={orders.filter((order) => orderStatus(order) === "ready").length} />
+          <Metric label="Waiting for you to start" value={orders.filter((order) => orderStatus(order) === "paid").length} />
+          <Metric label="Review in progress" value={orders.filter((order) => orderStatus(order) === "processing").length} />
+          <Metric label="Reports delivered" value={orders.filter((order) => orderStatus(order) === "ready").length} />
         </div>
 
-        <section className="mt-8 space-y-4">
-          {loading ? (
-            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid orders…</div>
-          ) : orders.length === 0 ? (
-            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-center">
-              <div className="text-sm font-semibold text-[#0D1B2A]">No Stripe investigation orders</div>
-              <p className="mt-1 text-xs text-[#64748B]">The queue populates only from verified payment records.</p>
+        {!loading ? <NextWorkPanel order={nextOrder} /> : null}
+
+        <section className="mt-8">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">Needs action</div>
+              <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">Do these reviews first</h2>
+              <p className="mt-1 text-xs leading-5 text-[#64748B]">
+                Each card tells you the next action. Start the review, open the property evidence, write all five report sections, save, then mark the web report ready.
+              </p>
             </div>
-          ) : (
-            orders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                busy={busyOrderId === order.id}
-                onTransition={transition}
-                onUploadReport={uploadReport}
-                onRefresh={refresh}
-              />
-            ))
-          )}
+            <div className="rounded-full bg-[#0D1B2A] px-3 py-1 text-xs font-semibold text-white">
+              {needsAction.length} open
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {loading ? (
+              <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid orders…</div>
+            ) : needsAction.length === 0 ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-6 text-center">
+                <div className="text-sm font-semibold text-[#0D1B2A]">No Human Reviews need action right now</div>
+                <p className="mt-1 text-xs text-[#64748B]">New verified Stripe payments will appear here automatically.</p>
+              </div>
+            ) : (
+              needsAction.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  busy={busyOrderId === order.id}
+                  onTransition={transition}
+                  onUploadReport={uploadReport}
+                  onRefresh={refresh}
+                />
+              ))
+            )}
+          </div>
         </section>
+
+        {completed.length > 0 ? (
+          <details className="mt-10 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
+              Delivered Human Reviews · {completed.length}
+            </summary>
+            <p className="mt-1 text-xs text-[#64748B]">
+              Completed reports are kept here for reopen/replacement work without cluttering the active queue.
+            </p>
+            <div className="mt-4 space-y-4">
+              {completed.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  busy={busyOrderId === order.id}
+                  onTransition={transition}
+                  onUploadReport={uploadReport}
+                  onRefresh={refresh}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
       </main>
       <Footer />
+    </div>
+  );
+}
+
+function NextWorkPanel({ order }: { order: ReportOrder | null }) {
+  if (!order) {
+    return (
+      <div className="mt-6 rounded-[1.5rem] border border-emerald-500/20 bg-emerald-50 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Nothing is waiting for you
+        </div>
+      </div>
+    );
+  }
+
+  const status = orderStatus(order);
+  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+  const action =
+    status === "paid"
+      ? "Start Human Review, open the property evidence, then write the five-part report."
+      : status === "processing"
+        ? "Finish the five-part report below, save it, then mark the web report ready."
+        : "Resolve the failure before this customer can receive a report.";
+
+  return (
+    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[#FF6A00]/30 bg-white shadow-soft">
+      <div className="grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+        <div className="bg-[#FF6A00] px-5 py-4 text-white lg:self-stretch lg:py-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">Start here</div>
+          <div className="mt-1 text-lg font-semibold">Next founder action</div>
+        </div>
+        <div className="px-5 py-4">
+          <div className="text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+          <p className="mt-1 text-xs leading-5 text-[#64748B]">{action}</p>
+        </div>
+        <a
+          href={`#order-${order.id}`}
+          className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0"
+        >
+          Go to this review
+        </a>
+      </div>
     </div>
   );
 }
@@ -267,6 +367,7 @@ function OrderCard({
   const propertyReference = payloadText(order.payload, "propertyReference");
   const customerEmail = payloadText(order.payload, "customerEmail");
   const legacyRequest = payloadText(order.payload, "investigationRequest");
+  const propertyHref = order.parcel_id ? buildSavedParcelMapHref(order.parcel_id) : null;
 
   return (
     <article id={`order-${order.id}`} className="scroll-mt-28 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
@@ -286,6 +387,8 @@ function OrderCard({
           <div className="mt-1 text-[10px] text-[#64748B]">{new Date(order.created_at).toLocaleString("en-ZA")}</div>
         </div>
       </div>
+
+      <FounderActionGuide status={status} propertyHref={propertyHref} />
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <Info label="Canonical parcel" value={order.parcel_id ?? "Not matched"} mono />
@@ -314,11 +417,12 @@ function OrderCard({
         </div>
       ) : null}
 
-      {status !== "failed" ? (
+      {status === "processing" || status === "ready" ? (
         <FounderHumanReviewEditor
           orderId={order.id}
           initialContent={order.review_content}
           disabled={busy}
+          defaultOpen={status === "processing"}
           onSaved={onRefresh}
         />
       ) : null}
@@ -357,6 +461,55 @@ function OrderCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function FounderActionGuide({ status, propertyHref }: { status: string; propertyHref: string | null }) {
+  const steps =
+    status === "paid"
+      ? [
+          "Click Start Human Review.",
+          "Open the confirmed property and read the available evidence plus the customer’s selected focus/context.",
+          "Return here. The report editor will open when the order is in Human Review.",
+          "Write all five report sections, save, then mark the web report ready.",
+        ]
+      : status === "processing"
+        ? [
+            "Open the property evidence and finish the review against the customer’s selected focus.",
+            "Complete the bottom line plus all five report sections below.",
+            "Save the web report.",
+            "Click Mark web report ready. Add a PDF only if you want a secondary export.",
+          ]
+        : status === "failed"
+          ? ["Read the failure reason, resolve the underlying issue, then reopen or replace the report workflow as appropriate."]
+          : ["No action required unless the customer needs a correction. Reopen the report only when you intend to replace it."];
+
+  return (
+    <div className="mt-5 rounded-[1.25rem] border border-[#FF6A00]/20 bg-[#FFF7ED] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#0D1B2A]">
+          <ListChecks className="h-4 w-4 text-[#FF6A00]" /> What you do next
+        </div>
+        {propertyHref ? (
+          <a
+            href={propertyHref}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/35"
+          >
+            <FileSearch2 className="h-3.5 w-3.5 text-[#FF6A00]" /> Open property evidence <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : null}
+      </div>
+      <ol className="mt-3 grid gap-2 md:grid-cols-2">
+        {steps.map((step, index) => (
+          <li key={step} className="flex gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs leading-5 text-[#0D1B2A]/72">
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">
+              {index + 1}
+            </span>
+            {step}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -480,11 +633,11 @@ function StatusBadge({ status }: { status: string }) {
           : ReceiptText;
   const label =
     status === "paid"
-      ? "Payment received"
+      ? "Payment received · waiting for you"
       : status === "processing"
-        ? "Human Review underway"
+        ? "Human review underway"
         : status === "ready"
-          ? "Report ready"
+          ? "Report delivered"
           : status;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
@@ -496,6 +649,11 @@ function StatusBadge({ status }: { status: string }) {
 function orderStatus(order: ReportOrder) {
   const status = (order.status_enum || order.status || "pending").toLowerCase();
   return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
+}
+
+function orderPriority(order: ReportOrder) {
+  const status = orderStatus(order);
+  return status === "paid" ? 0 : status === "processing" ? 1 : status === "failed" ? 2 : 3;
 }
 
 function payloadText(payload: unknown, key: string): string | null {

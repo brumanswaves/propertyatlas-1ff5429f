@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
   CircleDashed,
+  Clock3,
   Download,
+  ListChecks,
   ReceiptText,
   ShieldCheck,
 } from "lucide-react";
@@ -54,10 +56,17 @@ function CustomerOrdersPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [paymentReceived, setPaymentReceived] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, navigate, user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setPaymentReceived(params.get("payment") === "received");
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -80,6 +89,8 @@ function CustomerOrdersPage() {
       active = false;
     };
   }, [user]);
+
+  const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
 
   if (!user) return null;
 
@@ -107,14 +118,20 @@ function CustomerOrdersPage() {
           </Link>
         </div>
 
+        {paymentReceived ? (
+          <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} />
+        ) : null}
+
         <section className="mt-8 space-y-6">
           {loadingOrders ? (
-            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading Human Review status…</div>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
+              Loading Human Review status…
+            </div>
           ) : orders.length === 0 ? (
             <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-8 text-center shadow-soft">
               <div className="text-sm font-semibold text-[#0D1B2A]">No paid Human Review investigations yet</div>
               <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-[#64748B]">
-                You can start Human Review from any Easy Erf property investigation without losing the work already gathered.
+                You can start Human Review from any confirmed Easy Erf property investigation without losing the work already gathered.
               </p>
               <Link
                 to="/pricing"
@@ -133,11 +150,85 @@ function CustomerOrdersPage() {
   );
 }
 
+function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; loading: boolean }) {
+  const propertyReference = order ? orderPropertyReference(order) : null;
+  const focus = order?.review_focus ? humanReviewFocusLabel(order.review_focus) : null;
+
+  return (
+    <section className="mt-7 overflow-hidden rounded-[2rem] border border-emerald-500/25 bg-white shadow-soft">
+      <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(19rem,0.9fr)]">
+        <div className="bg-[#0D1B2A] p-6 text-white sm:p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Payment received
+          </div>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight">
+            Your Human Review is now in the queue.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
+            Your R999 payment, confirmed parcel and Human Review brief are attached to this Easy Erf account. You do not need to submit the property again or answer the questions again.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+            {loading ? (
+              <div className="text-sm text-white/65">Confirming the new order in your account…</div>
+            ) : order ? (
+              <>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                  Review we received
+                </div>
+                <div className="mt-1 text-sm font-semibold text-white">{propertyReference}</div>
+                <div className="mt-1 text-xs text-white/58">
+                  {focus ?? "Human Review"} · R{(order.price_cents / 100).toFixed(0)} paid
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-white/65">
+                Payment returned successfully. If the order does not appear below shortly, refresh My Reports once before contacting support.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-8">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+            <ListChecks className="h-4 w-4" /> What happens next
+          </div>
+          <div className="mt-4 space-y-3">
+            {[
+              ["1", "Payment and parcel attached", "Done. The paid review is tied to this account and exact property."],
+              ["2", "Human reviewer checks the evidence", "The reviewer works through the existing property file and your selected review focus."],
+              ["3", "Report appears here", "The finished Human-Reviewed report will replace the progress card below when it is ready."],
+            ].map(([number, title, body]) => (
+              <div key={number} className="flex gap-3 rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-xs font-bold text-white">
+                  {number}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-[#0D1B2A]">{title}</div>
+                  <p className="mt-1 text-xs leading-5 text-[#64748B]">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
+              <Clock3 className="h-4 w-4 text-[#FF6A00]" /> Current early-access target: about 3 business days
+            </div>
+            <p className="mt-2 text-xs leading-5 text-[#64748B]">
+              You do not need to do anything now. If the reviewer needs missing evidence from you, the investigation status will make that clear rather than silently guessing.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CustomerOrderCard({ order }: { order: ReportOrder }) {
   const [downloading, setDownloading] = useState(false);
   const status = orderStatus(order);
-  const propertyReference =
-    payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+  const propertyReference = orderPropertyReference(order);
   const legacyRequest = payloadText(order.payload, "investigationRequest");
   const content = parseHumanReviewReportContent(order.review_content);
 
@@ -234,6 +325,20 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
         ))}
       </div>
 
+      {status === "paid" ? (
+        <div className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] p-4 text-xs leading-5 text-[#0D1B2A]">
+          <div className="font-semibold">Payment is confirmed and this review is waiting for a human reviewer.</div>
+          <p className="mt-1 text-[#64748B]">Current early-access target: about 3 business days. You do not need to resubmit anything.</p>
+        </div>
+      ) : null}
+
+      {status === "processing" ? (
+        <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-50 p-4 text-xs leading-5 text-[#0D1B2A]">
+          <div className="font-semibold">A human reviewer is working through this property now.</div>
+          <p className="mt-1 text-[#64748B]">The finished structured report will appear here when the review is marked ready.</p>
+        </div>
+      ) : null}
+
       {status === "ready" ? (
         <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-xs text-[#0D1B2A]">
           <div className="font-semibold">Your Human Review is complete.</div>
@@ -286,6 +391,10 @@ function StatusBadge({ status }: { status: string }) {
 function orderStatus(order: ReportOrder) {
   const status = (order.status_enum || order.status || "pending").toLowerCase();
   return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
+}
+
+function orderPropertyReference(order: ReportOrder) {
+  return payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
 }
 
 function payloadText(payload: unknown, key: string): string | null {

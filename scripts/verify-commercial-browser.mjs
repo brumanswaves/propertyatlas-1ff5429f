@@ -41,11 +41,20 @@ try {
 
   await page.goto(`${baseUrl}/pricing`, { waitUntil: "networkidle", timeout: 60000 });
   await page
-    .getByRole("heading", { name: /Choose and confirm the property before Human Review/i })
+    .getByRole("heading", { name: /See what Human Review delivers, then confirm the exact property/i })
     .waitFor({ state: "visible", timeout: 30000 });
 
   const selectionGateBody = await page.locator("body").innerText();
   for (const requiredText of [
+    "See the deliverable before you pay",
+    "Example reviewer bottom line",
+    "What R999 includes",
+    "What do we know?",
+    "What appears possible?",
+    "What could be a problem?",
+    "What do we not know yet?",
+    "What should be verified next?",
+    "about 3 business days",
     "Erf numbers repeat across South Africa",
     "Find the exact erf or address on the map first",
     "Search",
@@ -54,13 +63,16 @@ try {
     "Find and confirm property on map",
   ]) {
     if (!selectionGateBody.toLowerCase().includes(requiredText.toLowerCase())) {
-      throw new Error(`Human Review property gate is missing required truth: ${requiredText}`);
+      throw new Error(`Human Review property/value gate is missing required truth: ${requiredText}`);
     }
   }
   if (selectionGateBody.toLowerCase().includes("continue to secure payment")) {
     throw new Error("Human Review payment must not be available before a canonical parcel is confirmed.");
   }
-  if (page.getByRole("textbox").count() && selectionGateBody.includes("Property address, Erf or LPI reference")) {
+  if (
+    (await page.getByRole("textbox").count()) &&
+    selectionGateBody.includes("Property address, Erf or LPI reference")
+  ) {
     throw new Error("Human Review must not accept a free-form property reference on the payment brief page.");
   }
 
@@ -81,6 +93,10 @@ try {
     confirmedPropertyReference,
     confirmedParcelId,
     "Human Review is locked to this parcel",
+    "See the deliverable before you pay",
+    "Example reviewer bottom line",
+    "What R999 includes",
+    "about 3 business days",
     "Your review stays in your Easy Erf account",
     "Choose one investigation focus",
     "Property Check",
@@ -152,8 +168,22 @@ try {
   const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
   await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
 
+  await page.goto(`${baseUrl}/how-it-works`, { waitUntil: "networkidle", timeout: 60000 });
+  const howItWorksBody = await page.locator("body").innerText();
+  for (const requiredText of [
+    "Human Review · R999 once-off",
+    "What happens after you choose Human Review",
+    "A human reviews the same property file",
+    "Every Human-Reviewed report answers",
+    "deterministic build envelope and street-side build-line view",
+  ]) {
+    if (!howItWorksBody.toLowerCase().includes(requiredText.toLowerCase())) {
+      throw new Error(`How It Works is missing Human Review truth: ${requiredText}`);
+    }
+  }
+
   console.log(
-    "Commercial browser smoke verified: Human Review cannot start from a typed Erf number; the user must first confirm a canonical parcel through the map/property flow; the confirmed parcel remains locked through the controlled brief; Stripe handoff stays payment-only; checkout is not invoked; and retired open-ended advice copy is absent.",
+    "Commercial browser smoke verified: Human Review shows a tangible report preview before payment; cannot start from a typed Erf number; requires a confirmed canonical parcel; keeps the confirmed parcel locked through the controlled brief; Stripe handoff stays payment-only; How It Works explains the R999 Human Review path; checkout is not invoked; and retired open-ended advice copy is absent.",
   );
 } finally {
   await browser.close();
