@@ -12,11 +12,14 @@ const howItWorks = source("src/routes/how-it-works.tsx");
 const orders = source("src/routes/orders.tsx");
 const fulfillment = source("src/routes/admin.fulfillment.tsx");
 const editor = source("src/components/admin/FounderHumanReviewEditor.tsx");
+const scope = source("src/lib/humanReview/scope.ts");
 
-describe("Human Review customer funnel", () => {
-  it("shows a tangible report preview before asking for payment", () => {
+describe("Done-for-You customer funnel", () => {
+  it("shows the full investigation and tangible final report before asking for payment", () => {
     expect(pricing).toContain("<HumanReviewProof />");
-    expect(proof).toContain("See the deliverable before you pay");
+    expect(proof).toContain("R999 is not just a final review");
+    expect(proof).toContain("standard Easy Erf investigation");
+    expect(proof).toContain("See the final deliverable before you pay");
     expect(proof).toContain("Example reviewer bottom line");
     expect(proof).toContain("What do we know?");
     expect(proof).toContain("What appears possible?");
@@ -27,43 +30,65 @@ describe("Human Review customer funnel", () => {
     expect(proof).toContain("about 3 business days");
   });
 
-  it("explains Human Review on How It Works and keeps Site Potential deterministic", () => {
-    expect(howItWorks).toContain("Human Review · R999 once-off");
-    expect(howItWorks).toContain("Every Human-Reviewed report answers");
-    expect(howItWorks).toContain("A human reviews the same property file");
+  it("makes the selected focus an emphasis while preserving the full standard investigation", () => {
+    expect(pricing).toContain("Every R999 order includes the standard Easy Erf investigation");
+    expect(pricing).toContain("This choice sets the emphasis");
+    expect(pricing).toContain("Investigate this property for me · R999");
+    expect(scope).toContain("DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS");
+    expect(scope).toContain("Confirm the exact parcel and working address");
+    expect(scope).toContain("Review cadastral, SG and boundary evidence");
+    expect(scope).toContain("Review useful market evidence and comparable context where available");
+    expect(scope).toContain("Complete deterministic Site Potential when the evidence supports a useful envelope");
+  });
+
+  it("explains the done-for-you path on How It Works and keeps Site Potential deterministic", () => {
+    expect(howItWorks).toContain("Done-for-You Property Investigation · R999");
+    expect(howItWorks).toContain("Easy Erf does the investigation");
+    expect(howItWorks).toContain("standard Easy Erf investigation");
     expect(howItWorks).toContain("deterministic build envelope and street-side build-line view");
     expect(howItWorks).not.toContain("development concepts");
   });
 
-  it("makes the Stripe return state explain exactly what happens next", () => {
+  it("makes the Stripe return state explain that Easy Erf has taken over the investigation", () => {
     expect(orders).toContain('params.get("payment") === "received"');
-    expect(orders).toContain("Your Human Review is now in the queue.");
+    expect(orders).toContain("Easy Erf has taken over the property investigation.");
     expect(orders).toContain("Payment and parcel attached");
-    expect(orders).toContain("Human reviewer checks the evidence");
+    expect(orders).toContain("Easy Erf works through the investigation");
+    expect(orders).toContain("Human reviewer checks the file");
     expect(orders).toContain("Report appears here");
     expect(orders).toContain("about 3 business days");
     expect(orders).toContain("You do not need to do anything now");
   });
+
+  it("keeps the included property-data-report promise provider-neutral and rights-aware", () => {
+    expect(scope).toContain("one third-party property data report");
+    expect(scope).toContain("Provider may vary");
+    expect(scope).toContain("terms permit redistribution");
+    expect([pricing, proof, howItWorks, orders].join("\n")).not.toMatch(/free lightstone/i);
+  });
 });
 
-describe("Human Review founder fulfillment", () => {
-  it("prioritizes open work and tells the founder the next action", () => {
-    expect(fulfillment).toContain("Human Review work queue");
+describe("Done-for-You founder fulfillment", () => {
+  it("prioritizes open work and tells the founder to complete the standard investigation first", () => {
+    expect(fulfillment).toContain("Property investigation work queue");
     expect(fulfillment).toContain("Needs action");
     expect(fulfillment).toContain("Next founder action");
     expect(fulfillment).toContain("orderPriority");
-    expect(fulfillment).toContain("Open property evidence");
+    expect(fulfillment).toContain("Standard done-for-you investigation checklist");
+    expect(fulfillment).toContain("Open full property investigation");
     expect(fulfillment).toContain('defaultOpen={status === "processing"}');
     expect(fulfillment).toContain("Mark web report ready");
+    expect(fulfillment).toContain("do not attach or redistribute the provider PDF");
   });
 
-  it("teaches the founder how to write the five-part report instead of presenting blank boxes", () => {
+  it("makes the final editor a synthesis after investigation rather than the investigation itself", () => {
+    expect(editor).toContain("Do not start with these text boxes");
+    expect(editor).toContain("First complete or review the standard Easy Erf investigation");
     expect(editor).toContain("How to complete this report");
     expect(editor).toContain("Report completeness");
-    expect(editor).toContain("Read the property file");
-    expect(editor).toContain("Write the bottom line");
-    expect(editor).toContain("Keep unknowns unknown");
-    expect(editor).toContain("Complete all five report sections before saving");
+    expect(editor).toContain("Complete the investigation");
+    expect(editor).toContain("Review the evidence");
+    expect(editor).toContain("Fill all five sections");
     expect(editor).toContain("Example wording:");
   });
 });

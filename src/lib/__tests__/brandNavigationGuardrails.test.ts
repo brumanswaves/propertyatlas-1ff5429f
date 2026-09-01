@@ -23,7 +23,7 @@ describe("Easy Erf brand and navigation guardrails", () => {
     expect(PRIMARY_NAV_LINKS).toEqual([
       { to: "/", label: "Find a Property" },
       { to: "/how-it-works", label: "How It Works" },
-      { to: "/pricing", label: "Human Review" },
+      { to: "/pricing", label: "Done for You" },
     ]);
   });
 

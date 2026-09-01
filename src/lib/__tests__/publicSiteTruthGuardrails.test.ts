@@ -54,19 +54,25 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toMatch(/Easy Erf Report/);
   });
 
-  it("keeps the current commercial decision explicit on Human Review", () => {
+  it("keeps the current commercial decision explicit on the Done-for-You investigation", () => {
     const source = routeSource("pricing.tsx");
+    const scope = projectSource("src", "lib", "humanReview", "scope.ts");
 
-    expect(source).toMatch(/Human Review · R999/);
+    expect(scope).toContain(
+      'DONE_FOR_YOU_INVESTIGATION_NAME = "Done-for-You Property Investigation"',
+    );
+    expect(scope).toContain('"You choose the property. We do the investigation."');
+    expect(source).toContain("{DONE_FOR_YOU_INVESTIGATION_NAME} · R999");
     expect(source).toMatch(/once-off · one property · no subscription/i);
-    expect(source).toMatch(/Choose one investigation focus/i);
-    expect(source).toMatch(/Tell us about your situation — not a new question/i);
+    expect(source).toMatch(/Where should the reviewer put extra attention\?/i);
+    expect(source).toMatch(/Every R999 order includes the standard Easy Erf investigation/i);
+    expect(source).toMatch(/Tell the reviewer what you are considering/i);
     expect(source).toMatch(/One-time R999 payment\. No recurring subscription\./i);
     expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
-  it("keeps the R999 Human Review investigation controlled and fail-closed for live launch", () => {
+  it("keeps the R999 Done-for-You investigation controlled and fail-closed for live launch", () => {
     const source = routeSource("pricing.tsx");
     const scope = projectSource("src", "lib", "humanReview", "scope.ts");
     const checkout = projectSource(
@@ -80,7 +86,9 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toContain("{HUMAN_REVIEW_SCOPE_BOUNDARY}");
     expect(source).toContain("{HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT}");
     expect(source).toContain("HUMAN_REVIEW_NOT_INCLUDED.map");
-    expect(scope).toContain('label: "Property Check"');
+    expect(scope).toContain("DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS");
+    expect(scope).toContain('label: "Overall Property Check"');
+    expect(scope).toContain('shortLabel: "Property Check"');
     expect(scope).toContain('label: "Property Potential"');
     expect(scope).toContain('label: "Check My Intended Use"');
     expect(scope).not.toContain('label: "Before I Buy"');

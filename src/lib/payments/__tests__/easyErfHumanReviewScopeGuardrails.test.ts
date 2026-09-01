@@ -8,6 +8,7 @@ import {
   validateHumanReviewReportContent,
 } from "../../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import {
+  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
   HUMAN_REVIEW_CORE_QUESTIONS,
   HUMAN_REVIEW_NOT_INCLUDED,
   HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT,
@@ -35,8 +36,8 @@ const founderQueue = source("src/routes/admin.fulfillment.tsx");
 const reportOpening = source("src/components/property/dossier/ReportOpening.tsx");
 const humanReviewedReport = source("src/components/humanReview/HumanReviewedReport.tsx");
 
-describe("Easy Erf controlled Human Review scope", () => {
-  it("locks the product to three supported focuses and six supported intended uses", () => {
+describe("Easy Erf controlled paid investigation contract", () => {
+  it("keeps three supported emphasis choices and six supported intended uses", () => {
     expect(HUMAN_REVIEW_FOCUS_VALUES).toEqual([
       "property_check",
       "property_potential",
@@ -57,106 +58,52 @@ describe("Easy Erf controlled Human Review scope", () => {
       "What do we not know yet?",
       "What should be verified next?",
     ]);
+    expect(DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.length).toBeGreaterThanOrEqual(8);
   });
 
   it("accepts context but refuses unsupported or scope-expanding checkout briefs", () => {
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "property_check",
-        context: "Considering buying the erf.",
-        scopeAcknowledged: true,
-      }),
-    ).toMatchObject({ ok: true });
-
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "legal_advice",
-        context: "Tell me my legal rights.",
-        scopeAcknowledged: true,
-      }),
-    ).toMatchObject({ ok: false });
-
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "intended_use",
-        intendedUse: null,
-        scopeAcknowledged: true,
-      }),
-    ).toMatchObject({ ok: false });
-
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "property_check",
-        intendedUse: "second_dwelling",
-        scopeAcknowledged: true,
-      }),
-    ).toMatchObject({ ok: false });
-
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "property_check",
-        context: "x".repeat(501),
-        scopeAcknowledged: true,
-      }),
-    ).toMatchObject({ ok: false });
-
-    expect(
-      validateHumanReviewCheckoutRequest({
-        focus: "property_check",
-        context: "Brief context only.",
-        scopeAcknowledged: false,
-      }),
-    ).toMatchObject({ ok: false });
+    expect(validateHumanReviewCheckoutRequest({ focus: "property_check", context: "Considering buying the erf.", scopeAcknowledged: true })).toMatchObject({ ok: true });
+    expect(validateHumanReviewCheckoutRequest({ focus: "legal_advice", context: "Tell me my legal rights.", scopeAcknowledged: true })).toMatchObject({ ok: false });
+    expect(validateHumanReviewCheckoutRequest({ focus: "intended_use", intendedUse: null, scopeAcknowledged: true })).toMatchObject({ ok: false });
+    expect(validateHumanReviewCheckoutRequest({ focus: "property_check", intendedUse: "second_dwelling", scopeAcknowledged: true })).toMatchObject({ ok: false });
+    expect(validateHumanReviewCheckoutRequest({ focus: "property_check", context: "x".repeat(501), scopeAcknowledged: true })).toMatchObject({ ok: false });
+    expect(validateHumanReviewCheckoutRequest({ focus: "property_check", context: "Brief context only.", scopeAcknowledged: false })).toMatchObject({ ok: false });
   });
 
   it("requires a structured five-part founder report instead of arbitrary prose", () => {
-    expect(
-      validateHumanReviewReportContent({
-        bottomLine: "Evidence supports a working conclusion with municipal confirmation still required.",
-        known: ["The official parcel identity is supported."],
-        potential: ["Available planning evidence suggests a residential use may be relevant."],
-        risks: ["A planning confirmation remains outstanding."],
-        unknowns: ["No approved building plan was reviewed."],
-        nextSteps: ["Confirm the planning position with the municipality or town planner."],
-      }),
-    ).toMatchObject({ ok: true });
-
-    expect(
-      validateHumanReviewReportContent({
-        bottomLine: "",
-        known: [],
-        potential: [],
-        risks: [],
-        unknowns: [],
-        nextSteps: [],
-      }),
-    ).toMatchObject({ ok: false });
+    expect(validateHumanReviewReportContent({
+      bottomLine: "Evidence supports a working conclusion with municipal confirmation still required.",
+      known: ["The official parcel identity is supported."],
+      potential: ["Available planning evidence suggests a residential use may be relevant."],
+      risks: ["A planning confirmation remains outstanding."],
+      unknowns: ["No approved building plan was reviewed."],
+      nextSteps: ["Confirm the planning position with the municipality or town planner."],
+    })).toMatchObject({ ok: true });
+    expect(validateHumanReviewReportContent({ bottomLine: "", known: [], potential: [], risks: [], unknowns: [], nextSteps: [] })).toMatchObject({ ok: false });
   });
 
-  it("keeps customer copy inside due-diligence scope and outside professional advice", () => {
-    expect(pricing).toContain("Tell us about your situation — not a new question");
+  it("keeps customer copy inside due-diligence scope while making the paid product a full standard investigation", () => {
+    expect(pricing).toContain("Tell the reviewer what you are considering.");
+    expect(pricing).toContain("Every R999 order includes the standard Easy Erf investigation");
+    expect(pricing).toContain("This choice sets the emphasis");
     expect(pricing).toContain("{HUMAN_REVIEW_SCOPE_BOUNDARY}");
     expect(pricing).toContain("{HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT}");
     expect(pricing).toContain("scopeAcknowledged");
     expect(pricing).toContain("HUMAN_REVIEW_NOT_INCLUDED.map");
     expect(pricing).toContain("does not invent a construction quotation or per-m² build-cost estimate");
-    expect(HUMAN_REVIEW_SCOPE_BOUNDARY).toContain(
-      "does not provide legal, tax, engineering, architectural, valuation",
-    );
+    expect(HUMAN_REVIEW_SCOPE_BOUNDARY).toContain("does not provide legal, tax, engineering, architectural, valuation");
     expect(HUMAN_REVIEW_SCOPE_BOUNDARY).toContain("buy / do-not-buy recommendation");
     expect(HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT).toContain("not legal, engineering");
     expect(HUMAN_REVIEW_NOT_INCLUDED).toContain("Formal property valuations");
-    expect(HUMAN_REVIEW_NOT_INCLUDED).toContain(
-      "Construction quotations or Easy Erf-generated build-cost estimates",
-    );
+    expect(HUMAN_REVIEW_NOT_INCLUDED).toContain("Construction quotations or Easy Erf-generated build-cost estimates");
     expect(pricing).not.toMatch(/what do you want to know/i);
     expect(pricing).not.toMatch(/ask us anything/i);
   });
 });
 
-describe("Easy Erf controlled Human Review payment handoff", () => {
+describe("Easy Erf controlled R999 payment handoff", () => {
   it("binds the controlled brief to the signed-in Easy Erf user before returning Stripe", () => {
-    expect(pricing).toContain("Sign in before payment so the paid Human Review");
+    expect(pricing).toContain("Sign in before payment so the paid done-for-you investigation");
     expect(pricing).toContain("supabase.auth.getUser()");
     expect(checkout).toContain("validateHumanReviewCheckoutRequest(body)");
     expect(checkout).toContain("bearerToken(request)");
@@ -176,35 +123,25 @@ describe("Easy Erf controlled Human Review payment handoff", () => {
     expect(webhook).toContain('.select("id,user_id,parcel_id,property_reference_hint")');
     expect(webhook).toContain("reviewRequest?.user_id ?? null");
     expect(webhook).toContain('admin.rpc("attach_easy_erf_human_review_request"');
-    expect(webhook.indexOf('admin.rpc(\n    "record_easy_erf_stripe_payment"')).toBeLessThan(
-      webhook.indexOf('admin.rpc("attach_easy_erf_human_review_request"'),
-    );
+    expect(webhook.indexOf('admin.rpc(\n    "record_easy_erf_stripe_payment"')).toBeLessThan(webhook.indexOf('admin.rpc("attach_easy_erf_human_review_request"'));
     expect(webhook).toContain("controlledReviewBrief: Boolean(reviewRequest)");
   });
 
   it("keeps the pre-checkout brief service-role-only at the database boundary", () => {
     expect(migration).toContain("alter table public.human_review_requests enable row level security");
-    expect(migration).toContain(
-      "revoke all on table public.human_review_requests from public, anon, authenticated",
-    );
-    expect(migration).toContain(
-      "grant select, insert, update, delete on table public.human_review_requests to service_role",
-    );
+    expect(migration).toContain("revoke all on table public.human_review_requests from public, anon, authenticated");
+    expect(migration).toContain("grant select, insert, update, delete on table public.human_review_requests to service_role");
     expect(migration).toContain("user_id uuid null references auth.users(id) on delete set null");
     expect(migration).toContain("scope_acknowledged_at timestamptz not null");
     expect(migration).toContain("review_scope_acknowledged_at timestamptz null");
     expect(migration).not.toContain("before_i_buy");
-    expect(migration).toContain(
-      "revoke all on function public.attach_easy_erf_human_review_request(uuid, uuid)\nfrom public, anon, authenticated",
-    );
-    expect(migration).toContain(
-      "grant execute on function public.attach_easy_erf_human_review_request(uuid, uuid)\nto service_role",
-    );
+    expect(migration).toContain("revoke all on function public.attach_easy_erf_human_review_request(uuid, uuid)\nfrom public, anon, authenticated");
+    expect(migration).toContain("grant execute on function public.attach_easy_erf_human_review_request(uuid, uuid)\nto service_role");
   });
 });
 
-describe("Human Review appears where users actually work", () => {
-  it("keeps a takeover CTA inside the workbench and the self-service report", () => {
+describe("Done-for-You appears where users actually work", () => {
+  it("keeps the takeover CTA inside the workbench and the self-service report", () => {
     expect(workbench).toContain("<HumanReviewTakeoverCard");
     expect(workbench).toContain('source={`workbench-${tab}`}');
     expect(dossier).toContain("<HumanReviewTakeoverCard");
@@ -222,10 +159,10 @@ describe("Human Review appears where users actually work", () => {
 });
 
 describe("Human-Reviewed report delivery and founder authority", () => {
-  it("renders the finished review as a web report and keeps PDF secondary", () => {
+  it("renders the finished investigation as a web report and keeps PDF secondary", () => {
     expect(orders).toContain("<HumanReviewedReport");
     expect(orders).toContain('downloading ? "Preparing PDF…" : "Download PDF"');
-    expect(orders).toContain("The PDF is a secondary export, not the primary product.");
+    expect(orders).toContain("The web report is the primary product; PDF is a secondary export.");
     expect(migration).toContain("A structured Human Review web report is required before marking ready");
     expect(migration).toContain("pdf_storage_path = coalesce(v_expected_pdf_path, v_order.pdf_storage_path)");
     expect(founderFulfillment).not.toContain("pdfStoragePath is required for mark_ready");
@@ -233,17 +170,14 @@ describe("Human-Reviewed report delivery and founder authority", () => {
   });
 
   it("requires authenticated founder admin authorization before structured report writes", () => {
-    expect(config).toMatch(
-      /\[functions\.easy-erf-founder-review-content\][\s\S]*verify_jwt = true/,
-    );
+    expect(config).toMatch(/\[functions\.easy-erf-founder-review-content\][\s\S]*verify_jwt = true/);
     expect(founderContent).toContain("userClient.auth.getUser()");
     expect(founderContent).toContain('userClient.rpc("has_role"');
     expect(founderContent).toContain('_role: "admin"');
-    expect(founderContent.indexOf('userClient.rpc("has_role"')).toBeLessThan(
-      founderContent.indexOf("createClient(supabaseUrl, serviceRoleKey"),
-    );
+    expect(founderContent.indexOf('userClient.rpc("has_role"')).toBeLessThan(founderContent.indexOf("createClient(supabaseUrl, serviceRoleKey"));
     expect(founderQueue).toContain("<FounderHumanReviewEditor");
-    expect(founderQueue).toContain("Controlled Human Review focus");
+    expect(founderQueue).toContain("Customer emphasis");
+    expect(founderQueue).toContain("Standard done-for-you investigation checklist");
   });
 
   it("locks the customer product domain instead of presenting Lovable as Easy Erf", () => {
