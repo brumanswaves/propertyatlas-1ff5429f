@@ -45,6 +45,14 @@ function bearerToken(request: Request): string | null {
   return token || null;
 }
 
+function createAdminClient(supabaseUrl: string, serviceRoleKey: string) {
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+
 function savedPropertyFilters(erfNumber: string): Array<Record<string, string | number>> {
   const numeric = Number(erfNumber);
   const filters: Array<Record<string, string | number>> = [
@@ -58,7 +66,7 @@ function savedPropertyFilters(erfNumber: string): Array<Record<string, string | 
 }
 
 async function resolveSavedParcel(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   userId: string,
   propertyReference: string,
 ): Promise<string | null> {
@@ -125,9 +133,7 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const admin = createAdminClient(supabaseUrl, serviceRoleKey);
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   const user = userData.user;
   if (userError || !user) {
