@@ -155,9 +155,14 @@ describe("Easy Erf controlled Human Review scope", () => {
 });
 
 describe("Easy Erf controlled Human Review payment handoff", () => {
-  it("persists an opaque brief before returning the verified TEST Payment Link", () => {
+  it("binds the controlled brief to the signed-in Easy Erf user before returning Stripe", () => {
+    expect(pricing).toContain("Sign in before payment so the paid Human Review");
+    expect(pricing).toContain("supabase.auth.getUser()");
     expect(checkout).toContain("validateHumanReviewCheckoutRequest(body)");
+    expect(checkout).toContain("bearerToken(request)");
+    expect(checkout).toContain("admin.auth.getUser(token)");
     expect(checkout).toContain('.from("human_review_requests")');
+    expect(checkout).toContain("user_id: user.id");
     expect(checkout).toContain("scope_acknowledged_at: new Date().toISOString()");
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
     expect(checkout).toContain("link.livemode");
@@ -166,8 +171,10 @@ describe("Easy Erf controlled Human Review payment handoff", () => {
     expect(checkout).not.toContain("paymentIntents.create");
   });
 
-  it("attaches the controlled brief only after the signed Stripe payment is recorded", () => {
+  it("attaches the controlled brief and authenticated owner only after signed Stripe payment", () => {
     expect(webhook).toContain("resolveHumanReviewRequest");
+    expect(webhook).toContain('.select("id,user_id,parcel_id,property_reference_hint")');
+    expect(webhook).toContain("reviewRequest?.user_id ?? null");
     expect(webhook).toContain('admin.rpc("attach_easy_erf_human_review_request"');
     expect(webhook.indexOf('admin.rpc(\n    "record_easy_erf_stripe_payment"')).toBeLessThan(
       webhook.indexOf('admin.rpc("attach_easy_erf_human_review_request"'),
@@ -183,6 +190,7 @@ describe("Easy Erf controlled Human Review payment handoff", () => {
     expect(migration).toContain(
       "grant select, insert, update, delete on table public.human_review_requests to service_role",
     );
+    expect(migration).toContain("user_id uuid null references auth.users(id) on delete set null");
     expect(migration).toContain("scope_acknowledged_at timestamptz not null");
     expect(migration).toContain("review_scope_acknowledged_at timestamptz null");
     expect(migration).not.toContain("before_i_buy");
