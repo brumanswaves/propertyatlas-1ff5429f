@@ -46,6 +46,9 @@ export const Route = createFileRoute("/pricing")({
   component: PricingPage,
 });
 
+const SIGN_IN_REQUIRED_MESSAGE =
+  "Sign in before checkout so your Human Review and completed report stay attached to your Easy Erf account.";
+
 function PricingPage() {
   const [focus, setFocus] = useState<HumanReviewFocus | null>(null);
   const [intendedUse, setIntendedUse] = useState<HumanReviewIntendedUse | null>(null);
@@ -86,6 +89,12 @@ function PricingPage() {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        setCheckoutError(SIGN_IN_REQUIRED_MESSAGE);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("easy-erf-r999-checkout", {
         body: {
           focus,
@@ -146,6 +155,23 @@ function PricingPage() {
             </div>
           ) : null}
         </header>
+
+        <section className="mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white px-5 py-4 shadow-soft sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-[#0D1B2A]">Your review stays in your Easy Erf account</div>
+              <p className="mt-1 text-xs leading-5 text-[#64748B]">
+                Sign in before payment so the paid Human Review, progress and completed report remain attached to the same account.
+              </p>
+            </div>
+            <Link
+              to="/auth"
+              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-2 text-sm font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/40"
+            >
+              Sign in / create account
+            </Link>
+          </div>
+        </section>
 
         <section className="mt-6 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
           <div className="max-w-3xl">
@@ -321,6 +347,14 @@ function PricingPage() {
                 <p className="mt-2 text-xs text-[#64748B]">Acknowledge the Human Review scope before checkout.</p>
               ) : null}
               {checkoutError ? <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p> : null}
+              {checkoutError === SIGN_IN_REQUIRED_MESSAGE ? (
+                <Link
+                  to="/auth"
+                  className="mt-2 inline-flex text-xs font-semibold text-[#0D1B2A] underline decoration-[#FF6A00]/40 underline-offset-4"
+                >
+                  Sign in, then return to Human Review
+                </Link>
+              ) : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
                 Secure Stripe-hosted checkout. One-time R999 payment. No recurring subscription.
               </p>
