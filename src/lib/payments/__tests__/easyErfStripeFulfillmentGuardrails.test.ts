@@ -112,7 +112,7 @@ describe("Easy Erf signed Stripe webhook", () => {
 
 describe("Easy Erf payment operations surfaces", () => {
   it("resolves only the verified TEST R999 Stripe checkout server-side", () => {
-    expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout")');
+    expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout", {');
     expect(pricing).toContain('data?.mode !== "test"');
     expect(pricing).toContain('url.hostname !== "buy.stripe.com"');
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");

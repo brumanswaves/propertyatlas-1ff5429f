@@ -18,8 +18,13 @@ verify_jwt = true
 [functions.easy-erf-founder-report-upload]
 verify_jwt = true
 
+# Founder-authored Human Review content requires the same authenticated admin
+# boundary before service-role access to report_orders.
+[functions.easy-erf-founder-review-content]
+verify_jwt = true
 
 # Human Review pricing resolves only the existing verified TEST Stripe Payment Link.
-# The function returns a public Stripe-hosted URL and never creates a payment itself.
+# It validates and persists a controlled brief, then returns the public Stripe URL
+# with an opaque client_reference_id. It never creates a payment itself.
 [functions.easy-erf-r999-checkout]
 verify_jwt = false

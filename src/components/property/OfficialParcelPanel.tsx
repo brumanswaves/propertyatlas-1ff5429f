@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
+import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
 import {
   buildOfficialParcelId,
   buildSavedParcelMapHref,
@@ -2891,6 +2892,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             </p>
           </section>
         )}
+
+        <section className="mx-4 mt-4 md:mx-7">
+          <HumanReviewTakeoverCard
+            parcelId={normalizedParcel.id}
+            propertyReference={resolved.displayTitle}
+            source={`workbench-${tab}`}
+            compact={isOverview || isInvestigation}
+          />
+        </section>
 
         {isOverview && (
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">

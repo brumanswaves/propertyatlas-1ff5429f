@@ -52,10 +52,34 @@ function createAdminClient(supabaseUrl: string, serviceRoleKey: string) {
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+type HumanReviewRequestRow = {
+  id: string;
+  parcel_id: string | null;
+  property_reference_hint: string | null;
+};
+
 type AccountMatch = {
   userId: string | null;
   parcelId: string | null;
 };
+
+async function resolveHumanReviewRequest(
+  admin: AdminClient,
+  clientReferenceId: string | null,
+  requestId: string,
+): Promise<HumanReviewRequestRow | null> {
+  if (!looksLikeUuid(clientReferenceId)) return null;
+  const { data, error } = await admin
+    .from("human_review_requests")
+    .select("id,parcel_id,property_reference_hint")
+    .eq("id", clientReferenceId)
+    .maybeSingle();
+  if (error) {
+    log("human_review_request_lookup_failed", requestId, { errorCode: error.code ?? null });
+    return null;
+  }
+  return data && typeof data.id === "string" ? (data as HumanReviewRequestRow) : null;
+}
 
 async function resolveUniqueSavedParcelByErfNumber(
   admin: AdminClient,
@@ -103,6 +127,7 @@ async function resolveUniqueSavedParcelByErfNumber(
 async function resolveAccountMatch(
   admin: AdminClient,
   order: EasyErfStripeOrderInput,
+  reviewRequest: HumanReviewRequestRow | null,
   requestId: string,
 ): Promise<AccountMatch> {
   const { data: profiles, error: profileError } = await admin
@@ -113,18 +138,20 @@ async function resolveAccountMatch(
 
   if (profileError) {
     log("profile_match_failed", requestId, { errorCode: profileError.code ?? null });
-    return { userId: null, parcelId: order.parsedParcelId };
+    return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
   }
 
   if (!profiles || profiles.length !== 1 || typeof profiles[0]?.id !== "string") {
     log("profile_match_unresolved", requestId, { matchCount: profiles?.length ?? 0 });
-    return { userId: null, parcelId: order.parsedParcelId };
+    return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
   }
 
   const userId = profiles[0].id;
-  let parcelId = order.parsedParcelId;
+  let parcelId = reviewRequest?.parcel_id ?? order.parsedParcelId;
 
-  if (looksLikeUuid(order.clientReferenceId)) {
+  // Legacy compatibility: before controlled Human Review briefs existed,
+  // client_reference_id could be a saved_properties row UUID.
+  if (!reviewRequest && looksLikeUuid(order.clientReferenceId)) {
     const { data: savedProperty, error: savedPropertyError } = await admin
       .from("saved_properties")
       .select("parcel_id")
@@ -144,12 +171,7 @@ async function resolveAccountMatch(
   if (!parcelId) {
     const erfNumber = parseStandaloneErfNumber(order.propertyReference);
     if (erfNumber) {
-      parcelId = await resolveUniqueSavedParcelByErfNumber(
-        admin,
-        userId,
-        erfNumber,
-        requestId,
-      );
+      parcelId = await resolveUniqueSavedParcelByErfNumber(admin, userId, erfNumber, requestId);
     }
   }
 
@@ -228,10 +250,7 @@ Deno.serve(async (request: Request) => {
     return json({ received: true, recorded: false, reason: "event_not_used", requestId });
   }
 
-  const validation = validateEasyErfCheckoutSession(
-    event.data.object,
-    acceptedPaymentLinkIds,
-  );
+  const validation = validateEasyErfCheckoutSession(event.data.object, acceptedPaymentLinkIds);
 
   if (!validation.ok) {
     log("checkout_rejected", requestId, {
@@ -256,7 +275,18 @@ Deno.serve(async (request: Request) => {
 
   const order = validation.order;
   const admin = createAdminClient(supabaseUrl, serviceRoleKey);
-  const accountMatch = await resolveAccountMatch(admin, order, requestId);
+  const reviewRequest = await resolveHumanReviewRequest(admin, order.clientReferenceId, requestId);
+  const accountMatch = await resolveAccountMatch(admin, order, reviewRequest, requestId);
+
+  if (
+    reviewRequest?.property_reference_hint &&
+    reviewRequest.property_reference_hint.trim().toLowerCase() !== order.propertyReference.trim().toLowerCase()
+  ) {
+    log("property_reference_hint_differs", requestId, {
+      reviewRequestId: reviewRequest.id,
+      checkoutSessionId: order.checkoutSessionId,
+    });
+  }
 
   const { data: orderId, error: recordError } = await admin.rpc(
     "record_easy_erf_stripe_payment",
@@ -291,6 +321,24 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  if (reviewRequest) {
+    const { error: attachError } = await admin.rpc("attach_easy_erf_human_review_request", {
+      p_report_order_id: orderId,
+      p_review_request_id: reviewRequest.id,
+    });
+    if (attachError) {
+      log("human_review_request_attach_failed", requestId, {
+        orderId,
+        reviewRequestId: reviewRequest.id,
+        errorCode: attachError.code ?? null,
+      });
+      return json(
+        { received: false, recorded: true, error: "Payment recorded but Human Review brief was not attached.", requestId },
+        500,
+      );
+    }
+  }
+
   log("order_recorded", requestId, {
     eventId: event.id,
     eventType: event.type,
@@ -299,6 +347,7 @@ Deno.serve(async (request: Request) => {
     livemode: order.livemode,
     matchedUser: Boolean(accountMatch.userId),
     matchedParcel: Boolean(accountMatch.parcelId),
+    controlledReviewBrief: Boolean(reviewRequest),
   });
 
   return json({ received: true, recorded: true, orderId, requestId });

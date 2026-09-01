@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { ArrowRight, Copy, ExternalLink, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AtlasPin } from "@/components/brand/AtlasPin";
+import { FiveQuestionReportGrid } from "@/components/reports/FiveQuestionReportGrid";
+import { buildSelfServiceFiveQuestionContent } from "@/lib/reports/fiveQuestionReport";
 import {
   riskStatusLabel,
   type EasyErfReportDocument,
@@ -38,6 +40,7 @@ export function ReportOpening({
   const header = doc.header;
   const snapshot = doc.decisionSnapshot;
   const action = doc.nextBestAction;
+  const fiveQuestionContent = buildSelfServiceFiveQuestionContent(doc);
 
   return (
     <div className="report-opening space-y-4">
@@ -182,6 +185,25 @@ export function ReportOpening({
             Evidence readiness: {snapshot.readinessPercent}% — {snapshot.confidence} confidence. {snapshot.confidenceReason}
           </p>
         </article>
+      </section>
+
+      {/* C2. THE SAME FIVE-QUESTION REPORT LENS USED BY HUMAN REVIEW */}
+      <section
+        id="report-five-questions"
+        className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4 scroll-mt-24 sm:p-5"
+      >
+        <div className="mb-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+            Easy Erf report summary
+          </div>
+          <h3 className="mt-1 text-xl font-semibold tracking-tight text-[#0D1B2A]">
+            Five questions this investigation can answer from the evidence recorded so far
+          </h3>
+          <p className="mt-1 text-xs leading-5 text-[#64748B]">
+            This self-service summary is selected from the existing report evidence. It does not add a human reviewer conclusion or invent missing facts.
+          </p>
+        </div>
+        <FiveQuestionReportGrid content={fiveQuestionContent} />
       </section>
 
       {/* D. PROPERTY AT A GLANCE */}

@@ -12,9 +12,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { FounderHumanReviewEditor } from "@/components/admin/FounderHumanReviewEditor";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  humanReviewFocusLabel,
+  humanReviewIntendedUseLabel,
+} from "@/lib/humanReview/scope";
 
 export const Route = createFileRoute("/admin/fulfillment")({
   head: () => ({
@@ -41,6 +46,11 @@ type ReportOrder = {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  review_focus: string | null;
+  intended_use: string | null;
+  review_context: string | null;
+  review_content: unknown;
+  review_content_updated_at: string | null;
 };
 
 type FulfillmentAction = "start_review" | "reopen_review" | "mark_ready" | "mark_failed";
@@ -62,14 +72,14 @@ function FounderFulfillmentQueue() {
     const { data, error } = await supabase
       .from("report_orders")
       .select(
-        "id,user_id,parcel_id,report_type,status,status_enum,provider,payload,price_cents,pdf_storage_path,failure_reason,created_at,updated_at,completed_at",
+        "id,user_id,parcel_id,report_type,status,status_enum,provider,payload,price_cents,pdf_storage_path,failure_reason,created_at,updated_at,completed_at,review_focus,intended_use,review_context,review_content,review_content_updated_at",
       )
       .eq("provider", "stripe")
       .order("created_at", { ascending: false })
       .limit(100);
 
     if (error) {
-      toast.error("Could not load the human review queue.");
+      toast.error("Could not load the Human Review queue.");
       setLoading(false);
       return;
     }
@@ -113,7 +123,7 @@ function FounderFulfillmentQueue() {
 
     toast.success(
       action === "start_review"
-        ? "Human review started"
+        ? "Human Review started"
         : action === "reopen_review"
           ? "Report reopened for review"
           : action === "mark_ready"
@@ -172,7 +182,7 @@ function FounderFulfillmentQueue() {
         return;
       }
 
-      toast.success("Report uploaded securely and marked ready");
+      toast.success("PDF export uploaded securely and report marked ready");
       await refresh();
     } finally {
       setBusyOrderId(null);
@@ -180,22 +190,24 @@ function FounderFulfillmentQueue() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-28 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <ReceiptText className="h-3 w-3 text-accent" /> Human review operations
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Human Review operations
             </span>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Paid investigation queue</h1>
-            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Move verified Stripe orders through the human-review lifecycle. Every transition is enforced server-side and audited.
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
+              Paid investigation queue
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
+              Review the controlled customer brief, write the five-part web report, then move the order through the audited fulfillment lifecycle. PDF is an optional export layer, not the report itself.
             </p>
           </div>
           <Link
             to="/admin"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
           </Link>
@@ -203,17 +215,17 @@ function FounderFulfillmentQueue() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <Metric label="Waiting for review" value={orders.filter((order) => orderStatus(order) === "paid").length} />
-          <Metric label="In human review" value={orders.filter((order) => orderStatus(order) === "processing").length} />
+          <Metric label="In Human Review" value={orders.filter((order) => orderStatus(order) === "processing").length} />
           <Metric label="Ready" value={orders.filter((order) => orderStatus(order) === "ready").length} />
         </div>
 
         <section className="mt-8 space-y-4">
           {loading ? (
-            <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Loading paid orders…</div>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid orders…</div>
           ) : orders.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-6 text-center">
-              <div className="text-sm font-semibold">No Stripe investigation orders</div>
-              <p className="mt-1 text-xs text-muted-foreground">The queue will populate only from verified payment records.</p>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-center">
+              <div className="text-sm font-semibold text-[#0D1B2A]">No Stripe investigation orders</div>
+              <p className="mt-1 text-xs text-[#64748B]">The queue populates only from verified payment records.</p>
             </div>
           ) : (
             orders.map((order) => (
@@ -223,6 +235,7 @@ function FounderFulfillmentQueue() {
                 busy={busyOrderId === order.id}
                 onTransition={transition}
                 onUploadReport={uploadReport}
+                onRefresh={refresh}
               />
             ))
           )}
@@ -238,6 +251,7 @@ function OrderCard({
   busy,
   onTransition,
   onUploadReport,
+  onRefresh,
 }: {
   order: ReportOrder;
   busy: boolean;
@@ -247,40 +261,66 @@ function OrderCard({
     values?: { pdfStoragePath?: string; failureReason?: string },
   ) => Promise<void>;
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
+  onRefresh: () => Promise<void>;
 }) {
   const status = orderStatus(order);
   const propertyReference = payloadText(order.payload, "propertyReference");
   const customerEmail = payloadText(order.payload, "customerEmail");
-  const investigationRequest = payloadText(order.payload, "investigationRequest");
+  const legacyRequest = payloadText(order.payload, "investigationRequest");
 
   return (
-    <article id={`order-${order.id}`} className="scroll-mt-28 rounded-3xl border border-border bg-card p-5 shadow-soft">
+    <article id={`order-${order.id}`} className="scroll-mt-28 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
-            <span className="font-mono text-[10px] text-muted-foreground">{order.id.slice(0, 8)}</span>
+            <span className="font-mono text-[10px] text-[#64748B]">{order.id.slice(0, 8)}</span>
           </div>
-          <h2 className="mt-3 text-base font-semibold text-foreground">
+          <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">
             {propertyReference ?? order.parcel_id ?? "Property reference pending"}
           </h2>
-          <p className="mt-1 text-xs text-muted-foreground">{customerEmail ?? "Customer email unavailable"}</p>
+          <p className="mt-1 text-xs text-[#64748B]">{customerEmail ?? "Customer email unavailable"}</p>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums text-foreground">R{(order.price_cents / 100).toFixed(0)}</div>
-          <div className="mt-1 text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString("en-ZA")}</div>
+          <div className="text-sm font-semibold tabular-nums text-[#0D1B2A]">R{(order.price_cents / 100).toFixed(0)}</div>
+          <div className="mt-1 text-[10px] text-[#64748B]">{new Date(order.created_at).toLocaleString("en-ZA")}</div>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <Info label="Canonical parcel" value={order.parcel_id ?? "Not matched"} mono />
-        <Info label="Customer request" value={investigationRequest ?? "No specific request entered"} />
+        <Info
+          label="Controlled Human Review focus"
+          value={order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy order — no controlled focus recorded"}
+        />
+        {humanReviewIntendedUseLabel(order.intended_use) ? (
+          <Info label="Intended use" value={humanReviewIntendedUseLabel(order.intended_use)!} />
+        ) : null}
+        <Info
+          label="Situation context"
+          value={order.review_context ?? legacyRequest ?? "No situation context supplied"}
+        />
       </div>
+
+      {!order.review_focus ? (
+        <div className="mt-4 rounded-2xl border border-[#F59E0B]/25 bg-[#fffbeb] p-3 text-xs leading-5 text-[#92400E]">
+          This is a legacy paid order. Any old free-text checkout note is context only and must not be treated as authority to provide legal, engineering, valuation, build-cost or investment advice.
+        </div>
+      ) : null}
 
       {order.failure_reason ? (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {order.failure_reason}
         </div>
+      ) : null}
+
+      {status !== "failed" ? (
+        <FounderHumanReviewEditor
+          orderId={order.id}
+          initialContent={order.review_content}
+          disabled={busy}
+          onSaved={onRefresh}
+        />
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -289,22 +329,27 @@ function OrderCard({
             type="button"
             disabled={busy}
             onClick={() => void onTransition(order, "start_review")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
-            <PlayCircle className="h-3.5 w-3.5" /> Start human review
+            <PlayCircle className="h-3.5 w-3.5" /> Start Human Review
           </button>
         ) : null}
         {status === "processing" ? (
-          <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} />
+          <ReadyAction
+            order={order}
+            busy={busy}
+            onUploadReport={onUploadReport}
+            onTransition={onTransition}
+          />
         ) : null}
         {status === "ready" ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => void onTransition(order, "reopen_review")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent/5 px-4 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#FF6A00]/35 bg-[#FFF7ED] px-4 py-2 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
           >
-            <RotateCcw className="h-3.5 w-3.5 text-accent" /> Reopen / replace report
+            <RotateCcw className="h-3.5 w-3.5 text-[#FF6A00]" /> Reopen / replace report
           </button>
         ) : null}
         {status === "paid" || status === "processing" ? (
@@ -319,16 +364,22 @@ function ReadyAction({
   order,
   busy,
   onUploadReport,
+  onTransition,
 }: {
   order: ReportOrder;
   busy: boolean;
-  onUploadReport: OrderCardProps["onUploadReport"];
+  onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
+  onTransition: (
+    order: ReportOrder,
+    action: FulfillmentAction,
+    values?: { pdfStoragePath?: string; failureReason?: string },
+  ) => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
 
   if (!order.user_id) {
     return (
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-foreground">
+      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">
         Match this paid order to a customer account before report delivery.
       </div>
     );
@@ -336,20 +387,29 @@ function ReadyAction({
 
   return (
     <div className="flex min-w-[300px] flex-1 flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={busy || !order.review_content}
+        onClick={() => void onTransition(order, "mark_ready")}
+        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+        title={order.review_content ? "Deliver the structured Human-Reviewed web report" : "Save the structured web report first"}
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" /> Mark web report ready
+      </button>
       <input
         type="file"
         accept="application/pdf,.pdf"
         disabled={busy}
         onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        className="min-w-0 flex-1 rounded-full border border-border bg-background px-3 py-2 text-xs file:mr-2 file:border-0 file:bg-transparent file:text-xs file:font-semibold"
+        className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs file:mr-2 file:border-0 file:bg-transparent file:text-xs file:font-semibold"
       />
       <button
         type="button"
         disabled={busy || !file}
         onClick={() => file && void onUploadReport(order, file)}
-        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
       >
-        <Upload className="h-3.5 w-3.5" /> Upload PDF & mark ready
+        <Upload className="h-3.5 w-3.5" /> Upload optional PDF & mark ready
       </button>
     </div>
   );
@@ -362,7 +422,11 @@ function FailedAction({
 }: {
   order: ReportOrder;
   busy: boolean;
-  onTransition: OrderCardProps["onTransition"];
+  onTransition: (
+    order: ReportOrder,
+    action: FulfillmentAction,
+    values?: { failureReason?: string },
+  ) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   return (
@@ -371,7 +435,7 @@ function FailedAction({
         value={reason}
         onChange={(event) => setReason(event.target.value)}
         placeholder="Failure reason"
-        className="min-w-0 flex-1 rounded-full border border-border bg-background px-3 py-2 text-xs outline-none focus:border-accent"
+        className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]"
       />
       <button
         type="button"
@@ -385,31 +449,46 @@ function FailedAction({
   );
 }
 
-type OrderCardProps = Parameters<typeof OrderCard>[0];
-
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</div>
+    <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 shadow-soft">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums text-[#0D1B2A]">{value}</div>
     </div>
   );
 }
 
 function Info({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-2xl bg-muted/60 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-xs text-foreground ${mono ? "font-mono" : ""}`}>{value}</div>
+    <div className="rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{label}</div>
+      <div className={mono ? "mt-1 break-all font-mono text-[11px] text-[#0D1B2A]" : "mt-1 text-xs leading-5 text-[#0D1B2A]"}>
+        {value}
+      </div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
+  const Icon =
+    status === "ready"
+      ? CheckCircle2
+      : status === "failed"
+        ? AlertCircle
+        : status === "processing"
+          ? CircleDashed
+          : ReceiptText;
+  const label =
+    status === "paid"
+      ? "Payment received"
+      : status === "processing"
+        ? "Human Review underway"
+        : status === "ready"
+          ? "Report ready"
+          : status;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground">
-      <Icon className="h-3 w-3 text-accent" /> {status === "paid" ? "Payment received" : status === "processing" ? "Human review" : status}
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+      <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
     </span>
   );
 }
