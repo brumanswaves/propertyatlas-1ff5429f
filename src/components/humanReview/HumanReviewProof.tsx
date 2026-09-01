@@ -1,4 +1,9 @@
 import { CheckCircle2, Clock3, FileCheck2, ShieldCheck } from "lucide-react";
+import {
+  DONE_FOR_YOU_INVESTIGATION_TAGLINE,
+  DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
+  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
+} from "@/lib/humanReview/scope";
 
 const SAMPLE_REPORT = [
   {
@@ -31,16 +36,40 @@ const SAMPLE_REPORT = [
 export function HumanReviewProof() {
   return (
     <section className="mt-6 overflow-hidden rounded-[2rem] border border-[#FF6A00]/25 bg-white shadow-soft">
+      <div className="border-b border-[#0D1B2A]/10 bg-gradient-to-r from-[#FFF7ED] via-white to-[#F7FBFF] p-5 sm:p-7">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+          {DONE_FOR_YOU_INVESTIGATION_TAGLINE}
+        </div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A] sm:text-3xl">
+          R999 is not just a final review. Easy Erf works through the property investigation for you.
+        </h2>
+        <p className="mt-2 max-w-4xl text-sm leading-6 text-[#64748B]">
+          We reuse anything you already completed, then work through the standard Easy Erf investigation as far as the available evidence and inputs allow. Your selected focus tells the reviewer what matters most; it does not shrink the package to one narrow question.
+        </p>
+        <div className="mt-5 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+          {DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.map((item) => (
+            <div key={item} className="flex items-start gap-2 rounded-2xl border border-[#0D1B2A]/8 bg-white/85 p-3 text-xs leading-5 text-[#0D1B2A]/75">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#FF6A00]" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-white p-4 text-xs leading-5 text-[#64748B]">
+          <strong className="text-[#0D1B2A]">Property data report included during Early Access:</strong>{" "}
+          {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY}
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <div className="p-5 sm:p-7">
           <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
-            <FileCheck2 className="h-4 w-4" /> See the deliverable before you pay
+            <FileCheck2 className="h-4 w-4" /> See the final deliverable before you pay
           </div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
-            This is the shape of the Human-Reviewed report you receive.
+            The investigation ends in a Human-Reviewed Easy Erf Report.
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#64748B]">
-            The wording below is an illustrative example, not a conclusion about your property. The point is to show the level of clarity and structure Easy Erf is selling: evidence-backed findings, visible uncertainty and concrete next checks.
+            The wording below is an illustrative example, not a conclusion about your property. It shows the clarity and structure of the finished report after the property investigation has been worked through.
           </p>
 
           <div className="mt-5 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4">
@@ -74,10 +103,11 @@ export function HumanReviewProof() {
           <div className="mt-4 space-y-3 text-sm leading-6 text-white/82">
             {[
               "One confirmed South African property",
-              "One controlled Human Review focus",
-              "Human review of the same Easy Erf property file and evidence",
-              "A structured web report saved to your Easy Erf account",
-              "Clear risks, unknowns and next verification steps",
+              "The standard Easy Erf investigation completed or reviewed on your behalf",
+              "One selected emphasis: Overall Property Check, Property Potential, or Check My Intended Use",
+              "One third-party property data report reviewed during Early Access where available",
+              "A structured Human-Reviewed web report saved to your Easy Erf account",
+              "Clear facts, risks, unknowns and next verification steps",
               "No recurring subscription",
             ].map((item) => (
               <div key={item} className="flex items-start gap-2">
@@ -92,12 +122,12 @@ export function HumanReviewProof() {
               <Clock3 className="h-4 w-4 text-[#FF8A33]" /> What happens after payment
             </div>
             <p className="mt-2 text-xs leading-5 text-white/65">
-              Payment is attached to your account and confirmed parcel. The Human Review enters the founder queue, the reviewer works through the evidence and selected focus, and the completed report appears in My Reports. The current early-access target is about 3 business days.
+              Payment is attached to your account and confirmed parcel. Easy Erf takes over the standard investigation, the human reviewer checks the evidence and selected emphasis, and the completed report appears in My Reports. The current early-access target is about 3 business days.
             </p>
           </div>
 
           <p className="mt-4 text-[11px] leading-5 text-white/52">
-            Human Review is property research and due-diligence support. It is not legal, engineering, architectural, valuation, tax or municipal approval advice.
+            The done-for-you investigation is property research and due-diligence support. It is not legal, engineering, architectural, valuation, tax or municipal approval advice. Additional paid professional or certified documents are not included unless explicitly stated.
           </p>
         </div>
       </div>
