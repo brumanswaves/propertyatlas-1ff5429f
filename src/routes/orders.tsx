@@ -18,6 +18,7 @@ import { HumanReviewedReport } from "@/components/humanReview/HumanReviewedRepor
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
+  DONE_FOR_YOU_INVESTIGATION_NAME,
   humanReviewFocusLabel,
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
@@ -26,7 +27,7 @@ import { parseHumanReviewReportContent } from "@/lib/humanReview/reportContent";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "My Human-Reviewed Investigations | Easy Erf" },
+      { title: "My Done-for-You Investigations | Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -81,7 +82,7 @@ function CustomerOrdersPage() {
         .eq("provider", "stripe")
         .order("created_at", { ascending: false });
       if (!active) return;
-      if (error) toast.error("Could not load your Human Review investigations.");
+      if (error) toast.error("Could not load your done-for-you property investigations.");
       setOrders((data ?? []) as ReportOrder[]);
       setLoadingOrders(false);
     })();
@@ -91,7 +92,6 @@ function CustomerOrdersPage() {
   }, [user]);
 
   const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
-
   if (!user) return null;
 
   return (
@@ -101,13 +101,13 @@ function CustomerOrdersPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-              <ShieldCheck className="h-3 w-3 text-[#FF8A33]" /> Human Review
+              <ShieldCheck className="h-3 w-3 text-[#FF8A33]" /> Done for You
             </span>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-              My Human-Reviewed Investigations
+              My Done-for-You Investigations
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748B]">
-              Follow the review while it is underway, then read the finished Human-Reviewed Easy Erf Report here. The PDF is a secondary export, not the primary product.
+              Track the investigation while Easy Erf works through it, then read the finished Human-Reviewed Easy Erf Report here. The web report is the primary product; PDF is a secondary export.
             </p>
           </div>
           <Link
@@ -118,26 +118,21 @@ function CustomerOrdersPage() {
           </Link>
         </div>
 
-        {paymentReceived ? (
-          <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} />
-        ) : null}
+        {paymentReceived ? <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} /> : null}
 
         <section className="mt-8 space-y-6">
           {loadingOrders ? (
             <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
-              Loading Human Review status…
+              Loading investigation status…
             </div>
           ) : orders.length === 0 ? (
             <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-8 text-center shadow-soft">
-              <div className="text-sm font-semibold text-[#0D1B2A]">No paid Human Review investigations yet</div>
+              <div className="text-sm font-semibold text-[#0D1B2A]">No paid done-for-you investigations yet</div>
               <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-[#64748B]">
-                You can start Human Review from any confirmed Easy Erf property investigation without losing the work already gathered.
+                Confirm a property first, then hand the same Easy Erf property file to us without losing any work already gathered.
               </p>
-              <Link
-                to="/pricing"
-                className="mt-5 inline-flex rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white"
-              >
-                See Human Review · R999
+              <Link to="/pricing" className="mt-5 inline-flex rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white">
+                See Done-for-You · R999
               </Link>
             </div>
           ) : (
@@ -162,23 +157,20 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
             <CheckCircle2 className="h-3.5 w-3.5" /> Payment received
           </div>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight">
-            Your Human Review is now in the queue.
+            Easy Erf has taken over the property investigation.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-            Your R999 payment, confirmed parcel and Human Review brief are attached to this Easy Erf account. You do not need to submit the property again or answer the questions again.
+            Your R999 payment, confirmed parcel and emphasis are attached to this account. You do not need to repeat the property search, rebuild the investigation or answer the same questions again.
           </p>
-
           <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
             {loading ? (
               <div className="text-sm text-white/65">Confirming the new order in your account…</div>
             ) : order ? (
               <>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
-                  Review we received
-                </div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">Investigation we received</div>
                 <div className="mt-1 text-sm font-semibold text-white">{propertyReference}</div>
                 <div className="mt-1 text-xs text-white/58">
-                  {focus ?? "Human Review"} · R{(order.price_cents / 100).toFixed(0)} paid
+                  {focus ?? DONE_FOR_YOU_INVESTIGATION_NAME} · R{(order.price_cents / 100).toFixed(0)} paid
                 </div>
               </>
             ) : (
@@ -195,14 +187,13 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
           </div>
           <div className="mt-4 space-y-3">
             {[
-              ["1", "Payment and parcel attached", "Done. The paid review is tied to this account and exact property."],
-              ["2", "Human reviewer checks the evidence", "The reviewer works through the existing property file and your selected review focus."],
-              ["3", "Report appears here", "The finished Human-Reviewed report will replace the progress card below when it is ready."],
+              ["1", "Payment and parcel attached", "Done. This paid investigation is tied to your account and exact property."],
+              ["2", "Easy Erf works through the investigation", "We reuse completed work, work through the standard property investigation and review a third-party property data report during Early Access where available."],
+              ["3", "Human reviewer checks the file", "The reviewer checks the evidence, contradictions, uncertainty and the emphasis you selected."],
+              ["4", "Report appears here", "The finished Human-Reviewed Easy Erf Report replaces the progress card below when it is ready."],
             ].map(([number, title, body]) => (
               <div key={number} className="flex gap-3 rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
-                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-xs font-bold text-white">
-                  {number}
-                </div>
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-xs font-bold text-white">{number}</div>
                 <div>
                   <div className="text-xs font-semibold text-[#0D1B2A]">{title}</div>
                   <p className="mt-1 text-xs leading-5 text-[#64748B]">{body}</p>
@@ -210,13 +201,12 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
               </div>
             ))}
           </div>
-
           <div className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
               <Clock3 className="h-4 w-4 text-[#FF6A00]" /> Current early-access target: about 3 business days
             </div>
             <p className="mt-2 text-xs leading-5 text-[#64748B]">
-              You do not need to do anything now. If the reviewer needs missing evidence from you, the investigation status will make that clear rather than silently guessing.
+              You do not need to do anything now. If a critical piece of evidence cannot be obtained or verified, the final report will make that explicit rather than silently guessing.
             </p>
           </div>
         </div>
@@ -237,18 +227,15 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
       toast.error("The completed PDF export is not attached yet.");
       return;
     }
-
     setDownloading(true);
     const { data, error } = await supabase.storage
       .from("erf-files")
       .createSignedUrl(order.pdf_storage_path, 300, { download: true });
     setDownloading(false);
-
     if (error || !data?.signedUrl) {
       toast.error(error?.message ?? "Could not create a secure report download.");
       return;
     }
-
     window.location.assign(data.signedUrl);
   }
 
@@ -279,7 +266,7 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
 
   const steps = [
     { key: "paid", label: "Payment received", done: ["paid", "processing", "ready"].includes(status) },
-    { key: "processing", label: "Human review", done: ["processing", "ready"].includes(status) },
+    { key: "processing", label: "Investigation underway", done: ["processing", "ready"].includes(status) },
     { key: "ready", label: "Report ready", done: status === "ready" },
   ];
 
@@ -290,12 +277,8 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
           <StatusBadge status={status} />
           <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">{propertyReference}</h2>
           <p className="mt-1 text-xs text-[#64748B]">
-            {order.review_focus
-              ? humanReviewFocusLabel(order.review_focus)
-              : "Legacy Human Review order"}
-            {humanReviewIntendedUseLabel(order.intended_use)
-              ? ` · ${humanReviewIntendedUseLabel(order.intended_use)}`
-              : ""}
+            {order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy paid investigation"}
+            {humanReviewIntendedUseLabel(order.intended_use) ? ` · ${humanReviewIntendedUseLabel(order.intended_use)}` : ""}
           </p>
         </div>
         <div className="text-right">
@@ -310,7 +293,7 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
         </div>
       ) : legacyRequest ? (
         <div className="mt-4 rounded-2xl border border-[#F59E0B]/25 bg-[#fffbeb] p-4 text-xs leading-5 text-[#0D1B2A]/72">
-          <strong className="text-[#0D1B2A]">Legacy checkout note:</strong> {legacyRequest}. This note does not expand the current Human Review scope.
+          <strong className="text-[#0D1B2A]">Legacy checkout note:</strong> {legacyRequest}. This note does not expand the current investigation into professional advice.
         </div>
       ) : null}
 
@@ -327,25 +310,23 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
 
       {status === "paid" ? (
         <div className="mt-4 rounded-2xl border border-[#FF6A00]/20 bg-[#FFF7ED] p-4 text-xs leading-5 text-[#0D1B2A]">
-          <div className="font-semibold">Payment is confirmed and this review is waiting for a human reviewer.</div>
+          <div className="font-semibold">Payment is confirmed and this property is waiting for Easy Erf to start the investigation.</div>
           <p className="mt-1 text-[#64748B]">Current early-access target: about 3 business days. You do not need to resubmit anything.</p>
         </div>
       ) : null}
 
       {status === "processing" ? (
         <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-50 p-4 text-xs leading-5 text-[#0D1B2A]">
-          <div className="font-semibold">A human reviewer is working through this property now.</div>
-          <p className="mt-1 text-[#64748B]">The finished structured report will appear here when the review is marked ready.</p>
+          <div className="font-semibold">Easy Erf is working through the property investigation now.</div>
+          <p className="mt-1 text-[#64748B]">The standard investigation is being completed/reviewed and a human reviewer will check the final evidence-backed report before delivery.</p>
         </div>
       ) : null}
 
       {status === "ready" ? (
         <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-xs text-[#0D1B2A]">
-          <div className="font-semibold">Your Human Review is complete.</div>
+          <div className="font-semibold">Your done-for-you property investigation is complete.</div>
           {content ? null : (
-            <p className="mt-1 leading-5 text-[#0D1B2A]/65">
-              This is a legacy completion with a PDF but no structured web report yet. New Human Reviews use the web-first report format.
-            </p>
+            <p className="mt-1 leading-5 text-[#0D1B2A]/65">This is a legacy completion with a PDF but no structured web report yet.</p>
           )}
           {downloadButton ? <div className="mt-3">{downloadButton}</div> : null}
         </div>
@@ -365,22 +346,8 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const Icon =
-    status === "ready"
-      ? CheckCircle2
-      : status === "failed"
-        ? AlertCircle
-        : status === "processing"
-          ? CircleDashed
-          : ReceiptText;
-  const label =
-    status === "paid"
-      ? "Payment received"
-      : status === "processing"
-        ? "Human review underway"
-        : status === "ready"
-          ? "Report ready"
-          : status;
+  const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
+  const label = status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report ready" : status;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
       <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
