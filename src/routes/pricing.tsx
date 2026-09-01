@@ -97,7 +97,13 @@ function PricingPage() {
           scopeAcknowledged,
         },
       });
-      if (error || !data?.ok || data?.mode !== "test" || typeof data?.url !== "string") {
+      const checkoutMode = data?.mode;
+      if (
+        error ||
+        !data?.ok ||
+        (checkoutMode !== "test" && checkoutMode !== "live") ||
+        typeof data?.url !== "string"
+      ) {
         throw new Error(data?.error ?? error?.message ?? "Secure checkout is unavailable.");
       }
       const url = new URL(data.url);
@@ -316,7 +322,7 @@ function PricingPage() {
               ) : null}
               {checkoutError ? <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p> : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-                Secure Stripe-hosted checkout. Current launch configuration remains TEST mode until the separate live-launch approval.
+                Secure Stripe-hosted checkout. One-time R999 payment. No recurring subscription.
               </p>
             </div>
           </div>
