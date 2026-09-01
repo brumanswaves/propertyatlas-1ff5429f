@@ -2,7 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 import Stripe from "npm:stripe@22.6.0";
 
 import { validateHumanReviewCheckoutRequest } from "../_shared/easyErfHumanReviewContract.ts";
-import { parseAcceptedPaymentLinkIds } from "../_shared/easyErfStripePaymentContract.ts";
+import {
+  parseAcceptedPaymentLinkIds,
+  parseCanonicalParcelId,
+  parseStandaloneErfNumber,
+} from "../_shared/easyErfStripePaymentContract.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -41,6 +45,49 @@ function bearerToken(request: Request): string | null {
   return token || null;
 }
 
+function savedPropertyFilters(erfNumber: string): Array<Record<string, string | number>> {
+  const numeric = Number(erfNumber);
+  const filters: Array<Record<string, string | number>> = [
+    { erfNumber },
+    { erf: erfNumber },
+  ];
+  if (Number.isSafeInteger(numeric)) {
+    filters.push({ erfNumber: numeric }, { erf: numeric });
+  }
+  return filters;
+}
+
+async function resolveSavedParcel(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  propertyReference: string,
+): Promise<string | null> {
+  const canonical = parseCanonicalParcelId(propertyReference);
+  if (canonical) return canonical;
+
+  const erfNumber = parseStandaloneErfNumber(propertyReference);
+  if (!erfNumber) return null;
+
+  const parcelIds = new Set<string>();
+  for (const userDataFilter of savedPropertyFilters(erfNumber)) {
+    const { data, error } = await admin
+      .from("saved_properties")
+      .select("parcel_id")
+      .eq("user_id", userId)
+      .contains("user_data", userDataFilter)
+      .limit(2);
+
+    if (error) return null;
+    for (const row of data ?? []) {
+      if (typeof row?.parcel_id === "string" && row.parcel_id.trim()) {
+        parcelIds.add(row.parcel_id);
+      }
+    }
+  }
+
+  return parcelIds.size === 1 ? [...parcelIds][0] : null;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
@@ -51,6 +98,7 @@ Deno.serve(async (request: Request) => {
   } catch {
     return json({ ok: false, error: "Choose a Human Review focus before checkout." }, 400);
   }
+
   const validation = validateHumanReviewCheckoutRequest(body);
   if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
 
@@ -86,6 +134,16 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
   }
 
+  const brief = validation.request;
+  const propertyReference = brief.propertyReferenceHint?.trim() ?? "";
+  if (!propertyReference) {
+    return json({ ok: false, error: "Add the property before starting Human Review checkout." }, 400);
+  }
+
+  const resolvedParcelId =
+    brief.parcelId ??
+    (await resolveSavedParcel(admin, user.id, propertyReference));
+
   const expectedLivemode = checkoutMode === "live";
   const stripe = new Stripe(stripeSecretKey);
   let verifiedUrl: URL | null = null;
@@ -94,6 +152,7 @@ Deno.serve(async (request: Request) => {
     try {
       const link = await stripe.paymentLinks.retrieve(paymentLinkId);
       if (!link.active || link.livemode !== expectedLivemode || typeof link.url !== "string") continue;
+
       const lineItems = await stripe.paymentLinks.listLineItems(paymentLinkId, { limit: 10 });
       if (lineItems.data.length !== 1) continue;
       const price = lineItems.data[0].price;
@@ -104,6 +163,7 @@ Deno.serve(async (request: Request) => {
         price.currency.toLowerCase() !== "zar" ||
         price.type !== "one_time"
       ) continue;
+
       const candidate = new URL(link.url);
       if (candidate.protocol !== "https:" || candidate.hostname !== "buy.stripe.com") continue;
       verifiedUrl = candidate;
@@ -123,13 +183,12 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const brief = validation.request;
   const { data: requestRow, error: requestError } = await admin
     .from("human_review_requests")
     .insert({
       user_id: user.id,
-      parcel_id: brief.parcelId,
-      property_reference_hint: brief.propertyReferenceHint,
+      parcel_id: resolvedParcelId,
+      property_reference_hint: propertyReference,
       focus: brief.focus,
       intended_use: brief.intendedUse,
       context: brief.context,
@@ -144,9 +203,8 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "The Human Review brief could not be prepared." }, 500);
   }
 
-  // Stripe Payment Links carry this opaque request UUID into the completed
-  // Checkout Session. The webhook uses it to attach the controlled brief and
-  // its authenticated Easy Erf owner to the paid report order.
+  // Stripe carries only this opaque request UUID. The property and review
+  // questions stay inside Easy Erf; Stripe is used only to collect payment.
   verifiedUrl.searchParams.set("client_reference_id", requestRow.id);
 
   return json({
