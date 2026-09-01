@@ -456,7 +456,7 @@ function PricingPage() {
                 </Link>
               ) : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-                Stripe handles payment only. Your property and Human Review brief stay in Easy Erf. After payment you return to My Reports.
+                One-time R999 payment. No recurring subscription. Stripe handles payment only. Your property and Human Review brief stay in Easy Erf. After payment you return to My Reports.
               </p>
             </div>
           </div>
