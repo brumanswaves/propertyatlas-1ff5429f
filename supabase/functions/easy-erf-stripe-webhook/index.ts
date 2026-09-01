@@ -3,6 +3,7 @@ import Stripe from "npm:stripe@22.6.0";
 
 import {
   parseAcceptedPaymentLinkIds,
+  parseCanonicalParcelId,
   parseStandaloneErfNumber,
   validateEasyErfCheckoutSession,
   type EasyErfStripeOrderInput,
@@ -64,21 +65,36 @@ type AccountMatch = {
   parcelId: string | null;
 };
 
+function savedPropertyFilters(erfNumber: string): Array<Record<string, string | number>> {
+  const numeric = Number(erfNumber);
+  const filters: Array<Record<string, string | number>> = [
+    { erfNumber },
+    { erf: erfNumber },
+  ];
+  if (Number.isSafeInteger(numeric)) {
+    filters.push({ erfNumber: numeric }, { erf: numeric });
+  }
+  return filters;
+}
+
 async function resolveHumanReviewRequest(
   admin: AdminClient,
   clientReferenceId: string | null,
   requestId: string,
 ): Promise<HumanReviewRequestRow | null> {
   if (!looksLikeUuid(clientReferenceId)) return null;
+
   const { data, error } = await admin
     .from("human_review_requests")
     .select("id,user_id,parcel_id,property_reference_hint")
     .eq("id", clientReferenceId)
     .maybeSingle();
+
   if (error) {
     log("human_review_request_lookup_failed", requestId, { errorCode: error.code ?? null });
     return null;
   }
+
   return data && typeof data.id === "string" ? (data as HumanReviewRequestRow) : null;
 }
 
@@ -90,7 +106,7 @@ async function resolveUniqueSavedParcelByErfNumber(
 ): Promise<string | null> {
   const parcelIds = new Set<string>();
 
-  for (const userDataFilter of [{ erfNumber }, { erf: erfNumber }]) {
+  for (const userDataFilter of savedPropertyFilters(erfNumber)) {
     const { data: savedProperties, error: savedPropertiesError } = await admin
       .from("saved_properties")
       .select("parcel_id")
@@ -118,10 +134,11 @@ async function resolveUniqueSavedParcelByErfNumber(
     return parcelId;
   }
 
-  log(parcelIds.size > 1 ? "saved_property_erf_ambiguous" : "saved_property_erf_unresolved", requestId, {
-    erfNumber,
-    matchCount: parcelIds.size,
-  });
+  log(
+    parcelIds.size > 1 ? "saved_property_erf_ambiguous" : "saved_property_erf_unresolved",
+    requestId,
+    { erfNumber, matchCount: parcelIds.size },
+  );
   return null;
 }
 
@@ -129,6 +146,7 @@ async function resolveAccountMatch(
   admin: AdminClient,
   order: EasyErfStripeOrderInput,
   reviewRequest: HumanReviewRequestRow | null,
+  propertyReference: string,
   requestId: string,
 ): Promise<AccountMatch> {
   let userId = reviewRequest?.user_id ?? null;
@@ -144,18 +162,24 @@ async function resolveAccountMatch(
 
     if (profileError) {
       log("profile_match_failed", requestId, { errorCode: profileError.code ?? null });
-      return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
+      return {
+        userId: null,
+        parcelId: reviewRequest?.parcel_id ?? parseCanonicalParcelId(propertyReference),
+      };
     }
 
     if (!profiles || profiles.length !== 1 || typeof profiles[0]?.id !== "string") {
       log("profile_match_unresolved", requestId, { matchCount: profiles?.length ?? 0 });
-      return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
+      return {
+        userId: null,
+        parcelId: reviewRequest?.parcel_id ?? parseCanonicalParcelId(propertyReference),
+      };
     }
 
     userId = profiles[0].id;
   }
 
-  let parcelId = reviewRequest?.parcel_id ?? order.parsedParcelId;
+  let parcelId = reviewRequest?.parcel_id ?? parseCanonicalParcelId(propertyReference);
 
   // Legacy compatibility: before controlled Human Review briefs existed,
   // client_reference_id could be a saved_properties row UUID.
@@ -177,7 +201,7 @@ async function resolveAccountMatch(
   }
 
   if (!parcelId) {
-    const erfNumber = parseStandaloneErfNumber(order.propertyReference);
+    const erfNumber = parseStandaloneErfNumber(propertyReference);
     if (erfNumber) {
       parcelId = await resolveUniqueSavedParcelByErfNumber(admin, userId, erfNumber, requestId);
     }
@@ -267,7 +291,13 @@ Deno.serve(async (request: Request) => {
       code: validation.code,
     });
     return json(
-      { received: false, recorded: false, code: validation.code, error: validation.error, requestId },
+      {
+        received: false,
+        recorded: false,
+        code: validation.code,
+        error: validation.error,
+        requestId,
+      },
       400,
     );
   }
@@ -284,11 +314,41 @@ Deno.serve(async (request: Request) => {
   const order = validation.order;
   const admin = createAdminClient(supabaseUrl, serviceRoleKey);
   const reviewRequest = await resolveHumanReviewRequest(admin, order.clientReferenceId, requestId);
-  const accountMatch = await resolveAccountMatch(admin, order, reviewRequest, requestId);
+  const propertyReference =
+    reviewRequest?.property_reference_hint?.trim() ||
+    order.propertyReference?.trim() ||
+    null;
+
+  if (!propertyReference) {
+    log("property_reference_missing", requestId, {
+      eventId: event.id,
+      clientReferenceId: order.clientReferenceId,
+    });
+    return json(
+      {
+        received: false,
+        recorded: false,
+        code: "PROPERTY_REFERENCE_MISSING",
+        error: "Paid Easy Erf checkout did not resolve a property reference.",
+        requestId,
+      },
+      400,
+    );
+  }
+
+  const accountMatch = await resolveAccountMatch(
+    admin,
+    order,
+    reviewRequest,
+    propertyReference,
+    requestId,
+  );
 
   if (
     reviewRequest?.property_reference_hint &&
-    reviewRequest.property_reference_hint.trim().toLowerCase() !== order.propertyReference.trim().toLowerCase()
+    order.propertyReference &&
+    reviewRequest.property_reference_hint.trim().toLowerCase() !==
+      order.propertyReference.trim().toLowerCase()
   ) {
     log("property_reference_hint_differs", requestId, {
       reviewRequestId: reviewRequest.id,
@@ -307,7 +367,7 @@ Deno.serve(async (request: Request) => {
       p_client_reference_id: order.clientReferenceId,
       p_customer_email: order.customerEmail,
       p_customer_name: order.customerName,
-      p_property_reference: order.propertyReference,
+      p_property_reference: propertyReference,
       p_investigation_request: order.investigationRequest,
       p_currency: order.currency,
       p_amount_total: order.amountTotal,
@@ -334,6 +394,7 @@ Deno.serve(async (request: Request) => {
       p_report_order_id: orderId,
       p_review_request_id: reviewRequest.id,
     });
+
     if (attachError) {
       log("human_review_request_attach_failed", requestId, {
         orderId,
@@ -341,7 +402,12 @@ Deno.serve(async (request: Request) => {
         errorCode: attachError.code ?? null,
       });
       return json(
-        { received: false, recorded: true, error: "Payment recorded but Human Review brief was not attached.", requestId },
+        {
+          received: false,
+          recorded: true,
+          error: "Payment recorded but Human Review brief was not attached.",
+          requestId,
+        },
         500,
       );
     }

@@ -43,13 +43,7 @@ function checkoutSession(overrides: Record<string, unknown> = {}) {
       email: "Customer@Example.com",
       name: "Easy Erf Customer",
     },
-    custom_fields: [
-      textField(EASY_ERF_PROPERTY_REFERENCE_FIELD_KEY, LPI),
-      textField(
-        EASY_ERF_INVESTIGATION_REQUEST_FIELD_KEY,
-        "Can I build a second dwelling?",
-      ),
-    ],
+    custom_fields: [],
     ...overrides,
   };
 }
@@ -83,7 +77,7 @@ describe("Easy Erf Stripe payment-link allowlist", () => {
 });
 
 describe("Easy Erf R999 Checkout Session validation", () => {
-  it("extracts the exact paid one-property investigation contract", () => {
+  it("accepts the payment-only Stripe contract without property questions", () => {
     const result = validateEasyErfCheckoutSession(checkoutSession(), acceptedLinks);
 
     expect(result).toEqual({
@@ -97,11 +91,36 @@ describe("Easy Erf R999 Checkout Session validation", () => {
         clientReferenceId: "a222bb34-93f7-4722-9fc0-8dfb6fe8a3e8",
         customerEmail: "customer@example.com",
         customerName: "Easy Erf Customer",
-        propertyReference: LPI,
-        investigationRequest: "Can I build a second dwelling?",
+        propertyReference: null,
+        investigationRequest: null,
         amountTotal: EASY_ERF_R999_AMOUNT_TOTAL,
         currency: "zar",
         livemode: false,
+        parsedParcelId: null,
+      },
+    });
+  });
+
+  it("keeps legacy Stripe custom fields readable during the transition", () => {
+    const result = validateEasyErfCheckoutSession(
+      checkoutSession({
+        custom_fields: [
+          textField(EASY_ERF_PROPERTY_REFERENCE_FIELD_KEY, LPI),
+          textField(
+            EASY_ERF_INVESTIGATION_REQUEST_FIELD_KEY,
+            "Can I build a second dwelling?",
+          ),
+        ],
+      }),
+      acceptedLinks,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      disposition: "record",
+      order: {
+        propertyReference: LPI,
+        investigationRequest: "Can I build a second dwelling?",
         parsedParcelId: PARCEL_ID,
       },
     });
@@ -169,31 +188,6 @@ describe("Easy Erf R999 Checkout Session validation", () => {
         acceptedLinks,
       ),
     ).toMatchObject({ ok: false, code: "CUSTOMER_EMAIL_MISSING" });
-  });
-
-  it("requires a property reference before a paid order can be recorded", () => {
-    expect(
-      validateEasyErfCheckoutSession(checkoutSession({ custom_fields: [] }), acceptedLinks),
-    ).toMatchObject({ ok: false, code: "PROPERTY_REFERENCE_MISSING" });
-  });
-
-  it("keeps the investigation question optional", () => {
-    const result = validateEasyErfCheckoutSession(
-      checkoutSession({
-        custom_fields: [textField(EASY_ERF_PROPERTY_REFERENCE_FIELD_KEY, "24 Padrone Crescent")],
-      }),
-      acceptedLinks,
-    );
-
-    expect(result).toMatchObject({
-      ok: true,
-      disposition: "record",
-      order: {
-        propertyReference: "24 Padrone Crescent",
-        investigationRequest: null,
-        parsedParcelId: null,
-      },
-    });
   });
 
   it("rejects malformed Checkout Session objects", () => {

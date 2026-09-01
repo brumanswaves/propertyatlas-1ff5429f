@@ -47,6 +47,10 @@ try {
   const body = await page.locator("body").innerText();
   for (const requiredText of [
     "Human Review · R999",
+    "Your review stays in your Easy Erf account",
+    "Confirm the property",
+    "Property address, Erf or LPI reference",
+    "Stripe will only handle payment",
     "Choose one investigation focus",
     "Property Check",
     "Property Potential",
@@ -60,7 +64,8 @@ try {
     "Clear scope boundary",
     "does not provide legal, tax, engineering, architectural, valuation",
     "I understand Easy Erf provides property research and due-diligence support",
-    "no subscription",
+    "One-time R999 payment. No recurring subscription.",
+    "Stripe handles payment only",
   ]) {
     if (!body.toLowerCase().includes(requiredText.toLowerCase())) {
       throw new Error(`Human Review page is missing required scoped-product truth: ${requiredText}`);
@@ -80,15 +85,24 @@ try {
     }
   }
 
-  const checkoutButton = page.getByRole("button", { name: /^Continue to secure checkout$/i });
+  const checkoutButton = page.getByRole("button", { name: /^Continue to secure payment$/i });
   await checkoutButton.waitFor({ state: "visible", timeout: 30000 });
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review checkout must remain disabled until a controlled focus is selected.");
+    throw new Error("Human Review payment must remain disabled until property and controlled scope are complete.");
   }
 
   await page.getByRole("button", { name: /^Property Check/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Human Review checkout must remain disabled until the required scope acknowledgement is checked.");
+    throw new Error("Human Review payment must remain disabled until the property and scope acknowledgement are supplied.");
+  }
+
+  const propertyReference = page.getByRole("textbox", {
+    name: /^Property address, Erf or LPI reference$/i,
+  });
+  await propertyReference.waitFor({ state: "visible", timeout: 30000 });
+  await propertyReference.fill("1570");
+  if (!(await checkoutButton.isDisabled())) {
+    throw new Error("Human Review payment must remain disabled until the required scope acknowledgement is checked.");
   }
 
   const scopeAcknowledgement = page.getByRole("checkbox", {
@@ -97,26 +111,26 @@ try {
   await scopeAcknowledgement.waitFor({ state: "visible", timeout: 30000 });
   await scopeAcknowledgement.check();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("Property Check plus scope acknowledgement should satisfy the controlled checkout gate.");
+    throw new Error("Property, Property Check and scope acknowledgement should satisfy the controlled payment gate.");
   }
 
   await page.getByRole("button", { name: /^Check My Intended Use/i }).click();
   if (!(await checkoutButton.isDisabled())) {
-    throw new Error("Intended-use checkout must remain disabled until one supported intended use is selected.");
+    throw new Error("Intended-use payment must remain disabled until one supported intended use is selected.");
   }
 
   const secondDwelling = page.getByRole("button", { name: /^Add a second dwelling$/i });
   await secondDwelling.waitFor({ state: "visible", timeout: 30000 });
   await secondDwelling.click();
   if (await checkoutButton.isDisabled()) {
-    throw new Error("A supported intended use plus acknowledgement should satisfy the controlled scope gate.");
+    throw new Error("Property, supported intended use and acknowledgement should satisfy the controlled payment gate.");
   }
 
   const humanReviewNav = page.getByRole("link", { name: /^Human Review$/i }).first();
   await humanReviewNav.waitFor({ state: "visible", timeout: 30000 });
 
   console.log(
-    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review exposes exactly the approved three goals; checkout requires the scope acknowledgement; intended use requires a supported sub-choice; checkout is not invoked; and open-ended or retired advice copy is absent.",
+    "Commercial browser smoke verified: map offers self-service or Human Review; self-service opens Address/Erf choice; Human Review keeps the property and exactly the approved three goals inside Easy Erf; payment requires property, scope acknowledgement and supported intended-use choices; Stripe handoff is payment-only; checkout is not invoked; and open-ended or retired advice copy is absent.",
   );
 } finally {
   await browser.close();

@@ -11,6 +11,9 @@ const migration = source(
 );
 const webhook = source("supabase/functions/easy-erf-stripe-webhook/index.ts");
 const checkout = source("supabase/functions/easy-erf-r999-checkout/index.ts");
+const paymentContract = source(
+  "supabase/functions/_shared/easyErfStripePaymentContract.ts",
+);
 const config = source("supabase/config.toml");
 const admin = source("src/routes/admin.tsx");
 const pricing = source("src/routes/pricing.tsx");
@@ -88,9 +91,19 @@ describe("Easy Erf signed Stripe webhook", () => {
     expect(webhook).not.toMatch(/user[_-]?id.*request\.json/i);
   });
 
-  it("resolves a standalone erf only through one unique saved-property parcel", () => {
-    expect(webhook).toContain("parseStandaloneErfNumber(order.propertyReference)");
+  it("takes the property from the Easy Erf brief before legacy Stripe fields", () => {
+    expect(webhook).toContain("reviewRequest?.property_reference_hint?.trim()");
+    expect(webhook).toContain("order.propertyReference?.trim()");
+    expect(webhook).toContain("p_property_reference: propertyReference");
+    expect(paymentContract).toContain("propertyReference: string | null");
+    expect(paymentContract).toContain("New Human");
+    expect(paymentContract).toContain("Review checkouts keep property and review questions inside Easy Erf.");
+  });
+
+  it("resolves a standalone erf using both numeric and legacy string saved-property values", () => {
+    expect(webhook).toContain("parseStandaloneErfNumber(propertyReference)");
     expect(webhook).toContain('.contains("user_data", userDataFilter)');
+    expect(webhook).toContain("filters.push({ erfNumber: numeric }, { erf: numeric })");
     expect(webhook).toContain("parcelIds.size === 1");
     expect(webhook).toContain("saved_property_erf_ambiguous");
     expect(webhook).toContain("saved_property_erf_unresolved");
@@ -113,15 +126,26 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("resolves only a verified R999 Stripe link in the explicitly approved launch mode", () => {
+  it("keeps the property and review brief in Easy Erf before payment handoff", () => {
+    expect(pricing).toContain("Property address, Erf or LPI reference");
+    expect(pricing).toContain("propertyReferenceHint: propertyReference");
+    expect(pricing).toContain("Stripe handles payment only.");
+    expect(pricing).toContain("signedInEmail");
+    expect(pricing).toContain("authReady && !signedInEmail");
     expect(pricing).toContain('supabase.auth.getUser()');
     expect(pricing).toContain("SIGN_IN_REQUIRED_MESSAGE");
+    expect(checkout).toContain('propertyReference = brief.propertyReferenceHint?.trim() ?? ""');
+    expect(checkout).toContain("resolveSavedParcel(admin, user.id, propertyReference)");
+    expect(checkout).toContain("user_id: user.id");
+    expect(checkout).toContain("property_reference_hint: propertyReference");
+  });
+
+  it("resolves only a verified R999 Stripe link in the explicitly approved launch mode", () => {
     expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout", {');
     expect(pricing).toContain('(checkoutMode !== "test" && checkoutMode !== "live")');
     expect(pricing).toContain('url.hostname !== "buy.stripe.com"');
     expect(checkout).toContain("bearerToken(request)");
     expect(checkout).toContain("admin.auth.getUser(token)");
-    expect(checkout).toContain("user_id: user.id");
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
     expect(checkout).toContain("EASY_ERF_R999_CHECKOUT_MODE");
