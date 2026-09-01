@@ -61,11 +61,12 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).toMatch(/once-off · one property · no subscription/i);
     expect(source).toMatch(/Choose one investigation focus/i);
     expect(source).toMatch(/Tell us about your situation — not a new question/i);
+    expect(source).toMatch(/One-time R999 payment\. No recurring subscription\./i);
     expect(source).not.toMatch(/R\s*[\d,.]+\s*(?:\/|per)\s*month/i);
     expect(source).not.toMatch(/subscriptions automatically renew|auto-renew/i);
   });
 
-  it("keeps the R999 Human Review investigation controlled and TEST-only", () => {
+  it("keeps the R999 Human Review investigation controlled and fail-closed for live launch", () => {
     const source = routeSource("pricing.tsx");
     const scope = projectSource("src", "lib", "humanReview", "scope.ts");
     const checkout = projectSource(
@@ -84,7 +85,7 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(scope).toContain('label: "Check My Intended Use"');
     expect(scope).not.toContain('label: "Before I Buy"');
     expect(source).toContain('supabase.functions.invoke("easy-erf-r999-checkout"');
-    expect(source).toContain('data?.mode !== "test"');
+    expect(source).toContain('(checkoutMode !== "test" && checkoutMode !== "live")');
     expect(source).toContain('url.hostname !== "buy.stripe.com"');
     expect(scope).toMatch(/does not provide legal, tax, engineering, architectural, valuation/i);
     expect(source).toMatch(/does not invent a construction quotation or per-m² build-cost estimate/i);
@@ -92,10 +93,13 @@ describe("public Easy Erf product truth guardrails", () => {
     expect(source).not.toMatch(/ask us anything|what do you want to know/i);
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
-    expect(checkout).toContain("link.livemode");
+    expect(checkout).toContain("EASY_ERF_R999_CHECKOUT_MODE");
+    expect(checkout).toContain("EASY_ERF_R999_LIVE_ENABLED");
+    expect(checkout).toContain("link.livemode !== expectedLivemode");
     expect(checkout).toContain("price.unit_amount !== 99900");
     expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
     expect(checkout).toContain('verifiedUrl.searchParams.set("client_reference_id", requestRow.id)');
+    expect(checkout).toContain("mode: checkoutMode");
     expect(checkout).not.toMatch(/sk_(test|live)_|whsec_|plink_[A-Za-z0-9]{8,}/);
     expect(scope).not.toMatch(/guaranteed|approved building plan included/i);
   });
