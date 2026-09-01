@@ -2,11 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 import Stripe from "npm:stripe@22.6.0";
 
 import { validateHumanReviewCheckoutRequest } from "../_shared/easyErfHumanReviewContract.ts";
-import {
-  parseAcceptedPaymentLinkIds,
-  parseCanonicalParcelId,
-  parseStandaloneErfNumber,
-} from "../_shared/easyErfStripePaymentContract.ts";
+import { parseAcceptedPaymentLinkIds } from "../_shared/easyErfStripePaymentContract.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -45,55 +41,8 @@ function bearerToken(request: Request): string | null {
   return token || null;
 }
 
-function createAdminClient(supabaseUrl: string, serviceRoleKey: string) {
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-type AdminClient = ReturnType<typeof createAdminClient>;
-
-function savedPropertyFilters(erfNumber: string): Array<Record<string, string | number>> {
-  const numeric = Number(erfNumber);
-  const filters: Array<Record<string, string | number>> = [
-    { erfNumber },
-    { erf: erfNumber },
-  ];
-  if (Number.isSafeInteger(numeric)) {
-    filters.push({ erfNumber: numeric }, { erf: numeric });
-  }
-  return filters;
-}
-
-async function resolveSavedParcel(
-  admin: AdminClient,
-  userId: string,
-  propertyReference: string,
-): Promise<string | null> {
-  const canonical = parseCanonicalParcelId(propertyReference);
-  if (canonical) return canonical;
-
-  const erfNumber = parseStandaloneErfNumber(propertyReference);
-  if (!erfNumber) return null;
-
-  const parcelIds = new Set<string>();
-  for (const userDataFilter of savedPropertyFilters(erfNumber)) {
-    const { data, error } = await admin
-      .from("saved_properties")
-      .select("parcel_id")
-      .eq("user_id", userId)
-      .contains("user_data", userDataFilter)
-      .limit(2);
-
-    if (error) return null;
-    for (const row of data ?? []) {
-      if (typeof row?.parcel_id === "string" && row.parcel_id.trim()) {
-        parcelIds.add(row.parcel_id);
-      }
-    }
-  }
-
-  return parcelIds.size === 1 ? [...parcelIds][0] : null;
+function isConfirmedParcelId(value: string | null | undefined): value is string {
+  return Boolean(value && /^(csg|kouga|official):/i.test(value.trim()));
 }
 
 Deno.serve(async (request: Request) => {
@@ -109,6 +58,19 @@ Deno.serve(async (request: Request) => {
 
   const validation = validateHumanReviewCheckoutRequest(body);
   if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
+
+  const brief = validation.request;
+  if (!isConfirmedParcelId(brief.parcelId)) {
+    return json(
+      {
+        ok: false,
+        error: "Confirm the exact property on the Easy Erf map before starting Human Review checkout.",
+      },
+      400,
+    );
+  }
+  const confirmedParcelId = brief.parcelId.trim();
+  const propertyReference = brief.propertyReferenceHint?.trim() || confirmedParcelId;
 
   const checkoutMode = resolveCheckoutMode();
   if (!checkoutMode) {
@@ -133,22 +95,14 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
   }
 
-  const admin = createAdminClient(supabaseUrl, serviceRoleKey);
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   const user = userData.user;
   if (userError || !user) {
     return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
   }
-
-  const brief = validation.request;
-  const propertyReference = brief.propertyReferenceHint?.trim() ?? "";
-  if (!propertyReference) {
-    return json({ ok: false, error: "Add the property before starting Human Review checkout." }, 400);
-  }
-
-  const resolvedParcelId =
-    brief.parcelId ??
-    (await resolveSavedParcel(admin, user.id, propertyReference));
 
   const expectedLivemode = checkoutMode === "live";
   const stripe = new Stripe(stripeSecretKey);
@@ -193,7 +147,7 @@ Deno.serve(async (request: Request) => {
     .from("human_review_requests")
     .insert({
       user_id: user.id,
-      parcel_id: resolvedParcelId,
+      parcel_id: confirmedParcelId,
       property_reference_hint: propertyReference,
       focus: brief.focus,
       intended_use: brief.intendedUse,
@@ -209,8 +163,8 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "The Human Review brief could not be prepared." }, 500);
   }
 
-  // Stripe carries only this opaque request UUID. The property and review
-  // questions stay inside Easy Erf; Stripe is used only to collect payment.
+  // Stripe carries only this opaque request UUID. The confirmed parcel,
+  // property context and Human Review questions stay inside Easy Erf.
   verifiedUrl.searchParams.set("client_reference_id", requestRow.id);
 
   return json({

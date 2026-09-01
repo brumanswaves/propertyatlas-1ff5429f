@@ -17,6 +17,7 @@ const paymentContract = source(
 const config = source("supabase/config.toml");
 const admin = source("src/routes/admin.tsx");
 const pricing = source("src/routes/pricing.tsx");
+const takeover = source("src/components/humanReview/HumanReviewTakeoverCard.tsx");
 
 describe("Easy Erf Stripe payment authority", () => {
   it("removes the legacy customer-write policies and keeps customer access read-only", () => {
@@ -100,7 +101,7 @@ describe("Easy Erf signed Stripe webhook", () => {
     expect(paymentContract).toContain("Review checkouts keep property and review questions inside Easy Erf.");
   });
 
-  it("resolves a standalone erf using both numeric and legacy string saved-property values", () => {
+  it("resolves a standalone erf using both numeric and legacy string saved-property values for legacy sessions", () => {
     expect(webhook).toContain("parseStandaloneErfNumber(propertyReference)");
     expect(webhook).toContain('.contains("user_data", userDataFilter)');
     expect(webhook).toContain("filters.push({ erfNumber: numeric }, { erf: numeric })");
@@ -126,18 +127,38 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("keeps the property and review brief in Easy Erf before payment handoff", () => {
-    expect(pricing).toContain("Property address, Erf or LPI reference");
+  it("requires map/property confirmation before the controlled payment handoff", () => {
+    expect(pricing).toContain("Erf numbers repeat across South Africa");
+    expect(pricing).toContain("Find and confirm property on map");
+    expect(pricing).toContain("Human Review is locked to this parcel");
+    expect(pricing).toContain("hasConfirmedParcel");
+    expect(pricing).toContain("parcelId,");
     expect(pricing).toContain("propertyReferenceHint: propertyReference");
     expect(pricing).toContain("Stripe handles payment only.");
+    expect(pricing).not.toContain("Property address, Erf or LPI reference");
+    expect(takeover).toContain("Is this the property you want Easy Erf to review?");
+    expect(takeover).toContain("Yes, use this property · R999");
+    expect(takeover).toContain("Erf numbers can repeat in different places");
+  });
+
+  it("rejects checkout unless the brief carries a confirmed canonical parcel", () => {
+    expect(checkout).toContain("isConfirmedParcelId(brief.parcelId)");
+    expect(checkout).toContain("Confirm the exact property on the Easy Erf map before starting Human Review checkout.");
+    expect(checkout).toContain("confirmedParcelId = brief.parcelId.trim()");
+    expect(checkout).toContain("parcel_id: confirmedParcelId");
+    expect(checkout).toContain("property_reference_hint: propertyReference");
+    expect(checkout).not.toContain("resolveSavedParcel");
+    expect(checkout).not.toContain("savedPropertyFilters");
+  });
+
+  it("binds the confirmed property and review brief to the signed-in Easy Erf user", () => {
+    expect(pricing).toContain("Sign in before payment so the paid Human Review");
     expect(pricing).toContain("signedInEmail");
     expect(pricing).toContain("authReady && !signedInEmail");
     expect(pricing).toContain('supabase.auth.getUser()');
     expect(pricing).toContain("SIGN_IN_REQUIRED_MESSAGE");
-    expect(checkout).toContain('propertyReference = brief.propertyReferenceHint?.trim() ?? ""');
-    expect(checkout).toContain("resolveSavedParcel(admin, user.id, propertyReference)");
     expect(checkout).toContain("user_id: user.id");
-    expect(checkout).toContain("property_reference_hint: propertyReference");
+    expect(checkout).toContain("scope_acknowledged_at: new Date().toISOString()");
   });
 
   it("resolves only a verified R999 Stripe link in the explicitly approved launch mode", () => {
