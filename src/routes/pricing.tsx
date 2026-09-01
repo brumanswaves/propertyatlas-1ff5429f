@@ -55,25 +55,52 @@ function PricingPage() {
   const [context, setContext] = useState("");
   const [scopeAcknowledged, setScopeAcknowledged] = useState(false);
   const [parcelId, setParcelId] = useState<string | null>(null);
-  const [propertyReferenceHint, setPropertyReferenceHint] = useState<string | null>(null);
+  const [propertyReferenceHint, setPropertyReferenceHint] = useState("");
   const [sourceSurface, setSourceSurface] = useState<string | null>(null);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    setParcelId(params.get("parcelId"));
-    setPropertyReferenceHint(params.get("propertyReference"));
+    const carriedParcelId = params.get("parcelId");
+    const carriedReference = params.get("propertyReference");
+    setParcelId(carriedParcelId);
+    setPropertyReferenceHint(carriedReference ?? carriedParcelId ?? "");
     setSourceSurface(params.get("source"));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
+      setSignedInEmail(data.user?.email ?? null);
+      setAuthReady(true);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setSignedInEmail(session?.user?.email ?? null);
+      setAuthReady(true);
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (focus !== "intended_use") setIntendedUse(null);
   }, [focus]);
 
+  const propertyReference = propertyReferenceHint.trim();
   const canCheckout = Boolean(
-    focus &&
+    propertyReference &&
+      focus &&
       (focus !== "intended_use" || intendedUse) &&
       context.length <= HUMAN_REVIEW_CONTEXT_MAX_LENGTH &&
       scopeAcknowledged,
@@ -88,12 +115,16 @@ function PricingPage() {
     if (!focus || !canCheckout) return;
     setCheckoutLoading(true);
     setCheckoutError(null);
+
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
+        setSignedInEmail(null);
         setCheckoutError(SIGN_IN_REQUIRED_MESSAGE);
         return;
       }
+
+      setSignedInEmail(userData.user.email ?? null);
 
       const { data, error } = await supabase.functions.invoke("easy-erf-r999-checkout", {
         body: {
@@ -101,7 +132,7 @@ function PricingPage() {
           intendedUse,
           context: context.trim() || null,
           parcelId,
-          propertyReferenceHint,
+          propertyReferenceHint: propertyReference,
           sourceSurface,
           scopeAcknowledged,
         },
@@ -115,10 +146,12 @@ function PricingPage() {
       ) {
         throw new Error(data?.error ?? error?.message ?? "Secure checkout is unavailable.");
       }
+
       const url = new URL(data.url);
       if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") {
         throw new Error("Secure checkout returned an invalid destination.");
       }
+
       window.location.assign(url.toString());
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : "Secure checkout is unavailable.");
@@ -141,13 +174,13 @@ function PricingPage() {
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/68 sm:text-base">
             Choose one controlled investigation focus. Easy Erf reviews the property evidence already gathered, records what is supported, separates uncertainty from fact, and tells you what still needs verification.
           </p>
-          {propertyReferenceHint || parcelId ? (
+          {parcelId ? (
             <div className="mt-6 max-w-2xl rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
                 Property carried from your investigation
               </div>
               <div className="mt-1 text-sm font-semibold text-white">
-                {propertyReferenceHint ?? parcelId}
+                {propertyReference || parcelId}
               </div>
               <p className="mt-1 text-xs leading-5 text-white/55">
                 Your existing Easy Erf property work remains attached. Human Review is a takeover of the investigation, not a restart.
@@ -159,24 +192,60 @@ function PricingPage() {
         <section className="mt-6 rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white px-5 py-4 shadow-soft sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-[#0D1B2A]">Your review stays in your Easy Erf account</div>
+              <div className="text-sm font-semibold text-[#0D1B2A]">
+                Your review stays in your Easy Erf account
+              </div>
               <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                Sign in before payment so the paid Human Review, progress and completed report remain attached to the same account.
+                {signedInEmail
+                  ? `Signed in as ${signedInEmail}. Your paid review and completed report will stay in this account.`
+                  : "Sign in before payment so the paid Human Review, progress and completed report remain attached to the same account."}
               </p>
             </div>
-            <Link
-              to="/auth"
-              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-2 text-sm font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/40"
-            >
-              Sign in / create account
-            </Link>
+            {authReady && !signedInEmail ? (
+              <Link
+                to="/auth"
+                className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-2 text-sm font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/40"
+              >
+                Sign in / create account
+              </Link>
+            ) : null}
           </div>
         </section>
 
-        <section className="mt-6 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
+        <section className="mt-5 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
           <div className="max-w-3xl">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Step 1 · Choose one investigation focus
+              Step 1 · Confirm the property
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
+              Which property should Easy Erf review?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
+              Enter the property address, Erf number or LPI here. This stays with your Easy Erf brief. Stripe will only handle payment.
+            </p>
+          </div>
+          <label className="mt-5 block max-w-3xl">
+            <span className="text-xs font-semibold text-[#0D1B2A]">
+              Property address, Erf or LPI reference
+            </span>
+            <input
+              value={propertyReferenceHint}
+              onChange={(event) => setPropertyReferenceHint(event.target.value)}
+              readOnly={Boolean(parcelId)}
+              maxLength={255}
+              placeholder="Example: 24 Padrone Crescent, Erf 1570, or C03400140000157000000"
+              className="mt-2 w-full rounded-[1.1rem] border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm text-[#0D1B2A] outline-none focus:border-[#FF6A00] read-only:cursor-default read-only:bg-[#EEF5FA]"
+            />
+          </label>
+          {!propertyReference ? (
+            <p className="mt-2 text-xs text-[#92400E]">Add the property before continuing to payment.</p>
+          ) : null}
+        </section>
+
+        <section className="mt-5 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
+          <div className="max-w-3xl">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
+              Step 2 · Choose one investigation focus
             </div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0D1B2A]">
               What are you trying to understand about this property?
@@ -205,7 +274,13 @@ function PricingPage() {
                       <div className="text-base font-semibold text-[#0D1B2A]">{option.label}</div>
                       <p className="mt-2 text-sm leading-6 text-[#64748B]">{option.description}</p>
                     </div>
-                    <span className={selected ? "grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FF6A00] text-white" : "grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#0D1B2A]/15 text-transparent"}>
+                    <span
+                      className={
+                        selected
+                          ? "grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FF6A00] text-white"
+                          : "grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#0D1B2A]/15 text-transparent"
+                      }
+                    >
                       <Check className="h-3.5 w-3.5" />
                     </span>
                   </div>
@@ -240,7 +315,7 @@ function PricingPage() {
         <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]">
           <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
-              Step 2 · Optional context
+              Step 3 · Optional context
             </div>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-[#0D1B2A]">
               Tell us about your situation — not a new question.
@@ -267,7 +342,10 @@ function PricingPage() {
             </div>
             <ol className="mt-4 space-y-2">
               {HUMAN_REVIEW_CORE_QUESTIONS.map((question, index) => (
-                <li key={question} className="flex gap-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 text-sm font-semibold text-[#0D1B2A]">
+                <li
+                  key={question}
+                  className="flex gap-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 text-sm font-semibold text-[#0D1B2A]"
+                >
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">
                     {index + 1}
                   </span>
@@ -288,7 +366,10 @@ function PricingPage() {
           </div>
           <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {HUMAN_REVIEW_NOT_INCLUDED.map((item) => (
-              <div key={item} className="rounded-2xl border border-[#F59E0B]/20 bg-white/80 px-4 py-3 text-xs leading-5 text-[#0D1B2A]/72">
+              <div
+                key={item}
+                className="rounded-2xl border border-[#F59E0B]/20 bg-white/80 px-4 py-3 text-xs leading-5 text-[#0D1B2A]/72"
+              >
                 {item}
               </div>
             ))}
@@ -319,14 +400,22 @@ function PricingPage() {
                 {selectedFocus?.label ?? "Choose a focus above"}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">
-                {selectedFocus?.description ?? "Easy Erf will not open checkout until the investigation scope is defined."}
+                {propertyReference
+                  ? `Property: ${propertyReference}`
+                  : "Add the property above before checkout."}
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">
+                {selectedFocus?.description ??
+                  "Easy Erf will not open checkout until the investigation scope is defined."}
               </p>
               {focus === "intended_use" && intendedUse ? (
                 <p className="mt-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 text-sm font-semibold text-[#0D1B2A]">
-                  Intended use: {HUMAN_REVIEW_INTENDED_USE_OPTIONS.find((option) => option.id === intendedUse)?.label}
+                  Intended use:{" "}
+                  {HUMAN_REVIEW_INTENDED_USE_OPTIONS.find((option) => option.id === intendedUse)?.label}
                 </p>
               ) : null}
             </div>
+
             <div className="flex flex-col justify-center border-t border-[#0D1B2A]/10 bg-[#F7FBFF] p-5 lg:border-l lg:border-t-0 sm:p-7">
               <div className="flex items-end gap-2">
                 <span className="text-4xl font-semibold tracking-tight text-[#0D1B2A]">R999</span>
@@ -338,15 +427,26 @@ function PricingPage() {
                 onClick={() => void startHumanReviewCheckout()}
                 className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d1f] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {checkoutLoading ? "Opening secure checkout…" : "Continue to secure checkout"}
+                {checkoutLoading ? "Opening secure checkout…" : "Continue to secure payment"}
                 <ArrowUpRight className="h-4 w-4" />
               </button>
-              {!focus ? <p className="mt-2 text-xs text-[#64748B]">Choose one investigation focus first.</p> : null}
-              {focus === "intended_use" && !intendedUse ? <p className="mt-2 text-xs text-[#64748B]">Choose the intended use first.</p> : null}
-              {focus && (focus !== "intended_use" || intendedUse) && !scopeAcknowledged ? (
-                <p className="mt-2 text-xs text-[#64748B]">Acknowledge the Human Review scope before checkout.</p>
+              {!propertyReference ? (
+                <p className="mt-2 text-xs text-[#64748B]">Add the property first.</p>
               ) : null}
-              {checkoutError ? <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p> : null}
+              {!focus ? (
+                <p className="mt-2 text-xs text-[#64748B]">Choose one investigation focus first.</p>
+              ) : null}
+              {focus === "intended_use" && !intendedUse ? (
+                <p className="mt-2 text-xs text-[#64748B]">Choose the intended use first.</p>
+              ) : null}
+              {focus && (focus !== "intended_use" || intendedUse) && !scopeAcknowledged ? (
+                <p className="mt-2 text-xs text-[#64748B]">
+                  Acknowledge the Human Review scope before checkout.
+                </p>
+              ) : null}
+              {checkoutError ? (
+                <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p>
+              ) : null}
               {checkoutError === SIGN_IN_REQUIRED_MESSAGE ? (
                 <Link
                   to="/auth"
@@ -356,7 +456,7 @@ function PricingPage() {
                 </Link>
               ) : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-                Secure Stripe-hosted checkout. One-time R999 payment. No recurring subscription.
+                Stripe handles payment only. Your property and Human Review brief stay in Easy Erf. After payment you return to My Reports.
               </p>
             </div>
           </div>
@@ -369,7 +469,10 @@ function PricingPage() {
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
               Keep going. Human Review remains available inside the investigation, dossier and report so you can hand the property over later without losing your work.
             </p>
-            <Link to="/" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0D1B2A] hover:text-[#FF6A00]">
+            <Link
+              to="/"
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0D1B2A] hover:text-[#FF6A00]"
+            >
               Investigate it myself <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
