@@ -7,7 +7,7 @@
  */
 
 export const SITE_NAME = "Easy Erf" as const;
-export const SITE_URL = "https://easyer.co.za" as const;
+export const SITE_URL = "https://easyerf.co.za" as const;
 export const AI_NAME = "Easy Erf AI" as const;
 export const AI_ACTION = "Ask Easy Erf" as const;
 export const WORKFLOW_NAME = "Guided Investigation" as const;
