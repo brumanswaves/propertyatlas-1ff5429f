@@ -6,6 +6,10 @@ const takeoverCard = readFileSync(
   resolve(process.cwd(), "src/components/humanReview/HumanReviewTakeoverCard.tsx"),
   "utf8",
 );
+const scope = readFileSync(
+  resolve(process.cwd(), "src/lib/humanReview/scope.ts"),
+  "utf8",
+);
 
 describe("Done-for-You investigation takeover value proposition", () => {
   it("explains the full investigation the customer receives before asking for R999", () => {
@@ -30,8 +34,11 @@ describe("Done-for-You investigation takeover value proposition", () => {
     expect(takeoverCard).toContain(
       "Property research and due-diligence support, not professional advice or municipal approval.",
     );
-    expect(takeoverCard).toContain("Provider may vary");
-    expect(takeoverCard).toContain("terms permit redistribution");
-    expect(takeoverCard).not.toMatch(/guarantee|approval included|legal advice|valuation included|free lightstone/i);
+    expect(takeoverCard).toContain("DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY");
+    expect(scope).toContain("Provider may vary");
+    expect(scope).toContain("terms permit redistribution");
+    expect(`${takeoverCard}\n${scope}`).not.toMatch(
+      /guarantee|approval included|legal advice|valuation included|free lightstone/i,
+    );
   });
 });
