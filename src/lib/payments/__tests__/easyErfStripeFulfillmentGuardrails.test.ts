@@ -136,8 +136,9 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(pricing).toContain("propertyReferenceHint: propertyReference");
     expect(pricing).toContain("Stripe handles payment only.");
     expect(pricing).not.toContain("Property address, Erf or LPI reference");
-    expect(takeover).toContain("Is this the property you want Easy Erf to review?");
-    expect(takeover).toContain("Yes, use this property · R999");
+    expect(takeover).toContain("Want Easy Erf to review this property for you?");
+    expect(takeover).toContain("What you get");
+    expect(takeover).toContain("Yes — get Human Review · R999");
     expect(takeover).toContain("Erf numbers can repeat in different places");
   });
 
