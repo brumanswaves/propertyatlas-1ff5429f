@@ -111,15 +111,20 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("resolves only the verified TEST R999 Stripe checkout server-side", () => {
+  it("resolves only a verified R999 Stripe link in the explicitly approved launch mode", () => {
     expect(pricing).toContain('supabase.functions.invoke("easy-erf-r999-checkout", {');
-    expect(pricing).toContain('data?.mode !== "test"');
+    expect(pricing).toContain('(checkoutMode !== "test" && checkoutMode !== "live")');
     expect(pricing).toContain('url.hostname !== "buy.stripe.com"');
     expect(checkout).toContain("EASY_ERF_R999_PAYMENT_LINK_IDS");
     expect(checkout).toContain("STRIPE_SECRET_KEY");
-    expect(checkout).toContain("link.livemode");
+    expect(checkout).toContain("EASY_ERF_R999_CHECKOUT_MODE");
+    expect(checkout).toContain("EASY_ERF_R999_LIVE_ENABLED");
+    expect(checkout).toContain('configured === "live"');
+    expect(checkout).toContain('checkoutMode === "live" && !liveCheckoutIsArmed()');
+    expect(checkout).toContain("link.livemode !== expectedLivemode");
     expect(checkout).toContain("price.unit_amount !== 99900");
     expect(checkout).toContain('price.currency.toLowerCase() !== "zar"');
+    expect(checkout).toContain("mode: checkoutMode");
     expect(checkout).not.toMatch(/sk_(test|live)_|plink_[A-Za-z0-9]{8,}/);
     expect(config).toMatch(/\[functions\.easy-erf-r999-checkout\][\s\S]*verify_jwt = false/);
   });
