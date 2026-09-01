@@ -34,6 +34,13 @@ function liveCheckoutIsArmed() {
   return Deno.env.get("EASY_ERF_R999_LIVE_ENABLED")?.trim().toLowerCase() === "true";
 }
 
+function bearerToken(request: Request): string | null {
+  const authorization = request.headers.get("authorization")?.trim() ?? "";
+  const match = /^Bearer\s+(.+)$/i.exec(authorization);
+  const token = match?.[1]?.trim();
+  return token || null;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
@@ -63,6 +70,20 @@ Deno.serve(async (request: Request) => {
   );
   if (!stripeSecretKey || !supabaseUrl || !serviceRoleKey || acceptedIds.size === 0) {
     return json({ ok: false, error: "Human Review checkout is not configured." }, 503);
+  }
+
+  const token = bearerToken(request);
+  if (!token) {
+    return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
+  }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  const user = userData.user;
+  if (userError || !user) {
+    return json({ ok: false, error: "Sign in before starting Human Review checkout." }, 401);
   }
 
   const expectedLivemode = checkoutMode === "live";
@@ -102,13 +123,11 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const brief = validation.request;
   const { data: requestRow, error: requestError } = await admin
     .from("human_review_requests")
     .insert({
+      user_id: user.id,
       parcel_id: brief.parcelId,
       property_reference_hint: brief.propertyReferenceHint,
       focus: brief.focus,
@@ -126,8 +145,8 @@ Deno.serve(async (request: Request) => {
   }
 
   // Stripe Payment Links carry this opaque request UUID into the completed
-  // Checkout Session. The webhook uses it to attach the controlled brief to
-  // the paid report order; no legal/advice question is encoded in the URL.
+  // Checkout Session. The webhook uses it to attach the controlled brief and
+  // its authenticated Easy Erf owner to the paid report order.
   verifiedUrl.searchParams.set("client_reference_id", requestRow.id);
 
   return json({

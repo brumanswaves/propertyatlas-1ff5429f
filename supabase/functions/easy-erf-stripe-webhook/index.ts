@@ -54,6 +54,7 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 
 type HumanReviewRequestRow = {
   id: string;
+  user_id: string | null;
   parcel_id: string | null;
   property_reference_hint: string | null;
 };
@@ -71,7 +72,7 @@ async function resolveHumanReviewRequest(
   if (!looksLikeUuid(clientReferenceId)) return null;
   const { data, error } = await admin
     .from("human_review_requests")
-    .select("id,parcel_id,property_reference_hint")
+    .select("id,user_id,parcel_id,property_reference_hint")
     .eq("id", clientReferenceId)
     .maybeSingle();
   if (error) {
@@ -130,23 +131,30 @@ async function resolveAccountMatch(
   reviewRequest: HumanReviewRequestRow | null,
   requestId: string,
 ): Promise<AccountMatch> {
-  const { data: profiles, error: profileError } = await admin
-    .from("profiles")
-    .select("id,email")
-    .eq("email", order.customerEmail)
-    .limit(2);
+  let userId = reviewRequest?.user_id ?? null;
 
-  if (profileError) {
-    log("profile_match_failed", requestId, { errorCode: profileError.code ?? null });
-    return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
+  if (userId) {
+    log("human_review_owner_resolved", requestId, { reviewRequestId: reviewRequest?.id });
+  } else {
+    const { data: profiles, error: profileError } = await admin
+      .from("profiles")
+      .select("id,email")
+      .eq("email", order.customerEmail)
+      .limit(2);
+
+    if (profileError) {
+      log("profile_match_failed", requestId, { errorCode: profileError.code ?? null });
+      return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
+    }
+
+    if (!profiles || profiles.length !== 1 || typeof profiles[0]?.id !== "string") {
+      log("profile_match_unresolved", requestId, { matchCount: profiles?.length ?? 0 });
+      return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
+    }
+
+    userId = profiles[0].id;
   }
 
-  if (!profiles || profiles.length !== 1 || typeof profiles[0]?.id !== "string") {
-    log("profile_match_unresolved", requestId, { matchCount: profiles?.length ?? 0 });
-    return { userId: null, parcelId: reviewRequest?.parcel_id ?? order.parsedParcelId };
-  }
-
-  const userId = profiles[0].id;
   let parcelId = reviewRequest?.parcel_id ?? order.parsedParcelId;
 
   // Legacy compatibility: before controlled Human Review briefs existed,
