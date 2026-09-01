@@ -204,3 +204,17 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Safety: This ownership correction does not deploy, publish, migrate data, change the live browser backend or authorize any consequential production action.
 - Do not regress: Do not create a parallel Easy Erf backend, do not treat Lovable-generated environment configuration or a local `config.toml` project_id as proof of remote ownership, and do not bundle safe repository ownership fixes with an unsafe premature frontend cutover.
 - Related: EE-005, EE-021, PR #95.
+
+## EE-025 - R999 is a done-for-you investigation, not a narrow final review
+
+- Date: 2026-09-01.
+- Decision: The R999 Early Access commercial offer is **Done-for-You Property Investigation**. The customer confirms the exact parcel and tells Easy Erf what matters most; Easy Erf plus a human reviewer then completes or reviews the standard Easy Erf investigation on the customer's behalf and delivers the Human-Reviewed Easy Erf Report.
+- Tagline: **You choose the property. We do the investigation.**
+- Supersedes: Customer-facing positioning that described the R999 product mainly as `Human Review` or implied the paid scope was limited to one five-part review of evidence the customer had already gathered.
+- Scope: Reuse anything already completed in the canonical property file, then work through parcel/address identity, SG/cadastral evidence, ownership/transfer/title indicators, planning/zoning, standard property checks, useful Market Evidence, relevant deterministic Strategy calculations and deterministic Site Potential where supported. The final report still presents the result as known facts, apparent potential, problems, unknowns and next verification steps.
+- Focus rule: `Overall Property Check`, `Property Potential` and `Check My Intended Use` remain controlled customer choices, but they set **review emphasis**, not reduced product scope.
+- Third-party property-data-report rule: During Early Access, one third-party property data report may be reviewed as part of the R999 investigation at no extra charge where coverage is available. Public copy remains provider-neutral unless a provider-specific commercial right is verified. A branded Lightstone, WinDeed or other provider PDF is supplied to the customer only when the applicable subscription/report terms permit redistribution.
+- Commercial boundary: R999 does not include unlimited paid third-party documents, professional opinions, certified title/zoning products, municipal approval, valuation, engineering/architectural sign-off, construction quotations or buy/do-not-buy recommendations.
+- Rationale: The real paid workflow is materially more valuable than a quick final check, and the first successful end-to-end TEST fulfillment showed that the founder must work through the property investigation before writing the final report. The product should sell the work actually being done.
+- Do not regress: Do not market the R999 product as only a quick `Human Review`; do not make the selected focus the whole investigation scope; do not publicly promise a `free Lightstone report` until redistribution/usage rights are independently verified; do not bypass the canonical property file or evidence-confidence rules.
+- Related: EE-008, EE-009, EE-012, EE-013, EE-020, PRs #145–#152.
