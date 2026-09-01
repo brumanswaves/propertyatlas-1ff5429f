@@ -239,6 +239,6 @@ describe("Human-Reviewed report delivery and founder authority", () => {
   });
 
   it("locks the customer product domain instead of presenting Lovable as Easy Erf", () => {
-    expect(BRAND.url).toBe("https://easyer.co.za");
+    expect(BRAND.url).toBe("https://easyerf.co.za");
   });
 });
