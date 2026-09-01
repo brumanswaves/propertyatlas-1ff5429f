@@ -6,17 +6,14 @@ import {
   ChevronRight,
   FileText,
   Link2,
-  MapPinned,
   NotebookPen,
   PlayCircle,
   Sparkles,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { TopNav } from "@/components/layout/TopNav";
-import { Footer } from "@/components/layout/Footer";
+import { CustomerWorkspaceShell } from "@/components/account/CustomerWorkspaceShell";
 import { useAuth } from "@/lib/auth/useAuth";
-import { getUserGreetingName } from "@/lib/auth/profile";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildSavedParcelMapHref,
@@ -41,7 +38,7 @@ import { BRAND } from "@/lib/brand";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: `My Investigations | ${BRAND.site}` },
+      { title: `My Properties | ${BRAND.site}` },
       {
         name: "description",
         content:
@@ -86,7 +83,6 @@ interface InvestigationSummary {
 function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const greetingName = getUserGreetingName(user);
   const [saved, setSaved] = useState<SavedRow[]>([]);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
@@ -198,35 +194,13 @@ function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <TopNav />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-28 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-accent" /> My Easy Erf
-            </span>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              My Investigations
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Welcome back, {greetingName}. See every property you saved, where you left off, and the investigation work already attached to it.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/orders"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"
-            >
-              <FileText className="h-3.5 w-3.5" /> My Reports
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-            >
-              <MapPinned className="h-3.5 w-3.5" /> Find another property
-            </Link>
-          </div>
+    <CustomerWorkspaceShell activeTab="investigations">
+      <section aria-label="My Investigations">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">My Investigations</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            See every property you saved, where you left off, and the investigation work already attached to it.
+          </p>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -304,9 +278,8 @@ function Dashboard() {
             </ul>
           </section>
         )}
-      </main>
-      <Footer />
-    </div>
+      </section>
+    </CustomerWorkspaceShell>
   );
 }
 

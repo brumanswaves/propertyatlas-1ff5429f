@@ -14,7 +14,7 @@ describe("Easy Erf brand and navigation guardrails", () => {
     expect(BRAND.site).toBe("Easy Erf");
     expect(BRAND.workflow).toBe("Guided Investigation");
     expect(BRAND.reports).toBe("Easy Erf Report");
-    expect(BRAND.savedArea).toBe("My Investigations");
+    expect(BRAND.savedArea).toBe("My Properties");
     expect(BRAND.aiAction).toBe("Ask Easy Erf");
     expect(JSON.stringify(BRAND)).not.toMatch(/PropertyAtlas|ErfStoep/i);
   });
@@ -29,8 +29,7 @@ describe("Easy Erf brand and navigation guardrails", () => {
 
   it("keeps account navigation separate and consistently named", () => {
     expect(SIGNED_IN_NAV_LINKS).toEqual([
-      { to: "/dashboard", label: "My Investigations" },
-      { to: "/orders", label: "My Reports" },
+      { to: "/dashboard", label: "My Properties" },
       { to: "/profile", label: "Account" },
     ]);
   });
@@ -49,7 +48,8 @@ describe("Easy Erf brand and navigation guardrails", () => {
       ...FOOTER_LEGAL_LINKS,
     ].map((link) => link.to));
 
-    expect(footerRoutes).toContain("/orders");
+    expect(footerRoutes).toContain("/dashboard");
+    expect(footerRoutes).not.toContain("/orders");
     expect(footerRoutes).toContain("/faq");
     expect(footerRoutes).toContain("/data-sources");
     expect(footerRoutes).toContain("/about");

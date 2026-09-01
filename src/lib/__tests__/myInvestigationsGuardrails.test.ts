@@ -9,6 +9,7 @@ function source(path: string) {
 describe("My Investigations guardrails", () => {
   it("does not restore the old hard-coded dashboard guidance or browser-only report count", () => {
     const dashboard = source("src/routes/dashboard.tsx");
+    const workspace = source("src/components/account/CustomerWorkspaceShell.tsx");
 
     expect(dashboard).not.toContain("const NEXT_ACTIONS");
     expect(dashboard).not.toContain("pa.reportInterests.");
@@ -20,6 +21,8 @@ describe("My Investigations guardrails", () => {
     expect(dashboard).toContain("GUIDED_INVESTIGATION_STEPS");
     expect(dashboard).toContain('withTab(href, "investigation")');
     expect(dashboard).toContain('withTab(href, "stoep-report")');
+    expect(dashboard).toContain('<CustomerWorkspaceShell activeTab="investigations">');
+    expect(workspace).toContain("My Properties");
   });
 
   it("uses the existing saved property row as the durable dashboard projection boundary", () => {

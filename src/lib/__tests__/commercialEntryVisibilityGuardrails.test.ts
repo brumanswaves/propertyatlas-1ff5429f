@@ -24,10 +24,12 @@ describe("Easy Erf commercial entry visibility", () => {
     expect(navigation).not.toContain('label: "R999 Review"');
   });
 
-  it("keeps paid reports discoverable from My Investigations", () => {
-    const source = read("src/routes/dashboard.tsx");
-    expect(source).toContain('to="/orders"');
-    expect(source).toContain("My Reports");
+  it("keeps paid reports beside My Investigations in the shared customer workspace", () => {
+    const workspace = read("src/components/account/CustomerWorkspaceShell.tsx");
+    expect(workspace).toContain('to="/dashboard"');
+    expect(workspace).toContain('to="/orders"');
+    expect(workspace).toContain("My Investigations");
+    expect(workspace).toContain("Done-for-You Reports");
   });
 
   it("keeps paid investigation fulfillment discoverable from Founder Operations", () => {
