@@ -32,18 +32,22 @@ jobs:
 
           path = Path("src/components/property/__tests__/dossierUx.test.ts")
           text = path.read_text()
-          title = 'renders the desktop panel as a fixed full-width workbench with a usable close control'
-          marker = f'it("{title}"'
-          start = text.find(marker)
+          phrase = "fixed full-width workbench"
+          phrase_index = text.find(phrase)
+          if phrase_index < 0:
+              raise SystemExit("Target phrase not found")
+          start = text.rfind("\n  it(", 0, phrase_index)
           if start < 0:
-              raise SystemExit("Target test title not found")
-          line_start = text.rfind("\n", 0, start) + 1
-          next_test = text.find('\n  it("', start + len(marker))
+              start = text.rfind("it(", 0, phrase_index)
+          else:
+              start += 1
+          if start < 0:
+              raise SystemExit("Target test start not found")
+          next_test = text.find("\n  it(", phrase_index + len(phrase))
           end = len(text) if next_test < 0 else next_test
-          excerpt = text[line_start:end].rstrip() + "\n"
           output = Path("tmp/dossier-desktop-shell-test.txt")
           output.parent.mkdir(parents=True, exist_ok=True)
-          output.write_text(excerpt)
+          output.write_text(text[start:end].rstrip() + "\n")
           Path(".github/workflows/temporary-extract-dossier-test.yml").unlink()
           PY
 
