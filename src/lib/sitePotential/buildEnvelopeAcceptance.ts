@@ -33,21 +33,21 @@ function normalizedRing(ring: Array<[number, number]> | null) {
 /**
  * Stable signature for the exact deterministic inputs the user reviewed.
  * It is intentionally not a security hash. Its job is to invalidate acceptance
- * whenever geometry, frontage or any planning assumption changes.
+ * whenever geometry, frontage or any planning assumption changes. A road label
+ * is excluded because it does not alter the calculated envelope or its summary.
  */
 export function buildEnvelopeAcceptanceSignature(
   inputs: BuildEnvelopeInputs,
   stored: StoredBuildEnvelopeOverrides | null,
 ) {
   return JSON.stringify({
-    version: 1,
+    version: 2,
     parcelId: inputs.parcelId,
     ring: normalizedRing(inputs.ring),
     boundaryConfirmed: inputs.boundaryConfirmed,
     streetFrontageConfirmedByUser: stored?.streetFrontageConfirmedByUser === true,
     streetEdgeIndex: inputs.streetEdgeIndex,
     additionalStreetEdgeIndexes: [...(inputs.additionalStreetEdgeIndexes ?? [])].sort((a, b) => a - b),
-    streetName: normalizedText(inputs.streetName),
     ruleSource: inputs.ruleSource,
     zoneLabel: normalizedText(inputs.zoneLabel),
     streetSetbackM: normalizedNumber(inputs.streetSetbackM),
@@ -74,14 +74,16 @@ export function buildEnvelopeAcceptanceState(input: {
     input.stored?.streetFrontageConfirmedByUser === true &&
     (input.result.state === "verified" || input.result.state === "estimated") &&
     Boolean(input.result.envelopePolygon || input.result.coverageFootprint);
+  const accepted = eligible && input.stored?.acceptedInputSignature === signature;
+  const acceptedAt =
+    accepted && typeof input.stored?.acceptedAt === "string" && input.stored.acceptedAt.trim()
+      ? input.stored.acceptedAt
+      : null;
 
   return {
     signature,
     eligible,
-    accepted: eligible && input.stored?.acceptedInputSignature === signature,
-    acceptedAt:
-      typeof input.stored?.acceptedAt === "string" && input.stored.acceptedAt.trim()
-        ? input.stored.acceptedAt
-        : null,
+    accepted,
+    acceptedAt,
   };
 }
