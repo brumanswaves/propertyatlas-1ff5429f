@@ -3,10 +3,10 @@ import {
   deriveAcceptedBuildEnvelope,
   deriveBuildEnvelopeCandidate,
 } from "@/lib/sitePotential/acceptedBuildEnvelope";
+import { buildEnvelopeAcceptanceSignature } from "@/lib/sitePotential/buildEnvelopeAcceptance";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { StoredBuildEnvelopeOverrides } from "@/lib/sitePotential/buildEnvelopeStore";
-import type { StoredStreetFrontageDetection } from "@/lib/sitePotential/streetFrontageStore";
 
 const parcel = {
   id: "parcel:accepted-envelope",
@@ -55,7 +55,6 @@ function candidate(storedInputs: StoredBuildEnvelopeOverrides = reviewedInputs) 
     recordedAreaM2: 618.7,
     userId: "user-1",
     storedInputs,
-    storedDetection: null,
   });
 }
 
@@ -73,7 +72,6 @@ describe("deriveAcceptedBuildEnvelope", () => {
         recordedAreaM2: 618.7,
         userId: "user-1",
         storedInputs: reviewedInputs,
-        storedDetection: null,
       }),
     ).toBeNull();
   });
@@ -94,7 +92,6 @@ describe("deriveAcceptedBuildEnvelope", () => {
       recordedAreaM2: 618.7,
       userId: "user-1",
       storedInputs: acceptedInputs,
-      storedDetection: null,
     });
 
     expect(result?.summary.erfAreaM2).toBe(618.7);
@@ -111,8 +108,10 @@ describe("deriveAcceptedBuildEnvelope", () => {
       acceptedAt: "2026-09-02T12:00:00.000Z",
       streetSetbackM: 4,
     };
+    const staleCandidate = candidate(staleAcceptance);
 
-    expect(candidate(staleAcceptance)?.acceptance.accepted).toBe(false);
+    expect(staleCandidate?.acceptance.accepted).toBe(false);
+    expect(staleCandidate?.acceptance.acceptedAt).toBeNull();
     expect(
       deriveAcceptedBuildEnvelope({
         parcel,
@@ -121,57 +120,23 @@ describe("deriveAcceptedBuildEnvelope", () => {
         recordedAreaM2: 618.7,
         userId: "user-1",
         storedInputs: staleAcceptance,
-        storedDetection: null,
       }),
     ).toBeNull();
   });
 
-  it("replays stored map-road evidence when validating the accepted signature", () => {
-    const storedDetection: StoredStreetFrontageDetection = {
-      edgeIndex: 0,
-      roadName: "Padrone Crescent",
-      confidence: 0.94,
-      method: "map_road_match",
-      detectedAt: "2026-09-02T12:00:00.000Z",
-    };
-    const reviewable = deriveBuildEnvelopeCandidate({
-      parcel,
-      parcelRing: ring,
-      planning,
-      recordedAreaM2: 618.7,
-      userId: "user-1",
-      storedInputs: reviewedInputs,
-      storedDetection,
-    });
+  it("does not bind the deterministic envelope acceptance to a road label", () => {
+    const reviewable = candidate();
+    expect(reviewable).not.toBeNull();
 
-    expect(reviewable?.inputs.streetName).toBe("Padrone Crescent");
-    expect(reviewable?.acceptance.eligible).toBe(true);
+    const withDetectedRoadName = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, streetName: "Padrone Crescent" },
+      reviewedInputs,
+    );
+    const withoutDetectedRoadName = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, streetName: null },
+      reviewedInputs,
+    );
 
-    const acceptedInputs = {
-      ...reviewedInputs,
-      acceptedInputSignature: reviewable!.acceptance.signature,
-      acceptedAt: "2026-09-02T12:01:00.000Z",
-    };
-    const accepted = deriveAcceptedBuildEnvelope({
-      parcel,
-      parcelRing: ring,
-      planning,
-      recordedAreaM2: 618.7,
-      userId: "user-1",
-      storedInputs: acceptedInputs,
-      storedDetection,
-    });
-    const missingDetection = deriveBuildEnvelopeCandidate({
-      parcel,
-      parcelRing: ring,
-      planning,
-      recordedAreaM2: 618.7,
-      userId: "user-1",
-      storedInputs: acceptedInputs,
-      storedDetection: null,
-    });
-
-    expect(accepted).not.toBeNull();
-    expect(missingDetection?.acceptance.accepted).toBe(false);
+    expect(withDetectedRoadName).toBe(withoutDetectedRoadName);
   });
 });
