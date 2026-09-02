@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { deriveAcceptedBuildEnvelope } from "@/lib/sitePotential/acceptedBuildEnvelope";
+import {
+  deriveAcceptedBuildEnvelope,
+  deriveBuildEnvelopeCandidate,
+} from "@/lib/sitePotential/acceptedBuildEnvelope";
+import { buildEnvelopeAcceptanceSignature } from "@/lib/sitePotential/buildEnvelopeAcceptance";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
+import type { StoredBuildEnvelopeOverrides } from "@/lib/sitePotential/buildEnvelopeStore";
 
 const parcel = {
   id: "parcel:accepted-envelope",
@@ -36,8 +41,29 @@ const ring: Array<[number, number]> = [
   [24.83, -34.171],
 ];
 
+const reviewedInputs: StoredBuildEnvelopeOverrides = {
+  boundaryConfirmed: true,
+  streetFrontageConfirmedByUser: true,
+  streetEdgeIndex: 0,
+};
+
+function candidate(storedInputs: StoredBuildEnvelopeOverrides = reviewedInputs) {
+  return deriveBuildEnvelopeCandidate({
+    parcel,
+    parcelRing: ring,
+    planning,
+    recordedAreaM2: 618.7,
+    userId: "user-1",
+    storedInputs,
+  });
+}
+
 describe("deriveAcceptedBuildEnvelope", () => {
-  it("does not expose a reportable envelope before Guided acceptance", () => {
+  it("does not expose a reportable envelope before final Site Potential acceptance", () => {
+    const reviewable = candidate();
+
+    expect(reviewable?.acceptance.eligible).toBe(true);
+    expect(reviewable?.acceptance.accepted).toBe(false);
     expect(
       deriveAcceptedBuildEnvelope({
         parcel,
@@ -45,26 +71,88 @@ describe("deriveAcceptedBuildEnvelope", () => {
         planning,
         recordedAreaM2: 618.7,
         userId: "user-1",
-        storedInputs: { boundaryConfirmed: true, streetFrontageConfirmedByUser: false },
+        storedInputs: reviewedInputs,
       }),
     ).toBeNull();
   });
 
   it("returns the same accepted envelope projection for Guided and report consumers", () => {
+    const reviewable = candidate();
+    expect(reviewable).not.toBeNull();
+
+    const acceptedInputs = {
+      ...reviewedInputs,
+      acceptedInputSignature: reviewable!.acceptance.signature,
+      acceptedAt: "2026-09-02T12:00:00.000Z",
+    };
     const result = deriveAcceptedBuildEnvelope({
       parcel,
       parcelRing: ring,
       planning,
       recordedAreaM2: 618.7,
       userId: "user-1",
-      storedInputs: {
-        boundaryConfirmed: true,
-        streetFrontageConfirmedByUser: true,
-        streetEdgeIndex: 0,
-      },
+      storedInputs: acceptedInputs,
     });
 
     expect(result?.summary.erfAreaM2).toBe(618.7);
     expect(result?.coverageFootprint ?? result?.envelopePolygon).not.toBeNull();
+  });
+
+  it("invalidates an accepted envelope when a deterministic input changes", () => {
+    const reviewable = candidate();
+    expect(reviewable).not.toBeNull();
+
+    const staleAcceptance = {
+      ...reviewedInputs,
+      acceptedInputSignature: reviewable!.acceptance.signature,
+      acceptedAt: "2026-09-02T12:00:00.000Z",
+      streetSetbackM: 4,
+    };
+    const staleCandidate = candidate(staleAcceptance);
+
+    expect(staleCandidate?.acceptance.accepted).toBe(false);
+    expect(staleCandidate?.acceptance.acceptedAt).toBeNull();
+    expect(
+      deriveAcceptedBuildEnvelope({
+        parcel,
+        parcelRing: ring,
+        planning,
+        recordedAreaM2: 618.7,
+        userId: "user-1",
+        storedInputs: staleAcceptance,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not bind the deterministic envelope acceptance to a road label", () => {
+    const reviewable = candidate();
+    expect(reviewable).not.toBeNull();
+
+    const withDetectedRoadName = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, streetName: "Padrone Crescent" },
+      reviewedInputs,
+    );
+    const withoutDetectedRoadName = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, streetName: null },
+      reviewedInputs,
+    );
+
+    expect(withDetectedRoadName).toBe(withoutDetectedRoadName);
+  });
+
+  it("invalidates acceptance for a geometry change smaller than six decimal places", () => {
+    const reviewable = candidate();
+    expect(reviewable?.inputs.ring).not.toBeNull();
+
+    const shiftedRing = reviewable!.inputs.ring!.map((point, index) =>
+      index === 1 ? ([point[0] + 0.0000004, point[1]] as [number, number]) : point,
+    );
+    const originalSignature = buildEnvelopeAcceptanceSignature(reviewable!.inputs, reviewedInputs);
+    const shiftedSignature = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, ring: shiftedRing },
+      reviewedInputs,
+    );
+
+    expect(shiftedSignature).not.toBe(originalSignature);
   });
 });

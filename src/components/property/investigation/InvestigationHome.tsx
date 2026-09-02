@@ -23,10 +23,6 @@ import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import { deriveAcceptedBuildEnvelope } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
-import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
-import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
-import { AskEasyErfPanel } from "@/components/property/dossier/AskEasyErfPanel";
-import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import type { DossierView } from "@/components/property/dossier/reportViews";
 import {
   buildPropertyInvestigation,
@@ -236,22 +232,6 @@ export function InvestigationHome({
     [investigationInput],
   );
 
-  const askPayload = useMemo(
-    () =>
-      buildAskEasyErfEvidencePayload({
-        report,
-        decision: buildDecisionIntelligence(report),
-        assets,
-        savedEvidence: evidence,
-        strategyScenarios: scenarios,
-      }),
-    [assets, evidence, report, scenarios],
-  );
-  const canonicalNextAction = useMemo(
-    () => canonicalReportAction(investigationInput),
-    [investigationInput],
-  );
-
   function openPlanRow(row: InvestigationPlanRow) {
     onOpenExpertWorkspace(row.targetTab as DossierView, { anchorId: row.targetAnchorId });
   }
@@ -300,14 +280,6 @@ export function InvestigationHome({
             plan={plan}
             report={report}
             onOpenReport={() => onOpenExpertWorkspace("stoep-report")}
-          />
-          <AskEasyErfPanel
-            compact
-            maxSuggestions={3}
-            suggestionPayload={askPayload}
-            evidencePack={report.evidencePack ?? null}
-            canonicalNextAction={canonicalNextAction}
-            onSelectView={(view, options) => onOpenExpertWorkspace(view, options)}
           />
           <div className="rounded-[1rem] border border-[#0D1B2A]/8 bg-[#F8FAFC] p-3 text-sm leading-6 text-[#0D1B2A]/66">
             Current legacy investigation status: {investigation.headline}. The guided journey above

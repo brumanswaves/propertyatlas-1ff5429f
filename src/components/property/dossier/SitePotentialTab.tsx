@@ -10,7 +10,7 @@ import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAsse
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
-import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { deriveBuildEnvelopeCandidate } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
 import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
 import { StreetSideBuildEnvelope } from "@/components/property/sitePotential/StreetSideBuildEnvelope";
@@ -91,16 +91,16 @@ export function SitePotentialTab({
   const handleEnvelopeResult = useCallback(
     (result: BuildEnvelopeResult) => {
       setEnvelopeResult(result);
-      const stored = readStoredBuildEnvelopeInputs(parcel.id, userId);
-      setAcceptedEnvelope(
-        Boolean(
-          stored?.boundaryConfirmed &&
-            stored.streetFrontageConfirmedByUser &&
-            (result.envelopePolygon || result.coverageFootprint),
-        ),
-      );
+      const candidate = deriveBuildEnvelopeCandidate({
+        parcel,
+        parcelRing,
+        planning: planningAssessment,
+        recordedAreaM2,
+        userId,
+      });
+      setAcceptedEnvelope(Boolean(candidate?.acceptance.accepted));
     },
-    [parcel.id, userId],
+    [parcel, parcelRing, planningAssessment, recordedAreaM2, userId],
   );
 
   const identityLine = useMemo(() => {
@@ -156,7 +156,7 @@ export function SitePotentialTab({
               ) : (
                 <FileWarning className="h-4 w-4 text-[#FF6A00]" />
               )}
-              {acceptedEnvelope ? "Build envelope accepted" : "Confirm the site inputs"}
+              {acceptedEnvelope ? "Build envelope accepted" : "Confirm the site inputs and accept the envelope"}
             </div>
             <div className="mt-1 text-[11px] leading-5 text-[#64748B]">
               The envelope remains indicative until the underlying zoning, title conditions,

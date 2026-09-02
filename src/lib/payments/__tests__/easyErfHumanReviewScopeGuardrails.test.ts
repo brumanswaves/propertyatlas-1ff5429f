@@ -162,7 +162,7 @@ describe("Human-Reviewed report delivery and founder authority", () => {
   it("renders the finished investigation as a web report and keeps PDF secondary", () => {
     expect(orders).toContain("<HumanReviewedReport");
     expect(orders).toContain('downloading ? "Preparing PDF…" : "Download PDF"');
-    expect(orders).toContain("The web report is the primary product; PDF is a secondary export.");
+    expect(orders).toContain("This order opens as an interactive web report. Any attached PDF is a secondary export.");
     expect(migration).toContain("A structured Human Review web report is required before marking ready");
     expect(migration).toContain("pdf_storage_path = coalesce(v_expected_pdf_path, v_order.pdf_storage_path)");
     expect(founderFulfillment).not.toContain("pdfStoragePath is required for mark_ready");

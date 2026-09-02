@@ -172,11 +172,16 @@ describe("Investigation screen hierarchy", () => {
     expect(home).toContain("onOpenExpertWorkspace");
   });
 
-  it("keeps the guided journey and Ask entry point", () => {
+  it("keeps the guided journey and composes the large Ask panel into the report", () => {
+    const reportOpening = read("src/components/property/dossier/ReportOpening.tsx");
+    const reportComposer = read("src/components/property/ErfResearchDossier.tsx");
     expect(home).toContain("InvestigationJourney");
     expect(home).toContain("buildGuidedInvestigationJourney");
     expect(home).toContain("selectGuidedInvestigationStep");
-    expect(home).toContain("AskEasyErfPanel");
+    expect(home).not.toContain("AskEasyErfPanel");
+    expect(reportOpening).toContain("askSlot?: ReactNode");
+    expect(reportOpening).toMatch(/id="report-ask"[\s\S]*askSlot/);
+    expect(reportComposer).toMatch(/askSlot=\{\s*<AskEasyErfPanel/);
   });
 });
 
