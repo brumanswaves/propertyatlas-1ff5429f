@@ -14,37 +14,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  isolate:
-    name: Isolate ${{ matrix.name }}
+  discover:
+    name: Find Guided Ask references
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: report-ordering
-            test: places the report lens before Ask Easy Erf and Ask before the decision evidence
-          - name: guided-ask-placement
-            test: keeps the Guided Investigation free of the large Ask Easy Erf report panel
-          - name: accepted-envelope-reuse
-            test: uses the accepted deterministic envelope for Guided and report consumers
-          - name: report-map-fallback
-            test: renders a real parcel map in the web report and a deterministic print fallback
-          - name: site-potential-scope
-            test: keeps Site Potential limited to map and street-side build lines
+    timeout-minutes: 5
+    outputs:
+      matches: ${{ steps.find.outputs.matches }}
 
     steps:
       - name: Check out exact branch head
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+      - name: Find files containing the report-only component
+        id: find
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+          files = sorted(Path("src/components/property/investigation").glob("*.tsx"))
+          matches = [str(path) for path in files if "AskEasyErfPanel" in path.read_text()]
+          print("matches=" + json.dumps(matches))
+          PY
 
-      - name: Run one guardrail test
-        run: npx vitest run src/lib/reports/__tests__/reportInvestigationCoherenceGuardrails.test.ts -t "${{ matrix.test }}"
+  expose:
+    name: Match ${{ matrix.file }}
+    needs: discover
+    if: ${{ needs.discover.outputs.matches != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.discover.outputs.matches) }}
+
+    steps:
+      - name: Expose matching path in the job name
+        run: echo "${{ matrix.file }} contains AskEasyErfPanel"
+
+  no-match:
+    name: No Guided AskEasyErfPanel references
+    needs: discover
+    if: ${{ needs.discover.outputs.matches == '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Confirm no match
+        run: true
