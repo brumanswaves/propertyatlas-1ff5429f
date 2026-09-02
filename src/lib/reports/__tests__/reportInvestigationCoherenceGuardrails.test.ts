@@ -7,6 +7,7 @@ function source(path: string) {
 }
 
 const reportOpening = source("src/components/property/dossier/ReportOpening.tsx");
+const reportComposer = source("src/components/property/ErfResearchDossier.tsx");
 const reportMap = source("src/components/property/dossier/ReportBuildableAreaVisual.tsx");
 const reportHero = source("src/lib/reports/reportHero.ts");
 const sitePotential = source("src/components/property/sitePotential/VacantLandBuildEnvelope.tsx");
@@ -25,7 +26,7 @@ describe("report and investigation coherence guardrails", () => {
     expect(decisionIndex).toBeGreaterThan(askIndex);
   });
 
-  it("keeps the Guided Investigation free of the large Ask Easy Erf report panel", () => {
+  it("keeps Guided free of the large Ask panel and composes it into the report", () => {
     const guidedDirectory = resolve(process.cwd(), "src/components/property/investigation");
     const guidedSources = readdirSync(guidedDirectory)
       .filter((name) => name.endsWith(".tsx"))
@@ -33,7 +34,9 @@ describe("report and investigation coherence guardrails", () => {
       .join("\n");
 
     expect(guidedSources).not.toContain("AskEasyErfPanel");
-    expect(reportOpening).toContain("<AskEasyErfPanel");
+    expect(reportOpening).toContain("askSlot?: ReactNode");
+    expect(reportOpening).toMatch(/id="report-ask"[\s\S]*askSlot[\s\S]*id="report-decision"/);
+    expect(reportComposer).toMatch(/askSlot=\{\s*<AskEasyErfPanel/);
   });
 
   it("uses the accepted deterministic envelope for Guided and report consumers", () => {
