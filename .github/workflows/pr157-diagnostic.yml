@@ -22,18 +22,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: accepted-build-envelope
-            file: src/lib/sitePotential/__tests__/acceptedBuildEnvelope.test.ts
-          - name: report-context-sections
-            file: src/lib/reports/__tests__/contextSections.test.tsx
-          - name: report-coherence-guardrails
-            file: src/lib/reports/__tests__/reportInvestigationCoherenceGuardrails.test.ts
-          - name: fulfillment-status-enum
-            file: src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
-          - name: fulfillment-ui-guardrails
-            file: src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
-          - name: human-review-scope-guardrails
-            file: src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+          - name: report-ordering
+            test: places the report lens before Ask Easy Erf and Ask before the decision evidence
+          - name: guided-ask-placement
+            test: keeps the Guided Investigation free of the large Ask Easy Erf report panel
+          - name: accepted-envelope-reuse
+            test: uses the accepted deterministic envelope for Guided and report consumers
+          - name: report-map-fallback
+            test: renders a real parcel map in the web report and a deterministic print fallback
+          - name: site-potential-scope
+            test: keeps Site Potential limited to map and street-side build lines
 
     steps:
       - name: Check out exact branch head
@@ -48,5 +46,5 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run isolated test file
-        run: npx vitest run "${{ matrix.file }}"
+      - name: Run one guardrail test
+        run: npx vitest run src/lib/reports/__tests__/reportInvestigationCoherenceGuardrails.test.ts -t "${{ matrix.test }}"
