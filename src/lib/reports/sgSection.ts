@@ -154,8 +154,12 @@ function pickClaim(
   return null;
 }
 
+function cleanFindingPart(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
 function normalizeFindingPart(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-ZA");
+  return cleanFindingPart(value).toLocaleLowerCase("en-ZA");
 }
 
 function combineFindings(evidence: SgEvidenceBlock[]): SgCombinedFinding[] {
@@ -169,7 +173,12 @@ function combineFindings(evidence: SgEvidenceBlock[]): SgCombinedFinding[] {
       };
       const existing = combined.get(key);
       if (!existing) {
-        combined.set(key, { ...finding, sources: [source] });
+        combined.set(key, {
+          ...finding,
+          label: cleanFindingPart(finding.label),
+          value: cleanFindingPart(finding.value),
+          sources: [source],
+        });
         continue;
       }
       if (!existing.sources.some((item) => item.assetId === source.assetId)) {
@@ -180,7 +189,12 @@ function combineFindings(evidence: SgEvidenceBlock[]): SgCombinedFinding[] {
       }
     }
   }
-  return [...combined.values()];
+  return [...combined.values()].map((finding) => ({
+    ...finding,
+    sources: [...finding.sources].sort((left, right) =>
+      left.fileName.localeCompare(right.fileName, "en-ZA", { sensitivity: "base" }),
+    ),
+  }));
 }
 
 export function buildSgSectionModel(input: {
