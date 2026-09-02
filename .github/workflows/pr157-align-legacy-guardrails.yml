@@ -1,0 +1,94 @@
+name: PR 157 align legacy guardrails
+
+on:
+  push:
+    branches:
+      - chatgpt/report-investigation-coherence
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr157-align-legacy-guardrails
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    name: Apply narrow source and test corrections
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/report-investigation-coherence
+          fetch-depth: 0
+
+      - name: Apply exact replacements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "src/components/property/dossier/SitePotentialTab.tsx": [
+                  (
+                      '"Confirm and accept the site inputs"',
+                      '"Confirm the site inputs and accept the envelope"',
+                  ),
+              ],
+              "src/components/property/__tests__/simplificationPassB.test.ts": [
+                  (
+                      '''  it("keeps the guided journey and Ask entry point", () => {
+              expect(home).toContain("InvestigationJourney");
+              expect(home).toContain("buildGuidedInvestigationJourney");
+              expect(home).toContain("selectGuidedInvestigationStep");
+              expect(home).toContain("AskEasyErfPanel");
+            });''',
+                      '''  it("keeps the guided journey and keeps the large Ask panel in the report", () => {
+              const reportOpening = read("src/components/property/dossier/ReportOpening.tsx");
+              expect(home).toContain("InvestigationJourney");
+              expect(home).toContain("buildGuidedInvestigationJourney");
+              expect(home).toContain("selectGuidedInvestigationStep");
+              expect(home).not.toContain("AskEasyErfPanel");
+              expect(reportOpening).toContain("AskEasyErfPanel");
+            });''',
+                  ),
+              ],
+              "src/lib/investigation/__tests__/investigation.test.ts": [
+                  (
+                      '    expect(home).toContain("AskEasyErfPanel");',
+                      '    expect(home).not.toContain("AskEasyErfPanel");',
+                  ),
+              ],
+          }
+
+          for file_name, file_replacements in replacements.items():
+              path = Path(file_name)
+              text = path.read_text()
+              for old, new in file_replacements:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"Expected exactly one match in {file_name}, found {count}: {old[:80]!r}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+
+          workflow = Path(".github/workflows/pr157-align-legacy-guardrails.yml")
+          if not workflow.exists():
+              raise SystemExit("Temporary workflow file is missing")
+          workflow.unlink()
+          PY
+
+      - name: Commit the corrections and remove this temporary workflow
+        shell: bash
+        run: |
+          git config user.name "Easy Erf verification automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/property/dossier/SitePotentialTab.tsx \
+            src/components/property/__tests__/simplificationPassB.test.ts \
+            src/lib/investigation/__tests__/investigation.test.ts \
+            .github/workflows/pr157-align-legacy-guardrails.yml
+          git diff --cached --check
+          git commit -m "Align legacy guardrails with report-only Ask placement"
+          git push origin HEAD:chatgpt/report-investigation-coherence
