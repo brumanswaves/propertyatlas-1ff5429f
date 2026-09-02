@@ -1,0 +1,57 @@
+name: Temporary extract failing dossier guardrail
+
+on:
+  push:
+    branches:
+      - chatgpt/guided-task-first-mobile-header
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-extract-dossier-guardrail
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/guided-task-first-mobile-header
+          fetch-depth: 0
+
+      - name: Extract exact failing test block
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/components/property/__tests__/dossierUx.test.ts")
+          text = path.read_text()
+          title = 'renders the desktop panel as a fixed full-width workbench with a usable close control'
+          marker = f'it("{title}"'
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit("Target test title not found")
+          line_start = text.rfind("\n", 0, start) + 1
+          next_test = text.find('\n  it("', start + len(marker))
+          end = len(text) if next_test < 0 else next_test
+          excerpt = text[line_start:end].rstrip() + "\n"
+          output = Path("tmp/dossier-desktop-shell-test.txt")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(excerpt)
+          Path(".github/workflows/temporary-extract-dossier-test.yml").unlink()
+          PY
+
+      - name: Commit extracted evidence only
+        shell: bash
+        run: |
+          git config user.name "Easy Erf verification automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add tmp/dossier-desktop-shell-test.txt .github/workflows/temporary-extract-dossier-test.yml
+          git commit -m "Extract stale desktop workbench guardrail"
+          git push origin HEAD:chatgpt/guided-task-first-mobile-header
