@@ -11,8 +11,19 @@ export type CustomerReportOrderShape = {
 
 export type StructuredFinishedCustomerReport<T> = {
   order: T;
+  kind: "structured";
   content: HumanReviewReportContent;
 };
+
+export type LegacyFinishedCustomerReport<T> = {
+  order: T;
+  kind: "legacy";
+  content: null;
+};
+
+export type FinishedCustomerReport<T> =
+  | StructuredFinishedCustomerReport<T>
+  | LegacyFinishedCustomerReport<T>;
 
 export function customerReportStatus(order: Pick<CustomerReportOrderShape, "status" | "status_enum">) {
   const status = (order.status_enum || order.status || "pending").toLowerCase();
@@ -21,6 +32,7 @@ export function customerReportStatus(order: Pick<CustomerReportOrderShape, "stat
 
 export function partitionCustomerReportOrders<T extends CustomerReportOrderShape>(orders: readonly T[]) {
   const inProgress: T[] = [];
+  const finished: FinishedCustomerReport<T>[] = [];
   const structuredFinished: StructuredFinishedCustomerReport<T>[] = [];
   const legacyFinished: T[] = [];
 
@@ -32,11 +44,18 @@ export function partitionCustomerReportOrders<T extends CustomerReportOrderShape
 
     const content = parseHumanReviewReportContent(order.review_content);
     if (content) {
-      structuredFinished.push({ order, content });
+      const report: StructuredFinishedCustomerReport<T> = {
+        order,
+        kind: "structured",
+        content,
+      };
+      finished.push(report);
+      structuredFinished.push(report);
     } else {
+      finished.push({ order, kind: "legacy", content: null });
       legacyFinished.push(order);
     }
   }
 
-  return { inProgress, structuredFinished, legacyFinished };
+  return { inProgress, finished, structuredFinished, legacyFinished };
 }
