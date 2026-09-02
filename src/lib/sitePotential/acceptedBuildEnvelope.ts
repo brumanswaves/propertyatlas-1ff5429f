@@ -2,15 +2,18 @@
  * Accepted Site Potential output shared by Guided Investigation and the report.
  *
  * A calculated envelope only becomes a reportable output after the user has
- * confirmed the parcel boundary and its street-facing boundary selection.
+ * confirmed the parcel boundary, reviewed street-facing boundaries and
+ * explicitly accepted the exact deterministic inputs represented by the map.
  */
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { ParcelPlanningAssessment } from "@/lib/planning/municipalityPlanningTypes";
 import {
   calculateBuildEnvelope,
   projectRingToLocalMetres,
+  type BuildEnvelopeInputs,
   type BuildEnvelopeResult,
 } from "@/lib/sitePotential/buildEnvelope";
+import { buildEnvelopeAcceptanceState } from "@/lib/sitePotential/buildEnvelopeAcceptance";
 import {
   readStoredBuildEnvelopeInputs,
   type StoredBuildEnvelopeOverrides,
@@ -56,11 +59,14 @@ export function deriveAcceptedBuildEnvelope(input: {
     edgeLengths,
     recordedAreaM2,
   });
-  const result = calculateBuildEnvelope({
+  const inputs: BuildEnvelopeInputs = {
     ...resolved.answers,
     parcelId: parcel.id,
     ring: parcelRing,
-  });
+    recordedAreaM2: resolved.answers.recordedAreaM2 ?? recordedAreaM2,
+  };
+  const result = calculateBuildEnvelope(inputs);
+  const acceptance = buildEnvelopeAcceptanceState({ inputs, result, stored });
 
-  return result.envelopePolygon || result.coverageFootprint ? result : null;
+  return acceptance.accepted ? result : null;
 }
