@@ -1,10 +1,10 @@
 /**
- * Surveyor-General diagrams & lineage section model.
+ * Surveyor-General diagrams and lineage section model.
  *
  * Reads only what has already been extracted and identity-gated. Parent-plan
  * context is always labelled as context and never becomes a fact about the
- * subject erf. No diagram preview is implied here — TIFF assets are opened
- * through the existing signed-asset path only.
+ * subject erf. Every readable, identity-gated SG source remains visible in the
+ * report evidence pack with source traceability.
  */
 import type { EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
 import type {
@@ -36,25 +36,36 @@ export interface SgLineageRow {
   scope: "subject" | "parent_context";
 }
 
+export interface SgEvidenceFinding {
+  label: string;
+  value: string;
+  scope: "subject" | "parent_plan";
+  confidence: "high" | "medium" | "low";
+}
+
 export interface SgEvidenceBlock {
   asset: ErfAsset;
   readLabel: string;
   isParentContext: boolean;
   isUserConfirmed: boolean;
   summary: string | null;
-  findings: Array<{
-    label: string;
-    value: string;
-    scope: "subject" | "parent_plan";
-    confidence: "high" | "medium" | "low";
+  findings: SgEvidenceFinding[];
+}
+
+export interface SgCombinedFinding extends SgEvidenceFinding {
+  sources: Array<{
+    assetId: string;
+    fileName: string;
   }>;
 }
 
 export interface SgSectionModel {
   files: SgFileRow[];
-  /** The strongest identity-gated SG document selected for the report body. */
+  /** Every readable, identity-gated SG document included in the report body. */
   evidence: SgEvidenceBlock[];
-  /** Other readable SG diagrams remain available in the evidence appendix. */
+  /** Deduplicated findings across all included diagrams, with source lineage. */
+  combinedFindings: SgCombinedFinding[];
+  /** Kept for compatibility with older report consumers. */
   supportingDiagramCount: number;
   lineage: SgLineageRow[];
   hasParentContext: boolean;
@@ -104,6 +115,12 @@ const LINEAGE_SPECS: Array<{
   },
 ];
 
+const CONFIDENCE_PRIORITY: Record<SgEvidenceFinding["confidence"], number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
 function extractionSummary(asset: ErfAsset) {
   const value = asset.metadata.extractionSummary ?? asset.metadata.extraction_summary;
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -135,6 +152,35 @@ function pickClaim(
     if (claim) return claim;
   }
   return null;
+}
+
+function normalizeFindingPart(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-ZA");
+}
+
+function combineFindings(evidence: SgEvidenceBlock[]): SgCombinedFinding[] {
+  const combined = new Map<string, SgCombinedFinding>();
+  for (const block of evidence) {
+    for (const finding of block.findings) {
+      const key = [finding.scope, normalizeFindingPart(finding.label), normalizeFindingPart(finding.value)].join("|");
+      const source = {
+        assetId: block.asset.id,
+        fileName: block.asset.original_file_name,
+      };
+      const existing = combined.get(key);
+      if (!existing) {
+        combined.set(key, { ...finding, sources: [source] });
+        continue;
+      }
+      if (!existing.sources.some((item) => item.assetId === source.assetId)) {
+        existing.sources.push(source);
+      }
+      if (CONFIDENCE_PRIORITY[finding.confidence] < CONFIDENCE_PRIORITY[existing.confidence]) {
+        existing.confidence = finding.confidence;
+      }
+    }
+  }
+  return [...combined.values()];
 }
 
 export function buildSgSectionModel(input: {
@@ -198,25 +244,21 @@ export function buildSgSectionModel(input: {
       return right.asset.updated_at.localeCompare(left.asset.updated_at);
     });
 
-  const primaryEvidence = readableEvidence[0] ?? null;
   const hasParentDiagramContext =
     files.some((file) => file.isParentContext) ||
     readableEvidence.some((block) => block.isParentContext);
   const hasParentContext =
     hasParentDiagramContext || lineage.some((row) => row.scope === "parent_context");
 
-  const contextNote = primaryEvidence?.isParentContext
-    ? "The selected diagram was matched to the parent General Plan for this erf. It is shown as parent-plan context: it describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
-    : hasParentDiagramContext
-      ? primaryEvidence
-        ? "Additional supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
-        : "Supporting SG evidence includes parent General Plan context. It describes the layout this erf came from, and does not confirm boundaries, extent or servitudes for the subject erf on its own."
-      : null;
+  const contextNote = hasParentDiagramContext
+    ? "The combined SG evidence pack includes parent General Plan context. Parent-plan observations describe the layout this erf came from and do not confirm boundaries, extent or servitudes for the subject erf on their own."
+    : null;
 
   return {
     files,
-    evidence: primaryEvidence ? [primaryEvidence] : [],
-    supportingDiagramCount: Math.max(0, readableEvidence.length - 1),
+    evidence: readableEvidence,
+    combinedFindings: combineFindings(readableEvidence),
+    supportingDiagramCount: 0,
     lineage,
     hasParentContext,
     contextNote,
