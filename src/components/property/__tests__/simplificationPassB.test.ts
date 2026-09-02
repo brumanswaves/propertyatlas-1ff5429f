@@ -172,11 +172,13 @@ describe("Investigation screen hierarchy", () => {
     expect(home).toContain("onOpenExpertWorkspace");
   });
 
-  it("keeps the guided journey and Ask entry point", () => {
+  it("keeps the guided journey and keeps the large Ask panel in the report", () => {
+    const reportOpening = read("src/components/property/dossier/ReportOpening.tsx");
     expect(home).toContain("InvestigationJourney");
     expect(home).toContain("buildGuidedInvestigationJourney");
     expect(home).toContain("selectGuidedInvestigationStep");
-    expect(home).toContain("AskEasyErfPanel");
+    expect(home).not.toContain("AskEasyErfPanel");
+    expect(reportOpening).toContain("AskEasyErfPanel");
   });
 });
 

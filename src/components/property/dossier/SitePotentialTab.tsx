@@ -156,7 +156,7 @@ export function SitePotentialTab({
               ) : (
                 <FileWarning className="h-4 w-4 text-[#FF6A00]" />
               )}
-              {acceptedEnvelope ? "Build envelope accepted" : "Confirm and accept the site inputs"}
+              {acceptedEnvelope ? "Build envelope accepted" : "Confirm the site inputs and accept the envelope"}
             </div>
             <div className="mt-1 text-[11px] leading-5 text-[#64748B]">
               The envelope remains indicative until the underlying zoning, title conditions,

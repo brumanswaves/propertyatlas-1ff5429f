@@ -550,7 +550,7 @@ describe("investigation surface guardrails", () => {
     expect(panel).toContain("Open full research workspace");
     expect(panel).toContain("Return to guided investigation");
     expect(home).toContain("stoep-report");
-    expect(home).toContain("AskEasyErfPanel");
+    expect(home).not.toContain("AskEasyErfPanel");
   });
 
   it("renders deterministic messages instead of a blank chatbot", () => {
