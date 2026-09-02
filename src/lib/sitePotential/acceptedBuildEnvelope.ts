@@ -24,6 +24,10 @@ import {
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
+import {
+  readStoredStreetFrontageDetection,
+  type StoredStreetFrontageDetection,
+} from "@/lib/sitePotential/streetFrontageStore";
 import type { BrowserPersistenceUserId } from "@/lib/workbench/erfWorkspaceState";
 
 export interface AcceptedBuildEnvelopeInput {
@@ -34,6 +38,8 @@ export interface AcceptedBuildEnvelopeInput {
   userId: BrowserPersistenceUserId;
   /** Test-only override; production reads the parcel-scoped browser record. */
   storedInputs?: StoredBuildEnvelopeOverrides | null;
+  /** Test-only override; production replays the parcel-scoped map-road evidence. */
+  storedDetection?: StoredStreetFrontageDetection | null;
 }
 
 export interface BuildEnvelopeCandidate {
@@ -55,6 +61,10 @@ export function deriveBuildEnvelopeCandidate(input: AcceptedBuildEnvelopeInput):
     input.storedInputs === undefined
       ? readStoredBuildEnvelopeInputs(parcel.id, userId)
       : input.storedInputs;
+  const detection =
+    input.storedDetection === undefined
+      ? readStoredStreetFrontageDetection(parcel.id, undefined, userId)
+      : input.storedDetection;
   const polygon = projectRingToLocalMetres(parcelRing);
   const edgeLengths = polygon.map((point, index) => {
     const next = polygon[(index + 1) % polygon.length];
@@ -67,6 +77,14 @@ export function deriveBuildEnvelopeCandidate(input: AcceptedBuildEnvelopeInput):
     documentRuleEvidence: planning.detection.method === "document_supported",
     edgeLengths,
     recordedAreaM2,
+    detectedStreetEdge:
+      detection?.method === "map_road_match"
+        ? {
+            edgeIndex: detection.edgeIndex,
+            roadName: detection.roadName,
+            confidence: detection.confidence,
+          }
+        : null,
   });
   const inputs: BuildEnvelopeInputs = {
     ...resolved.answers,
