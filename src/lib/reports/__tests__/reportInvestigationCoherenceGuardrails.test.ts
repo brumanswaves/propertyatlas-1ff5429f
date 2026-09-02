@@ -10,6 +10,7 @@ const reportOpening = source("src/components/property/dossier/ReportOpening.tsx"
 const reportMap = source("src/components/property/dossier/ReportBuildableAreaVisual.tsx");
 const reportHero = source("src/lib/reports/reportHero.ts");
 const sitePotential = source("src/components/property/sitePotential/VacantLandBuildEnvelope.tsx");
+const sitePotentialTab = source("src/components/property/dossier/SitePotentialTab.tsx");
 const guidedSitePotential = source("src/components/property/investigation/GuidedSitePotentialStep.tsx");
 const acceptedEnvelope = source("src/lib/sitePotential/acceptedBuildEnvelope.ts");
 
@@ -39,6 +40,9 @@ describe("report and investigation coherence guardrails", () => {
     expect(sitePotential).toContain("acceptedInputSignature: acceptance.signature");
     expect(sitePotential).toContain('data-site-potential-acceptance={acceptance.accepted ? "accepted" : "pending"}');
     expect(acceptedEnvelope).toContain("candidate?.acceptance.accepted");
+    expect(sitePotentialTab).toContain("deriveBuildEnvelopeCandidate");
+    expect(sitePotentialTab).toContain("candidate?.acceptance.accepted");
+    expect(sitePotentialTab).toContain("disabled={!acceptedEnvelope}");
     expect(guidedSitePotential).toContain("acceptedBuildEnvelope");
     expect(guidedSitePotential).toContain("Accepted building area map");
   });
@@ -56,7 +60,7 @@ describe("report and investigation coherence guardrails", () => {
 
   it("keeps Site Potential limited to map and street-side build lines", () => {
     expect(sitePotential).toContain("<SatelliteParcelMap");
-    expect(guidedSitePotential).toContain("<StreetSideBuildEnvelope");
+    expect(sitePotentialTab).toContain("<StreetSideBuildEnvelope");
     expect(sitePotential).not.toMatch(/generate (a )?house|architectural concept|ai-generated/i);
     expect(guidedSitePotential).toContain("It does not generate a house or architectural concept.");
   });
