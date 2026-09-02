@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { partitionCustomerReportOrders } from "@/lib/humanReview/customerReportPresentation";
 
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -43,6 +44,35 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
   });
 
+  it("partitions every order into exactly one customer presentation", () => {
+    const structuredContent = {
+      bottomLine: "The structured web report is available.",
+      known: ["The parcel identity is recorded."],
+      potential: [],
+      risks: [],
+      unknowns: [],
+      nextSteps: [],
+    };
+    const orders = [
+      { id: "structured", status: "ready", status_enum: null, review_content: structuredContent },
+      { id: "legacy", status: "ready", status_enum: null, review_content: null },
+      { id: "processing", status: "paid", status_enum: "fulfilling", review_content: structuredContent },
+      { id: "complete", status: "paid", status_enum: "complete", review_content: structuredContent },
+    ];
+
+    const grouped = partitionCustomerReportOrders(orders);
+    const structuredIds = grouped.structuredFinished.map(({ order }) => order.id);
+    const legacyIds = grouped.legacyFinished.map((order) => order.id);
+    const inProgressIds = grouped.inProgress.map((order) => order.id);
+    const allPresentationIds = [...structuredIds, ...legacyIds, ...inProgressIds];
+
+    expect(structuredIds).toEqual(["structured", "complete"]);
+    expect(legacyIds).toEqual(["legacy"]);
+    expect(inProgressIds).toEqual(["processing"]);
+    expect(new Set(allPresentationIds).size).toBe(orders.length);
+    expect(structuredIds.filter((id) => legacyIds.includes(id))).toEqual([]);
+  });
+
   it("shows the done-for-you lifecycle and creates a five-minute private report download when a PDF exists", () => {
     expect(customerRoute).toContain("Payment received");
     expect(customerRoute).toContain("Investigation underway");
@@ -58,7 +88,10 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).toContain("Open finished report");
     expect(customerRoute).toContain("Back to reports");
     expect(customerRoute).toContain('nextUrl.searchParams.set("report", orderId)');
-    expect(customerRoute).toContain('orders.find((order) => order.id === selectedReportId');
+    expect(customerRoute).toContain("partitionCustomerReportOrders(orders)");
+    expect(customerRoute).toContain("groupedOrders.structuredFinished.find");
+    expect(customerRoute).toContain("structuredReports.map(({ order })");
+    expect(customerRoute).toContain("legacyOrders.map((order)");
     expect(customerRoute).not.toContain("Secure report delivery is the next connection before launch.");
   });
 });
