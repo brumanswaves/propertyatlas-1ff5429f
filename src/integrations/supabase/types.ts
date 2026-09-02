@@ -650,62 +650,150 @@ export type Database = {
         }
         Relationships: []
       }
+      human_review_requests: {
+        Row: {
+          context: string | null
+          created_at: string
+          focus: string
+          id: string
+          intended_use: string | null
+          parcel_id: string | null
+          property_reference_hint: string | null
+          report_order_id: string | null
+          source_surface: string | null
+          scope_acknowledged_at: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          focus: string
+          id?: string
+          intended_use?: string | null
+          parcel_id?: string | null
+          property_reference_hint?: string | null
+          report_order_id?: string | null
+          source_surface?: string | null
+          scope_acknowledged_at: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          focus?: string
+          id?: string
+          intended_use?: string | null
+          parcel_id?: string | null
+          property_reference_hint?: string | null
+          report_order_id?: string | null
+          source_surface?: string | null
+          scope_acknowledged_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "human_review_requests_report_order_id_fkey"
+            columns: ["report_order_id"]
+            isOneToOne: true
+            referencedRelation: "report_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_orders: {
         Row: {
           completed_at: string | null
           created_at: string
           failure_reason: string | null
           id: string
-          parcel_id: string
+          intended_use: string | null
+          parcel_id: string | null
           payload: Json
           pdf_storage_path: string | null
           price_cents: number
           provider: string
-          provider_id: Database["public"]["Enums"]["provider_id"]
+          provider_id: Database["public"]["Enums"]["provider_id"] | null
           provider_order_ref: string | null
           report_type: string
+          review_content: Json | null
+          review_content_updated_at: string | null
+          review_context: string | null
+          review_focus: string | null
+          review_request_id: string | null
+          review_scope_acknowledged_at: string | null
+          reviewed_by: string | null
           status: string
           status_enum: Database["public"]["Enums"]["report_order_status"]
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           completed_at?: string | null
           created_at?: string
           failure_reason?: string | null
           id?: string
-          parcel_id: string
+          intended_use?: string | null
+          parcel_id?: string | null
           payload?: Json
           pdf_storage_path?: string | null
           price_cents?: number
           provider?: string
-          provider_id?: Database["public"]["Enums"]["provider_id"]
+          provider_id?: Database["public"]["Enums"]["provider_id"] | null
           provider_order_ref?: string | null
           report_type: string
+          review_content?: Json | null
+          review_content_updated_at?: string | null
+          review_context?: string | null
+          review_focus?: string | null
+          review_request_id?: string | null
+          review_scope_acknowledged_at?: string | null
+          reviewed_by?: string | null
           status?: string
           status_enum?: Database["public"]["Enums"]["report_order_status"]
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           completed_at?: string | null
           created_at?: string
           failure_reason?: string | null
           id?: string
-          parcel_id?: string
+          intended_use?: string | null
+          parcel_id?: string | null
           payload?: Json
           pdf_storage_path?: string | null
           price_cents?: number
           provider?: string
-          provider_id?: Database["public"]["Enums"]["provider_id"]
+          provider_id?: Database["public"]["Enums"]["provider_id"] | null
           provider_order_ref?: string | null
           report_type?: string
+          review_content?: Json | null
+          review_content_updated_at?: string | null
+          review_context?: string | null
+          review_focus?: string | null
+          review_request_id?: string | null
+          review_scope_acknowledged_at?: string | null
+          reviewed_by?: string | null
           status?: string
           status_enum?: Database["public"]["Enums"]["report_order_status"]
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "report_orders_review_request_id_fkey"
+            columns: ["review_request_id"]
+            isOneToOne: true
+            referencedRelation: "human_review_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_properties: {
         Row: {
@@ -1175,12 +1263,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1204,11 +1292,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1229,11 +1317,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1254,11 +1342,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1271,11 +1359,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
