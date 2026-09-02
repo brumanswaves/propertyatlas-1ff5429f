@@ -139,4 +139,20 @@ describe("deriveAcceptedBuildEnvelope", () => {
 
     expect(withDetectedRoadName).toBe(withoutDetectedRoadName);
   });
+
+  it("invalidates acceptance for a geometry change smaller than six decimal places", () => {
+    const reviewable = candidate();
+    expect(reviewable?.inputs.ring).not.toBeNull();
+
+    const shiftedRing = reviewable!.inputs.ring!.map((point, index) =>
+      index === 1 ? ([point[0] + 0.0000004, point[1]] as [number, number]) : point,
+    );
+    const originalSignature = buildEnvelopeAcceptanceSignature(reviewable!.inputs, reviewedInputs);
+    const shiftedSignature = buildEnvelopeAcceptanceSignature(
+      { ...reviewable!.inputs, ring: shiftedRing },
+      reviewedInputs,
+    );
+
+    expect(shiftedSignature).not.toBe(originalSignature);
+  });
 });
