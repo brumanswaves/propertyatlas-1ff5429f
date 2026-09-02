@@ -11,6 +11,7 @@ const migration = source(
 );
 const founderRoute = source("src/routes/admin.fulfillment.tsx");
 const customerRoute = source("src/routes/orders.tsx");
+const customerPresentation = source("src/lib/humanReview/customerReportPresentation.ts");
 
 describe("Easy Erf fulfillment status compatibility", () => {
   it("uses the existing production enum values instead of inventing processing/ready enum labels", () => {
@@ -25,7 +26,8 @@ describe("Easy Erf fulfillment status compatibility", () => {
     expect(migration).toContain("when 'complete' then 'ready'");
     expect(founderRoute).toContain('status === "fulfilling" ? "processing"');
     expect(founderRoute).toContain('status === "complete" ? "ready"');
-    expect(customerRoute).toContain('status === "fulfilling" ? "processing"');
-    expect(customerRoute).toContain('status === "complete" ? "ready"');
+    expect(customerRoute).toContain("customerReportStatus(order)");
+    expect(customerPresentation).toContain('status === "fulfilling" ? "processing"');
+    expect(customerPresentation).toContain('status === "complete" ? "ready"');
   });
 });
