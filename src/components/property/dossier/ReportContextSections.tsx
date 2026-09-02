@@ -19,6 +19,7 @@ import type { SgEvidenceBlock, SgSectionModel } from "@/lib/reports/sgSection";
 import type { StillToVerifySummary } from "@/lib/reports/contextSections";
 import { createErfAssetPreviewSignedUrl } from "@/lib/workbench/erfFileVault";
 import { repairSgPreview } from "@/lib/workbench/sgPreviewRepair";
+import { registerSgPreviewSettlement } from "@/lib/reports/sgPreviewSettlement";
 
 function sectionShell(extra?: string) {
   return cn(
@@ -160,13 +161,6 @@ export function ReportMunicipalSection({
       </div>
     </ReportContextSection>
   );
-}
-
-export function registerSgPreviewSettlement(
-  onPreviewSettlement: ((settlement: Promise<void>) => void) | undefined,
-  settlement: Promise<void>,
-) {
-  onPreviewSettlement?.(settlement);
 }
 
 function SgPreview({

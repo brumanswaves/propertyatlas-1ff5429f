@@ -7,12 +7,12 @@ import {
   buildStillToVerifySummary,
 } from "@/lib/reports/contextSections";
 import { buildSgSectionModel } from "@/lib/reports/sgSection";
+import { registerSgPreviewSettlement } from "@/lib/reports/sgPreviewSettlement";
 import {
   ReportContextSection,
   ReportMunicipalSection,
   ReportSgLineageSection,
   ReportStillToVerifySection,
-  registerSgPreviewSettlement,
 } from "@/components/property/dossier/ReportContextSections";
 import type { EvidenceClaim, PropertyEvidencePack } from "@/lib/evidence/propertyEvidenceTypes";
 import type { EvidenceAppendixRow } from "@/lib/reports/evidenceAppendix";
