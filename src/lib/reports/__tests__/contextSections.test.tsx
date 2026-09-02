@@ -43,6 +43,52 @@ function pack(claims: EvidenceClaim[]): PropertyEvidencePack {
   return { claims, sources: [], parcelId: "parcel:erf-1570" } as unknown as PropertyEvidencePack;
 }
 
+function sgAsset(input: {
+  id: string;
+  fileName: string;
+  identityMatchStatus: "matched" | "parent_lineage_match" | "unverified" | "mismatch";
+  updatedAt?: string;
+  userConfirmed?: boolean;
+  summary?: string;
+  findings?: Array<{
+    label: string;
+    value: string;
+    scope: "subject" | "parent_plan";
+    confidence: "high" | "medium" | "low";
+  }>;
+}): ErfAsset {
+  return {
+    id: input.id,
+    user_id: "user-1",
+    parcel_id: "parcel:erf-1570",
+    asset_category: "sg_diagram",
+    asset_type: "sg_diagram",
+    source_label: "Surveyor-General",
+    storage_bucket: "erf-files",
+    storage_path: `user-1/parcel:erf-1570/sg_diagram/${input.id}/${input.fileName}`,
+    original_file_name: input.fileName,
+    mime_type: "image/tiff",
+    size_bytes: 100,
+    checksum_sha256: null,
+    status: "ready",
+    metadata: {
+      extractionStatus: "ready",
+      identityMatchStatus: input.identityMatchStatus,
+      ...(input.userConfirmed
+        ? {
+            identityBinding: "user_confirmed",
+            identityUserConfirmedParcelId: "parcel:erf-1570",
+          }
+        : {}),
+      ...(input.summary ? { extractionSummary: input.summary } : {}),
+      extractedClaims: input.findings ?? [],
+    },
+    local_migration_fingerprint: null,
+    created_at: "2026-08-12T08:00:00.000Z",
+    updated_at: input.updatedAt ?? "2026-08-12T08:00:00.000Z",
+  } as unknown as ErfAsset;
+}
+
 describe("site risk section model", () => {
   it("keeps unknown checks unknown and never renders a clearance", () => {
     const model = buildSiteRiskSectionModel({ pack: null });
@@ -71,7 +117,7 @@ describe("site risk section model", () => {
     });
     expect(model.supportedCount).toBe(1);
     expect(model.headline).toContain("Flood risk");
-    expect(model.facts.find((f) => f.id === "flood")?.source).toBe("document");
+    expect(model.facts.find((fact) => fact.id === "flood")?.source).toBe("document");
   });
 });
 
@@ -89,8 +135,8 @@ describe("municipal services section model", () => {
         }),
       ]),
     });
-    expect(model.facts.find((f) => f.id === "rates")?.value).toBeNull();
-    expect(model.facts.find((f) => f.id === "municipal-valuation")?.value).toMatch(/^R 1.250.000$/);
+    expect(model.facts.find((fact) => fact.id === "rates")?.value).toBeNull();
+    expect(model.facts.find((fact) => fact.id === "municipal-valuation")?.value).toMatch(/^R 1.250.000$/);
     expect(model.monthlyEstimate).toBeNull();
 
     const html = renderToStaticMarkup(
@@ -124,7 +170,7 @@ describe("municipal services section model", () => {
   });
 });
 
-describe("location & lifestyle section model", () => {
+describe("location and lifestyle section model", () => {
   it("separates official, listing and user-confirmed context and invents no distances", () => {
     const model = buildLocationLifestyleSectionModel({
       pack: null,
@@ -136,9 +182,9 @@ describe("location & lifestyle section model", () => {
       },
       subjectListing: null,
     });
-    expect(model.facts.find((f) => f.id === "address")?.source).toBe("user_confirmed");
-    expect(model.facts.find((f) => f.id === "area")?.source).toBe("official");
-    for (const fact of model.facts.filter((f) => f.id.startsWith("distance-"))) {
+    expect(model.facts.find((fact) => fact.id === "address")?.source).toBe("user_confirmed");
+    expect(model.facts.find((fact) => fact.id === "area")?.source).toBe("official");
+    for (const fact of model.facts.filter((item) => item.id.startsWith("distance-"))) {
       expect(fact.value).toBeNull();
       expect(fact.provenance).toMatch(/does not estimate/);
     }
@@ -193,7 +239,7 @@ describe("SG lineage section model", () => {
       category: "Surveyor-General diagram",
       providerType: "Surveyor-General",
       readState: "parent_plan_context",
-      readLabel: "Parent General Plan matched — context only",
+      readLabel: "Parent General Plan matched, context only",
       scope: "parent_plan_context",
       pageLocator: "page 1",
       detail: null,
@@ -202,7 +248,7 @@ describe("SG lineage section model", () => {
     },
   ];
 
-  it("labels parent-plan context without attributing broader lineage to a selected diagram", () => {
+  it("labels parent-plan context without attributing broader lineage to a missing diagram", () => {
     const model = buildSgSectionModel({
       appendixRows: rows,
       pack: pack([
@@ -230,7 +276,7 @@ describe("SG lineage section model", () => {
     const html = renderToStaticMarkup(
       <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
     );
-    expect(html).toContain("No identity-gated Surveyor-General diagram is selected for this report.");
+    expect(html).toContain("No identity-gated Surveyor-General diagram is included in this report.");
     expect(html).toContain("GP12252");
     expect(html).toContain("Parent-plan context");
     expect(html).toContain("Cadastral identity context");
@@ -270,40 +316,22 @@ describe("SG lineage section model", () => {
   });
 
   it("shows stored SG findings as scoped visual evidence without upgrading identity", () => {
-    const sgAsset = {
+    const asset = sgAsset({
       id: "asset-sg-readable",
-      user_id: "user-1",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      asset_type: "sg_diagram",
-      source_label: "Surveyor-General",
-      storage_bucket: "erf-files",
-      storage_path: "user-1/parcel:erf-1570/sg_diagram/asset/readable.tif",
-      original_file_name: "readable-sg-test-fixture.tif",
-      mime_type: "image/tiff",
-      size_bytes: 100,
-      checksum_sha256: null,
-      status: "ready",
-      metadata: {
-        extractionStatus: "partial",
-        identityMatchStatus: "unverified",
-        identityBinding: "user_confirmed",
-        identityUserConfirmedParcelId: "parcel:erf-1570",
-        extractionSummary: "The document shows a cadastral diagram reference.",
-        extractedClaims: [
-          {
-            label: "General plan number",
-            value: "GP12252",
-            scope: "parent_plan",
-            confidence: "medium",
-          },
-        ],
-      },
-      local_migration_fingerprint: null,
-      created_at: "2026-08-12T08:00:00.000Z",
-      updated_at: "2026-08-12T08:00:00.000Z",
-    } as unknown as ErfAsset;
-    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [sgAsset] });
+      fileName: "readable-sg-test-fixture.tif",
+      identityMatchStatus: "unverified",
+      userConfirmed: true,
+      summary: "The document shows a cadastral diagram reference.",
+      findings: [
+        {
+          label: "General plan number",
+          value: "GP12252",
+          scope: "parent_plan",
+          confidence: "medium",
+        },
+      ],
+    });
+    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [asset] });
     expect(model.evidence).toHaveLength(1);
     expect(model.evidence[0]?.isUserConfirmed).toBe(true);
     expect(model.evidence[0]?.findings[0]?.scope).toBe("parent_plan");
@@ -311,9 +339,9 @@ describe("SG lineage section model", () => {
     const html = renderToStaticMarkup(
       <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
     );
-    expect(html).toContain("What Easy Erf found");
+    expect(html).toContain("Diagram previews and source-specific findings");
     expect(html).toContain("readable-sg-test-fixture.tif");
-    expect(html).not.toContain("No identity-gated Surveyor-General diagram is selected for this report.");
+    expect(html).not.toContain("No identity-gated Surveyor-General diagram is included in this report.");
     expect(html).toContain("User-confirmed attachment, not official verification");
     expect(html).toContain("You attached this document to this erf. Its readable findings are user-supplied evidence; this does not replace official cadastral verification.");
     expect(html).toContain("parent context");
@@ -321,113 +349,112 @@ describe("SG lineage section model", () => {
     expect(html).toContain("The document shows a cadastral diagram reference.");
   });
 
-  it("selects the strongest subject SG diagram for the report and leaves supporting plans in the appendix", () => {
-    const subjectDiagram = {
+  it("includes subject and parent SG sources together instead of silently selecting one", () => {
+    const subjectDiagram = sgAsset({
       id: "asset-subject-sg",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      original_file_name: "subject-erf-1570.tif",
-      updated_at: "2026-08-13T10:00:00.000Z",
-      metadata: {
-        extractionStatus: "ready",
-        identityMatchStatus: "matched",
-        extractionSummary: "Individual diagram for the selected erf.",
-        extractedClaims: [],
-      },
-    } as unknown as ErfAsset;
-    const parentPlan = {
+      fileName: "subject-erf-1570.tif",
+      identityMatchStatus: "matched",
+      updatedAt: "2026-08-13T10:00:00.000Z",
+      summary: "Individual diagram for the selected erf.",
+    });
+    const parentPlan = sgAsset({
       id: "asset-parent-plan",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      original_file_name: "general-plan-12252.tif",
-      updated_at: "2026-08-13T11:00:00.000Z",
-      metadata: {
-        extractionStatus: "ready",
-        identityMatchStatus: "parent_lineage_match",
-        extractionSummary: "Supporting parent General Plan.",
-        extractedClaims: [],
-      },
-    } as unknown as ErfAsset;
+      fileName: "general-plan-12252.tif",
+      identityMatchStatus: "parent_lineage_match",
+      updatedAt: "2026-08-13T11:00:00.000Z",
+      summary: "Supporting parent General Plan.",
+    });
 
     const model = buildSgSectionModel({
       appendixRows: [],
       pack: null,
       assets: [parentPlan, subjectDiagram],
     });
-    expect(model.evidence.map((block) => block.asset.id)).toEqual(["asset-subject-sg"]);
-    expect(model.supportingDiagramCount).toBe(1);
+
+    expect(model.evidence.map((block) => block.asset.id)).toEqual([
+      "asset-subject-sg",
+      "asset-parent-plan",
+    ]);
+    expect(model.supportingDiagramCount).toBe(0);
 
     const html = renderToStaticMarkup(
       <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
     );
+    expect(html).toContain("Combined SG Evidence Pack");
+    expect(html).toContain("Diagrams included in this report");
     expect(html).toContain("subject-erf-1570.tif");
-    expect(html).not.toContain("general-plan-12252.tif");
-    expect(html).toContain("additional readable SG diagram");
-    expect(html).toContain("Additional supporting SG evidence includes parent General Plan context.");
+    expect(html).toContain("general-plan-12252.tif");
+    expect(html).toContain("combined SG evidence pack includes parent General Plan context");
+    expect(html).not.toContain("additional readable SG diagram");
   });
 
-  it("keeps a user-confirmed subject SG primary when parent General Plan evidence is also readable", () => {
-    const userConfirmedDiagram = {
-      id: "asset-user-confirmed-sg",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      original_file_name: "user-confirmed-erf-1570.tif",
-      updated_at: "2026-08-13T10:00:00.000Z",
-      metadata: {
-        extractionStatus: "ready",
-        identityMatchStatus: "unverified",
-        identityBinding: "user_confirmed",
-        identityUserConfirmedParcelId: "parcel:erf-1570",
-        extractedClaims: [],
-      },
-    } as unknown as ErfAsset;
-    const parentPlan = {
-      id: "asset-parent-plan",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      original_file_name: "general-plan-12252.tif",
-      updated_at: "2026-08-13T11:00:00.000Z",
-      metadata: {
-        extractionStatus: "ready",
-        identityMatchStatus: "parent_lineage_match",
-        extractedClaims: [],
-      },
-    } as unknown as ErfAsset;
+  it("deduplicates repeated findings while preserving every supporting source", () => {
+    const first = sgAsset({
+      id: "asset-sg-a",
+      fileName: "diagram-a.tif",
+      identityMatchStatus: "matched",
+      findings: [
+        {
+          label: "Registered extent",
+          value: "618.7 m²",
+          scope: "subject",
+          confidence: "medium",
+        },
+      ],
+    });
+    const second = sgAsset({
+      id: "asset-sg-b",
+      fileName: "diagram-b.tif",
+      identityMatchStatus: "matched",
+      updatedAt: "2026-08-13T11:00:00.000Z",
+      findings: [
+        {
+          label: " Registered extent ",
+          value: "618.7   m²",
+          scope: "subject",
+          confidence: "high",
+        },
+        {
+          label: "Diagram number",
+          value: "SG 1570/2026",
+          scope: "subject",
+          confidence: "high",
+        },
+      ],
+    });
+
+    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [first, second] });
+    const extent = model.combinedFindings.find((finding) => finding.label.trim() === "Registered extent");
+
+    expect(model.evidence).toHaveLength(2);
+    expect(model.combinedFindings).toHaveLength(2);
+    expect(extent?.confidence).toBe("high");
+    expect(extent?.sources.map((source) => source.assetId).sort()).toEqual([
+      "asset-sg-a",
+      "asset-sg-b",
+    ]);
+
+    const html = renderToStaticMarkup(
+      <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
+    );
+    expect(html).toContain("Combined findings across all included diagrams");
+    expect(html).toContain("Sources: diagram-a.tif · diagram-b.tif");
+    expect(html).toContain("Diagram number");
+  });
+
+  it("does not admit a wrong-property SG diagram into the report summary", () => {
+    const wrongPropertyDiagram = sgAsset({
+      id: "asset-wrong-sg",
+      fileName: "other-property.tif",
+      identityMatchStatus: "mismatch",
+      findings: [{ label: "Erf", value: "999", scope: "subject", confidence: "high" }],
+    });
 
     const model = buildSgSectionModel({
       appendixRows: [],
       pack: null,
-      assets: [parentPlan, userConfirmedDiagram],
+      assets: [wrongPropertyDiagram],
     });
-
-    expect(model.evidence.map((block) => block.asset.id)).toEqual(["asset-user-confirmed-sg"]);
-    expect(model.evidence[0]?.isUserConfirmed).toBe(true);
-    expect(model.supportingDiagramCount).toBe(1);
-
-    const html = renderToStaticMarkup(
-      <ReportSgLineageSection anchorId="report-sg-evidence" model={model} />,
-    );
-    expect(html).toContain("user-confirmed-erf-1570.tif");
-    expect(html).not.toContain("general-plan-12252.tif");
-    expect(html).toContain("User-confirmed attachment, not official verification");
-    expect(html).toContain("Additional supporting SG evidence includes parent General Plan context.");
-  });
-
-  it("does not admit a wrong-property SG diagram into the report summary", () => {
-    const wrongPropertyDiagram = {
-      id: "asset-wrong-sg",
-      parcel_id: "parcel:erf-1570",
-      asset_category: "sg_diagram",
-      original_file_name: "other-property.tif",
-      updated_at: "2026-08-13T11:00:00.000Z",
-      metadata: {
-        extractionStatus: "ready",
-        identityMatchStatus: "mismatch",
-        extractedClaims: [{ label: "Erf", value: "999", scope: "subject", confidence: "high" }],
-      },
-    } as unknown as ErfAsset;
-
-    const model = buildSgSectionModel({ appendixRows: [], pack: null, assets: [wrongPropertyDiagram] });
     expect(model.evidence).toHaveLength(0);
     expect(model.emptyMessage).toMatch(/No Surveyor-General diagram has been read/);
   });
