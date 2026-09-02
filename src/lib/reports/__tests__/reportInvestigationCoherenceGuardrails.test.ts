@@ -33,6 +33,7 @@ describe("report and investigation coherence guardrails", () => {
       .join("\n");
 
     expect(guidedSources).not.toContain("AskEasyErfPanel");
+    expect(reportOpening).toContain("<AskEasyErfPanel");
   });
 
   it("uses the accepted deterministic envelope for Guided and report consumers", () => {
