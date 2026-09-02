@@ -9,7 +9,7 @@ export interface BuildEnvelopeAcceptanceState {
 }
 
 function normalizedNumber(value: number | null) {
-  return value == null || !Number.isFinite(value) ? null : Math.round(value * 1_000_000) / 1_000_000;
+  return value == null || !Number.isFinite(value) ? null : value;
 }
 
 function normalizedText(value: string | null) {
@@ -41,7 +41,7 @@ export function buildEnvelopeAcceptanceSignature(
   stored: StoredBuildEnvelopeOverrides | null,
 ) {
   return JSON.stringify({
-    version: 2,
+    version: 3,
     parcelId: inputs.parcelId,
     ring: normalizedRing(inputs.ring),
     boundaryConfirmed: inputs.boundaryConfirmed,
