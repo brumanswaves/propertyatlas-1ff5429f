@@ -12,6 +12,10 @@ export type StoredBuildEnvelopeInputs = Omit<BuildEnvelopeInputs, "ring" | "parc
    * map-road detection silently reintroduce a frontage after reload.
    */
   streetFrontageConfirmedByUser?: boolean;
+  /** Signature of the exact deterministic inputs the user explicitly accepted. */
+  acceptedInputSignature?: string;
+  /** ISO timestamp recorded with the accepted signature. */
+  acceptedAt?: string;
 };
 
 /**
@@ -76,7 +80,7 @@ export function writeStoredBuildEnvelopeInputs(
       JSON.stringify(stripEmpty(inputs)),
     );
   } catch {
-    /* storage unavailable — the session still works, it just will not persist */
+    /* storage unavailable; the session still works, it just will not persist */
   }
 }
 
