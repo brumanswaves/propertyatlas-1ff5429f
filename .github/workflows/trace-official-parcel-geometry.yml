@@ -1,0 +1,38 @@
+name: Trace official parcel geometry handoff
+
+on:
+  push:
+    branches:
+      - chatgpt/preserve-official-parcel-geometry
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trace-official-parcel-geometry
+  cancel-in-progress: true
+
+jobs:
+  trace:
+    name: Trace geometry producers and consumers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Print official search and geometry references
+        shell: bash
+        run: |
+          echo '=== OfficialFeatureSelection references ==='
+          rg -n -C 8 'OfficialFeatureSelection' src || true
+          echo '=== search highlight references ==='
+          rg -n -C 10 'searchHighlightOfficialParcel|SearchHighlightOfficialParcel' src || true
+          echo '=== selection construction and selection handlers ==='
+          rg -n -C 12 'onOfficialFeatureSelect|onOfficialParcelSelect|setSelectedOfficial|setOfficialFeature|onFeatureSelect|geometry:' src/components src/routes src/lib/search || true
+          echo '=== exact search identity references ==='
+          rg -n -C 10 'Search official parcel identity|EXACT OFFICIAL MATCH|official parcel identity' src || true
+          echo '=== ArcGIS query geometry flags ==='
+          rg -n -C 10 'returnGeometry|outSR|geometryPrecision|queryFeatures|FeatureServer' src/lib src/components || true
