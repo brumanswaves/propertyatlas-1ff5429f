@@ -1,0 +1,54 @@
+name: Temporary guided task first UX patch
+
+on:
+  push:
+    branches:
+      - chatgpt/guided-task-first-mobile-header
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-guided-task-first-ux-patch
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/guided-task-first-mobile-header
+          fetch-depth: 0
+
+      - name: Apply narrow UX patch
+        run: |
+          node scripts/temporary-apply-guided-task-first-ux.mjs
+          rm scripts/temporary-apply-guided-task-first-ux.mjs
+          rm .github/workflows/temporary-guided-task-first-patch.yml
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run focused UX tests
+        run: >-
+          npx vitest run
+          src/components/humanReview/__tests__/humanReviewTakeoverCardTruth.test.ts
+          src/components/property/__tests__/guidedTaskFirstUx.test.ts
+          src/components/property/__tests__/simplificationPassB.test.ts
+          src/components/property/__tests__/dossierUx.test.ts
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Commit verified patch
+        run: |
+          git diff --check
+          git config user.name "Easy Erf verification automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Put guided task first and compact mobile workbench"
+          git push origin HEAD:chatgpt/guided-task-first-mobile-header
