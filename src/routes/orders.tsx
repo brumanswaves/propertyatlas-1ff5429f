@@ -16,11 +16,19 @@ import { HumanReviewedReport } from "@/components/humanReview/HumanReviewedRepor
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
+  customerReportStatus,
+  partitionCustomerReportOrders,
+  type StructuredFinishedCustomerReport,
+} from "@/lib/humanReview/customerReportPresentation";
+import {
   DONE_FOR_YOU_INVESTIGATION_NAME,
   humanReviewFocusLabel,
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
-import { parseHumanReviewReportContent } from "@/lib/humanReview/reportContent";
+import {
+  parseHumanReviewReportContent,
+  type HumanReviewReportContent,
+} from "@/lib/humanReview/reportContent";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -97,9 +105,10 @@ function CustomerOrdersPage() {
   }, [user]);
 
   const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
+  const groupedOrders = useMemo(() => partitionCustomerReportOrders(orders), [orders]);
   const selectedReport = useMemo(
-    () => orders.find((order) => order.id === selectedReportId && orderStatus(order) === "ready") ?? null,
-    [orders, selectedReportId],
+    () => groupedOrders.structuredFinished.find(({ order }) => order.id === selectedReportId) ?? null,
+    [groupedOrders.structuredFinished, selectedReportId],
   );
 
   const selectReport = (orderId: string | null) => {
@@ -144,11 +153,19 @@ function CustomerOrdersPage() {
               </Link>
             </div>
           ) : selectedReport ? (
-            <OpenedReport order={selectedReport} onClose={() => selectReport(null)} />
+            <OpenedReport
+              order={selectedReport.order}
+              content={selectedReport.content}
+              onClose={() => selectReport(null)}
+            />
           ) : (
             <>
-              <OrderSection title="In progress" orders={orders.filter((order) => orderStatus(order) !== "ready")} onOpenReport={selectReport} />
-              <OrderSection title="Finished reports" orders={orders.filter((order) => orderStatus(order) === "ready")} onOpenReport={selectReport} />
+              <OrderSection title="In progress" orders={groupedOrders.inProgress} onOpenReport={selectReport} />
+              <FinishedOrderSection
+                structuredReports={groupedOrders.structuredFinished}
+                legacyOrders={groupedOrders.legacyFinished}
+                onOpenReport={selectReport}
+              />
             </>
           )}
         </section>
@@ -254,9 +271,47 @@ function OrderSection({
   );
 }
 
-function OpenedReport({ order, onClose }: { order: ReportOrder; onClose: () => void }) {
-  const content = parseHumanReviewReportContent(order.review_content);
-  if (!content) return null;
+function FinishedOrderSection({
+  structuredReports,
+  legacyOrders,
+  onOpenReport,
+}: {
+  structuredReports: StructuredFinishedCustomerReport<ReportOrder>[];
+  legacyOrders: ReportOrder[];
+  onOpenReport: (orderId: string) => void;
+}) {
+  const hasFinishedOrders = structuredReports.length > 0 || legacyOrders.length > 0;
+
+  return (
+    <section aria-label="Finished reports">
+      <h3 className="mb-3 text-sm font-semibold text-[#0D1B2A]">Finished reports</h3>
+      {!hasFinishedOrders ? (
+        <div className="rounded-2xl border border-dashed border-[#0D1B2A]/15 bg-white p-4 text-xs text-[#64748B]">
+          No finished reports yet.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {structuredReports.map(({ order }) => (
+            <CustomerOrderCard key={order.id} order={order} onOpenReport={onOpenReport} />
+          ))}
+          {legacyOrders.map((order) => (
+            <CustomerOrderCard key={order.id} order={order} onOpenReport={onOpenReport} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OpenedReport({
+  order,
+  content,
+  onClose,
+}: {
+  order: ReportOrder;
+  content: HumanReviewReportContent;
+  onClose: () => void;
+}) {
   return (
     <section aria-label="Opened finished report">
       <button
@@ -267,7 +322,7 @@ function OpenedReport({ order, onClose }: { order: ReportOrder; onClose: () => v
         Back to reports
       </button>
       <p className="mb-4 text-sm text-[#64748B]">The web report is the primary product; PDF is a secondary export.</p>
-      <CustomerOrderCard order={order} onOpenReport={() => undefined} expanded />
+      <CustomerOrderCard order={order} onOpenReport={() => undefined} expanded contentOverride={content} />
     </section>
   );
 }
@@ -276,16 +331,18 @@ function CustomerOrderCard({
   order,
   onOpenReport,
   expanded = false,
+  contentOverride,
 }: {
   order: ReportOrder;
   onOpenReport: (orderId: string) => void;
   expanded?: boolean;
+  contentOverride?: HumanReviewReportContent;
 }) {
   const [downloading, setDownloading] = useState(false);
   const status = orderStatus(order);
   const propertyReference = orderPropertyReference(order);
   const legacyRequest = payloadText(order.payload, "investigationRequest");
-  const content = parseHumanReviewReportContent(order.review_content);
+  const content = contentOverride ?? parseHumanReviewReportContent(order.review_content);
 
   async function downloadReport() {
     if (!order.pdf_storage_path) {
@@ -418,9 +475,7 @@ function CustomerOrderCard({
       {status === "ready" ? (
         <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 text-xs text-[#0D1B2A]">
           <div className="font-semibold">Your done-for-you property investigation is complete.</div>
-          {content ? null : (
-            <p className="mt-1 leading-5 text-[#0D1B2A]/65">This is a legacy completion with a PDF but no structured web report yet.</p>
-          )}
+          <p className="mt-1 leading-5 text-[#0D1B2A]/65">This is a legacy completion with a PDF but no structured web report yet.</p>
           {downloadButton ? <div className="mt-3">{downloadButton}</div> : null}
         </div>
       ) : null}
@@ -449,8 +504,7 @@ function StatusBadge({ status, label: labelOverride }: { status: string; label?:
 }
 
 function orderStatus(order: ReportOrder) {
-  const status = (order.status_enum || order.status || "pending").toLowerCase();
-  return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
+  return customerReportStatus(order);
 }
 
 function orderPropertyReference(order: ReportOrder) {
