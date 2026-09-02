@@ -14,29 +14,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  focused:
-    name: Test ${{ matrix.label }}
+  discover:
+    name: Discover dossier guardrail titles
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: new-guardrail
-            test_file: src/components/property/__tests__/guidedTaskFirstUx.test.ts
-          - label: takeover-truth
-            test_file: src/components/humanReview/__tests__/humanReviewTakeoverCardTruth.test.ts
-          - label: simplification
-            test_file: src/components/property/__tests__/simplificationPassB.test.ts
-          - label: dossier-ux
-            test_file: src/components/property/__tests__/dossierUx.test.ts
+    timeout-minutes: 5
+    outputs:
+      titles: ${{ steps.titles.outputs.titles }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           ref: chatgpt/guided-task-first-mobile-header
 
-      - name: Apply the uncommitted UX patch in this isolated job
+      - id: titles
+        name: Parse individual test titles
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import re
+          from pathlib import Path
+
+          source = Path("src/components/property/__tests__/dossierUx.test.ts").read_text()
+          titles = re.findall(r'\bit\("([^"]+)"', source)
+          if not titles:
+              raise SystemExit("No dossier test titles found")
+          print("titles=" + json.dumps(titles))
+          PY
+
+  isolated:
+    name: Dossier guardrail | ${{ matrix.title }}
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        title: ${{ fromJson(needs.discover.outputs.titles) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/guided-task-first-mobile-header
+
+      - name: Apply proposed UX patch
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -52,5 +74,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run isolated focused file
-        run: npx vitest run "${{ matrix.test_file }}"
+      - name: Run one dossier guardrail
+        env:
+          TEST_TITLE: ${{ matrix.title }}
+        run: npx vitest run src/components/property/__tests__/dossierUx.test.ts -t "$TEST_TITLE"
