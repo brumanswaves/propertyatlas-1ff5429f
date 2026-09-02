@@ -1,9 +1,9 @@
 /**
- * Site & environmental risk, municipal services & ownership costs, location &
- * lifestyle, and SG diagrams & lineage sections.
+ * Site and environmental risk, municipal services and ownership costs,
+ * location and lifestyle, and SG diagrams and lineage sections.
  *
  * Presentation only. Unknown values render as an explicit missing state with a
- * next action — never as a clearance, a zero amount or an invented figure.
+ * next action, never as a clearance, a zero amount or an invented figure.
  */
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
@@ -41,7 +41,10 @@ function FactRow({ fact }: { fact: ContextFact }) {
         {fact.label}
       </div>
       <div
-        className={cn("mt-2 text-sm font-semibold", known ? "text-[#0D1B2A]" : "text-[#0D1B2A]/45")}
+        className={cn(
+          "mt-2 text-sm font-semibold",
+          known ? "text-[#0D1B2A]" : "text-[#0D1B2A]/45",
+        )}
       >
         {known ? fact.value : "Not established"}
       </div>
@@ -250,19 +253,9 @@ export function ReportSgLineageSection({
   onOpenTab?: (tab: string) => void;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
-  const selectedEvidence = model.evidence[0] ?? null;
-  const selectedAppendixRow = selectedEvidence
-    ? model.files.find((file) => file.assetId === selectedEvidence.asset.id) ?? null
-    : null;
-  const file = selectedAppendixRow ?? { locator: null };
-  const additionalDiagramCount = Math.max(
-    model.supportingDiagramCount,
-    model.files.filter((file) => file.assetId !== selectedEvidence?.asset.id).length,
-  );
-
   return (
     <section id={anchorId} className={sectionShell()}>
-      <ReportSectionTitleBlock eyebrow="Cadastral evidence" title="SG Diagram Summary" />
+      <ReportSectionTitleBlock eyebrow="Cadastral evidence" title="Combined SG Evidence Pack" />
 
       {model.contextNote && (
         <p className="mt-3 rounded-2xl border border-[#F59E0B]/40 bg-[#FFFBEB] px-4 py-3 text-xs leading-5 text-[#92400E]">
@@ -276,55 +269,52 @@ export function ReportSgLineageSection({
         <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-5">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-              Diagram selected for this report
+              Diagrams included in this report
             </div>
-            {!selectedEvidence ? (
+            {model.evidence.length === 0 ? (
               <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/70">
-                No identity-gated Surveyor-General diagram is selected for this report.
+                No identity-gated Surveyor-General diagram is included in this report.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
-                {[selectedEvidence].map((block) => (
-                  <li
-                    key={block.asset.id}
-                    data-sg-file={block.asset.id}
-                    className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2"
-                  >
-                    <div className="text-sm font-semibold break-all text-[#0D1B2A]">
-                      {block.asset.original_file_name}
-                    </div>
-                    <div className="mt-1 text-[11px] text-[#64748B]">
-                      {block.readLabel}
-                      {file.locator ? ` · ${file.locator}` : ""}
-                    </div>
-                    {block.isUserConfirmed && (
-                      <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
-                        User-confirmed attachment, not official verification
+                {model.evidence.map((block) => {
+                  const file = model.files.find((candidate) => candidate.assetId === block.asset.id);
+                  return (
+                    <li
+                      key={block.asset.id}
+                      data-sg-file={block.asset.id}
+                      className="rounded-xl border border-[#D9E6F2] bg-white px-3 py-2"
+                    >
+                      <div className="text-sm font-semibold break-all text-[#0D1B2A]">
+                        {block.asset.original_file_name}
                       </div>
-                    )}
-                    {block.isParentContext && (
-                      <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
-                        PLAN / PARENT CONTEXT only
+                      <div className="mt-1 text-[11px] text-[#64748B]">
+                        {block.readLabel}
+                        {file?.locator ? ` · ${file.locator}` : ""}
                       </div>
-                    )}
-                    {onOpenAsset && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenAsset(block.asset.id)}
-                        className="report-no-print mt-2 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
-                      >
-                        Open source file <ExternalLink className="h-3 w-3" />
-                      </button>
-                    )}
-                  </li>
-                ))}
+                      {block.isUserConfirmed && (
+                        <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                          User-confirmed attachment, not official verification
+                        </div>
+                      )}
+                      {block.isParentContext && (
+                        <div className="mt-2 text-[11px] font-semibold text-[#92400E]">
+                          PLAN / PARENT CONTEXT only
+                        </div>
+                      )}
+                      {onOpenAsset && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenAsset(block.asset.id)}
+                          className="report-no-print mt-2 inline-flex items-center gap-1 rounded-full border border-[#0D1B2A]/15 px-3 py-1 text-[11px] font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+                        >
+                          Open source file <ExternalLink className="h-3 w-3" />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-            )}
-            {additionalDiagramCount > 0 && (
-              <p className="mt-3 text-xs leading-5 text-[#64748B]">
-                {additionalDiagramCount} additional readable SG diagram
-                {additionalDiagramCount === 1 ? " is" : "s are"} listed in the Evidence Appendix.
-              </p>
             )}
           </div>
 
@@ -356,10 +346,36 @@ export function ReportSgLineageSection({
         </div>
       )}
 
+      {model.combinedFindings.length > 0 && (
+        <div data-sg-combined-findings className="mt-5 rounded-2xl border border-[#0D1B2A]/10 bg-[#0D1B2A] p-5 text-white">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
+            Combined findings across all included diagrams
+          </div>
+          <ul className="mt-3 grid gap-3 lg:grid-cols-2">
+            {model.combinedFindings.map((finding) => (
+              <li
+                key={`${finding.scope}-${finding.label}-${finding.value}`}
+                className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-3"
+              >
+                <div className="text-xs leading-5">
+                  <span className="font-semibold">{finding.label}:</span> {finding.value}
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-white/60">
+                  {finding.scope === "parent_plan" ? "parent context" : "subject"} · {finding.confidence} confidence
+                </div>
+                <div className="mt-2 text-[10px] leading-4 text-white/55">
+                  Sources: {finding.sources.map((source) => source.fileName).join(" · ")}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {model.evidence.length > 0 && (
         <div className="mt-5 space-y-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
-            What Easy Erf found
+            Diagram previews and source-specific findings
           </div>
           {model.evidence.map((block) => (
             <article
