@@ -26,13 +26,67 @@ jobs:
       - name: Print official search and geometry references
         shell: bash
         run: |
-          echo '=== OfficialFeatureSelection references ==='
-          rg -n -C 8 'OfficialFeatureSelection' src || true
-          echo '=== search highlight references ==='
-          rg -n -C 10 'searchHighlightOfficialParcel|SearchHighlightOfficialParcel' src || true
-          echo '=== selection construction and selection handlers ==='
-          rg -n -C 12 'onOfficialFeatureSelect|onOfficialParcelSelect|setSelectedOfficial|setOfficialFeature|onFeatureSelect|geometry:' src/components src/routes src/lib/search || true
-          echo '=== exact search identity references ==='
-          rg -n -C 10 'Search official parcel identity|EXACT OFFICIAL MATCH|official parcel identity' src || true
-          echo '=== ArcGIS query geometry flags ==='
-          rg -n -C 10 'returnGeometry|outSR|geometryPrecision|queryFeatures|FeatureServer' src/lib src/components || true
+          python - <<'PY'
+          from pathlib import Path
+
+          searches = {
+              "OfficialFeatureSelection references": ["OfficialFeatureSelection"],
+              "Search highlight references": ["searchHighlightOfficialParcel", "SearchHighlightOfficialParcel"],
+              "Selection construction and handlers": [
+                  "onOfficialFeatureSelect",
+                  "onOfficialParcelSelect",
+                  "setSelectedOfficial",
+                  "setOfficialFeature",
+                  "onFeatureSelect",
+                  "geometry:",
+              ],
+              "Exact search identity references": [
+                  "Search official parcel identity",
+                  "EXACT OFFICIAL MATCH",
+                  "official parcel identity",
+              ],
+              "ArcGIS geometry query references": [
+                  "returnGeometry",
+                  "outSR",
+                  "geometryPrecision",
+                  "queryFeatures",
+                  "FeatureServer",
+              ],
+          }
+
+          roots = [Path("src")]
+          files = sorted(
+              path
+              for root in roots
+              for path in root.rglob("*")
+              if path.is_file() and path.suffix in {".ts", ".tsx", ".js", ".mjs"}
+          )
+
+          for heading, needles in searches.items():
+              print(f"=== {heading} ===")
+              found = 0
+              for path in files:
+                  lines = path.read_text(errors="replace").splitlines()
+                  matched_lines = [
+                      index
+                      for index, line in enumerate(lines)
+                      if any(needle.lower() in line.lower() for needle in needles)
+                  ]
+                  if not matched_lines:
+                      continue
+                  found += 1
+                  print(f"--- {path} ---")
+                  emitted = set()
+                  for index in matched_lines:
+                      start = max(0, index - 8)
+                      end = min(len(lines), index + 9)
+                      for line_index in range(start, end):
+                          if line_index in emitted:
+                              continue
+                          emitted.add(line_index)
+                          marker = ">" if line_index == index else " "
+                          print(f"{marker}{line_index + 1:5}: {lines[line_index]}")
+                      print()
+              if found == 0:
+                  print("NO MATCHES")
+          PY
