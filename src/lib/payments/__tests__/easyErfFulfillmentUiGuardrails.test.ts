@@ -44,7 +44,7 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
   });
 
-  it("partitions every order into exactly one customer presentation", () => {
+  it("partitions every order into exactly one presentation while preserving purchase order", () => {
     const structuredContent = {
       bottomLine: "The structured web report is available.",
       known: ["The parcel identity is recorded."],
@@ -61,16 +61,32 @@ describe("Easy Erf customer fulfillment status", () => {
     ];
 
     const grouped = partitionCustomerReportOrders(orders);
-    const structuredIds = grouped.structuredFinished.map(({ order }) => order.id);
-    const legacyIds = grouped.legacyFinished.map((order) => order.id);
+    const finishedIds = grouped.finished.map(({ order }) => order.id);
+    const finishedKinds = grouped.finished.map((report) => report.kind);
     const inProgressIds = grouped.inProgress.map((order) => order.id);
-    const allPresentationIds = [...structuredIds, ...legacyIds, ...inProgressIds];
+    const allPresentationIds = [...finishedIds, ...inProgressIds];
 
-    expect(structuredIds).toEqual(["structured", "complete"]);
-    expect(legacyIds).toEqual(["legacy"]);
+    expect(finishedIds).toEqual(["structured", "legacy", "complete"]);
+    expect(finishedKinds).toEqual(["structured", "legacy", "structured"]);
+    expect(grouped.structuredFinished.map(({ order }) => order.id)).toEqual([
+      "structured",
+      "complete",
+    ]);
+    expect(grouped.legacyFinished.map((order) => order.id)).toEqual(["legacy"]);
     expect(inProgressIds).toEqual(["processing"]);
     expect(new Set(allPresentationIds).size).toBe(orders.length);
-    expect(structuredIds.filter((id) => legacyIds.includes(id))).toEqual([]);
+  });
+
+  it("shows matching clickable cards for separate completed purchases", () => {
+    expect(customerRoute).toContain("Each card below is a separate paid order.");
+    expect(customerRoute).toContain("The same property can appear more than once");
+    expect(customerRoute).toContain("Order reference");
+    expect(customerRoute).toContain("Open order");
+    expect(customerRoute).toContain("Separate paid order");
+    expect(customerRoute).toContain("finishedDeliveryLabel(report)");
+    expect(customerRoute).toContain("reports.map((report)");
+    expect(customerRoute).toContain("groupedOrders.finished.find");
+    expect(customerRoute).toContain("report.kind === \"structured\"");
   });
 
   it("shows the done-for-you lifecycle and creates a five-minute private report download when a PDF exists", () => {
@@ -85,13 +101,9 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).toContain("In progress");
     expect(customerRoute).toContain("Finished reports");
     expect(customerRoute).toContain('label="Finished"');
-    expect(customerRoute).toContain("Open finished report");
     expect(customerRoute).toContain("Back to reports");
     expect(customerRoute).toContain('nextUrl.searchParams.set("report", orderId)');
     expect(customerRoute).toContain("partitionCustomerReportOrders(orders)");
-    expect(customerRoute).toContain("groupedOrders.structuredFinished.find");
-    expect(customerRoute).toContain("structuredReports.map(({ order })");
-    expect(customerRoute).toContain("legacyOrders.map((order)");
     expect(customerRoute).not.toContain("Secure report delivery is the next connection before launch.");
   });
 });
