@@ -1,0 +1,52 @@
+name: PR 157 diagnostic isolation
+
+on:
+  push:
+    branches:
+      - chatgpt/report-investigation-coherence
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr157-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolate:
+    name: Isolate ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: accepted-build-envelope
+            file: src/lib/sitePotential/__tests__/acceptedBuildEnvelope.test.ts
+          - name: report-context-sections
+            file: src/lib/reports/__tests__/contextSections.test.tsx
+          - name: report-coherence-guardrails
+            file: src/lib/reports/__tests__/reportInvestigationCoherenceGuardrails.test.ts
+          - name: fulfillment-status-enum
+            file: src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
+          - name: fulfillment-ui-guardrails
+            file: src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+          - name: human-review-scope-guardrails
+            file: src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run isolated test file
+        run: npx vitest run "${{ matrix.file }}"
