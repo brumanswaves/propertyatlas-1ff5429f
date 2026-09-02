@@ -5,8 +5,7 @@ export const PRIMARY_NAV_LINKS = [
 ] as const;
 
 export const SIGNED_IN_NAV_LINKS = [
-  { to: "/dashboard", label: "My Investigations" },
-  { to: "/orders", label: "My Reports" },
+  { to: "/dashboard", label: "My Properties" },
   { to: "/profile", label: "Account" },
 ] as const;
 
@@ -14,8 +13,7 @@ export const FOOTER_PRODUCT_LINKS = [
   { to: "/", label: "Find a Property" },
   { to: "/how-it-works", label: "How It Works" },
   { to: "/pricing", label: "Done-for-You Investigation" },
-  { to: "/dashboard", label: "My Investigations" },
-  { to: "/orders", label: "My Reports" },
+  { to: "/dashboard", label: "My Properties" },
 ] as const;
 
 export const FOOTER_RESOURCE_LINKS = [

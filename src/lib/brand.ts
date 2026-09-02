@@ -12,7 +12,7 @@ export const AI_NAME = "Easy Erf AI" as const;
 export const AI_ACTION = "Ask Easy Erf" as const;
 export const WORKFLOW_NAME = "Guided Investigation" as const;
 export const REPORTS_NAME = "Easy Erf Report" as const;
-export const SAVED_AREA_NAME = "My Investigations" as const;
+export const SAVED_AREA_NAME = "My Properties" as const;
 
 export const TAGLINE = "Every erf. All the facts." as const;
 

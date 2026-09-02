@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   CircleDashed,
   Clock3,
@@ -12,8 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Footer } from "@/components/layout/Footer";
-import { TopNav } from "@/components/layout/TopNav";
+import { CustomerWorkspaceShell } from "@/components/account/CustomerWorkspaceShell";
 import { HumanReviewedReport } from "@/components/humanReview/HumanReviewedReport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -27,7 +25,7 @@ import { parseHumanReviewReportContent } from "@/lib/humanReview/reportContent";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "My Done-for-You Investigations | Easy Erf" },
+      { title: "My Properties | Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -58,6 +56,7 @@ function CustomerOrdersPage() {
   const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [paymentReceived, setPaymentReceived] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(readSelectedReportId);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -67,6 +66,12 @@ function CustomerOrdersPage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     setPaymentReceived(params.get("payment") === "received");
+  }, []);
+
+  useEffect(() => {
+    const syncSelectedReport = () => setSelectedReportId(readSelectedReportId());
+    window.addEventListener("popstate", syncSelectedReport);
+    return () => window.removeEventListener("popstate", syncSelectedReport);
   }, []);
 
   useEffect(() => {
@@ -92,30 +97,33 @@ function CustomerOrdersPage() {
   }, [user]);
 
   const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
+  const selectedReport = useMemo(
+    () => orders.find((order) => order.id === selectedReportId && orderStatus(order) === "ready") ?? null,
+    [orders, selectedReportId],
+  );
+
+  const selectReport = (orderId: string | null) => {
+    setSelectedReportId(orderId);
+    if (typeof window === "undefined") return;
+    const nextUrl = new URL(window.location.href);
+    if (orderId) nextUrl.searchParams.set("report", orderId);
+    else nextUrl.searchParams.delete("report");
+    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  };
+
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
-      <TopNav />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-28 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-              <ShieldCheck className="h-3 w-3 text-[#FF8A33]" /> Done for You
-            </span>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-              My Done-for-You Investigations
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748B]">
-              Track the investigation while Easy Erf works through it, then read the finished Human-Reviewed Easy Erf Report here. The web report is the primary product; PDF is a secondary export.
-            </p>
-          </div>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> My Investigations
-          </Link>
+    <CustomerWorkspaceShell activeTab="reports">
+      <section aria-label="Done-for-You Reports">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+            <ShieldCheck className="h-3 w-3 text-[#FF8A33]" /> Done for You
+          </span>
+          <h2 className="mt-3 text-xl font-semibold tracking-tight text-[#0D1B2A] md:text-2xl">Done-for-You Reports</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748B]">
+            Track paid property investigations here, then choose a finished Human-Reviewed Easy Erf Report to open.
+          </p>
         </div>
 
         {paymentReceived ? <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} /> : null}
@@ -135,13 +143,17 @@ function CustomerOrdersPage() {
                 See Done-for-You · R999
               </Link>
             </div>
+          ) : selectedReport ? (
+            <OpenedReport order={selectedReport} onClose={() => selectReport(null)} />
           ) : (
-            orders.map((order) => <CustomerOrderCard key={order.id} order={order} />)
+            <>
+              <OrderSection title="In progress" orders={orders.filter((order) => orderStatus(order) !== "ready")} onOpenReport={selectReport} />
+              <OrderSection title="Finished reports" orders={orders.filter((order) => orderStatus(order) === "ready")} onOpenReport={selectReport} />
+            </>
           )}
         </section>
-      </main>
-      <Footer />
-    </div>
+      </section>
+    </CustomerWorkspaceShell>
   );
 }
 
@@ -215,7 +227,60 @@ function PaymentReceivedPanel({ order, loading }: { order: ReportOrder | null; l
   );
 }
 
-function CustomerOrderCard({ order }: { order: ReportOrder }) {
+function OrderSection({
+  title,
+  orders,
+  onOpenReport,
+}: {
+  title: string;
+  orders: ReportOrder[];
+  onOpenReport: (orderId: string) => void;
+}) {
+  return (
+    <section aria-label={title}>
+      <h3 className="mb-3 text-sm font-semibold text-[#0D1B2A]">{title}</h3>
+      {orders.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#0D1B2A]/15 bg-white p-4 text-xs text-[#64748B]">
+          No {title.toLowerCase()} yet.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <CustomerOrderCard key={order.id} order={order} onOpenReport={onOpenReport} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OpenedReport({ order, onClose }: { order: ReportOrder; onClose: () => void }) {
+  const content = parseHumanReviewReportContent(order.review_content);
+  if (!content) return null;
+  return (
+    <section aria-label="Opened finished report">
+      <button
+        type="button"
+        onClick={onClose}
+        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+      >
+        Back to reports
+      </button>
+      <p className="mb-4 text-sm text-[#64748B]">The web report is the primary product; PDF is a secondary export.</p>
+      <CustomerOrderCard order={order} onOpenReport={() => undefined} expanded />
+    </section>
+  );
+}
+
+function CustomerOrderCard({
+  order,
+  onOpenReport,
+  expanded = false,
+}: {
+  order: ReportOrder;
+  onOpenReport: (orderId: string) => void;
+  expanded?: boolean;
+}) {
   const [downloading, setDownloading] = useState(false);
   const status = orderStatus(order);
   const propertyReference = orderPropertyReference(order);
@@ -250,7 +315,7 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
     </button>
   ) : null;
 
-  if (status === "ready" && content) {
+  if (status === "ready" && content && expanded) {
     return (
       <HumanReviewedReport
         propertyReference={propertyReference}
@@ -261,6 +326,34 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
         completedAt={order.completed_at}
         downloadAction={downloadButton}
       />
+    );
+  }
+
+  if (status === "ready" && content) {
+    return (
+      <article className="rounded-2xl border border-emerald-500/25 bg-white p-5 shadow-soft sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <StatusBadge status={status} label="Finished" />
+            <h3 className="mt-3 text-lg font-semibold text-[#0D1B2A]">{propertyReference}</h3>
+            <p className="mt-1 text-xs text-[#64748B]">
+              {order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy paid investigation"}
+              {humanReviewIntendedUseLabel(order.intended_use) ? ` · ${humanReviewIntendedUseLabel(order.intended_use)}` : ""}
+            </p>
+            <p className="mt-2 text-xs text-[#64748B]">Finished {formatCompletedDate(order.completed_at)}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {downloadButton}
+            <button
+              type="button"
+              onClick={() => onOpenReport(order.id)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142944]"
+            >
+              Open finished report
+            </button>
+          </div>
+        </div>
+      </article>
     );
   }
 
@@ -345,9 +438,9 @@ function CustomerOrderCard({ order }: { order: ReportOrder }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, label: labelOverride }: { status: string; label?: string }) {
   const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
-  const label = status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report ready" : status;
+  const label = labelOverride ?? (status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report ready" : status);
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
       <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
@@ -368,4 +461,19 @@ function payloadText(payload: unknown, key: string): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const value = (payload as Record<string, unknown>)[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readSelectedReportId() {
+  if (typeof window === "undefined") return null;
+  const reportId = new URLSearchParams(window.location.search).get("report");
+  return reportId?.trim() || null;
+}
+
+function formatCompletedDate(value: string | null) {
+  if (!value || !Number.isFinite(new Date(value).getTime())) return "date not recorded";
+  return new Date(value).toLocaleDateString("en-ZA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }

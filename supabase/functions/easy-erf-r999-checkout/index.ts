@@ -166,6 +166,9 @@ Deno.serve(async (request: Request) => {
   // Stripe carries only this opaque request UUID. The confirmed parcel,
   // property context and Human Review questions stay inside Easy Erf.
   verifiedUrl.searchParams.set("client_reference_id", requestRow.id);
+  if (user.email?.trim()) {
+    verifiedUrl.searchParams.set("prefilled_email", user.email.trim());
+  }
 
   return json({
     ok: true,
