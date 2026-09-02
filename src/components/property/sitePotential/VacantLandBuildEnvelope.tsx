@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
-import { Info, Ruler, RotateCcw } from "lucide-react";
+import { CheckCircle2, Info, Ruler, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   calculateBuildEnvelope,
@@ -9,6 +9,7 @@ import {
   type BuildEnvelopeResult,
   type BuildEnvelopeRuleSource,
 } from "@/lib/sitePotential/buildEnvelope";
+import { buildEnvelopeAcceptanceState } from "@/lib/sitePotential/buildEnvelopeAcceptance";
 import {
   clearStoredBuildEnvelopeInputs,
   readStoredBuildEnvelopeInputs,
@@ -36,7 +37,7 @@ export interface VacantLandBuildEnvelopeProps {
   recordedAreaM2: number | null;
   zoneLabel?: string | null;
   onResultChange?: (result: BuildEnvelopeResult) => void;
-  /** Same planning assessment that powers Zoning & Build — single source of truth. */
+  /** Same planning assessment that powers Zoning & Build, as a single source of truth. */
   assessment?: ParcelPlanningAssessment | null;
   /**
    * True only when a property-matched zoning document actually supplied the
@@ -130,9 +131,17 @@ export function VacantLandBuildEnvelope({
         ring,
         roads: roads ?? [],
         savedStreetName,
-        confirmedEdgeIndex: overrides.streetFrontageConfirmedByUser ? null : (overrides.streetEdgeIndex ?? null),
+        confirmedEdgeIndex: overrides.streetFrontageConfirmedByUser
+          ? null
+          : (overrides.streetEdgeIndex ?? null),
       }),
-    [ring, roads, savedStreetName, overrides.streetEdgeIndex, overrides.streetFrontageConfirmedByUser],
+    [
+      ring,
+      roads,
+      savedStreetName,
+      overrides.streetEdgeIndex,
+      overrides.streetFrontageConfirmedByUser,
+    ],
   );
 
   // Detection evidence is audited separately from the confirmed answer.
@@ -176,6 +185,10 @@ export function VacantLandBuildEnvelope({
     (next: StoredBuildEnvelopeOverrides) => {
       setOverrides((current) => {
         const merged = { ...current, ...next };
+        if (!Object.prototype.hasOwnProperty.call(next, "acceptedInputSignature")) {
+          delete merged.acceptedInputSignature;
+          delete merged.acceptedAt;
+        }
         writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
         return merged;
       });
@@ -230,6 +243,10 @@ export function VacantLandBuildEnvelope({
   );
 
   const result = useMemo(() => calculateBuildEnvelope(inputs), [inputs]);
+  const acceptance = useMemo(
+    () => buildEnvelopeAcceptanceState({ inputs, result, stored: overrides }),
+    [inputs, overrides, result],
+  );
 
   useEffect(() => {
     onResultChange?.(result);
@@ -297,7 +314,6 @@ export function VacantLandBuildEnvelope({
         </p>
       </section>
 
-      {/* Result first: large satellite visual, compact build summary beside it. */}
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <SatelliteParcelMap
           ring={ring}
@@ -453,7 +469,6 @@ export function VacantLandBuildEnvelope({
         </div>
       ) : null}
 
-      {/* One Next Best Action */}
       {prefill?.nextBestAction ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#FF6A00]/25 bg-[#FF6A00]/[0.05] px-4 py-3">
           <div>
@@ -476,7 +491,54 @@ export function VacantLandBuildEnvelope({
         </div>
       ) : null}
 
-      {/* Collapsed technical detail / manual override surface */}
+      <section
+        data-site-potential-acceptance={acceptance.accepted ? "accepted" : "pending"}
+        className={cn(
+          "mt-5 rounded-2xl border p-4",
+          acceptance.accepted
+            ? "border-emerald-300/60 bg-emerald-50"
+            : "border-[#FF6A00]/25 bg-[#FFF7ED]",
+        )}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#64748B]">
+              Final Site Potential confirmation
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
+              {acceptance.accepted ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : null}
+              {acceptance.accepted
+                ? "This exact envelope is accepted"
+                : acceptance.eligible
+                  ? "Review the map and accept this envelope"
+                  : "More information is required before acceptance"}
+            </div>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-[#64748B]">
+              {acceptance.accepted
+                ? "Guided Investigation and the Easy Erf Report can now reuse this exact map, street-side build lines and recorded assumptions. Changing any input clears this acceptance automatically."
+                : acceptance.eligible
+                  ? "Accept only after checking the parcel outline, street-facing boundaries and planning assumptions shown above. This remains theoretical and is not municipal approval."
+                  : "Confirm the boundary, review street-facing boundaries and provide enough planning inputs for a verified or estimated deterministic envelope."}
+            </p>
+          </div>
+          {!acceptance.accepted ? (
+            <button
+              type="button"
+              disabled={!acceptance.eligible}
+              onClick={() =>
+                patch({
+                  acceptedInputSignature: acceptance.signature,
+                  acceptedAt: new Date().toISOString(),
+                })
+              }
+              className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Accept this Site Potential
+            </button>
+          ) : null}
+        </div>
+      </section>
+
       <details className="mt-6 rounded-2xl border border-[#0D1B2A]/10 bg-white">
         <summary className="cursor-pointer rounded-2xl px-4 py-3 text-[12px] font-semibold text-[#0D1B2A]">
           Review inputs and technical details
@@ -490,7 +552,6 @@ export function VacantLandBuildEnvelope({
             <BuildEnvelopeDiagram result={result} />
 
             <div className="space-y-4">
-              {/* Step 1 — boundary */}
               <Step index={1} title="Confirm the parcel boundary">
                 <label className="flex items-start gap-2 text-[12px] text-[#0D1B2A]/80">
                   <input
@@ -507,7 +568,6 @@ export function VacantLandBuildEnvelope({
                 </label>
               </Step>
 
-              {/* Step 2 — street edge */}
               <Step index={2} title="Street-facing boundaries">
                 <div className="flex flex-wrap gap-2">
                   {edgeOptions.map((index) => {
@@ -540,8 +600,8 @@ export function VacantLandBuildEnvelope({
                   {resolved.fields.streetEdgeIndex.provenance}
                 </p>
                 <p className="mt-2 text-[11px] text-[#64748B]">
-                  Select every boundary that faces a street. You can also select none when the
-                  map context does not support a street-facing boundary for this erf.
+                  Select every boundary that faces a street. You can also select none when the map
+                  context does not support a street-facing boundary for this erf.
                 </p>
                 <input
                   type="text"
@@ -552,7 +612,6 @@ export function VacantLandBuildEnvelope({
                 />
               </Step>
 
-              {/* Step 3 — rule source */}
               <Step index={3} title="Where do the build rules come from?">
                 <div className="grid gap-2">
                   {RULE_SOURCE_OPTIONS.map((option) => {
@@ -593,7 +652,6 @@ export function VacantLandBuildEnvelope({
                 />
               </Step>
 
-              {/* Step 4 — building lines */}
               <Step index={4} title="Building lines">
                 <div className="grid grid-cols-3 gap-2">
                   <NumberField
@@ -614,7 +672,6 @@ export function VacantLandBuildEnvelope({
                 </div>
               </Step>
 
-              {/* Step 5 — bulk */}
               <Step index={5} title="Coverage and height">
                 <div className="grid grid-cols-2 gap-2">
                   <NumberField
@@ -630,7 +687,6 @@ export function VacantLandBuildEnvelope({
                 </div>
               </Step>
 
-              {/* Step 6 — dwellings */}
               <Step index={6} title="Dwelling units">
                 <div className="grid gap-2">
                   <NumberField
@@ -660,7 +716,6 @@ export function VacantLandBuildEnvelope({
                 </div>
               </Step>
 
-              {/* Step 7 — constraints */}
               <Step index={7} title="Servitudes and exclusion areas">
                 <textarea
                   value={answers.servitudeNotes ?? ""}
