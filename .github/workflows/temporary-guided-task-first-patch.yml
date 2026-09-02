@@ -1,9 +1,6 @@
 name: Temporary guided task first UX patch
 
 on:
-  push:
-    branches:
-      - chatgpt/guided-task-first-mobile-header
   workflow_dispatch:
 
 permissions:
