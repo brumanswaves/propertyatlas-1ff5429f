@@ -54,14 +54,16 @@ describe("report and investigation coherence guardrails", () => {
     expect(reportMap).not.toContain(".data");
     expect(reportMap).not.toMatch(/generated[_ -]?design|image generation|ai render/i);
     expect(reportHero).toContain('kind: "site_potential"');
-    expect(reportHero).toContain('kind: "parcel_map"');
-    expect(reportHero).toContain('kind: "neutral"');
+    expect(reportHero).toContain('kind: "parcel_overview"');
+    expect(reportHero).toContain('kind: "neutral_card"');
   });
 
   it("keeps Site Potential limited to map and street-side build lines", () => {
     expect(sitePotential).toContain("<SatelliteParcelMap");
     expect(sitePotentialTab).toContain("<StreetSideBuildEnvelope");
     expect(sitePotential).not.toMatch(/generate (a )?house|architectural concept|ai-generated/i);
-    expect(guidedSitePotential).toContain("It does not generate a house or architectural concept.");
+    expect(guidedSitePotential).toMatch(
+      /It does not generate a house\s+or architectural concept\./,
+    );
   });
 });
