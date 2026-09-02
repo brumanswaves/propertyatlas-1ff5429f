@@ -26,6 +26,15 @@ jobs:
 
       - name: Apply narrow UX patch
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/temporary-apply-guided-task-first-ux.mjs")
+          text = path.read_text()
+          needle = "${tab}"
+          if text.count(needle) != 2:
+              raise SystemExit(f"Expected two tab placeholders, found {text.count(needle)}")
+          path.write_text(text.replace(needle, r"\${tab}"))
+          PY
           node scripts/temporary-apply-guided-task-first-ux.mjs
           rm scripts/temporary-apply-guided-task-first-ux.mjs
           rm .github/workflows/temporary-guided-task-first-patch.yml
