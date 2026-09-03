@@ -1,0 +1,60 @@
+name: EE-R999-01 one-shot migration inventory repair
+
+on:
+  push:
+    branches:
+      - chatgpt/ee-r999-customer-notification
+    paths:
+      - .github/workflows/ee-r999-ci-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact notification branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=20 origin chatgpt/ee-r999-customer-notification
+          git checkout -b chatgpt/ee-r999-customer-notification FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "80101d0d4268d23b17bcd858d9a6dcfe74027686"
+
+      - name: Add the release migration to the canonical inventory guardrail
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts")
+          text = path.read_text()
+          old_count = "expect(migrationNames).toHaveLength(36);"
+          old_tail = '''      "20260903111500_require_resolved_founder_investigation_checklist.sql",
+    ]);'''
+          new_tail = '''      "20260903111500_require_resolved_founder_investigation_checklist.sql",
+      "20260903211000_record_manual_report_notification.sql",
+    ]);'''
+          if text.count(old_count) != 1:
+              raise SystemExit("Expected one migration-count guardrail")
+          if text.count(old_tail) != 1:
+              raise SystemExit("Expected one migration-list tail")
+          text = text.replace(old_count, "expect(migrationNames).toHaveLength(37);")
+          text = text.replace(old_tail, new_tail)
+          path.write_text(text)
+          PY
+          rm .github/workflows/ee-r999-ci-repair.yml
+          git diff --check
+
+      - name: Commit the bounded repair and remove this workflow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts .github/workflows/ee-r999-ci-repair.yml
+          git commit -m "test: include notification migration in canonical inventory"
+          git push origin HEAD:chatgpt/ee-r999-customer-notification
