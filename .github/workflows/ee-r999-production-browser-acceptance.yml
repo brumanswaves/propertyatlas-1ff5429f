@@ -1,0 +1,168 @@
+name: EE-R999-01 production browser acceptance
+
+on:
+  push:
+    branches:
+      - chatgpt/ee-r999-production-browser-acceptance
+    paths:
+      - .github/workflows/ee-r999-production-browser-acceptance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ee-r999-production-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EASY_ERF_BROWSER_BASE_URL: https://easyerf.co.za
+    steps:
+      - name: Check out exact branch source with built-in Git
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${GITHUB_REF_NAME}"
+          git checkout --detach FETCH_HEAD
+          echo "acceptance_source_sha=$(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install browser acceptance dependency
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Verify public commercial and OAuth surfaces without checkout
+        run: |
+          mkdir -p artifacts
+          EASY_ERF_BROWSER_URL="${EASY_ERF_BROWSER_BASE_URL}/auth" \
+            node scripts/verify-founder-browser-oauth.mjs
+          EASY_ERF_BROWSER_BASE_URL="${EASY_ERF_BROWSER_BASE_URL}" \
+            node scripts/verify-commercial-browser.mjs
+
+      - name: Verify signed-out guards and capture evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          import { chromium } from "playwright";
+
+          const baseUrl = process.env.EASY_ERF_BROWSER_BASE_URL;
+          if (!baseUrl) throw new Error("EASY_ERF_BROWSER_BASE_URL is required.");
+
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+          const page = await context.newPage();
+          const receipt = {
+            releaseId: "EE-R999-01",
+            baseUrl,
+            observedAt: new Date().toISOString(),
+            pages: {},
+            consoleErrors: [],
+            pageErrors: [],
+            failedSameOriginRequests: [],
+          };
+          const baseHost = new URL(baseUrl).hostname;
+
+          page.on("console", (message) => {
+            if (message.type() === "error") receipt.consoleErrors.push(message.text());
+          });
+          page.on("pageerror", (error) => receipt.pageErrors.push(error.message));
+          page.on("requestfailed", (request) => {
+            try {
+              const url = new URL(request.url());
+              if (url.hostname === baseHost) {
+                receipt.failedSameOriginRequests.push({
+                  url: request.url(),
+                  error: request.failure()?.errorText ?? "unknown",
+                });
+              }
+            } catch {
+              // Ignore malformed third-party request URLs in diagnostic evidence.
+            }
+          });
+
+          async function visit(path, evidenceName) {
+            const target = new URL(path, baseUrl).toString();
+            const response = await page.goto(target, {
+              waitUntil: "domcontentloaded",
+              timeout: 60_000,
+            });
+            await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
+            await page.waitForTimeout(1_500);
+            const body = await page.locator("body").innerText().catch(() => "");
+            const result = {
+              requestedUrl: target,
+              finalUrl: page.url(),
+              documentStatus: response?.status() ?? null,
+              title: await page.title(),
+              bodyPreview: body.slice(0, 500),
+            };
+            receipt.pages[evidenceName] = result;
+            await page.screenshot({
+              path: `artifacts/${evidenceName}.png`,
+              fullPage: true,
+            });
+            if (result.documentStatus !== null && result.documentStatus >= 500) {
+              throw new Error(`${evidenceName} returned document status ${result.documentStatus}.`);
+            }
+            return { ...result, body };
+          }
+
+          try {
+            const home = await visit("/", "home");
+            if (!/easy erf/i.test(`${home.title}\n${home.body}`)) {
+              throw new Error("Public home did not visibly identify Easy Erf.");
+            }
+
+            const pricing = await visit("/pricing", "pricing");
+            if (!/done-for-you property investigation/i.test(pricing.body)) {
+              throw new Error("Production pricing did not expose the frozen R999 product identity.");
+            }
+            if (!/R999/i.test(pricing.body)) {
+              throw new Error("Production pricing did not expose the R999 amount.");
+            }
+
+            const admin = await visit("/admin/fulfillment", "admin-fulfillment-signed-out");
+            if (/property investigation work queue/i.test(admin.body)) {
+              throw new Error("Signed-out visitor reached the founder fulfillment queue.");
+            }
+            if (!/\/auth(?:[?#/]|$)/i.test(new URL(admin.finalUrl).pathname + new URL(admin.finalUrl).search)) {
+              throw new Error(`Founder route did not redirect a signed-out visitor to auth: ${admin.finalUrl}`);
+            }
+
+            const orders = await visit("/orders", "orders-signed-out");
+            if (/done-for-you reports/i.test(orders.body)) {
+              throw new Error("Signed-out visitor reached the private customer reports workspace.");
+            }
+            if (!/\/auth(?:[?#/]|$)/i.test(new URL(orders.finalUrl).pathname + new URL(orders.finalUrl).search)) {
+              throw new Error(`Customer reports route did not redirect a signed-out visitor to auth: ${orders.finalUrl}`);
+            }
+
+            receipt.result = "pass";
+            await writeFile("artifacts/receipt.json", `${JSON.stringify(receipt, null, 2)}\n`);
+            console.log(JSON.stringify(receipt, null, 2));
+          } catch (error) {
+            receipt.result = "fail";
+            receipt.failure = error instanceof Error ? error.message : String(error);
+            await writeFile("artifacts/receipt.json", `${JSON.stringify(receipt, null, 2)}\n`);
+            console.error(JSON.stringify(receipt, null, 2));
+            throw error;
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ee-r999-production-browser-evidence
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
