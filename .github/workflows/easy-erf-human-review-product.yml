@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/easy-erf-human-review-product.yml
       - scripts/verify-easy-erf-human-review-product.sql
+      - src/components/admin/AdminGuard.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/components/humanReview/**
       - src/components/property/ErfResearchDossier.tsx
@@ -17,12 +18,16 @@ on:
       - src/lib/brand.ts
       - src/lib/humanReview/**
       - src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+      - src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
       - src/lib/reports/fiveQuestionReport.ts
       - src/routes/admin.fulfillment.tsx
+      - src/routes/admin.launch-readiness.tsx
       - src/routes/orders.tsx
       - src/routes/pricing.tsx
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
+      - supabase/functions/_shared/easyErfR999LaunchReadiness.ts
+      - supabase/functions/easy-erf-founder-launch-readiness/**
       - supabase/functions/easy-erf-founder-review-content/**
       - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
@@ -78,11 +83,14 @@ jobs:
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-r999-checkout/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-stripe-webhook/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-review-content/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-launch-readiness/index.ts
 
       - name: Install dependencies and run Human Review guardrails
         run: |
           npm install --no-audit --no-fund
-          npx vitest run src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
+          npx vitest run \
+            src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts \
+            src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
 
       - name: Prove Human Review migration in isolated PostgreSQL
         env:
