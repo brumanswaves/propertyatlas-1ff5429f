@@ -321,6 +321,18 @@ export function FounderHumanReviewEditor({
           </p>
         </div>
 
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+            <AlertTriangle className="h-4 w-4" /> Do not start with these text boxes
+          </div>
+          <p className="mt-1 text-[11px] leading-5 text-amber-800">
+            First complete or review the standard Easy Erf property investigation for this parcel.
+            Then use the report fields below to synthesize the actual evidence, calculations, Site
+            Potential and market context already reviewed. The customer emphasis guides attention;
+            it does not reduce the standard scope.
+          </p>
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
             <div className="text-sm font-semibold text-[#0D1B2A]">How to complete this report</div>
