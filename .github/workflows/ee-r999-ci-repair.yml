@@ -23,7 +23,7 @@ jobs:
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --no-tags --depth=20 origin chatgpt/ee-r999-customer-notification
           git checkout -b chatgpt/ee-r999-customer-notification FETCH_HEAD
-          test "$(git rev-parse HEAD)" = "80101d0d4268d23b17bcd858d9a6dcfe74027686"
+          test "$(git rev-parse HEAD^)" = "783921feb31c0b5a92b1e7893c12439ed11f2475"
 
       - name: Add the release migration to the canonical inventory guardrail
         run: |
