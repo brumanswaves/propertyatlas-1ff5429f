@@ -1,6 +1,11 @@
 name: Guided integration verification
 
 on:
+  push:
+    branches:
+      - chatgpt/ee-r999-customer-notification
+    paths:
+      - .github/workflows/guided-integration.yml
   pull_request:
     branches:
       - main
@@ -15,7 +20,7 @@ concurrency:
 
 jobs:
   repair-notification-migration-inventory:
-    if: github.event_name == 'pull_request' && github.head_ref == 'chatgpt/ee-r999-customer-notification'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/chatgpt/ee-r999-customer-notification'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -28,7 +33,7 @@ jobs:
           git fetch --no-tags --depth=20 origin chatgpt/ee-r999-customer-notification
           git checkout -b chatgpt/ee-r999-customer-notification FETCH_HEAD
           git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
-          test "$(git rev-parse HEAD^)" = "2f6b180f6fd888bdf66dc884229db6308d2ff13c"
+          test "$(git rev-parse HEAD^)" = "a652a222fa85d0dd1796fd4a827956abb9e9ffb0"
           python - <<'PY'
           from pathlib import Path
 
@@ -54,11 +59,12 @@ jobs:
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts .github/workflows/guided-integration.yml .github/workflows/ee-r999-ci-repair.yml
+          git add -A
           git commit -m "test: include notification migration in canonical inventory"
           git push origin HEAD:chatgpt/ee-r999-customer-notification
 
   verify:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
