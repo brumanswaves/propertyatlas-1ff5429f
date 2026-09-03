@@ -17,13 +17,8 @@ begin
     return new;
   end if;
 
-  if not (
-    (new.status = 'ready' or coalesce(new.status_enum::text, '') = 'complete')
-    and (
-      old.status is distinct from new.status
-      or old.status_enum is distinct from new.status_enum
-    )
-  ) then
+  if new.status is distinct from 'ready'
+     and coalesce(new.status_enum::text, '') <> 'complete' then
     return new;
   end if;
 
@@ -105,7 +100,7 @@ drop trigger if exists enforce_easy_erf_review_delivery_readiness
 on public.report_orders;
 
 create trigger enforce_easy_erf_review_delivery_readiness
-before update of status, status_enum
+before update of status, status_enum, review_content
 on public.report_orders
 for each row
 execute function public.enforce_easy_erf_review_delivery_readiness();
