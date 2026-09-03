@@ -211,223 +211,221 @@ export function FounderHumanReviewEditor({
   ] as const;
 
   return (
-    <>
-      <details
-        open={defaultOpen || undefined}
-        className="mt-4 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4 sm:p-5"
-      >
-        <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
-          <span className="inline-flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#FF6A00]" /> Complete investigation and final report
-          </span>
-        </summary>
+    <details
+      open={defaultOpen || undefined}
+      className="mt-4 rounded-[1.5rem] border border-[#FF6A00]/25 bg-[#FFF7ED] p-4 sm:p-5"
+    >
+      <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
+        <span className="inline-flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[#FF6A00]" /> Complete investigation and final report
+        </span>
+      </summary>
 
-        <div className="mt-4 space-y-5">
-          <div className="rounded-[1.25rem] border border-[#FF6A00]/20 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-[#0D1B2A]">
-                  Standard done-for-you investigation checklist
-                </div>
-                <p className="mt-1 max-w-3xl text-xs leading-5 text-[#64748B]">
-                  Record the operational state of every standard investigation area. This does not
-                  create a second evidence model. Findings and source truth remain in the canonical
-                  property file and final report.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 text-center">
-                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
-                  Resolved
-                </div>
-                <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">
-                  {resolvedChecklistItems}/{DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.length}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => {
-                const status = checklist[item.id];
-                const StatusIcon = status === "complete" ? CheckCircle2 : status === "blocked"
-                  ? AlertTriangle
-                  : CircleDashed;
-                return (
-                  <div
-                    key={item.id}
-                    className="grid gap-3 rounded-2xl border border-[#0D1B2A]/8 bg-[#F7FBFF] px-3 py-3 sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-center"
-                  >
-                    <div className="flex min-w-0 items-start gap-2.5">
-                      <StatusIcon
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${
-                          status === "complete"
-                            ? "text-emerald-700"
-                            : status === "blocked"
-                              ? "text-rose-700"
-                              : "text-[#64748B]"
-                        }`}
-                      />
-                      <span className="text-xs leading-5 text-[#0D1B2A]">{item.label}</span>
-                    </div>
-                    <select
-                      aria-label={`${item.label} status`}
-                      value={status}
-                      disabled={disabled || busy}
-                      onChange={(event) =>
-                        setChecklistStatus(
-                          item.id,
-                          event.target.value as HumanReviewInvestigationChecklistStatus,
-                        )}
-                      className={`min-h-10 rounded-xl border px-3 text-xs font-semibold outline-none focus:border-[#FF6A00] disabled:opacity-60 ${checklistTone(status)}`}
-                    >
-                      {CHECKLIST_STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                disabled={disabled || busy}
-                onClick={() => void saveChecklist()}
-                className="inline-flex items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
-              >
-                <Save className="h-3.5 w-3.5" />
-                {savingChecklist ? "Saving checklist…" : "Save checklist"}
-              </button>
-              {checklistResolved ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                  <CheckCircle2 className="h-4 w-4" /> Every applicable investigation area is resolved
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800">
-                  <AlertTriangle className="h-4 w-4" />
-                  Delivery remains blocked while any item is Pending or Blocked
-                  {blockedChecklistItems > 0 ? ` (${blockedChecklistItems} blocked)` : ""}
-                </span>
-              )}
-            </div>
-
-            <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
-              Use Not applicable only when the investigation area genuinely does not apply to this
-              property or customer purpose. It is not a skip control.
-            </p>
-            <p className="mt-3 text-[11px] leading-5 text-[#92400E]">
-              <strong>Property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} A
-              Lightstone or other branded provider PDF must not be redistributed unless the
-              applicable provider/report terms permit it.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
-              <AlertTriangle className="h-4 w-4" /> Do not start with these text boxes
-            </div>
-            <p className="mt-1 text-[11px] leading-5 text-amber-800">
-              First complete or review the standard Easy Erf investigation for this parcel. Then use
-              the report fields below to synthesize the actual evidence, calculations, Site Potential
-              and market context already reviewed. The customer emphasis guides attention; it does
-              not reduce the standard scope.
-            </p>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <div className="mt-4 space-y-5">
+        <div className="rounded-[1.25rem] border border-[#FF6A00]/20 bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-[#0D1B2A]">How to complete this report</div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                {[
-                  ["1", "Complete the investigation", "Work through the standard Easy Erf investigation and the customer’s selected emphasis."],
-                  ["2", "Review the evidence", "Resolve what you reasonably can; preserve provenance, conflicts and real missing evidence."],
-                  ["3", "Write the bottom line", "Use 2 to 5 concise sentences. State the useful conclusion and biggest limitation."],
-                  ["4", "Fill all five sections", "Add one reviewed finding per line. Keep unknowns unknown. Maximum eight items per section."],
-                  ["5", "Save, then deliver", "Save both the checklist and web report. Mark ready only after all applicable checklist items are resolved."],
-                ].map(([number, title, body]) => (
-                  <div key={number} className="rounded-2xl border border-[#0D1B2A]/8 bg-white p-3">
-                    <div className="grid h-6 w-6 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{number}</div>
-                    <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{title}</div>
-                    <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{body}</p>
-                  </div>
-                ))}
+              <div className="text-sm font-semibold text-[#0D1B2A]">
+                Standard done-for-you investigation checklist
+              </div>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-[#64748B]">
+                Record the operational state of every standard investigation area. This does not
+                create a second evidence model. Findings and source truth remain in the canonical
+                property file and final report.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
+                Resolved
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">
+                {resolvedChecklistItems}/{DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.length}
               </div>
             </div>
-            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">Report completeness</div>
-              <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">{completedSections}/6</div>
-            </div>
           </div>
 
-          <label className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
-            <span className="text-xs font-semibold text-[#0D1B2A]">Bottom line</span>
-            <p className="mt-1 text-[11px] leading-4 text-[#64748B]">
-              The customer should understand the current conclusion, the biggest caveat and what that means in plain English after the property investigation has been worked through.
-            </p>
-            <textarea
-              value={bottomLine}
-              onChange={(event) => setBottomLine(event.target.value)}
-              rows={4}
-              maxLength={1400}
-              disabled={disabled || busy}
-              placeholder="Example: The parcel identity is supported and the current evidence gives a useful working picture, but property-specific planning/title confirmation is still incomplete. Treat the apparent potential as worth investigating, not as an approved right."
-              className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
-            />
-          </label>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            {listFields.map((field) => (
-              <label key={field.label} className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
-                <span className="text-xs font-semibold text-[#0D1B2A]">{field.label}</span>
-                <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{field.help}</p>
-                <div className="mt-2 flex items-start gap-2 rounded-xl bg-[#F7FBFF] px-3 py-2 text-[11px] leading-4 text-[#64748B]">
-                  <FileSearch2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF6A00]" />
-                  <span><strong className="text-[#0D1B2A]">Example wording:</strong> {field.example}</span>
+          <div className="mt-4 space-y-2">
+            {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => {
+              const status = checklist[item.id];
+              const StatusIcon = status === "complete" ? CheckCircle2 : status === "blocked"
+                ? AlertTriangle
+                : CircleDashed;
+              return (
+                <div
+                  key={item.id}
+                  className="grid gap-3 rounded-2xl border border-[#0D1B2A]/8 bg-[#F7FBFF] px-3 py-3 sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-center"
+                >
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <StatusIcon
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${
+                        status === "complete"
+                          ? "text-emerald-700"
+                          : status === "blocked"
+                            ? "text-rose-700"
+                            : "text-[#64748B]"
+                      }`}
+                    />
+                    <span className="text-xs leading-5 text-[#0D1B2A]">{item.label}</span>
+                  </div>
+                  <select
+                    aria-label={`${item.label} status`}
+                    value={status}
+                    disabled={disabled || busy}
+                    onChange={(event) =>
+                      setChecklistStatus(
+                        item.id,
+                        event.target.value as HumanReviewInvestigationChecklistStatus,
+                      )}
+                    className={`min-h-10 rounded-xl border px-3 text-xs font-semibold outline-none focus:border-[#FF6A00] disabled:opacity-60 ${checklistTone(status)}`}
+                  >
+                    {CHECKLIST_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <textarea
-                  value={field.value}
-                  onChange={(event) => field.setter(event.target.value)}
-                  rows={6}
-                  disabled={disabled || busy}
-                  placeholder="One concise reviewed item per line (maximum 8)."
-                  className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
-                />
-              </label>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-xs leading-5 text-[#64748B]">
-            The done-for-you investigation is property research and due-diligence support. Do not write legal opinions, municipal approvals, formal valuations, engineering/architectural conclusions, construction quotations or buy/do-not-buy recommendations.
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={disabled || busy}
-              onClick={() => void save()}
-              className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={() => void saveChecklist()}
+              className="inline-flex items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
             >
-              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save web report"}
+              <Save className="h-3.5 w-3.5" />
+              {savingChecklist ? "Saving checklist…" : "Save checklist"}
             </button>
-            {completedSections === 6 ? (
+            {checklistResolved ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" /> All report sections have content
+                <CheckCircle2 className="h-4 w-4" /> Every applicable investigation area is resolved
               </span>
             ) : (
-              <span className="text-xs text-[#64748B]">Complete all six report areas before saving the final report.</span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+                <AlertTriangle className="h-4 w-4" />
+                Delivery remains blocked while any item is Pending or Blocked
+                {blockedChecklistItems > 0 ? ` (${blockedChecklistItems} blocked)` : ""}
+              </span>
             )}
           </div>
-        </div>
-      </details>
 
-      <FounderCustomerNotification
-        orderId={orderId}
-        initialContent={initialContent}
-        available={notificationAvailable}
-        onRecorded={onSaved}
-      />
-    </>
+          <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
+            Use Not applicable only when the investigation area genuinely does not apply to this
+            property or customer purpose. It is not a skip control.
+          </p>
+          <p className="mt-3 text-[11px] leading-5 text-[#92400E]">
+            <strong>Property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} A
+            Lightstone or other branded provider PDF must not be redistributed unless the
+            applicable provider/report terms permit it.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+            <AlertTriangle className="h-4 w-4" /> Do not start with these text boxes
+          </div>
+          <p className="mt-1 text-[11px] leading-5 text-amber-800">
+            First complete or review the standard Easy Erf investigation for this parcel. Then use
+            the report fields below to synthesize the actual evidence, calculations, Site Potential
+            and market context already reviewed. The customer emphasis guides attention; it does
+            not reduce the standard scope.
+          </p>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div>
+            <div className="text-sm font-semibold text-[#0D1B2A]">How to complete this report</div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                ["1", "Complete the investigation", "Work through the standard Easy Erf investigation and the customer’s selected emphasis."],
+                ["2", "Review the evidence", "Resolve what you reasonably can; preserve provenance, conflicts and real missing evidence."],
+                ["3", "Write the bottom line", "Use 2 to 5 concise sentences. State the useful conclusion and biggest limitation."],
+                ["4", "Fill all five sections", "Add one reviewed finding per line. Keep unknowns unknown. Maximum eight items per section."],
+                ["5", "Save, then deliver", "Save both the checklist and web report. Mark ready only after all applicable checklist items are resolved."],
+              ].map(([number, title, body]) => (
+                <div key={number} className="rounded-2xl border border-[#0D1B2A]/8 bg-white p-3">
+                  <div className="grid h-6 w-6 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{number}</div>
+                  <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{title}</div>
+                  <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">Report completeness</div>
+            <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">{completedSections}/6</div>
+          </div>
+        </div>
+
+        <label className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
+          <span className="text-xs font-semibold text-[#0D1B2A]">Bottom line</span>
+          <p className="mt-1 text-[11px] leading-4 text-[#64748B]">
+            The customer should understand the current conclusion, the biggest caveat and what that means in plain English after the property investigation has been worked through.
+          </p>
+          <textarea
+            value={bottomLine}
+            onChange={(event) => setBottomLine(event.target.value)}
+            rows={4}
+            maxLength={1400}
+            disabled={disabled || busy}
+            placeholder="Example: The parcel identity is supported and the current evidence gives a useful working picture, but property-specific planning/title confirmation is still incomplete. Treat the apparent potential as worth investigating, not as an approved right."
+            className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
+          />
+        </label>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {listFields.map((field) => (
+            <label key={field.label} className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
+              <span className="text-xs font-semibold text-[#0D1B2A]">{field.label}</span>
+              <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{field.help}</p>
+              <div className="mt-2 flex items-start gap-2 rounded-xl bg-[#F7FBFF] px-3 py-2 text-[11px] leading-4 text-[#64748B]">
+                <FileSearch2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF6A00]" />
+                <span><strong className="text-[#0D1B2A]">Example wording:</strong> {field.example}</span>
+              </div>
+              <textarea
+                value={field.value}
+                onChange={(event) => field.setter(event.target.value)}
+                rows={6}
+                disabled={disabled || busy}
+                placeholder="One concise reviewed item per line (maximum 8)."
+                className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-xs leading-5 text-[#64748B]">
+          The done-for-you investigation is property research and due-diligence support. Do not write legal opinions, municipal approvals, formal valuations, engineering/architectural conclusions, construction quotations or buy/do-not-buy recommendations.
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={disabled || busy}
+            onClick={() => void save()}
+            className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save web report"}
+          </button>
+          {completedSections === 6 ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" /> All report sections have content
+            </span>
+          ) : (
+            <span className="text-xs text-[#64748B]">Complete all six report areas before saving the final report.</span>
+          )}
+        </div>
+
+        <FounderCustomerNotification
+          orderId={orderId}
+          initialContent={initialContent}
+          available={notificationAvailable}
+          onRecorded={onSaved}
+        />
+      </div>
+    </details>
   );
 }
