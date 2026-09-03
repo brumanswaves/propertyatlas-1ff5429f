@@ -52,6 +52,15 @@ function cleanList(value: unknown) {
     .slice(0, 8);
 }
 
+function isCompleteReportList(value: unknown) {
+  return Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= 8 &&
+    value.every(
+      (item) => typeof item === "string" && item.trim().length > 0 && item.trim().length <= 700,
+    );
+}
+
 export function createPendingHumanReviewInvestigationChecklist(): HumanReviewInvestigationChecklist {
   return DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.reduce(
     (checklist, item) => {
@@ -128,13 +137,14 @@ export function parseHumanReviewReportContent(value: unknown): HumanReviewReport
 }
 
 export function isHumanReviewReportContentComplete(value: unknown) {
-  const content = parseHumanReviewReportContent(value);
-  return Boolean(
-    content?.bottomLine &&
-      content.known.length > 0 &&
-      content.potential.length > 0 &&
-      content.risks.length > 0 &&
-      content.unknowns.length > 0 &&
-      content.nextSteps.length > 0,
-  );
+  if (!isRecord(value)) return false;
+  const bottomLine = value.bottomLine;
+  return typeof bottomLine === "string" &&
+    bottomLine.trim().length > 0 &&
+    bottomLine.trim().length <= 1400 &&
+    isCompleteReportList(value.known) &&
+    isCompleteReportList(value.potential) &&
+    isCompleteReportList(value.risks) &&
+    isCompleteReportList(value.unknowns) &&
+    isCompleteReportList(value.nextSteps);
 }
