@@ -37,26 +37,38 @@ describe("Easy Erf founder fulfillment UI", () => {
       "Resolve and save every standard investigation checklist item first.",
     );
 
+    const validReport = {
+      bottomLine: "Reviewed bottom line",
+      known: ["Known"],
+      potential: ["Potential"],
+      risks: ["Risk"],
+      unknowns: ["Unknown"],
+      nextSteps: ["Next"],
+    };
+    expect(isHumanReviewReportContentComplete(validReport)).toBe(true);
+    expect(
+      isHumanReviewReportContentComplete({ ...validReport, potential: [] }),
+    ).toBe(false);
     expect(
       isHumanReviewReportContentComplete({
-        bottomLine: "Reviewed bottom line",
-        known: ["Known"],
-        potential: ["Potential"],
-        risks: ["Risk"],
-        unknowns: ["Unknown"],
-        nextSteps: ["Next"],
-      }),
-    ).toBe(true);
-    expect(
-      isHumanReviewReportContentComplete({
-        bottomLine: "Reviewed bottom line",
-        known: ["Known"],
-        potential: [],
-        risks: ["Risk"],
-        unknowns: ["Unknown"],
-        nextSteps: ["Next"],
+        ...validReport,
+        known: Array.from({ length: 9 }, (_, index) => `Known ${index + 1}`),
       }),
     ).toBe(false);
+    expect(
+      isHumanReviewReportContentComplete({ ...validReport, known: ["Known", 42] }),
+    ).toBe(false);
+    expect(
+      isHumanReviewReportContentComplete({
+        ...validReport,
+        bottomLine: "x".repeat(1401),
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps delivered content read-only until the order is explicitly reopened", () => {
+    expect(founderRoute).toContain('disabled={busy || status === "ready"}');
+    expect(founderRoute).toContain("Reopen / replace report");
   });
 
   it("uploads only a selected optional Easy Erf PDF through a short-lived signed upload", () => {
