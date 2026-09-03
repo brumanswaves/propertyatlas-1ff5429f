@@ -68,7 +68,7 @@ function buildDraft(input: {
   const body = [
     `Hi ${firstName},`,
     "",
-    `Your Human-Reviewed Easy Erf Report for ${input.propertyReference} is ready.",
+    `Your Human-Reviewed Easy Erf Report for ${input.propertyReference} is ready.`,
     "",
     `Open it securely in your Easy Erf account: ${reportUrl.toString()}`,
     "",
