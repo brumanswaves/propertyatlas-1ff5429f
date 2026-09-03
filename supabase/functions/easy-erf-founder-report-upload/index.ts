@@ -41,7 +41,8 @@ function log(stage: string, requestId: string, extra: Record<string, unknown> = 
 }
 
 function statusOf(order: { status?: string | null; status_enum?: string | null }) {
-  return (order.status_enum || order.status || "").toLowerCase();
+  const raw = (order.status_enum || order.status || "").toLowerCase();
+  return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;
 }
 
 Deno.serve(async (request: Request) => {
