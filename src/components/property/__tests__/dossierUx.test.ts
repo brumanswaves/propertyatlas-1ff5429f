@@ -433,7 +433,7 @@ describe("official dossier UX guardrails", () => {
     const panel = read("src/components/property/OfficialParcelPanel.tsx");
 
     expect(panel).toContain("h-[100dvh]");
-    expect(panel).toContain("max-md:pt-[calc(env(safe-area-inset-top)+0.75rem)]");
+    expect(panel).toContain("max-md:pt-[calc(env(safe-area-inset-top)+0.5rem)]");
     expect(panel).toContain("Save erf");
     expect(panel).toContain("Back to map");
     expect(panel).toContain("Back to full map");
@@ -455,7 +455,7 @@ describe("official dossier UX guardrails", () => {
     const dossierSaveStart = panel.indexOf("function saveErfFile()");
     const dossierSaveEnd = panel.indexOf("async function shareErfFile()", dossierSaveStart);
     const dossierSave = panel.slice(dossierSaveStart, dossierSaveEnd);
-    const headerStart = panel.indexOf('<div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">');
+    const headerStart = panel.indexOf('<div className="flex shrink-0 items-center justify-end gap-1.5 md:max-w-full md:flex-wrap md:gap-2">');
     const headerEnd = panel.indexOf("{expertWorkspaceOpen ?", headerStart);
     const headerActions = panel.slice(headerStart, headerEnd);
 
