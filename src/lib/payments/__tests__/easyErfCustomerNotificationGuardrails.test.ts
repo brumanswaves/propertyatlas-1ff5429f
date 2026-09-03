@@ -46,6 +46,15 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationUi).toContain("Copy email");
   });
 
+  it("requires a complete report and resolved checklist before preparing the email", () => {
+    expect(notificationFunction).toContain("validateHumanReviewReportContent(order.review_content)");
+    expect(notificationFunction).toContain("validateHumanReviewInvestigationChecklist");
+    expect(notificationFunction).toContain("isHumanReviewInvestigationChecklistResolved");
+    expect(notificationFunction).toContain(
+      "Resolve every standard investigation checklist item before preparing the customer email.",
+    );
+  });
+
   it("resolves the canonical order customer and requires explicit sent confirmation", () => {
     expect(notificationFunction).toContain("admin.auth.admin.getUserById(order.user_id)");
     expect(notificationFunction).toContain('const RECORD_CONFIRMATION = "I SENT THIS EMAIL"');
@@ -69,6 +78,10 @@ describe("Easy Erf customer notification database receipt", () => {
     expect(notificationMigration).toContain("where id = v_order.user_id");
     expect(notificationMigration).toContain("Notification recipient does not match the order customer");
     expect(notificationMigration).toContain("A complete structured Human Review web report is required before notification");
+    expect(notificationMigration).toContain("A resolved standard investigation checklist is required before notification");
+    expect(notificationMigration).toContain(
+      "Every standard investigation checklist item must be complete or not applicable before notification",
+    );
   });
 
   it("records one idempotent manual-email receipt and audit event", () => {
