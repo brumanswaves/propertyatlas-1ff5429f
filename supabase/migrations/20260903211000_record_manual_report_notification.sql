@@ -122,6 +122,9 @@ begin
   ]
   loop
     v_item_status := v_checklist ->> v_item;
+    if v_item_status is null then
+      raise exception 'A resolved standard investigation checklist is required before notification';
+    end if;
     if v_item_status not in ('complete', 'not_applicable') then
       raise exception 'Every standard investigation checklist item must be complete or not applicable before notification';
     end if;
