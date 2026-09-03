@@ -101,6 +101,15 @@ describe("Easy Erf founder report upload Edge Function", () => {
     );
   });
 
+  it("normalizes canonical fulfillment enum values before checking upload state", () => {
+    expect(uploadFunction).toContain(
+      'return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;',
+    );
+    expect(uploadFunction.indexOf('raw === "fulfilling"')).toBeLessThan(
+      uploadFunction.indexOf('statusOf(order) !== "processing"'),
+    );
+  });
+
   it("prepares only the exact processing-order PDF path in the private existing bucket", () => {
     expect(uploadFunction).toContain('const REPORT_BUCKET = "erf-files"');
     expect(uploadFunction).toContain('statusOf(order) !== "processing"');
@@ -108,5 +117,20 @@ describe("Easy Erf founder report upload Edge Function", () => {
     expect(uploadFunction).toContain('`${order.user_id}/paid-reports/${order.id}/report.pdf`');
     expect(uploadFunction).toContain("createSignedUploadUrl(path, { upsert: true })");
     expect(uploadFunction).toContain("Report PDF must be between 1 byte and 25 MB.");
+  });
+
+  it("refuses a signed upload token until the structured report and checklist are resolved", () => {
+    expect(uploadFunction).toContain("validateHumanReviewReportContent(order.review_content)");
+    expect(uploadFunction).toContain("validateHumanReviewInvestigationChecklist");
+    expect(uploadFunction).toContain("isHumanReviewInvestigationChecklistResolved");
+    expect(uploadFunction).toContain(
+      "Resolve and save every standard investigation checklist item before uploading the optional PDF.",
+    );
+    expect(uploadFunction.indexOf("validateHumanReviewReportContent(order.review_content)")).toBeLessThan(
+      uploadFunction.indexOf("createSignedUploadUrl(path, { upsert: true })"),
+    );
+    expect(uploadFunction.indexOf("isHumanReviewInvestigationChecklistResolved")).toBeLessThan(
+      uploadFunction.indexOf("createSignedUploadUrl(path, { upsert: true })"),
+    );
   });
 });

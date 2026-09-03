@@ -20,6 +20,11 @@ import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  isHumanReviewInvestigationChecklistResolved,
+  isHumanReviewReportContentComplete,
+  parseHumanReviewInvestigationChecklist,
+} from "@/lib/humanReview/reportContent";
+import {
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
   DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
   humanReviewFocusLabel,
@@ -402,7 +407,7 @@ function OrderCard({
         <FounderHumanReviewEditor
           orderId={order.id}
           initialContent={order.review_content}
-          disabled={busy}
+          disabled={busy || status === "ready"}
           defaultOpen={status === "processing"}
           onSaved={onRefresh}
         />
@@ -490,37 +495,58 @@ function ReadyAction({
   onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { pdfStoragePath?: string; failureReason?: string }) => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const reportReady = isHumanReviewReportContentComplete(order.review_content);
+  const checklist = parseHumanReviewInvestigationChecklist(order.review_content);
+  const checklistReady = Boolean(
+    checklist && isHumanReviewInvestigationChecklistResolved(checklist),
+  );
+  const deliveryReady = reportReady && checklistReady;
+  const deliveryBlocker = !reportReady
+    ? "Complete and save the reviewed bottom line plus all five report sections first."
+    : !checklistReady
+      ? "Resolve and save every standard investigation checklist item first."
+      : null;
 
   if (!order.user_id) {
     return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">Match this paid order to a customer account before report delivery.</div>;
   }
 
   return (
-    <div className="flex min-w-[300px] flex-1 flex-wrap items-center gap-2">
-      <button
-        type="button"
-        disabled={busy || !order.review_content}
-        onClick={() => void onTransition(order, "mark_ready")}
-        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-        title={order.review_content ? "Deliver the structured Human-Reviewed web report" : "Save the structured web report first"}
-      >
-        <CheckCircle2 className="h-3.5 w-3.5" /> Mark web report ready
-      </button>
-      <input
-        type="file"
-        accept="application/pdf,.pdf"
-        disabled={busy}
-        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs file:mr-2 file:border-0 file:bg-transparent file:text-xs file:font-semibold"
-      />
-      <button
-        type="button"
-        disabled={busy || !file}
-        onClick={() => file && void onUploadReport(order, file)}
-        className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-      >
-        <Upload className="h-3.5 w-3.5" /> Upload optional Easy Erf PDF & mark ready
-      </button>
+    <div className="min-w-[300px] flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy || !deliveryReady}
+          onClick={() => void onTransition(order, "mark_ready")}
+          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          title={deliveryBlocker ?? "Deliver the structured Human-Reviewed web report"}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" /> Mark web report ready
+        </button>
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={busy || !deliveryReady}
+          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs file:mr-2 file:border-0 file:bg-transparent file:text-xs file:font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <button
+          type="button"
+          disabled={busy || !file || !deliveryReady}
+          onClick={() => file && void onUploadReport(order, file)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          title={deliveryBlocker ?? "Upload the optional PDF and deliver the report"}
+        >
+          <Upload className="h-3.5 w-3.5" /> Upload optional Easy Erf PDF & mark ready
+        </button>
+      </div>
+      {deliveryBlocker ? (
+        <p className="mt-2 text-[11px] leading-5 text-amber-800">{deliveryBlocker}</p>
+      ) : (
+        <p className="mt-2 text-[11px] leading-5 text-emerald-700">
+          The structured report and every applicable checklist item are resolved. Delivery controls are enabled.
+        </p>
+      )}
     </div>
   );
 }

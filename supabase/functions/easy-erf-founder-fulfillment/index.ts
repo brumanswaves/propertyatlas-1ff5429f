@@ -1,5 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 
+import {
+  isHumanReviewInvestigationChecklistResolved,
+  validateHumanReviewInvestigationChecklist,
+  validateHumanReviewReportContent,
+} from "../_shared/easyErfHumanReviewContract.ts";
+
 declare const Deno: {
   env: { get(key: string): string | undefined };
   serve(handler: (request: Request) => Promise<Response>): unknown;
@@ -27,6 +33,10 @@ function log(stage: string, requestId: string, extra: Record<string, unknown> = 
 function isUuid(value: unknown): value is string {
   return typeof value === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 Deno.serve(async (request: Request) => {
@@ -99,6 +109,60 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (action === "mark_ready") {
+    const { data: readinessOrder, error: readinessError } = await admin
+      .from("report_orders")
+      .select("review_content")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (readinessError || !readinessOrder) {
+      return json({ ok: false, error: "Report order was not found.", requestId }, 404);
+    }
+
+    const reportValidation = validateHumanReviewReportContent(readinessOrder.review_content);
+    if (!reportValidation.ok) {
+      return json(
+        {
+          ok: false,
+          error:
+            "Complete and save the reviewed bottom line plus all five report sections before delivery.",
+          requestId,
+        },
+        409,
+      );
+    }
+
+    const reviewContent = isRecord(readinessOrder.review_content)
+      ? readinessOrder.review_content
+      : {};
+    const checklistValidation = validateHumanReviewInvestigationChecklist(
+      reviewContent.investigationChecklist,
+    );
+    if (!checklistValidation.ok) {
+      return json(
+        {
+          ok: false,
+          error:
+            "Save a status for every standard investigation checklist item before delivery.",
+          requestId,
+        },
+        409,
+      );
+    }
+    if (!isHumanReviewInvestigationChecklistResolved(checklistValidation.checklist)) {
+      return json(
+        {
+          ok: false,
+          error:
+            "Resolve every standard investigation checklist item as Complete or Not applicable before delivery. Pending or Blocked items keep the order in review.",
+          requestId,
+        },
+        409,
+      );
+    }
+  }
 
   const { data: order, error: transitionError } = await admin.rpc(
     "transition_easy_erf_report_order",

@@ -1,5 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 
+import {
+  isHumanReviewInvestigationChecklistResolved,
+  validateHumanReviewInvestigationChecklist,
+  validateHumanReviewReportContent,
+} from "../_shared/easyErfHumanReviewContract.ts";
+
 declare const Deno: {
   env: { get(key: string): string | undefined };
   serve(handler: (request: Request) => Promise<Response>): unknown;
@@ -26,12 +32,17 @@ function isUuid(value: unknown): value is string {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
 function log(stage: string, requestId: string, extra: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ fn: FUNCTION_NAME, stage, requestId, ...extra }));
 }
 
 function statusOf(order: { status?: string | null; status_enum?: string | null }) {
-  return (order.status_enum || order.status || "").toLowerCase();
+  const raw = (order.status_enum || order.status || "").toLowerCase();
+  return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;
 }
 
 Deno.serve(async (request: Request) => {
@@ -101,7 +112,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: order, error: orderError } = await admin
     .from("report_orders")
-    .select("id,user_id,status,status_enum,provider,payload")
+    .select("id,user_id,status,status_enum,provider,payload,review_content")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -122,6 +133,38 @@ Deno.serve(async (request: Request) => {
   }
   if (!isUuid(order.user_id)) {
     return json({ ok: false, error: "A matched customer account is required before report delivery.", requestId }, 409);
+  }
+
+  const reportValidation = validateHumanReviewReportContent(order.review_content);
+  if (!reportValidation.ok) {
+    return json(
+      {
+        ok: false,
+        error:
+          "Complete and save the reviewed bottom line plus all five report sections before uploading the optional PDF.",
+        requestId,
+      },
+      409,
+    );
+  }
+
+  const reviewContent = isRecord(order.review_content) ? order.review_content : {};
+  const checklistValidation = validateHumanReviewInvestigationChecklist(
+    reviewContent.investigationChecklist,
+  );
+  if (
+    !checklistValidation.ok ||
+    !isHumanReviewInvestigationChecklistResolved(checklistValidation.checklist)
+  ) {
+    return json(
+      {
+        ok: false,
+        error:
+          "Resolve and save every standard investigation checklist item before uploading the optional PDF.",
+        requestId,
+      },
+      409,
+    );
   }
 
   const path = `${order.user_id}/paid-reports/${order.id}/report.pdf`;
