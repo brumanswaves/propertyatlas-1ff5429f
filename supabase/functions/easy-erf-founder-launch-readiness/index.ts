@@ -122,7 +122,7 @@ Deno.serve(async (request: Request) => {
     const stripe = new Stripe(stripeSecretKey);
 
     try {
-      const account = await stripe.accounts.retrieve();
+      const account = await stripe.accounts.retrieve(null);
       accountInspection = inspectEasyErfStripeAccount({
         business_profile: {
           name: account.business_profile?.name,
@@ -156,7 +156,7 @@ Deno.serve(async (request: Request) => {
               after_completion: link.after_completion.type === "redirect"
                 ? {
                     type: "redirect",
-                    redirect: { url: link.after_completion.redirect.url },
+                    redirect: { url: link.after_completion.redirect?.url ?? null },
                   }
                 : { type: link.after_completion.type },
             },
