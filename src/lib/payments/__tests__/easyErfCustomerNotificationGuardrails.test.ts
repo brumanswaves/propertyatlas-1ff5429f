@@ -43,6 +43,8 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationUi).toMatch(/property\s+and secure report link/);
     expect(notificationUi).toContain("Open email draft");
     expect(notificationUi).toContain("Copy email");
+    expect(notificationUi).toContain("Recording this does");
+    expect(notificationUi).toContain("not send the email");
   });
 
   it("requires a complete report and resolved checklist before preparing the email", () => {
@@ -89,6 +91,7 @@ describe("Easy Erf customer notification database receipt", () => {
     expect(notificationMigration).toContain("'{customerNotification}'");
     expect(notificationMigration).toContain("'customer_notified'");
     expect(notificationMigration).toContain("'manual_email'");
+    expect(notificationMigration).toContain("The function does not send email.");
   });
 
   it("clears the prior receipt when a delivered report is reopened", () => {
