@@ -295,6 +295,24 @@ begin
      or v_row.completed_at is null then
     raise exception 'Resolved checklist and structured web report did not become ready without a PDF';
   end if;
+
+  begin
+    update public.report_orders
+    set review_content = jsonb_set(
+      review_content,
+      '{investigationChecklist,site_potential}',
+      '"blocked"'::jsonb,
+      false
+    )
+    where id = v_order_id;
+    raise exception 'A ready order accepted a later unresolved checklist edit';
+  exception
+    when others then
+      if sqlerrm = 'A ready order accepted a later unresolved checklist edit' then raise; end if;
+      if sqlerrm not like '%must be complete or not applicable before marking ready%' then
+        raise exception 'Unexpected ready-order checklist edit error: %', sqlerrm;
+      end if;
+  end;
 end
 $$;
 
