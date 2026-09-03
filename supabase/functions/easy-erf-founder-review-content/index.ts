@@ -1,6 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 
-import { validateHumanReviewReportContent } from "../_shared/easyErfHumanReviewContract.ts";
+import {
+  validateHumanReviewInvestigationChecklist,
+  validateHumanReviewReportContent,
+} from "../_shared/easyErfHumanReviewContract.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -8,6 +11,7 @@ declare const Deno: {
 };
 
 const FUNCTION_NAME = "easy-erf-founder-review-content";
+const ALLOWED_ACTIONS = new Set(["save_report", "save_checklist"]);
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -24,6 +28,10 @@ function requiredEnv(name: string): string | null {
 function isUuid(value: unknown): value is string {
   return typeof value === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function log(stage: string, requestId: string, extra: Record<string, unknown> = {}) {
@@ -76,15 +84,31 @@ Deno.serve(async (request: Request) => {
   if (!isUuid(body.orderId)) {
     return json({ ok: false, error: "A valid orderId is required.", requestId }, 400);
   }
-  const validation = validateHumanReviewReportContent(body.content);
-  if (!validation.ok) return json({ ok: false, error: validation.error, requestId }, 400);
+  const action = typeof body.action === "string" ? body.action : "save_report";
+  if (!ALLOWED_ACTIONS.has(action)) {
+    return json({ ok: false, error: "Unsupported review-content action.", requestId }, 400);
+  }
+
+  const reportValidation = action === "save_report"
+    ? validateHumanReviewReportContent(body.content)
+    : null;
+  if (reportValidation && !reportValidation.ok) {
+    return json({ ok: false, error: reportValidation.error, requestId }, 400);
+  }
+
+  const checklistValidation = action === "save_checklist"
+    ? validateHumanReviewInvestigationChecklist(body.checklist)
+    : null;
+  if (checklistValidation && !checklistValidation.ok) {
+    return json({ ok: false, error: checklistValidation.error, requestId }, 400);
+  }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: order, error: orderError } = await admin
     .from("report_orders")
-    .select("id,provider,payload,status,status_enum")
+    .select("id,provider,payload,status,status_enum,review_content")
     .eq("id", body.orderId)
     .maybeSingle();
 
@@ -103,11 +127,36 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "This order is not in a reviewable state.", requestId }, 409);
   }
 
+  const existingContent = isRecord(order.review_content) ? order.review_content : {};
+  let nextContent: Record<string, unknown>;
+
+  if (action === "save_checklist" && checklistValidation?.ok) {
+    const existingReport = validateHumanReviewReportContent(existingContent);
+    nextContent = existingReport.ok
+      ? {
+          ...existingReport.content,
+          investigationChecklist: checklistValidation.checklist,
+        }
+      : { investigationChecklist: checklistValidation.checklist };
+  } else if (reportValidation?.ok) {
+    const existingChecklist = validateHumanReviewInvestigationChecklist(
+      existingContent.investigationChecklist,
+    );
+    nextContent = existingChecklist.ok
+      ? {
+          ...reportValidation.content,
+          investigationChecklist: existingChecklist.checklist,
+        }
+      : reportValidation.content;
+  } else {
+    return json({ ok: false, error: "No review content was supplied.", requestId }, 400);
+  }
+
   const now = new Date().toISOString();
   const { error: updateError } = await admin
     .from("report_orders")
     .update({
-      review_content: validation.content,
+      review_content: nextContent,
       reviewed_by: user.id,
       review_content_updated_at: now,
       updated_at: now,
@@ -118,11 +167,16 @@ Deno.serve(async (request: Request) => {
     log("review_content_update_failed", requestId, {
       orderId: body.orderId,
       userId: user.id,
+      action,
       errorCode: updateError.code ?? null,
     });
     return json({ ok: false, error: "Human Review content could not be saved.", requestId }, 500);
   }
 
-  log("review_content_saved", requestId, { orderId: body.orderId, userId: user.id });
-  return json({ ok: true, content: validation.content, updatedAt: now, requestId });
+  log("review_content_saved", requestId, {
+    orderId: body.orderId,
+    userId: user.id,
+    action,
+  });
+  return json({ ok: true, content: nextContent, updatedAt: now, requestId });
 });
