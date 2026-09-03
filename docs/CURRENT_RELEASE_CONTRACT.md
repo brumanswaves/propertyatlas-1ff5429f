@@ -1,12 +1,12 @@
 # Easy Erf Current Release Contract
 
-Release ID: `EE-R999-01`  
-Contract status: **FROZEN**  
-Effective date: 2026-09-03  
-Canonical repository: `brumanswaves/propertyatlas-1ff5429f`  
-Merged product baseline: `6078395dab2eadaf9661df53937a53268a9631ff`  
-Frozen implementation baseline: PR #161 at `5987cb23acfb71c962bc249b0a2067dcfaf6d7a8` before this contract-only commit  
-Designated active release branch: `release/ee-r999-01`  
+Release ID: `EE-R999-01`
+Contract status: **FROZEN**
+Effective date: 2026-09-03
+Canonical repository: `brumanswaves/propertyatlas-1ff5429f`
+Merged product baseline: `6078395dab2eadaf9661df53937a53268a9631ff`
+Frozen implementation baseline: PR #161 at `5987cb23acfb71c962bc249b0a2067dcfaf6d7a8` before this contract-only commit
+Designated active release branch: `release/ee-r999-01`
 Sole active implementation PR: `#161`
 
 ## Release promise
