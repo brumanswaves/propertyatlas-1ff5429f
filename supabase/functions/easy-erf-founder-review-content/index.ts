@@ -131,23 +131,15 @@ Deno.serve(async (request: Request) => {
   let nextContent: Record<string, unknown>;
 
   if (action === "save_checklist" && checklistValidation?.ok) {
-    const existingReport = validateHumanReviewReportContent(existingContent);
-    nextContent = existingReport.ok
-      ? {
-          ...existingReport.content,
-          investigationChecklist: checklistValidation.checklist,
-        }
-      : { investigationChecklist: checklistValidation.checklist };
+    nextContent = {
+      ...existingContent,
+      investigationChecklist: checklistValidation.checklist,
+    };
   } else if (reportValidation?.ok) {
-    const existingChecklist = validateHumanReviewInvestigationChecklist(
-      existingContent.investigationChecklist,
-    );
-    nextContent = existingChecklist.ok
-      ? {
-          ...reportValidation.content,
-          investigationChecklist: existingChecklist.checklist,
-        }
-      : reportValidation.content;
+    nextContent = {
+      ...existingContent,
+      ...reportValidation.content,
+    };
   } else {
     return json({ ok: false, error: "No review content was supplied.", requestId }, 400);
   }
