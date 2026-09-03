@@ -13,8 +13,35 @@ export const HUMAN_REVIEW_INTENDED_USE_VALUES = [
   "vacant_land_hold",
 ] as const;
 
+export const HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS = [
+  "parcel_identity",
+  "cadastral_evidence",
+  "ownership_title",
+  "zoning_planning",
+  "property_checks",
+  "market_evidence",
+  "strategy_calculations",
+  "site_potential",
+  "reviewed_report",
+] as const;
+
+export const HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES = [
+  "pending",
+  "complete",
+  "blocked",
+  "not_applicable",
+] as const;
+
 export type HumanReviewFocus = (typeof HUMAN_REVIEW_FOCUS_VALUES)[number];
 export type HumanReviewIntendedUse = (typeof HUMAN_REVIEW_INTENDED_USE_VALUES)[number];
+export type HumanReviewInvestigationChecklistId =
+  (typeof HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS)[number];
+export type HumanReviewInvestigationChecklistStatus =
+  (typeof HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES)[number];
+export type HumanReviewInvestigationChecklist = Record<
+  HumanReviewInvestigationChecklistId,
+  HumanReviewInvestigationChecklistStatus
+>;
 
 const MAX_CONTEXT_LENGTH = 500;
 const MAX_PROPERTY_REFERENCE_LENGTH = 255;
@@ -55,6 +82,15 @@ function isFocus(value: unknown): value is HumanReviewFocus {
 function isIntendedUse(value: unknown): value is HumanReviewIntendedUse {
   return typeof value === "string" &&
     HUMAN_REVIEW_INTENDED_USE_VALUES.includes(value as HumanReviewIntendedUse);
+}
+
+function isInvestigationChecklistStatus(
+  value: unknown,
+): value is HumanReviewInvestigationChecklistStatus {
+  return typeof value === "string" &&
+    HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES.includes(
+      value as HumanReviewInvestigationChecklistStatus,
+    );
 }
 
 export function validateHumanReviewCheckoutRequest(value: unknown): HumanReviewCheckoutValidation {
@@ -149,6 +185,62 @@ export function validateHumanReviewReportContent(value: unknown):
   if (!known || !potential || !risks || !unknowns || !nextSteps) {
     return { ok: false, error: "Each Human Review section must contain no more than eight concise items." };
   }
+  if (
+    known.length === 0 ||
+    potential.length === 0 ||
+    risks.length === 0 ||
+    unknowns.length === 0 ||
+    nextSteps.length === 0
+  ) {
+    return {
+      ok: false,
+      error:
+        "Complete all five Human Review sections before delivery. Use an explicit none-identified item when appropriate.",
+    };
+  }
 
   return { ok: true, content: { bottomLine, known, potential, risks, unknowns, nextSteps } };
+}
+
+export function validateHumanReviewInvestigationChecklist(value: unknown):
+  | { ok: true; checklist: HumanReviewInvestigationChecklist }
+  | { ok: false; error: string } {
+  if (!isRecord(value)) {
+    return { ok: false, error: "The standard investigation checklist is required." };
+  }
+
+  const actualIds = Object.keys(value);
+  const expectedIds = new Set<string>(HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS);
+  if (
+    actualIds.length !== expectedIds.size ||
+    actualIds.some((id) => !expectedIds.has(id))
+  ) {
+    return {
+      ok: false,
+      error: "Save one status for every standard investigation checklist item.",
+    };
+  }
+
+  const checklist = {} as HumanReviewInvestigationChecklist;
+  for (const id of HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS) {
+    const status = value[id];
+    if (!isInvestigationChecklistStatus(status)) {
+      return {
+        ok: false,
+        error: "Each standard investigation item must be pending, complete, blocked or not applicable.",
+      };
+    }
+    checklist[id] = status;
+  }
+
+  return { ok: true, checklist };
+}
+
+export function isHumanReviewInvestigationChecklistResolved(value: unknown): boolean {
+  const validation = validateHumanReviewInvestigationChecklist(value);
+  if (!validation.ok) return false;
+  return HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS.every((id) => {
+    const status = validation.checklist[id];
+    return status === "complete" || status === "not_applicable";
+  });
 }
