@@ -27,11 +27,13 @@ on:
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/_shared/easyErfR999LaunchReadiness.ts
+      - supabase/functions/easy-erf-founder-fulfillment/**
       - supabase/functions/easy-erf-founder-launch-readiness/**
       - supabase/functions/easy-erf-founder-review-content/**
       - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
       - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
+      - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
   workflow_dispatch:
 
 permissions:
@@ -82,6 +84,7 @@ jobs:
         run: |
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-r999-checkout/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-stripe-webhook/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-review-content/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-launch-readiness/index.ts
 
