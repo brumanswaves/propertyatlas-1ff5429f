@@ -23,6 +23,11 @@ verify_jwt = true
 [functions.easy-erf-founder-review-content]
 verify_jwt = true
 
+# Founder launch readiness is read-only. It requires an authenticated session
+# plus an explicit admin-role check before inspecting safe Stripe/runtime signals.
+[functions.easy-erf-founder-launch-readiness]
+verify_jwt = true
+
 # Human Review pricing resolves only the existing verified TEST Stripe Payment Link.
 # It validates and persists a controlled brief, then returns the public Stripe URL
 # with an opaque client_reference_id. It never creates a payment itself.
