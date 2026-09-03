@@ -19,6 +19,7 @@ on:
       - src/lib/humanReview/**
       - src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
+      - src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
       - src/lib/reports/fiveQuestionReport.ts
       - src/routes/admin.fulfillment.tsx
       - src/routes/admin.launch-readiness.tsx
@@ -29,6 +30,7 @@ on:
       - supabase/functions/_shared/easyErfR999LaunchReadiness.ts
       - supabase/functions/easy-erf-founder-fulfillment/**
       - supabase/functions/easy-erf-founder-launch-readiness/**
+      - supabase/functions/easy-erf-founder-report-upload/**
       - supabase/functions/easy-erf-founder-review-content/**
       - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
@@ -85,6 +87,7 @@ jobs:
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-r999-checkout/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-stripe-webhook/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-report-upload/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-review-content/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-launch-readiness/index.ts
 
@@ -93,7 +96,8 @@ jobs:
           npm install --no-audit --no-fund
           npx vitest run \
             src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts \
-            src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
+            src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts \
+            src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
 
       - name: Prove Human Review migration in isolated PostgreSQL
         env:
