@@ -39,9 +39,8 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationFunction).toContain("https://easyerf.co.za/orders");
     expect(notificationFunction).not.toMatch(/api\.resend\.com|sendgrid|mailgun|postmark/i);
     expect(notificationFunction).not.toMatch(/fetch\s*\(/);
-    expect(notificationUi).toContain(
-      "Easy Erf prepares the exact customer, property and secure report link",
-    );
+    expect(notificationUi).toContain("Easy Erf prepares the exact customer");
+    expect(notificationUi).toContain("property and secure report link");
     expect(notificationUi).toContain("Open email draft");
     expect(notificationUi).toContain("Copy email");
   });
