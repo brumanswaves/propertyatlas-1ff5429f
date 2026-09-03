@@ -237,7 +237,7 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     expect(founderEditor).toContain("Standard done-for-you investigation checklist");
     expect(founderEditor).toContain('"save_checklist"');
     expect(founderEditor).toContain("Delivery remains blocked while any item is Pending or Blocked");
-    expect(founderEditor).toContain("This does not create a second evidence model");
+    expect(founderEditor).toMatch(/This does not\s+create a second evidence model/);
     expect(founderEditor).not.toContain("checklistNotes");
     expect(founderContent).toContain('const ALLOWED_ACTIONS = new Set(["save_report", "save_checklist"])');
     expect(founderContent).toContain("investigationChecklist: checklistValidation.checklist");
@@ -253,6 +253,9 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     );
     expect(checklistMigration).toContain(
       "create trigger enforce_easy_erf_review_delivery_readiness",
+    );
+    expect(checklistMigration).toContain(
+      "before update of status, status_enum, review_content",
     );
     expect(checklistMigration).toContain(
       "Every standard investigation checklist item must be complete or not applicable before marking ready",
