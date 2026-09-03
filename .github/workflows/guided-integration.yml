@@ -1,42 +1,100 @@
 name: Guided integration verification
 
 on:
-  push:
+  pull_request:
     branches:
-      - chatgpt/ee-r999-customer-notification
-    paths:
-      - .github/workflows/guided-integration.yml
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: guided-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  repair:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
+
     steps:
-      - name: Apply bounded migration inventory repair
+      - name: Check out repository with built-in Git
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --depth=20 origin chatgpt/ee-r999-customer-notification
-          git checkout -b chatgpt/ee-r999-customer-notification FETCH_HEAD
+          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git fetch --no-tags --depth=1 origin "${REF}"
+          git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
-          test "$(git rev-parse HEAD^)" = "65d2d031b350d7e24084d4384982c7a9959309ef"
-          test "$(grep -c 'expect(migrationNames).toHaveLength(36);' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts)" = "1"
-          test "$(grep -c '20260903111500_require_resolved_founder_investigation_checklist.sql' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts)" = "1"
-          sed -i 's/expect(migrationNames)\.toHaveLength(36);/expect(migrationNames).toHaveLength(37);/' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts
-          sed -i '/"20260903111500_require_resolved_founder_investigation_checklist.sql",/a\      "20260903211000_record_manual_report_notification.sql",' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts
-          test "$(grep -c 'expect(migrationNames).toHaveLength(37);' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts)" = "1"
-          test "$(grep -c '20260903211000_record_manual_report_notification.sql' src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts)" = "1"
-          git checkout origin/main -- .github/workflows/guided-integration.yml
-          rm -f .github/workflows/ee-r999-ci-repair.yml
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "test: include notification migration in canonical inventory"
-          git push origin HEAD:chatgpt/ee-r999-customer-notification
+
+      - name: Confirm built-in Node.js
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run focused Guided tests
+        run: >-
+          npx vitest run
+          src/features/marketEvidence/__tests__/addressSuggestions.test.ts
+          src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts
+          src/lib/investigation/__tests__/guidedJourney.test.ts
+          src/components/property/investigation/__tests__/guidedComponents.test.tsx
+          src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx
+          src/components/property/investigation/__tests__/guidedZoningStep.test.tsx
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx
+          src/components/property/investigation/__tests__/guidedReportStep.test.tsx
+
+      - name: Run full test suite
+        run: npx vitest run
+
+      - name: Verify founder OAuth transport when enabled
+        run: node scripts/verify-founder-oauth.mjs
+
+      - name: Verify public browser acceptance
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          npm run dev -- --host 127.0.0.1 --port 4173 > /tmp/easyerf-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill ${SERVER_PID} 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/auth >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/easyerf-vite.log
+              exit 1
+            fi
+            sleep 1
+          done
+          EASY_ERF_BROWSER_URL=http://127.0.0.1:4173/auth node scripts/verify-founder-browser-oauth.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-commercial-browser.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-first-read.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-guided-start.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-guided-cloud-persistence.mjs
+
+      - name: Build production bundle and generate routes
+        run: npm run build
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Lint changed TypeScript files
+        run: |
+          mapfile -t CHANGED_TS_FILES < <(git diff --name-only --diff-filter=ACMR origin/main HEAD -- '*.ts' '*.tsx')
+          if [ "${#CHANGED_TS_FILES[@]}" -eq 0 ]; then
+            echo "No changed TypeScript files to lint."
+            exit 0
+          fi
+          printf 'Linting changed TypeScript files:\n%s\n' "${CHANGED_TS_FILES[*]}"
+          npx eslint --no-warn-ignored --rule 'prettier/prettier: off' "${CHANGED_TS_FILES[@]}"
+
+      - name: Check patch whitespace
+        run: git diff --check origin/main HEAD
