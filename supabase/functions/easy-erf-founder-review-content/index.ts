@@ -123,8 +123,15 @@ Deno.serve(async (request: Request) => {
   }
 
   const status = String(order.status_enum || order.status || "").toLowerCase();
-  if (!["paid", "fulfilling", "processing", "complete", "ready"].includes(status)) {
-    return json({ ok: false, error: "This order is not in a reviewable state.", requestId }, 409);
+  if (!["fulfilling", "processing"].includes(status)) {
+    return json(
+      {
+        ok: false,
+        error: "Start or reopen the investigation before editing the report or checklist.",
+        requestId,
+      },
+      409,
+    );
   }
 
   const existingContent = isRecord(order.review_content) ? order.review_content : {};
