@@ -4,16 +4,27 @@ import { describe, expect, it } from "vitest";
 import {
   HUMAN_REVIEW_FOCUS_VALUES,
   HUMAN_REVIEW_INTENDED_USE_VALUES,
+  HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS,
+  HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES,
+  isHumanReviewInvestigationChecklistResolved,
   validateHumanReviewCheckoutRequest,
+  validateHumanReviewInvestigationChecklist,
   validateHumanReviewReportContent,
 } from "../../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import {
+  DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS,
   DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
   HUMAN_REVIEW_CORE_QUESTIONS,
   HUMAN_REVIEW_NOT_INCLUDED,
   HUMAN_REVIEW_SCOPE_ACKNOWLEDGEMENT,
   HUMAN_REVIEW_SCOPE_BOUNDARY,
 } from "@/lib/humanReview/scope";
+import {
+  createPendingHumanReviewInvestigationChecklist,
+  HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES as CLIENT_CHECKLIST_STATUSES,
+  isHumanReviewInvestigationChecklistResolved as isClientChecklistResolved,
+  parseHumanReviewInvestigationChecklist,
+} from "@/lib/humanReview/reportContent";
 import { BRAND } from "@/lib/brand";
 
 function source(path: string) {
@@ -27,12 +38,17 @@ const founderContent = source("supabase/functions/easy-erf-founder-review-conten
 const migration = source(
   "supabase/migrations/20260831160318_controlled_human_review_product_v2.sql",
 );
+const checklistMigration = source(
+  "supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql",
+);
 const founderFulfillment = source("supabase/functions/easy-erf-founder-fulfillment/index.ts");
 const config = source("supabase/config.toml");
 const workbench = source("src/components/property/OfficialParcelPanel.tsx");
 const dossier = source("src/components/property/ErfResearchDossier.tsx");
 const orders = source("src/routes/orders.tsx");
 const founderQueue = source("src/routes/admin.fulfillment.tsx");
+const founderEditor = source("src/components/admin/FounderHumanReviewEditor.tsx");
+const humanReviewWorkflow = source(".github/workflows/easy-erf-human-review-product.yml");
 const reportOpening = source("src/components/property/dossier/ReportOpening.tsx");
 const humanReviewedReport = source("src/components/humanReview/HumanReviewedReport.tsx");
 
@@ -59,6 +75,54 @@ describe("Easy Erf controlled paid investigation contract", () => {
       "What should be verified next?",
     ]);
     expect(DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("keeps one stable nine-item operational checklist contract across client and backend", () => {
+    expect(HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS).toEqual(
+      DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => item.id),
+    );
+    expect(HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES).toEqual([
+      "pending",
+      "complete",
+      "blocked",
+      "not_applicable",
+    ]);
+    expect(CLIENT_CHECKLIST_STATUSES).toEqual(HUMAN_REVIEW_INVESTIGATION_CHECKLIST_STATUSES);
+
+    const pending = createPendingHumanReviewInvestigationChecklist();
+    expect(Object.values(pending).every((status) => status === "pending")).toBe(true);
+    expect(isClientChecklistResolved(pending)).toBe(false);
+
+    const resolved = Object.fromEntries(
+      HUMAN_REVIEW_INVESTIGATION_CHECKLIST_IDS.map((id, index) => [
+        id,
+        index === 7 ? "not_applicable" : "complete",
+      ]),
+    );
+    expect(validateHumanReviewInvestigationChecklist(resolved)).toMatchObject({ ok: true });
+    expect(isHumanReviewInvestigationChecklistResolved(resolved)).toBe(true);
+    expect(
+      parseHumanReviewInvestigationChecklist({ investigationChecklist: resolved }),
+    ).toEqual(resolved);
+
+    expect(
+      validateHumanReviewInvestigationChecklist({
+        ...resolved,
+        site_potential: "blocked",
+      }),
+    ).toMatchObject({ ok: true });
+    expect(
+      isHumanReviewInvestigationChecklistResolved({
+        ...resolved,
+        site_potential: "blocked",
+      }),
+    ).toBe(false);
+    expect(
+      validateHumanReviewInvestigationChecklist({
+        ...resolved,
+        unexpected_task: "complete",
+      }),
+    ).toMatchObject({ ok: false });
   });
 
   it("accepts context but refuses unsupported or scope-expanding checkout briefs", () => {
@@ -167,6 +231,41 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     expect(migration).toContain("pdf_storage_path = coalesce(v_expected_pdf_path, v_order.pdf_storage_path)");
     expect(founderFulfillment).not.toContain("pdfStoragePath is required for mark_ready");
     expect(founderQueue).toContain("Mark web report ready");
+  });
+
+  it("persists operational checklist state without adding a second evidence model or founder notes", () => {
+    expect(founderEditor).toContain("Standard done-for-you investigation checklist");
+    expect(founderEditor).toContain('"save_checklist"');
+    expect(founderEditor).toContain("Delivery remains blocked while any item is Pending or Blocked");
+    expect(founderEditor).toContain("This does not create a second evidence model");
+    expect(founderEditor).not.toContain("checklistNotes");
+    expect(founderContent).toContain('const ALLOWED_ACTIONS = new Set(["save_report", "save_checklist"])');
+    expect(founderContent).toContain("investigationChecklist: checklistValidation.checklist");
+    expect(founderContent).not.toContain("checklistNotes");
+  });
+
+  it("blocks delivery in both the Edge Function and database until report and checklist resolve", () => {
+    expect(founderFulfillment).toContain("validateHumanReviewReportContent");
+    expect(founderFulfillment).toContain("validateHumanReviewInvestigationChecklist");
+    expect(founderFulfillment).toContain("isHumanReviewInvestigationChecklistResolved");
+    expect(founderFulfillment.indexOf("validateHumanReviewReportContent")).toBeLessThan(
+      founderFulfillment.indexOf('admin.rpc(\n    "transition_easy_erf_report_order"'),
+    );
+    expect(checklistMigration).toContain(
+      "create trigger enforce_easy_erf_review_delivery_readiness",
+    );
+    expect(checklistMigration).toContain(
+      "Every standard investigation checklist item must be complete or not applicable before marking ready",
+    );
+    expect(humanReviewWorkflow).toContain(
+      "supabase/functions/easy-erf-founder-fulfillment/**",
+    );
+    expect(humanReviewWorkflow).toContain(
+      "20260903111500_require_resolved_founder_investigation_checklist.sql",
+    );
+    expect(humanReviewWorkflow).toContain(
+      "supabase/functions/easy-erf-founder-fulfillment/index.ts",
+    );
   });
 
   it("requires authenticated founder admin authorization before structured report writes", () => {
