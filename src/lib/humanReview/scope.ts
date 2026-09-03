@@ -2,17 +2,50 @@ export const DONE_FOR_YOU_INVESTIGATION_NAME = "Done-for-You Property Investigat
 export const DONE_FOR_YOU_INVESTIGATION_TAGLINE =
   "You choose the property. We do the investigation.";
 
-export const DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS = [
-  "Confirm the exact parcel and working address",
-  "Review cadastral, SG and boundary evidence already available or supplied",
-  "Review ownership, transfer, title indicators and paid property-report evidence",
-  "Establish the best-supported working zoning and planning position",
-  "Complete the standard Easy Erf property checks and surface conflicts or missing evidence",
-  "Review useful market evidence and comparable context where available",
-  "Run relevant deterministic Strategy calculations when the required inputs exist",
-  "Complete deterministic Site Potential when the evidence supports a useful envelope",
-  "Deliver a Human-Reviewed Easy Erf Report with facts, risks, unknowns and next checks",
+export const DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS = [
+  {
+    id: "parcel_identity",
+    label: "Confirm the exact parcel and working address",
+  },
+  {
+    id: "cadastral_evidence",
+    label: "Review cadastral, SG and boundary evidence already available or supplied",
+  },
+  {
+    id: "ownership_title",
+    label: "Review ownership, transfer, title indicators and paid property-report evidence",
+  },
+  {
+    id: "zoning_planning",
+    label: "Establish the best-supported working zoning and planning position",
+  },
+  {
+    id: "property_checks",
+    label: "Complete the standard Easy Erf property checks and surface conflicts or missing evidence",
+  },
+  {
+    id: "market_evidence",
+    label: "Review useful market evidence and comparable context where available",
+  },
+  {
+    id: "strategy_calculations",
+    label: "Run relevant deterministic Strategy calculations when the required inputs exist",
+  },
+  {
+    id: "site_potential",
+    label: "Complete deterministic Site Potential when the evidence supports a useful envelope",
+  },
+  {
+    id: "reviewed_report",
+    label: "Deliver a Human-Reviewed Easy Erf Report with facts, risks, unknowns and next checks",
+  },
 ] as const;
+
+export type DoneForYouInvestigationChecklistItemId =
+  (typeof DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS)[number]["id"];
+
+export const DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS =
+  DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => item.label);
 
 export const DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY =
   "During Early Access, one third-party property data report is reviewed as part of the investigation at no extra charge where coverage is available. Provider may vary. A branded provider PDF is supplied to the customer only where the provider's terms permit redistribution.";
