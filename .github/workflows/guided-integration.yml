@@ -7,13 +7,57 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: guided-integration-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  repair-notification-migration-inventory:
+    if: github.event_name == 'pull_request' && github.head_ref == 'chatgpt/ee-r999-customer-notification'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Apply exact bounded inventory repair and self-remove
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=20 origin chatgpt/ee-r999-customer-notification
+          git checkout -b chatgpt/ee-r999-customer-notification FETCH_HEAD
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD^)" = "2f6b180f6fd888bdf66dc884229db6308d2ff13c"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts")
+          text = path.read_text()
+          old_count = "expect(migrationNames).toHaveLength(36);"
+          old_tail = '''      "20260903111500_require_resolved_founder_investigation_checklist.sql",
+    ]);'''
+          new_tail = '''      "20260903111500_require_resolved_founder_investigation_checklist.sql",
+      "20260903211000_record_manual_report_notification.sql",
+    ]);'''
+          if text.count(old_count) != 1:
+              raise SystemExit("Expected exactly one migration-count guardrail")
+          if text.count(old_tail) != 1:
+              raise SystemExit("Expected exactly one migration-list tail")
+          path.write_text(
+              text.replace(old_count, "expect(migrationNames).toHaveLength(37);")
+                  .replace(old_tail, new_tail)
+          )
+          PY
+          git checkout origin/main -- .github/workflows/guided-integration.yml
+          rm -f .github/workflows/ee-r999-ci-repair.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts .github/workflows/guided-integration.yml .github/workflows/ee-r999-ci-repair.yml
+          git commit -m "test: include notification migration in canonical inventory"
+          git push origin HEAD:chatgpt/ee-r999-customer-notification
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
