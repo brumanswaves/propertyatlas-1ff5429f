@@ -126,3 +126,15 @@ export function parseHumanReviewReportContent(value: unknown): HumanReviewReport
   }
   return content;
 }
+
+export function isHumanReviewReportContentComplete(value: unknown) {
+  const content = parseHumanReviewReportContent(value);
+  return Boolean(
+    content?.bottomLine &&
+      content.known.length > 0 &&
+      content.potential.length > 0 &&
+      content.risks.length > 0 &&
+      content.unknowns.length > 0 &&
+      content.nextSteps.length > 0,
+  );
+}
