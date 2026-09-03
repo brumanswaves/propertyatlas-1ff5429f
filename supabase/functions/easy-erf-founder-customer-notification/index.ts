@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.0";
 
-import { validateHumanReviewReportContent } from "../_shared/easyErfHumanReviewContract.ts";
+import {
+  isHumanReviewInvestigationChecklistResolved,
+  validateHumanReviewInvestigationChecklist,
+  validateHumanReviewReportContent,
+} from "../_shared/easyErfHumanReviewContract.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -174,6 +178,25 @@ Deno.serve(async (request: Request) => {
     return json({ ok: false, error: "A complete structured report is required before notification.", requestId }, 409);
   }
 
+  const reviewContent = isRecord(order.review_content) ? order.review_content : {};
+  const checklistValidation = validateHumanReviewInvestigationChecklist(
+    reviewContent.investigationChecklist,
+  );
+  if (
+    !checklistValidation.ok ||
+    !isHumanReviewInvestigationChecklistResolved(checklistValidation.checklist)
+  ) {
+    return json(
+      {
+        ok: false,
+        error:
+          "Resolve every standard investigation checklist item before preparing the customer email.",
+        requestId,
+      },
+      409,
+    );
+  }
+
   const { data: customerData, error: customerError } = await admin.auth.admin.getUserById(order.user_id);
   const customer = customerData.user;
   const customerEmail = customer?.email?.trim().toLowerCase() ?? null;
@@ -189,7 +212,6 @@ Deno.serve(async (request: Request) => {
     customerName,
     propertyReference,
   });
-  const reviewContent = isRecord(order.review_content) ? order.review_content : {};
   const existingReceipt = customerNotificationReceipt(reviewContent.customerNotification);
 
   if (action === "prepare") {
