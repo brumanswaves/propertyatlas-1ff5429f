@@ -15,6 +15,11 @@ declare
   v_raw_status text;
   v_status text;
   v_expected_email text;
+  v_section text;
+  v_item text;
+  v_checklist jsonb;
+  v_checklist_count integer;
+  v_item_status text;
   v_existing_notification jsonb;
   v_notification jsonb;
   v_now timestamptz := now();
@@ -70,9 +75,57 @@ begin
 
   if v_order.review_content is null
      or jsonb_typeof(v_order.review_content) is distinct from 'object'
+     or jsonb_typeof(v_order.review_content -> 'bottomLine') is distinct from 'string'
      or nullif(btrim(v_order.review_content ->> 'bottomLine'), '') is null then
     raise exception 'A complete structured Human Review web report is required before notification';
   end if;
+
+  foreach v_section in array array['known', 'potential', 'risks', 'unknowns', 'nextSteps']
+  loop
+    if jsonb_typeof(v_order.review_content -> v_section) is distinct from 'array'
+       or jsonb_array_length(v_order.review_content -> v_section) < 1
+       or jsonb_array_length(v_order.review_content -> v_section) > 8 then
+      raise exception 'A complete structured Human Review web report is required before notification';
+    end if;
+
+    if exists (
+      select 1
+      from jsonb_array_elements(v_order.review_content -> v_section) as entry(value)
+      where jsonb_typeof(entry.value) <> 'string'
+         or nullif(btrim(entry.value #>> '{}'), '') is null
+    ) then
+      raise exception 'A complete structured Human Review web report is required before notification';
+    end if;
+  end loop;
+
+  v_checklist := v_order.review_content -> 'investigationChecklist';
+  if jsonb_typeof(v_checklist) is distinct from 'object' then
+    raise exception 'A resolved standard investigation checklist is required before notification';
+  end if;
+
+  select count(*) into v_checklist_count
+  from jsonb_object_keys(v_checklist);
+  if v_checklist_count <> 9 then
+    raise exception 'A resolved standard investigation checklist is required before notification';
+  end if;
+
+  foreach v_item in array array[
+    'parcel_identity',
+    'cadastral_evidence',
+    'ownership_title',
+    'zoning_planning',
+    'property_checks',
+    'market_evidence',
+    'strategy_calculations',
+    'site_potential',
+    'reviewed_report'
+  ]
+  loop
+    v_item_status := v_checklist ->> v_item;
+    if v_item_status not in ('complete', 'not_applicable') then
+      raise exception 'Every standard investigation checklist item must be complete or not applicable before notification';
+    end if;
+  end loop;
 
   v_existing_notification := v_order.review_content -> 'customerNotification';
   if jsonb_typeof(v_existing_notification) = 'object'
