@@ -89,19 +89,173 @@ Prefer additive and reversible changes. Use extra caution with deletion, truncat
 
 These rules apply recursively to every sub-agent, coding agent, autonomous worker, AI employee, reviewer, external builder, and tool call. A supervising worker must treat subordinate reports as REPORTED until independently verified.
 
-## 16. Permanent Build Communication Format
+## 16. Owner Communication Standard V1
 
-Every owner-facing build/status update must be scannable in under 10 seconds. Use this exact order:
+This section supersedes every older owner-facing build communication format in this repository.
 
-1. `STATUS` - one short sentence using the appropriate truth state.
-2. `WHAT I DID` - maximum 3 to 5 bullets, containing only material EXECUTED or VERIFIED actions.
-3. `WHAT THIS MEANS` - maximum 2 short bullets explaining practical product consequences.
-4. `NEXT STEP` - one sentence naming the single highest-value next action.
-5. `YOU NEED TO DO` - if nothing is required, write exactly `YOU NEED TO DO: NOTHING`. If owner action is required, begin the entire response with `ACTION NEEDED FROM YOU` and immediately list exact numbered steps and what to send back.
-6. `SPEND` - always include `$0`, `$X used / $Y approved remaining`, or `UNKNOWN`.
-7. `DETAILS` - optional, short, and only when useful.
+Every meaningful status report, blocker report, approval request, or release packet must begin with this exact heading:
 
-Do not send motivational progress narratives. Do not lead with architecture, test counts, technical details, or history unless they are the current blocker. Do not bury owner action. When the owner says `check`, use this same compact format.
+`WHAT I NEED FROM YOU NOW`
+
+Use exactly one of the following two forms.
+
+### A. NOTHING NEEDED FROM YOU
+
+State this exact sentence:
+
+`Nothing is needed from you right now. I will continue with the authorized $0, source-only work.`
+
+Immediately state exactly what work will continue. Do not ask the owner to approve Class A work.
+
+### B. ONE SPECIFIC OWNER ACTION
+
+State the exact action in one plain-English sentence. Ask for only one decision or one closely related action at a time. Then use these exact headings in this order:
+
+#### WHY I NEED THIS
+
+Explain the reason in one or two plain-English sentences.
+
+#### TIME REQUIRED FROM YOU
+
+Give a realistic estimate, such as `1 minute`, `3 minutes`, or `10 minutes`.
+
+#### EXACT STEPS
+
+Give numbered click-by-click instructions. Every step must state:
+
+1. The website or application to open.
+2. The exact account, repository, project, or business to use.
+3. The exact menu or page to open.
+4. The exact button to click.
+5. The exact field name.
+6. The exact value to enter or select.
+7. Whether the step changes production, billing, customers, or money.
+
+Never use vague instructions such as `configure Stripe`, `connect Supabase`, `check the settings`, `set up the webhook`, `approve deployment`, `update the secret`, or `publish the app`.
+
+#### WHEN FINISHED, REPLY EXACTLY
+
+Give one short phrase for the owner to send back, such as `STRIPE WEBHOOK SECRET SAVED`.
+
+#### WHAT NOT TO DO
+
+State every important warning, including when relevant:
+
+- Do not paste a secret into ChatGPT.
+- Do not activate live mode.
+- Do not rerun a script or one-shot action.
+- Do not publish.
+- Do not change any other setting.
+
+#### COST
+
+State:
+
+- Expected cost.
+- Maximum possible cost.
+- Whether recurring spend could begin.
+
+#### RISK
+
+State the practical risk in plain English, using language such as:
+
+- None.
+- Low and reversible.
+- Changes production.
+- May charge money.
+- May contact a customer.
+- May interrupt the live product.
+
+#### WHAT I WILL DO NEXT
+
+State exactly what the build will do after the owner completes the action.
+
+### 16.1 Class A work requires no owner approval
+
+Do not ask the owner to approve Class A work. Class A includes:
+
+- Source code changes on the active branch.
+- Code review.
+- Tests and non-production CI.
+- Lint and typecheck.
+- Production build checks that do not deploy.
+- Read-only inspection.
+- Documentation.
+- Release-packet preparation.
+- Formatting and whitespace correction.
+- Evidence consolidation.
+
+If nothing is needed from the owner, say so clearly and continue under existing authority. Never stop merely because an intermediate source-only step finished.
+
+### 16.2 Plain-English translation
+
+Translate technical terms into plain English in the main explanation. For example, replace `Apply the database migration` with `This updates the database so a report cannot be delivered while part of the investigation is unfinished.`
+
+Place optional engineering detail later under:
+
+`TECHNICAL DETAILS FOR THE RECORD`
+
+Keep the main explanation suitable for a non-coder.
+
+### 16.3 Secret instructions
+
+When the owner must save a secret:
+
+1. Give the exact secret name.
+2. Give the exact canonical project where it must be saved.
+3. Give the exact screen, menu, and button.
+4. State that the secret must not be pasted into ChatGPT.
+5. Explain how the build will verify the secret without exposing its value.
+
+### 16.4 Release approvals
+
+When owner approval is required for a release, return one complete release request whenever the permitted actions are related and can safely be bounded together. Do not unnecessarily split merge, deploy, publish, test, and verify into separate approval requests.
+
+The release packet must still identify the exact repository, branch or commit, permitted actions, prohibited actions, rollback boundary, spend cap, stop conditions, and required acceptance evidence.
+
+### 16.5 Money and paid-service requests
+
+Before any action involving money, advertising, billing, paid models, payments, or paid services, state:
+
+1. Service.
+2. Expected cost.
+3. Maximum possible cost.
+4. Recurring cost risk.
+5. Why it is necessary.
+6. Cheaper alternative.
+7. Automatic stop rule.
+
+Then wait for explicit owner approval.
+
+### 16.6 Use tools before asking the owner
+
+If the build can perform the action with an available authorized tool, perform it instead of asking the owner to do it manually.
+
+If the required tool is unavailable, state this exact sentence:
+
+`BLOCKED: I cannot perform this action with the tools available in this conversation.`
+
+Then give the cheapest exact manual steps.
+
+### 16.7 Verification after owner action
+
+After the owner completes an action, independently verify the result. The owner's statement that an action was completed is evidence of the owner's action, not proof that the full workflow works.
+
+### 16.8 Status-report priorities
+
+After the mandatory `WHAT I NEED FROM YOU NOW` section, lead with:
+
+1. What is working and independently verified.
+2. What remains unverified.
+3. The current blocker.
+4. The next product outcome.
+5. Spend and practical risk.
+
+Do not lead with test counts, PR counts, commits, migrations, lines of code, architecture, or activity totals. Those may appear later as supporting evidence.
+
+### 16.9 No fake background status
+
+Never claim a job is running in the background unless a real job, workflow, process, scheduler, worker, queue item, or automation exists and its status was inspected.
 
 ## 17. Stop conditions
 
