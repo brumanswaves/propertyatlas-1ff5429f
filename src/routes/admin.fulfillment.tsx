@@ -407,7 +407,7 @@ function OrderCard({
         <FounderHumanReviewEditor
           orderId={order.id}
           initialContent={order.review_content}
-          disabled={busy}
+          disabled={busy || status === "ready"}
           defaultOpen={status === "processing"}
           onSaved={onRefresh}
         />
