@@ -7,13 +7,23 @@ on:
     paths:
       - .github/workflows/easy-erf-founder-fulfillment.yml
       - scripts/verify-easy-erf-founder-fulfillment.sql
+      - scripts/verify-easy-erf-human-review-product.sql
+      - scripts/verify-easy-erf-customer-notification.sql
       - supabase/config.toml
+      - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/easy-erf-founder-fulfillment/**
       - supabase/functions/easy-erf-founder-report-upload/**
+      - supabase/functions/easy-erf-founder-customer-notification/**
       - supabase/migrations/20260831090000_easy_erf_founder_fulfillment_controls.sql
       - supabase/migrations/20260831113000_secure_easy_erf_report_delivery.sql
       - supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql
       - supabase/migrations/20260831142610_reopen_easy_erf_human_review.sql
+      - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
+      - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
+      - supabase/migrations/20260903211000_record_manual_report_notification.sql
+      - src/components/admin/FounderCustomerNotification.tsx
+      - src/components/admin/FounderHumanReviewEditor.tsx
+      - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
@@ -27,7 +37,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-alpine
@@ -52,7 +62,7 @@ jobs:
           git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
 
-      - name: Install verified Deno 2.9.6 binary
+      - name: Install verified Deno 2.9.6 binary and type-check founder functions
         run: |
           curl --fail --location --silent --show-error \
             --output deno.zip \
@@ -61,16 +71,18 @@ jobs:
           unzip -q deno.zip
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-report-upload/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-customer-notification/index.ts
 
       - name: Install dependencies and run focused guardrails
         run: |
           npm install --no-audit --no-fund
           npx vitest run \
+            src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
 
-      - name: Apply and prove founder fulfillment migration
+      - name: Apply and prove founder fulfillment and manual notification contracts
         env:
           PGPASSWORD: postgres
         run: >-
@@ -79,13 +91,20 @@ jobs:
           --port 54329
           --username postgres
           --dbname postgres
-          --file scripts/verify-easy-erf-founder-fulfillment.sql
+          --file scripts/verify-easy-erf-customer-notification.sql
 
       - name: Build production bundle and generate routes
         run: npm run build
 
       - name: Check TypeScript
         run: npx tsc --noEmit --pretty false
+
+      - name: Check changed-file lint
+        run: >-
+          npx eslint
+          src/components/admin/FounderCustomerNotification.tsx
+          src/components/admin/FounderHumanReviewEditor.tsx
+          src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
 
       - name: Check patch whitespace
         run: git diff --check origin/main...HEAD
