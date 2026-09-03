@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { partitionCustomerReportOrders } from "@/lib/humanReview/customerReportPresentation";
+import { isHumanReviewReportContentComplete } from "@/lib/humanReview/reportContent";
 
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -24,6 +25,38 @@ describe("Easy Erf founder fulfillment UI", () => {
     expect(founderRoute).toContain("Start Done-for-You Investigation");
     expect(founderRoute).toContain("Mark web report ready");
     expect(founderRoute).toContain("do not attach or redistribute the provider PDF");
+  });
+
+  it("disables both delivery paths until the saved report and checklist are resolved", () => {
+    expect(founderRoute).toContain("isHumanReviewReportContentComplete(order.review_content)");
+    expect(founderRoute).toContain("parseHumanReviewInvestigationChecklist(order.review_content)");
+    expect(founderRoute).toContain("const deliveryReady = reportReady && checklistReady");
+    expect(founderRoute).toContain("disabled={busy || !deliveryReady}");
+    expect(founderRoute).toContain("disabled={busy || !file || !deliveryReady}");
+    expect(founderRoute).toContain(
+      "Resolve and save every standard investigation checklist item first.",
+    );
+
+    expect(
+      isHumanReviewReportContentComplete({
+        bottomLine: "Reviewed bottom line",
+        known: ["Known"],
+        potential: ["Potential"],
+        risks: ["Risk"],
+        unknowns: ["Unknown"],
+        nextSteps: ["Next"],
+      }),
+    ).toBe(true);
+    expect(
+      isHumanReviewReportContentComplete({
+        bottomLine: "Reviewed bottom line",
+        known: ["Known"],
+        potential: [],
+        risks: ["Risk"],
+        unknowns: ["Unknown"],
+        nextSteps: ["Next"],
+      }),
+    ).toBe(false);
   });
 
   it("uploads only a selected optional Easy Erf PDF through a short-lived signed upload", () => {
