@@ -1,5 +1,6 @@
 name: Easy Erf Stripe fulfillment verification
 
+# EE-R999-01 release gate. Keep this workflow exact-head and non-production.
 on:
   pull_request:
     branches:
