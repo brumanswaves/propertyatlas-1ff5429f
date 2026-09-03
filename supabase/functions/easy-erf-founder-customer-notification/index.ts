@@ -14,11 +14,20 @@ declare const Deno: {
 const FUNCTION_NAME = "easy-erf-founder-customer-notification";
 const RECORD_CONFIRMATION = "I SENT THIS EMAIL";
 const ALLOWED_ACTIONS = new Set(["prepare", "record_sent"]);
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -99,6 +108,10 @@ function log(stage: string, requestId: string, extra: Record<string, unknown> = 
 
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id")?.trim() || crypto.randomUUID();
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (request.method !== "POST") {
     return json({ ok: false, error: "Method not allowed.", requestId }, 405);
   }
@@ -254,10 +267,7 @@ Deno.serve(async (request: Request) => {
       orderId: order.id,
       errorCode: recordError?.code ?? null,
     });
-    return json(
-      { ok: false, error: recordError?.message ?? "The notification receipt could not be saved.", requestId },
-      409,
-    );
+    return json({ ok: false, error: "The notification receipt could not be saved.", requestId }, 409);
   }
 
   const updatedContent = isRecord(updatedOrder.review_content) ? updatedOrder.review_content : {};
