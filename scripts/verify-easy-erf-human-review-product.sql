@@ -13,6 +13,7 @@ values
 on conflict (id) do nothing;
 
 \i supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
+\i supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
 
 do $$
 declare
@@ -230,6 +231,60 @@ begin
       review_content_updated_at = now()
   where id = v_order_id;
 
+  begin
+    perform public.transition_easy_erf_report_order(
+      v_order_id, 'mark_ready', v_actor_id, null, null
+    );
+    raise exception 'mark_ready accepted a report without the standard investigation checklist';
+  exception
+    when others then
+      if sqlerrm = 'mark_ready accepted a report without the standard investigation checklist' then
+        raise;
+      end if;
+      if sqlerrm not like '%complete standard investigation checklist is required%' then
+        raise exception 'Unexpected missing-checklist error: %', sqlerrm;
+      end if;
+  end;
+
+  update public.report_orders
+  set review_content = review_content || jsonb_build_object(
+    'investigationChecklist',
+    jsonb_build_object(
+      'parcel_identity', 'complete',
+      'cadastral_evidence', 'complete',
+      'ownership_title', 'complete',
+      'zoning_planning', 'complete',
+      'property_checks', 'complete',
+      'market_evidence', 'complete',
+      'strategy_calculations', 'complete',
+      'site_potential', 'blocked',
+      'reviewed_report', 'complete'
+    )
+  )
+  where id = v_order_id;
+
+  begin
+    perform public.transition_easy_erf_report_order(
+      v_order_id, 'mark_ready', v_actor_id, null, null
+    );
+    raise exception 'mark_ready accepted a blocked standard investigation item';
+  exception
+    when others then
+      if sqlerrm = 'mark_ready accepted a blocked standard investigation item' then raise; end if;
+      if sqlerrm not like '%must be complete or not applicable before marking ready%' then
+        raise exception 'Unexpected unresolved-checklist error: %', sqlerrm;
+      end if;
+  end;
+
+  update public.report_orders
+  set review_content = jsonb_set(
+    review_content,
+    '{investigationChecklist,site_potential}',
+    '"not_applicable"'::jsonb,
+    false
+  )
+  where id = v_order_id;
+
   select * into v_row from public.transition_easy_erf_report_order(
     v_order_id, 'mark_ready', v_actor_id, null, null
   );
@@ -238,7 +293,7 @@ begin
      or v_row.status_enum <> 'complete'::public.report_order_status
      or v_row.pdf_storage_path is not null
      or v_row.completed_at is null then
-    raise exception 'Structured web report did not become ready without a PDF';
+    raise exception 'Resolved checklist and structured web report did not become ready without a PDF';
   end if;
 end
 $$;
