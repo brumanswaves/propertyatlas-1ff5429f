@@ -109,4 +109,19 @@ describe("Easy Erf founder report upload Edge Function", () => {
     expect(uploadFunction).toContain("createSignedUploadUrl(path, { upsert: true })");
     expect(uploadFunction).toContain("Report PDF must be between 1 byte and 25 MB.");
   });
+
+  it("refuses a signed upload token until the structured report and checklist are resolved", () => {
+    expect(uploadFunction).toContain("validateHumanReviewReportContent(order.review_content)");
+    expect(uploadFunction).toContain("validateHumanReviewInvestigationChecklist");
+    expect(uploadFunction).toContain("isHumanReviewInvestigationChecklistResolved");
+    expect(uploadFunction).toContain(
+      "Resolve and save every standard investigation checklist item before uploading the optional PDF.",
+    );
+    expect(uploadFunction.indexOf("validateHumanReviewReportContent(order.review_content)")).toBeLessThan(
+      uploadFunction.indexOf("createSignedUploadUrl(path, { upsert: true })"),
+    );
+    expect(uploadFunction.indexOf("isHumanReviewInvestigationChecklistResolved")).toBeLessThan(
+      uploadFunction.indexOf("createSignedUploadUrl(path, { upsert: true })"),
+    );
+  });
 });
