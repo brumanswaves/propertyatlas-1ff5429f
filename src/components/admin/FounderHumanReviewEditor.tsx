@@ -1,16 +1,38 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, FileSearch2, Save, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
+  FileSearch2,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS,
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
-  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
 } from "@/lib/humanReview/scope";
 import {
+  createPendingHumanReviewInvestigationChecklist,
   EMPTY_HUMAN_REVIEW_REPORT_CONTENT,
+  isHumanReviewInvestigationChecklistResolved,
+  parseHumanReviewInvestigationChecklist,
   parseHumanReviewReportContent,
+  type HumanReviewInvestigationChecklist,
+  type HumanReviewInvestigationChecklistStatus,
   type HumanReviewReportContent,
 } from "@/lib/humanReview/reportContent";
+
+const CHECKLIST_STATUS_OPTIONS: Array<{
+  value: HumanReviewInvestigationChecklistStatus;
+  label: string;
+}> = [
+  { value: "pending", label: "Pending" },
+  { value: "complete", label: "Complete" },
+  { value: "blocked", label: "Blocked" },
+  { value: "not_applicable", label: "Not applicable" },
+];
 
 function listText(values: string[]) {
   return values.join("\n");
@@ -22,6 +44,13 @@ function parseList(value: string) {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 8);
+}
+
+function checklistTone(status: HumanReviewInvestigationChecklistStatus) {
+  if (status === "complete") return "border-emerald-300 bg-emerald-50 text-emerald-800";
+  if (status === "not_applicable") return "border-slate-300 bg-slate-50 text-slate-700";
+  if (status === "blocked") return "border-rose-300 bg-rose-50 text-rose-800";
+  return "border-amber-300 bg-amber-50 text-amber-800";
 }
 
 export function FounderHumanReviewEditor({
@@ -41,19 +70,66 @@ export function FounderHumanReviewEditor({
     () => parseHumanReviewReportContent(initialContent) ?? EMPTY_HUMAN_REVIEW_REPORT_CONTENT,
     [initialContent],
   );
+  const parsedChecklist = useMemo(
+    () =>
+      parseHumanReviewInvestigationChecklist(initialContent) ??
+      createPendingHumanReviewInvestigationChecklist(),
+    [initialContent],
+  );
   const [bottomLine, setBottomLine] = useState(parsed.bottomLine);
   const [known, setKnown] = useState(listText(parsed.known));
   const [potential, setPotential] = useState(listText(parsed.potential));
   const [risks, setRisks] = useState(listText(parsed.risks));
   const [unknowns, setUnknowns] = useState(listText(parsed.unknowns));
   const [nextSteps, setNextSteps] = useState(listText(parsed.nextSteps));
+  const [checklist, setChecklist] = useState<HumanReviewInvestigationChecklist>(parsedChecklist);
   const [saving, setSaving] = useState(false);
+  const [savingChecklist, setSavingChecklist] = useState(false);
 
   const sectionValues = useMemo(
     () => [bottomLine, known, potential, risks, unknowns, nextSteps],
     [bottomLine, known, potential, risks, unknowns, nextSteps],
   );
   const completedSections = sectionValues.filter((value) => value.trim().length > 0).length;
+  const resolvedChecklistItems = DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.filter((item) => {
+    const status = checklist[item.id];
+    return status === "complete" || status === "not_applicable";
+  }).length;
+  const blockedChecklistItems = DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.filter(
+    (item) => checklist[item.id] === "blocked",
+  ).length;
+  const checklistResolved = isHumanReviewInvestigationChecklistResolved(checklist);
+  const busy = saving || savingChecklist;
+
+  function setChecklistStatus(
+    id: keyof HumanReviewInvestigationChecklist,
+    status: HumanReviewInvestigationChecklistStatus,
+  ) {
+    setChecklist((current) => ({ ...current, [id]: status }));
+  }
+
+  async function saveChecklist() {
+    setSavingChecklist(true);
+    const { data, error } = await supabase.functions.invoke(
+      "easy-erf-founder-review-content",
+      {
+        body: {
+          orderId,
+          action: "save_checklist",
+          checklist,
+        },
+      },
+    );
+    setSavingChecklist(false);
+    if (error || !data?.ok) {
+      toast.error(
+        data?.error ?? error?.message ?? "The investigation checklist could not be saved.",
+      );
+      return;
+    }
+    toast.success("Standard investigation checklist saved");
+    await onSaved?.();
+  }
 
   async function save() {
     const content: HumanReviewReportContent = {
@@ -83,7 +159,7 @@ export function FounderHumanReviewEditor({
 
     setSaving(true);
     const { data, error } = await supabase.functions.invoke("easy-erf-founder-review-content", {
-      body: { orderId, content },
+      body: { orderId, action: "save_report", content },
     });
     setSaving(false);
     if (error || !data?.ok) {
@@ -139,26 +215,109 @@ export function FounderHumanReviewEditor({
     >
       <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
         <span className="inline-flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-[#FF6A00]" /> Write / edit final Human-Reviewed Easy Erf Report
+          <ShieldCheck className="h-4 w-4 text-[#FF6A00]" /> Complete investigation and final report
         </span>
       </summary>
 
       <div className="mt-4 space-y-5">
         <div className="rounded-[1.25rem] border border-[#FF6A00]/20 bg-white p-4">
-          <div className="text-sm font-semibold text-[#0D1B2A]">Do not start with these text boxes</div>
-          <p className="mt-1 text-xs leading-5 text-[#64748B]">
-            First complete or review the standard Easy Erf investigation in the canonical property file. The report below is the final human-reviewed synthesis of that work, not a substitute for doing it.
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.map((item) => (
-              <div key={item} className="flex items-start gap-2 rounded-xl bg-[#F7FBFF] px-3 py-2 text-[11px] leading-4 text-[#64748B]">
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF6A00]" />
-                <span>{item}</span>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-[#0D1B2A]">
+                Standard done-for-you investigation checklist
               </div>
-            ))}
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-[#64748B]">
+                Record the operational state of every standard investigation area. This does not
+                create a second evidence model. Findings and source truth remain in the canonical
+                property file and final report.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-3 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
+                Resolved
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">
+                {resolvedChecklistItems}/{DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.length}
+              </div>
+            </div>
           </div>
+
+          <div className="mt-4 space-y-2">
+            {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => {
+              const status = checklist[item.id];
+              const StatusIcon = status === "complete" ? CheckCircle2 : status === "blocked"
+                ? AlertTriangle
+                : CircleDashed;
+              return (
+                <div
+                  key={item.id}
+                  className="grid gap-3 rounded-2xl border border-[#0D1B2A]/8 bg-[#F7FBFF] px-3 py-3 sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-center"
+                >
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <StatusIcon
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${
+                        status === "complete"
+                          ? "text-emerald-700"
+                          : status === "blocked"
+                            ? "text-rose-700"
+                            : "text-[#64748B]"
+                      }`}
+                    />
+                    <span className="text-xs leading-5 text-[#0D1B2A]">{item.label}</span>
+                  </div>
+                  <select
+                    aria-label={`${item.label} status`}
+                    value={status}
+                    disabled={disabled || busy}
+                    onChange={(event) =>
+                      setChecklistStatus(
+                        item.id,
+                        event.target.value as HumanReviewInvestigationChecklistStatus,
+                      )}
+                    className={`min-h-10 rounded-xl border px-3 text-xs font-semibold outline-none focus:border-[#FF6A00] disabled:opacity-60 ${checklistTone(status)}`}
+                  >
+                    {CHECKLIST_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={disabled || busy}
+              onClick={() => void saveChecklist()}
+              className="inline-flex items-center gap-2 rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {savingChecklist ? "Saving checklist…" : "Save checklist"}
+            </button>
+            {checklistResolved ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" /> Every applicable investigation area is resolved
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+                <AlertTriangle className="h-4 w-4" />
+                Delivery remains blocked while any item is Pending or Blocked
+                {blockedChecklistItems > 0 ? ` (${blockedChecklistItems} blocked)` : ""}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
+            Use Not applicable only when the investigation area genuinely does not apply to this
+            property or customer purpose. It is not a skip control.
+          </p>
           <p className="mt-3 text-[11px] leading-5 text-[#92400E]">
-            <strong>Property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} A Lightstone or other branded provider PDF must not be redistributed unless the applicable provider/report terms permit it.
+            <strong>Property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} A
+            Lightstone or other branded provider PDF must not be redistributed unless the
+            applicable provider/report terms permit it.
           </p>
         </div>
 
@@ -169,9 +328,9 @@ export function FounderHumanReviewEditor({
               {[
                 ["1", "Complete the investigation", "Work through the standard Easy Erf investigation and the customer’s selected emphasis."],
                 ["2", "Review the evidence", "Resolve what you reasonably can; preserve provenance, conflicts and real missing evidence."],
-                ["3", "Write the bottom line", "2–5 concise sentences. State the useful conclusion and biggest limitation."],
-                ["4", "Fill all five sections", "One reviewed finding per line. Keep unknowns unknown. Maximum eight items per section."],
-                ["5", "Save, then deliver", "Save the web report. Back in the order card, mark the web report ready."],
+                ["3", "Write the bottom line", "Use 2 to 5 concise sentences. State the useful conclusion and biggest limitation."],
+                ["4", "Fill all five sections", "Add one reviewed finding per line. Keep unknowns unknown. Maximum eight items per section."],
+                ["5", "Save, then deliver", "Save both the checklist and web report. Mark ready only after all applicable checklist items are resolved."],
               ].map(([number, title, body]) => (
                 <div key={number} className="rounded-2xl border border-[#0D1B2A]/8 bg-white p-3">
                   <div className="grid h-6 w-6 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{number}</div>
@@ -197,7 +356,7 @@ export function FounderHumanReviewEditor({
             onChange={(event) => setBottomLine(event.target.value)}
             rows={4}
             maxLength={1400}
-            disabled={disabled || saving}
+            disabled={disabled || busy}
             placeholder="Example: The parcel identity is supported and the current evidence gives a useful working picture, but property-specific planning/title confirmation is still incomplete. Treat the apparent potential as worth investigating, not as an approved right."
             className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
           />
@@ -216,7 +375,7 @@ export function FounderHumanReviewEditor({
                 value={field.value}
                 onChange={(event) => field.setter(event.target.value)}
                 rows={6}
-                disabled={disabled || saving}
+                disabled={disabled || busy}
                 placeholder="One concise reviewed item per line (maximum 8)."
                 className="mt-3 w-full rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] px-4 py-3 text-sm leading-6 text-[#0D1B2A] outline-none focus:border-[#FF6A00] disabled:opacity-60"
               />
@@ -231,7 +390,7 @@ export function FounderHumanReviewEditor({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={disabled || saving}
+            disabled={disabled || busy}
             onClick={() => void save()}
             className="inline-flex items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
