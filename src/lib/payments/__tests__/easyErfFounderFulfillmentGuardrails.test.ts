@@ -101,6 +101,15 @@ describe("Easy Erf founder report upload Edge Function", () => {
     );
   });
 
+  it("normalizes canonical fulfillment enum values before checking upload state", () => {
+    expect(uploadFunction).toContain(
+      'return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;',
+    );
+    expect(uploadFunction.indexOf('raw === "fulfilling"')).toBeLessThan(
+      uploadFunction.indexOf('statusOf(order) !== "processing"'),
+    );
+  });
+
   it("prepares only the exact processing-order PDF path in the private existing bucket", () => {
     expect(uploadFunction).toContain('const REPORT_BUCKET = "erf-files"');
     expect(uploadFunction).toContain('statusOf(order) !== "processing"');
