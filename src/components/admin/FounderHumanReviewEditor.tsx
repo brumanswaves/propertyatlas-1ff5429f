@@ -326,10 +326,10 @@ export function FounderHumanReviewEditor({
             <AlertTriangle className="h-4 w-4" /> Do not start with these text boxes
           </div>
           <p className="mt-1 text-[11px] leading-5 text-amber-800">
-            First complete or review the standard Easy Erf property investigation for this parcel.
-            Then use the report fields below to synthesize the actual evidence, calculations, Site
-            Potential and market context already reviewed. The customer emphasis guides attention;
-            it does not reduce the standard scope.
+            First complete or review the standard Easy Erf investigation for this parcel. Then use
+            the report fields below to synthesize the actual evidence, calculations, Site Potential
+            and market context already reviewed. The customer emphasis guides attention; it does
+            not reduce the standard scope.
           </p>
         </div>
 
