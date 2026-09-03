@@ -37,7 +37,8 @@ export const DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS = [
   },
   {
     id: "reviewed_report",
-    label: "Deliver a Human-Reviewed Easy Erf Report with facts, risks, unknowns and next checks",
+    label: "Prepare the Human-Reviewed Easy Erf Report with facts, risks, unknowns and next checks",
+    scopeLabel: "Deliver a Human-Reviewed Easy Erf Report with facts, risks, unknowns and next checks",
   },
 ] as const;
 
@@ -45,7 +46,9 @@ export type DoneForYouInvestigationChecklistItemId =
   (typeof DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS)[number]["id"];
 
 export const DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS =
-  DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => item.label);
+  DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) =>
+    "scopeLabel" in item ? item.scopeLabel : item.label,
+  );
 
 export const DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY =
   "During Early Access, one third-party property data report is reviewed as part of the investigation at no extra charge where coverage is available. Provider may vary. A branded provider PDF is supplied to the customer only where the provider's terms permit redistribution.";
