@@ -78,8 +78,8 @@ Read-only production inspection established that it:
 
 - is a Stripe TEST-mode Easy Erf investigation order;
 - belongs to the founder-admin account;
-- references Erf 1570 at 228 President Road, President Park AH;
-- is already in the delivered `ready` state;
+- references `Erf 1570 - 24 Padrone Cres, St Francis Bay, 6312, South Africa`;
+- is already in the delivered `ready` state, with `status_enum=complete`;
 - contains a structured report with the bottom line and all five finding sections populated;
 - contains all nine standard investigation checklist items, all resolved as `complete` or `not_applicable`;
 - has no existing customer-notification receipt.
