@@ -21,6 +21,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+type NotificationReceipt = {
+  status: "sent" | "failed";
+  channel: "automatic_email";
+  provider: "resend";
+  recipient: string;
+  reportVersion: string;
+  attemptedAt: string;
+  sentAt: string | null;
+  sentBy: string;
+  providerMessageId: string | null;
+  errorCode: string | null;
+};
+
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -74,37 +87,25 @@ function statusOf(order: { status?: string | null; status_enum?: string | null }
   return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;
 }
 
-function normalizeReportVersion(value: unknown): string | null {
+function normalizeTimestamp(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-type NotificationReceipt = {
-  status: "sent" | "failed";
-  channel: "automatic_email";
-  provider: "resend";
-  recipient: string;
-  reportVersion: string;
-  attemptedAt: string;
-  sentAt: string | null;
-  sentBy: string;
-  providerMessageId: string | null;
-  errorCode: string | null;
-};
-
-function customerNotificationReceipt(value: unknown): NotificationReceipt | null {
+function parseReceipt(value: unknown): NotificationReceipt | null {
   if (!isRecord(value)) return null;
   const status = cleanText(value.status);
   const channel = cleanText(value.channel);
   const provider = cleanText(value.provider);
   const recipient = cleanText(value.recipient)?.toLowerCase() ?? null;
-  const reportVersion = normalizeReportVersion(value.reportVersion);
-  const attemptedAt = normalizeReportVersion(value.attemptedAt);
-  const sentAt = normalizeReportVersion(value.sentAt);
+  const reportVersion = normalizeTimestamp(value.reportVersion);
+  const attemptedAt = normalizeTimestamp(value.attemptedAt);
+  const sentAt = normalizeTimestamp(value.sentAt);
   const sentBy = cleanText(value.sentBy);
   const providerMessageId = cleanText(value.providerMessageId);
   const errorCode = cleanText(value.errorCode);
+
   if (
     (status !== "sent" && status !== "failed") ||
     channel !== "automatic_email" ||
@@ -118,6 +119,7 @@ function customerNotificationReceipt(value: unknown): NotificationReceipt | null
   }
   if (status === "sent" && (!sentAt || !providerMessageId)) return null;
   if (status === "failed" && !errorCode) return null;
+
   return {
     status,
     channel,
@@ -147,7 +149,7 @@ function buildEmail(input: {
   const text = [
     `Hi ${firstName},`,
     "",
-    `Your Done-for-You Property Investigation for ${input.propertyReference} is ready.",
+    `Your Done-for-You Property Investigation for ${input.propertyReference} is ready.`,
     "",
     `Open the Human-Reviewed Easy Erf Report in your dashboard: ${reportUrl.toString()}`,
     "",
@@ -167,38 +169,20 @@ function buildEmail(input: {
 <html lang="en">
   <body style="margin:0;background:#f7fbff;font-family:Arial,sans-serif;color:#0d1b2a;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7fbff;padding:32px 16px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #d9e6f2;border-radius:20px;overflow:hidden;">
-            <tr>
-              <td style="background:#0d1b2a;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:700;">
-                Easy <span style="color:#ff8a33;">Erf</span>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px 28px;">
-                <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hi ${safeFirstName},</p>
-                <h1 style="margin:0 0 16px;font-size:26px;line-height:1.25;">Your property investigation is ready</h1>
-                <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569;">
-                  Your Human-Reviewed Easy Erf Report for <strong style="color:#0d1b2a;">${safeProperty}</strong> is available in your dashboard.
-                </p>
-                <p style="margin:0 0 28px;">
-                  <a href="${safeReportUrl}" style="display:inline-block;background:#ff6a00;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;">Open your report</a>
-                </p>
-                <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#475569;">
-                  The report records the available evidence, important risks, remaining unknowns and the next checks worth completing.
-                </p>
-                <p style="margin:0;font-size:13px;line-height:1.7;color:#64748b;">Sign in using ${safeEmail}.</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="border-top:1px solid #e2e8f0;padding:18px 28px;font-size:12px;line-height:1.6;color:#64748b;">
-                Easy Erf provides property research and due-diligence support. It is not municipal approval or professional legal, planning, engineering or valuation advice.
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #d9e6f2;border-radius:20px;overflow:hidden;">
+          <tr><td style="background:#0d1b2a;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:700;">Easy <span style="color:#ff8a33;">Erf</span></td></tr>
+          <tr><td style="padding:32px 28px;">
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hi ${safeFirstName},</p>
+            <h1 style="margin:0 0 16px;font-size:26px;line-height:1.25;">Your property investigation is ready</h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569;">Your Human-Reviewed Easy Erf Report for <strong style="color:#0d1b2a;">${safeProperty}</strong> is available in your dashboard.</p>
+            <p style="margin:0 0 28px;"><a href="${safeReportUrl}" style="display:inline-block;background:#ff6a00;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;">Open your report</a></p>
+            <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#475569;">The report records the available evidence, important risks, remaining unknowns and the next checks worth completing.</p>
+            <p style="margin:0;font-size:13px;line-height:1.7;color:#64748b;">Sign in using ${safeEmail}.</p>
+          </td></tr>
+          <tr><td style="border-top:1px solid #e2e8f0;padding:18px 28px;font-size:12px;line-height:1.6;color:#64748b;">Easy Erf provides property research and due-diligence support. It is not municipal approval or professional legal, planning, engineering or valuation advice.</td></tr>
+        </table>
+      </td></tr>
     </table>
   </body>
 </html>`;
@@ -212,10 +196,10 @@ function buildEmail(input: {
   };
 }
 
-async function parseResponseBody(response: Response): Promise<Record<string, unknown>> {
+async function responseBody(response: Response): Promise<Record<string, unknown>> {
   try {
-    const value = await response.json();
-    return isRecord(value) ? value : {};
+    const parsed = await response.json();
+    return isRecord(parsed) ? parsed : {};
   } catch {
     return {};
   }
@@ -326,7 +310,7 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const reportVersion = normalizeReportVersion(order.completed_at);
+  const reportVersion = normalizeTimestamp(order.completed_at);
   if (!reportVersion) {
     return json({ ok: false, error: "The delivered report does not have a valid version.", requestId }, 409);
   }
@@ -377,18 +361,13 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const existingReceipt = customerNotificationReceipt(reviewContent.customerNotification);
+  const existingReceipt = parseReceipt(reviewContent.customerNotification);
   if (
     existingReceipt?.status === "sent" &&
     existingReceipt.recipient === customerEmail &&
     existingReceipt.reportVersion === reportVersion
   ) {
-    return json({
-      ok: true,
-      receipt: existingReceipt,
-      alreadySent: true,
-      requestId,
-    });
+    return json({ ok: true, receipt: existingReceipt, alreadySent: true, requestId });
   }
 
   const emailEnabled = requiredEnv("EASY_ERF_CUSTOMER_EMAIL_ENABLED") === "true";
@@ -481,7 +460,7 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const providerBody = await parseResponseBody(providerResponse);
+  const providerBody = await responseBody(providerResponse);
   const providerMessageId = cleanSingleLine(providerBody.id, 255);
   if (!providerResponse.ok || !providerMessageId) {
     const errorCode = !providerResponse.ok
@@ -509,7 +488,7 @@ Deno.serve(async (request: Request) => {
         ok: false,
         code: "EMAIL_SEND_FAILED",
         error: "The report is ready, but the customer email could not be sent. Retry from the delivered order.",
-        receipt: customerNotificationReceipt(failedContent.customerNotification),
+        receipt: parseReceipt(failedContent.customerNotification),
         requestId,
       },
       502,
@@ -550,7 +529,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const updatedContent = isRecord(updatedOrder.review_content) ? updatedOrder.review_content : {};
-  const receipt = customerNotificationReceipt(updatedContent.customerNotification);
+  const receipt = parseReceipt(updatedContent.customerNotification);
   if (!receipt || receipt.status !== "sent") {
     return json(
       {
