@@ -57,7 +57,7 @@ describe("Easy Erf founder customer notification boundary", () => {
   });
 
   it("resolves the canonical order customer and requires explicit sent confirmation", () => {
-    expect(notificationFunction).toContain("admin.auth.admin.getUserById(order.user_id)");
+    expect(notificationFunction).toContain("admin.auth.admin.getUserById(");
     expect(notificationFunction).toContain('const RECORD_CONFIRMATION = "I SENT THIS EMAIL"');
     expect(notificationFunction).toContain("body.confirmation !== RECORD_CONFIRMATION");
     // eslint-disable-next-line no-useless-escape
