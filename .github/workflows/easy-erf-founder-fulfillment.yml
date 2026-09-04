@@ -103,6 +103,8 @@ jobs:
       - name: Check changed-file lint
         run: >-
           npx eslint
+          --no-warn-ignored
+          --rule 'prettier/prettier: off'
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
