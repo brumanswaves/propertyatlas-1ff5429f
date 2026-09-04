@@ -23,6 +23,11 @@ verify_jwt = true
 [functions.easy-erf-founder-review-content]
 verify_jwt = true
 
+# Founder customer notification prepares a manual email and records a receipt
+# only after authenticated admin authorization. It never sends automatically.
+[functions.easy-erf-founder-customer-notification]
+verify_jwt = true
+
 # Founder launch readiness is read-only. It requires an authenticated session
 # plus an explicit admin-role check before inspecting safe Stripe/runtime signals.
 [functions.easy-erf-founder-launch-readiness]

@@ -7,7 +7,9 @@ on:
     paths:
       - .github/workflows/easy-erf-human-review-product.yml
       - scripts/verify-easy-erf-human-review-product.sql
+      - scripts/verify-easy-erf-customer-notification.sql
       - src/components/admin/AdminGuard.tsx
+      - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/components/humanReview/**
       - src/components/property/ErfResearchDossier.tsx
@@ -17,6 +19,7 @@ on:
       - src/integrations/supabase/types.ts
       - src/lib/brand.ts
       - src/lib/humanReview/**
+      - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
       - src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
@@ -28,6 +31,7 @@ on:
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/_shared/easyErfR999LaunchReadiness.ts
+      - supabase/functions/easy-erf-founder-customer-notification/**
       - supabase/functions/easy-erf-founder-fulfillment/**
       - supabase/functions/easy-erf-founder-launch-readiness/**
       - supabase/functions/easy-erf-founder-report-upload/**
@@ -36,6 +40,7 @@ on:
       - supabase/functions/easy-erf-stripe-webhook/**
       - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
       - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
+      - supabase/migrations/20260903211000_record_manual_report_notification.sql
   workflow_dispatch:
 
 permissions:
@@ -48,7 +53,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17-alpine
@@ -89,17 +94,19 @@ jobs:
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-report-upload/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-review-content/index.ts
+          ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-customer-notification/index.ts
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-launch-readiness/index.ts
 
       - name: Install dependencies and run Human Review guardrails
         run: |
           npm install --no-audit --no-fund
           npx vitest run \
+            src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts \
             src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
 
-      - name: Prove Human Review migration in isolated PostgreSQL
+      - name: Prove Human Review and manual notification migrations in isolated PostgreSQL
         env:
           PGPASSWORD: postgres
         run: >-
@@ -108,7 +115,7 @@ jobs:
           --port 54329
           --username postgres
           --dbname postgres
-          --file scripts/verify-easy-erf-human-review-product.sql
+          --file scripts/verify-easy-erf-customer-notification.sql
 
       - name: Build production bundle
         run: npm run build
