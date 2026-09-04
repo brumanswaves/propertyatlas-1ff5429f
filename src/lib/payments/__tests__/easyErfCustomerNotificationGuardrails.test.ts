@@ -53,7 +53,7 @@ describe("Easy Erf automatic customer report email boundary", () => {
     expect(notificationFunction).toContain("validateHumanReviewInvestigationChecklist");
     expect(notificationFunction).toContain("isHumanReviewInvestigationChecklistResolved");
     expect(notificationFunction).toContain('statusOf(order) !== "ready"');
-    expect(notificationFunction).toContain("normalizeReportVersion(order.completed_at)");
+    expect(notificationFunction).toContain("normalizeTimestamp(order.completed_at)");
     expect(notificationFunction).toContain("cleanSingleLine(payload.propertyReference, 240)");
     expect(notificationFunction).toContain("The customer account does not have a deliverable email address.");
   });
@@ -94,7 +94,7 @@ describe("Easy Erf automatic customer report email boundary", () => {
 });
 
 describe("Easy Erf automatic email database receipt", () => {
-  it("retire the manual receipt function and accepts only the exact ready report version", () => {
+  it("retires the manual receipt function and accepts only the exact ready report version", () => {
     expect(notificationMigration).toContain(
       "drop function if exists public.record_easy_erf_customer_notification(uuid, uuid, text)",
     );
