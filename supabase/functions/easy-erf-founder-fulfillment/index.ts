@@ -39,6 +39,58 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+async function triggerAutomaticCustomerEmail(input: {
+  supabaseUrl: string;
+  anonKey: string;
+  authorization: string;
+  orderId: string;
+  requestId: string;
+}) {
+  try {
+    const response = await fetch(
+      `${input.supabaseUrl}/functions/v1/easy-erf-founder-customer-notification`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: input.authorization,
+          apikey: input.anonKey,
+          "Content-Type": "application/json",
+          "x-request-id": input.requestId,
+        },
+        body: JSON.stringify({ orderId: input.orderId, action: "send" }),
+      },
+    );
+
+    let payload: Record<string, unknown> = {};
+    try {
+      const parsed = await response.json();
+      payload = isRecord(parsed) ? parsed : {};
+    } catch {
+      payload = {};
+    }
+
+    return {
+      ok: response.ok && payload.ok === true,
+      status: response.status,
+      code: typeof payload.code === "string" ? payload.code : null,
+      error: typeof payload.error === "string" ? payload.error : null,
+      receipt: payload.receipt ?? null,
+      emailAccepted: payload.emailAccepted === true,
+      requestId: typeof payload.requestId === "string" ? payload.requestId : input.requestId,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "EMAIL_FUNCTION_UNREACHABLE",
+      error: "The report is ready, but Easy Erf could not reach the customer email service.",
+      receipt: null,
+      emailAccepted: false,
+      requestId: input.requestId,
+    };
+  }
+}
+
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id")?.trim() || crypto.randomUUID();
 
@@ -192,6 +244,23 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  let notification = null;
+  if (action === "mark_ready") {
+    notification = await triggerAutomaticCustomerEmail({
+      supabaseUrl,
+      anonKey,
+      authorization,
+      orderId,
+      requestId,
+    });
+    log(notification.ok ? "automatic_email_succeeded" : "automatic_email_incomplete", requestId, {
+      userId: user.id,
+      orderId,
+      code: notification.code,
+      emailAccepted: notification.emailAccepted,
+    });
+  }
+
   log("transition_succeeded", requestId, { userId: user.id, orderId, action });
-  return json({ ok: true, order, requestId });
+  return json({ ok: true, order, notification, requestId });
 });
