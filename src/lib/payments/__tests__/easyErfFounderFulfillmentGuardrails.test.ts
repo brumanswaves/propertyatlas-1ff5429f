@@ -17,6 +17,9 @@ const reopenMigration = source(
 );
 const founderFunction = source("supabase/functions/easy-erf-founder-fulfillment/index.ts");
 const uploadFunction = source("supabase/functions/easy-erf-founder-report-upload/index.ts");
+const reviewContentFunction = source(
+  "supabase/functions/easy-erf-founder-review-content/index.ts",
+);
 const config = source("supabase/config.toml");
 
 describe("Easy Erf founder fulfillment database authority", () => {
@@ -57,6 +60,25 @@ describe("Easy Erf founder fulfillment database authority", () => {
     expect(deliveryMigration).toContain("bucket_id = 'erf-files'");
     expect(deliveryMigration).toContain("Report PDF is not present in private storage");
     expect(deliveryMigration).toContain("insert into public.report_order_events");
+  });
+});
+
+describe("Easy Erf founder browser Edge Functions", () => {
+  it("answers CORS preflight before enforcing POST for every fulfillment write path", () => {
+    for (const functionSource of [founderFunction, uploadFunction, reviewContentFunction]) {
+      expect(functionSource).toContain('"Access-Control-Allow-Origin": "*"');
+      expect(functionSource).toContain(
+        '"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"',
+      );
+      expect(functionSource).toContain('"Access-Control-Allow-Methods": "POST, OPTIONS"');
+      expect(functionSource).toContain('if (request.method === "OPTIONS")');
+      expect(functionSource).toContain(
+        "return new Response(null, { status: 204, headers: corsHeaders });",
+      );
+      expect(functionSource.indexOf('request.method === "OPTIONS"')).toBeLessThan(
+        functionSource.indexOf('request.method !== "POST"'),
+      );
+    }
   });
 });
 
