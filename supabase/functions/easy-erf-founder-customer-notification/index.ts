@@ -310,8 +310,9 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const reportVersion = normalizeTimestamp(order.completed_at);
-  if (!reportVersion) {
+  const rawReportVersion = cleanText(order.completed_at);
+  const reportVersion = normalizeTimestamp(rawReportVersion);
+  if (!rawReportVersion || !reportVersion) {
     return json({ ok: false, error: "The delivered report does not have a valid version.", requestId }, 409);
   }
 
@@ -440,7 +441,7 @@ Deno.serve(async (request: Request) => {
       p_recipient_email: customerEmail,
       p_delivery_status: "failed",
       p_provider: EMAIL_PROVIDER,
-      p_report_version: reportVersion,
+      p_report_version: rawReportVersion,
       p_provider_message_id: null,
       p_error_code: errorCode,
     });
@@ -472,7 +473,7 @@ Deno.serve(async (request: Request) => {
       p_recipient_email: customerEmail,
       p_delivery_status: "failed",
       p_provider: EMAIL_PROVIDER,
-      p_report_version: reportVersion,
+      p_report_version: rawReportVersion,
       p_provider_message_id: null,
       p_error_code: errorCode,
     });
@@ -503,7 +504,7 @@ Deno.serve(async (request: Request) => {
       p_recipient_email: customerEmail,
       p_delivery_status: "sent",
       p_provider: EMAIL_PROVIDER,
-      p_report_version: reportVersion,
+      p_report_version: rawReportVersion,
       p_provider_message_id: providerMessageId,
       p_error_code: null,
     },
