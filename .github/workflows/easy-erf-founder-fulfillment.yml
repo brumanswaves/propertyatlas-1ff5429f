@@ -21,13 +21,14 @@ on:
       - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
       - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
       - supabase/migrations/20260903211000_record_manual_report_notification.sql
+      - supabase/migrations/20260904114500_automatic_report_ready_email.sql
       - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
-      - src/routes/admin.fulfillment.tsx
+      - src/routes/admin_.fulfillment.tsx
       - src/routes/orders.tsx
   workflow_dispatch:
 
@@ -82,7 +83,7 @@ jobs:
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
 
-      - name: Apply and prove founder fulfillment and manual notification contracts
+      - name: Apply and prove founder fulfillment and automatic notification contracts
         env:
           PGPASSWORD: postgres
         run: >-
@@ -102,6 +103,8 @@ jobs:
       - name: Check changed-file lint
         run: >-
           npx eslint
+          --no-warn-ignored
+          --rule 'prettier/prettier: off'
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts

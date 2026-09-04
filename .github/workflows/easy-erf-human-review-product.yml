@@ -24,8 +24,8 @@ on:
       - src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts
       - src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
       - src/lib/reports/fiveQuestionReport.ts
-      - src/routes/admin.fulfillment.tsx
-      - src/routes/admin.launch-readiness.tsx
+      - src/routes/admin_.fulfillment.tsx
+      - src/routes/admin_.launch-readiness.tsx
       - src/routes/orders.tsx
       - src/routes/pricing.tsx
       - supabase/config.toml
@@ -41,6 +41,7 @@ on:
       - supabase/migrations/20260831160318_controlled_human_review_product_v2.sql
       - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
       - supabase/migrations/20260903211000_record_manual_report_notification.sql
+      - supabase/migrations/20260904114500_automatic_report_ready_email.sql
   workflow_dispatch:
 
 permissions:
@@ -106,7 +107,7 @@ jobs:
             src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts \
             src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts
 
-      - name: Prove Human Review and manual notification migrations in isolated PostgreSQL
+      - name: Prove Human Review and automatic email migrations in isolated PostgreSQL
         env:
           PGPASSWORD: postgres
         run: >-

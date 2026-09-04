@@ -14,6 +14,16 @@ declare const Deno: {
 const FUNCTION_NAME = "easy-erf-founder-fulfillment";
 const ALLOWED_ACTIONS = new Set(["start_review", "reopen_review", "mark_ready", "mark_failed"]);
 
+type AutomaticCustomerEmailResult = {
+  ok: boolean;
+  status: number;
+  code: string | null;
+  error: string | null;
+  receipt: unknown;
+  emailAccepted: boolean;
+  requestId: string;
+};
+
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -37,6 +47,58 @@ function isUuid(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+async function triggerAutomaticCustomerEmail(input: {
+  supabaseUrl: string;
+  anonKey: string;
+  authorization: string;
+  orderId: string;
+  requestId: string;
+}): Promise<AutomaticCustomerEmailResult> {
+  try {
+    const response = await fetch(
+      `${input.supabaseUrl}/functions/v1/easy-erf-founder-customer-notification`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: input.authorization,
+          apikey: input.anonKey,
+          "Content-Type": "application/json",
+          "x-request-id": input.requestId,
+        },
+        body: JSON.stringify({ orderId: input.orderId, action: "send" }),
+      },
+    );
+
+    let payload: Record<string, unknown> = {};
+    try {
+      const parsed = await response.json();
+      payload = isRecord(parsed) ? parsed : {};
+    } catch {
+      payload = {};
+    }
+
+    return {
+      ok: response.ok && payload.ok === true,
+      status: response.status,
+      code: typeof payload.code === "string" ? payload.code : null,
+      error: typeof payload.error === "string" ? payload.error : null,
+      receipt: payload.receipt ?? null,
+      emailAccepted: payload.emailAccepted === true,
+      requestId: typeof payload.requestId === "string" ? payload.requestId : input.requestId,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "EMAIL_FUNCTION_UNREACHABLE",
+      error: "The report is ready, but Easy Erf could not reach the customer email service.",
+      receipt: null,
+      emailAccepted: false,
+      requestId: input.requestId,
+    };
+  }
 }
 
 Deno.serve(async (request: Request) => {
@@ -192,6 +254,23 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  let notification: AutomaticCustomerEmailResult | null = null;
+  if (action === "mark_ready") {
+    notification = await triggerAutomaticCustomerEmail({
+      supabaseUrl,
+      anonKey,
+      authorization,
+      orderId,
+      requestId,
+    });
+    log(notification.ok ? "automatic_email_succeeded" : "automatic_email_incomplete", requestId, {
+      userId: user.id,
+      orderId,
+      code: notification.code,
+      emailAccepted: notification.emailAccepted,
+    });
+  }
+
   log("transition_succeeded", requestId, { userId: user.id, orderId, action });
-  return json({ ok: true, order, requestId });
+  return json({ ok: true, order, notification, requestId });
 });

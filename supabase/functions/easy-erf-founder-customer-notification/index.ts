@@ -12,12 +12,26 @@ declare const Deno: {
 };
 
 const FUNCTION_NAME = "easy-erf-founder-customer-notification";
-const RECORD_CONFIRMATION = "I SENT THIS EMAIL";
-const ALLOWED_ACTIONS = new Set(["prepare", "record_sent"]);
+const EMAIL_PROVIDER = "resend";
+const RESEND_ENDPOINT = "https://api.resend.com/emails";
+const ALLOWED_ACTIONS = new Set(["send"]);
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+type NotificationReceipt = {
+  status: "sent" | "failed";
+  channel: "automatic_email";
+  provider: "resend";
+  recipient: string;
+  reportVersion: string;
+  attemptedAt: string;
+  sentAt: string | null;
+  sentBy: string;
+  providerMessageId: string | null;
+  errorCode: string | null;
 };
 
 function json(payload: unknown, status = 200) {
@@ -59,43 +73,87 @@ function cleanSingleLine(value: unknown, maxLength: number): string | null {
   return cleaned ? cleaned.slice(0, maxLength) : null;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function statusOf(order: { status?: string | null; status_enum?: string | null }) {
   const raw = (order.status_enum || order.status || "").toLowerCase();
   return raw === "fulfilling" ? "processing" : raw === "complete" ? "ready" : raw;
 }
 
-function customerNotificationReceipt(value: unknown) {
+function normalizeTimestamp(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function parseReceipt(value: unknown): NotificationReceipt | null {
   if (!isRecord(value)) return null;
   const status = cleanText(value.status);
   const channel = cleanText(value.channel);
+  const provider = cleanText(value.provider);
   const recipient = cleanText(value.recipient)?.toLowerCase() ?? null;
-  const sentAt = cleanText(value.sentAt);
+  const reportVersion = normalizeTimestamp(value.reportVersion);
+  const attemptedAt = normalizeTimestamp(value.attemptedAt);
+  const sentAt = normalizeTimestamp(value.sentAt);
   const sentBy = cleanText(value.sentBy);
-  if (status !== "sent" || channel !== "manual_email" || !recipient || !sentAt || !sentBy) {
+  const providerMessageId = cleanText(value.providerMessageId);
+  const errorCode = cleanText(value.errorCode);
+
+  if (
+    (status !== "sent" && status !== "failed") ||
+    channel !== "automatic_email" ||
+    provider !== EMAIL_PROVIDER ||
+    !recipient ||
+    !reportVersion ||
+    !attemptedAt ||
+    !sentBy
+  ) {
     return null;
   }
-  return { status, channel, recipient, sentAt, sentBy };
+  if (status === "sent" && (!sentAt || !providerMessageId)) return null;
+  if (status === "failed" && !errorCode) return null;
+
+  return {
+    status,
+    channel,
+    provider,
+    recipient,
+    reportVersion,
+    attemptedAt,
+    sentAt,
+    sentBy,
+    providerMessageId,
+    errorCode,
+  };
 }
 
-function buildDraft(input: {
+function buildEmail(input: {
   orderId: string;
   customerEmail: string;
   customerName: string | null;
   propertyReference: string;
+  appUrl: string;
 }) {
-  const reportUrl = new URL("https://easyerf.co.za/orders");
+  const reportUrl = new URL("/orders", input.appUrl);
   reportUrl.searchParams.set("report", input.orderId);
 
   const firstName = input.customerName?.trim().split(/\s+/)[0] || "there";
   const subject = `Your Easy Erf report is ready: ${input.propertyReference}`;
-  const body = [
+  const text = [
     `Hi ${firstName},`,
     "",
-    `Your Human-Reviewed Easy Erf Report for ${input.propertyReference} is ready.`,
+    `Your Done-for-You Property Investigation for ${input.propertyReference} is ready.`,
     "",
-    `Open it securely in your Easy Erf account: ${reportUrl.toString()}`,
+    `Open the Human-Reviewed Easy Erf Report in your dashboard: ${reportUrl.toString()}`,
     "",
-    "The report records the available property evidence, key risks, remaining unknowns and the next checks worth completing.",
+    "The report shows the available property evidence, key risks, remaining unknowns and the next checks worth completing.",
     "",
     `Sign in using ${input.customerEmail}.`,
     "",
@@ -103,13 +161,56 @@ function buildDraft(input: {
     "Every erf. All the facts.",
   ].join("\n");
 
+  const safeFirstName = escapeHtml(firstName);
+  const safeProperty = escapeHtml(input.propertyReference);
+  const safeReportUrl = escapeHtml(reportUrl.toString());
+  const safeEmail = escapeHtml(input.customerEmail);
+  const html = `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#f7fbff;font-family:Arial,sans-serif;color:#0d1b2a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7fbff;padding:32px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #d9e6f2;border-radius:20px;overflow:hidden;">
+          <tr><td style="background:#0d1b2a;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:700;">Easy <span style="color:#ff8a33;">Erf</span></td></tr>
+          <tr><td style="padding:32px 28px;">
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hi ${safeFirstName},</p>
+            <h1 style="margin:0 0 16px;font-size:26px;line-height:1.25;">Your property investigation is ready</h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569;">Your Human-Reviewed Easy Erf Report for <strong style="color:#0d1b2a;">${safeProperty}</strong> is available in your dashboard.</p>
+            <p style="margin:0 0 28px;"><a href="${safeReportUrl}" style="display:inline-block;background:#ff6a00;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;">Open your report</a></p>
+            <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#475569;">The report records the available evidence, important risks, remaining unknowns and the next checks worth completing.</p>
+            <p style="margin:0;font-size:13px;line-height:1.7;color:#64748b;">Sign in using ${safeEmail}.</p>
+          </td></tr>
+          <tr><td style="border-top:1px solid #e2e8f0;padding:18px 28px;font-size:12px;line-height:1.6;color:#64748b;">Easy Erf provides property research and due-diligence support. It is not municipal approval or professional legal, planning, engineering or valuation advice.</td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+
   return {
     recipient: input.customerEmail,
     subject,
-    body,
+    text,
+    html,
     reportUrl: reportUrl.toString(),
-    mailtoUrl: `mailto:${encodeURIComponent(input.customerEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
   };
+}
+
+async function responseBody(response: Response): Promise<Record<string, unknown>> {
+  try {
+    const parsed = await response.json();
+    return isRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function providerErrorCode(response: Response, body: Record<string, unknown>) {
+  return (
+    cleanSingleLine(body.name, 120) ??
+    cleanSingleLine(body.code, 120) ??
+    `http_${response.status}`
+  );
 }
 
 function log(stage: string, requestId: string, extra: Record<string, unknown> = {}) {
@@ -164,7 +265,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const orderId = body.orderId;
-  const action = typeof body.action === "string" ? body.action : "prepare";
+  const action = typeof body.action === "string" ? body.action : "send";
   if (!isUuid(orderId)) {
     return json({ ok: false, error: "A valid orderId is required.", requestId }, 400);
   }
@@ -177,7 +278,7 @@ Deno.serve(async (request: Request) => {
   });
   const { data: order, error: orderError } = await admin
     .from("report_orders")
-    .select("id,user_id,parcel_id,provider,payload,status,status_enum,review_content")
+    .select("id,user_id,parcel_id,provider,payload,status,status_enum,review_content,completed_at")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -194,7 +295,7 @@ Deno.serve(async (request: Request) => {
   }
   if (statusOf(order) !== "ready") {
     return json(
-      { ok: false, error: "Deliver the report before preparing the customer email.", requestId },
+      { ok: false, error: "Deliver the report before emailing the customer.", requestId },
       409,
     );
   }
@@ -207,6 +308,12 @@ Deno.serve(async (request: Request) => {
       },
       409,
     );
+  }
+
+  const rawReportVersion = cleanText(order.completed_at);
+  const reportVersion = normalizeTimestamp(rawReportVersion);
+  if (!rawReportVersion || !reportVersion) {
+    return json({ ok: false, error: "The delivered report does not have a valid version.", requestId }, 409);
   }
 
   const reportValidation = validateHumanReviewReportContent(order.review_content);
@@ -232,8 +339,7 @@ Deno.serve(async (request: Request) => {
     return json(
       {
         ok: false,
-        error:
-          "Resolve every standard investigation checklist item before preparing the customer email.",
+        error: "Resolve every standard investigation checklist item before notification.",
         requestId,
       },
       409,
@@ -256,6 +362,43 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  const existingReceipt = parseReceipt(reviewContent.customerNotification);
+  if (
+    existingReceipt?.status === "sent" &&
+    existingReceipt.recipient === customerEmail &&
+    existingReceipt.reportVersion === reportVersion
+  ) {
+    return json({ ok: true, receipt: existingReceipt, alreadySent: true, requestId });
+  }
+
+  const emailEnabled = requiredEnv("EASY_ERF_CUSTOMER_EMAIL_ENABLED") === "true";
+  const resendApiKey = requiredEnv("RESEND_API_KEY");
+  const fromEmail = requiredEnv("EASY_ERF_REPORT_FROM_EMAIL");
+  const replyTo = requiredEnv("EASY_ERF_REPORT_REPLY_TO");
+  const appUrlValue = requiredEnv("EASY_ERF_APP_URL") ?? "https://easyerf.co.za";
+  let appUrl: string;
+  try {
+    const parsedAppUrl = new URL(appUrlValue);
+    if (parsedAppUrl.protocol !== "https:" || parsedAppUrl.hostname !== "easyerf.co.za") {
+      throw new Error("invalid app url");
+    }
+    appUrl = parsedAppUrl.origin;
+  } catch {
+    return json({ ok: false, error: "The customer dashboard URL is not configured safely.", requestId }, 503);
+  }
+
+  if (!emailEnabled || !resendApiKey || !fromEmail) {
+    return json(
+      {
+        ok: false,
+        code: "EMAIL_NOT_CONFIGURED",
+        error: "The report is ready, but automatic customer email is not configured.",
+        requestId,
+      },
+      503,
+    );
+  }
+
   const customerName =
     cleanSingleLine(payload.customerName, 120) ??
     cleanSingleLine(customer.user_metadata?.full_name, 120);
@@ -263,86 +406,155 @@ Deno.serve(async (request: Request) => {
     cleanSingleLine(payload.propertyReference, 240) ??
     cleanSingleLine(order.parcel_id, 240) ??
     "your property";
-  const draft = buildDraft({
+  const email = buildEmail({
     orderId: order.id,
     customerEmail,
     customerName,
     propertyReference,
+    appUrl,
   });
-  const existingReceipt = customerNotificationReceipt(reviewContent.customerNotification);
+  const idempotencyKey = `easy-erf-report-ready/${order.id}/${reportVersion}`;
 
-  if (action === "prepare") {
-    log("notification_draft_prepared", requestId, {
+  let providerResponse: Response;
+  try {
+    providerResponse = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [email.recipient],
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
+    });
+  } catch {
+    const errorCode = "provider_unreachable";
+    await admin.rpc("record_easy_erf_customer_email_attempt", {
+      p_order_id: order.id,
+      p_actor_user_id: founder.id,
+      p_recipient_email: customerEmail,
+      p_delivery_status: "failed",
+      p_provider: EMAIL_PROVIDER,
+      p_report_version: rawReportVersion,
+      p_provider_message_id: null,
+      p_error_code: errorCode,
+    });
+    log("automatic_email_failed", requestId, {
       founderId: founder.id,
       orderId: order.id,
-      alreadyRecorded: Boolean(existingReceipt),
+      errorCode,
     });
-    return json({
-      ok: true,
-      draft,
-      receipt: existingReceipt,
-      sendsAutomatically: false,
-      requestId,
-    });
-  }
-
-  const preparedRecipient = cleanText(body.recipient)?.toLowerCase() ?? null;
-  if (preparedRecipient !== draft.recipient.toLowerCase()) {
     return json(
       {
         ok: false,
-        code: "RECIPIENT_CHANGED",
-        error:
-          "Prepared email recipient no longer matches the order customer. Prepare the email again.",
+        code: "EMAIL_SEND_FAILED",
+        error: "The report is ready, but the customer email could not be sent. Retry from the delivered order.",
         requestId,
       },
-      409,
+      502,
     );
   }
 
-  if (body.confirmation !== RECORD_CONFIRMATION) {
+  const providerBody = await responseBody(providerResponse);
+  const providerMessageId = cleanSingleLine(providerBody.id, 255);
+  if (!providerResponse.ok || !providerMessageId) {
+    const errorCode = !providerResponse.ok
+      ? providerErrorCode(providerResponse, providerBody)
+      : "invalid_provider_response";
+    const { data: failedOrder } = await admin.rpc("record_easy_erf_customer_email_attempt", {
+      p_order_id: order.id,
+      p_actor_user_id: founder.id,
+      p_recipient_email: customerEmail,
+      p_delivery_status: "failed",
+      p_provider: EMAIL_PROVIDER,
+      p_report_version: rawReportVersion,
+      p_provider_message_id: null,
+      p_error_code: errorCode,
+    });
+    const failedContent = isRecord(failedOrder?.review_content) ? failedOrder.review_content : {};
+    log("automatic_email_failed", requestId, {
+      founderId: founder.id,
+      orderId: order.id,
+      errorCode,
+      providerStatus: providerResponse.status,
+    });
     return json(
       {
         ok: false,
-        error: `Type ${RECORD_CONFIRMATION} only after sending the exact prepared email.`,
+        code: "EMAIL_SEND_FAILED",
+        error: "The report is ready, but the customer email could not be sent. Retry from the delivered order.",
+        receipt: parseReceipt(failedContent.customerNotification),
         requestId,
       },
-      400,
+      502,
     );
   }
 
   const { data: updatedOrder, error: recordError } = await admin.rpc(
-    "record_easy_erf_customer_notification",
+    "record_easy_erf_customer_email_attempt",
     {
       p_order_id: order.id,
       p_actor_user_id: founder.id,
       p_recipient_email: customerEmail,
+      p_delivery_status: "sent",
+      p_provider: EMAIL_PROVIDER,
+      p_report_version: rawReportVersion,
+      p_provider_message_id: providerMessageId,
+      p_error_code: null,
     },
   );
   if (recordError || !updatedOrder) {
-    log("notification_record_failed", requestId, {
+    log("automatic_email_receipt_failed", requestId, {
       founderId: founder.id,
       orderId: order.id,
+      providerMessageId,
       errorCode: recordError?.code ?? null,
     });
     return json(
-      { ok: false, error: "The notification receipt could not be saved.", requestId },
-      409,
-    );
-  }
-
-  const updatedContent = isRecord(updatedOrder.review_content) ? updatedOrder.review_content : {};
-  const receipt = customerNotificationReceipt(updatedContent.customerNotification);
-  if (!receipt) {
-    return json(
-      { ok: false, error: "The notification receipt was not persisted.", requestId },
+      {
+        ok: false,
+        code: "EMAIL_SENT_RECEIPT_FAILED",
+        error: "The email provider accepted the report email, but Easy Erf could not record the receipt.",
+        emailAccepted: true,
+        providerMessageId,
+        requestId,
+      },
       500,
     );
   }
 
-  log("notification_recorded", requestId, {
+  const updatedContent = isRecord(updatedOrder.review_content) ? updatedOrder.review_content : {};
+  const receipt = parseReceipt(updatedContent.customerNotification);
+  if (!receipt || receipt.status !== "sent") {
+    return json(
+      {
+        ok: false,
+        code: "EMAIL_SENT_RECEIPT_FAILED",
+        error: "The email provider accepted the report email, but the receipt was not persisted.",
+        emailAccepted: true,
+        providerMessageId,
+        requestId,
+      },
+      500,
+    );
+  }
+
+  log("automatic_email_sent", requestId, {
     founderId: founder.id,
     orderId: order.id,
+    providerMessageId,
   });
-  return json({ ok: true, draft, receipt, sendsAutomatically: false, requestId });
+  return json({
+    ok: true,
+    receipt,
+    reportUrl: email.reportUrl,
+    alreadySent: false,
+    requestId,
+  });
 });
