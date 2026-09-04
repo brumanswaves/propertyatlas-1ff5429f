@@ -194,6 +194,10 @@ try {
     rows[1].status = rows[1].status_enum = "processing";
     rows[1].review_content.bottomLine = "";
     await open(B);
+    // The fixture changed persisted content out of band; reload like the operator
+    // would, rather than expecting a hash-only navigation to refetch the queue.
+    await page.reload();
+    await workbench().waitFor();
     assert.ok(await page.getByRole("button", { name: "Mark this exact report ready" }).isDisabled());
     await page.getByText("Optional PDF delivery", { exact: true }).click();
     assert.ok(await page.getByRole("button", { name: "Upload PDF and deliver this exact report" }).isDisabled());
