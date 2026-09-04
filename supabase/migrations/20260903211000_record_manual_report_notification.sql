@@ -33,6 +33,9 @@ begin
   if nullif(lower(btrim(coalesce(p_recipient_email, ''))), '') is null then
     raise exception 'Customer email is required';
   end if;
+  if public.has_role(p_actor_user_id, 'admin'::public.app_role) is not true then
+    raise exception 'Founder actor must have admin role';
+  end if;
 
   select * into v_order
   from public.report_orders
@@ -43,7 +46,7 @@ begin
     raise exception 'Report order not found';
   end if;
 
-  if v_order.provider <> 'stripe'
+  if v_order.provider is distinct from 'stripe'
      or coalesce(v_order.payload ->> 'orderKind', '') <> 'easy_erf_investigation' then
     raise exception 'Order is not an Easy Erf Stripe investigation';
   end if;
@@ -54,7 +57,7 @@ begin
     when 'fulfilling' then 'processing'
     else v_raw_status
   end;
-  if v_status <> 'ready' then
+  if v_status is distinct from 'ready' then
     raise exception 'Only a ready report can be recorded as customer notified';
   end if;
 
@@ -133,8 +136,10 @@ begin
   v_existing_notification := v_order.review_content -> 'customerNotification';
   if jsonb_typeof(v_existing_notification) = 'object'
      and v_existing_notification ->> 'status' = 'sent'
+     and v_existing_notification ->> 'channel' = 'manual_email'
      and lower(coalesce(v_existing_notification ->> 'recipient', '')) = v_expected_email
-     and nullif(v_existing_notification ->> 'sentAt', '') is not null then
+     and nullif(v_existing_notification ->> 'sentAt', '') is not null
+     and nullif(v_existing_notification ->> 'sentBy', '') is not null then
     return v_order;
   end if;
 

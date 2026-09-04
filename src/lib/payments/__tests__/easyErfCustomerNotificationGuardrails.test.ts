@@ -37,6 +37,9 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationFunction).toContain("https://easyerf.co.za/orders");
     expect(notificationFunction).not.toMatch(/api\.resend\.com|sendgrid|mailgun|postmark/i);
     expect(notificationFunction).not.toMatch(/fetch\s*\(/);
+    expect(notificationFunction).toContain("cleanSingleLine(payload.customerName, 120)");
+    expect(notificationFunction).toContain("cleanSingleLine(payload.propertyReference, 240)");
+    expect(notificationUi).toContain("The email could not be copied");
     expect(notificationUi).toContain("Easy Erf prepares the exact customer");
     expect(notificationUi).toMatch(/property\s+and secure report link/);
     expect(notificationUi).toContain("Open email draft");
@@ -62,6 +65,10 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationFunction).toContain("body.confirmation !== RECORD_CONFIRMATION");
     // eslint-disable-next-line no-useless-escape
     expect(notificationFunction).toContain('\"record_easy_erf_customer_notification\"');
+    expect(notificationFunction).toContain("cleanText(body.recipient)?.toLowerCase()");
+    expect(notificationFunction).toContain("RECIPIENT_CHANGED");
+    expect(notificationFunction).toContain("Prepare the email again.");
+    expect(notificationUi).toContain("recipient: draft.recipient");
     expect(notificationUi).toContain("I sent this exact email to");
     expect(notificationUi).toContain("Record customer notified");
   });
@@ -75,6 +82,10 @@ describe("Easy Erf founder customer notification boundary", () => {
 
 describe("Easy Erf customer notification database receipt", () => {
   it("accepts only a ready Easy Erf order and its canonical customer email", () => {
+    expect(notificationMigration).toContain("public.has_role(p_actor_user_id");
+    expect(notificationMigration).toContain("Founder actor must have admin role");
+    expect(notificationMigration).toContain("v_order.provider is distinct from 'stripe'");
+    expect(notificationMigration).toContain("v_status is distinct from 'ready'");
     expect(notificationMigration).toContain(
       "Only a ready report can be recorded as customer notified",
     );
@@ -96,6 +107,12 @@ describe("Easy Erf customer notification database receipt", () => {
 
   it("records one idempotent manual-email receipt and audit event", () => {
     expect(notificationMigration).toContain("v_existing_notification ->> 'status' = 'sent'");
+    expect(notificationMigration).toContain(
+      "v_existing_notification ->> 'channel' = 'manual_email'",
+    );
+    expect(notificationMigration).toContain(
+      "nullif(v_existing_notification ->> 'sentBy', '') is not null",
+    );
     expect(notificationMigration).toContain("return v_order;");
     expect(notificationMigration).toContain("'{customerNotification}'");
     expect(notificationMigration).toContain("'customer_notified'");

@@ -76,6 +76,11 @@ export function FounderCustomerNotification({
     setReceipt(receiptFromContent);
   }, [receiptFromContent]);
 
+  useEffect(() => {
+    setDraft(null);
+    setConfirmedSent(false);
+  }, [orderId]);
+
   if (!available) return null;
 
   async function prepare() {
@@ -93,6 +98,7 @@ export function FounderCustomerNotification({
     }
 
     setDraft(preparedDraft);
+    setConfirmedSent(false);
     const preparedReceipt = parseReceipt({ customerNotification: data.receipt });
     if (preparedReceipt) setReceipt(preparedReceipt);
     toast.success("Customer email prepared. Easy Erf has not sent it automatically.");
@@ -104,10 +110,14 @@ export function FounderCustomerNotification({
       toast.error("Clipboard access is unavailable. Select and copy the email text manually.");
       return;
     }
-    await navigator.clipboard.writeText(
-      `To: ${draft.recipient}\nSubject: ${draft.subject}\n\n${draft.body}`,
-    );
-    toast.success("Customer email copied");
+    try {
+      await navigator.clipboard.writeText(
+        `To: ${draft.recipient}\nSubject: ${draft.subject}\n\n${draft.body}`,
+      );
+      toast.success("Customer email copied");
+    } catch {
+      toast.error("The email could not be copied. Select and copy the text manually.");
+    }
   }
 
   async function recordSent() {
@@ -120,6 +130,7 @@ export function FounderCustomerNotification({
           orderId,
           action: "record_sent",
           confirmation: RECORD_CONFIRMATION,
+          recipient: draft.recipient,
         },
       },
     );
@@ -127,11 +138,16 @@ export function FounderCustomerNotification({
 
     const recordedReceipt = parseReceipt({ customerNotification: data?.receipt });
     if (error || !data?.ok || !recordedReceipt) {
+      if (data?.code === "RECIPIENT_CHANGED") {
+        setDraft(null);
+        setConfirmedSent(false);
+      }
       toast.error(data?.error ?? error?.message ?? "The notification receipt could not be saved.");
       return;
     }
 
     setReceipt(recordedReceipt);
+    setDraft(null);
     setConfirmedSent(false);
     toast.success("Customer notification recorded");
     await onRecorded?.();

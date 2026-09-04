@@ -12,6 +12,17 @@ set email = case id
   else email
 end;
 
+create or replace function public.has_role(_user_id uuid, _role public.app_role)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select _user_id = '11111111-1111-4111-8111-111111111111'::uuid
+    and _role = 'admin'::public.app_role
+$$;
+
 \i supabase/migrations/20260903211000_record_manual_report_notification.sql
 
 do $$
@@ -36,6 +47,36 @@ begin
   select md5((review_content - 'customerNotification')::text)
   into v_hash_before
   from public.report_orders
+  where id = v_order_id;
+
+  begin
+    perform public.record_easy_erf_customer_notification(
+      v_order_id,
+      v_customer_id,
+      'customer@example.com'
+    );
+    raise exception 'Notification accepted a non-admin actor';
+  exception
+    when others then
+      if sqlerrm = 'Notification accepted a non-admin actor' then raise; end if;
+      if sqlerrm not like '%Founder actor must have admin role%' then
+        raise exception 'Unexpected non-admin actor error: %', sqlerrm;
+      end if;
+  end;
+
+  update public.report_orders
+  set review_content = jsonb_set(
+    review_content,
+    '{customerNotification}',
+    jsonb_build_object(
+      'status', 'sent',
+      'channel', 'sms',
+      'recipient', 'customer@example.com',
+      'sentAt', '2026-09-04T00:00:00.000Z',
+      'sentBy', v_actor_id::text
+    ),
+    true
+  )
   where id = v_order_id;
 
   begin

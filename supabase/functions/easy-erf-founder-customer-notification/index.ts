@@ -37,8 +37,10 @@ function requiredEnv(name: string): string | null {
 }
 
 function isUuid(value: unknown): value is string {
-  return typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,6 +49,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cleanText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function cleanSingleLine(value: unknown, maxLength: number): string | null {
+  const cleaned = cleanText(value)
+    ?.replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned ? cleaned.slice(0, maxLength) : null;
 }
 
 function statusOf(order: { status?: string | null; status_enum?: string | null }) {
@@ -177,18 +187,38 @@ Deno.serve(async (request: Request) => {
 
   const payload = isRecord(order.payload) ? order.payload : {};
   if (order.provider !== "stripe" || payload.orderKind !== "easy_erf_investigation") {
-    return json({ ok: false, error: "Order is not an Easy Erf Stripe investigation.", requestId }, 409);
+    return json(
+      { ok: false, error: "Order is not an Easy Erf Stripe investigation.", requestId },
+      409,
+    );
   }
   if (statusOf(order) !== "ready") {
-    return json({ ok: false, error: "Deliver the report before preparing the customer email.", requestId }, 409);
+    return json(
+      { ok: false, error: "Deliver the report before preparing the customer email.", requestId },
+      409,
+    );
   }
   if (!isUuid(order.user_id)) {
-    return json({ ok: false, error: "A matched customer account is required before notification.", requestId }, 409);
+    return json(
+      {
+        ok: false,
+        error: "A matched customer account is required before notification.",
+        requestId,
+      },
+      409,
+    );
   }
 
   const reportValidation = validateHumanReviewReportContent(order.review_content);
   if (!reportValidation.ok) {
-    return json({ ok: false, error: "A complete structured report is required before notification.", requestId }, 409);
+    return json(
+      {
+        ok: false,
+        error: "A complete structured report is required before notification.",
+        requestId,
+      },
+      409,
+    );
   }
 
   const reviewContent = isRecord(order.review_content) ? order.review_content : {};
@@ -210,15 +240,29 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const { data: customerData, error: customerError } = await admin.auth.admin.getUserById(order.user_id);
+  const { data: customerData, error: customerError } = await admin.auth.admin.getUserById(
+    order.user_id,
+  );
   const customer = customerData.user;
   const customerEmail = customer?.email?.trim().toLowerCase() ?? null;
   if (customerError || !customer || !customerEmail) {
-    return json({ ok: false, error: "The customer account does not have a deliverable email address.", requestId }, 409);
+    return json(
+      {
+        ok: false,
+        error: "The customer account does not have a deliverable email address.",
+        requestId,
+      },
+      409,
+    );
   }
 
-  const customerName = cleanText(payload.customerName) ?? cleanText(customer.user_metadata?.full_name);
-  const propertyReference = cleanText(payload.propertyReference) ?? cleanText(order.parcel_id) ?? "your property";
+  const customerName =
+    cleanSingleLine(payload.customerName, 120) ??
+    cleanSingleLine(customer.user_metadata?.full_name, 120);
+  const propertyReference =
+    cleanSingleLine(payload.propertyReference, 240) ??
+    cleanSingleLine(order.parcel_id, 240) ??
+    "your property";
   const draft = buildDraft({
     orderId: order.id,
     customerEmail,
@@ -240,6 +284,20 @@ Deno.serve(async (request: Request) => {
       sendsAutomatically: false,
       requestId,
     });
+  }
+
+  const preparedRecipient = cleanText(body.recipient)?.toLowerCase() ?? null;
+  if (preparedRecipient !== draft.recipient.toLowerCase()) {
+    return json(
+      {
+        ok: false,
+        code: "RECIPIENT_CHANGED",
+        error:
+          "Prepared email recipient no longer matches the order customer. Prepare the email again.",
+        requestId,
+      },
+      409,
+    );
   }
 
   if (body.confirmation !== RECORD_CONFIRMATION) {
@@ -267,13 +325,19 @@ Deno.serve(async (request: Request) => {
       orderId: order.id,
       errorCode: recordError?.code ?? null,
     });
-    return json({ ok: false, error: "The notification receipt could not be saved.", requestId }, 409);
+    return json(
+      { ok: false, error: "The notification receipt could not be saved.", requestId },
+      409,
+    );
   }
 
   const updatedContent = isRecord(updatedOrder.review_content) ? updatedOrder.review_content : {};
   const receipt = customerNotificationReceipt(updatedContent.customerNotification);
   if (!receipt) {
-    return json({ ok: false, error: "The notification receipt was not persisted.", requestId }, 500);
+    return json(
+      { ok: false, error: "The notification receipt was not persisted.", requestId },
+      500,
+    );
   }
 
   log("notification_recorded", requestId, {
