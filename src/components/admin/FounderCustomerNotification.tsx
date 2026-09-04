@@ -37,13 +37,7 @@ function parseReceipt(value: unknown): NotificationReceipt | null {
   const recipient = cleanText(receipt.recipient);
   const sentAt = cleanText(receipt.sentAt);
   const sentBy = cleanText(receipt.sentBy);
-  if (
-    status !== "sent" ||
-    channel !== "manual_email" ||
-    !recipient ||
-    !sentAt ||
-    !sentBy
-  ) {
+  if (status !== "sent" || channel !== "manual_email" || !recipient || !sentAt || !sentBy) {
     return null;
   }
   return { status, channel, recipient, sentAt, sentBy };
@@ -189,13 +183,17 @@ export function FounderCustomerNotification({
             <div className="mt-4 space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-emerald-500/20 bg-white p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">To</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                    To
+                  </div>
                   <div className="mt-1 break-all text-xs font-semibold text-[#0D1B2A]">
                     {draft.recipient}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-emerald-500/20 bg-white p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Subject</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                    Subject
+                  </div>
                   <div className="mt-1 text-xs font-semibold text-[#0D1B2A]">{draft.subject}</div>
                 </div>
               </div>
@@ -212,7 +210,8 @@ export function FounderCustomerNotification({
                   href={draft.mailtoUrl}
                   className="inline-flex items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2.5 text-xs font-semibold text-white"
                 >
-                  <Send className="h-3.5 w-3.5" /> Open email draft <ExternalLink className="h-3 w-3" />
+                  <Send className="h-3.5 w-3.5" /> Open email draft{" "}
+                  <ExternalLink className="h-3 w-3" />
                 </a>
                 <button
                   type="button"

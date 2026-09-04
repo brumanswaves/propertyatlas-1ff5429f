@@ -12,9 +12,7 @@ const notificationFunction = source(
 const notificationMigration = source(
   "supabase/migrations/20260903211000_record_manual_report_notification.sql",
 );
-const notificationUi = source(
-  "src/components/admin/FounderCustomerNotification.tsx",
-);
+const notificationUi = source("src/components/admin/FounderCustomerNotification.tsx");
 const founderEditor = source("src/components/admin/FounderHumanReviewEditor.tsx");
 const config = source("supabase/config.toml");
 
@@ -48,7 +46,9 @@ describe("Easy Erf founder customer notification boundary", () => {
   });
 
   it("requires a complete report and resolved checklist before preparing the email", () => {
-    expect(notificationFunction).toContain("validateHumanReviewReportContent(order.review_content)");
+    expect(notificationFunction).toContain(
+      "validateHumanReviewReportContent(order.review_content)",
+    );
     expect(notificationFunction).toContain("validateHumanReviewInvestigationChecklist");
     expect(notificationFunction).toContain("isHumanReviewInvestigationChecklistResolved");
     expect(notificationFunction).toContain(
@@ -74,12 +74,20 @@ describe("Easy Erf founder customer notification boundary", () => {
 
 describe("Easy Erf customer notification database receipt", () => {
   it("accepts only a ready Easy Erf order and its canonical customer email", () => {
-    expect(notificationMigration).toContain("Only a ready report can be recorded as customer notified");
+    expect(notificationMigration).toContain(
+      "Only a ready report can be recorded as customer notified",
+    );
     expect(notificationMigration).toContain("from auth.users");
     expect(notificationMigration).toContain("where id = v_order.user_id");
-    expect(notificationMigration).toContain("Notification recipient does not match the order customer");
-    expect(notificationMigration).toContain("A complete structured Human Review web report is required before notification");
-    expect(notificationMigration).toContain("A resolved standard investigation checklist is required before notification");
+    expect(notificationMigration).toContain(
+      "Notification recipient does not match the order customer",
+    );
+    expect(notificationMigration).toContain(
+      "A complete structured Human Review web report is required before notification",
+    );
+    expect(notificationMigration).toContain(
+      "A resolved standard investigation checklist is required before notification",
+    );
     expect(notificationMigration).toContain(
       "Every standard investigation checklist item must be complete or not applicable before notification",
     );

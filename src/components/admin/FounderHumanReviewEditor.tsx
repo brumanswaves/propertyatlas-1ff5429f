@@ -112,16 +112,13 @@ export function FounderHumanReviewEditor({
 
   async function saveChecklist() {
     setSavingChecklist(true);
-    const { data, error } = await supabase.functions.invoke(
-      "easy-erf-founder-review-content",
-      {
-        body: {
-          orderId,
-          action: "save_checklist",
-          checklist,
-        },
+    const { data, error } = await supabase.functions.invoke("easy-erf-founder-review-content", {
+      body: {
+        orderId,
+        action: "save_checklist",
+        checklist,
       },
-    );
+    });
     setSavingChecklist(false);
     if (error || !data?.ok) {
       toast.error(
@@ -183,28 +180,32 @@ export function FounderHumanReviewEditor({
     {
       label: "What appears possible?",
       help: "Working potential supported by current evidence. Say ‘appears’, ‘suggests’ or ‘may’ when it is not verified.",
-      example: "Available planning evidence suggests residential development may be relevant, subject to property-specific confirmation.",
+      example:
+        "Available planning evidence suggests residential development may be relevant, subject to property-specific confirmation.",
       value: potential,
       setter: setPotential,
     },
     {
       label: "What could be a problem?",
       help: "Risks, conflicts, restrictions or evidence gaps found while working through the standard investigation that could materially change the user’s plan.",
-      example: "Property-specific zoning confirmation is still missing and could change the development assumptions.",
+      example:
+        "Property-specific zoning confirmation is still missing and could change the development assumptions.",
       value: risks,
       setter: setRisks,
     },
     {
       label: "What do we not know yet?",
       help: "Keep unknowns explicit. Do not fill a missing fact with a likely answer or treat an unavailable paid/professional document as if it was obtained.",
-      example: "No reviewed title-deed restriction evidence is currently attached to the property file.",
+      example:
+        "No reviewed title-deed restriction evidence is currently attached to the property file.",
       value: unknowns,
       setter: setUnknowns,
     },
     {
       label: "What should be verified next?",
       help: "Short, ordered actions that reduce the biggest remaining uncertainty after the standard investigation is complete/reviewed.",
-      example: "Obtain or confirm the property-specific zoning position, then review title restrictions before relying on the build scenario.",
+      example:
+        "Obtain or confirm the property-specific zoning position, then review title restrictions before relying on the build scenario.",
       value: nextSteps,
       setter: setNextSteps,
     },
@@ -247,9 +248,12 @@ export function FounderHumanReviewEditor({
           <div className="mt-4 space-y-2">
             {DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS.map((item) => {
               const status = checklist[item.id];
-              const StatusIcon = status === "complete" ? CheckCircle2 : status === "blocked"
-                ? AlertTriangle
-                : CircleDashed;
+              const StatusIcon =
+                status === "complete"
+                  ? CheckCircle2
+                  : status === "blocked"
+                    ? AlertTriangle
+                    : CircleDashed;
               return (
                 <div
                   key={item.id}
@@ -275,7 +279,8 @@ export function FounderHumanReviewEditor({
                       setChecklistStatus(
                         item.id,
                         event.target.value as HumanReviewInvestigationChecklistStatus,
-                      )}
+                      )
+                    }
                     className={`min-h-10 rounded-xl border px-3 text-xs font-semibold outline-none focus:border-[#FF6A00] disabled:opacity-60 ${checklistTone(status)}`}
                   >
                     {CHECKLIST_STATUS_OPTIONS.map((option) => (
@@ -318,8 +323,8 @@ export function FounderHumanReviewEditor({
           </p>
           <p className="mt-3 text-[11px] leading-5 text-[#92400E]">
             <strong>Property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} A
-            Lightstone or other branded provider PDF must not be redistributed unless the
-            applicable provider/report terms permit it.
+            Lightstone or other branded provider PDF must not be redistributed unless the applicable
+            provider/report terms permit it.
           </p>
         </div>
 
@@ -330,8 +335,8 @@ export function FounderHumanReviewEditor({
           <p className="mt-1 text-[11px] leading-5 text-amber-800">
             First complete or review the standard Easy Erf investigation for this parcel. Then use
             the report fields below to synthesize the actual evidence, calculations, Site Potential
-            and market context already reviewed. The customer emphasis guides attention; it does
-            not reduce the standard scope.
+            and market context already reviewed. The customer emphasis guides attention; it does not
+            reduce the standard scope.
           </p>
         </div>
 
@@ -340,14 +345,36 @@ export function FounderHumanReviewEditor({
             <div className="text-sm font-semibold text-[#0D1B2A]">How to complete this report</div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
               {[
-                ["1", "Complete the investigation", "Work through the standard Easy Erf investigation and the customer’s selected emphasis."],
-                ["2", "Review the evidence", "Resolve what you reasonably can; preserve provenance, conflicts and real missing evidence."],
-                ["3", "Write the bottom line", "Use 2 to 5 concise sentences. State the useful conclusion and biggest limitation."],
-                ["4", "Fill all five sections", "Add one reviewed finding per line. Keep unknowns unknown. Maximum eight items per section."],
-                ["5", "Save, then deliver", "Save both the checklist and web report. Mark ready only after all applicable checklist items are resolved."],
+                [
+                  "1",
+                  "Complete the investigation",
+                  "Work through the standard Easy Erf investigation and the customer’s selected emphasis.",
+                ],
+                [
+                  "2",
+                  "Review the evidence",
+                  "Resolve what you reasonably can; preserve provenance, conflicts and real missing evidence.",
+                ],
+                [
+                  "3",
+                  "Write the bottom line",
+                  "Use 2 to 5 concise sentences. State the useful conclusion and biggest limitation.",
+                ],
+                [
+                  "4",
+                  "Fill all five sections",
+                  "Add one reviewed finding per line. Keep unknowns unknown. Maximum eight items per section.",
+                ],
+                [
+                  "5",
+                  "Save, then deliver",
+                  "Save both the checklist and web report. Mark ready only after all applicable checklist items are resolved.",
+                ],
               ].map(([number, title, body]) => (
                 <div key={number} className="rounded-2xl border border-[#0D1B2A]/8 bg-white p-3">
-                  <div className="grid h-6 w-6 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{number}</div>
+                  <div className="grid h-6 w-6 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">
+                    {number}
+                  </div>
                   <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">{title}</div>
                   <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{body}</p>
                 </div>
@@ -355,7 +382,9 @@ export function FounderHumanReviewEditor({
             </div>
           </div>
           <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-center">
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">Report completeness</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
+              Report completeness
+            </div>
             <div className="mt-1 text-2xl font-semibold text-[#0D1B2A]">{completedSections}/6</div>
           </div>
         </div>
@@ -363,7 +392,8 @@ export function FounderHumanReviewEditor({
         <label className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
           <span className="text-xs font-semibold text-[#0D1B2A]">Bottom line</span>
           <p className="mt-1 text-[11px] leading-4 text-[#64748B]">
-            The customer should understand the current conclusion, the biggest caveat and what that means in plain English after the property investigation has been worked through.
+            The customer should understand the current conclusion, the biggest caveat and what that
+            means in plain English after the property investigation has been worked through.
           </p>
           <textarea
             value={bottomLine}
@@ -378,12 +408,17 @@ export function FounderHumanReviewEditor({
 
         <div className="grid gap-4 lg:grid-cols-2">
           {listFields.map((field) => (
-            <label key={field.label} className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4">
+            <label
+              key={field.label}
+              className="block rounded-2xl border border-[#0D1B2A]/8 bg-white p-4"
+            >
               <span className="text-xs font-semibold text-[#0D1B2A]">{field.label}</span>
               <p className="mt-1 text-[11px] leading-4 text-[#64748B]">{field.help}</p>
               <div className="mt-2 flex items-start gap-2 rounded-xl bg-[#F7FBFF] px-3 py-2 text-[11px] leading-4 text-[#64748B]">
                 <FileSearch2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF6A00]" />
-                <span><strong className="text-[#0D1B2A]">Example wording:</strong> {field.example}</span>
+                <span>
+                  <strong className="text-[#0D1B2A]">Example wording:</strong> {field.example}
+                </span>
               </div>
               <textarea
                 value={field.value}
@@ -398,7 +433,9 @@ export function FounderHumanReviewEditor({
         </div>
 
         <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-xs leading-5 text-[#64748B]">
-          The done-for-you investigation is property research and due-diligence support. Do not write legal opinions, municipal approvals, formal valuations, engineering/architectural conclusions, construction quotations or buy/do-not-buy recommendations.
+          The done-for-you investigation is property research and due-diligence support. Do not
+          write legal opinions, municipal approvals, formal valuations, engineering/architectural
+          conclusions, construction quotations or buy/do-not-buy recommendations.
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -415,7 +452,9 @@ export function FounderHumanReviewEditor({
               <CheckCircle2 className="h-4 w-4" /> All report sections have content
             </span>
           ) : (
-            <span className="text-xs text-[#64748B]">Complete all six report areas before saving the final report.</span>
+            <span className="text-xs text-[#64748B]">
+              Complete all six report areas before saving the final report.
+            </span>
           )}
         </div>
 
