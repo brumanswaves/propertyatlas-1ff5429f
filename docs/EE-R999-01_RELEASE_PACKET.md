@@ -60,8 +60,8 @@ Order `384be2fe-f7aa-4687-970c-5a6db34cfeba` is the only authorized acceptance c
 
 - is TEST mode;
 - belongs to the founder-admin account;
-- references Erf 1570 at 228 President Road, President Park AH;
-- is already delivered in `ready` state;
+- references `Erf 1570 - 24 Padrone Cres, St Francis Bay, 6312, South Africa`;
+- is already delivered with `status=ready` and `status_enum=complete`;
 - contains a populated structured report;
 - contains all nine checklist items with all nine resolved;
 - has no customer-notification receipt.
@@ -157,8 +157,8 @@ Before any write, re-verify that:
 
 - `livemode=false`;
 - the order belongs to the founder-admin account;
-- it still references the expected Erf 1570 property;
-- it remains `ready`;
+- it still references `Erf 1570 - 24 Padrone Cres, St Francis Bay, 6312, South Africa`;
+- it remains delivered with `status=ready` and `status_enum=complete`;
 - its structured report is complete;
 - all nine checklist items are resolved;
 - it has no notification receipt;
@@ -213,7 +213,7 @@ Stop without expanding scope if:
 - any additional PR, migration, or Edge Function would be required;
 - canonical repository, Supabase project, or publisher identity differs;
 - the acceptance order reports `livemode=true`;
-- the acceptance order is no longer founder-owned, no longer `ready`, no longer references the expected property, or already has a receipt;
+- the acceptance order is no longer founder-owned, no longer delivered, no longer references the expected property, or already has a receipt;
 - any other order would change;
 - the prepared recipient differs from the canonical founder account email;
 - the prepared property or report link is wrong;
