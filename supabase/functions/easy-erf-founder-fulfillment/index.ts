@@ -14,6 +14,16 @@ declare const Deno: {
 const FUNCTION_NAME = "easy-erf-founder-fulfillment";
 const ALLOWED_ACTIONS = new Set(["start_review", "reopen_review", "mark_ready", "mark_failed"]);
 
+type AutomaticCustomerEmailResult = {
+  ok: boolean;
+  status: number;
+  code: string | null;
+  error: string | null;
+  receipt: unknown;
+  emailAccepted: boolean;
+  requestId: string;
+};
+
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -45,7 +55,7 @@ async function triggerAutomaticCustomerEmail(input: {
   authorization: string;
   orderId: string;
   requestId: string;
-}) {
+}): Promise<AutomaticCustomerEmailResult> {
   try {
     const response = await fetch(
       `${input.supabaseUrl}/functions/v1/easy-erf-founder-customer-notification`,
@@ -244,7 +254,7 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  let notification = null;
+  let notification: AutomaticCustomerEmailResult | null = null;
   if (action === "mark_ready") {
     notification = await triggerAutomaticCustomerEmail({
       supabaseUrl,
