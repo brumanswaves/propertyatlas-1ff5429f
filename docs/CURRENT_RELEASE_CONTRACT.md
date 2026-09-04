@@ -1,92 +1,141 @@
 # Easy Erf Current Release Contract
 
 Release ID: `EE-R999-01`
-Contract status: **ACTIVE RELEASE GATE, CLASS B PACKET PREPARED**
-Effective date: 2026-09-03
+Contract status: **ACTIVE RELEASE GATE, CLASS B PACKET PREPARED, NOT AUTHORIZED**
+Effective date: 2026-09-04
 Canonical repository: `brumanswaves/propertyatlas-1ff5429f`
 Canonical Supabase project: `xiqpfhsdlvwrwhclonsg`
-Canonical Lovable publisher project: `8680b46b-3325-4395-9767-a8c0ae2a3a50`
-Current GitHub main before PR #161: `4c3ad41165db3ac19314b3aa42e89dbd1bae2534`
-Merged launch-readiness baseline: PR #160, merge commit `6078395dab2eadaf9661df53937a53268a9631ff`
-Sole active implementation PR: `#161`
-Active implementation branch: `chatgpt/founder-investigation-checklist-state`
+Canonical passive publisher project: `8680b46b-3325-4395-9767-a8c0ae2a3a50`
+Current GitHub main: `2c50961ff80c8420bee3af06b2b74ce471fd863a`
+Merged investigation-checklist baseline: PR #161, merge commit `2c50961ff80c8420bee3af06b2b74ce471fd863a`
+Sole active implementation PR: `#162`
+Active implementation branch: `chatgpt/ee-r999-customer-notification`
+Notification source candidate before release-document reconciliation: `c569d0b4ab86a7cd265ad9cd791fd33a1b7f985b`
 Prepared release packet: `docs/EE-R999-01_RELEASE_PACKET.md`
+
+The approval SHA is the exact current PR #162 head named in the control-room approval request after these release documents and all exact-head checks are clean. Any later head change invalidates that approval.
 
 ## Release promise
 
-Prepare the R999 human-reviewed property-investigation flow for safe release by combining the merged founder-only launch preflight with the stateful founder investigation checklist. The release must prevent delivery while any applicable investigation area is missing, pending, or blocked.
+Complete one bounded owner-only R999 vertical slice from an already delivered Human-Reviewed Easy Erf Report to a manually sent customer email, a durable notification receipt, and successful reopening of the same report from the secure account link.
+
+The application prepares the exact message but does not send it automatically. No email provider is added. The founder must send the prepared message manually and may record the receipt only after that send occurred.
 
 ## Included source
 
-- Merged PR #160 founder-only, read-only R999 launch preflight.
-- PR #161 standard investigation checklist with nine stable items and explicit `pending`, `complete`, `blocked`, and `not_applicable` states.
-- Backward-compatible checklist persistence inside existing structured review content.
-- Preservation of report content when checklist state is saved, and preservation of checklist state when reviewed report content is saved.
-- Edge Function validation that blocks delivery and optional PDF upload until the structured report and checklist are resolved.
-- Database enforcement that blocks ready or complete delivery states when the report or checklist is unresolved.
-- Focused TypeScript, Deno, full-suite, production-build, lint, whitespace, and isolated PostgreSQL proof.
+- Founder-only preparation of a manual email for the canonical authentication email attached to the order owner.
+- Fresh recipient verification when the receipt is recorded, preventing a stale prepared address from being accepted after an account email change.
+- Single-line, length-limited customer-name and property-reference fields for the email subject and body.
+- A secure Easy Erf `My Reports` link rather than a permanent private-file URL.
+- Explicit founder confirmation before recording a send.
+- A service-role-only receipt RPC that independently verifies the actor has the founder-admin role.
+- Fail-closed provider and report-status validation.
+- Structured-report and resolved nine-item checklist validation before preparation or receipt recording.
+- Idempotent manual-email receipt handling that requires a valid recipient, channel, sent time, and sender.
+- One `customer_notified` audit event for the first valid receipt.
+- Automatic invalidation of the old receipt if the report is reopened for correction.
+- UI reset and clipboard-failure handling that does not falsely report a copied message.
+- Focused guardrails, Deno checks, isolated PostgreSQL proof, production build, TypeScript, lint, and whitespace verification.
 
-## Verified source evidence
+## Verified GitHub baseline
 
-For the product candidate preceding this release-document update, the inspected exact-head workflows established:
+- PR #161 is merged.
+- GitHub main is `2c50961ff80c8420bee3af06b2b74ce471fd863a`.
+- PR #162 is open, draft, unmerged, and based on that main commit.
+- The product-source candidate `c569d0b4ab86a7cd265ad9cd791fd33a1b7f985b` contains the notification hardening and no temporary formatter or hardening workflow.
+- A GitHub Actions formatter verified targeted Prettier and ESLint output for the final changed guardrail file, then removed itself.
+- The human-authored release-document head created after this contract must receive clean exact-head workflows before a Class B approval request is valid.
 
-- Stripe and Human Review Edge Function type checks succeeded.
-- Focused payment and fulfillment guardrails succeeded.
-- Full repository tests succeeded.
-- Founder fulfillment migration proof succeeded in isolated PostgreSQL.
-- Human Review migration proof succeeded in isolated PostgreSQL.
-- Production bundle and generated routes succeeded.
-- TypeScript, changed-file lint, and patch-whitespace checks succeeded.
-- Public browser acceptance ran without invoking live checkout.
-
-The final release-document head must receive clean exact-head workflows before any owner merge approval is used.
+Passing CI proves source behavior only. It does not prove production deployment, publication, manual email delivery, receipt persistence, or customer report access.
 
 ## Verified production baseline
 
-- The new migration `20260903111500_require_resolved_founder_investigation_checklist.sql` is not applied in canonical production.
-- The function `easy-erf-founder-launch-readiness` is not deployed in canonical production.
-- Current production function baselines are:
-  - `easy-erf-founder-fulfillment`, version 4, hash `14c39b18d23b522e01298ad317f69d80a62dca468b02b023f226208d38f3c277`.
-  - `easy-erf-founder-report-upload`, version 1, hash `a8a660fdc46268199b332e764137656e69a5c29dfd27a30244be419b19eae620`.
-  - `easy-erf-founder-review-content`, version 1, hash `2d88117fd33c3b930305526931deadc54a92dc09949faee935735e13c2af64f1`.
-- The current published Lovable project is connected to the Easy Erf project and reports source based on current main before PR #161.
+Canonical production was inspected read-only on 2026-09-04.
+
+### Existing checklist and founder controls
+
+- Migration `20260903174923_require_resolved_founder_investigation_checklist` is applied.
+- `easy-erf-founder-launch-readiness` is active, version 1, hash `ecb67daab80de00fbd5cafbd6e5226900d3260a14772bcf56e4bc2aa9216b9d0`.
+- `easy-erf-founder-fulfillment` is active, version 5, hash `e69a84a640d625252327b000a51cb042112e7e16e3f32c5b452539ad371e67a0`.
+- `easy-erf-founder-report-upload` is active, version 2, hash `eef189bf0152b7129d718cb7603b1d3ae2c7038511b5a6ce42c469991cfc67c8`.
+- `easy-erf-founder-review-content` is active, version 2, hash `0c124be15c9d56f5c405e16145883da4dd06e3fc099271fbcc679e6dff931292`.
+
+These existing functions are not changed or redeployed by this notification packet.
+
+### Notification delta still absent
+
+- Migration `20260903211000_record_manual_report_notification.sql` is not applied.
+- Edge Function `easy-erf-founder-customer-notification` is not deployed.
+- RPC `public.record_easy_erf_customer_notification(uuid, uuid, text)` does not exist.
+- Trigger `clear_easy_erf_customer_notification_on_reopen` does not exist.
+- Exact production frontend-source equivalence is unverified.
+
+### Bounded acceptance order
+
+The sole acceptance candidate is order `384be2fe-f7aa-4687-970c-5a6db34cfeba`.
+
+Read-only production inspection established that it:
+
+- is a Stripe TEST-mode Easy Erf investigation order;
+- belongs to the founder-admin account;
+- references Erf 1570 at 228 President Road, President Park AH;
+- is already in the delivered `ready` state;
+- contains a structured report with the bottom line and all five finding sections populated;
+- contains all nine standard investigation checklist items, all resolved as `complete` or `not_applicable`;
+- has no existing customer-notification receipt.
+
+Order `3ebe9357-8ec1-45aa-ba4c-68412f0ee656` is not the acceptance candidate. It is TEST mode but remains `paid` and has no structured report or checklist.
 
 ## Product boundaries
 
-- Checklist state is operational workflow metadata only.
-- Property facts, evidence, provenance, conflicts, calculations, Site Potential, and report findings remain in their canonical systems.
+- The notification receipt is operational delivery metadata only.
+- Property facts, evidence, provenance, conflicts, calculations, Site Potential, and report findings remain in their existing canonical systems.
 - Active Site Potential remains deterministic parcel/map and street-side build-envelope output.
-- Generated house concepts, rendered buildings, facade concepts, and AI architectural images are excluded.
-- No competing evidence model, checklist notes system, or new product scope is included.
+- Generated house concepts, rendered buildings, facade concepts, and AI architectural images remain excluded.
+- No automated email provider, marketing automation, CRM, referral marketplace, or new product scope is included.
+- No customer email address, secret, or private-file URL may be written into source, logs, or release documents.
 
-## Current release stages
+## Release stages
 
-1. Source acceptance and final exact-head CI.
-2. One Class B approval for the exact PR head, merge, additive migration, named function deployments, exact-source publication, read-only launch preflight, and bounded authenticated checklist acceptance.
-3. A later separate Class C approval for any live R999 charge, Stripe mutation, secret change, customer communication, or money movement.
+1. **Class A source acceptance:** final release-document reconciliation, exact-head CI, code inspection, production read-only inspection, and packet preparation.
+2. **Class B controlled release:** merge the exact approved PR #162 head, apply one additive notification migration, deploy one authenticated notification function, publish the exact accepted frontend, and run one owner-only TEST-order acceptance.
+3. **Later Class C work:** any real payment, Stripe mutation, secret change, live checkout arming, external customer communication, paid email provider, DNS change, destructive production action, or money movement.
 
 ## Current blockers
 
-- PR #161 remains draft and unmerged.
-- Final exact-head workflows must succeed after the release packet and contract are committed.
-- The migration and four required Edge Function deployments are not authorized yet.
-- Exact-source frontend publication is not authorized yet.
-- Authenticated production save, reload, blocked-delivery, and resolved-delivery behavior remain unverified.
-- Stripe business-profile correction, signing-secret equivalence, live checkout arming, and a real R999 purchase remain outside this Class B packet.
+- PR #162 remains draft and unmerged.
+- Final exact-head workflows must be clean after the release documents are committed.
+- The notification migration is not applied.
+- The notification Edge Function is not deployed.
+- The matching frontend is not verified as published.
+- Authenticated production preparation, manual owner-only email send, receipt recording, audit persistence, and report-link reopening remain unverified.
+- Reopen-trigger behavior is proved in isolated PostgreSQL but remains unverified in production.
+- Live Stripe webhook signing-secret equivalence and the genuine R999 purchase journey remain outside this packet.
 
 ## Approval classes
 
-- **Class A:** $0, reversible, source-only work, review, tests, CI, documentation, read-only production inspection, and release-packet preparation may continue without repeated approval.
-- **Class B:** merge of the exact PR head, additive migration, named Edge Function deployments, exact-source publication, read-only preflight, and bounded non-payment production acceptance require one packet-specific approval.
-- **Class C:** real payment, money, billing, Stripe mutation, secrets, DNS, advertising, customer contact, destructive production changes, credentials, Lovable implementation, or any Vercel use require separate explicit approval.
+- **Class A:** $0 reversible source work, review, tests, CI, documentation, read-only production inspection, and release-packet preparation may continue without repeated approval.
+- **Class B:** exact-head merge, the named additive migration, the named authenticated Edge Function deployment, passive exact-source publication, and the bounded founder-owned TEST acceptance require one packet-specific approval.
+- **Class C:** real payment, money, billing, Stripe mutation, secrets, DNS, advertising, external customer contact, destructive production changes, credentials, Lovable implementation, or any Vercel use require separate explicit approval.
 
 ## Change control
 
-Any source, migration, function, publisher, project identity, production action, or acceptance expansion beyond the prepared packet invalidates the approval request. A passing CI run does not prove the live R999 customer journey.
+The Class B approval is invalid if any of these differ from the approval request:
+
+- PR number or exact head SHA;
+- repository, Supabase project, or passive publisher identity;
+- migration or Edge Function name;
+- acceptance-order ID;
+- release actions or stop conditions;
+- expected additional discretionary spend of $0.
+
+A failed step stops the release. Do not expand scope, retry consequential actions automatically, substitute another order, deploy another function, or apply another migration.
 
 ## Spend
 
-- Maximum additional discretionary spend for the prepared Class B packet: **$0**.
+- Expected additional discretionary spend: **$0**.
+- Maximum additional discretionary spend: **$0**.
 - Live R999 charge authorized: **no**.
+- Paid email provider authorized: **no**.
 - Advertising spend authorized: **$0**.
-- Existing GitHub Actions, Supabase, and Lovable metering: **UNKNOWN**.
+- Existing GitHub Actions, Supabase, passive hosting, and owner email metering: **UNKNOWN**.
