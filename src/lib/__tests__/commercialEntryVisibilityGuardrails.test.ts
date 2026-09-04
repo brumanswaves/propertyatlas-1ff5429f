@@ -36,7 +36,7 @@ describe("Easy Erf commercial entry visibility", () => {
     const source = read("src/routes/admin.tsx");
     expect(source).toContain('to="/admin/fulfillment"');
     expect(source).toContain("Open / change review");
-    const fulfillment = read("src/routes/admin.fulfillment.tsx");
+    const fulfillment = read("src/routes/admin_.fulfillment.tsx");
     expect(fulfillment).toContain("Done-for-You Operations");
     expect(fulfillment).toContain("Property investigation work queue");
     expect(fulfillment).toContain("reopen_review");

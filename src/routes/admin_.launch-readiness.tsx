@@ -14,7 +14,7 @@ import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/admin/launch-readiness")({
+export const Route = createFileRoute("/admin_/launch-readiness")({
   head: () => ({
     meta: [
       { title: "R999 Launch Readiness | Easy Erf" },

@@ -10,7 +10,7 @@ const pricing = source("src/routes/pricing.tsx");
 const proof = source("src/components/humanReview/HumanReviewProof.tsx");
 const howItWorks = source("src/routes/how-it-works.tsx");
 const orders = source("src/routes/orders.tsx");
-const fulfillment = source("src/routes/admin.fulfillment.tsx");
+const fulfillment = source("src/routes/admin_.fulfillment.tsx");
 const editor = source("src/components/admin/FounderHumanReviewEditor.tsx");
 const scope = source("src/lib/humanReview/scope.ts");
 

@@ -18,7 +18,7 @@ function source(path: string) {
 const functionSource = source(
   "supabase/functions/easy-erf-founder-launch-readiness/index.ts",
 );
-const routeSource = source("src/routes/admin.launch-readiness.tsx");
+const routeSource = source("src/routes/admin_.launch-readiness.tsx");
 const adminGuardSource = source("src/components/admin/AdminGuard.tsx");
 const configSource = source("supabase/config.toml");
 

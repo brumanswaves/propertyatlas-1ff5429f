@@ -32,7 +32,7 @@ import {
 } from "@/lib/humanReview/scope";
 import { buildSavedParcelMapHref } from "@/lib/parcels/officialParcelId";
 
-export const Route = createFileRoute("/admin/fulfillment")({
+export const Route = createFileRoute("/admin_/fulfillment")({
   head: () => ({
     meta: [
       { title: "Done-for-You Investigation Queue | Easy Erf" },
