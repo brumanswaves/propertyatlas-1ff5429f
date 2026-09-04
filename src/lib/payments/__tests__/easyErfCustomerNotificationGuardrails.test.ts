@@ -53,7 +53,9 @@ describe("Easy Erf automatic customer report email boundary", () => {
     expect(notificationFunction).toContain("validateHumanReviewInvestigationChecklist");
     expect(notificationFunction).toContain("isHumanReviewInvestigationChecklistResolved");
     expect(notificationFunction).toContain('statusOf(order) !== "ready"');
-    expect(notificationFunction).toContain("normalizeTimestamp(order.completed_at)");
+    expect(notificationFunction).toContain("const rawReportVersion = cleanText(order.completed_at)");
+    expect(notificationFunction).toContain("normalizeTimestamp(rawReportVersion)");
+    expect(notificationFunction).toContain("p_report_version: rawReportVersion");
     expect(notificationFunction).toContain("cleanSingleLine(payload.propertyReference, 240)");
     expect(notificationFunction).toContain("The customer account does not have a deliverable email address.");
   });
