@@ -9,7 +9,7 @@ function source(path: string) {
 const migration = source(
   "supabase/migrations/20260831130000_align_easy_erf_fulfillment_status_enum.sql",
 );
-const founderRoute = source("src/routes/admin.fulfillment.tsx");
+const founderRoute = source("src/routes/admin_.fulfillment.tsx");
 const customerRoute = source("src/routes/orders.tsx");
 const customerPresentation = source("src/lib/humanReview/customerReportPresentation.ts");
 

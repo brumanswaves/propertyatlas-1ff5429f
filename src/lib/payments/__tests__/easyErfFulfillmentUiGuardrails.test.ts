@@ -8,7 +8,7 @@ function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
 }
 
-const founderRoute = source("src/routes/admin.fulfillment.tsx");
+const founderRoute = source("src/routes/admin_.fulfillment.tsx");
 const customerRoute = source("src/routes/orders.tsx");
 
 describe("Easy Erf founder fulfillment UI", () => {
