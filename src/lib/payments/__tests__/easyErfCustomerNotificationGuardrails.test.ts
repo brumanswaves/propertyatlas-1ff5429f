@@ -60,6 +60,7 @@ describe("Easy Erf founder customer notification boundary", () => {
     expect(notificationFunction).toContain("admin.auth.admin.getUserById(order.user_id)");
     expect(notificationFunction).toContain('const RECORD_CONFIRMATION = "I SENT THIS EMAIL"');
     expect(notificationFunction).toContain("body.confirmation !== RECORD_CONFIRMATION");
+    // eslint-disable-next-line no-useless-escape
     expect(notificationFunction).toContain('\"record_easy_erf_customer_notification\"');
     expect(notificationUi).toContain("I sent this exact email to");
     expect(notificationUi).toContain("Record customer notified");
