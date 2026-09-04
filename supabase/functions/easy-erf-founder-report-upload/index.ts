@@ -14,11 +14,20 @@ declare const Deno: {
 const FUNCTION_NAME = "easy-erf-founder-report-upload";
 const REPORT_BUCKET = "erf-files";
 const MAX_REPORT_BYTES = 25 * 1024 * 1024;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -48,6 +57,9 @@ function statusOf(order: { status?: string | null; status_enum?: string | null }
 Deno.serve(async (request: Request) => {
   const requestId = request.headers.get("x-request-id")?.trim() || crypto.randomUUID();
 
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (request.method !== "POST") {
     return json({ ok: false, error: "Method not allowed.", requestId }, 405);
   }
