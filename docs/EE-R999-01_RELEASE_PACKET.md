@@ -2,194 +2,257 @@
 
 Release ID: `EE-R999-01`
 Packet state: **PREPARED, NOT AUTHORIZED**
-Prepared date: 2026-09-03
+Prepared date: 2026-09-04
 Canonical repository: `brumanswaves/propertyatlas-1ff5429f`
 Canonical Supabase project: `xiqpfhsdlvwrwhclonsg`
-Canonical Lovable publisher project: `8680b46b-3325-4395-9767-a8c0ae2a3a50`
-Sole implementation pull request: `#161`
-Current production frontend baseline before this release: GitHub main `4c3ad41165db3ac19314b3aa42e89dbd1bae2534`
-Bounded owner TEST order: `3ebe9357-8ec1-45aa-ba4c-68412f0ee656`
+Canonical passive publisher project: `8680b46b-3325-4395-9767-a8c0ae2a3a50`
+Sole implementation pull request: `#162`
+Implementation branch: `chatgpt/ee-r999-customer-notification`
+Current production GitHub main: `2c50961ff80c8420bee3af06b2b74ce471fd863a`
+Notification source candidate before release-document reconciliation: `c569d0b4ab86a7cd265ad9cd791fd33a1b7f985b`
+Bounded owner TEST order: `384be2fe-f7aa-4687-970c-5a6db34cfeba`
+
+The exact approval head is the current PR #162 SHA named in the control-room approval request after this packet receives clean exact-head workflows. Any later commit invalidates the approval.
 
 ## WHAT I NEED FROM YOU NOW
 
-Do not approve this packet until the final PR #161 head and its exact-head workflows are reported clean in the control-room approval request.
+Do not approve this packet until the control-room request names the final PR #162 head and reports all required exact-head workflows clean.
+
+During the later production acceptance, one owner action will be required: verify the prepared message is addressed to your own canonical Easy Erf account email, send that one TEST email from your own mail client, then return to Easy Erf so the receipt can be recorded.
 
 ## Plain-English purpose
 
-Install the founder investigation checklist, make the database refuse unfinished reports, publish the matching founder screens, and prove the behavior on one existing owner-only TEST order for Erf 1570. This packet does not enable live checkout or charge R999.
+Complete the smallest real R999 delivery loop that is still missing:
+
+`delivered owner TEST report -> exact manual email -> durable receipt -> owner opens the same report`
+
+Easy Erf prepares the message. It does not send automatically, add an email provider, or contact an external customer.
 
 ## Verified pre-release facts
 
-- The named acceptance order is TEST mode, belongs to the owner email, references Erf 1570, and is currently in `paid` state.
-- The production database does not contain migration `20260903111500_require_resolved_founder_investigation_checklist`.
-- The production database does not currently contain the new checklist-enforcement trigger or function.
-- `easy-erf-founder-launch-readiness` is not currently deployed.
-- Current production function rollback baselines are:
-  - `easy-erf-founder-fulfillment`, version 4, hash `14c39b18d23b522e01298ad317f69d80a62dca468b02b023f226208d38f3c277`.
-  - `easy-erf-founder-report-upload`, version 1, hash `a8a660fdc46268199b332e764137656e69a5c29dfd27a30244be419b19eae620`.
-  - `easy-erf-founder-review-content`, version 1, hash `2d88117fd33c3b930305526931deadc54a92dc09949faee935735e13c2af64f1`.
-- The source candidate has clean inspected product, migration, Deno, focused-test, full-test, build, TypeScript, lint, and whitespace evidence before the final release-document commits.
+### GitHub
 
-## Class B actions proposed after exact-head owner approval
+- PR #161 is merged at `2c50961ff80c8420bee3af06b2b74ce471fd863a`.
+- PR #162 is open, draft, unmerged, mergeable, and based on that current main commit.
+- The notification source candidate contains fresh recipient matching, database founder-role verification, fail-closed state checks, stronger idempotency, email-field sanitization, UI reset handling, clipboard error handling, and expanded proof.
+- Temporary source-editing workflows removed themselves and are absent from the candidate.
+- Final exact-head CI after this release-document update is still required.
 
-### 1. Freeze and merge the exact source
+### Canonical production
 
-1. Re-read PR #161 immediately before merge.
-2. Refuse execution if its head differs from the SHA named in the owner approval.
-3. Confirm all required exact-head workflows are successful.
-4. Confirm the diff remains limited to the founder checklist, its guardrails, one additive migration, release documentation, and governance already present on current main.
-5. Mark the PR ready and merge only the exact approved head.
-6. Inspect post-merge workflows and stop if any required check fails.
+Read-only inspection on 2026-09-04 established:
 
-### 2. Apply one additive database safety rule
+- Checklist migration `20260903174923_require_resolved_founder_investigation_checklist` is already applied.
+- Existing founder functions are already deployed and are not part of this release delta:
+  - `easy-erf-founder-launch-readiness`, version 1, hash `ecb67daab80de00fbd5cafbd6e5226900d3260a14772bcf56e4bc2aa9216b9d0`.
+  - `easy-erf-founder-fulfillment`, version 5, hash `e69a84a640d625252327b000a51cb042112e7e16e3f32c5b452539ad371e67a0`.
+  - `easy-erf-founder-report-upload`, version 2, hash `eef189bf0152b7129d718cb7603b1d3ae2c7038511b5a6ce42c469991cfc67c8`.
+  - `easy-erf-founder-review-content`, version 2, hash `0c124be15c9d56f5c405e16145883da4dd06e3fc099271fbcc679e6dff931292`.
+- Notification migration `20260903211000_record_manual_report_notification.sql` is not applied.
+- Edge Function `easy-erf-founder-customer-notification` is not deployed.
+- Receipt RPC `public.record_easy_erf_customer_notification(uuid, uuid, text)` does not exist.
+- Receipt-invalidation trigger `clear_easy_erf_customer_notification_on_reopen` does not exist.
+- Exact production frontend-source equivalence is unverified.
+
+### Acceptance order
+
+Order `384be2fe-f7aa-4687-970c-5a6db34cfeba` is the only authorized acceptance candidate in this packet. Read-only inspection established that it:
+
+- is TEST mode;
+- belongs to the founder-admin account;
+- references Erf 1570 at 228 President Road, President Park AH;
+- is already delivered in `ready` state;
+- contains a populated structured report;
+- contains all nine checklist items with all nine resolved;
+- has no customer-notification receipt.
+
+Order `3ebe9357-8ec1-45aa-ba4c-68412f0ee656` must not be substituted. It remains `paid` and does not contain the required structured report or checklist.
+
+## Exact Class B actions proposed
+
+### 1. Freeze the exact source
+
+Immediately before any merge:
+
+1. Re-read PR #162.
+2. Confirm its head exactly matches the SHA in the owner approval.
+3. Confirm its base is current main `2c50961ff80c8420bee3af06b2b74ce471fd863a`, unless the approval request explicitly records a newly verified main and refreshed packet.
+4. Confirm all four required exact-head workflows concluded successfully.
+5. Confirm the diff remains limited to the notification flow, its guardrails and proof, one additive migration, and these release documents.
+6. Stop if any source, project identity, migration, function, order, or release boundary differs.
+
+### 2. Merge only PR #162
+
+1. Mark PR #162 ready for review only after the freeze checks succeed.
+2. Merge only the exact approved head.
+3. Do not merge another PR.
+4. Inspect the resulting main SHA and post-merge workflows.
+5. Stop before production changes if any required post-merge workflow fails or main advances unexpectedly.
+
+### 3. Apply one additive migration
 
 Apply only:
 
-`supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql`
+`supabase/migrations/20260903211000_record_manual_report_notification.sql`
 
-Plain-English effect:
+Expected effect:
 
-- An Easy Erf R999 report cannot be marked ready or complete unless the structured report is complete.
-- All nine standard investigation items must be `complete` or `not_applicable`.
-- `pending`, `blocked`, missing, malformed, or incomplete checklist data keeps the report from being delivered.
+- add service-role-only RPC `public.record_easy_erf_customer_notification(uuid, uuid, text)`;
+- independently require the supplied actor to hold the founder-admin role;
+- require a Stripe Easy Erf order in `ready` state;
+- require the exact canonical order-owner email;
+- require a complete structured report and resolved nine-item checklist;
+- write one durable `manual_email` receipt into existing structured review content;
+- add one `customer_notified` audit event on the first valid write;
+- treat an already valid receipt as idempotent;
+- clear the old receipt when a delivered report is reopened for correction.
 
-No existing row is rewritten by the migration itself.
+The migration must not rewrite unrelated orders or erase report content.
 
-### 3. Deploy only four named authenticated functions
+After applying it, verify read-only that:
 
-Deploy from the exact accepted post-merge source:
+- the migration is recorded once;
+- the RPC and reopen trigger exist;
+- public, anon, and authenticated roles cannot execute the RPC;
+- service_role can execute it;
+- no other migration was applied.
 
-1. `easy-erf-founder-launch-readiness`, `verify_jwt=true`.
-2. `easy-erf-founder-fulfillment`, `verify_jwt=true`.
-3. `easy-erf-founder-report-upload`, `verify_jwt=true`.
-4. `easy-erf-founder-review-content`, `verify_jwt=true`.
+### 4. Deploy one authenticated Edge Function
 
-Do not deploy any other Edge Function.
+Deploy only:
 
-### 4. Publish the exact accepted frontend
+`easy-erf-founder-customer-notification`
 
-Use only the passive publish action for Lovable project `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
+Required settings:
 
-Do not send a Lovable agent message, implementation request, debugging request, plan-mode request, or source-generation request.
+- exact accepted post-merge source;
+- `verify_jwt=true`;
+- no email-provider secret;
+- no automatic network call that sends email;
+- no other Edge Function deployment.
+
+After deployment, verify the function is active and its deployed source matches the accepted repository source. Stop if source equivalence cannot be established.
+
+### 5. Publish the exact accepted frontend
+
+Use only the passive publication action for publisher project `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
+
+Do not send a Lovable agent implementation, debugging, planning, or source-generation request. Do not use Vercel.
 
 After publication:
 
-1. Confirm GitHub `main` did not advance unexpectedly.
-2. Confirm the published project reports the accepted post-merge source.
-3. Stop if the publisher adds, edits, or merges source.
+1. Confirm GitHub main did not advance unexpectedly.
+2. Confirm the published frontend corresponds to the accepted post-merge source.
+3. Confirm signed-out users cannot access founder fulfillment or notification controls.
+4. Confirm the notification panel appears only for a delivered read-only report.
+5. Stop if the publisher adds, edits, commits, or merges source.
 
-### 5. Run the founder launch-readiness inspection
-
-While live checkout remains disarmed, open the authenticated founder route:
-
-`/admin/launch-readiness`
-
-Inspect only safe status signals for:
-
-- runtime mode;
-- checkout arming state;
-- Stripe key mode;
-- R999 Payment Link amount and status;
-- return URL;
-- webhook-secret presence;
-- required webhook endpoint and events;
-- Stripe account capability;
-- Easy Erf business-profile identity.
-
-The read-only inspection may report that webhook signing-secret equivalence is `not_verified`. It must not expose any secret value or mutate Stripe or Supabase.
-
-### 6. Run one bounded authenticated checklist acceptance
+### 6. Run one bounded owner-only TEST acceptance
 
 Use only order:
 
-`3ebe9357-8ec1-45aa-ba4c-68412f0ee656`
+`384be2fe-f7aa-4687-970c-5a6db34cfeba`
 
-Before changing it, re-verify that:
+Before any write, re-verify that:
 
 - `livemode=false`;
-- it belongs to the owner email;
-- it references Erf 1570;
-- its state is still `paid`;
-- no other customer or order will be affected.
+- the order belongs to the founder-admin account;
+- it still references the expected Erf 1570 property;
+- it remains `ready`;
+- its structured report is complete;
+- all nine checklist items are resolved;
+- it has no notification receipt;
+- no other order will change.
 
-Then perform this one flow:
+Then perform this flow once:
 
-1. Start the founder review.
-2. Save a valid structured report.
-3. Save the nine-item checklist with at least one item still `pending` or `blocked`.
-4. Reload the page and verify both the report and checklist persisted.
-5. Attempt to mark the report ready.
-6. Verify delivery is refused and the order remains in review.
-7. Change every item to `complete` or `not_applicable`.
-8. Reload again and verify the resolved checklist persisted without erasing the report.
-9. Mark the report ready.
-10. Verify the order becomes ready or complete.
-11. Verify the owner can open the finished report from the signed-in account.
-12. Stop after this one order. Do not create another test order and do not retry automatically.
+1. Sign in as the founder and open the delivered report from `/admin/fulfillment`.
+2. Open the customer-notification panel.
+3. Prepare the exact email.
+4. Verify the recipient is the founder's own canonical Easy Erf account email.
+5. Verify the subject and body identify the correct property and contain the secure Easy Erf `My Reports` link.
+6. Verify the interface states that Easy Erf has not sent the message automatically.
+7. Owner action: send that exact message once from the owner's mail client to the verified owner email.
+8. Return to Easy Erf, select the explicit sent confirmation, and record the notification receipt once.
+9. Verify read-only that the receipt contains `status=sent`, `channel=manual_email`, the canonical recipient, a sent timestamp, and founder sender ID.
+10. Verify exactly one `customer_notified` audit event exists for the receipt.
+11. Open the owner TEST email and follow its link while signed in as the owner.
+12. Verify the link opens the same delivered Erf 1570 report.
+13. Stop. Do not reopen the report, create another order, send another message, or contact another address.
 
-If marking ready triggers an email, the recipient must be the owner email only. Stop if any different address would receive a message.
+If the owner cannot perform the manual send, stop after message preparation. Do not record a receipt for an unsent message.
 
 ## Acceptance conditions
 
-This Class B release passes only if:
+This release is accepted only if all of the following are independently inspected:
 
-- the exact approved PR head is merged;
-- post-merge workflows succeed;
-- the one named migration is present in canonical production;
-- the four named functions are active from the accepted source;
-- the frontend publication matches the accepted source;
-- GitHub does not advance unexpectedly;
-- launch readiness is reachable only to the founder and performs no writes;
-- unresolved checklist state blocks delivery;
-- resolved checklist state permits delivery;
-- report and checklist content survive save and reload;
-- the owner can reopen the finished TEST report;
-- no live payment, Stripe mutation, secret change, external customer contact, or unapproved spend occurs.
+- exact approved PR #162 head merged;
+- required post-merge workflows successful;
+- only the named migration applied;
+- receipt RPC and invalidation trigger present with the expected privilege boundary;
+- only the named Edge Function deployed with `verify_jwt=true`;
+- deployed function source equivalent to accepted repository source;
+- published frontend equivalent to accepted repository source;
+- founder-only access enforced;
+- exact owner-only recipient and property details prepared;
+- one owner TEST email actually sent manually;
+- one valid durable receipt persisted only after the send;
+- one matching audit event persisted;
+- the owner opened the same delivered report through the message link;
+- no live payment, Stripe mutation, secret change, external customer contact, or unapproved spend occurred.
+
+CI, migration success, function deployment success, and publication success are each necessary but are not substitutes for the end-to-end acceptance evidence.
 
 ## Stop conditions
 
-Stop without further action if:
+Stop without expanding scope if:
 
-- PR #161 head differs from the approved SHA;
+- PR #162 head differs from the approved SHA;
 - any required workflow fails;
-- any additional migration or function would be needed;
-- the canonical Supabase or Lovable project identity differs;
-- checkout is armed or the named order reports `livemode=true`;
-- the named order is not owned by the owner email or no longer references Erf 1570;
-- any order other than the named TEST order would change;
-- a secret value would be exposed;
+- GitHub main changes unexpectedly;
+- any additional PR, migration, or Edge Function would be required;
+- canonical repository, Supabase project, or publisher identity differs;
+- the acceptance order reports `livemode=true`;
+- the acceptance order is no longer founder-owned, no longer `ready`, no longer references the expected property, or already has a receipt;
+- any other order would change;
+- the prepared recipient differs from the canonical founder account email;
+- the prepared property or report link is wrong;
+- an email provider, paid service, or secret would be required;
 - the publisher modifies GitHub source;
-- any action would charge money, mutate Stripe, contact an external customer, change DNS, use Vercel, or use Lovable for implementation;
-- any incremental paid service or discretionary spend would be required.
+- source equivalence cannot be verified;
+- a secret value or customer credential would be exposed;
+- any action would make a real charge, mutate Stripe, change DNS, contact an external customer, use Lovable for implementation, use Vercel, or incur discretionary spend;
+- the owner TEST email was not actually sent.
+
+Do not retry a consequential action automatically. Record the exact verified state and prepare a focused repair proposal.
 
 ## Rollback
 
-### Database rollback
-
-The enforcement function and trigger did not exist before this release. If rollback is required, apply one explicit rollback migration that:
-
-1. Drops trigger `enforce_easy_erf_review_delivery_readiness` from `public.report_orders`.
-2. Drops function `public.enforce_easy_erf_review_delivery_readiness()`.
-
-Do not roll back any unrelated migration.
-
-### Edge Function rollback
-
-Redeploy the three prior function sources from pre-release GitHub main `4c3ad41165db3ac19314b3aa42e89dbd1bae2534`:
-
-- `easy-erf-founder-fulfillment`;
-- `easy-erf-founder-report-upload`;
-- `easy-erf-founder-review-content`.
-
-The new launch-readiness function is authenticated, founder-only, and read-only. If exact function deletion is unavailable, restore the prior frontend so the route is not exposed and leave the function dormant until a separately authorized removal method is available.
+Rollback is authorized only as part of a separately approved execution of this exact packet and only when a release step fails after a production change.
 
 ### Frontend rollback
 
-Passively republish pre-release source `4c3ad41165db3ac19314b3aa42e89dbd1bae2534`. Do not edit source inside Lovable.
+Passively republish pre-release main `2c50961ff80c8420bee3af06b2b74ce471fd863a`. Do not edit source inside the publisher.
 
-### TEST order boundary
+### Edge Function rollback
 
-The named owner TEST order may end in `processing` or `ready` if acceptance stops. Do not alter any other order to compensate. Record its final state and prepare a focused cleanup proposal only if needed.
+If exact deletion is available and independently verified safe, remove only `easy-erf-founder-customer-notification`.
+
+If exact deletion is unavailable, restore the pre-release frontend so no UI calls the function and prepare a fail-closed disabled function version for separate explicit approval. Do not alter any existing founder function.
+
+### Database rollback
+
+Apply one explicit rollback migration that only:
+
+1. drops trigger `clear_easy_erf_customer_notification_on_reopen` from `public.report_orders`;
+2. drops function `public.clear_easy_erf_customer_notification_on_reopen()`;
+3. revokes and drops function `public.record_easy_erf_customer_notification(uuid, uuid, text)`.
+
+Preserve any receipt and audit evidence already written. Do not erase customer-notification history or roll back an unrelated migration.
+
+### Acceptance-order boundary
+
+The accepted write boundary is one notification receipt and one audit event on order `384be2fe-f7aa-4687-970c-5a6db34cfeba`. Do not alter report findings, checklist state, delivery state, payment state, or another order to compensate for a failed release.
 
 ## Explicitly prohibited
 
@@ -199,13 +262,16 @@ This packet does not authorize:
 - a real R999 charge;
 - Stripe business-profile, Payment Link, webhook, price, account, or billing mutation;
 - secret or credential changes;
+- automatic email sending or a paid email provider;
 - DNS changes;
 - advertising;
 - external customer contact;
-- any production order other than the named owner TEST order;
+- any production order other than the named founder-owned TEST order;
+- report or checklist edits during notification acceptance;
+- report reopening during notification acceptance;
 - new product scope;
-- any additional PR merge;
-- any additional migration or Edge Function deployment;
+- another PR merge;
+- another migration or Edge Function deployment;
 - Lovable implementation, debugging, agent chat, or plan mode;
 - Vercel;
 - discretionary spend.
@@ -215,15 +281,26 @@ This packet does not authorize:
 - Expected additional discretionary spend: **$0**.
 - Maximum additional discretionary spend: **$0**.
 - Live payment authorized: **no**.
+- Paid email provider authorized: **no**.
 - Recurring spend enabled: **none**.
-- Existing GitHub Actions, Supabase, Lovable hosting, and owner-test email metering: **UNKNOWN**.
+- Existing GitHub Actions, Supabase, passive hosting, and owner email metering: **UNKNOWN**.
 
-## What remains unverified
+## What remains unverified before approval
 
-- The final PR #161 exact head after this packet is committed.
-- Final exact-head and post-merge CI.
-- Production migration and function deployment behavior.
-- Exact-source publication behavior.
-- Authenticated browser save, reload, block, complete, and reopen behavior.
-- Stripe business-profile correctness and webhook signing-secret equivalence.
-- A real live R999 payment and customer fulfillment journey.
+- Final PR #162 exact head after this packet commit.
+- Final exact-head workflow conclusions.
+- Final diff and security review.
+
+## What remains unverified until an approved release is executed
+
+- Post-merge CI.
+- Production migration behavior.
+- Production function deployment and exact-source equivalence.
+- Exact-source frontend publication.
+- Signed-in founder notification controls.
+- Manual owner TEST email delivery.
+- Durable receipt and audit-event persistence.
+- Owner reopening the same report through the email link.
+- Production reopen-trigger behavior.
+- Live Stripe webhook signing-secret equivalence.
+- A genuine live R999 payment and external-customer fulfillment journey.
