@@ -38,8 +38,8 @@ describe("Easy Erf commercial entry visibility", () => {
     expect(source).toContain("Open / change review");
     const fulfillment = read("src/routes/admin_.fulfillment.tsx");
     expect(fulfillment).toContain("Done-for-You Operations");
-    expect(fulfillment).toContain("Property investigation work queue");
+    expect(fulfillment).toContain("Property investigation queue");
     expect(fulfillment).toContain("reopen_review");
-    expect(fulfillment).toContain("Reopen / replace report");
+    expect(fulfillment).toContain("Reopen this exact report");
   });
 });

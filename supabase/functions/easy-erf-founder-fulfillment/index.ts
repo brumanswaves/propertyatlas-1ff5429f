@@ -26,6 +26,7 @@ type AutomaticCustomerEmailResult = {
   error: string | null;
   receipt: unknown;
   emailAccepted: boolean;
+  alreadySent: boolean;
   requestId: string;
 };
 
@@ -95,6 +96,7 @@ async function triggerAutomaticCustomerEmail(input: {
       error: typeof payload.error === "string" ? payload.error : null,
       receipt: payload.receipt ?? null,
       emailAccepted: payload.emailAccepted === true,
+      alreadySent: payload.alreadySent === true,
       requestId: typeof payload.requestId === "string" ? payload.requestId : input.requestId,
     };
   } catch {
@@ -105,6 +107,7 @@ async function triggerAutomaticCustomerEmail(input: {
       error: "The report is ready, but Easy Erf could not reach the customer email service.",
       receipt: null,
       emailAccepted: false,
+      alreadySent: false,
       requestId: input.requestId,
     };
   }

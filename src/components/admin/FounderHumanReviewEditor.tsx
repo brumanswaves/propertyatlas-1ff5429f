@@ -341,8 +341,8 @@ export function FounderHumanReviewEditor({
         </div>
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div>
-            <div className="text-sm font-semibold text-[#0D1B2A]">How to complete this report</div>
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold text-[#0D1B2A]">How to complete this report</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
               {[
                 [
@@ -380,7 +380,7 @@ export function FounderHumanReviewEditor({
                 </div>
               ))}
             </div>
-          </div>
+          </details>
           <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white px-4 py-3 text-center">
             <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#64748B]">
               Report completeness

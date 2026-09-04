@@ -34,10 +34,11 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin_.users'
+import { Route as AdminLaunchReadinessRouteImport } from './routes/admin_.launch-readiness'
+import { Route as AdminFulfillmentRouteImport } from './routes/admin_.fulfillment'
 import { Route as AdminEntitlementsRouteImport } from './routes/admin_.entitlements'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
-import { Route as AdminFulfillmentRouteImport } from './routes/admin.fulfillment'
 import { Route as ApiSitePotentialRetryPackRouteImport } from './routes/api/site-potential.retry-pack'
 import { Route as ApiSitePotentialProcessRouteImport } from './routes/api/site-potential.process'
 import { Route as ApiSitePotentialPackStatusRouteImport } from './routes/api/site-potential.pack-status'
@@ -179,6 +180,16 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLaunchReadinessRoute = AdminLaunchReadinessRouteImport.update({
+  id: '/admin_/launch-readiness',
+  path: '/admin/launch-readiness',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFulfillmentRoute = AdminFulfillmentRouteImport.update({
+  id: '/admin_/fulfillment',
+  path: '/admin/fulfillment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminEntitlementsRoute = AdminEntitlementsRouteImport.update({
   id: '/admin_/entitlements',
   path: '/admin/entitlements',
@@ -192,11 +203,6 @@ const AdminReadinessRoute = AdminReadinessRouteImport.update({
 const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   id: '/public-data-debug',
   path: '/public-data-debug',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminFulfillmentRoute = AdminFulfillmentRouteImport.update({
-  id: '/fulfillment',
-  path: '/fulfillment',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiSitePotentialRetryPackRoute =
@@ -309,10 +315,11 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
-  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
+  '/admin/fulfillment': typeof AdminFulfillmentRoute
+  '/admin/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
@@ -355,10 +362,11 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
-  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
+  '/admin/fulfillment': typeof AdminFulfillmentRoute
+  '/admin/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
@@ -402,10 +410,11 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
-  '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin_/entitlements': typeof AdminEntitlementsRoute
+  '/admin_/fulfillment': typeof AdminFulfillmentRoute
+  '/admin_/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin_/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
@@ -450,10 +459,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
-    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
+    | '/admin/fulfillment'
+    | '/admin/launch-readiness'
     | '/admin/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
@@ -496,10 +506,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
-    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
+    | '/admin/fulfillment'
+    | '/admin/launch-readiness'
     | '/admin/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
@@ -542,10 +553,11 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
-    | '/admin/fulfillment'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin_/entitlements'
+    | '/admin_/fulfillment'
+    | '/admin_/launch-readiness'
     | '/admin_/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
@@ -590,6 +602,8 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
   AdminEntitlementsRoute: typeof AdminEntitlementsRoute
+  AdminFulfillmentRoute: typeof AdminFulfillmentRoute
+  AdminLaunchReadinessRoute: typeof AdminLaunchReadinessRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiAddressSuggestionsRoute: typeof ApiAddressSuggestionsRoute
   ApiAdminSupportRoute: typeof ApiAdminSupportRoute
@@ -785,6 +799,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/launch-readiness': {
+      id: '/admin_/launch-readiness'
+      path: '/admin/launch-readiness'
+      fullPath: '/admin/launch-readiness'
+      preLoaderRoute: typeof AdminLaunchReadinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/fulfillment': {
+      id: '/admin_/fulfillment'
+      path: '/admin/fulfillment'
+      fullPath: '/admin/fulfillment'
+      preLoaderRoute: typeof AdminFulfillmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/entitlements': {
       id: '/admin_/entitlements'
       path: '/admin/entitlements'
@@ -804,13 +832,6 @@ declare module '@tanstack/react-router' {
       path: '/public-data-debug'
       fullPath: '/admin/public-data-debug'
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/fulfillment': {
-      id: '/admin/fulfillment'
-      path: '/fulfillment'
-      fullPath: '/admin/fulfillment'
-      preLoaderRoute: typeof AdminFulfillmentRouteImport
       parentRoute: typeof AdminRoute
     }
     '/api/site-potential/retry-pack': {
@@ -922,13 +943,11 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
-  AdminFulfillmentRoute: typeof AdminFulfillmentRoute
   AdminPublicDataDebugRoute: typeof AdminPublicDataDebugRoute
   AdminReadinessRoute: typeof AdminReadinessRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminFulfillmentRoute: AdminFulfillmentRoute,
   AdminPublicDataDebugRoute: AdminPublicDataDebugRoute,
   AdminReadinessRoute: AdminReadinessRoute,
 }
@@ -961,6 +980,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
   AdminEntitlementsRoute: AdminEntitlementsRoute,
+  AdminFulfillmentRoute: AdminFulfillmentRoute,
+  AdminLaunchReadinessRoute: AdminLaunchReadinessRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiAddressSuggestionsRoute: ApiAddressSuggestionsRoute,
   ApiAdminSupportRoute: ApiAdminSupportRoute,
