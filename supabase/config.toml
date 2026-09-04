@@ -10,6 +10,7 @@ verify_jwt = false
 
 # Founder fulfillment requires an authenticated Easy Erf session first, then
 # performs an explicit admin-role check before any service-role transition.
+# Marking a report ready also calls the authenticated customer-email function.
 [functions.easy-erf-founder-fulfillment]
 verify_jwt = true
 
@@ -23,8 +24,8 @@ verify_jwt = true
 [functions.easy-erf-founder-review-content]
 verify_jwt = true
 
-# Founder customer notification prepares a manual email and records a receipt
-# only after authenticated admin authorization. It never sends automatically.
+# Customer report email requires an authenticated founder-admin request. It sends
+# only for a ready report bound to the canonical customer and records the result.
 [functions.easy-erf-founder-customer-notification]
 verify_jwt = true
 
