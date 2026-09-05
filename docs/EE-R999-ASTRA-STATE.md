@@ -1,6 +1,6 @@
 # Easy Erf Release State
 
-Last reconciled: 2026-09-05, local repair gate. Read this as a dated operational snapshot, not a release approval. Exact-head CI receipts and the final handoff belong on PR #166.
+Last reconciled: 2026-09-05, independently inspected remote browser gate. Read this as a dated operational snapshot, not a release approval. Exact-head CI receipts and the final handoff belong on PR #166.
 
 ## Authority and Frozen Outcome
 
@@ -16,11 +16,17 @@ Last reconciled: 2026-09-05, local repair gate. Read this as a dated operational
 - Branch: `chatgpt/ee-r999-single-order-fulfillment-safety`.
 - PR: https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/166 (open, draft, unmerged).
 - Repair starting candidate: `e329e7945d060e4d4694f1d17b54825e4b5d38a5`.
+- Verified repaired application SHA: `f8013ebcb9337e4bf460394f35413dfe0e2295e0`. The final documentation receipt does not change application/workflow code. A subsequent head must still be checked against its own CI/artifact SHA.
 - Current repair candidate: the commit containing this state update, on the same PR branch. Resolve its SHA with Git; browser receipts record the exact checked-out SHA rather than a mutable branch name.
 - Isolated checkout was safely fast-forwarded from `04d362c8b1c30e046870c93b4ab830adf0d1b00d` to the handoff SHA; all remote changes were preserved.
 - Protected original `property-evidence-pack-foundation` worktree was not changed during this policy pass.
 
 ## Verified Completed Work
+
+- Remote gate for `f8013ebcb9337e4bf460394f35413dfe0e2295e0`: all four workflows passed: [Guided 33962645327](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33962645327), [Founder 33962645311](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33962645311), [Stripe 33962645312](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33962645312), [Human Review 33962645367](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33962645367).
+- Exact-run artifacts downloaded and inspected: founder `9968438679`, Guided `9968441639`. ZIP SHA-256 hashes matched GitHub digests. Both receipts identify the verified SHA, `dirty=false`, passing assertions and no production access for these isolated browser tests.
+- Remote screenshots inspected: read-only queue, selected desktop order, pinned mobile identity/action, delivery outcome, and fresh-context Guided Add address. Traces parsed: founder 225 actions / 232 frame snapshots; Guided initial 695 actions / 108 frames; Guided reopened 683 actions / 91 frames. Zero recorded action errors; all traces contain non-empty network evidence.
+- Exact-head Guided full Vitest: 149 files / 1503 tests. Focused Guided: 9 files / 74 tests. TypeScript, production builds, changed-file lint and whitespace checks passed; lint retains one existing MapCanvas React-refresh warning. This verifies isolated source acceptance, not a live customer delivery.
 
 - Historical candidate `04d362c8b1c30e046870c93b4ab830adf0d1b00d`: focused tests, full Vitest (149 files / 1496 tests), TypeScript, targeted lint, build and diff checks passed; mocked built-app browser acceptance passed. Four exact-head workflows were green. These results do not certify the newer candidate.
 - Current candidate `e329e7945d060e4d4694f1d17b54825e4b5d38a5`: Guided workflow logs confirm focused 9 files / 74 tests and full Vitest 149 files / 1503 tests passed.
@@ -41,7 +47,7 @@ Last reconciled: 2026-09-05, local repair gate. Read this as a dated operational
 - Guided integration run [33953289743](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33953289743) failed public browser acceptance: `Could not find visible reopened Guided working-address heading.` Subsequent verification steps in that workflow were skipped. Cause remains unverified.
 - Founder verification run [33953289767](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33953289767) failed during a second application dependency mutation: npm `Cannot read properties of null (reading 'edgesOut')`. No browser ran. Isolated pinned installation and browser launch now pass locally without reifying the application tree.
 - Local built acceptance also exposed Vite preview looking for absent `dist/server/server.js`. The workflow now builds the Node preset and serves its real `.output/server/index.mjs` on loopback; both browser checks pass through that entry.
-- Exact-head remote acceptance remains a gate until all four workflows pass and receipt, screenshots and non-empty traces are downloaded and independently inspected. Do not transfer previous-head green status to the new candidate.
+- The remote source-acceptance gate is satisfied for the verified application SHA above. Recheck any subsequent documentation-only head's workflows and artifacts; do not silently transfer status between SHAs.
 - Both browser checks retain their customer assertions. Guided now records screenshots, traces, intercepted request diagnostics and a SHA-bound receipt, and has no live-service dependency.
 
 ## Reported or Unknown
@@ -52,10 +58,10 @@ Last reconciled: 2026-09-05, local repair gate. Read this as a dated operational
 
 ## Next Ranked Actions
 
-1. Commit the five-file repair including this state document, reverify remote branch position, and push the existing branch only.
-2. Inspect all four exact-head workflows; diagnose any failure before another candidate or rerun.
-3. Retrieve exact-run founder and Guided artifacts; verify receipt SHA, passing checks, screenshots and non-empty traces. Do not accept an upload step without actual downloadable files.
-4. Record exact-head remote results in the PR handoff. Any further source repair must update this file with the new evidence.
+1. Finish exact-head verification of the documentation receipt commit without changing the verified application.
+2. Recheck that PR #166 remains draft/unmerged, main is unchanged, and the isolated checkout matches its remote branch.
+3. Record the final head and downloadable artifact IDs in the PR handoff; retain the protected original worktree unchanged.
+4. No further application repair is indicated by this source-only gate. Live acceptance remains unverified and requires the bounded owner-approved release path.
 5. Obtain required owner release approval. No merge, deployment or production mutation follows automatically from green tests.
 
 ## Approval Gates and Production Restrictions
