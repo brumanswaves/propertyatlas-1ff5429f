@@ -11,7 +11,10 @@ import {
 
 const ORDER_ID = "384be2fe-f7aa-4687-970c-5a6db34cfeba";
 const current = {
-  id: ORDER_ID, review_focus: "property_check",
+  id: ORDER_ID,
+  status: "ready",
+  status_enum: "ready",
+  review_focus: "property_check",
   parcel_id: "csg:lpi:c03400140000157000000",
   payload: { livemode: false, propertyReference: "Erf 1570, 24 Padrone Crescent, St Francis Bay" },
   review_content: { bottomLine: "Reviewed fixture", known: ["Recorded"], potential: [], risks: [], unknowns: [], nextSteps: [] },
@@ -46,9 +49,44 @@ describe("founder fulfillment queue classification", () => {
     { ...current, review_focus: null },
     { ...current, review_content: null },
     { ...current, payload: { propertyReference: "Erf 1570" } },
-  ])("excludes incomplete/ambiguous records from current-order priority", (legacy) => {
+  ])("excludes incomplete or ambiguous delivered records from current-order priority", (legacy) => {
     expect(founderOrderReviewReasons(legacy).length).toBeGreaterThan(0);
     expect([legacy, current].filter((order) => !isLegacyFounderOrder(order))).toEqual([current]);
+  });
+
+  it.each([
+    { status: "paid", status_enum: "paid" },
+    { status: "processing", status_enum: "processing" },
+    { status: "processing", status_enum: "fulfilling" },
+    { status: "failed", status_enum: "failed" },
+  ])("keeps a structurally valid $status order current before final report content exists", (lifecycle) => {
+    const unfinished = {
+      ...current,
+      ...lifecycle,
+      review_content: null,
+    };
+
+    expect(founderOrderReviewReasons(unfinished)).not.toContain(
+      "Delivered structured report content missing",
+    );
+    expect(isLegacyFounderOrder(unfinished)).toBe(false);
+  });
+
+  it.each([
+    { status: "ready", status_enum: "ready" },
+    { status: "ready", status_enum: "complete" },
+    { status: "delivered", status_enum: null },
+  ])("requires structured report content after delivery: %j", (lifecycle) => {
+    const deliveredWithoutReport = {
+      ...current,
+      ...lifecycle,
+      review_content: null,
+    };
+
+    expect(founderOrderReviewReasons(deliveredWithoutReport)).toContain(
+      "Delivered structured report content missing",
+    );
+    expect(isLegacyFounderOrder(deliveredWithoutReport)).toBe(true);
   });
 
   it("labels only an explicit live payload as LIVE", () => {

@@ -6,6 +6,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 export type FounderQueueOrderIdentity = {
   id: string;
+  status?: string | null;
+  status_enum?: string | null;
   review_focus?: string | null;
   parcel_id?: string | null;
   review_content?: unknown;
@@ -35,6 +37,17 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function founderOrderLifecycle(order: FounderQueueOrderIdentity): string {
+  const value = (order.status_enum || order.status || "").trim().toLowerCase();
+  if (value === "fulfilling") return "processing";
+  if (value === "complete" || value === "completed" || value === "delivered") return "ready";
+  return value;
+}
+
+function requiresDeliveredReportContent(order: FounderQueueOrderIdentity): boolean {
+  return founderOrderLifecycle(order) === "ready";
+}
+
 export function founderOrderReviewReasons(order: FounderQueueOrderIdentity): string[] {
   const property = record(order.payload)?.propertyReference;
   const reasons: string[] = [];
@@ -43,7 +56,12 @@ export function founderOrderReviewReasons(order: FounderQueueOrderIdentity): str
     reasons.push("Property reference incomplete");
   }
   if (!order.review_focus?.trim()) reasons.push("Structured investigation scope missing");
-  if (!parseHumanReviewReportContent(order.review_content)) reasons.push("Structured report content missing");
+  if (
+    requiresDeliveredReportContent(order)
+    && !parseHumanReviewReportContent(order.review_content)
+  ) {
+    reasons.push("Delivered structured report content missing");
+  }
   if (reportOrderMode(order.payload) === "UNKNOWN") reasons.push("Payment mode unavailable");
   return reasons;
 }
