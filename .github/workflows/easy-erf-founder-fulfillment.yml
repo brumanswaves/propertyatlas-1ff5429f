@@ -9,6 +9,7 @@ on:
       - scripts/verify-easy-erf-founder-fulfillment.sql
       - scripts/verify-easy-erf-human-review-product.sql
       - scripts/verify-easy-erf-customer-notification.sql
+      - scripts/verify-founder-fulfillment-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/easy-erf-founder-fulfillment/**
@@ -24,6 +25,8 @@ on:
       - supabase/migrations/20260904114500_automatic_report_ready_email.sql
       - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
+      - src/lib/humanReview/founderQueueSafety.ts
+      - src/lib/humanReview/__tests__/founderQueueSafety.test.ts
       - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
@@ -38,7 +41,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -78,6 +81,7 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npx vitest run \
+            src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
@@ -105,9 +109,48 @@ jobs:
           npx eslint
           --no-warn-ignored
           --rule 'prettier/prettier: off'
+          scripts/verify-founder-fulfillment-browser.mjs
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
+          src/lib/humanReview/founderQueueSafety.ts
+          src/lib/humanReview/__tests__/founderQueueSafety.test.ts
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
+          src/routes/admin_.fulfillment.tsx
 
       - name: Check patch whitespace
         run: git diff --check origin/main...HEAD
+
+      - name: Operate the isolated founder workflow in the built app
+        env:
+          EASY_ERF_BROWSER_BASE_URL: http://127.0.0.1:4174
+          EASY_ERF_BROWSER_ARTIFACTS: artifacts/founder-fulfillment
+        run: |
+          mkdir -p "${EASY_ERF_BROWSER_ARTIFACTS}"
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+          npx vite preview --host 127.0.0.1 --port 4174 > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "${PREVIEW_PID}" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null; then
+              break
+            fi
+            if ! kill -0 "${PREVIEW_PID}" 2>/dev/null; then
+              cat "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
+          node scripts/verify-founder-fulfillment-browser.mjs
+
+      - name: Upload founder browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: founder-fulfillment-browser-${{ github.run_id }}
+          path: artifacts/founder-fulfillment
+          if-no-files-found: warn
+          retention-days: 14
