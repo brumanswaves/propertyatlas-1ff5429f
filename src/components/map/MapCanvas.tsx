@@ -1163,6 +1163,7 @@ export function MapCanvas({
     const CSG_MIN_ZOOM = 13.5;
     const KOUGA_MIN_ZOOM = 11.5;
     let cancelled = false;
+    let viewportRequest = 0;
 
     function setOfficialSource(
       id: "csg-parcels" | "kouga-zoning",
@@ -1208,9 +1209,14 @@ export function MapCanvas({
     async function loadLayer(
       layer: "csg-parcels" | "kouga-zoning",
       bbox: [number, number, number, number],
+      request: number,
     ) {
       const label = layer === "csg-parcels" ? "CSG" : "Kouga";
       const result = await loadOfficialPublicLayer(layer, bbox, 400);
+      // A late response for a previous viewport must not replace the current one.
+      if (cancelled || request !== viewportRequest) {
+        return { status: null, message: undefined as string | undefined };
+      }
       const storageKey = layer === "csg-parcels" ? "pa.arcgis.csg.meta" : "pa.arcgis.kouga.meta";
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(result));
@@ -1251,7 +1257,7 @@ export function MapCanvas({
       const anySuccessfulZero = result.attempts.some((a) => a.ok && (a.featureCount ?? 0) === 0);
       if (showTestGeometry) {
         const test = await testStaticGeoJson(layer, true);
-        if (!cancelled && test.features.length > 0) {
+        if (!cancelled && request === viewportRequest && test.features.length > 0) {
           const sourceUpdated = setOfficialSource(layer, test, true);
           try {
             window.localStorage.setItem(`${storageKey}.sourceUpdated`, String(sourceUpdated));
@@ -1270,6 +1276,9 @@ export function MapCanvas({
         }
       }
 
+      if (cancelled || request !== viewportRequest) {
+        return { status: null, message: undefined as string | undefined };
+      }
       clearOfficialSource(layer);
       if (anySuccessfulZero) {
         const msg =
@@ -1288,6 +1297,7 @@ export function MapCanvas({
     const load = async () => {
       const b = map.getBounds();
       if (!b) return;
+      const request = ++viewportRequest;
       const bbox: [number, number, number, number] = [
         b.getWest(),
         b.getSouth(),
@@ -1309,7 +1319,7 @@ export function MapCanvas({
           clearOfficialSource("csg-parcels");
         } else {
           requests.push(
-            loadLayer("csg-parcels", bbox)
+            loadLayer("csg-parcels", bbox, request)
               .then((r) => {
                 if (!r.status) return;
                 status.csg = r.status;
@@ -1318,7 +1328,7 @@ export function MapCanvas({
                 publishStatus(status);
               })
               .catch(() => {
-                if (cancelled) return;
+                if (cancelled || request !== viewportRequest) return;
                 const msg = "CSG unavailable";
                 clearOfficialSource("csg-parcels");
                 status.csg = { state: "failed", count: 0, message: msg };
@@ -1336,7 +1346,7 @@ export function MapCanvas({
           clearOfficialSource("kouga-zoning");
         } else {
           requests.push(
-            loadLayer("kouga-zoning", bbox)
+            loadLayer("kouga-zoning", bbox, request)
               .then((r) => {
                 if (!r.status) return;
                 status.kouga = r.status;
@@ -1345,7 +1355,7 @@ export function MapCanvas({
                 publishStatus(status);
               })
               .catch(() => {
-                if (cancelled) return;
+                if (cancelled || request !== viewportRequest) return;
                 const msg = "Kouga unavailable";
                 clearOfficialSource("kouga-zoning");
                 status.kouga = { state: "failed", count: 0, message: msg };
@@ -1362,7 +1372,7 @@ export function MapCanvas({
       }));
       publishStatus(status);
       await Promise.all(requests);
-      if (!cancelled) publishStatus(status);
+      if (!cancelled && request === viewportRequest) publishStatus(status);
     };
 
     void load();

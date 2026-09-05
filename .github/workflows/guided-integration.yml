@@ -25,7 +25,7 @@ jobs:
         run: |
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
           git fetch --no-tags --depth=1 origin "${REF}"
           git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
@@ -59,8 +59,10 @@ jobs:
 
       - name: Verify public browser acceptance
         run: |
-          npm install --no-save --no-audit --no-fund playwright@1.55.0
-          npx playwright install chromium
+          BROWSER_TOOLS="${RUNNER_TEMP}/easy-erf-browser-tools"
+          npm install --prefix "${BROWSER_TOOLS}" --package-lock=false --no-audit --no-fund playwright@1.55.0
+          ln -s "${BROWSER_TOOLS}/node_modules/playwright" node_modules/playwright
+          node "${BROWSER_TOOLS}/node_modules/playwright/cli.js" install chromium
           npm run dev -- --host 127.0.0.1 --port 4173 > /tmp/easyerf-vite.log 2>&1 &
           SERVER_PID=$!
           trap 'kill ${SERVER_PID} 2>/dev/null || true' EXIT
@@ -78,7 +80,16 @@ jobs:
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-commercial-browser.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-first-read.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-guided-start.mjs
-          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-guided-cloud-persistence.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 EASY_ERF_BROWSER_ARTIFACTS=artifacts/guided-cloud node scripts/verify-guided-cloud-persistence.mjs
+
+      - name: Upload Guided cloud browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: guided-cloud-browser-${{ github.run_id }}
+          path: artifacts/guided-cloud
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build production bundle and generate routes
         run: npm run build

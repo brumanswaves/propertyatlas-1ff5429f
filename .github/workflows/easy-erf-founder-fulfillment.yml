@@ -61,7 +61,7 @@ jobs:
         run: |
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
           git fetch --no-tags --depth=100 origin "${REF}"
           git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
@@ -79,7 +79,7 @@ jobs:
 
       - name: Install dependencies and run focused guardrails
         run: |
-          npm install --no-audit --no-fund
+          npm install --package-lock=false --no-audit --no-fund
           npx vitest run \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
@@ -99,6 +99,8 @@ jobs:
           --file scripts/verify-easy-erf-customer-notification.sql
 
       - name: Build production bundle and generate routes
+        env:
+          NITRO_PRESET: node-server
         run: npm run build
 
       - name: Check TypeScript
@@ -126,9 +128,12 @@ jobs:
           EASY_ERF_BROWSER_ARTIFACTS: artifacts/founder-fulfillment
         run: |
           mkdir -p "${EASY_ERF_BROWSER_ARTIFACTS}"
-          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.55.0
-          npx playwright install chromium
-          npx vite preview --host 127.0.0.1 --port 4174 > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
+          # Keep browser tooling outside the Deno/npm application dependency tree.
+          BROWSER_TOOLS="${RUNNER_TEMP}/easy-erf-browser-tools"
+          npm install --prefix "${BROWSER_TOOLS}" --package-lock=false --no-audit --no-fund playwright@1.55.0
+          ln -s "${BROWSER_TOOLS}/node_modules/playwright" node_modules/playwright
+          node "${BROWSER_TOOLS}/node_modules/playwright/cli.js" install chromium
+          HOST=127.0.0.1 PORT=4174 node .output/server/index.mjs > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
           PREVIEW_PID=$!
           trap 'kill "${PREVIEW_PID}" 2>/dev/null || true' EXIT
 
