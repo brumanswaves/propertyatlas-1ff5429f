@@ -28,7 +28,7 @@ import {
 import { BRAND } from "@/lib/brand";
 
 function source(path: string) {
-  return readFileSync(resolve(process.cwd(), path), "utf8");
+  return readFileSync(resolve(process.cwd(), path), "utf8").replace(/\r\n/g, "\n");
 }
 
 const pricing = source("src/routes/pricing.tsx");
@@ -230,7 +230,7 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     expect(migration).toContain("A structured Human Review web report is required before marking ready");
     expect(migration).toContain("pdf_storage_path = coalesce(v_expected_pdf_path, v_order.pdf_storage_path)");
     expect(founderFulfillment).not.toContain("pdfStoragePath is required for mark_ready");
-    expect(founderQueue).toContain("Mark web report ready");
+    expect(founderQueue).toContain("Mark this exact report ready");
   });
 
   it("persists operational checklist state without adding a second evidence model or founder notes", () => {
@@ -279,7 +279,7 @@ describe("Human-Reviewed report delivery and founder authority", () => {
     expect(founderContent.indexOf('userClient.rpc("has_role"')).toBeLessThan(founderContent.indexOf("createClient(supabaseUrl, serviceRoleKey"));
     expect(founderQueue).toContain("<FounderHumanReviewEditor");
     expect(founderQueue).toContain("Customer emphasis");
-    expect(founderQueue).toContain("Standard done-for-you investigation checklist");
+    expect(founderEditor).toContain("Standard done-for-you investigation checklist");
   });
 
   it("locks the customer product domain instead of presenting Lovable as Easy Erf", () => {

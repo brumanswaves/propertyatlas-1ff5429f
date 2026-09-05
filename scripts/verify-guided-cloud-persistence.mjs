@@ -1,4 +1,8 @@
 import { chromium } from "playwright";
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 const baseUrl = process.env.EASY_ERF_BROWSER_BASE_URL || "http://127.0.0.1:4173";
 const USER_ID = "00000000-0000-4000-8000-000000000157";
@@ -6,8 +10,60 @@ const USER_EMAIL = "guided-cloud-acceptance@easyerf.invalid";
 const LPI = "C03400140000157000000";
 const PARCEL_KEY = "E108C034001400001570000000";
 const PARCEL_ID = "csg:lpi:c03400140000157000000";
-const AUTH_STORAGE_KEYS = ["sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
+const AUTH_STORAGE_KEYS = ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
 const ACCEPTANCE_AT = "2026-08-29T08:00:00.000Z";
+assert.equal(new URL(baseUrl).hostname, "127.0.0.1");
+const artifacts = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/guided-cloud");
+await mkdir(artifacts, { recursive: true });
+const sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const dirty = Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }).trim());
+const registry = JSON.parse(await readFile("public/data/kouga-st-francis-pilot-parcels.json", "utf8"));
+const parcelFixture = registry.records.find((record) => record.id === PARCEL_ID);
+assert.ok(parcelFixture);
+// Synthetic test geometry only. Identity comes from the committed public registry;
+// this persistence test is not proof of live cadastral geometry or provider uptime.
+const [west, south, east, north] = parcelFixture.bounds;
+const targetFeature = {
+  type: "Feature",
+  properties: parcelFixture.properties,
+  geometry: { type: "Polygon", coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]] },
+};
+const mapChecks = [];
+const contexts = [];
+let acceptancePassed = false;
+
+async function installIsolatedMap(context, name) {
+  const state = { name, requests: 0, staleSettled: false };
+  mapChecks.push(state);
+  let releaseInitial;
+  const targetReturned = new Promise((resolve) => { releaseInitial = resolve; });
+  await context.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
+      return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "fixture-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
+    }
+    if (url.origin === new URL(baseUrl).origin) return route.continue();
+    // Supabase mock routes registered below take precedence. All other traffic
+    // (map tiles, fonts, telemetry, direct ArcGIS fallback) stays off production.
+    return route.abort();
+  });
+  return async (route) => {
+    const { layer } = route.request().postDataJSON();
+    if (layer !== "csg-parcels") return route.fulfill({ json: { type: "FeatureCollection", features: [] } });
+    state.requests += 1;
+    if (state.requests === 1) {
+      // Deliberately return the pre-pan viewport AFTER the saved target viewport.
+      await targetReturned;
+      await route.fulfill({ json: { type: "FeatureCollection", features: [{
+        ...targetFeature, properties: { ...targetFeature.properties, ID: "OTHER-PARCEL", PRCL_KEY: "OTHER-PARCEL" },
+      }] } });
+      state.staleSettled = true;
+      return;
+    }
+    await route.fulfill({ json: { type: "FeatureCollection", features: [targetFeature] } });
+    releaseInitial();
+  };
+}
 
 function encodeJwtPart(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -90,7 +146,10 @@ function filterValue(url, key) {
   return value?.startsWith("eq.") ? value.slice(3) : value;
 }
 
-async function installSyntheticSignedInSupabase(context) {
+async function installSyntheticSignedInSupabase(context, name) {
+  contexts.push({ context, name });
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+  const serveMap = await installIsolatedMap(context, name);
   await context.addInitScript(
     ({ storageKeys, session }) => {
       for (const key of storageKeys) {
@@ -235,10 +294,7 @@ async function installSyntheticSignedInSupabase(context) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.pathname.endsWith("/functions/v1/arcgis-public-proxy")) {
-      const headers = { ...request.headers() };
-      const apiKey = headers.apikey;
-      if (apiKey) headers.authorization = `Bearer ${apiKey}`;
-      await route.continue({ headers });
+      await serveMap(route);
       return;
     }
 
@@ -282,11 +338,11 @@ function attachPageDiagnostics(page) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 
 try {
   const firstContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  await installSyntheticSignedInSupabase(firstContext);
+  await installSyntheticSignedInSupabase(firstContext, "initial");
   const firstPage = await firstContext.newPage();
   attachPageDiagnostics(firstPage);
 
@@ -377,10 +433,11 @@ try {
     );
   }
 
-  await firstContext.close();
+  await firstPage.screenshot({ path: resolve(artifacts, "initial-add-address.png"), fullPage: true });
+  // Keep both contexts until their traces are saved in finally.
 
   const reopenContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  await installSyntheticSignedInSupabase(reopenContext);
+  await installSyntheticSignedInSupabase(reopenContext, "reopened");
   const reopenPage = await reopenContext.newPage();
   attachPageDiagnostics(reopenPage);
 
@@ -446,12 +503,28 @@ try {
   if (pageErrors.length > 0) {
     throw new Error(`Browser errors occurred: ${pageErrors.join(" | ")}`);
   }
+  assert.ok(mapChecks.every((state) => state.requests >= 2 && state.staleSettled),
+    "Both browser contexts must exercise late pre-pan parcel responses");
+  await reopenPage.screenshot({ path: resolve(artifacts, "reopened-add-address.png"), fullPage: true });
+  acceptancePassed = true;
 
   console.log(
     "Guided cloud persistence verified: signed-in saved Erf 1570 -> confirm -> durable projection RPC -> fresh browser hydration -> dashboard and Guided reopen at Add address, with no production persistence mutation.",
   );
 
-  await reopenContext.close();
 } finally {
+  for (const { context, name } of contexts) {
+    if (!acceptancePassed) {
+      for (const page of context.pages()) {
+        await page.screenshot({ path: resolve(artifacts, `${name}-failure.png`), fullPage: true }).catch(() => {});
+      }
+    }
+    await context.tracing.stop({ path: resolve(artifacts, `${name}-trace.zip`) });
+  }
+  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({
+    sha, dirty, acceptancePassed, mapChecks, routeErrors, pageErrors, unexpectedMutations,
+    productionAccess: false, geometry: "synthetic test-only bounds; not cadastral proof",
+    checks: acceptancePassed ? ["signed-in confirm and atomic persistence", "fresh-context hydration", "dashboard reopen at Add address", "late pre-pan response isolation"] : [],
+  }, null, 2));
   await browser.close();
 }

@@ -9,6 +9,7 @@ on:
       - scripts/verify-easy-erf-founder-fulfillment.sql
       - scripts/verify-easy-erf-human-review-product.sql
       - scripts/verify-easy-erf-customer-notification.sql
+      - scripts/verify-founder-fulfillment-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/easy-erf-founder-fulfillment/**
@@ -24,6 +25,8 @@ on:
       - supabase/migrations/20260904114500_automatic_report_ready_email.sql
       - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
+      - src/lib/humanReview/founderQueueSafety.ts
+      - src/lib/humanReview/__tests__/founderQueueSafety.test.ts
       - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
@@ -38,7 +41,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -58,7 +61,7 @@ jobs:
         run: |
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
           git fetch --no-tags --depth=100 origin "${REF}"
           git checkout --detach FETCH_HEAD
           git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
@@ -77,7 +80,11 @@ jobs:
       - name: Install dependencies and run focused guardrails
         run: |
           npm install --no-audit --no-fund
+          # npm reconciles Deno's auto-managed tree using its lockfile. Keep any
+          # generated lockfile update out of the source acceptance receipt.
+          git restore -- package-lock.json
           npx vitest run \
+            src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
@@ -95,6 +102,8 @@ jobs:
           --file scripts/verify-easy-erf-customer-notification.sql
 
       - name: Build production bundle and generate routes
+        env:
+          NITRO_PRESET: node-server
         run: npm run build
 
       - name: Check TypeScript
@@ -105,9 +114,52 @@ jobs:
           npx eslint
           --no-warn-ignored
           --rule 'prettier/prettier: off'
+          scripts/verify-founder-fulfillment-browser.mjs
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
+          src/lib/humanReview/founderQueueSafety.ts
+          src/lib/humanReview/__tests__/founderQueueSafety.test.ts
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
+          src/routes/admin_.fulfillment.tsx
 
       - name: Check patch whitespace
         run: git diff --check origin/main...HEAD
+
+      - name: Operate the isolated founder workflow in the built app
+        env:
+          EASY_ERF_BROWSER_BASE_URL: http://127.0.0.1:4174
+          EASY_ERF_BROWSER_ARTIFACTS: artifacts/founder-fulfillment
+        run: |
+          mkdir -p "${EASY_ERF_BROWSER_ARTIFACTS}"
+          # Keep browser tooling outside the Deno/npm application dependency tree.
+          BROWSER_TOOLS="${RUNNER_TEMP}/easy-erf-browser-tools"
+          npm install --prefix "${BROWSER_TOOLS}" --package-lock=false --no-audit --no-fund playwright@1.55.0
+          ln -s "${BROWSER_TOOLS}/node_modules/playwright" node_modules/playwright
+          node "${BROWSER_TOOLS}/node_modules/playwright/cli.js" install chromium
+          HOST=127.0.0.1 PORT=4174 node .output/server/index.mjs > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "${PREVIEW_PID}" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null; then
+              break
+            fi
+            if ! kill -0 "${PREVIEW_PID}" 2>/dev/null; then
+              cat "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
+          git diff --exit-code
+          node scripts/verify-founder-fulfillment-browser.mjs
+
+      - name: Upload founder browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: founder-fulfillment-browser-${{ github.run_id }}
+          path: artifacts/founder-fulfillment
+          if-no-files-found: warn
+          retention-days: 14

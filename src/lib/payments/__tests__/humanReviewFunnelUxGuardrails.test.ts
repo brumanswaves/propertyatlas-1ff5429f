@@ -70,14 +70,14 @@ describe("Done-for-You customer funnel", () => {
 
 describe("Done-for-You founder fulfillment", () => {
   it("prioritizes open work and tells the founder to complete the standard investigation first", () => {
-    expect(fulfillment).toContain("Property investigation work queue");
-    expect(fulfillment).toContain("Needs action");
-    expect(fulfillment).toContain("Next founder action");
+    expect(fulfillment).toContain("Property investigation queue");
+    expect(fulfillment).toContain("Waiting to start");
+    expect(fulfillment).toContain("Next current order");
     expect(fulfillment).toContain("orderPriority");
-    expect(fulfillment).toContain("Standard done-for-you investigation checklist");
+    expect(editor).toContain("Standard done-for-you investigation checklist");
     expect(fulfillment).toContain("Open full property investigation");
     expect(fulfillment).toContain('defaultOpen={status === "processing"}');
-    expect(fulfillment).toContain("Mark web report ready");
+    expect(fulfillment).toContain("Mark this exact report ready");
     expect(fulfillment).toContain("do not attach or redistribute the provider PDF");
   });
 

@@ -20,10 +20,10 @@ describe("Easy Erf founder fulfillment UI", () => {
   });
 
   it("makes the founder complete the standard investigation before final report delivery", () => {
-    expect(founderRoute).toContain("Standard done-for-you investigation checklist");
+    expect(source("src/components/admin/FounderHumanReviewEditor.tsx")).toContain("DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS");
     expect(founderRoute).toContain("Open full property investigation");
-    expect(founderRoute).toContain("Start Done-for-You Investigation");
-    expect(founderRoute).toContain("Mark web report ready");
+    expect(founderRoute).toContain("Start this exact investigation");
+    expect(founderRoute).toContain("Mark this exact report ready");
     expect(founderRoute).toContain("do not attach or redistribute the provider PDF");
   });
 
@@ -68,7 +68,10 @@ describe("Easy Erf founder fulfillment UI", () => {
 
   it("keeps delivered content read-only until the order is explicitly reopened", () => {
     expect(founderRoute).toContain('disabled={busy || status === "ready"}');
-    expect(founderRoute).toContain("Reopen / replace report");
+    expect(founderRoute).toContain("Reopen this exact report");
+    expect(founderRoute).toContain("<AlertDialogContent");
+    expect(founderRoute).toContain("The report will return to investigation status.");
+    expect(founderRoute).not.toContain("window.confirm");
   });
 
   it("uploads only a selected optional Easy Erf PDF through a short-lived signed upload", () => {
@@ -78,7 +81,17 @@ describe("Easy Erf founder fulfillment UI", () => {
     expect(founderRoute).toContain('action: "mark_ready"');
     expect(founderRoute).toContain("pdfStoragePath: prepared.path");
     expect(founderRoute).not.toContain('placeholder="Report PDF storage path"');
-    expect(founderRoute).toContain('placeholder="Failure reason"');
+    expect(founderRoute).toContain('placeholder="Failure reason for this exact order"');
+  });
+
+  it("keys every workbench form by the complete order, not just its report editor", () => {
+    expect(founderRoute).toMatch(/<FocusedOrderWorkbench\s+key=\{focusedOrderId\}/);
+    expect(founderRoute).toContain('aria-label="Selected order identity"');
+    expect(founderRoute).toContain('data-order-id={order.id}');
+    expect(founderRoute).toContain("No other order has been opened or made actionable.");
+    const queue = founderRoute.slice(founderRoute.indexOf("function QueueOverview"), founderRoute.indexOf("function FocusedOrderWorkbench"));
+    expect(queue).not.toMatch(/onTransition|onUploadReport|FounderHumanReviewEditor|FounderCustomerNotification|<input|<textarea|<select/);
+    expect(queue).toContain("Open exact order");
   });
 });
 

@@ -1,24 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ChevronRight,
   CircleDashed,
   ExternalLink,
   FileSearch2,
   ListChecks,
+  LockKeyhole,
   PlayCircle,
   ReceiptText,
   RotateCcw,
+  TestTube2,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { FounderHumanReviewEditor } from "@/components/admin/FounderHumanReviewEditor";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  buildFocusedOrderHash,
+  founderDeliveryResult,
+  founderOrderReviewReasons,
+  isLegacyFounderOrder,
+  parseFocusedOrderId,
+  reportOrderMode,
+} from "@/lib/humanReview/founderQueueSafety";
 import {
   isHumanReviewInvestigationChecklistResolved,
   isHumanReviewReportContentComplete,
@@ -26,7 +38,6 @@ import {
 } from "@/lib/humanReview/reportContent";
 import {
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
-  DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS,
   humanReviewFocusLabel,
   humanReviewIntendedUseLabel,
 } from "@/lib/humanReview/scope";
@@ -66,6 +77,11 @@ type ReportOrder = {
 
 type FulfillmentAction = "start_review" | "reopen_review" | "mark_ready" | "mark_failed";
 
+type TransitionValues = {
+  pdfStoragePath?: string;
+  failureReason?: string;
+};
+
 function FounderFulfillmentPage() {
   return (
     <AdminGuard>
@@ -78,8 +94,13 @@ function FounderFulfillmentQueue() {
   const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [focusedOrderId, setFocusedOrderId] = useState<string | null>(null);
+  const mutationInFlight = useRef(false);
+  const refreshSequence = useRef(0);
+  const [deliveryNotice, setDeliveryNotice] = useState<{ orderId: string; message: string } | null>(null);
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     const { data, error } = await supabase
       .from("report_orders")
       .select(
@@ -89,6 +110,7 @@ function FounderFulfillmentQueue() {
       .order("created_at", { ascending: false })
       .limit(100);
 
+    if (sequence !== refreshSequence.current) return;
     if (error) {
       toast.error("Could not load the done-for-you investigation queue.");
       setLoading(false);
@@ -104,19 +126,43 @@ function FounderFulfillmentQueue() {
   }, [refresh]);
 
   useEffect(() => {
-    if (loading || typeof window === "undefined" || !window.location.hash.startsWith("#order-")) return;
-    const id = window.location.hash.slice(1);
-    window.requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }, [loading, orders]);
+    if (typeof window === "undefined") return;
+
+    const syncFocus = () => {
+      setDeliveryNotice(null);
+      setFocusedOrderId(parseFocusedOrderId(window.location.hash));
+    };
+    syncFocus();
+    window.addEventListener("hashchange", syncFocus);
+    return () => window.removeEventListener("hashchange", syncFocus);
+  }, []);
+
+  function focusOrder(orderId: string) {
+    if (typeof window === "undefined") return;
+    const hash = buildFocusedOrderHash(orderId);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+    setFocusedOrderId(orderId.toLowerCase());
+    setDeliveryNotice(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function exitFocus() {
+    if (typeof window === "undefined") return;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    setFocusedOrderId(null);
+    setDeliveryNotice(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function transition(
     order: ReportOrder,
     action: FulfillmentAction,
-    values: { pdfStoragePath?: string; failureReason?: string } = {},
+    values: TransitionValues = {},
   ) {
+    if (mutationInFlight.current || parseFocusedOrderId(window.location.hash) !== order.id.toLowerCase()) return;
+    mutationInFlight.current = true;
     setBusyOrderId(order.id);
+    try {
     const { data, error } = await supabase.functions.invoke("easy-erf-founder-fulfillment", {
       body: {
         orderId: order.id,
@@ -125,26 +171,34 @@ function FounderFulfillmentQueue() {
         ...(values.failureReason ? { failureReason: values.failureReason } : {}),
       },
     });
-    setBusyOrderId(null);
-
     if (error || !data?.ok) {
       toast.error(data?.error ?? error?.message ?? "Fulfillment action failed.");
       return;
     }
 
-    toast.success(
-      action === "start_review"
-        ? "Done-for-you investigation started"
-        : action === "reopen_review"
-          ? "Investigation reopened"
-          : action === "mark_ready"
-            ? "Report marked ready"
+    if (action === "mark_ready") {
+      setDeliveryNotice({ orderId: order.id, message: showDeliveryResult(data.notification) });
+    } else {
+      toast.success(
+        action === "start_review"
+          ? "Done-for-you investigation started"
+          : action === "reopen_review"
+            ? "Investigation reopened"
             : "Order marked failed",
-    );
+      );
+    }
+
     await refresh();
+    } catch {
+      toast.error("The fulfillment result could not be confirmed. Refresh this order before retrying.");
+    } finally {
+      mutationInFlight.current = false;
+      setBusyOrderId(null);
+    }
   }
 
   async function uploadReport(order: ReportOrder, file: File) {
+    if (mutationInFlight.current || parseFocusedOrderId(window.location.hash) !== order.id.toLowerCase()) return;
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       toast.error("Select a PDF report file.");
       return;
@@ -154,6 +208,7 @@ function FounderFulfillmentQueue() {
       return;
     }
 
+    mutationInFlight.current = true;
     setBusyOrderId(order.id);
     try {
       const { data: prepared, error: prepareError } = await supabase.functions.invoke(
@@ -191,9 +246,12 @@ function FounderFulfillmentQueue() {
         return;
       }
 
-      toast.success("PDF export uploaded securely and report marked ready");
+      setDeliveryNotice({ orderId: order.id, message: showDeliveryResult(completed.notification, true) });
       await refresh();
+    } catch {
+      toast.error("The upload or delivery result could not be confirmed. Refresh this order before retrying.");
     } finally {
+      mutationInFlight.current = false;
       setBusyOrderId(null);
     }
   }
@@ -202,117 +260,268 @@ function FounderFulfillmentQueue() {
     () => [...orders].sort((a, b) => orderPriority(a) - orderPriority(b) || Date.parse(a.created_at) - Date.parse(b.created_at)),
     [orders],
   );
-  const needsAction = useMemo(
-    () => prioritizedOrders.filter((order) => orderStatus(order) !== "ready"),
+  const currentOrders = useMemo(
+    () => prioritizedOrders.filter((order) => !isLegacyFounderOrder(order)),
     [prioritizedOrders],
   );
-  const completed = useMemo(
-    () => prioritizedOrders.filter((order) => orderStatus(order) === "ready"),
+  const legacyOrders = useMemo(
+    () => prioritizedOrders.filter((order) => isLegacyFounderOrder(order)),
     [prioritizedOrders],
   );
-  const nextOrder = needsAction[0] ?? null;
+  const focusedOrder = useMemo(
+    () => orders.find((order) => order.id.toLowerCase() === focusedOrderId) ?? null,
+    [focusedOrderId, orders],
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-28 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-              <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Done-for-You Operations
-            </span>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-              Property investigation work queue
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
-              This is not a quick final-check queue. For each paid property, complete or review the standard Easy Erf investigation, then human-review the findings and deliver the structured report.
-            </p>
-          </div>
-          <Link
-            to="/admin"
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Metric label="Waiting to start" value={orders.filter((order) => orderStatus(order) === "paid").length} />
-          <Metric label="Investigation in progress" value={orders.filter((order) => orderStatus(order) === "processing").length} />
-          <Metric label="Reports delivered" value={orders.filter((order) => orderStatus(order) === "ready").length} />
-        </div>
-
-        {!loading ? <NextWorkPanel order={nextOrder} /> : null}
-
-        <section className="mt-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">Needs action</div>
-              <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">Do these property investigations first</h2>
-              <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                Start the investigation, open the canonical property file, work through the standard checklist, write all report sections, save, then mark the web report ready.
-              </p>
-            </div>
-            <div className="rounded-full bg-[#0D1B2A] px-3 py-1 text-xs font-semibold text-white">{needsAction.length} open</div>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            {loading ? (
-              <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid investigations…</div>
-            ) : needsAction.length === 0 ? (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-6 text-center">
-                <div className="text-sm font-semibold text-[#0D1B2A]">No done-for-you investigations need action right now</div>
-                <p className="mt-1 text-xs text-[#64748B]">New verified Stripe payments will appear here automatically.</p>
-              </div>
-            ) : (
-              needsAction.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  busy={busyOrderId === order.id}
-                  onTransition={transition}
-                  onUploadReport={uploadReport}
-                  onRefresh={refresh}
-                />
-              ))
-            )}
-          </div>
-        </section>
-
-        {completed.length > 0 ? (
-          <details className="mt-10 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
-              Delivered Done-for-You Investigations · {completed.length}
-            </summary>
-            <p className="mt-1 text-xs text-[#64748B]">
-              Completed reports are kept here for correction/replacement work without cluttering the active queue.
-            </p>
-            <div className="mt-4 space-y-4">
-              {completed.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  busy={busyOrderId === order.id}
-                  onTransition={transition}
-                  onUploadReport={uploadReport}
-                  onRefresh={refresh}
-                />
-              ))}
-            </div>
-          </details>
-        ) : null}
+        {focusedOrderId ? (
+          <FocusedOrderWorkbench
+            key={focusedOrderId}
+            order={focusedOrder}
+            deliveryNotice={deliveryNotice?.orderId === focusedOrderId ? deliveryNotice.message : null}
+            loading={loading}
+            busy={Boolean(focusedOrder && busyOrderId === focusedOrder.id)}
+            onExit={exitFocus}
+            onTransition={transition}
+            onUploadReport={uploadReport}
+            onRefresh={refresh}
+          />
+        ) : (
+          <QueueOverview
+            loading={loading}
+            currentOrders={currentOrders}
+            legacyOrders={legacyOrders}
+            onFocus={focusOrder}
+          />
+        )}
       </main>
       <Footer />
     </div>
   );
 }
 
-function NextWorkPanel({ order }: { order: ReportOrder | null }) {
+function QueueOverview({
+  loading,
+  currentOrders,
+  legacyOrders,
+  onFocus,
+}: {
+  loading: boolean;
+  currentOrders: ReportOrder[];
+  legacyOrders: ReportOrder[];
+  onFocus: (orderId: string) => void;
+}) {
+  const openCurrent = currentOrders.filter((order) => orderStatus(order) !== "ready");
+  const deliveredCurrent = currentOrders.filter((order) => orderStatus(order) === "ready");
+  const nextOrder = openCurrent[0] ?? null;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+            <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Done-for-You Operations
+          </span>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
+            Property investigation queue
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
+            The queue is read-only. Open one exact order before starting, reopening, editing, delivering or emailing a report.
+          </p>
+        </div>
+        <Link
+          to="/admin"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
+        </Link>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-4">
+        <Metric label="Waiting to start" value={currentOrders.filter((order) => orderStatus(order) === "paid").length} />
+        <Metric label="In progress" value={currentOrders.filter((order) => orderStatus(order) === "processing").length} />
+        <Metric label="Delivered" value={deliveredCurrent.length} />
+        <Metric label="Legacy format" value={legacyOrders.length} />
+      </div>
+
+      {!loading ? <NextWorkPanel order={nextOrder} onFocus={onFocus} /> : null}
+
+      <QueueSection
+        title="Current paid investigations"
+        description="These orders use the current Done-for-You brief and are eligible for normal prioritization."
+        orders={currentOrders}
+        loading={loading}
+        empty="No current-format investigations are in the queue."
+        onFocus={onFocus}
+      />
+
+      {legacyOrders.length > 0 ? (
+        <details className="mt-8 rounded-[2rem] border border-amber-300/50 bg-amber-50/60 p-5 sm:p-6">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[#0D1B2A]">
+            Legacy-format orders, excluded from the automatic next-action queue · {legacyOrders.length}
+          </summary>
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-[#92400E]">
+            These older records may have incomplete property labels or no current investigation brief. Open one only when intentionally correcting or closing that exact order.
+          </p>
+          <div className="mt-4 space-y-3">
+            {legacyOrders.map((order) => (
+              <CompactOrderCard key={order.id} order={order} legacy onFocus={onFocus} />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+function QueueSection({
+  title,
+  description,
+  orders,
+  loading,
+  empty,
+  onFocus,
+}: {
+  title: string;
+  description: string;
+  orders: ReportOrder[];
+  loading: boolean;
+  empty: string;
+  onFocus: (orderId: string) => void;
+}) {
+  return (
+    <section className="mt-8">
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">One order at a time</div>
+        <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-[#64748B]">{description}</p>
+      </div>
+      <div className="mt-4 space-y-3">
+        {loading ? (
+          <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading paid investigations…</div>
+        ) : orders.length === 0 ? (
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 p-6 text-center text-sm font-semibold text-[#0D1B2A]">
+            {empty}
+          </div>
+        ) : (
+          orders.map((order) => <CompactOrderCard key={order.id} order={order} onFocus={onFocus} />)
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CompactOrderCard({
+  order,
+  legacy = false,
+  onFocus,
+}: {
+  order: ReportOrder;
+  legacy?: boolean;
+  onFocus: (orderId: string) => void;
+}) {
+  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+  const customerEmail = payloadText(order.payload, "customerEmail") ?? "Customer email unavailable";
+  const mode = reportOrderMode(order.payload);
+
+  return (
+    <article className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 shadow-soft">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={orderStatus(order)} />
+            <ModeBadge mode={mode} />
+            {legacy ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-900">Legacy format</span> : null}
+          </div>
+          <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+          <div className="mt-1 text-xs text-[#64748B]">{customerEmail}</div>
+          <div className="mt-2 break-all font-mono text-[10px] text-[#64748B]">Order {order.id}</div>
+          <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">Parcel {order.parcel_id ?? "not matched"}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFocus(order.id)}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2 text-xs font-semibold text-white"
+        >
+          Open exact order <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function NextWorkPanel({ order, onFocus }: { order: ReportOrder | null; onFocus: (orderId: string) => void }) {
   if (!order) {
     return (
       <div className="mt-6 rounded-[1.5rem] border border-emerald-500/20 bg-emerald-50 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Nothing is waiting for you
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> No current-format investigation is waiting for action
+        </div>
+      </div>
+    );
+  }
+
+  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+
+  return (
+    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[#FF6A00]/30 bg-white shadow-soft">
+      <div className="grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+        <div className="bg-[#FF6A00] px-5 py-4 text-white lg:self-stretch lg:py-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">Next current order</div>
+          <div className="mt-1 text-lg font-semibold">Open before acting</div>
+        </div>
+        <div className="px-5 py-4">
+          <div className="text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+          <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">{order.id}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFocus(order.id)}
+          className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0"
+        >
+          Open exact order
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FocusedOrderWorkbench({
+  order,
+  deliveryNotice,
+  loading,
+  busy,
+  onExit,
+  onTransition,
+  onUploadReport,
+  onRefresh,
+}: {
+  order: ReportOrder | null;
+  deliveryNotice: string | null;
+  loading: boolean;
+  busy: boolean;
+  onExit: () => void;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: TransitionValues) => Promise<void>;
+  onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
+  onRefresh: () => Promise<void>;
+}) {
+  if (loading) {
+    return <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading the exact order…</div>;
+  }
+
+  if (!order) {
+    return (
+      <div className="rounded-[2rem] border border-rose-300 bg-rose-50 p-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="mt-0.5 h-5 w-5 text-rose-700" />
+          <div>
+            <h1 className="text-lg font-semibold text-[#0D1B2A]">The requested order was not found</h1>
+            <p className="mt-1 text-sm text-rose-900">No other order has been opened or made actionable.</p>
+            <button type="button" onClick={onExit} className="mt-4 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white">Return to queue</button>
+          </div>
         </div>
       </div>
     );
@@ -320,143 +529,145 @@ function NextWorkPanel({ order }: { order: ReportOrder | null }) {
 
   const status = orderStatus(order);
   const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
-  const action =
-    status === "paid"
-      ? "Start the investigation, open the canonical property file, then work through the standard Easy Erf checklist."
-      : status === "processing"
-        ? "Finish the standard investigation and evidence review, complete the five-part report, save it, then mark the web report ready."
-        : "Resolve the failure before this customer can receive a report.";
-
-  return (
-    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[#FF6A00]/30 bg-white shadow-soft">
-      <div className="grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
-        <div className="bg-[#FF6A00] px-5 py-4 text-white lg:self-stretch lg:py-5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">Start here</div>
-          <div className="mt-1 text-lg font-semibold">Next founder action</div>
-        </div>
-        <div className="px-5 py-4">
-          <div className="text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
-          <p className="mt-1 text-xs leading-5 text-[#64748B]">{action}</p>
-        </div>
-        <a href={`#order-${order.id}`} className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0">
-          Go to this investigation
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function OrderCard({
-  order,
-  busy,
-  onTransition,
-  onUploadReport,
-  onRefresh,
-}: {
-  order: ReportOrder;
-  busy: boolean;
-  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { pdfStoragePath?: string; failureReason?: string }) => Promise<void>;
-  onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
-  onRefresh: () => Promise<void>;
-}) {
-  const status = orderStatus(order);
-  const propertyReference = payloadText(order.payload, "propertyReference");
-  const customerEmail = payloadText(order.payload, "customerEmail");
+  const customerEmail = payloadText(order.payload, "customerEmail") ?? "Customer email unavailable";
   const legacyRequest = payloadText(order.payload, "investigationRequest");
   const propertyHref = order.parcel_id ? buildSavedParcelMapHref(order.parcel_id) : null;
+  const mode = reportOrderMode(order.payload);
+  const legacy = isLegacyFounderOrder(order);
 
   return (
-    <article id={`order-${order.id}`} className="scroll-mt-28 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={status} />
-            <span className="font-mono text-[10px] text-[#64748B]">{order.id.slice(0, 8)}</span>
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onExit}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to read-only queue
+        </button>
+        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+          <LockKeyhole className="h-4 w-4" /> One exact order is isolated
+        </div>
+      </div>
+
+      <header aria-label="Selected order identity" className="sticky top-32 z-40 mt-5 rounded-lg border-2 border-[#0D1B2A] bg-white p-3 shadow-md">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={status} />
+              <ModeBadge mode={mode} />
+              {legacy ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-900">Legacy format</span> : null}
+            </div>
+            <h1 className="mt-2 text-base font-semibold text-[#0D1B2A]">{propertyReference}</h1>
+            <p className="mt-1 break-all text-xs text-[#64748B]">{customerEmail}</p>
+            <p className="mt-1 break-all font-mono text-[11px]">Order {order.id}</p>
+            <p className="mt-1 break-all font-mono text-[11px]">Canonical parcel: {order.parcel_id ?? "Not matched"}</p>
           </div>
-          <h2 className="mt-3 text-lg font-semibold text-[#0D1B2A]">{propertyReference ?? order.parcel_id ?? "Property reference pending"}</h2>
-          <p className="mt-1 text-xs text-[#64748B]">{customerEmail ?? "Customer email unavailable"}</p>
+          <div className="text-right">
+            <div className="text-lg font-semibold tabular-nums text-[#0D1B2A]">R{(order.price_cents / 100).toFixed(0)}</div>
+            <div className="mt-1 text-[10px] text-[#64748B]">{new Date(order.created_at).toLocaleString("en-ZA")}</div>
+          </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums text-[#0D1B2A]">R{(order.price_cents / 100).toFixed(0)}</div>
-          <div className="mt-1 text-[10px] text-[#64748B]">{new Date(order.created_at).toLocaleString("en-ZA")}</div>
-        </div>
-      </div>
+      </header>
 
-      <FounderActionGuide status={status} propertyHref={propertyHref} />
+      <section aria-label="Exact order workbench" data-order-id={order.id} className="mt-4 rounded-lg border border-[#0D1B2A]/15 bg-white p-4 sm:p-6">
+        <details>
+          <summary className="cursor-pointer text-xs font-semibold">Customer request and context</summary>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Info label="Customer emphasis" value={order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy order, no current emphasis"} />
+          <Info label="Situation context" value={order.review_context ?? legacyRequest ?? "No situation context supplied"} />
+          {humanReviewIntendedUseLabel(order.intended_use) ? <Info label="Intended use" value={humanReviewIntendedUseLabel(order.intended_use)!} /> : null}
+          </div>
+        </details>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Info label="Canonical parcel" value={order.parcel_id ?? "Not matched"} mono />
-        <Info label="Customer emphasis" value={order.review_focus ? humanReviewFocusLabel(order.review_focus) : "Legacy order — no emphasis recorded"} />
-        {humanReviewIntendedUseLabel(order.intended_use) ? <Info label="Intended use" value={humanReviewIntendedUseLabel(order.intended_use)!} /> : null}
-        <Info label="Situation context" value={order.review_context ?? legacyRequest ?? "No situation context supplied"} />
-      </div>
-
-      {!order.review_focus ? (
-        <div className="mt-4 rounded-2xl border border-[#F59E0B]/25 bg-[#fffbeb] p-3 text-xs leading-5 text-[#92400E]">
-          This is a legacy paid order. Any old free-text checkout note is context only and must not be treated as authority to provide legal, engineering, valuation, build-cost or investment advice.
-        </div>
-      ) : null}
-
-      {order.failure_reason ? (
-        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {order.failure_reason}
-        </div>
-      ) : null}
-
-      {status === "processing" || status === "ready" ? (
-        <FounderHumanReviewEditor
-          orderId={order.id}
-          initialContent={order.review_content}
-          disabled={busy || status === "ready"}
-          defaultOpen={status === "processing"}
-          onSaved={onRefresh}
-        />
-      ) : null}
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {status === "paid" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onTransition(order, "start_review")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            <PlayCircle className="h-3.5 w-3.5" /> Start Done-for-You Investigation
-          </button>
+        {legacy ? (
+          <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs leading-5 text-amber-950">
+            This is a legacy-format order. It is excluded from automatic queue prioritization. Verify the property, parcel, customer and existing report state before any action.
+            <ul className="mt-2 list-inside list-disc">{founderOrderReviewReasons(order).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+          </div>
         ) : null}
-        {status === "processing" ? <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} onTransition={onTransition} /> : null}
-        {status === "ready" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onTransition(order, "reopen_review")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#FF6A00]/35 bg-[#FFF7ED] px-4 py-2 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
-          >
-            <RotateCcw className="h-3.5 w-3.5 text-[#FF6A00]" /> Reopen / replace report
-          </button>
+
+        <FounderActionGuide status={status} propertyHref={propertyHref} />
+        {deliveryNotice ? <p role="status" className="mt-4 rounded-lg border p-3 text-sm">{deliveryNotice}</p> : null}
+
+        {order.failure_reason ? (
+          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {order.failure_reason}
+          </div>
         ) : null}
-        {status === "paid" || status === "processing" ? <FailedAction order={order} busy={busy} onTransition={onTransition} /> : null}
-      </div>
-    </article>
+
+        {status === "processing" || status === "ready" ? (
+          <FounderHumanReviewEditor
+            key={`${order.id}:${order.review_content_updated_at ?? order.updated_at}:${status}`}
+            orderId={order.id}
+            initialContent={order.review_content}
+            disabled={busy || status === "ready"}
+            defaultOpen={status === "processing"}
+            onSaved={onRefresh}
+          />
+        ) : null}
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {status === "paid" ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onTransition(order, "start_review")}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              <PlayCircle className="h-3.5 w-3.5" /> Start this exact investigation
+            </button>
+          ) : null}
+          {status === "processing" ? <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} onTransition={onTransition} /> : null}
+          {status === "ready" ? (
+            <AlertDialog>
+            <AlertDialogTrigger asChild><button
+              type="button"
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#FF6A00]/35 bg-[#FFF7ED] px-4 py-2 text-xs font-semibold text-[#0D1B2A] disabled:opacity-50"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-[#FF6A00]" /> Reopen this exact report
+            </button></AlertDialogTrigger>
+            <AlertDialogContent className="z-[100] max-h-[90dvh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+              <AlertDialogTitle>Reopen this exact report?</AlertDialogTitle>
+              <AlertDialogDescription>The report will return to investigation status. This action applies only to the order identified below.</AlertDialogDescription>
+              <dl className="space-y-2 break-all text-sm">
+                <div><dt className="font-semibold">Full order ID</dt><dd>{order.id}</dd></div>
+                <div><dt className="font-semibold">Property</dt><dd>{propertyReference}</dd></div>
+                <div><dt className="font-semibold">Customer</dt><dd>{customerEmail}</dd></div>
+                <div><dt className="font-semibold">Canonical parcel</dt><dd>{order.parcel_id ?? "Not matched"}</dd></div>
+                <div><dt className="font-semibold">Mode</dt><dd>{mode}</dd></div>
+              </dl>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep delivered</AlertDialogCancel>
+                <AlertDialogAction disabled={busy} onClick={() => void onTransition(order, "reopen_review")}>Reopen this exact report</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+          {status === "paid" || status === "processing" ? <FailedAction order={order} busy={busy} onTransition={onTransition} /> : null}
+        </div>
+      </section>
+    </>
   );
 }
 
 function FounderActionGuide({ status, propertyHref }: { status: string; propertyHref: string | null }) {
   const statusIntro =
     status === "paid"
-      ? "Start this order, then complete/review the full standard investigation before writing the final report."
+      ? "Start this exact order, then complete or review the full standard investigation before writing the final report."
       : status === "processing"
-        ? "The investigation is underway. Work through every applicable item below, then write and deliver the final report."
+        ? "This exact investigation is underway. Work through every applicable item, then write and deliver the final report."
         : status === "failed"
-          ? "Resolve the failure before continuing the investigation."
-          : "Delivered. Reopen only when you intend to correct or replace the report.";
+          ? "Resolve the failure before continuing this exact investigation."
+          : "Delivered. Reopen only when intentionally correcting or replacing this exact report.";
 
   return (
     <div className="mt-5 rounded-[1.25rem] border border-[#FF6A00]/20 bg-[#FFF7ED] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[#0D1B2A]">
-            <ListChecks className="h-4 w-4 text-[#FF6A00]" /> Standard done-for-you investigation checklist
+            <ListChecks className="h-4 w-4 text-[#FF6A00]" /> Investigation and delivery
           </div>
           <p className="mt-1 text-xs leading-5 text-[#64748B]">{statusIntro}</p>
         </div>
@@ -467,17 +678,8 @@ function FounderActionGuide({ status, propertyHref }: { status: string; property
         ) : null}
       </div>
 
-      <ol className="mt-4 grid gap-2 md:grid-cols-2">
-        {DONE_FOR_YOU_STANDARD_INVESTIGATION_ITEMS.map((step, index) => (
-          <li key={step} className="flex gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs leading-5 text-[#0D1B2A]/72">
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#0D1B2A] text-[10px] font-bold text-white">{index + 1}</span>
-            {step}
-          </li>
-        ))}
-      </ol>
-
       <div className="mt-3 rounded-xl border border-[#F59E0B]/25 bg-[#fffbeb] px-3 py-2 text-[11px] leading-5 text-[#92400E]">
-        <strong>Included property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} If Lightstone or another branded provider is used internally, do not attach or redistribute the provider PDF unless the applicable provider/report terms allow it.
+        <strong>Included property-data-report rule:</strong> {DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY} If Lightstone or another branded provider is used internally, do not attach or redistribute the provider PDF unless the applicable provider or report terms allow it.
       </div>
     </div>
   );
@@ -492,14 +694,12 @@ function ReadyAction({
   order: ReportOrder;
   busy: boolean;
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
-  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { pdfStoragePath?: string; failureReason?: string }) => Promise<void>;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: TransitionValues) => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const reportReady = isHumanReviewReportContentComplete(order.review_content);
   const checklist = parseHumanReviewInvestigationChecklist(order.review_content);
-  const checklistReady = Boolean(
-    checklist && isHumanReviewInvestigationChecklistResolved(checklist),
-  );
+  const checklistReady = Boolean(checklist && isHumanReviewInvestigationChecklistResolved(checklist));
   const deliveryReady = reportReady && checklistReady;
   const deliveryBlocker = !reportReady
     ? "Complete and save the reviewed bottom line plus all five report sections first."
@@ -508,23 +708,27 @@ function ReadyAction({
       : null;
 
   if (!order.user_id) {
-    return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">Match this paid order to a customer account before report delivery.</div>;
+    return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[#0D1B2A]">Match this exact paid order to a customer account before report delivery.</div>;
   }
 
   return (
-    <div className="min-w-[300px] flex-1">
+    <div className="min-w-0 basis-full">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={busy || !deliveryReady}
           onClick={() => void onTransition(order, "mark_ready")}
           className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-          title={deliveryBlocker ?? "Deliver the structured Human-Reviewed web report"}
+          title={deliveryBlocker ?? "Deliver this exact structured report and trigger its customer email"}
         >
-          <CheckCircle2 className="h-3.5 w-3.5" /> Mark web report ready
+          <CheckCircle2 className="h-3.5 w-3.5" /> Mark this exact report ready
         </button>
-        <input
+      </div>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-xs font-semibold">Optional PDF delivery</summary>
+        <div className="mt-2 flex flex-wrap gap-2"><input
           type="file"
+          aria-label="Optional report PDF for this order"
           accept="application/pdf,.pdf"
           disabled={busy || !deliveryReady}
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
@@ -535,16 +739,17 @@ function ReadyAction({
           disabled={busy || !file || !deliveryReady}
           onClick={() => file && void onUploadReport(order, file)}
           className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          title={deliveryBlocker ?? "Upload the optional PDF and deliver the report"}
+          title={deliveryBlocker ?? "Upload the optional PDF and deliver this exact report"}
         >
-          <Upload className="h-3.5 w-3.5" /> Upload optional Easy Erf PDF & mark ready
+          <Upload className="h-3.5 w-3.5" /> Upload PDF and deliver this exact report
         </button>
-      </div>
+        </div>
+      </details>
       {deliveryBlocker ? (
-        <p className="mt-2 text-[11px] leading-5 text-amber-800">{deliveryBlocker}</p>
+        <p role="status" className="mt-2 text-[11px] leading-5 text-amber-800">Delivery blocked: {deliveryBlocker}</p>
       ) : (
         <p className="mt-2 text-[11px] leading-5 text-emerald-700">
-          The structured report and every applicable checklist item are resolved. Delivery controls are enabled.
+          This exact report and every applicable checklist item are resolved. Delivery controls are enabled.
         </p>
       )}
     </div>
@@ -558,15 +763,18 @@ function FailedAction({
 }: {
   order: ReportOrder;
   busy: boolean;
-  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: { failureReason?: string }) => Promise<void>;
+  onTransition: (order: ReportOrder, action: FulfillmentAction, values?: TransitionValues) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   return (
-    <div className="flex min-w-[280px] flex-1 gap-2">
+    <details className="mt-3 min-w-0 basis-full">
+      <summary className="cursor-pointer text-xs font-semibold text-destructive">Record an investigation failure</summary>
+      <div className="mt-2 flex flex-wrap gap-2">
       <input
+        aria-label="Failure reason for this exact order"
         value={reason}
         onChange={(event) => setReason(event.target.value)}
-        placeholder="Failure reason"
+        placeholder="Failure reason for this exact order"
         className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]"
       />
       <button
@@ -575,10 +783,19 @@ function FailedAction({
         onClick={() => void onTransition(order, "mark_failed", { failureReason: reason.trim() })}
         className="rounded-full border border-destructive/30 px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50"
       >
-        Mark failed
+        Mark this order failed
       </button>
-    </div>
+      </div>
+    </details>
   );
+}
+
+function showDeliveryResult(notification: unknown, uploadedPdf = false) {
+  const result = founderDeliveryResult(notification);
+  const message = `${uploadedPdf ? "PDF uploaded. " : ""}${result.message}`;
+  if (result.success) toast.success(message);
+  else toast.error(message);
+  return message;
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
@@ -590,18 +807,29 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Info({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function Info({ label, value, mono = false, strong = false }: { label: string; value: string; mono?: boolean; strong?: boolean }) {
+  const valueClass = mono
+    ? "mt-1 break-all font-mono text-[11px] text-[#0D1B2A]"
+    : "mt-1 text-xs leading-5 text-[#0D1B2A]";
   return (
-    <div className="rounded-2xl bg-[#F7FBFF] p-3 ring-1 ring-[#D9E6F2]/80">
+    <div className={`rounded-2xl p-3 ring-1 ${strong ? "bg-[#FFF7ED] ring-[#FF6A00]/25" : "bg-[#F7FBFF] ring-[#D9E6F2]/80"}`}>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{label}</div>
-      <div className={mono ? "mt-1 break-all font-mono text-[11px] text-[#0D1B2A]" : "mt-1 text-xs leading-5 text-[#0D1B2A]"}>{value}</div>
+      <div className={valueClass}>{value}</div>
     </div>
+  );
+}
+
+function ModeBadge({ mode }: { mode: ReturnType<typeof reportOrderMode> }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${mode === "LIVE" ? "bg-rose-100 text-rose-900" : "bg-sky-100 text-sky-900"}`}>
+      <TestTube2 className="h-3 w-3" /> {mode}
+    </span>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
-  const label = status === "paid" ? "Payment received · waiting to start" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report delivered" : status;
+  const label = status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report delivered" : status;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
       <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
