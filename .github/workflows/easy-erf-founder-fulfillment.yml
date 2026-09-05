@@ -24,6 +24,7 @@ on:
       - supabase/migrations/20260903211000_record_manual_report_notification.sql
       - supabase/migrations/20260904114500_automatic_report_ready_email.sql
       - src/components/admin/FounderCustomerNotification.tsx
+      - src/components/admin/AdminGuard.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/lib/humanReview/founderQueueSafety.ts
       - src/lib/humanReview/__tests__/founderQueueSafety.test.ts
@@ -115,11 +116,13 @@ jobs:
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           scripts/verify-founder-fulfillment-browser.mjs
+          src/components/admin/AdminGuard.tsx
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
           src/lib/humanReview/founderQueueSafety.ts
           src/lib/humanReview/__tests__/founderQueueSafety.test.ts
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
+          src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
           src/routes/admin_.fulfillment.tsx
 
       - name: Check patch whitespace

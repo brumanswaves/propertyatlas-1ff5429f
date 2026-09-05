@@ -12,6 +12,20 @@ const founderRoute = source("src/routes/admin_.fulfillment.tsx");
 const customerRoute = source("src/routes/orders.tsx");
 
 describe("Easy Erf founder fulfillment UI", () => {
+  it("keeps operations navigation in document coordinates, clear of the fulfillment Back control", () => {
+    const guard = source("src/components/admin/AdminGuard.tsx");
+    const operations = guard.slice(guard.indexOf('<nav'), guard.indexOf('</nav>'));
+    expect(operations).toContain('aria-label="Founder Operations"');
+    expect(operations).toContain('className="absolute');
+    expect(operations).not.toContain('className="fixed');
+    for (const path of ["/admin", "/admin/users", "/admin/entitlements", "/admin/launch-readiness", "/admin/readiness", "/admin/public-data-debug"]) {
+      expect(operations).toContain(`href="${path}"`);
+    }
+    expect(founderRoute).toContain("pb-16 pt-36");
+    expect(founderRoute).toContain('onClick={onExit}');
+    expect(guard).toContain('.eq("role", "admin")');
+  });
+
   it("uses authenticated Edge Functions instead of writing report orders directly", () => {
     expect(founderRoute).toContain('supabase.functions.invoke("easy-erf-founder-fulfillment"');
     expect(founderRoute).toContain('"easy-erf-founder-report-upload"');
