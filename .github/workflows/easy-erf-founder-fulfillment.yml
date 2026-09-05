@@ -79,7 +79,10 @@ jobs:
 
       - name: Install dependencies and run focused guardrails
         run: |
-          npm install --package-lock=false --no-audit --no-fund
+          npm install --no-audit --no-fund
+          # npm reconciles Deno's auto-managed tree using its lockfile. Keep any
+          # generated lockfile update out of the source acceptance receipt.
+          git restore -- package-lock.json
           npx vitest run \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
@@ -149,6 +152,7 @@ jobs:
           done
 
           curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
+          git diff --exit-code
           node scripts/verify-founder-fulfillment-browser.mjs
 
       - name: Upload founder browser acceptance evidence

@@ -36,7 +36,9 @@ jobs:
           npm --version
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          npm install --no-audit --no-fund
+          git restore -- package-lock.json
 
       - name: Run focused Guided tests
         run: >-
@@ -80,6 +82,7 @@ jobs:
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-commercial-browser.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-first-read.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-guided-start.mjs
+          git diff --exit-code
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 EASY_ERF_BROWSER_ARTIFACTS=artifacts/guided-cloud node scripts/verify-guided-cloud-persistence.mjs
 
       - name: Upload Guided cloud browser acceptance evidence

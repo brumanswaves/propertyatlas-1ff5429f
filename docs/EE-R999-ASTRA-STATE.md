@@ -35,6 +35,9 @@ Last reconciled: 2026-09-05, local repair gate. Read this as a dated operational
 
 ## Prior Failures, Root Causes and Remaining Gate
 
+- Intermediate repair `84bd7ee5b939549a15ac84dab56ba5a27a30e058`: GitHub Guided browser acceptance passed with retrievable artifact `9968353831`; full Vitest remained green. Founder stopped during initial npm install when lockfile handling was disabled in Deno's auto-managed tree. Restore the previously passing normal initial install, then restore only its generated lockfile update; retain isolated Playwright. This is an evidence-backed adjustment, not a CI retry for luck.
+- The downloaded intermediate Guided receipt correctly reported a dirty checkout from npm's generated lockfile. Both browser workflows now restore only that generated lockfile update and require an empty tracked diff before acceptance. Unexpected source or route-generator drift must fail rather than be hidden.
+
 - Guided integration run [33953289743](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33953289743) failed public browser acceptance: `Could not find visible reopened Guided working-address heading.` Subsequent verification steps in that workflow were skipped. Cause remains unverified.
 - Founder verification run [33953289767](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/33953289767) failed during a second application dependency mutation: npm `Cannot read properties of null (reading 'edgesOut')`. No browser ran. Isolated pinned installation and browser launch now pass locally without reifying the application tree.
 - Local built acceptance also exposed Vite preview looking for absent `dist/server/server.js`. The workflow now builds the Node preset and serves its real `.output/server/index.mjs` on loopback; both browser checks pass through that entry.
