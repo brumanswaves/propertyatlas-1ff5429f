@@ -80,7 +80,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     <>
       <nav
         aria-label="Founder Operations"
-        className="fixed left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
+        className="absolute left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
       >
         <OperationsLink href="/admin">Overview</OperationsLink>
         <OperationsLink href="/admin/users">Users</OperationsLink>

@@ -33,9 +33,10 @@ const rows = [
 const requests = [];
 const failures = [];
 const checks = [];
+const navigationChecks = [];
 let notification = { ok: true, emailAccepted: true };
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
-const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block" });
+const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, hasTouch: true, serviceWorkers: "block" });
 await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
 await context.addInitScript(({ session }) => {
   // Local build uses a reserved .invalid URL; other keys support existing CI builds.
@@ -90,6 +91,14 @@ async function open(id) {
   await workbench().waitFor();
   assert.equal(await workbench().getAttribute("data-order-id"), id);
 }
+async function keyboardReach(locator) {
+  // Prove the control participates in the real tab order, without JS focus/click.
+  for (let step = 0; step < 80; step++) {
+    if (await locator.evaluate((element) => element === document.activeElement)) return;
+    await page.keyboard.press("Tab");
+  }
+  assert.fail("Navigation control was not reachable by keyboard");
+}
 async function reopen(id) {
   await page.getByRole("button", { name: "Reopen this exact report", exact: true }).click();
   const dialog = page.getByRole("alertdialog");
@@ -125,6 +134,106 @@ try {
     await page.reload(); await workbench().waitFor();
     assert.equal(await workbench().getAttribute("data-order-id"), A);
   });
+  for (const scenario of [
+    { width: 1440, height: 1000, input: "mouse", scroll: 15 },
+    { width: 484, height: 828, input: "mouse", scroll: 15 },
+    { width: 390, height: 844, input: "touch", scroll: 40 },
+    { width: 320, height: 740, input: "keyboard", scroll: 15 },
+    { width: 390, height: 844, input: "touch", scroll: 1600 },
+  ]) {
+    await check(`refresh/scroll return and isolated reselection: ${scenario.width}px ${scenario.input} ${scenario.scroll}px`, async () => {
+      const name = `navigation-${scenario.width}-${scenario.input}-${scenario.scroll}`;
+      rows[0].status = rows[0].status_enum = "processing";
+      rows[1].status = rows[1].status_enum = "processing";
+      await page.setViewportSize({ width: scenario.width, height: scenario.height });
+      await page.goto(`${baseUrl}/admin/fulfillment`);
+      await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
+      await workbench().waitFor();
+      await page.waitForFunction(() => scrollY === 0);
+      await page.mouse.wheel(0, scenario.scroll);
+      await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
+      await page.reload();
+      await workbench().waitFor();
+      assert.equal(await workbench().getAttribute("data-order-id"), A);
+      const restoredScrollY = await page.evaluate(() => scrollY);
+      // Also exercise a user scroll after refresh: hydration can reset native
+      // restoration, which must not make a formerly safe control interceptable.
+      await page.keyboard.press("Control+Home");
+      await page.waitForFunction(() => scrollY === 0);
+      await page.mouse.wheel(0, scenario.scroll);
+      await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
+      if (scenario.scroll > 500) {
+        const pinned = await identity().boundingBox();
+        assert.ok(pinned && pinned.y >= 0 && pinned.y + pinned.height < scenario.height);
+        await page.screenshot({ path: resolve(artifacts, `${name}-pinned.png`) });
+      }
+      await page.locator("textarea").first().fill("UNSAVED A ONLY");
+      await page.locator("select").first().selectOption("blocked");
+      await page.getByText("Record an investigation failure", { exact: true }).click();
+      await page.getByRole("textbox", { name: "Failure reason for this exact order" }).fill("A-only failure");
+      await page.getByText("Optional PDF delivery", { exact: true }).click();
+      await page.getByLabel("Optional report PDF for this order").setInputFiles({ name: "A-only.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-fixture") });
+      await page.getByRole("heading", { name: property, exact: true }).click();
+      await page.keyboard.press("Control+Home");
+      await page.waitForFunction(() => scrollY === 0);
+      await page.mouse.wheel(0, scenario.scroll > 500 ? 15 : scenario.scroll);
+      await page.waitForFunction(() => scrollY >= 15);
+      const back = page.getByRole("button", { name: "Back to read-only queue", exact: true });
+      if (scenario.input === "keyboard") await keyboardReach(back);
+      const box = await back.boundingBox();
+      assert.ok(box);
+      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const before = await back.evaluate((button, { x, y }) => {
+        const target = document.elementFromPoint(x, y);
+        const nav = document.querySelector('nav[aria-label="Founder Operations"]');
+        return { hash: location.hash, scrollY, target: target?.outerHTML, receivesPointer: button.contains(target), navBounds: nav?.getBoundingClientRect().toJSON(), backBounds: button.getBoundingClientRect().toJSON() };
+      }, point);
+      navigationChecks.push({ scenario, restoredScrollY, before });
+      await page.screenshot({ path: resolve(artifacts, `${name}-before.png`) });
+      assert.ok(before.receivesPointer, "Back button must receive the real pointer, not the operations bar");
+      assert.ok(before.navBounds.bottom <= before.backBounds.top, "Operations navigation must not overlap Back");
+      if (scenario.input === "touch") await page.touchscreen.tap(point.x, point.y);
+      else if (scenario.input === "keyboard") await page.keyboard.press("Enter");
+      else await page.mouse.click(point.x, point.y);
+      await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor({ timeout: 5000 });
+      assert.equal(new URL(page.url()).hash, "");
+      assert.equal(await workbench().count(), 0);
+      assert.equal(await identity().count(), 0);
+      assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
+      await page.screenshot({ path: resolve(artifacts, `${name}-queue.png`) });
+      await page.locator("article").filter({ hasText: B }).getByRole("button", { name: "Open exact order" }).click();
+      await workbench().waitFor();
+      assert.equal(await workbench().getAttribute("data-order-id"), B);
+      assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
+      assert.equal(await page.locator("select").first().inputValue(), "complete");
+      await page.getByText("Record an investigation failure", { exact: true }).click();
+      assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
+      await page.getByText("Optional PDF delivery", { exact: true }).click();
+      assert.equal(await page.getByLabel("Optional report PDF for this order").inputValue(), "");
+      assert.equal(await workbench().getByRole("status").count(), 0);
+      assert.equal(requests.length, 0, "Navigation must not submit order or notification requests");
+    });
+  }
+  await check("shared operations navigation remains usable on Users and Entitlements", async () => {
+    await page.keyboard.press("Control+Home");
+    await page.waitForFunction(() => scrollY === 0);
+    const operations = page.getByRole("navigation", { name: "Founder Operations", exact: true });
+    await operations.getByRole("link", { name: "Users", exact: true }).click();
+    await page.getByRole("heading", { name: "User support", exact: true }).waitFor();
+    await keyboardReach(operations.getByRole("link", { name: "Entitlements", exact: true }));
+    await page.keyboard.press("Enter");
+    await page.getByRole("heading", { name: "Entitlements", exact: true }).waitFor();
+    const nav = await operations.boundingBox();
+    const heading = await page.getByRole("heading", { name: "Entitlements", exact: true }).boundingBox();
+    assert.ok(nav && heading && nav.y + nav.height <= heading.y);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: resolve(artifacts, "operations-entitlements-mobile.png") });
+    assert.equal(requests.length, 0);
+  });
+  rows[0].status = rows[0].status_enum = "ready";
+  rows[1].status = rows[1].status_enum = "ready";
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await open(A);
   await check("accessible exact-order reopen modal and status change preserve selection", async () => {
     await reopen(A);
     assert.equal(await workbench().getAttribute("data-order-id"), A);
@@ -214,6 +323,6 @@ try {
   throw error;
 } finally {
   await context.tracing.stop({ path: resolve(artifacts, "trace.zip") });
-  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, failures, mockedRequests: requests, productionAccess: false }, null, 2));
+  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, failures, mockedRequests: requests, productionAccess: false }, null, 2));
   await browser.close();
 }
