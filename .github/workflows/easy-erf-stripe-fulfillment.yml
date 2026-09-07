@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - .github/workflows/easy-erf-stripe-fulfillment.yml
+      - deno.json
+      - scripts/verify-deno-stripe-resolution.mjs
       - scripts/verify-easy-erf-stripe-migration.sql
       - src/lib/payments/**
       - src/routes/admin.tsx
@@ -14,6 +16,7 @@ on:
       - supabase/functions/_shared/easyErfStripePaymentContract.ts
       - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
+      - supabase/functions/easy-erf-founder-launch-readiness/**
       - supabase/migrations/20260829113000_secure_easy_erf_stripe_fulfillment.sql
       - supabase/migrations/20260907100000_founder_queue_metadata_read.sql
   workflow_dispatch:
@@ -50,6 +53,11 @@ jobs:
           unzip -q deno.zip
           ./deno --version
 
+      - name: Prove Stripe resolution without CI-only auto-install flags
+        run: |
+          node --check scripts/verify-deno-stripe-resolution.mjs
+          DENO_BIN="${PWD}/deno" node scripts/verify-deno-stripe-resolution.mjs
+
       - name: Type-check Stripe webhook and Human Review checkout
         run: |
           ./deno check \
@@ -64,9 +72,19 @@ jobs:
       - name: Run focused payment contract tests
         run: |
           npm install --no-audit --no-fund
+          npx eslint --no-warn-ignored --rule 'prettier/prettier: off' scripts/verify-deno-stripe-resolution.mjs
           npx vitest run \
             src/lib/payments/__tests__/easyErfStripePaymentContract.test.ts \
             src/lib/payments/__tests__/easyErfStripeFulfillmentGuardrails.test.ts
+
+      - name: Upload Deno dependency-resolution evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: deno-stripe-resolution-${{ github.run_id }}
+          path: artifacts/deno-stripe-resolution
+          if-no-files-found: error
+          retention-days: 14
 
   migration:
     runs-on: ubuntu-latest

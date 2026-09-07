@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - .github/workflows/easy-erf-human-review-product.yml
+      - deno.json
       - scripts/verify-easy-erf-human-review-product.sql
       - scripts/verify-easy-erf-customer-notification.sql
       - src/components/admin/AdminGuard.tsx
