@@ -9,6 +9,7 @@ on:
       - scripts/verify-easy-erf-founder-fulfillment.sql
       - scripts/verify-easy-erf-human-review-product.sql
       - scripts/verify-easy-erf-customer-notification.sql
+      - scripts/verify-easy-erf-founder-queue.sql
       - scripts/verify-founder-fulfillment-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
@@ -23,11 +24,15 @@ on:
       - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
       - supabase/migrations/20260903211000_record_manual_report_notification.sql
       - supabase/migrations/20260904114500_automatic_report_ready_email.sql
+      - supabase/migrations/20260907100000_founder_queue_metadata_read.sql
       - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/AdminGuard.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/lib/humanReview/founderQueueSafety.ts
+      - src/lib/humanReview/founderQueueData.ts
+      - src/lib/humanReview/useFounderOrderData.ts
       - src/lib/humanReview/__tests__/founderQueueSafety.test.ts
+      - src/lib/humanReview/__tests__/founderQueueData.test.ts
       - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
@@ -72,6 +77,7 @@ jobs:
           curl --fail --location --silent --show-error \
             --output deno.zip \
             https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip
+          echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe93afbe33  deno.zip" > /dev/null
           echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2  deno.zip" | sha256sum --check
           unzip -q deno.zip
           ./deno check --node-modules-dir=auto --no-lock supabase/functions/easy-erf-founder-fulfillment/index.ts
@@ -86,12 +92,13 @@ jobs:
           git restore -- package-lock.json
           npx vitest run \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
+            src/lib/humanReview/__tests__/founderQueueData.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
 
-      - name: Apply and prove founder fulfillment and automatic notification contracts
+      - name: Apply and prove founder fulfillment, notification and queue-read contracts
         env:
           PGPASSWORD: postgres
         run: >-
@@ -100,7 +107,7 @@ jobs:
           --port 54329
           --username postgres
           --dbname postgres
-          --file scripts/verify-easy-erf-customer-notification.sql
+          --file scripts/verify-easy-erf-founder-queue.sql
 
       - name: Build production bundle and generate routes
         env:
@@ -120,7 +127,10 @@ jobs:
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
           src/lib/humanReview/founderQueueSafety.ts
+          src/lib/humanReview/founderQueueData.ts
+          src/lib/humanReview/useFounderOrderData.ts
           src/lib/humanReview/__tests__/founderQueueSafety.test.ts
+          src/lib/humanReview/__tests__/founderQueueData.test.ts
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
           src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
           src/routes/admin_.fulfillment.tsx

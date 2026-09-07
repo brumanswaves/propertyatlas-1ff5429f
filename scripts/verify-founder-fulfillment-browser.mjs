@@ -30,6 +30,31 @@ const rows = [
   { id: B, review_content: report("Persisted report B"), payload: { propertyReference: "Erf 1570, different fixture", customerEmail: "other@example.invalid", livemode: false } },
   { id: LEGACY, parcel_id: null, review_focus: null, review_content: null, payload: { propertyReference: "1570", customerEmail: "legacy@example.invalid", livemode: false } },
 ].map((row) => ({ user_id: B, parcel_id: parcel, report_type: "human_review", provider: "stripe", status: "ready", status_enum: "ready", price_cents: 99900, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", review_content_updated_at: null, review_focus: "property_check", ...row }));
+for (const row of rows) {
+  row.payload.privateProbe = `PRIVATE_PAYLOAD_${row.id}`;
+  row.review_context = `PRIVATE_CONTEXT_${row.id}`;
+  if (row.review_content) row.review_content.privateProbe = `PRIVATE_REPORT_${row.id}`;
+}
+rows[2].review_content = report("PRIVATE_LEGACY_REPORT");
+const detailReads = [];
+const summaryReads = [];
+let detailFailure = null;
+let delayedDetail = null;
+function queueMetadata(row) {
+  const content = row.review_content;
+  const hasText = (value) => typeof value === "string" && Boolean(value.trim());
+  return {
+    id: row.id, parcel_id: row.parcel_id, report_type: row.report_type,
+    status: row.status, status_enum: row.status_enum, provider: row.provider,
+    price_cents: row.price_cents, created_at: row.created_at, updated_at: row.updated_at,
+    completed_at: row.completed_at ?? null,
+    payment_mode: row.payload.livemode === true ? "LIVE" : row.payload.livemode === false ? "TEST" : "UNKNOWN",
+    has_property_reference: typeof row.payload.propertyReference === "string" && /[a-z]/i.test(row.payload.propertyReference),
+    has_review_focus: hasText(row.review_focus),
+    has_report_content: Boolean(content && (hasText(content.bottomLine) ||
+      ["known", "potential", "risks", "unknowns", "nextSteps"].some((key) => Array.isArray(content[key]) && content[key].some(hasText)))),
+  };
+}
 const requests = [];
 const failures = [];
 const checks = [];
@@ -49,13 +74,46 @@ await context.route("**/*", async (route) => {
   const url = new URL(request.url());
   const json = (body) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   if (url.pathname.startsWith("/auth/v1/")) return json(user);
+  if (url.pathname === "/rest/v1/rpc/list_easy_erf_founder_queue") {
+    assert.equal(request.method(), "POST");
+    assert.deepEqual(request.postDataJSON(), { p_limit: 100 });
+    const response = rows.map(queueMetadata);
+    const serialized = JSON.stringify(response);
+    for (const forbidden of ["PRIVATE_", "customerEmail", "review_content", "review_context", "payload", "customerNotification"]) {
+      assert.ok(!serialized.includes(forbidden), `Queue response leaked ${forbidden}`);
+    }
+    summaryReads.push({ count: response.length, keys: Object.keys(response[0]) });
+    return json(response);
+  }
   if (url.pathname.startsWith("/rest/v1/")) {
     if (request.method() !== "GET" && request.method() !== "HEAD") {
       failures.push(`Unexpected data mutation: ${url.pathname}`);
       return route.abort();
     }
     if (url.pathname.endsWith("/user_roles")) return json({ role: "admin" });
-    if (url.pathname.endsWith("/report_orders")) return json(rows);
+    if (url.pathname.endsWith("/report_orders")) {
+      const ids = url.searchParams.getAll("id");
+      const match = ids.length === 1 && /^eq\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(ids[0]);
+      assert.ok(match, "Report details require exactly one full UUID filter, never a bulk read");
+      assert.equal(url.searchParams.get("provider"), "eq.stripe");
+      for (const key of url.searchParams.keys()) assert.ok(["select", "id", "provider"].includes(key), `Unexpected detail query key ${key}`);
+      const id = match[1].toLowerCase();
+      const selectedHash = new URL(request.frame().url()).hash;
+      assert.equal(selectedHash, `#order-${id}`, "Detailed read must match the deliberately selected order");
+      detailReads.push({ id, selectedHash, select: url.searchParams.get("select") });
+      if (detailFailure === id) return route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ message: "fixture read denied" }) });
+      const row = rows.find((entry) => entry.id === id);
+      const result = row ? structuredClone(row) : null;
+      if (delayedDetail?.id === id) {
+        const pending = delayedDetail;
+        pending.started();
+        await pending.gate;
+        try { await json(request.headers().accept?.includes("object+json") ? result : result ? [result] : []); }
+        finally { pending.finished(); }
+        return;
+      }
+      return json(request.headers().accept?.includes("object+json") ? result : result ? [result] : []);
+    }
     return json(request.headers().accept?.includes("object+json") ? null : []);
   }
   if (url.pathname.startsWith("/functions/v1/")) {
@@ -118,6 +176,9 @@ try {
     const buttons = await page.locator("main button").allTextContents();
     assert.ok(buttons.every((text) => text.trim().startsWith("Open exact order")));
     assert.equal(requests.length, 0);
+    assert.equal(detailReads.length, 0, "Opening or expanding the queue must not retrieve any report body");
+    assert.ok(summaryReads.length > 0);
+    assert.ok(!(await page.locator("main").innerText()).includes("PRIVATE_"));
     await page.screenshot({ path: resolve(artifacts, "queue-desktop.png"), fullPage: true });
     await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
   });
@@ -230,6 +291,43 @@ try {
     await page.screenshot({ path: resolve(artifacts, "operations-entitlements-mobile.png") });
     assert.equal(requests.length, 0);
   });
+  await check("delayed nonselected details are discarded and failures are non-actionable", async () => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(`${baseUrl}/admin/fulfillment`);
+    await page.locator("article").filter({ hasText: A }).waitFor();
+    let start;
+    let release;
+    let finish;
+    const started = new Promise((resolve) => { start = resolve; });
+    const finished = new Promise((resolve) => { finish = resolve; });
+    delayedDetail = { id: A, started: start, finished: finish, gate: new Promise((resolve) => { release = resolve; }) };
+    await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
+    await started;
+    // Address-bar hash navigation exercises an in-flight selection change. This
+    // is not substituted for the mouse/touch/keyboard Back tests above.
+    await page.evaluate((id) => { location.hash = `order-${id}`; }, B);
+    await workbench().waitFor();
+    assert.equal(await workbench().getAttribute("data-order-id"), B);
+    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
+    release();
+    await finished;
+    delayedDetail = null;
+    assert.equal(await workbench().getAttribute("data-order-id"), B);
+    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
+    await page.getByRole("button", { name: "Back to read-only queue", exact: true }).click();
+    await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    assert.equal(await workbench().count(), 0);
+    detailFailure = A;
+    await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
+    await page.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+    assert.equal(await workbench().count(), 0);
+    assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
+    await page.getByRole("button", { name: "Return to queue", exact: true }).click();
+    await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    detailFailure = null;
+    assert.equal(requests.length, 0, "Detail navigation and read failures must submit zero mutations");
+    await page.screenshot({ path: resolve(artifacts, "queue-after-private-read-regression.png") });
+  });
   rows[0].status = rows[0].status_enum = "ready";
   rows[1].status = rows[1].status_enum = "ready";
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -248,10 +346,10 @@ try {
     await page.getByText("Optional PDF delivery", { exact: true }).click();
     await page.getByLabel("Optional report PDF for this order").setInputFiles({ name: "A-only.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-fixture") });
     // A hash change exercises reconciliation without remounting the whole page.
-    rows[1].status = rows[1].status_enum = "processing";
+    // B is still ready in persisted fixture state; selection must fetch it now.
     await page.getByRole("button", { name: /Back to read-only queue/ }).click();
     await page.locator("article").filter({ hasText: B }).getByRole("button", { name: "Open exact order" }).click();
-    // Existing fetched B is ready; reopen refreshes it, preserving selected B.
+    // A fresh exact-order read finds B ready; reopening must preserve B.
     await reopen(B);
     assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
     assert.equal(await page.locator("select").first().inputValue(), "complete");
@@ -323,6 +421,6 @@ try {
   throw error;
 } finally {
   await context.tracing.stop({ path: resolve(artifacts, "trace.zip") });
-  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, failures, mockedRequests: requests, productionAccess: false }, null, 2));
+  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, summaryReads, detailReads, failures, mockedRequests: requests, productionAccess: false }, null, 2));
   await browser.close();
 }
