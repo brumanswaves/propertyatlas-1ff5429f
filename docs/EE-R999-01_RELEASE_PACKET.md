@@ -1,88 +1,103 @@
 # WHAT I NEED FROM YOU NOW
 
-No owner action is needed during Class A verification. This packet prepares the later approval boundary; it does not imply a worker continues after a session ends.
+This is one proposed Class B release packet, not permission to execute it. The final PR #168 independent-review receipt must name the complete candidate SHA, successful exact-head runs and inspected artifact digests before owner approval. Never replay older PR #164/#166/#167 approvals.
 
-This is the combined prepared Class B packet, not permission to execute it. The final PR #168 receipt supplies the exact candidate SHA, four workflow runs and inspected browser artifacts. No release may start while any gate below is incomplete.
+# EE-R999-01: selected-order privacy and owner TEST acceptance
 
-# EE-R999-01: private queue repair and remaining owner TEST acceptance
-
-Reconciled 2026-09-07. Supersedes stale PR #164 deployment instructions; does not replay #166/#167.
-Repository: brumanswaves/propertyatlas-1ff5429f.
-Draft #168: `chatgpt/ee-r999-selected-order-data`.
+Repository: `brumanswaves/propertyatlas-1ff5429f`.
+Only PR #168, branch `chatgpt/ee-r999-selected-order-data`.
 Expected pre-release main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`.
 Expected main tree: `4e4ad2eb624861fc2a6964b583f94fb5a0e2c35e`.
 Canonical Supabase: `xiqpfhsdlvwrwhclonsg`.
-Passive publisher: `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
-The genuine R999 commercial outcome remains UNPASSED.
+Passive Lovable publisher: `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
+Max additional discretionary spend: $0. Actual account billing UNKNOWN.
 
-## Minimum release delta proposed
+## Frozen acceptance outcome
 
-1. Expected-head-guarded merge of this exact reviewed candidate only. Reverify resulting parents/tree and all required exact merged-SHA evidence before publishing.
-2. Apply only `supabase/migrations/20260907100000_founder_queue_metadata_read.sql` if read-only inventory confirms absence. This creates a bounded metadata-only, stable SECURITY INVOKER reader, admin check and execute grant. It does not change table RLS, orders, lifecycle functions or notification behavior.
-3. Passively publish only the exact merged frontend through the named project. No Lovable agent, implementation or source rewrite.
-4. Edge Function deployments: NONE. Existing fulfillment, upload, review-content and notification source equivalence was verified. Do not redeploy for a version counter or replay older equivalent migrations.
-5. Configuration delta: NONE for the queue repair. Later TEST email may require only a temporary `EASY_ERF_CUSTOMER_EMAIL_ENABLED` toggle, explicitly approved below. Do not add/rotate sender/API secrets, change DNS, plans, Stripe or checkout flags. Missing configuration is a stop, not an implicit repair permission.
+Exact property selected/confirmed -> genuine R999 payment -> signed webhook establishes payment truth -> correct customer and parcel order -> actual founder investigation -> applicable checklist resolved -> evidence-backed report -> delivery -> automatic email -> customer opens exact report -> no duplicate order, notification or payment.
 
-## Exact-head source and browser gates
+This commercial outcome is UNPASSED. The proposed owner TEST below is a prerequisite, not the commercial result. Class C live-money approval must be separate and later.
 
-Require successful Guided integration (full Vitest), Founder fulfillment (PostgreSQL permissions/RLS proof and browser), Human Review product, and Stripe fulfillment workflows. Download and inspect artifacts; receipt SHA must equal candidate and dirty=false. Inspect desktop/narrow navigation screenshots and trace/request evidence, not merely upload success.
+## Included release changes
 
-Browser proof must inspect actual received queue keys and detail response bodies, unique nonselected sentinels, complete UUID filter, delayed A after B, delayed exit/sign-out, account switch, read failures, refresh and ordinary mouse/touch/keyboard navigation. Navigation must cause zero order/notification requests. Isolated synthetic lifecycle requests later in the same script are explicitly not production evidence.
+1. Mark only #168 ready for review and expected-head-guarded merge of the explicitly approved final SHA. Reverify merged parents/tree and all required exact merged-SHA workflows. Do not merge another PR.
+2. Apply only `supabase/migrations/20260907100000_founder_queue_metadata_read.sql` if fresh catalog inspection confirms absence. This adds the stable, admin-checked SECURITY INVOKER metadata reader and execute privilege while retaining table RLS. If an equivalent reader already exists, verify equivalence rather than replaying it. No other migration, permission repair or database change.
+3. Passively publish only the exact merged frontend through the named Lovable project. Source includes founder metadata/detail separation and exact customer email-link retrieval. No Lovable implementation, debugging, planning or source rewrite.
+4. Edge Function deployments: NONE. Recheck deployed source before execution; do not redeploy merely for version counters or an unrelated helper difference.
+5. Configuration: NONE for the read repair. Only the separately included owner TEST may temporarily change `EASY_ERF_CUSTOMER_EMAIL_ENABLED`; it ends false. Missing sender/API/domain/runtime configuration is a stop, not authority to repair it.
 
-## Read-only preflight before any Class B execution
+Affected production surfaces: founder `/admin/fulfillment` reads; exact customer `/orders?report=<UUID>` reads; one additive SQL reader; only the target TEST order's expressly bounded lifecycle/checklist/save/notification state. No live checkout, Stripe, DNS, backend function code or external customer change.
 
-- Reconfirm repository, exact candidate/main/tree, projects, supported passive publication and no additional charge.
-- Recheck source equivalence and safe runtime flags using existing read-only capabilities. Email enabled, checkout mode/live arming, sender/app URL/provider free allowance remain UNKNOWN in this Class A pass. Do not deploy a diagnostic function or expose secret values to discover them.
-- Retain existing checkout/live settings; do not create an order or payment. Stop if mode/arming is unsafe or cannot be established.
-- Inspect published-source build/security findings substantively. No ignored-finding shortcut. Stop on failed build, exposure, unresolved risk, exhausted paid capacity or rejected publication.
-- Refresh a private metadata-only baseline immediately before release: all order UUIDs/count, status/timestamps, server-computed report/receipt hashes, receipt-presence and per-order audit counts. No customer-table joins, raw receipt/report bodies or sensitive public artifacts. Protected legacy metadata only if separately authorized.
-- Verify the owner session and the one deliberately selected TEST UUID privately. Do not retrieve any other private order detail.
+## Required source evidence
 
-## Read-only queue/navigation acceptance first
+Require Guided integration (full suite), Founder fulfillment (isolated SQL privileges/projection/RLS/no-write proof plus built browser), Human Review and Stripe workflows on the exact final candidate. Download artifacts, compare hashes and inspect receipts, screenshots, traces and actual response bodies. Dirty must be false and artifact SHA must match. The post-merge tree must equal the approved tree; repeat/inspect required merged-SHA verification before publication.
 
-Only owner TEST order `384be2fe-f7aa-4687-970c-5a6db34cfeba`; canonical parcel `csg:lpi:c03400140000157000000`, Erf 1570. Confirm canonical owner/recipient and property privately against the existing approved record; do not put them into public screenshots.
+Founder evidence must prove fourteen-field metadata-only responses, full-UUID details, nonselected sentinels, account change, delayed A after B, exit/sign-out, errors/read-only retry, delivery gates and ordinary desktop/narrow mouse/touch/keyboard navigation.
 
-Queue response contains only the fourteen metadata fields. No payload/report/context/receipt or customer information from unselected orders may cross the network. Select the complete target UUID, refresh, scroll shallow/deep, return with mouse/touch/keyboard on desktop and narrow screens. Selected hash and actionable detail must disappear. Monitor all requests; zero mutation or notification calls permitted in this phase.
+Customer-link evidence must prove exact UUID+current user+provider filters, invalid/empty/missing/failing selection without bulk fallback, response identity/count checks, refresh, delayed response/account isolation and mobile fit. This does NOT claim that the general customer `/orders` list is metadata-only.
 
-Take after-snapshot. Every order's metadata must match the baseline exactly. Stop on any difference or leak; do not continue to TEST mutations.
+## Read-only preflight
 
-## Proposed bounded owner-only TEST actions (separate explicit Class B grant)
+- Reconfirm repository/head/main/tree/project identities, owner authority and $0 supported passive publication. Stop on drift rather than substituting another revision.
+- Inspect current build/security/account warnings substantively. No ignored-finding shortcut, credit purchase, paid service or alternate publication channel. On a tool rejection preserve it and stop, not retry around the control.
+- Establish supported source linkage: exact GitHub tree, publisher synchronized revision, successful exact-commit build, actual deployment ID after publication and served production evidence. Independent byte-for-byte production Git-tree attestation may be unavailable; state that limitation. Do not claim it from an API response. Stop if actual revision linkage is ambiguous.
+- Reverify deployed function source and safe runtime configuration privately with existing read-only tools. Require owner TEST mode, live checkout disarmed, email false before TEST staging, existing sender `Easy Erf <reports@mail.easyerf.co.za>`, app origin `https://easyerf.co.za`, verified sending domain and included free capacity. Do not expose secret values or deploy diagnostic code to obtain them. Unknown prerequisites stop the affected action.
+- Take a fresh private metadata-only baseline for ALL orders immediately before release. Already authorized output: UUID/count, statuses/timestamps, database-computed report hash excluding customerNotification, separate notification-receipt hash/presence and audit counts. No bulk report/receipt bodies, customer joins, raw provider payloads or private public artifacts.
+- Protected legacy `4e51dfbb-e931-4500-a622-2a766be398fc`: metadata comparison only; never open its report body or mutate it.
 
-These actions are NOT executed by this source task. Approval must include the whole sequence, exact order, temporary flag, permitted report versions, audit changes and one owner-only email.
+## Exact existing owner TEST identity
 
-Precondition: target is currently REPORTED processing, not ready. Recheck status, report, nine resolved checklist entries, receipt absence and owner TEST mode. If that baseline differs, stop and revise the packet.
+Order: `384be2fe-f7aa-4687-970c-5a6db34cfeba`.
+Parcel: `csg:lpi:c03400140000157000000`.
+Property: Erf 1570, 24 Padrone Crescent, St Francis Bay.
+Canonical owner recipient: `brumanswaves@gmail.com`.
+Payment mode: TEST, established from canonical record, never inferred from missing metadata.
 
-1. Establish `EASY_ERF_CUSTOMER_EMAIL_ENABLED=false`. If already false, leave it unchanged. Record the existing value privately for final restoration; this packet defaults to false at completion, not continuing email operation.
-2. On this order only, use the existing checklist control to set one previously complete item pending; attempt Mark ready and verify rejection. Restore precisely that checklist item to its baseline state. Allowed writes: two checklist saves/audit entries; readiness rejection must not transition status or send. Report narrative must never change.
-3. With all nine resolved, stage this same existing order ready through Mark ready while email is disabled. Record staging version V1. Expected: one ready event; disabled notification may record one failed receipt/failure audit under the existing contract, but zero provider sends. Do not mislabel email-disabled as sent.
-4. Reopen this now-ready order exactly once. Expected: ready -> processing, one reopen event, receipt cleared. Do not reopen the initially processing order. No report/checklist narrative edits or uploads are permitted.
-5. Enable email only for this bounded owner TEST. Mark the same order ready once, creating V2 distinct from V1. Expected: one ready event; exactly one accepted owner-recipient provider send, one V2 sent receipt and one V2 customer_notified event. No other recipient, order or version may be sent.
-6. Invoke the existing duplicate/retry path once for V2 and confirm deduplication returns the same receipt/provider ID without another send or notification event. If the successful UI exposes no retry, use only an already-supported authenticated path expressly covered by the approval, otherwise mark that subcheck BLOCKED; never add a workaround endpoint.
-7. Owner inbox receipt and exact authenticated `/orders?report=<target UUID>` opening require genuine browser/inbox proof. A provider success is insufficient. Do not mark genuine R999 commercial acceptance passed.
-8. Restore email disabled immediately. Preserve target ready/V2 and the one successful receipt as the permitted final TEST state. Do not silently restore processing by reopening again, erase audit history, delete receipts or undo sends. Non-target records remain identical.
+Expected initial status: processing / fulfilling, saved complete narrative, nine resolved checklist entries, no successful notification receipt. Previously inspected narrative/checklist hash: `c9b8ccaf66b5ed5ad54c439752f61b34`. Recompute fresh; on any identity/content/status/receipt mismatch stop and revise rather than force the record to fit. No new TEST order.
 
-Expected target-only changes: two checklist saves/restoration timestamps/events, staging ready/V1, optional disabled failure receipt/event, reopen/cleared receipt, final ready/V2, one successful receipt/event. Count against actual source-defined event names before execution; stop on unlisted extras. Baseline narrative/checklist values must match after restoration. No new report version may be invented client-side.
+## Phase 1: read-only production acceptance
 
-## Integrity comparison
+After migration and exact frontend publication, operate the existing authenticated founder browser yourself. Queue may return metadata only. Deliberately open the full target UUID and no other private report. Inspect network filters/response bodies, pinned identity, refresh, shallow/deep scrolling and Back on desktop/narrow screens using ordinary input. Return must remove selected hash and actionable workbench. Zero order-mutation or notification calls are permitted in this phase.
 
-Compute in the database, never fetch all report bodies to hash locally:
+Take an after-snapshot: every order, status, timestamp, report/receipt hash and event count unchanged. Stop on a leak or difference before any TEST writes.
 
+## Phase 2: bounded TEST writes, only if explicitly included in the owner approval
+
+Use UI controls when available. Browser fixtures are not evidence these production steps passed. Keep all values/receipts private; publish only necessary redacted evidence.
+
+1. Confirm email false. On the target only, save the existing unchanged web report once and reload. Verify the saved narrative/checklist values and hash remain identical; only target save timestamps may change. This verifies the actual report-save path without fabricating new findings.
+2. Temporarily set target `parcel_identity` checklist status from complete to pending, save once and reload. Both delivery UI routes must be disabled. One explicitly approved authenticated invocation of the EXISTING fulfillment function with `{orderId: <target>, action: "mark_ready"}` may verify server rejection (409) with no lifecycle/event/notification change. Do not force-click a disabled control or invent an endpoint.
+3. Restore that exact checklist item to complete, save once and reload. All baseline checklist/narrative values must match; both applicable delivery gates must permit the already-saved web report. The optional PDF route still requires a PDF and is not used. Do not claim a checklist audit event if source does not emit one; record actual target-only save timestamps.
+4. Stage the target ready ONCE using Mark this exact report ready while email remains false. Capture server-generated completed_at as V1. Expect the existing mark_ready event and an EMAIL_NOT_CONFIGURED notification result. The current notification source returns before recording an attempt when disabled, so require zero provider messages, no notification receipt and no customer_notification_failed event from this intentional disabled case. An unexpected provider call/receipt is a stop.
+5. Reopen this now-ready target exactly ONCE with its confirmation UI. Verify processing, completed_at reset, original report/checklist retained and the source-defined reopen event. Never reopen the initially processing order or make a second reopen.
+6. Enable only `EASY_ERF_CUSTOMER_EMAIL_ENABLED=true`. Mark this same report ready ONCE, producing V2 distinct from V1. Verify one automatic submission without a second admin notification step, exact sender/owner recipient/property/link, one Resend message ID, one V2 successful automatic receipt and one V2 customer_notified event. Provider delivery, owner inbox arrival and authenticated exact-report opening are separate checks. On ambiguous send/receipt error immediately disable and stop; do not send manually or use recovery.
+7. After independently proving the successful V2 receipt, set email false BEFORE the deduplication probe. Invoke the existing notification function once with `{orderId: <target>, action: "send"}` through the authenticated founder path. The existing early idempotency return must produce alreadySent=true with the same receipt/message ID, no provider request and no additional event. The flag remains false so an unexpected missing-receipt path cannot send another message. Do not repeat Mark ready for this probe.
+8. Verify the one message arrives in the owner's actual Gmail inbox and open its link through the authenticated customer browser. It must resolve to `/orders?report=384be2fe-f7aa-4687-970c-5a6db34cfeba`, retrieve only that customer/order and show the correct evidence, risks, unknowns and next actions. Reload the same deep link. Do NOT click Back to reports, enter general `/orders` history or open another order, because the unchanged general history still reads same-customer reports, including the protected legacy record.
+9. Verify email remains false and live checkout remains disarmed. Leave only the target ready at V2 with its single sent receipt. Preserve audits, receipt and sent email; do not reset the target through another reopen or erase history. Recompare ALL non-target metadata and total order count unchanged.
+
+Maximum intended writes/actions: one identical report save, two checklist saves, one negative delivery request, two successful ready transitions (V1 disabled and V2 enabled), one reopen, one automatic owner email and one disabled-flag same-version duplicate probe. Only target save/lifecycle/completion/receipt timestamps and source-defined target events may change. Expected lifecycle actions are mark_ready twice and reopen once; verify exact stored contract names before execution. No other order, recipient, report version, upload or failure transition.
+
+## Integrity proof
+
+Calculate in the database:
 `md5(coalesce((review_content - 'customerNotification')::text, 'null'))`
 
-Hash `review_content -> 'customerNotification'` separately; retain presence, status/timestamps, completed_at, report-update timestamp and per-order event count. Compare narrative/checklist hash at restored checkpoints; temporary checklist writes have explicitly bounded differences. Do not exclude any other report field.
+Hash `review_content -> 'customerNotification'` separately. Do not remove any other field to make the comparison pass. Temporary checklist change is allowed only between its two defined saves; restored/final narrative+checklist hash must match the original. A legitimate receipt changes whole-object JSON and review_content_updated_at but is not narrative corruption.
 
-Read-only acceptance: all values/counts unchanged.
-TEST acceptance: only the exact target's authorized transitions/timestamps/receipt/events may differ. Other orders and total order count remain unchanged.
-Never open/read the protected legacy report body `4e51dfbb-e931-4500-a622-2a766be398fc`. Keep per-order baselines private; public receipt contains aggregates and comparison conclusions only.
+Every non-target field/hash/event count and total order count must remain unchanged. Unexpected differences stop acceptance; do not silently repair them.
 
-## Rollback and stops
+## Rollback and stop conditions
 
-Prior frontend baseline is REPORTED deployment `c725b385-a026-40fe-8fdf-48485c21fd7a`, source `be28f4d0742885f5a483ef21d3ad44ac8753de6a`; independently verify before approval. No automatic rollback is authorized now. That old frontend has the known bulk-read defect: it must NOT be presented as privacy-safe or operated for acceptance if restored. Stop founder operation on regression. A supported passive rollback requires the exact explicitly approved target; no Git rewrite/alternate host. Leave the inert metadata reader in place rather than down-migrating or changing RLS. Preserve evidence. Disable email under the approved rollback boundary if TEST had begun.
+On failure stop all order actions, immediately restore email false if TEST enabled it, and preserve database/provider/browser evidence. No provider retry, recovery send, extra ready/reopen, audit deletion or money movement.
 
-Stop on drift, failed/incomplete artifact evidence, source mismatch, unavailable runtime proof, privacy leak, unintended write/send, wrong recipient/version, paid-service requirement or tool rejection. Do not retry consequential actions to seek success. No Stripe mutation, live checkout activation, function deployment, unrelated migration, external customer, protected report access or discretionary spending.
+Only if separately included in the exact Class B approval, a supported passive frontend rollback may restore verified prior deployment `c725b385-a026-40fe-8fdf-48485c21fd7a` at source `be28f4d0742885f5a483ef21d3ad44ac8753de6a` after an actual publication regression. That prior frontend has the known bulk-read defect: stop founder/customer protected-data operation if restored. If rollback is unsupported/rejected, stop; do not change hosting or Git history. Leave the additive unused metadata reader in place instead of a destructive down-migration. Do not attempt to undo sent email or completed audit history.
 
-## Spend and release receipt
+Stop on SHA/CI/project/migration/function-source/publication linkage mismatch, unknown necessary runtime flag, wrong identity/mode/recipient/version, unselected private data, unexpected request/write/send/event, failed save/navigation/inbox result, tool rejection, unsupported rollback or required extra spending.
 
-Maximum additional discretionary spend $0; no API billing, credits, paid runners/services or plan activation. Actual spend/meters UNKNOWN. The owner must separately approve the exact Class B candidate and bounded actions; this packet alone grants nothing.
+## Prohibited and spending
 
-Final execution receipt must distinguish VERIFIED/REPORTED/UNKNOWN, record merged tree and publication ID/source proof, workflow/artifact links, metadata comparisons, exact target events/V1/V2/send counts and inbox result, rollback if any, blockers, actual spend or UNKNOWN, and real running processes. No next tranche.
+No other PR, migration, function deployment, production configuration/secret change, Stripe mutation, live arming/charge/refund, external customer contact/order, new TEST order, protected legacy body, DNS, paid plan/runner/credits/API billing, Lovable implementation or Vercel. Default additional discretionary spending $0; maximum $0. Actual billing UNKNOWN. A new cost requires a separate explicit decision, never silent substitution.
+
+## Final execution receipt
+
+Record exact approved and merged SHA/tree/parents, migration application or equivalence evidence, function-source checks, publication method/ID/linkage limitations, actual production navigation/save/reload/gating/V1/reopen/V2/deduplication/inbox/exact-link results, private all-order metadata comparison, final email/live flags, rollback if used, actual spend or UNKNOWN and inspected real process status. Distinguish VERIFIED from REPORTED. No commercial acceptance claim until a separate approved genuine R999 journey passes. No unrelated feature tranche.

@@ -1,11 +1,11 @@
 # Easy Erf Current Release Contract
 
-Release: EE-R999-01. Reconciled 2026-09-07.
+Release: EE-R999-01. Reconciled 2026-09-07 after independent PR #168 review.
 Status: CLASS A CANDIDATE; NO PRODUCTION AUTHORITY.
 Repository: brumanswaves/propertyatlas-1ff5429f.
-Main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`.
+Expected main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`.
 Existing draft: #168, branch `chatgpt/ee-r999-selected-order-data`.
-Exact candidate: resolve the commit containing this contract; the final PR receipt pins its SHA and all four exact-head gates.
+Exact candidate: the final PR #168 review receipt must pin the complete SHA and successful exact-head evidence. Historical green results never authorize a later head.
 Supabase: `xiqpfhsdlvwrwhclonsg`.
 Passive publisher: `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
 Combined approval packet: `docs/EE-R999-01_RELEASE_PACKET.md`.
@@ -13,47 +13,46 @@ Combined approval packet: `docs/EE-R999-01_RELEASE_PACKET.md`.
 ## Frozen outcome and authority
 
 One genuine R999 Done-for-You Property Investigation must complete:
-exact property -> verified payment -> correct customer/parcel order -> founder investigation -> evidence-backed report -> automatic customer email -> authenticated customer opens the exact report.
+exact confirmed property -> genuine R999 payment -> signed webhook establishes payment truth -> correct customer/parcel order -> actual founder investigation and resolved checklist -> evidence-backed report -> delivery -> automatic customer email -> authenticated customer opens the exact report -> no duplicate order, payment or notification.
 
-This genuine commercial outcome remains UNPASSED. Historical TEST report delivery, source tests, provider acceptance and frontend publication do not prove it. GitHub main is code truth; Master Plan is product truth; Current State is operational; Decision Log preserves decisions. This reconciliation supersedes the stale operational PR #164/#152 baselines, not their historical receipts.
+This genuine commercial outcome remains UNPASSED. TEST fixtures, unit tests, a successful publish response or an owner TEST order do not prove it. GitHub main is code truth; Master Plan is product truth. This contract supersedes stale operational PR #164/#152 baselines without deleting their historical receipts. Follow BUILD_GOVERNANCE.md section 23 for honest stopping and execution status.
 
 ## Current repair boundary
 
-- Founder queue retrieves fourteen metadata fields only through an authenticated, admin-checked, SECURITY INVOKER RPC retaining caller RLS. Classification uses server-computed presence flags; never report excerpts, payloads, contact information or invented report bodies.
-- A private detail read requires one deliberately selected complete UUID, one equality filter and provider=stripe. There is no bulk fallback.
-- Paid/processing orders need not already have a final report. Ready/delivered orders missing report content and ambiguous/legacy metadata remain separately classified.
-- Selection change, exit, account change, sign-out, read error and unmount invalidate or clear stale private detail. Real browser request/response fixtures prove nonselected private sentinels never arrive.
-- Existing founder navigation, authoring, checklist, lifecycle and automatic notification contracts are preserved.
+- Founder queue retrieves fourteen explicit metadata fields through an admin-checked SECURITY INVOKER RPC retaining caller RLS. Classification uses server-computed flags, never report excerpts or invented content.
+- Private founder detail requires deliberate complete-UUID selection, equality and provider filters. No bulk fallback. Paid/processing orders do not need a finished report; legacy/ambiguous records remain separate.
+- Selection, exit, account change, sign-out, error and unmount invalidate stale detail. Browser proof inspects actual requests and received bodies, including delayed and mismatched data.
+- Independent review found a second bulk read in the customer email destination. `/orders?report=<UUID>` now filters by the exact full UUID, current user and Stripe provider. Empty/invalid/missing/inaccessible selected reports fail closed without loading another order. Rendered response state is bound to account and selected UUID; stale reads are aborted.
+- The ordinary customer `/orders` list, with no report parameter, retains its existing same-customer list read. This tranche does NOT claim that general list is metadata-only. Protected-owner production acceptance must use the exact report deep link and must not click Back to reports or enter general customer history.
+- No new product feature, report type, provider, dashboard, payment behavior or generative Site Potential work is included.
 
-## Current verified versus reported baseline
+## Baselines and proof limitations
 
-VERIFIED on 2026-09-07 by read-only source/configuration inspection:
-- Main SHA above; PR #167 is already merged. Do not repeat that release.
-- New `list_easy_erf_founder_queue(integer)` is absent in canonical production.
-- Applied migration inventory ends at `20260904123430_automatic_report_ready_email`; manual receipt migration is `20260904090724_record_manual_report_notification`. Do not reapply equivalent earlier migrations because repository timestamps differ.
-- Fulfillment v18, report upload v13, review content v13, customer notification v12 and launch readiness v11 have JWT verification enabled. Retrieved source and included shared files match this candidate after line-ending normalization.
-- Webhook v16 source matches; checkout v17 entrypoint/payment contract match. Its bundled human-review helper predates unused delivery/checklist additions; checkout imports only the unchanged checkout validator. This is not blanket backend source equivalence and is not a reason to redeploy checkout for this queue repair.
-- Fulfillment bundle hash remains `690d8ba18b39f37fcfa0d6462022326ef53886aa8b4cc9f3f683080529b07fb0`. Version-counter movement alone does not prove source drift.
+Earlier read-only runtime/source inspection recorded the following. Reverify before release; these are not continuously monitored facts:
+- New `list_easy_erf_founder_queue(integer)` was absent in canonical production.
+- Applied inventory ended at `20260904123430_automatic_report_ready_email`; manual receipt equivalent is `20260904090724_record_manual_report_notification`. Do not replay timestamp variants.
+- Fulfillment v18, upload/review-content v13, notification v12 and readiness v11 had JWT verification enabled, with retrieved entrypoints/shared files equivalent after line-ending normalization. No Edge deployment is proposed.
+- Webhook v16 matched; checkout v17 entrypoint/payment helper matched, but its bundled human-review helper predates unused delivery additions. Do not claim blanket source equivalence or redeploy checkout for this repair.
+- Fulfillment bundle hash: `690d8ba18b39f37fcfa0d6462022326ef53886aa8b4cc9f3f683080529b07fb0`.
 
-REPORTED in preserved PR #167 receipts, not re-executed in this Class A pass:
-- Latest passive frontend deployment `c725b385-a026-40fe-8fdf-48485c21fd7a`, reported source main above.
-- Owner TEST order is processing, with report/checklist saved and no notification receipt. Therefore do not try to reopen it immediately.
-- Prior navigation exposed the bulk-fetch privacy boundary; the frontend publication did not establish final acceptance.
+REPORTED from preserved release receipts: current frontend deployment `c725b385-a026-40fe-8fdf-48485c21fd7a` at expected main; owner TEST is processing with saved report/checklist and no receipt. No new production body read or mutation was performed during the independent source review.
 
-UNKNOWN: current runtime email-enable value, current checkout mode/live-arming flags, sender readiness/free allowance, owner inbox result and current order contents. No production report bodies or customer data were retrieved for this repair.
+UNKNOWN pending fresh read-only preflight: runtime email flag, checkout mode/live-arming, sender/free allowance, exact published Git-tree attestation, owner inbox and end-to-end TEST result. A deployment ID and publisher commit/build linkage do not independently attest every production Git-tree byte. Record that limitation; never mislabel source linkage as a full attestation. Stop if the supported evidence cannot establish the exact candidate being published.
 
 ## Gates
 
-Class A now: source repair, isolated database/browser proofs, review, tests, exact-head CI/artifact inspection, and one combined packet.
+Class A: implement/review/test this bounded read repair, inspect SQL/browser evidence, reconcile this combined packet. No intermediate owner approval needed.
 
-Class B later requires a new explicit exact-SHA approval: merge only #168; apply only its new metadata-reader migration if still absent; publish the exact merged frontend passively; perform bounded read-only acceptance; then only the explicitly listed owner TEST lifecycle/email actions. No Edge Function deployment is currently required. Runtime unknowns must be resolved read-only before consequential actions. No inferred permission to change sender credentials/configuration.
+Class B: one separate exact-SHA approval covers only PR #168 merge, its additive metadata reader if absent, passive exact-source frontend, read-only production checks and the explicitly bounded owner TEST lifecycle/email actions. No Edge deployment. All runtime prerequisites must be established before the respective consequential action; missing configuration is not permission to change it.
 
-Class C remains blocked: live charging/Stripe changes, genuine R999 payment, external customer contact, paid services or discretionary spend. Do not seek it before owner-only TEST acceptance passes.
+Class C: one genuine R999 journey remains separately approval-gated until owner TEST acceptance passes. No live charging, Stripe changes, external customer contact or new paid service under Class B.
 
-## Stop and integrity rules
+## Integrity and stops
 
-Stop on SHA/project/source mismatch, failed or incomplete evidence, nonselected private data, unexpected mutation, wrong order/recipient, unverified runtime prerequisites, unsupported rollback, or nonzero required spend. Do not bypass a rejected tool or substitute publication channels.
+Compare all non-target metadata and counts unchanged. Hash report JSON in the database excluding only `customerNotification`; hash the receipt separately. The receipt legitimately changes the whole JSON hash. Checklist values must match baseline after the authorized temporary negative test. Save timestamps may change only for the target under the exact packet.
 
-All non-target order metadata, report hashes, receipt hashes and audit counts must remain unchanged. Hash report content inside the database excluding only `customerNotification`; hash that receipt separately. A notification's authorized receipt/version timestamp change is not report corruption.
+The actual disabled-email source returns EMAIL_NOT_CONFIGURED before recording an attempt: no provider send, receipt or customer_notification_failed event is expected solely because email is disabled. Duplicate checking occurs before the enable flag; after a verified sent receipt, the same notification request can be tested with email disabled and must return alreadySent without contacting the provider.
 
-Maximum additional discretionary spend: $0. API billing, credit purchases, paid runners/services and live payments are prohibited. Actual cash spend and existing-service metering: UNKNOWN.
+Stop on SHA/project/source mismatch, failed/incomplete evidence, unselected private data, unexpected request/write/send, wrong recipient/version, unresolved runtime prerequisites, rejected tool or nonzero required spend. Do not bypass safety controls or switch publication channels.
+
+Maximum additional discretionary spend $0. No API billing, credits, paid runners/services, live payment, Lovable implementation or Vercel. Actual account billing UNKNOWN.

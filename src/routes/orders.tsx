@@ -610,7 +610,7 @@ function CustomerOrderCard({
 
       {status === "failed" ? (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-xs text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-5 shrink-0" />
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <div className="font-semibold">Your investigation needs attention.</div>
             <p className="mt-1">
