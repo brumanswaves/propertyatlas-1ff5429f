@@ -59,13 +59,26 @@ type ReportOrder = {
   review_content: unknown;
 };
 
+const EMPTY_ORDERS: ReportOrder[] = [];
+const REPORT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function CustomerOrdersPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<ReportOrder[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(true);
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(readSelectedReportId);
+  const userId = user?.id ?? null;
+  const [orderResponse, setOrderResponse] = useState<{
+    userId: string;
+    reportId: string | null;
+    rows: ReportOrder[];
+  } | null>(null);
+  // Identity-bound state is hidden during the render before effect cleanup,
+  // not only after the old request is aborted on selection/account changes.
+  const responseMatches = Boolean(userId && orderResponse?.userId === userId
+    && orderResponse.reportId === selectedReportId);
+  const orders = responseMatches ? orderResponse!.rows : EMPTY_ORDERS;
+  const loadingOrders = loading || Boolean(userId && !responseMatches);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -84,26 +97,48 @@ function CustomerOrdersPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    let active = true;
-    void (async () => {
-      const { data, error } = await supabase
-        .from("report_orders")
-        .select(
-          "id,parcel_id,report_type,status,status_enum,payload,price_cents,pdf_storage_path,failure_reason,created_at,completed_at,review_focus,intended_use,review_context,review_content",
-        )
-        .eq("user_id", user.id)
-        .eq("provider", "stripe")
-        .order("created_at", { ascending: false });
-      if (!active) return;
-      if (error) toast.error("Could not load your done-for-you property investigations.");
-      setOrders((data ?? []) as ReportOrder[]);
-      setLoadingOrders(false);
-    })();
-    return () => {
-      active = false;
+    if (!userId || loading) return;
+    const request = new AbortController();
+    const settle = (rows: ReportOrder[]) => {
+      if (!request.signal.aborted) setOrderResponse({ userId, reportId: selectedReportId, rows });
     };
-  }, [user]);
+    void (async () => {
+      // A malformed or empty report parameter must not become a bulk read.
+      if (selectedReportId !== null && !REPORT_UUID_PATTERN.test(selectedReportId)) {
+        settle([]);
+        return;
+      }
+      try {
+        let query = supabase
+          .from("report_orders")
+          .select(
+            "id,user_id,parcel_id,report_type,status,status_enum,payload,price_cents,pdf_storage_path,failure_reason,created_at,completed_at,review_focus,intended_use,review_context,review_content",
+          )
+          .eq("user_id", userId)
+          .eq("provider", "stripe");
+        if (selectedReportId !== null) query = query.eq("id", selectedReportId);
+        const { data, error } = await query
+          .order("created_at", { ascending: false })
+          .abortSignal(request.signal);
+        if (request.signal.aborted) return;
+        if (error) throw error;
+        const rows = data ?? [];
+        if (rows.some((row) => row.user_id !== userId
+          || (selectedReportId !== null && row.id.toLowerCase() !== selectedReportId))
+          || (selectedReportId !== null && rows.length > 1)) {
+          throw new Error("The report response did not match the requested account and order.");
+        }
+        settle(rows as ReportOrder[]);
+      } catch {
+        if (request.signal.aborted) return;
+        settle([]);
+        toast.error(selectedReportId !== null
+          ? "Could not open this exact report. No other order was opened."
+          : "Could not load your done-for-you property investigations.");
+      }
+    })();
+    return () => request.abort();
+  }, [loading, selectedReportId, userId]);
 
   const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
   const groupedOrders = useMemo(() => partitionCustomerReportOrders(orders), [orders]);
@@ -145,6 +180,14 @@ function CustomerOrdersPage() {
             <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
               Loading investigation status…
             </div>
+          ) : selectedReportId !== null ? (
+            selectedReport ? (
+              <OpenedReport report={selectedReport} onClose={() => selectReport(null)} />
+            ) : (
+              <div role="alert" className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
+                This exact report is not available to this account, is not yet finished, or could not be loaded. No other report was opened.
+              </div>
+            )
           ) : orders.length === 0 ? (
             <div className="rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-8 text-center shadow-soft">
               <div className="text-sm font-semibold text-[#0D1B2A]">
@@ -160,8 +203,6 @@ function CustomerOrdersPage() {
                 See Done-for-You · R999
               </Link>
             </div>
-          ) : selectedReport ? (
-            <OpenedReport report={selectedReport} onClose={() => selectReport(null)} />
           ) : (
             <>
               <OrderSection title="In progress" orders={groupedOrders.inProgress} />
@@ -569,7 +610,7 @@ function CustomerOrderCard({
 
       {status === "failed" ? (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-xs text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <AlertCircle className="mt-0.5 h-4 w-5 shrink-0" />
           <div>
             <div className="font-semibold">Your investigation needs attention.</div>
             <p className="mt-1">
@@ -628,7 +669,7 @@ function payloadText(payload: unknown, key: string): string | null {
 function readSelectedReportId() {
   if (typeof window === "undefined") return null;
   const reportId = new URLSearchParams(window.location.search).get("report");
-  return reportId?.trim() || null;
+  return reportId === null ? null : reportId.trim().toLowerCase();
 }
 
 function formatOrderReference(orderId: string) {
