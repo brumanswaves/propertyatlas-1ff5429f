@@ -1,49 +1,48 @@
 # Easy Erf Release State
 
-Last reconciled: 2026-09-05. This dated receipt is not production authorization.
+Reconciled 2026-09-07 after independent PR #168 source review. Class A only; no release authority is implied. BUILD_GOVERNANCE.md section 23 requires real execution and explicit stopped/process status.
 
-## Authority and Frozen Outcome
+## Canonical source and outcome
 
-- Active release: EE-R999-01. Current work is Class A navigation repair only, authorized by PR #166 [handoff 5554089939](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/166#issuecomment-5554089939) and the owner's instruction to execute it.
-- GitHub main is code truth; Master Plan is product truth; Current State is the operational snapshot; Decision Log records durable decisions.
-- Frozen outcome: genuine R999 property selection -> canonical payment/webhook -> correct order -> founder fulfillment -> automatic notification -> exact customer report retrieval. Mocked acceptance is not completion of this outcome.
+Release EE-R999-01: genuine R999 payment through signed webhook -> correct customer/parcel order -> actual investigation/resolved checklist -> evidence-backed delivery -> automatic email -> authenticated exact-report retrieval with no duplicates. Commercial acceptance is UNPASSED.
 
-## Repository and Candidate
+Expected GitHub main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`; tree `4e4ad2eb624861fc2a6964b583f94fb5a0e2c35e`.
+Active draft PR #168: `chatgpt/ee-r999-selected-order-data`. Do not duplicate the branch, repeat #166/#167 or merge without exact-candidate approval. The final PR review receipt pins the candidate SHA, current workflow IDs and artifact hashes; earlier evidence is historical.
 
-- Main/start: `596cccf00cd71d032b064e7c2c5b4850d5fc744c`; tree `285ae5942ef64a95e9c95e23587554d98750f6fb`.
-- PR #166 is merged. Its approved head was `040bfb2d343d752e3cdc64d419b14a93403bd38f`; do not replay its release or push repairs to its merged branch.
-- Current branch: `codex/ee-r999-founder-navigation-repair`, created from fetched current main in the clean isolated `easy-erf-release-166` worktree. Protected original dirty worktree remains untouched.
-- Candidate: the commit containing this repair and receipt; resolve exact SHA using Git. One draft follow-up PR will carry exact-head CI/artifact links; no parallel repair exists at branch creation.
+## Implemented source boundary
 
-## Completed Release, Stopped Acceptance
+Founder queue: explicit fourteen-field metadata RPC, admin check, SECURITY INVOKER/caller RLS, no report/payload/contact/context/receipt bodies. Detail is deliberately selected by full UUID with no bulk fallback. Lifecycle classification preserves valid active orders without a finished report. Account/selection/exit/sign-out/error/unmount guards discard stale private data; queue errors expose a read-only retry.
 
-- Preserved Class B receipt: [PR #166 comment 5551803394](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/166#issuecomment-5551803394). This repair does not rewrite that history.
-- Previously verified merge/deployment: main above; Supabase `xiqpfhsdlvwrwhclonsg`, only `easy-erf-founder-fulfillment` version 17, JWT verification true; bundle SHA-256 `690d8ba18b39f37fcfa0d6462022326ef53886aa8b4cc9f3f683080529b07fb0`. Deployed files matched merged Git source.
-- Previously verified passive frontend deployment: `61a4536c-4d98-4110-b5a8-284551ff9ce4` from that merged source. All four post-merge workflows passed: Guided 33964861439, Founder 33964862294, Stripe 33964863135, Human Review 33964864254.
-- Production acceptance stopped when Back to read-only queue did not return after refresh. Email was disabled and its false value independently checked. All four order metadata snapshots were identical before/after; no order mutation or email occurred. No money movement was performed.
-- Those production values are prior verified receipts, not newly queried runtime state in this source-only repair. Do not reopen the owner order or access production to reproduce the issue.
+Independent review found that the customer email URL also performed a same-customer bulk read. The selected `/orders?report=<UUID>` query now includes exact UUID, user and provider filters, rejects invalid/empty parameters without a read, validates response identity/count, aborts old requests and binds visible state to account and report. It never substitutes another report after a failed or missing selected read.
 
-## Verified Diagnosis and Repair
+The ordinary customer list without a report parameter is unchanged and is NOT metadata-only. Do not enter that general list or use Back to reports during the restricted owner production acceptance. No claim of unauthenticated cross-customer disclosure is made.
 
-- Built unchanged main locally with fixture-only configuration and intercepted all backend traffic. At 484x828, refresh followed by a 15px scroll placed the Back button center at (109.60, 114). `elementFromPoint` identified the fixed Founder Operations nav (y=80..117). A real mouse click hit that nav; selected hash and workbench remained. No order request was submitted.
-- Local refresh at scroll 40 reset to scroll 0 and Back worked; the failure is not proven to be router/hash corruption. The reproduced defect is pointer interception by the fixed overlay. Exact prior production scroll position is unknown.
-- Preserved failing reproduction outside Git in `navigation-baseline-interception`: screenshot, diagnostic JSON, receipt and trace. Trace SHA-256 `6e7c00bb276a453e90731a545fcd34fabff689bb1cfa3de1e9c62ba2e48b7b51`; screenshot `cc155fcbaa2d317d889b273101f2c8ccaa0c6ea91164f79fefa1a0bd3131e0b4`; diagnostic `d956eea30c1a4b640816314ad8a50b9f3aa9ce81f04240ca8b9bee0f8508d969`.
-- Small repair: operations nav uses document-absolute rather than viewport-fixed positioning; fulfillment content begins below it (`pt-36`). No z-index escalation, navigation removal, access-control change or order/history-state change.
-- The prior browser suite checked refresh and mobile delivery, but never narrow scroll-after-refresh return with the actual hit target. The expanded existing suite covers this missing combination using mouse, touch and keyboard, not forced clicks or JS handler invocation.
-- Local repaired production-build browser: 15 groups passed. Five navigation scenarios span 1440/484/390/320px, shallow/deep scrolling, refresh, selected-hash removal, no actionable workbench remaining, and explicit opening of another order with no leaked report/checklist/file/failure/notification state. Navigation submitted zero order/notification requests. Users and Entitlements shared navigation also passed.
-- Local focused: 5 files / 56 tests passed. Existing Windows CRLF-only SQL string assertions required temporarily reading two unchanged fixtures in Git LF form; original bytes restored. No migration diff.
-- Local strict TypeScript, targeted ESLint (zero warnings/errors), production build and whitespace check passed. Browser evidence records this as a dirty pre-commit candidate, not exact-head release proof.
+New `verify-customer-report-link-browser.mjs` operates the production bundle with synthetic identities and blocked external traffic. It inspects actual response bodies and nonselected sentinels, exact reload, invalid/missing/error paths, delayed A after B, account change and mobile layout. It runs within the existing Founder artifact, alongside the founder navigation/authoring fixtures. No production data or credentials are used.
 
-## Remaining Gate and Ranked Actions
+## Evidence already inspected; final-head proof still required
 
-1. Commit repair with this state file, push one draft follow-up PR, and run established four workflows once against the credible candidate. Full Vitest is delegated to the existing Guided CI gate rather than repeatedly run locally.
-2. Download exact-head browser artifacts; inspect receipt SHA/clean state, screenshots, trace and request evidence. Update the PR evidence receipt with actual results. A green artifact-upload step alone is not proof.
-3. Prepare one bounded release packet: frontend-only production change after separately approved merge/publication; no Edge Function deployment, migration, secret or payment change needed. No release action is automatic.
-4. New owner approval would be needed to publish this exact repaired source and repeat read-only production navigation acceptance. Delivery/email acceptance requires its own explicitly bounded authority; previous failed Class B approval cannot be replayed.
+Historical original candidate `3a9451d1f17b7766ff86fbd678078d83f357b9aa`: Codex supplied four green workflows and inspected founder/Guided artifacts; independent review corroborated those original flows but found the untested customer-link read defect.
 
-## Restrictions, Unverified Work and Spend
+Application candidate `6a79d5ed9d6b31f8eec16f81d6d365cf4473d591`: all four workflow conclusions were independently read as success. Founder run 34118857961 produced artifact 10017436173, digest `0a1d372b948d244e66793621db901f2405f441e94d4642a5933f5dfc0f19e862`. It was downloaded/hash-checked; receipts bind the clean SHA to 19 founder groups and six customer-link checks, no failures and no production access. Actual customer response bodies and trace/screenshots require final-head reinspection after any new commit. Original application assertion failure was an obsolete `.eq("user_id", user.id)` literal; account filter was preserved as `userId`, and the regression check was strengthened rather than removed.
 
-- No merge, ready-for-review change, deploy, publish, Lovable/Vercel use, migration, production write, secret/DNS/billing change, email enable/send, payment, order creation or legacy-order mutation in this repair.
-- Live navigation repair and commercial outcome remain UNVERIFIED. Existing email-disabled status is preserved, not reconfigured. Source acceptance does not certify production.
-- Same owner-selected session; no model switch, delegation or second agent. Routine work uses deterministic tools and existing normal GitHub runners. Runtime model identity and allowance consumption are not independently verified.
-- Maximum additional discretionary spend: $0. No API billing, credit purchases/reloads, paid runner/service activation or billing changes performed. Actual cash spend and remaining billing uncertainty: UNKNOWN.
+Local full checkout/build was unavailable to this ChatGPT review because the container could not resolve GitHub. Actual build, typecheck, isolated PostgreSQL and browser execution occur in existing GitHub Actions. Do not convert CI evidence into a claim that local Codex or this container ran the complete build. Protected local worktree state is reported by Codex, not independently inspected here.
+
+## Runtime baseline and limits
+
+Earlier source/catalog inspection recorded canonical project `xiqpfhsdlvwrwhclonsg`, absent new metadata RPC, inventory ending at 20260904123430 automatic email and equivalent manual migration 20260904090724. Fulfillment v18, upload/review-content v13, notification v12, readiness v11 were JWT-enabled and source-equivalent after line-ending normalization; no Edge deployment required for this read repair. Checkout helper equivalence is qualified in CURRENT_RELEASE_CONTRACT.md.
+
+REPORTED prior frontend: `c725b385-a026-40fe-8fdf-48485c21fd7a` at expected main. REPORTED owner TEST is processing, report/checklist saved, no notification receipt. Current runtime email/checkout flags, sender/free allowance, production Git-tree attestation and completed inbox/TEST acceptance remain UNKNOWN until fresh preflight. No production body read/write or configuration mutation was made in this source review.
+
+## Next action and approval boundary
+
+1. Finish exact-head verification for the final candidate and inspect all jobs plus founder/customer/Guided artifacts, not only green summary badges. Keep draft/unmerged.
+2. Prepare one combined Class B decision using EE-R999-01_RELEASE_PACKET.md. No intermediate owner permission is required for source verification.
+3. Only explicit Class B approval permits merge, one new metadata migration, passive frontend and the exact owner TEST sequence. No Edge deployment, new order or live money.
+4. TEST must first prove read isolation and unchanged metadata, then saved report/checklist and negative gating, disabled-email staging, one reopen, one enabled final automatic email and exact customer deep-link retrieval. Restore email false before a same-version dedupe request. Keep target ready with its one successful receipt; no extra reopen or history erasure.
+5. Class C genuine R999 remains blocked until independent TEST acceptance passes.
+
+## Processes and spend
+
+A commit, prompt or PR comment does not start Codex. Inspect real workflow/process IDs at each stopping point; do not imply later background work. No automatic implementation or reviewer process is created by this state file.
+
+Maximum additional discretionary spend $0. No API billing, credit purchase/reload, paid runner, service activation, Lovable implementation, Vercel or billing change. Actual account charges UNKNOWN. No production release, migration, secret change, email or payment was executed by this source review.

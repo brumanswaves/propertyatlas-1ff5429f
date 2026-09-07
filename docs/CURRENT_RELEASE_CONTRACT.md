@@ -1,180 +1,58 @@
 # Easy Erf Current Release Contract
 
-Release ID: `EE-R999-01`
-Contract status: **ACTIVE RELEASE GATE, AUTOMATIC EMAIL CANDIDATE IN CLASS A**
-Effective date: 2026-09-04
-Canonical repository: `brumanswaves/propertyatlas-1ff5429f`
-Canonical Supabase project: `xiqpfhsdlvwrwhclonsg`
-Canonical passive publisher project: `8680b46b-3325-4395-9767-a8c0ae2a3a50`
-Current GitHub main: `3289cec346d5e84d971340a1297f32f070b08417`
-Active implementation PR: `#164`
-Active implementation branch: `chatgpt/ee-r999-automatic-report-email`
-Prepared release packet: `docs/EE-R999-01_RELEASE_PACKET.md`
-Bounded owner TEST order: `384be2fe-f7aa-4687-970c-5a6db34cfeba`
+Release: EE-R999-01. Reconciled 2026-09-07 after independent PR #168 review.
+Status: CLASS A CANDIDATE; NO PRODUCTION AUTHORITY.
+Repository: brumanswaves/propertyatlas-1ff5429f.
+Expected main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`.
+Existing draft: #168, branch `chatgpt/ee-r999-selected-order-data`.
+Exact candidate: the final PR #168 review receipt must pin the complete SHA and successful exact-head evidence. Historical green results never authorize a later head.
+Supabase: `xiqpfhsdlvwrwhclonsg`.
+Passive publisher: `8680b46b-3325-4395-9767-a8c0ae2a3a50`.
+Combined approval packet: `docs/EE-R999-01_RELEASE_PACKET.md`.
 
-The approval SHA is the exact PR #164 head stated in the later release request after all exact-head checks and source review are clean. Any later head change invalidates that approval.
+## Frozen outcome and authority
 
-## Frozen release outcome
+One genuine R999 Done-for-You Property Investigation must complete:
+exact confirmed property -> genuine R999 payment -> signed webhook establishes payment truth -> correct customer/parcel order -> actual founder investigation and resolved checklist -> evidence-backed report -> delivery -> automatic customer email -> authenticated customer opens the exact report -> no duplicate order, payment or notification.
 
-One genuine R999 Easy Erf Done-for-You Property Investigation must complete this journey:
+This genuine commercial outcome remains UNPASSED. TEST fixtures, unit tests, a successful publish response or an owner TEST order do not prove it. GitHub main is code truth; Master Plan is product truth. This contract supersedes stale operational PR #164/#152 baselines without deleting their historical receipts. Follow BUILD_GOVERNANCE.md section 23 for honest stopping and execution status.
 
-`exact property -> verified payment -> correct customer and parcel order -> founder investigation -> evidence-backed report -> automatic customer email -> customer opens the exact report`
+## Current repair boundary
 
-The release is not accepted until the complete commercial journey is independently verified. Source checks, a migration, an email-provider response, or a published frontend are not substitutes for that outcome.
+- Founder queue retrieves fourteen explicit metadata fields through an admin-checked SECURITY INVOKER RPC retaining caller RLS. Classification uses server-computed flags, never report excerpts or invented content.
+- Private founder detail requires deliberate complete-UUID selection, equality and provider filters. No bulk fallback. Paid/processing orders do not need a finished report; legacy/ambiguous records remain separate.
+- Selection, exit, account change, sign-out, error and unmount invalidate stale detail. Browser proof inspects actual requests and received bodies, including delayed and mismatched data.
+- Independent review found a second bulk read in the customer email destination. `/orders?report=<UUID>` now filters by the exact full UUID, current user and Stripe provider. Empty/invalid/missing/inaccessible selected reports fail closed without loading another order. Rendered response state is bound to account and selected UUID; stale reads are aborted.
+- The ordinary customer `/orders` list, with no report parameter, retains its existing same-customer list read. This tranche does NOT claim that general list is metadata-only. Protected-owner production acceptance must use the exact report deep link and must not click Back to reports or enter general customer history.
+- No new product feature, report type, provider, dashboard, payment behavior or generative Site Potential work is included.
 
-## Product correction in PR #164
+## Baselines and proof limitations
 
-The retired manual workflow required the founder to prepare, copy, send, confirm, and separately record an email after a report was finished. That is not the intended operating model.
+Earlier read-only runtime/source inspection recorded the following. Reverify before release; these are not continuously monitored facts:
+- New `list_easy_erf_founder_queue(integer)` was absent in canonical production.
+- Applied inventory ended at `20260904123430_automatic_report_ready_email`; manual receipt equivalent is `20260904090724_record_manual_report_notification`. Do not replay timestamp variants.
+- Fulfillment v18, upload/review-content v13, notification v12 and readiness v11 had JWT verification enabled, with retrieved entrypoints/shared files equivalent after line-ending normalization. No Edge deployment is proposed.
+- Webhook v16 matched; checkout v17 entrypoint/payment helper matched, but its bundled human-review helper predates unused delivery additions. Do not claim blanket source equivalence or redeploy checkout for this repair.
+- Fulfillment bundle hash: `690d8ba18b39f37fcfa0d6462022326ef53886aa8b4cc9f3f683080529b07fb0`.
 
-The target workflow is:
+REPORTED from preserved release receipts: current frontend deployment `c725b385-a026-40fe-8fdf-48485c21fd7a` at expected main; owner TEST is processing with saved report/checklist and no receipt. No new production body read or mutation was performed during the independent source review.
 
-1. Founder completes the investigation and report.
-2. Founder marks the report ready once.
-3. Easy Erf submits a branded transactional email automatically to the canonical order customer.
-4. The email links directly to the exact report in the customer's authenticated dashboard.
-5. Easy Erf records success or failure against that exact delivered report version.
-6. A failed send leaves one recovery retry control. Normal delivery requires no separate notification work.
+UNKNOWN pending fresh read-only preflight: runtime email flag, checkout mode/live-arming, sender/free allowance, exact published Git-tree attestation, owner inbox and end-to-end TEST result. A deployment ID and publisher commit/build linkage do not independently attest every production Git-tree byte. Record that limitation; never mislabel source linkage as a full attestation. Stop if the supported evidence cannot establish the exact candidate being published.
 
-## Included source boundary
+## Gates
 
-PR #164 is limited to the frozen customer journey and includes:
+Class A: implement/review/test this bounded read repair, inspect SQL/browser evidence, reconcile this combined packet. No intermediate owner approval needed.
 
-- automatic report-ready email submission after the successful ready transition;
-- server-side recipient resolution from the order owner, never from browser input;
-- ready-report, structured-report, resolved-checklist, property, and report-version validation;
-- branded HTML and text email with `/orders?report=<order-id>` deep link;
-- disabled-by-default provider configuration;
-- deterministic idempotency key for the exact order and delivered report version;
-- durable success and failure receipts without changing the reviewed report body;
-- one audit event for a successful customer notification and one failure event for a failed attempt;
-- clearing the prior receipt when a report is reopened and redelivered;
-- one exceptional retry control for failed or historical unsent reports;
-- retirement of the manual prepare/copy/confirm/record workflow;
-- isolated database proof, Deno checks, focused tests, full tests, build, TypeScript, lint, and whitespace verification.
+Class B: one separate exact-SHA approval covers only PR #168 merge, its additive metadata reader if absent, passive exact-source frontend, read-only production checks and the explicitly bounded owner TEST lifecycle/email actions. No Edge deployment. All runtime prerequisites must be established before the respective consequential action; missing configuration is not permission to change it.
 
-## Canonical state before this candidate
+Class C: one genuine R999 journey remains separately approval-gated until owner TEST acceptance passes. No live charging, Stripe changes, external customer contact or new paid service under Class B.
 
-### GitHub and frontend
+## Integrity and stops
 
-- PR #163 was merged into current main `3289cec346d5e84d971340a1297f32f070b08417`.
-- The founder fulfillment route is reachable in production and was confirmed by owner screenshots.
-- Production still contains the manual notification UX and does not yet contain PR #164.
+Compare all non-target metadata and counts unchanged. Hash report JSON in the database excluding only `customerNotification`; hash the receipt separately. The receipt legitimately changes the whole JSON hash. Checklist values must match baseline after the authorized temporary negative test. Save timestamps may change only for the target under the exact packet.
 
-### Supabase
+The actual disabled-email source returns EMAIL_NOT_CONFIGURED before recording an attempt: no provider send, receipt or customer_notification_failed event is expected solely because email is disabled. Duplicate checking occurs before the enable flag; after a verified sent receipt, the same notification request can be tested with email disabled and must return alreadySent without contacting the provider.
 
-- Canonical project: `xiqpfhsdlvwrwhclonsg`.
-- Manual notification migration `20260904090724_record_manual_report_notification` is applied.
-- `easy-erf-founder-customer-notification` is active as version 1 with `verify_jwt=true`.
-- `easy-erf-founder-fulfillment` is active as version 5 with `verify_jwt=true`.
-- The automatic-email migration in PR #164 is not applied.
-- The automatic-email function versions in PR #164 are not deployed.
+Stop on SHA/project/source mismatch, failed/incomplete evidence, unselected private data, unexpected request/write/send, wrong recipient/version, unresolved runtime prerequisites, rejected tool or nonzero required spend. Do not bypass safety controls or switch publication channels.
 
-### Acceptance order
-
-Only order `384be2fe-f7aa-4687-970c-5a6db34cfeba` may be used for the owner-only TEST acceptance. It is associated with:
-
-- Erf 1570;
-- 24 Padrone Crescent, St Francis Bay;
-- canonical parcel `csg:lpi:c03400140000157000000`;
-- the founder-owned Easy Erf account;
-- a completed structured report and resolved nine-item investigation checklist.
-
-No other order may be substituted without a new verified packet.
-
-## Required production configuration
-
-Automatic email remains fail-closed until the following are separately approved, configured, and verified:
-
-- transactional email provider: Resend;
-- verified Easy Erf sending domain or subdomain;
-- `RESEND_API_KEY` in canonical Supabase secrets;
-- `EASY_ERF_REPORT_FROM_EMAIL` using the verified Easy Erf domain;
-- optional `EASY_ERF_REPORT_REPLY_TO`;
-- `EASY_ERF_APP_URL=https://easyerf.co.za`;
-- `EASY_ERF_CUSTOMER_EMAIL_ENABLED=true` only for the controlled acceptance and later approved operation.
-
-No secret value may appear in source, logs, screenshots, release documents, or chat.
-
-## Release stages
-
-### Class A, authorized now
-
-- branch implementation;
-- code and security review;
-- focused and full tests;
-- isolated migration proof;
-- Deno, lint, TypeScript, build, and whitespace checks;
-- read-only inspection;
-- provider and DNS planning;
-- release-packet preparation.
-
-### Class B, requires one exact release approval
-
-- merge PR #164 at one exact accepted SHA;
-- apply only `supabase/migrations/20260904114500_automatic_report_ready_email.sql`;
-- deploy only the accepted versions of:
-  - `easy-erf-founder-customer-notification`;
-  - `easy-erf-founder-fulfillment`;
-- passively publish the exact merged frontend;
-- create or configure the approved Resend sender without paid-plan activation;
-- save the named secrets and configuration;
-- run one owner-only TEST acceptance against the exact authorized order;
-- temporarily enable automatic email only within the approved acceptance boundary.
-
-### Class C, not authorized by the automatic-email packet
-
-- live checkout arming;
-- a genuine R999 charge;
-- Stripe mutation;
-- external customer contact;
-- paid email plan or other discretionary spend;
-- destructive database work;
-- unrelated feature work.
-
-## Acceptance requirements for automatic email
-
-The owner-only TEST acceptance must establish:
-
-1. The exact owner TEST order is reopened and redelivered once.
-2. The ready transition submits one email automatically.
-3. The provider accepts the exact recipient, subject, and dashboard link.
-4. One sent receipt is persisted for the exact report version.
-5. One matching `customer_notified` event is persisted.
-6. Repeating the send path does not create a duplicate provider send or duplicate event.
-7. The owner receives the email and opens the exact Erf 1570 report from its link.
-8. No other order, customer, report, payment, or Stripe record changes.
-9. The enable flag can be disabled immediately after acceptance.
-
-A provider acceptance response is not proof that the message reached the inbox. Inbox receipt and report opening remain separate acceptance evidence.
-
-## Stop conditions
-
-Stop if:
-
-- PR #164 head differs from the approved SHA;
-- any required exact-head check fails or is cancelled;
-- main advances unexpectedly;
-- the repository, Supabase project, publisher project, migration, function, order, parcel, recipient, or report version differs;
-- a paid email plan or nonzero discretionary spend is required;
-- the sender domain cannot be verified safely;
-- the email would be sent to an external customer during TEST acceptance;
-- source equivalence cannot be established;
-- any action would arm live checkout, charge money, mutate Stripe, expose a secret, use Vercel, or expand scope.
-
-## Rollback boundary
-
-- Disable `EASY_ERF_CUSTOMER_EMAIL_ENABLED` first.
-- Preserve all email receipts, provider IDs, and audit events.
-- Restore the prior founder fulfillment and notification Edge Function versions if required.
-- Republish prior frontend main `3289cec346d5e84d971340a1297f32f070b08417` if the frontend must be rolled back.
-- Do not down-migrate after an email attempt. Use a reviewed forward repair or explicit rollback migration.
-- Do not delete a genuine report or payment record.
-
-## Spend
-
-- Current Class A discretionary spend: **$0**.
-- Maximum additional discretionary spend authorized now: **$0**.
-- Paid Resend plan authorized: **no**.
-- Live R999 charge authorized: **no**.
-- External customer contact authorized: **no**.
-- Existing GitHub Actions, Supabase, hosting, DNS, and email-account metering: **UNKNOWN**.
+Maximum additional discretionary spend $0. No API billing, credits, paid runners/services, live payment, Lovable implementation or Vercel. Actual account billing UNKNOWN.

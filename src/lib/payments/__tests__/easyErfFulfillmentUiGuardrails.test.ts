@@ -111,9 +111,26 @@ describe("Easy Erf founder fulfillment UI", () => {
 
 describe("Easy Erf customer fulfillment status", () => {
   it("reads only the signed-in user Stripe investigation orders", () => {
-    expect(customerRoute).toContain('.eq("user_id", user.id)');
+    expect(customerRoute).toContain('.eq("user_id", userId)');
     expect(customerRoute).toContain('.eq("provider", "stripe")');
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
+  });
+
+  // This guard complements actual built-browser request and response checks.
+  it("binds customer email-link reads and visible state to one account and complete UUID", () => {
+    expect(customerRoute).toContain('if (selectedReportId !== null) query = query.eq("id", selectedReportId)');
+    expect(customerRoute).toContain("selectedReportId !== null && !REPORT_UUID_PATTERN.test(selectedReportId)");
+    expect(customerRoute).toContain("reportId === null ? null : reportId.trim().toLowerCase()");
+    expect(customerRoute).toContain("orderResponse?.userId === userId");
+    expect(customerRoute).toContain("orderResponse.reportId === selectedReportId");
+    expect(customerRoute).toContain(".abortSignal(request.signal)");
+    expect(customerRoute).toContain("return () => request.abort()");
+    expect(customerRoute).toContain("row.user_id !== userId");
+    expect(customerRoute).toContain("rows.length > 1");
+    expect(customerRoute.indexOf("selectedReportId !== null ? (")).toBeLessThan(
+      customerRoute.indexOf("orders.length === 0 ? ("),
+    );
+    expect(customerRoute).toContain("No other report was opened.");
   });
 
   it("partitions every order into exactly one presentation while preserving purchase order", () => {

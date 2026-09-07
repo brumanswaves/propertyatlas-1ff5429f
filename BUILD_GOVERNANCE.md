@@ -59,7 +59,7 @@ Never claim access to a tool that is not actually available. Never claim Codex, 
 
 ## 8. No fake background work
 
-Do not claim background or autonomous work is continuing unless a real persistent mechanism exists, such as a scheduled automation, queue job, deployed worker, cron job, CI workflow, or external agent job, and its creation can be evidenced. Otherwise the truthful status is: `No persistent background job is currently running.`
+Do not claim background or autonomous work is continuing unless a real persistent mechanism exists, such as a scheduled automation, queue job, deployed worker, cron job, CI workflow, or external agent job, and its creation and current inspected status can be evidenced. State which process exists and what it does. A running website is not a running implementation worker. If no work process is running, say so; if external process status cannot be inspected, label it UNKNOWN rather than inventing activity or inactivity.
 
 ## 9. Canonical source of truth
 
@@ -91,7 +91,7 @@ These rules apply recursively to every sub-agent, coding agent, autonomous worke
 
 ## 16. Owner Communication Standard V1
 
-This section supersedes every older owner-facing build communication format in this repository.
+This section supersedes every older owner-facing build communication format in this repository. The owner's 2026-09-07 execution-continuity directive in section 23 supersedes older wording that implied work would continue after the conversation ended.
 
 Every meaningful status report, blocker report, approval request, or release packet must begin with this exact heading:
 
@@ -101,11 +101,9 @@ Use exactly one of the following two forms.
 
 ### A. NOTHING NEEDED FROM YOU
 
-State this exact sentence:
+Use this only to describe the absence of a current owner action, never to conceal unfinished or stopped work.
 
-`Nothing is needed from you right now. I will continue with the authorized $0, source-only work.`
-
-Immediately state exactly what work will continue. Do not ask the owner to approve Class A work.
+State the exact authorized work being performed in the active session, and perform the next available step. Do not ask the owner to approve Class A work. Do not end with "I will continue" as though execution will happen after the conversation. At a stopping point, state what remains unfinished, inspected process status, the exact next action and its responsible actor under section 23.
 
 ### B. ONE SPECIFIC OWNER ACTION
 
@@ -168,7 +166,7 @@ State the practical risk in plain English, using language such as:
 
 #### WHAT I WILL DO NEXT
 
-State exactly what the build will do after the owner completes the action.
+State exactly what the build will do after the owner completes the action. This is a conditional next action, not a claim that a worker is already running. Identify the responsible actor and any required session or tool capability.
 
 ### 16.1 Class A work requires no owner approval
 
@@ -185,7 +183,7 @@ Do not ask the owner to approve Class A work. Class A includes:
 - Formatting and whitespace correction.
 - Evidence consolidation.
 
-If nothing is needed from the owner, say so clearly and continue under existing authority. Never stop merely because an intermediate source-only step finished.
+If no owner action is required, execute the next available authorized step during the active session. Never stop merely because an intermediate source-only step finished, and never request another "continue" message solely to authorize already-permitted work.
 
 ### 16.2 Plain-English translation
 
@@ -248,14 +246,15 @@ After the mandatory `WHAT I NEED FROM YOU NOW` section, lead with:
 1. What is working and independently verified.
 2. What remains unverified.
 3. The current blocker.
-4. The next product outcome.
+4. The next product outcome and responsible actor.
 5. Spend and practical risk.
+6. What remains unfinished and whether an actual work process is running, stopped or uninspectable.
 
 Do not lead with test counts, PR counts, commits, migrations, lines of code, architecture, or activity totals. Those may appear later as supporting evidence.
 
 ### 16.9 No fake background status
 
-Never claim a job is running in the background unless a real job, workflow, process, scheduler, worker, queue item, or automation exists and its status was inspected.
+Never claim a job is running in the background unless a real job, workflow, process, scheduler, worker, queue item, or automation exists and its current status was inspected. Posting a GitHub comment, preparing a prompt, making a commit or receiving a handoff does not start or resume Codex.
 
 ## 17. Stop conditions
 
@@ -280,6 +279,34 @@ Before substantial work, ask internally: Does this move the MVP forward? Is ther
 ## 22. Broad owner authority does not cancel governance
 
 Broad autonomy permits sensible, reversible, zero-cost decisions without interrupting the owner. It does not authorize discretionary spend, Lovable credits, destructive changes, unverifiable claims, fake background work, or unavailable capabilities.
+
+## 23. Execution continuity and honest stopping
+
+Owner directive received 2026-09-07. Applies to all future Easy Erf work, including ChatGPT project sessions, Codex/Astra tasks, reviewers and delegated workers. This section supersedes any conflicting older communication wording, including the retired mandatory "I will continue" sentence. All existing spending limits, scope restrictions, safety stops and production approval boundaries remain unchanged.
+
+**Do not hide stopped work behind "nothing is needed."**
+
+If the project is unfinished and the next authorized step can be performed, perform it during the active session. Do not stop after an intermediate task merely to ask whether to continue.
+
+If work cannot continue and no verified process is carrying it forward, say plainly:
+
+`The project is unfinished. Work has stopped.`
+
+Then identify the exact reason, the next action, and who must take it. Distinguish lack of authority, unavailable capability, failed verification, and unavailable evidence. Do not invent a need for owner approval when Class A authority already covers the next action.
+
+Never say "I will continue" and end the conversation as though work will happen afterward. Only claim background work when a real process exists and its current status has been inspected. Name that process, its identifier and its actual task; CI running is not evidence that implementation or production acceptance is continuing automatically.
+
+"Nothing needed from Brandon" does not mean "nothing left to do." If no owner action is required, do the available authorized work. If owner action is required, give the smallest exact action and where to perform it. Do not ask Brandon to perform a technical action an available authorized project tool can perform.
+
+Every stopping point must distinguish:
+
+- What remains unfinished.
+- Whether anything is actually running, with inspected evidence or an explicit UNKNOWN for uninspectable external activity.
+- What must happen next and who is responsible.
+
+An unfinished project with no work running is **STOPPED** or **BLOCKED**, not "nothing needed." Do not represent a comment, receipt, plan, queued instruction or completed check as ongoing execution.
+
+This directive does not authorize extra spending, bypassing safety controls, destructive operations, production publication, migrations, secret changes, customer contact or money movement. Existing explicit approvals remain necessary.
 
 ## Final overriding rule
 

@@ -15,6 +15,7 @@ on:
       - supabase/functions/easy-erf-r999-checkout/**
       - supabase/functions/easy-erf-stripe-webhook/**
       - supabase/migrations/20260829113000_secure_easy_erf_stripe_fulfillment.sql
+      - supabase/migrations/20260907100000_founder_queue_metadata_read.sql
   workflow_dispatch:
 
 permissions:
@@ -36,7 +37,7 @@ jobs:
         run: |
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
           git fetch --no-tags --depth=1 origin "${REF}"
           git checkout --detach FETCH_HEAD
 
@@ -91,7 +92,7 @@ jobs:
         run: |
           git init .
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          REF="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
           git fetch --no-tags --depth=1 origin "${REF}"
           git checkout --detach FETCH_HEAD
 

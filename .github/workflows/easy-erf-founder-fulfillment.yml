@@ -9,7 +9,9 @@ on:
       - scripts/verify-easy-erf-founder-fulfillment.sql
       - scripts/verify-easy-erf-human-review-product.sql
       - scripts/verify-easy-erf-customer-notification.sql
+      - scripts/verify-easy-erf-founder-queue.sql
       - scripts/verify-founder-fulfillment-browser.mjs
+      - scripts/verify-customer-report-link-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
       - supabase/functions/easy-erf-founder-fulfillment/**
@@ -23,11 +25,15 @@ on:
       - supabase/migrations/20260903111500_require_resolved_founder_investigation_checklist.sql
       - supabase/migrations/20260903211000_record_manual_report_notification.sql
       - supabase/migrations/20260904114500_automatic_report_ready_email.sql
+      - supabase/migrations/20260907100000_founder_queue_metadata_read.sql
       - src/components/admin/FounderCustomerNotification.tsx
       - src/components/admin/AdminGuard.tsx
       - src/components/admin/FounderHumanReviewEditor.tsx
       - src/lib/humanReview/founderQueueSafety.ts
+      - src/lib/humanReview/founderQueueData.ts
+      - src/lib/humanReview/useFounderOrderData.ts
       - src/lib/humanReview/__tests__/founderQueueSafety.test.ts
+      - src/lib/humanReview/__tests__/founderQueueData.test.ts
       - src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts
       - src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
@@ -86,12 +92,13 @@ jobs:
           git restore -- package-lock.json
           npx vitest run \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
+            src/lib/humanReview/__tests__/founderQueueData.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts \
             src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts
 
-      - name: Apply and prove founder fulfillment and automatic notification contracts
+      - name: Apply and prove founder fulfillment, notification and queue-read contracts
         env:
           PGPASSWORD: postgres
         run: >-
@@ -100,7 +107,7 @@ jobs:
           --port 54329
           --username postgres
           --dbname postgres
-          --file scripts/verify-easy-erf-customer-notification.sql
+          --file scripts/verify-easy-erf-founder-queue.sql
 
       - name: Build production bundle and generate routes
         env:
@@ -116,19 +123,24 @@ jobs:
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           scripts/verify-founder-fulfillment-browser.mjs
+          scripts/verify-customer-report-link-browser.mjs
           src/components/admin/AdminGuard.tsx
           src/components/admin/FounderCustomerNotification.tsx
           src/components/admin/FounderHumanReviewEditor.tsx
           src/lib/humanReview/founderQueueSafety.ts
+          src/lib/humanReview/founderQueueData.ts
+          src/lib/humanReview/useFounderOrderData.ts
           src/lib/humanReview/__tests__/founderQueueSafety.test.ts
+          src/lib/humanReview/__tests__/founderQueueData.test.ts
           src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts
           src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
           src/routes/admin_.fulfillment.tsx
+          src/routes/orders.tsx
 
       - name: Check patch whitespace
         run: git diff --check origin/main...HEAD
 
-      - name: Operate the isolated founder workflow in the built app
+      - name: Operate the isolated founder workflow and customer email link in the built app
         env:
           EASY_ERF_BROWSER_BASE_URL: http://127.0.0.1:4174
           EASY_ERF_BROWSER_ARTIFACTS: artifacts/founder-fulfillment
@@ -157,6 +169,7 @@ jobs:
           curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
           git diff --exit-code
           node scripts/verify-founder-fulfillment-browser.mjs
+          timeout 120s node scripts/verify-customer-report-link-browser.mjs
 
       - name: Upload founder browser acceptance evidence
         if: always()

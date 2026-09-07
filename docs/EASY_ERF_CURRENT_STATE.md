@@ -1,10 +1,24 @@
 # Easy Erf Current State
 
-_Last refreshed: 2026-09-01_
+_Last reconciled: 2026-09-07_
 
 This file is the concise operational snapshot for the Easy Erf control room. The product source of truth remains `docs/EASY_ERF_MASTER_PLAN.md`; GitHub `main` remains the code source of truth.
 
-## Canonical baseline before this branch
+## Current release position
+
+- VERIFIED GitHub main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`, after merged PR #167. Do not replay #166/#167.
+- Active source-only repair: existing draft PR #168, `chatgpt/ee-r999-selected-order-data`. Queue metadata must exclude private reports/payloads; detail requires deliberate complete-UUID selection. Existing navigation and lifecycle classification are preserved.
+- REPORTED latest frontend: deployment `c725b385-a026-40fe-8fdf-48485c21fd7a`, source main above. It has the bulk-fetch acceptance defect; it is not a completed privacy acceptance.
+- VERIFIED read-only runtime inspection: canonical Supabase `xiqpfhsdlvwrwhclonsg`; metadata queue RPC absent. Fulfillment v18, upload/review-content v13, notification v12 and readiness v11 source-equivalent to candidate (line endings normalized). No function redeployment required for this repair.
+- Current email enablement and checkout/live-arming flags are UNKNOWN in this pass, not presumed OFF. No runtime configuration was changed.
+- Owner TEST order is REPORTED processing with a saved report/checklist, not ready. Remaining TEST staging/reopen/automatic-email/inbox acceptance is unpassed. Full genuine R999 commercial outcome remains UNPASSED.
+- Use `CURRENT_RELEASE_CONTRACT.md`, `EE-R999-01_RELEASE_PACKET.md` and `EE-R999-ASTRA-STATE.md` for current gates. One combined Class B packet is prepared; no merge, migration, publication, order write or email is authorized by this source task.
+
+## Historical 2026-09-01 snapshot
+
+Everything below records the earlier PR #152/product-positioning work, not current runtime verification. Its TEST delivery proof did not include the later automatic-email and final privacy/navigation acceptance; it must not be read as commercial completion.
+
+### Historical canonical baseline
 
 - GitHub `main`: `828b4379a31e9beb2f8fb394e956a7b99ff7ec61` after PR #152.
 - Production frontend: Lovable deployment `33c0cd32-e26c-4517-a374-cf1dc56fcbc9`, serving `https://easyerf.co.za`.

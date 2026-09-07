@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -32,6 +32,12 @@ import {
   reportOrderMode,
 } from "@/lib/humanReview/founderQueueSafety";
 import {
+  isLegacyFounderSummary,
+  type FounderOrderDetail as ReportOrder,
+  type FounderQueueSummary,
+} from "@/lib/humanReview/founderQueueData";
+import { useFounderOrderData } from "@/lib/humanReview/useFounderOrderData";
+import {
   isHumanReviewInvestigationChecklistResolved,
   isHumanReviewReportContentComplete,
   parseHumanReviewInvestigationChecklist,
@@ -53,28 +59,6 @@ export const Route = createFileRoute("/admin_/fulfillment")({
   component: FounderFulfillmentPage,
 });
 
-type ReportOrder = {
-  id: string;
-  user_id: string | null;
-  parcel_id: string | null;
-  report_type: string;
-  status: string;
-  status_enum: string | null;
-  provider: string;
-  payload: unknown;
-  price_cents: number;
-  pdf_storage_path: string | null;
-  failure_reason: string | null;
-  created_at: string;
-  updated_at: string;
-  completed_at: string | null;
-  review_focus: string | null;
-  intended_use: string | null;
-  review_context: string | null;
-  review_content: unknown;
-  review_content_updated_at: string | null;
-};
-
 type FulfillmentAction = "start_review" | "reopen_review" | "mark_ready" | "mark_failed";
 
 type TransitionValues = {
@@ -91,39 +75,11 @@ function FounderFulfillmentPage() {
 }
 
 function FounderFulfillmentQueue() {
-  const [orders, setOrders] = useState<ReportOrder[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [focusedOrderId, setFocusedOrderId] = useState<string | null>(null);
+  const { orders, loading, queueError, focusedOrder, detailLoading, refresh } = useFounderOrderData(focusedOrderId);
   const mutationInFlight = useRef(false);
-  const refreshSequence = useRef(0);
   const [deliveryNotice, setDeliveryNotice] = useState<{ orderId: string; message: string } | null>(null);
-
-  const refresh = useCallback(async () => {
-    const sequence = ++refreshSequence.current;
-    const { data, error } = await supabase
-      .from("report_orders")
-      .select(
-        "id,user_id,parcel_id,report_type,status,status_enum,provider,payload,price_cents,pdf_storage_path,failure_reason,created_at,updated_at,completed_at,review_focus,intended_use,review_context,review_content,review_content_updated_at",
-      )
-      .eq("provider", "stripe")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (sequence !== refreshSequence.current) return;
-    if (error) {
-      toast.error("Could not load the done-for-you investigation queue.");
-      setLoading(false);
-      return;
-    }
-
-    setOrders((data ?? []) as ReportOrder[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -261,28 +217,32 @@ function FounderFulfillmentQueue() {
     [orders],
   );
   const currentOrders = useMemo(
-    () => prioritizedOrders.filter((order) => !isLegacyFounderOrder(order)),
+    () => prioritizedOrders.filter((order) => !isLegacyFounderSummary(order)),
     [prioritizedOrders],
   );
   const legacyOrders = useMemo(
-    () => prioritizedOrders.filter((order) => isLegacyFounderOrder(order)),
+    () => prioritizedOrders.filter((order) => isLegacyFounderSummary(order)),
     [prioritizedOrders],
-  );
-  const focusedOrder = useMemo(
-    () => orders.find((order) => order.id.toLowerCase() === focusedOrderId) ?? null,
-    [focusedOrderId, orders],
   );
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-36 sm:px-6">
-        {focusedOrderId ? (
+        {queueError ? (
+          <section role="alert" className="space-y-3">
+            <h1 className="text-xl font-semibold">Investigation queue unavailable</h1>
+            <p>Could not load the done-for-you investigation queue.</p>
+            <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded border px-3 py-2">
+              <RotateCcw className="h-4 w-4" /> Retry queue
+            </button>
+          </section>
+        ) : focusedOrderId ? (
           <FocusedOrderWorkbench
             key={focusedOrderId}
             order={focusedOrder}
             deliveryNotice={deliveryNotice?.orderId === focusedOrderId ? deliveryNotice.message : null}
-            loading={loading}
+            loading={detailLoading}
             busy={Boolean(focusedOrder && busyOrderId === focusedOrder.id)}
             onExit={exitFocus}
             onTransition={transition}
@@ -310,8 +270,8 @@ function QueueOverview({
   onFocus,
 }: {
   loading: boolean;
-  currentOrders: ReportOrder[];
-  legacyOrders: ReportOrder[];
+  currentOrders: FounderQueueSummary[];
+  legacyOrders: FounderQueueSummary[];
   onFocus: (orderId: string) => void;
 }) {
   const openCurrent = currentOrders.filter((order) => orderStatus(order) !== "ready");
@@ -387,7 +347,7 @@ function QueueSection({
 }: {
   title: string;
   description: string;
-  orders: ReportOrder[];
+  orders: FounderQueueSummary[];
   loading: boolean;
   empty: string;
   onFocus: (orderId: string) => void;
@@ -395,8 +355,7 @@ function QueueSection({
   return (
     <section className="mt-8">
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">One order at a time</div>
-        <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">{title}</h2>
+        <h2 className="text-lg font-semibold text-[#0D1B2A]">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-[#64748B]">{description}</p>
       </div>
       <div className="mt-4 space-y-3">
@@ -419,13 +378,12 @@ function CompactOrderCard({
   legacy = false,
   onFocus,
 }: {
-  order: ReportOrder;
+  order: FounderQueueSummary;
   legacy?: boolean;
   onFocus: (orderId: string) => void;
 }) {
-  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
-  const customerEmail = payloadText(order.payload, "customerEmail") ?? "Customer email unavailable";
-  const mode = reportOrderMode(order.payload);
+  const propertyReference = order.parcel_id ?? "Property reference pending";
+  const mode = order.payment_mode;
 
   return (
     <article className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 shadow-soft">
@@ -436,8 +394,8 @@ function CompactOrderCard({
             <ModeBadge mode={mode} />
             {legacy ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-900">Legacy format</span> : null}
           </div>
-          <div className="mt-3 text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
-          <div className="mt-1 text-xs text-[#64748B]">{customerEmail}</div>
+          <div className="mt-3 break-all text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+          <div className="mt-1 text-xs text-[#64748B]">Customer and report details load only after selection.</div>
           <div className="mt-2 break-all font-mono text-[10px] text-[#64748B]">Order {order.id}</div>
           <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">Parcel {order.parcel_id ?? "not matched"}</div>
         </div>
@@ -453,7 +411,7 @@ function CompactOrderCard({
   );
 }
 
-function NextWorkPanel({ order, onFocus }: { order: ReportOrder | null; onFocus: (orderId: string) => void }) {
+function NextWorkPanel({ order, onFocus }: { order: FounderQueueSummary | null; onFocus: (orderId: string) => void }) {
   if (!order) {
     return (
       <div className="mt-6 rounded-[1.5rem] border border-emerald-500/20 bg-emerald-50 p-5">
@@ -464,7 +422,7 @@ function NextWorkPanel({ order, onFocus }: { order: ReportOrder | null; onFocus:
     );
   }
 
-  const propertyReference = payloadText(order.payload, "propertyReference") ?? order.parcel_id ?? "Property reference pending";
+  const propertyReference = order.parcel_id ?? "Property reference pending";
 
   return (
     <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[#FF6A00]/30 bg-white shadow-soft">
@@ -473,8 +431,8 @@ function NextWorkPanel({ order, onFocus }: { order: ReportOrder | null; onFocus:
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">Next current order</div>
           <div className="mt-1 text-lg font-semibold">Open before acting</div>
         </div>
-        <div className="px-5 py-4">
-          <div className="text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+        <div className="min-w-0 px-5 py-4">
+          <div className="break-all text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
           <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">{order.id}</div>
         </div>
         <button
@@ -832,17 +790,17 @@ function StatusBadge({ status }: { status: string }) {
   const label = status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report delivered" : status;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-      <Icon className="h-3 w-3 text-[#FF8A33]" /> {label}
+      <Icon className="h-3.5 w-3.5 text-[#FF8A33]" /> {label}
     </span>
   );
 }
 
-function orderStatus(order: ReportOrder) {
+function orderStatus(order: Pick<ReportOrder, "status" | "status_enum">) {
   const status = (order.status_enum || order.status || "pending").toLowerCase();
   return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
 }
 
-function orderPriority(order: ReportOrder) {
+function orderPriority(order: Pick<ReportOrder, "status" | "status_enum">) {
   const status = orderStatus(order);
   return status === "paid" ? 0 : status === "processing" ? 1 : status === "failed" ? 2 : 3;
 }
