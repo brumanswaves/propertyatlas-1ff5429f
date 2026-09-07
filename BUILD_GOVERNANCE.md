@@ -67,7 +67,7 @@ Maintain explicit canonical sources for code, database/backend state, deployed r
 
 ## 10. MVP over architecture theater
 
-MVP/live acceptance outranks test counts, migrations, tables, agents, prompts, lines of code, architecture, or activity totals. Prioritize the shortest safe path to acceptance.
+MVP/live acceptance outranks test counts, migrations, tables, agents, prompts, lines of code, and architecture diagrams. Every project must maintain its original product promise, current MVP acceptance test, and current verified blockers. Prioritize the shortest safe path to acceptance.
 
 ## 11. Vertical slice first
 
