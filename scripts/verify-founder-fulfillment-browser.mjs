@@ -11,15 +11,16 @@ const artifacts = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/f
 await mkdir(artifacts, { recursive: true });
 const sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const dirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" }).trim();
-const A = "384be2fe-f7aa-4687-970c-5a6db34cfeba";
+const A = "33333333-3333-4333-8333-333333333333";
 const B = "11111111-1111-4111-8111-111111111111";
-const LEGACY = "4e51dfbb-e931-4500-a622-2a766be398fc";
+const LEGACY = "55555555-5555-4555-8555-555555555555";
 const parcel = "csg:lpi:c03400140000157000000";
-const property = "Erf 1570, 24 Padrone Crescent, St Francis Bay";
-const email = "brumanswaves@gmail.com";
+const property = "Erf 1570, synthetic founder fixture";
+const email = "founder@example.invalid";
 const user = { id: B, email: "fixture-founder@example.invalid", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
 const session = { access_token: `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: B, exp: 4102444800, role: "authenticated", aud: "authenticated" })}.fixture-only`, refresh_token: "fixture-only", expires_at: 4102444800, expires_in: 36000000, token_type: "bearer", user };
+let activeUser = user;
 const checklistIds = ["parcel_identity", "cadastral_evidence", "ownership_title", "zoning_planning", "property_checks", "market_evidence", "strategy_calculations", "site_potential", "reviewed_report"];
 function report(label) {
   return { bottomLine: label, known: ["Fixture known"], potential: ["Fixture potential"], risks: ["Fixture risk"], unknowns: ["Fixture unknown"], nextSteps: ["Fixture next"],
@@ -40,6 +41,7 @@ const detailReads = [];
 const summaryReads = [];
 let detailFailure = null;
 let delayedDetail = null;
+let queueFailure = false;
 function queueMetadata(row) {
   const content = row.review_content;
   const hasText = (value) => typeof value === "string" && Boolean(value.trim());
@@ -59,6 +61,9 @@ const requests = [];
 const failures = [];
 const checks = [];
 const navigationChecks = [];
+const networkResponses = [];
+const responseSettlements = [];
+const selectionAtRequest = new WeakMap();
 let notification = { ok: true, emailAccepted: true };
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, hasTouch: true, serviceWorkers: "block" });
@@ -73,10 +78,11 @@ await context.route("**/*", async (route) => {
   const request = route.request();
   const url = new URL(request.url());
   const json = (body) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
-  if (url.pathname.startsWith("/auth/v1/")) return json(user);
+  if (url.pathname.startsWith("/auth/v1/")) return json(activeUser);
   if (url.pathname === "/rest/v1/rpc/list_easy_erf_founder_queue") {
     assert.equal(request.method(), "POST");
     assert.deepEqual(request.postDataJSON(), { p_limit: 100 });
+    if (queueFailure) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "fixture queue unavailable" }) });
     const response = rows.map(queueMetadata);
     const serialized = JSON.stringify(response);
     for (const forbidden of ["PRIVATE_", "customerEmail", "review_content", "review_context", "payload", "customerNotification"]) {
@@ -99,11 +105,16 @@ await context.route("**/*", async (route) => {
       for (const key of url.searchParams.keys()) assert.ok(["select", "id", "provider"].includes(key), `Unexpected detail query key ${key}`);
       const id = match[1].toLowerCase();
       const selectedHash = new URL(request.frame().url()).hash;
+      selectionAtRequest.set(request, selectedHash);
       assert.equal(selectedHash, `#order-${id}`, "Detailed read must match the deliberately selected order");
       detailReads.push({ id, selectedHash, select: url.searchParams.get("select") });
       if (detailFailure === id) return route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ message: "fixture read denied" }) });
       const row = rows.find((entry) => entry.id === id);
-      const result = row ? structuredClone(row) : null;
+      const columns = url.searchParams.get("select")?.split(",");
+      assert.ok(columns?.length && !columns.includes("*"), "Details must use an explicit projection");
+      // Honor the actual projection, rather than returning an unrestricted fixture.
+      const result = row ? Object.fromEntries(columns.map((key) => [key, structuredClone(row[key] ?? null)])) : null;
+      if (result && activeUser.id !== user.id) result.review_content = report("OTHER ACCOUNT ONLY");
       if (delayedDetail?.id === id) {
         const pending = delayedDetail;
         pending.started();
@@ -141,9 +152,54 @@ await context.route("**/*", async (route) => {
 });
 const page = await context.newPage();
 page.on("pageerror", (error) => failures.push(error.message));
+page.on("response", (response) => {
+  const path = new URL(response.url()).pathname;
+  if (!["/rest/v1/rpc/list_easy_erf_founder_queue", "/rest/v1/report_orders"].includes(path)) return;
+  responseSettlements.push((async () => {
+    let body;
+    try { body = await response.json(); } catch { return; } // Aborted reads deliver no body.
+    const text = JSON.stringify(body);
+    const id = path.endsWith("/report_orders") ? new URL(response.url()).searchParams.get("id")?.slice(3) : null;
+    if (response.ok()) {
+      if (!id) {
+        assert.ok(!text.includes("PRIVATE_"), "Actual queue response contained private fixture content");
+        for (const row of body) assert.deepEqual(Object.keys(row).sort(), Object.keys(queueMetadata(rows[0])).sort());
+      } else {
+        assert.equal(selectionAtRequest.get(response.request()), `#order-${id}`);
+        const result = Array.isArray(body) ? body[0] : body;
+        if (result) assert.equal(result.id, id);
+        for (const other of rows.filter((row) => row.id !== id)) {
+          for (const prefix of ["PRIVATE_PAYLOAD_", "PRIVATE_CONTEXT_", "PRIVATE_REPORT_"]) {
+            assert.ok(!text.includes(prefix + other.id), "Actual detail response leaked a nonselected private sentinel");
+          }
+        }
+        if (id !== LEGACY) assert.ok(!text.includes("PRIVATE_LEGACY_REPORT"));
+      }
+    }
+    networkResponses.push({ path, status: response.status(), id, received: true, privateBoundaryPassed: true });
+  })().catch((error) => { failures.push(error.stack || String(error)); }));
+});
+async function broadcastAuth(nextSession) {
+  activeUser = nextSession?.user ?? null;
+  await page.evaluate((value) => {
+    for (const key of ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
+      if (value) localStorage.setItem(key, JSON.stringify(value));
+      else localStorage.removeItem(key);
+      const channel = new BroadcastChannel(key);
+      channel.postMessage({ event: value ? "SIGNED_IN" : "SIGNED_OUT", session: value });
+      channel.close();
+    }
+  }, nextSession);
+}
 async function check(name, fn) { await fn(); checks.push(name); console.log(`PASS ${name}`); }
 const identity = () => page.locator('header[aria-label="Selected order identity"]');
 const workbench = () => page.getByRole("region", { name: "Exact order workbench" });
+async function scrollPageBy(amount) {
+  // A viewport resize can leave the pointer outside the new window. Use the
+  // page gutter, not a textarea's independent scrolling surface.
+  await page.mouse.move(4, page.viewportSize().height / 2);
+  await page.mouse.wheel(0, amount);
+}
 async function open(id) {
   await page.goto(`${baseUrl}/admin/fulfillment#order-${id}`);
   await workbench().waitFor();
@@ -211,7 +267,7 @@ try {
       await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
       await workbench().waitFor();
       await page.waitForFunction(() => scrollY === 0);
-      await page.mouse.wheel(0, scenario.scroll);
+      await scrollPageBy(scenario.scroll);
       await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
       await page.reload();
       await workbench().waitFor();
@@ -221,7 +277,7 @@ try {
       // restoration, which must not make a formerly safe control interceptable.
       await page.keyboard.press("Control+Home");
       await page.waitForFunction(() => scrollY === 0);
-      await page.mouse.wheel(0, scenario.scroll);
+      await scrollPageBy(scenario.scroll);
       await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
       if (scenario.scroll > 500) {
         const pinned = await identity().boundingBox();
@@ -237,7 +293,7 @@ try {
       await page.getByRole("heading", { name: property, exact: true }).click();
       await page.keyboard.press("Control+Home");
       await page.waitForFunction(() => scrollY === 0);
-      await page.mouse.wheel(0, scenario.scroll > 500 ? 15 : scenario.scroll);
+      await scrollPageBy(scenario.scroll > 500 ? 15 : scenario.scroll);
       await page.waitForFunction(() => scrollY >= 15);
       const back = page.getByRole("button", { name: "Back to read-only queue", exact: true });
       if (scenario.input === "keyboard") await keyboardReach(back);
@@ -328,6 +384,82 @@ try {
     assert.equal(requests.length, 0, "Detail navigation and read failures must submit zero mutations");
     await page.screenshot({ path: resolve(artifacts, "queue-after-private-read-regression.png") });
   });
+  await check("account change clears loaded detail before another account can receive it", async () => {
+    await open(A);
+    let release;
+    let start;
+    let finish;
+    const started = new Promise((resolve) => { start = resolve; });
+    const finished = new Promise((resolve) => { finish = resolve; });
+    delayedDetail = { id: A, started: start, finished: finish, gate: new Promise((resolve) => { release = resolve; }) };
+    const nextUser = { ...user, id: "66666666-6666-4666-8666-666666666666" };
+    await broadcastAuth({ ...session, user: nextUser, access_token: `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: nextUser.id, exp: 4102444800, role: "authenticated", aud: "authenticated" })}.fixture-only` });
+    await started;
+    assert.equal(await workbench().count(), 0, "Old account detail must clear while the new account request is pending");
+    assert.ok(!(await page.locator("main").innerText()).includes("Persisted report A"));
+    release();
+    await finished;
+    delayedDetail = null;
+    await workbench().waitFor();
+    assert.equal(await page.locator("textarea").first().inputValue(), "OTHER ACCOUNT ONLY");
+    assert.equal(requests.length, 0);
+    activeUser = user;
+    await page.reload();
+    await workbench().waitFor();
+    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report A");
+  });
+  await check("exit and sign-out discard pending private details", async () => {
+    for (const exit of ["queue", "sign-out"]) {
+      activeUser = user;
+      await page.goto(`${baseUrl}/admin/fulfillment`);
+      await page.locator("article").filter({ hasText: A }).waitFor();
+      let release;
+      let start;
+      let finish;
+      const started = new Promise((resolve) => { start = resolve; });
+      const finished = new Promise((resolve) => { finish = resolve; });
+      delayedDetail = { id: A, started: start, finished: finish, gate: new Promise((resolve) => { release = resolve; }) };
+      await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
+      await started;
+      const count = detailReads.length;
+      if (exit === "queue") {
+        await page.evaluate(() => { location.hash = ""; });
+        await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+      } else {
+        await broadcastAuth(null);
+        await page.waitForURL(/\/auth/);
+      }
+      release();
+      await finished;
+      delayedDetail = null;
+      assert.equal(await workbench().count(), 0);
+      assert.equal(detailReads.length, count);
+      assert.ok(!(await page.locator("body").innerText()).includes("Persisted report A"));
+      assert.equal(requests.length, 0);
+    }
+    activeUser = user;
+  });
+  await check("metadata request failure never falls back to private bulk reads", async () => {
+    const count = detailReads.length;
+    queueFailure = true;
+    await page.goto(`${baseUrl}/admin/fulfillment`);
+    await page.getByText("Could not load the done-for-you investigation queue.", { exact: true }).waitFor();
+    assert.equal(detailReads.length, count);
+    assert.equal(await workbench().count(), 0);
+    assert.equal(await page.locator("article").count(), 0);
+    assert.equal(requests.length, 0);
+    queueFailure = false;
+    await page.getByRole("button", { name: "Retry queue", exact: true }).click();
+    await page.locator("article").filter({ hasText: A }).waitFor();
+    assert.equal(detailReads.length, count, "Queue retry must not read a private report");
+    assert.equal(requests.length, 0);
+  });
+  await Promise.all(responseSettlements);
+  assert.ok(networkResponses.some((entry) => !entry.id && entry.status === 200));
+  assert.ok(networkResponses.some((entry) => entry.id === A && entry.status === 200));
+  assert.ok(networkResponses.some((entry) => entry.id === B && entry.status === 200));
+  assert.ok(!detailReads.some((entry) => entry.id === LEGACY));
+  assert.deepEqual(failures, []);
   rows[0].status = rows[0].status_enum = "ready";
   rows[1].status = rows[1].status_enum = "ready";
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -413,6 +545,7 @@ try {
     assert.equal(await workbench().count(), 0);
     assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
   });
+  await Promise.all(responseSettlements);
   assert.deepEqual(failures, []);
   console.log(`VERIFIED built-browser fixture acceptance: ${checks.length} groups; candidate ${sha}; dirty=${Boolean(dirty)}; external backend requests: 0`);
 } catch (error) {
@@ -421,6 +554,6 @@ try {
   throw error;
 } finally {
   await context.tracing.stop({ path: resolve(artifacts, "trace.zip") });
-  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, summaryReads, detailReads, failures, mockedRequests: requests, productionAccess: false }, null, 2));
+  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, summaryReads, detailReads, networkResponses, failures, mockedRequests: requests, productionAccess: false }, null, 2));
   await browser.close();
 }

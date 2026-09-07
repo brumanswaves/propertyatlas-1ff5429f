@@ -77,7 +77,7 @@ function FounderFulfillmentPage() {
 function FounderFulfillmentQueue() {
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [focusedOrderId, setFocusedOrderId] = useState<string | null>(null);
-  const { orders, loading, focusedOrder, detailLoading, refresh } = useFounderOrderData(focusedOrderId);
+  const { orders, loading, queueError, focusedOrder, detailLoading, refresh } = useFounderOrderData(focusedOrderId);
   const mutationInFlight = useRef(false);
   const [deliveryNotice, setDeliveryNotice] = useState<{ orderId: string; message: string } | null>(null);
 
@@ -229,7 +229,15 @@ function FounderFulfillmentQueue() {
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
       <TopNav />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-36 sm:px-6">
-        {focusedOrderId ? (
+        {queueError ? (
+          <section role="alert" className="space-y-3">
+            <h1 className="text-xl font-semibold">Investigation queue unavailable</h1>
+            <p>Could not load the done-for-you investigation queue.</p>
+            <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded border px-3 py-2">
+              <RotateCcw className="h-4 w-4" /> Retry queue
+            </button>
+          </section>
+        ) : focusedOrderId ? (
           <FocusedOrderWorkbench
             key={focusedOrderId}
             order={focusedOrder}
