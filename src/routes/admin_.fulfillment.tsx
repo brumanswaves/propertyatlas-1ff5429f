@@ -495,20 +495,19 @@ function FocusedOrderWorkbench({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onExit}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to read-only queue
-        </button>
-        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
-          <LockKeyhole className="h-4 w-4" /> One exact order is isolated
+      <header aria-label="Selected order identity" className="sticky top-3 z-40 rounded-lg border-2 border-[#0D1B2A] bg-white p-3 shadow-md">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#0D1B2A]/10 pb-3">
+          <button
+            type="button"
+            onClick={onExit}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to read-only queue
+          </button>
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+            <LockKeyhole className="h-4 w-4" /> One exact order is isolated
+          </div>
         </div>
-      </div>
-
-      <header aria-label="Selected order identity" className="sticky top-32 z-40 mt-5 rounded-lg border-2 border-[#0D1B2A] bg-white p-3 shadow-md">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
