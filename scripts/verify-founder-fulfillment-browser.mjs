@@ -257,6 +257,9 @@ try {
     { width: 390, height: 844, input: "touch", scroll: 40 },
     { width: 320, height: 740, input: "keyboard", scroll: 15 },
     { width: 390, height: 844, input: "touch", scroll: 1600 },
+    { width: 1920, height: 975, input: "mouse", scroll: 975 },
+    { width: 1440, height: 1000, input: "mouse", scroll: 1600 },
+    { width: 320, height: 740, input: "keyboard", scroll: 1600 },
   ]) {
     await check(`refresh/scroll return and isolated reselection: ${scenario.width}px ${scenario.input} ${scenario.scroll}px`, async () => {
       const name = `navigation-${scenario.width}-${scenario.input}-${scenario.scroll}`;
@@ -293,10 +296,20 @@ try {
       await page.getByRole("heading", { name: property, exact: true }).click();
       await page.keyboard.press("Control+Home");
       await page.waitForFunction(() => scrollY === 0);
-      await scrollPageBy(scenario.scroll > 500 ? 15 : scenario.scroll);
-      await page.waitForFunction(() => scrollY >= 15);
+      await scrollPageBy(scenario.scroll);
+      await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
       const back = page.getByRole("button", { name: "Back to read-only queue", exact: true });
+      // Measure before focus/click: locator auto-scroll must not hide an off-screen Back.
+      const atRequestedScroll = await back.boundingBox();
+      assert.ok(atRequestedScroll && atRequestedScroll.y >= 0 &&
+        atRequestedScroll.y + atRequestedScroll.height <= scenario.height,
+      "Back must be fully visible at the actual requested scroll position");
       if (scenario.input === "keyboard") await keyboardReach(back);
+      // Tab navigation may scroll form fields. Return to the same depth while
+      // retaining keyboard focus, then exercise Enter without a locator click.
+      const focusedScroll = await page.evaluate(() => scrollY);
+      await scrollPageBy(scenario.scroll - focusedScroll);
+      await page.waitForFunction((amount) => Math.abs(scrollY - amount) <= 1, scenario.scroll);
       const box = await back.boundingBox();
       assert.ok(box);
       const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -309,6 +322,8 @@ try {
       await page.screenshot({ path: resolve(artifacts, `${name}-before.png`) });
       assert.ok(before.receivesPointer, "Back button must receive the real pointer, not the operations bar");
       assert.ok(before.navBounds.bottom <= before.backBounds.top, "Operations navigation must not overlap Back");
+      assert.ok(before.backBounds.top >= 0 && before.backBounds.bottom <= scenario.height);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       if (scenario.input === "touch") await page.touchscreen.tap(point.x, point.y);
       else if (scenario.input === "keyboard") await page.keyboard.press("Enter");
       else await page.mouse.click(point.x, point.y);
