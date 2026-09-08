@@ -1,50 +1,46 @@
-# Easy Erf Release State
+# Easy Erf release state
 
-Reconciled 2026-09-07 after merged PR #168 stopped at publisher preflight. BUILD_GOVERNANCE.md section 23 applies. This source state does not authorize production changes.
+Reconciled 2026-09-08 for the pinned queue-exit forward repair. This document is not production authorization. Follow BUILD_GOVERNANCE.md, including honest stopping and the $0 additional-spend limit.
 
-## Canonical source and frozen outcome
+## Canonical source and scope
 
-GitHub main: `98e5a86bc82aed72b120e2a01dd44054316c7dbe`.
-Tree: `3fe3c67ae5f96967aa33396adc04c55f2aeedcf1`.
-PR #168 is merged. Do not replay its merge or older approvals.
+Release: EE-R999-01. Canonical base/main at repair start: `edc9739324ae8b76d938b15dace56cebee4da652`, tree `cb8bc41b3d29dc000ae815e357bc2db66b877bc2`.
+Active repair branch: `chatgpt/ee-r999-pinned-queue-exit`. The draft PR and final independent review must pin the candidate SHA and its own evidence. Do not substitute the old main's successful checks for a changed candidate.
 
-Release EE-R999-01: genuine R999 payment through a signed webhook -> correct customer/parcel order -> actual investigation/resolved checklist -> evidence-backed report -> automatic email -> authenticated exact-report retrieval with no duplicate order, notification or payment. Commercial acceptance remains UNPASSED; owner TEST acceptance remains unperformed for the new release.
+Keep the existing GitHub, Supabase, Lovable hosting, Stripe and Resend stack. Render and new-host proposals are superseded by the owner's existing-stack direction. No new application feature, hosting, dependency, backend function, data model or payment behavior is part of this repair.
 
-## Existing implementation and production boundary
+The frozen commercial result remains: exact confirmed property -> genuine R999 payment -> signed webhook -> correct customer/parcel order -> founder investigation/resolved checklist -> evidence-backed report -> automatic email -> exact authenticated customer report, with no duplicate order, payment or notification. It remains UNPASSED. Fixture success and owner TEST acceptance are not genuine commercial acceptance.
 
-Merged #168 has a fourteen-field, admin-checked SECURITY INVOKER founder metadata queue and selected complete-UUID private detail. The customer `/orders?report=<UUID>` path binds retrieval to the exact report, account and provider. Stale/error/exit/account state is isolated. The general customer history is unchanged and is NOT metadata-only; it remains excluded from protected-order acceptance.
+## Latest production receipt, not a pending first release
 
-Execution receipt: PR #168 comment 5571045340. Diagnostic receipt: comment 5571417766. These operator receipts report four successful merged-SHA workflows, inspected browser artifacts, a private four-order baseline and no production migration, publication, order action or email in that execution. Do not substitute these receipt claims for fresh runtime verification.
+Read PR #169 comment `5588589552`. Its operator reports:
+- One normal publication of the canonical base, with response-header deployment ID `7020dac8-2643-4647-99c6-83d03f60b09e` and substantive live-source linkage. Independent byte-for-byte production Git-tree attestation remains unavailable.
+- The exact metadata-reader SQL is applied to Supabase `xiqpfhsdlvwrwhclonsg`. The remote history timestamp is `20260908162402_founder_queue_metadata_read`, equivalent to source file `20260907100000_founder_queue_metadata_read.sql`, blob `d5caaeb2d2357b363cb50407a369184a3b50eb68`. DO NOT REPLAY THIS MIGRATION or use its differing timestamp to invent an absent-migration repair.
+- Actual production queue/detail privacy passed the inspected subset. All four order metadata snapshots stayed unchanged, email remained disabled and live checkout remained disarmed.
+- Read-only navigation stopped before every owner TEST write/email action. At 1920x975 and scrollY=975, Back was above the viewport while the identity header remained pinned.
 
-The new `20260907100000_founder_queue_metadata_read.sql` migration remains reported unapplied. Canonical Supabase is `xiqpfhsdlvwrwhclonsg`; branded origin is `https://easyerf.supabase.co`. Prior published deployment is operator-verified/reported here as `c725b385-a026-40fe-8fdf-48485c21fd7a` at `be28f4d0742885f5a483ef21d3ad44ac8753de6a`. Do not operate its bulk-reading protected-report surfaces.
+These are retained operator observations, not continuously monitored facts or a fresh production check by every reader. Reverify the appropriate baseline before any explicitly approved consequential action. Do not reopen protected legacy content, replay the completed publication or deploy functions because of historical version counters.
 
-## Current Class A repair: Deno dependency resolution
+## Source cause and forward repair
 
-Branch: `chatgpt/ee-r999-deno-stripe-resolution`. At preparation no other open implementation PR existed. Final candidate SHA and verification evidence belong in this branch's draft PR receipt; do not reuse historical counts as current results.
+Source inspection confirms Back was in a static sibling before the sticky selected-order header. The repair moves that existing button and isolation badge into the same sticky header, uses a small top offset after the page's nonfixed navigation scrolls away, and retains the same onExit handler and complete identity fields. The shared AdminGuard navigation remains unchanged. No query, save, lifecycle, receipt or email logic changes.
 
-The publisher diagnostic records `Could not find a matching package for npm:stripe@22.6.0 in the node_modules directory` in its Deno checker. Publisher Deno version and effective invocation are UNKNOWN. The existing GitHub checks explicitly enable auto-managed node modules; a plain checker lacks that command-line override. The root contains package.json but no deno.json/deno.jsonc in the merged baseline.
+The earlier deep-scroll fixture returned near the top before measuring/clicking Back. The added `scripts/verify-founder-pinned-navigation.mjs` instead measures complete viewport containment and multiple hit-test points at the final scroll position, then uses actual coordinate mouse/touch input or an already-focused keyboard control. It covers the reported desktop position, shallow scroll, page bottom, narrow phone and short landscape viewports, refresh, unsaved-field discard on exit and clean reselection. All services are mocked; any mutation/function call fails the fixture. Existing founder/customer/privacy checks are retained.
 
-The candidate adds only root `deno.json` with `nodeModulesDir: auto`, retaining the exact Stripe version and all application/function source. No package.json, lockfile, payment logic, credentials, backend target or runtime function code is changed.
+The existing founder workflow runs the new regression against its built app and preserves a separate receipt, screenshots and trace under `pinned-navigation`. Required candidate checks and artifact inspection must finish before a release recommendation. At document preparation those results are still pending; a source commit alone does not establish the UI repair.
 
-`verify-deno-stripe-resolution.mjs` must reproduce the precise missing-package failure without repository configuration, prove the same isolated probe resolves after adding the actual configuration, check nested config discovery in a separate clean tree, and type-check the three real Stripe entrypoints with no auto-install CLI flag. It produces an exact-SHA receipt and logs in the existing Stripe workflow. It never executes those functions or calls production. Other Deno workflows include the configuration in their path triggers.
+## Next release boundary
 
-Local preparation verified Node script syntax only. Deno, full source tests and browser checks must be executed in the normal GitHub workflows because this container cannot resolve external dependency hosts. At preparation those candidate results were not established. Inspect the actual final PR runs and artifact; do not call the provider error fixed solely from this proposed configuration.
+Class A includes this source repair, tests, review and one combined release-packet preparation. Do not ask for intermediate approval.
 
-## Separate publication-control blocker
+A later explicit Class B decision must name the exact final repair SHA and authorize only its merge, existing-host publication and read-only navigation/privacy acceptance. It may combine the retained finite owner TEST sequence from the prior immutable packet, but only after the repaired production navigation passes and fresh target/recipient/mode/content prerequisites match. No TEST action is authorized by this document.
 
-Resolving dependency checking does NOT establish safe publication. The operator reports internally conflicting provider build labels, old Cloud project metadata `cqwtpsxruzplfbeuwpkg`, and zero Cloud credits. Current browser traffic was operator-verified as canonical `xiqpfhsdlvwrwhclonsg`; do not reconnect Supabase merely to make Cloud metadata match.
+Migrations for this forward repair: NONE. Edge deployments: NONE. No repeat of completed #168/#169 merges. Direct configuration changes: NONE unless the owner explicitly includes the retained TEST email-flag sequence, ending false. Normal publication's undisclosed automatic effects and lack of proven frontend-only rollback remain disclosed limitations requiring a fresh one-off release decision; the previous approval was consumed. Do not restart a hosting/support investigation, invent preventive guarantees, bypass a rejection, or press Revert.
 
-Available native publication controls expose no explicit Git-SHA target or frontend-only exclusion. A provider AI-support reply also reports unsupported isolated publish/rollback controls. Actual project-specific deployment side effects, source linkage and a $0 path still need supported evidence or a new bounded owner decision. No publish, rebuild, Lovable agent, permission override, credits or alternative hosting are authorized by this repair.
+Use only the existing approved owner TEST identity in `EE-R999-01_RELEASE_PACKET.md`. Preserve all non-target orders and protected legacy report content. No new order, live arming, charge, external customer contact, recovery send or receipt/audit deletion. Leave the additive metadata reader in place. An actual publication regression may require a separately reviewed forward repair; no unsupported rollback is promised.
 
-## Next actions and approval gates
+## Execution status and cost
 
-1. Implement, inspect and test this Deno-only source candidate, retaining the draft/unmerged boundary. Ordinary Class A repair does not require another owner approval.
-2. Independently inspect the positive/negative dependency proof and all final exact-head regression checks. Record a precise source-verification result and remaining publisher unknowns.
-3. Reconcile the publication method before proposing executable production actions. Preserve the existing combined #168 TEST sequence as pending, not renewed authority. New source, configuration or hosting release decisions must name their exact scope; do not replay the old packet.
-4. Only after an approved production release and owner TEST journey pass may a separate Class C genuine R999 request be prepared. No new TEST order, external customer contact or live arming.
+Source work is on an unmerged branch. New CI identifiers/results belong in its exact-head receipt. No comment or commit starts/resumes Codex. Report actual running processes or UNKNOWN when not inspectable. Local browser preparation in the review container was blocked by its managed browser policy; no policy change or bypass was attempted. Normal repository CI remains the authorized verification environment.
 
-## Processes, spending and protected state
-
-No comment, commit or state file launches Codex. Inspect real CI/process identifiers; if none can continue, state: The project is unfinished. Work has stopped. Identify the next responsible actor and blocker. Do not claim that this source document is a running implementation worker.
-
-Maximum additional discretionary spend $0; actual account billing UNKNOWN. No API billing, credit purchase/reload, paid runner/service, Lovable implementation, Vercel, production write, migration, deployment, secret/configuration change, order action, email or payment is authorized here. Protected owner/legacy acceptance identities and private baseline remain in the existing immutable release packet and private evidence, not copied into public artifacts.
+This preparation made source/workflow/documentation changes only. No production publication, migration, function/configuration change, report/order action, email or payment was executed. Maximum additional discretionary spend: $0. Actual account/runtime charges: UNKNOWN. No paid service, API billing, credits or new hosting authorized.
