@@ -12,6 +12,7 @@ on:
       - scripts/verify-easy-erf-customer-notification.sql
       - scripts/verify-easy-erf-founder-queue.sql
       - scripts/verify-founder-fulfillment-browser.mjs
+      - scripts/verify-founder-pinned-navigation.mjs
       - scripts/verify-customer-report-link-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
@@ -124,6 +125,7 @@ jobs:
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           scripts/verify-founder-fulfillment-browser.mjs
+          scripts/verify-founder-pinned-navigation.mjs
           scripts/verify-customer-report-link-browser.mjs
           src/components/admin/AdminGuard.tsx
           src/components/admin/FounderCustomerNotification.tsx
@@ -169,6 +171,7 @@ jobs:
 
           curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
           git diff --exit-code
+          timeout 180s node scripts/verify-founder-pinned-navigation.mjs
           node scripts/verify-founder-fulfillment-browser.mjs
           timeout 120s node scripts/verify-customer-report-link-browser.mjs
 
