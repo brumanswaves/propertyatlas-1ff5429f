@@ -113,6 +113,9 @@ try {
     assert.equal(await workbench().getAttribute("data-order-id"), A);
     // Local unsaved text must not be saved merely by leaving the order.
     await page.locator("textarea").first().fill("UNSAVED NAVIGATION FIXTURE A");
+    // Blur the textarea before Ctrl+Home, which otherwise moves its caret.
+    // This is setup only, before the final measured scroll below.
+    await page.getByRole("heading", { name: "Erf 1570, synthetic navigation fixture A", exact: true }).click();
     if (["keyboard", "space"].includes(scenario.input)) {
       let reached = false;
       for (let step = 0; step < 100; step++) {
