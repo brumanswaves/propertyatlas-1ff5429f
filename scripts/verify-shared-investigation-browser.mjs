@@ -130,7 +130,8 @@ try {
     { user_id: ids.b, parcel_id: parcelB, user_data: { normalizedParcel: { ...normalizedParcel, id: parcelB }, privateNote: "NONSELECTED_PRIVATE_SENTINEL" } },
   ]));
   must(await adminClient.from("report_orders").insert([
-    { id: orderA, user_id: ids.a, parcel_id: parcelA, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", payload: { orderKind: "easy_erf_investigation", livemode: false, erfNumber: "42", address: "42 Synthetic Street" } },
+    { id: orderA, user_id: ids.a, parcel_id: parcelA, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", price_cents: 99900,
+      review_focus: "general", payload: { orderKind: "easy_erf_investigation", livemode: false, erfNumber: "42", address: "42 Synthetic Street", propertyReference: "Erf 42, 42 Synthetic Street", customerEmail: "isolated-a@example.invalid" } },
     { id: orderB, user_id: ids.b, parcel_id: parcelB, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", payload: { orderKind: "easy_erf_investigation", livemode: false } },
   ]));
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
@@ -149,7 +150,9 @@ try {
     SUPABASE_SERVICE_ROLE_KEY: service, ASK_EASY_ERF_FN_SECRET: "isolated-internal-fixture",
     OPENAI_API_KEY: "isolated-model-fixture", INVESTIGATION_BRIEF_ENABLED: "true",
     EASY_ERF_CUSTOMER_EMAIL_ENABLED: "true", RESEND_API_KEY: "isolated-email-fixture",
-    EASY_ERF_REPORT_FROM_EMAIL: "Fixture <reports@example.invalid>", EASY_ERF_APP_URL: appUrl };
+    // The unchanged email handler requires this canonical HTTPS link. It is only
+    // rendered into intercepted synthetic mail; no request may reach that host.
+    EASY_ERF_REPORT_FROM_EMAIL: "Fixture <reports@example.invalid>", EASY_ERF_APP_URL: "https://easyerf.co.za" };
   // Populate only public runtime dependencies before the closed-network execution.
   execFileSync("deno", ["cache", "--no-config", "--no-lock", "--node-modules-dir=none", "scripts/verify-shared-investigation-provider.ts"], { stdio: "pipe" });
   const edge = start("deno", ["run", "--no-config", "--no-lock", "--node-modules-dir=none", "--cached-only", "--allow-env", "--allow-read", "--allow-net=127.0.0.1", "scripts/verify-shared-investigation-provider.ts"], commonEnv);
@@ -174,7 +177,9 @@ try {
   await worker.getByLabel("Bottom line 1", { exact: true }).waitFor();
   assert.equal(await worker.getByRole("button", { name: "Approve this evidence and brief version", exact: true }).count(), 0);
   await worker.getByLabel("Bottom line 1", { exact: true }).fill("SYNTHETIC_HUMAN_EDIT: approval is conditional on the clearly recorded missing evidence.");
+  const editSaved = worker.waitForResponse((r) => r.url().endsWith("/rpc/edit_investigation_brief") && r.request().method() === "POST");
   await worker.getByRole("button", { name: "Save review edits", exact: true }).click();
+  assert.equal((await editSaved).status(), 200);
   await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).waitFor();
   const draft = await rpc("worker", "read_investigation_review", { p_order_id: orderA });
   assert.equal(draft.approved_at, null); assert(draft.edited_brief.bottomLine.text.includes("SYNTHETIC_HUMAN_EDIT"));
@@ -233,7 +238,10 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  for (const { child } of processes) child.kill("SIGTERM");
+  await Promise.all(processes.map(({ child }) => new Promise((done) => {
+    if (child.exitCode !== null || child.signalCode !== null) return done();
+    child.once("exit", done); child.kill("SIGTERM");
+  })));
   gateway.closeAllConnections(); await new Promise((done) => gateway.close(done));
   const receipt = { source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     result: process.exitCode ? "failed" : "passed", proof: "Real isolated Auth/REST/Storage with synthetic external providers; not production acceptance",
