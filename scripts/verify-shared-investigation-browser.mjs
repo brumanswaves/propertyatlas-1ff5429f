@@ -163,7 +163,15 @@ async function verifyCustomerEntry() {
   assert.equal(new URL(page.url()).searchParams.get("parcelId"), parcelA);
   const after = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
   for (const key of ["strategyWorkspace", "savedMarketEvidence", "buildEnvelopeInputs", "investigationWork"]) {
-    assert.deepEqual(after.userData[key], before.userData[key], `Paid handoff lost ${key}`);
+    const expected = structuredClone(before.userData[key]);
+    const actual = structuredClone(after.userData[key]);
+    // The existing build-envelope store drops a null legacy secondary edge.
+    // Preserve strict equality for every real boundary, input and acceptance.
+    if (key === "buildEnvelopeInputs") {
+      if (expected.secondaryStreetEdgeIndex === null) delete expected.secondaryStreetEdgeIndex;
+      if (actual.secondaryStreetEdgeIndex === null) delete actual.secondaryStreetEdgeIndex;
+    }
+    assert.deepEqual(actual, expected, `Paid handoff lost ${key}`);
   }
   assert.equal(after.assets.length, before.assets.length);
   assert.equal(must(await clients.a.from("saved_properties").select("user_data").eq("parcel_id", parcelA).single()).user_data.privateNote, "CUSTOMER_A_PRIVATE_NOTE");
