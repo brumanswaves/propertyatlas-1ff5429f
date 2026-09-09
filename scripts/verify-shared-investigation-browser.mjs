@@ -140,6 +140,9 @@ async function verifyCustomerEntry() {
   await page.getByRole("link", { name: "Do it for me · R999", exact: true }).click();
   await page.waitForURL("**/pricing");
   await page.goto(appUrl);
+  // Unlike the native pricing link, self-service dispatches a hydrated handler.
+  // Wait for real Auth initialization, not merely the server-rendered button.
+  await page.getByRole("button", { name: "Sign out", exact: true }).waitFor();
   await page.getByRole("button", { name: "Investigate it myself", exact: true }).click();
   await page.getByRole("button", { name: /^Erf Search/ }).click();
   await page.getByPlaceholder("LPI or parcel key", { exact: true }).fill(fixtureLpi);
