@@ -29,6 +29,14 @@ const processes = [];
 const contexts = [];
 const errors = [];
 let browser;
+let delayedRead = null;
+function delayNextOrderRead(orderId) {
+  let reached, release;
+  const ready = new Promise((resolve) => { reached = resolve; });
+  const settled = new Promise((resolve) => { release = resolve; });
+  delayedRead = { orderId, reached, settled, release };
+  return { ready, release };
+}
 const allowedFunctions = new Set(["ask-easy-erf-openai", "easy-erf-founder-fulfillment", "easy-erf-founder-customer-notification", "extract-erf-asset"]);
 const gateway = createServer(async (req, res) => {
   try {
@@ -46,6 +54,11 @@ const gateway = createServer(async (req, res) => {
     const headers = { ...req.headers }; delete headers.host; delete headers.connection; delete headers["content-length"];
     const response = await fetch(target, { method: req.method, headers, ...(body.length ? { body } : {}) });
     const bytes = Buffer.from(await response.arrayBuffer());
+    if (delayedRead && url.pathname === "/rest/v1/rpc/read_order_investigation" &&
+        JSON.parse(body.toString()).p_order_id === delayedRead.orderId) {
+      const held = delayedRead; delayedRead = null;
+      held.reached(); await held.settled;
+    }
     requests.push({ path: url.pathname, method: req.method, status: response.status,
       // Capture actual persistence/function bodies, never Auth tokens or request headers.
       response: url.pathname.startsWith("/auth/") ? "Auth response withheld" : redact(bytes.toString("utf8")).slice(0, 180000) });
@@ -60,7 +73,8 @@ const options = { auth: { persistSession: false, autoRefreshToken: false } };
 const adminClient = createClient(backend, service, options);
 const ids = { a: randomUUID(), b: randomUUID(), admin: randomUUID(), worker: randomUUID(), stranger: randomUUID() };
 const orderA = randomUUID(), orderB = randomUUID();
-const parcelA = "manual:isolated-investigation-a", parcelB = "manual:isolated-investigation-b";
+const fixtureLpi = "C00000000000004200000";
+const parcelA = `csg:lpi:${fixtureLpi.toLowerCase()}`, parcelB = "manual:isolated-investigation-b";
 const password = `Isolated-${randomUUID()}!`; secrets.push(password);
 const sessions = {}, clients = {};
 function must(result) { assert.equal(result.error, null, result.error?.message); return result.data; }
@@ -71,10 +85,11 @@ const work = Object.fromEntries(["cadastral_evidence", "ownership_title", "zonin
   source: "Synthetic unavailable-source fixture", checkedAt: now, result: "The isolated fixture has no record for this check.",
   reason: "Thin-path unavailable evidence test, not a real investigation.", limitation: "Obtain the actual evidence before making any real decision.", disposition: "unavailable",
 }]));
-const normalizedParcel = { id: parcelA, source: "manual", sourceLabel: "Synthetic customer property", erfNumber: "42", portion: "0",
+const normalizedParcel = { id: parcelA, source: "csg", sourceLabel: "Synthetic public-source fixture", erfNumber: "42", portion: "0", lpi: fixtureLpi,
   municipality: "Kouga Local Municipality", province: "Eastern Cape", town: "Fixture town", coordinates: { lng: 24.83, lat: -34.16 }, knownFields: [], missingFields: [], rawProperties: { area_m2: 600 } };
 const dataA = { normalizedParcel, parcelRing: [[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602],[24.83,-34.16]],
-  privateNote: "CUSTOMER_A_PRIVATE_NOTE", approximateAddress: "42 Synthetic Street",
+  privateNote: "CUSTOMER_A_PRIVATE_NOTE", approximateAddress: "42 Synthetic Street", displayTitle: "42 Synthetic Street",
+  erfNumber: "42", portion: "0", municipality: "Kouga Local Municipality", province: "Eastern Cape", lat: "-34.16", lng: "24.83",
   easyErfInvestigation: { version: 1, parcelId: parcelA, syncedAt: now, workspaceUpdatedAt: now, identityStatus: "none", marketAddressSaved: true,
     sgDiagramAttachmentCount: 0, marketEvidenceStarted: false, strategyScenarioCount: 0, chosenScenarioId: null, reportStarted: false,
     planning: { zoneCode: null, userConfirmedZoneCode: null, userConfirmedAt: null },
@@ -99,12 +114,56 @@ async function open(actor, mobile = false) {
   await context.addInitScript(({ session, origin }) => { if (location.origin === origin) localStorage.setItem("sb-127-auth-token", JSON.stringify(session)); }, { session: sessions[actor], origin: appUrl });
   await context.route("**/*", (route) => {
     const url = new URL(route.request().url());
+    if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
+      return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "synthetic-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
+    }
+    // Public map-provider evidence is synthetic; Auth, private REST and Storage
+    // still reach the actual isolated services without mocked permission checks.
+    if (url.origin === gatewayUrl && url.pathname === "/functions/v1/arcgis-public-proxy") {
+      const { layer } = route.request().postDataJSON() ?? {};
+      return route.fulfill({ json: { type: "FeatureCollection", features: layer === "csg-parcels" ? [{
+        type: "Feature", properties: { ID: fixtureLpi, PARCEL_NO: "42", PORTION: "0", GEOM_AREA: 600,
+          MAJ_REGION: "Fixture town", MIN_REGION: "Synthetic locality", MUNICIPALITY: "Kouga Local Municipality", PROVINCE: "Eastern Cape" },
+        geometry: { type: "Polygon", coordinates: [dataA.parcelRing] },
+      }] : [] } });
+    }
     if ([appUrl, gatewayUrl].includes(url.origin) || ["blob:", "data:"].includes(url.protocol)) return route.continue();
     requests.push({ blockedExternalBrowserRequest: `${url.origin}${url.pathname}` }); return route.abort("blockedbyclient");
   });
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(`${actor}: ${redact(error.message)}`));
   return page;
+}
+async function verifyCustomerEntry() {
+  const page = await open("a");
+  await page.goto(appUrl);
+  await page.getByRole("link", { name: "Do it for me · R999", exact: true }).click();
+  await page.waitForURL("**/pricing");
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Investigate it myself", exact: true }).click();
+  await page.getByRole("button", { name: /^Erf Search/ }).click();
+  await page.getByPlaceholder("LPI or parcel key", { exact: true }).fill(fixtureLpi);
+  await page.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+  await page.getByRole("button", { name: /^Open Erf 42/ }).click();
+  await page.getByText("Property first read", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Continue investigation", exact: true }).click();
+  await page.getByRole("button", { name: "Open full research workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Easy Erf Report", exact: true }).click();
+  await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).waitFor();
+  await page.screenshot({ path: resolve(artifacts, "customer-self-service-desktop.png"), fullPage: true });
+  const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+  const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" });
+  await offer.locator("summary").click();
+  await offer.getByRole("link", { name: /Yes.*investigate it for me/ }).click();
+  await page.waitForURL("**/pricing?**");
+  assert.equal(new URL(page.url()).searchParams.get("parcelId"), parcelA);
+  const after = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+  for (const key of ["strategyWorkspace", "savedMarketEvidence", "buildEnvelopeInputs", "investigationWork"]) {
+    assert.deepEqual(after.userData[key], before.userData[key], `Paid handoff lost ${key}`);
+  }
+  assert.equal(after.assets.length, before.assets.length);
+  assert.equal(must(await clients.a.from("saved_properties").select("user_data").eq("parcel_id", parcelA).single()).user_data.privateNote, "CUSTOMER_A_PRIVATE_NOTE");
+  results.push("Both map choices reached the existing flows; free self-service common report rendered; paid handoff preserved the customer's saved investigation without checkout or a new order");
 }
 async function saveCheck(page) {
   await page.getByText("Record checks, unavailable evidence and limitations", { exact: true }).click();
@@ -196,6 +255,8 @@ async function gatherSections(page) {
   await savedAction(page, () => page.getByRole("button", { name: "Accept this Site Potential", exact: true }).click());
   await page.locator('[data-site-potential-acceptance="accepted"]').waitFor();
   await page.screenshot({ path: resolve(artifacts, "worker-site-desktop.png"), fullPage: true });
+  await page.getByRole("heading", { name: "Where could a building potentially fit?", exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: resolve(artifacts, "worker-site-viewport.png") });
   const all = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
   assert.equal(all.assets.length, 2); assert.equal(all.userData.savedMarketEvidence.length, 1);
   assert(all.userData.strategyWorkspace.chosenScenarioId); assert(all.userData.buildEnvelopeInputs.acceptedInputSignature);
@@ -272,6 +333,8 @@ try {
   assert.equal(draft.approved_at, null); assert(draft.edited_brief.bottomLine.text.includes("SYNTHETIC_HUMAN_EDIT"));
   assert.equal(await rpc("a", "read_investigation_review", { p_order_id: orderA }), null);
   await worker.screenshot({ path: resolve(artifacts, "worker-draft-desktop.png"), fullPage: true });
+  await worker.getByLabel("Bottom line 1", { exact: true }).scrollIntoViewIfNeeded();
+  await worker.screenshot({ path: resolve(artifacts, "worker-draft-viewport.png") });
   results.push("Assigned non-admin worker saved real customer records, generated fixture AI, edited draft; customer cannot read draft");
 
   const admin = await open("admin");
@@ -285,7 +348,11 @@ try {
   const frozenHash = createHash("sha256").update(JSON.stringify(approved.report_assembly)).digest("hex");
   // Actual existing delivery Edge handler and notification receipt; only Resend is replaced.
   const delivered = must(await clients.admin.functions.invoke("easy-erf-founder-fulfillment", { body: { orderId: orderA, action: "mark_ready" } }));
-  assert.equal(delivered.ok, true); assert.equal(delivered.notification.emailAccepted, true);
+  assert.equal(delivered.ok, true); assert.equal(delivered.notification.ok, true);
+  // The normal existing success contract records a sent receipt. emailAccepted
+  // is an auxiliary flag used when provider acceptance outlives receipt failure.
+  assert.equal(delivered.notification.receipt.status, "sent");
+  assert.equal(delivered.notification.receipt.providerMessageId, "isolated-provider-receipt");
   const duplicate = must(await clients.admin.functions.invoke("easy-erf-founder-customer-notification", { body: { orderId: orderA, action: "send" } }));
   assert.equal(duplicate.alreadySent, true);
   const customer = await open("a", true);
@@ -307,6 +374,8 @@ try {
   assert.equal((await asked).status(), 200);
   await customer.getByText("Synthetic answer: this saved evidence still has recorded limitations.", { exact: true }).waitFor();
   await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile.png"), fullPage: true });
+  await customer.getByText("Human-reviewed investigation.", { exact: true }).scrollIntoViewIfNeeded();
+  await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile-viewport.png") });
   const persisted = await rpc("a", "read_investigation_review", { p_order_id: orderA, p_version_id: approved.id });
   assert(persisted.delivered_at); assert.equal(createHash("sha256").update(JSON.stringify(persisted.report_assembly)).digest("hex"), frozenHash);
   const current = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
@@ -328,13 +397,29 @@ try {
   results.push("Combined report contains actual stored findings and envelope; version-bound Ask uses controlled provider; customer original-sharing rights and exact-order asset route enforced");
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
+  await verifyCustomerEntry();
+
+  const delayed = delayNextOrderRead(orderA);
+  try {
+    await worker.reload();
+    await delayed.ready;
+    await worker.getByRole("button", { name: "Back to read-only queue", exact: true }).click();
+    delayed.release();
+    await worker.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    assert.equal(new URL(worker.url()).hash, "");
+    assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
+    assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
+    assert(!(await worker.locator("body").innerText()).includes("NONSELECTED_PRIVATE_SENTINEL"));
+    results.push("Delayed actual customer-file response cannot restore a workbench after ordinary Back to queue");
+  } finally { delayed.release(); delayedRead = null; }
+
   const path = `${ids.a}/${parcelA}/other/${randomUUID()}/fixture.png`;
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jh/kAAAAASUVORK5CYII=", "base64");
   must(await adminClient.storage.from("erf-files").upload(path, png, { contentType: "image/png" }));
   for (const actor of ["b", "worker", "stranger"]) assert((await clients[actor].storage.from("erf-files").download(path)).error, `${actor} bypassed file permission`);
   await rpc("admin", "assign_order_investigator", { p_order_id: orderA, p_worker_id: ids.worker, p_can_approve: false, p_revoke: true });
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
-  await worker.reload();
+  await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   await worker.getByRole("alert").first().waitFor();
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   results.push("Real Storage denies non-owner direct reads; revocation clears worker access");
