@@ -206,7 +206,7 @@ try {
   must(await adminClient.from("report_orders").insert([
     { id: orderA, user_id: ids.a, parcel_id: parcelA, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", price_cents: 99900,
       review_focus: "property_check", payload: { orderKind: "easy_erf_investigation", livemode: false, erfNumber: "42", address: "42 Synthetic Street", propertyReference: "Erf 42, 42 Synthetic Street", customerEmail: "isolated-a@example.invalid" } },
-    { id: orderB, user_id: ids.b, parcel_id: parcelB, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", payload: { orderKind: "easy_erf_investigation", livemode: false } },
+    { id: orderB, user_id: ids.b, parcel_id: parcelB, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", price_cents: 99900, payload: { orderKind: "easy_erf_investigation", livemode: false } },
   ]));
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
   await rpc("admin", "assign_order_investigator", { p_order_id: orderA, p_worker_id: ids.worker, p_can_approve: false, p_revoke: false });

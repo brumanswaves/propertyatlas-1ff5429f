@@ -44,7 +44,8 @@ describe("Easy Erf founder fulfillment UI", () => {
   it("disables both delivery paths until the saved report and checklist are resolved", () => {
     expect(founderRoute).toContain("isHumanReviewReportContentComplete(order.review_content)");
     expect(founderRoute).toContain("parseHumanReviewInvestigationChecklist(order.review_content)");
-    expect(founderRoute).toContain("const deliveryReady = reportReady && checklistReady");
+    expect(founderRoute).toContain("const deliveryReady = hasCombinedVersion && reportReady && checklistReady");
+    expect(founderRoute).toContain("Gather the investigation evidence, generate the brief and approve the combined report version first.");
     expect(founderRoute).toContain("disabled={busy || !deliveryReady}");
     expect(founderRoute).toContain("disabled={busy || !file || !deliveryReady}");
     expect(founderRoute).toContain(

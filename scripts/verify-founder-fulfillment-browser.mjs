@@ -366,7 +366,7 @@ try {
       assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
       await page.getByText("Optional PDF delivery", { exact: true }).click();
       assert.equal(await page.getByLabel("Optional report PDF for this order").inputValue(), "");
-      assert.equal(await workbench().getByRole("status").count(), 0);
+      assert.deepEqual(await workbench().getByRole("status").allTextContents(), ["Delivery blocked: Gather the investigation evidence, generate the brief and approve the combined report version first."]);
       assert.equal(requests.length, 0, "Navigation must not submit order or notification requests");
     });
   }
