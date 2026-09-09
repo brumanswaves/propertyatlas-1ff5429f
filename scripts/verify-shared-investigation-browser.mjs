@@ -61,7 +61,7 @@ const gateway = createServer(async (req, res) => {
     }
     requests.push({ path: url.pathname, method: req.method, status: response.status,
       // Capture actual persistence/function bodies, never Auth tokens or request headers.
-      response: url.pathname.startsWith("/auth/") ? "Auth response withheld" : redact(bytes.toString("utf8")).slice(0, 180000) });
+      response: url.pathname.startsWith("/auth/") ? "Auth response withheld" : redact(bytes.toString("utf8")) });
     res.writeHead(response.status, { "content-type": response.headers.get("content-type") ?? "application/json",
       "access-control-allow-origin": appUrl, "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, x-upsert",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,PUT,OPTIONS", "access-control-expose-headers": "content-range", "cache-control": "no-store" });
@@ -146,7 +146,9 @@ async function verifyCustomerEntry() {
   await page.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
   await page.getByRole("button", { name: /^Open Erf 42/ }).click();
   await page.getByText("Property first read", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Continue investigation", exact: true }).click();
+  // Overview intentionally repeats the CTA below its facts. Use its first,
+  // primary entry action rather than ambiguously matching both controls.
+  await page.getByRole("button", { name: "Continue investigation", exact: true }).first().click();
   await page.getByRole("button", { name: "Open full research workspace", exact: true }).click();
   await page.getByRole("button", { name: "Easy Erf Report", exact: true }).click();
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).waitFor();
@@ -265,6 +267,41 @@ async function gatherSections(page) {
   assert(all.userData.strategyWorkspace.chosenScenarioId); assert(all.userData.buildEnvelopeInputs.acceptedInputSignature);
   results.push("Actual worker uploads/extraction with fixture provider, user-bound SG/paid evidence, working zoning, comparable, chosen Strategy and accepted deterministic Site Potential persisted in customer file");
 }
+async function reviewRequest(actor, body) {
+  const response = await fetch(`${appUrl}/api/investigations/review`, { method: "POST", headers: {
+    Authorization: `Bearer ${sessions[actor].access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return { status: response.status, body: await response.json() };
+}
+async function verifySignoffFailures() {
+  const original = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+  async function replaceWork(work) {
+    const current = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+    await rpc("a", "patch_saved_property_user_data_if_unchanged", { p_parcel_id: parcelA,
+      p_user_data_patch: { investigationWork: work }, p_expected: current.userData });
+  }
+  async function generateAndReject(expected) {
+    const generated = await reviewRequest("worker", { action: "generate", orderId: orderA });
+    assert.equal(generated.status, 200, JSON.stringify(generated.body));
+    const denied = await reviewRequest("admin", { action: "approve", orderId: orderA,
+      versionId: generated.body.versionId, briefRevision: 1 });
+    assert.equal(denied.status, 409); assert.match(JSON.stringify(denied.body.blockers), expected);
+    const version = await rpc("admin", "read_investigation_review", { p_order_id: orderA, p_version_id: generated.body.versionId });
+    assert.equal(version.approved_at, null); assert.equal(version.delivered_at, null);
+    return version;
+  }
+  await replaceWork({ ...original.userData.investigationWork, property_checks: { disposition: "reviewed" } });
+  const incomplete = await generateAndReject(/property checks/i);
+  await replaceWork(original.userData.investigationWork);
+  const stale = await reviewRequest("admin", { action: "approve", orderId: orderA, versionId: incomplete.id, briefRevision: 1 });
+  assert.equal(stale.status, 409); assert.match(stale.body.error, /evidence or brief changed/i);
+  const sg = original.assets.find((asset) => asset.asset_category === "sg_diagram");
+  // Simulate an actual extractor's conflicting identity finding in the isolated
+  // database. Keep stale user attachment metadata to exercise fail-closed policy.
+  must(await adminClient.from("erf_assets").update({ metadata: { ...sg.metadata, identityMatchStatus: "mismatch" } }).eq("id", sg.id));
+  await generateAndReject(/wrong-property evidence/i);
+  must(await adminClient.from("erf_assets").update({ metadata: sg.metadata }).eq("id", sg.id));
+  results.push("Actual application approval rejects unsupported completion, stale evidence and wrong-property SG despite stale user attachment; no rejected version was approved or delivered");
+}
 try {
   for (const [actor, id] of Object.entries(ids)) {
     const email = `isolated-${actor}@example.invalid`;
@@ -321,6 +358,7 @@ try {
   assert(saved.userData.investigationWork.property_checks.result.includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(must(await adminClient.from("saved_properties").select("id").eq("user_id", ids.worker)).length, 0);
   await gatherSections(worker);
+  await verifySignoffFailures();
   await worker.reload();
   await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
   await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).click();
@@ -373,7 +411,7 @@ try {
   assert.equal(await report.locator("#investigation-site svg").count() > 0, true);
   await customer.getByPlaceholder("Example: What information is missing before I make an offer?", { exact: true }).fill("What evidence remains uncertain in this reviewed report?");
   const asked = customer.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "ask");
-  await customer.getByRole("button", { name: "Ask", exact: true }).click();
+  await customer.getByRole("button", { name: "Ask", exact: true }).tap();
   assert.equal((await asked).status(), 200);
   await customer.getByText("Synthetic answer: this saved evidence still has recorded limitations.", { exact: true }).waitFor();
   await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile.png"), fullPage: true });
@@ -403,10 +441,14 @@ try {
   await verifyCustomerEntry();
 
   const delayed = delayNextOrderRead(orderA);
+  let delayTimeout;
   try {
     await worker.reload();
-    await delayed.ready;
-    await worker.getByRole("button", { name: "Back to read-only queue", exact: true }).click();
+    await Promise.race([delayed.ready, new Promise((_, reject) => {
+      delayTimeout = setTimeout(() => reject(new Error("The expected actual delayed order read did not begin")), 30_000);
+    })]);
+    const back = worker.getByRole("button", { name: "Back to read-only queue", exact: true });
+    await back.focus(); await back.press("Enter");
     delayed.release();
     await worker.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
     assert.equal(new URL(worker.url()).hash, "");
@@ -414,7 +456,7 @@ try {
     assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
     assert(!(await worker.locator("body").innerText()).includes("NONSELECTED_PRIVATE_SENTINEL"));
     results.push("Delayed actual customer-file response cannot restore a workbench after ordinary Back to queue");
-  } finally { delayed.release(); delayedRead = null; }
+  } finally { clearTimeout(delayTimeout); delayed.release(); delayedRead = null; }
 
   const path = `${ids.a}/${parcelA}/other/${randomUUID()}/fixture.png`;
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jh/kAAAAASUVORK5CYII=", "base64");
@@ -426,6 +468,7 @@ try {
   await worker.getByRole("alert").first().waitFor();
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   results.push("Real Storage denies non-owner direct reads; revocation clears worker access");
+  assert(!JSON.stringify(requests).includes("NONSELECTED_PRIVATE_SENTINEL"), "Another customer's private content crossed the application boundary");
   assert.equal(errors.length, 0, errors.join("\n"));
 } catch (error) {
   errors.push(redact(error.stack ?? error));

@@ -42,6 +42,8 @@ Checkpoint 15:42: e229dcba existing four workflows passed; isolated 34357340539 
 
 Local synthetic-config production build passed at 15:44; generated route tree unchanged. Previous local app PID 27720 stopped. PostgreSQL 19380 still serves only the isolated fixture cluster on loopback 55487. No implementation process outside this active session.
 
+Checkpoint 15:55: 7e03d4b isolated run 34358882393 progressed through every worker section, persisted chosen Strategy/envelope, AI draft/edit/admin approval, existing delivery, synthetic sent receipt/duplicate protection, fresh customer combined report, version-grounded Ask and exact-original rights checks. Artifact 10107060764 hash 06c2d135d7275168a9374924f8215e56db593d9c8a8099a5964c61339f64202e retrieved; legible customer mobile, worker editor and Site screenshots inspected. The map-path fixture stopped on duplicate legitimate Overview CTA labels; now deliberately selects the first/primary CTA. Network artifact had truncated large JSON; removed truncation so final receipt can be independently parsed, not claimed from a partial payload. Added pending actual-route rejection checks for unsupported/stale/wrong-property evidence, explicit touch Ask and keyboard Back, bounded delayed-read wait and nonselected private sentinel assertion. No production changes. Exact latest candidate acceptance still pending.
+
 ## Gates and processes
 Real AI calls require permitted provider/data and spending authorization; Codex allowance is not application API credit. Fixtures do not prove live AI. No evidence purchases.
 Class B required for merge/migration/Edge/frontend/configuration/production acceptance; Class C for genuine payment.
