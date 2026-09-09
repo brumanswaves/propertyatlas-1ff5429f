@@ -391,6 +391,32 @@ try {
   await worker.screenshot({ path: resolve(artifacts, "worker-draft-viewport.png") });
   results.push("Assigned non-admin worker saved real customer records, generated fixture AI, edited draft; customer cannot read draft");
 
+  // A delivered order no longer mounts an editable investigation. Exercise the
+  // held workspace read while this order is still actively being investigated.
+  const delayed = delayNextOrderRead(orderA);
+  let delayTimeout;
+  try {
+    const heldRequestStarted = worker.waitForRequest((request) => request.url().endsWith("/rpc/read_order_investigation")
+      && request.method() === "POST" && request.postDataJSON()?.p_order_id === orderA);
+    await worker.reload();
+    await Promise.race([delayed.ready, new Promise((_, reject) => {
+      delayTimeout = setTimeout(() => reject(new Error("The expected actual delayed order read did not begin")), 30_000);
+    })]);
+    const heldRequest = await heldRequestStarted;
+    const cancelled = worker.waitForEvent("requestfailed", { predicate: (request) => request === heldRequest });
+    const back = worker.getByRole("button", { name: "Back to read-only queue", exact: true });
+    await back.focus(); await back.press("Enter");
+    await cancelled;
+    delayed.release();
+    await worker.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    assert.equal(new URL(worker.url()).hash, "");
+    assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
+    assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
+    assert(!(await worker.locator("body").innerText()).includes("NONSELECTED_PRIVATE_SENTINEL"));
+    await worker.screenshot({ path: resolve(artifacts, "queue-after-delayed-read.png") });
+    results.push("Delayed actual customer-file response cannot restore a workbench after ordinary Back to queue");
+  } finally { clearTimeout(delayTimeout); delayed.release(); delayedRead = null; }
+
   const admin = await open("admin");
   await admin.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   await admin.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
@@ -452,24 +478,6 @@ try {
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
   await verifyCustomerEntry();
-
-  const delayed = delayNextOrderRead(orderA);
-  let delayTimeout;
-  try {
-    await worker.reload();
-    await Promise.race([delayed.ready, new Promise((_, reject) => {
-      delayTimeout = setTimeout(() => reject(new Error("The expected actual delayed order read did not begin")), 30_000);
-    })]);
-    const back = worker.getByRole("button", { name: "Back to read-only queue", exact: true });
-    await back.focus(); await back.press("Enter");
-    delayed.release();
-    await worker.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
-    assert.equal(new URL(worker.url()).hash, "");
-    assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
-    assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
-    assert(!(await worker.locator("body").innerText()).includes("NONSELECTED_PRIVATE_SENTINEL"));
-    results.push("Delayed actual customer-file response cannot restore a workbench after ordinary Back to queue");
-  } finally { clearTimeout(delayTimeout); delayed.release(); delayedRead = null; }
 
   const path = `${ids.a}/${parcelA}/other/${randomUUID()}/fixture.png`;
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jh/kAAAAASUVORK5CYII=", "base64");
