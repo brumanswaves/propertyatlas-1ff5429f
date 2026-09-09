@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { CustomerWorkspaceShell } from "@/components/account/CustomerWorkspaceShell";
 import { HumanReviewedReport } from "@/components/humanReview/HumanReviewedReport";
+import { DeliveredInvestigationReport } from "@/components/humanReview/DeliveredInvestigationReport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
@@ -494,6 +495,10 @@ function CustomerOrderCard({
   ) : null;
 
   if (status === "ready" && content && expanded) {
+    const rawContent = order.review_content;
+    const versionId = rawContent && typeof rawContent === "object" && !Array.isArray(rawContent)
+      && "combinedReviewVersionId" in rawContent ? rawContent.combinedReviewVersionId : null;
+    if (typeof versionId === "string") return <DeliveredInvestigationReport orderId={order.id} versionId={versionId} />;
     return (
       <HumanReviewedReport
         propertyReference={propertyReference}

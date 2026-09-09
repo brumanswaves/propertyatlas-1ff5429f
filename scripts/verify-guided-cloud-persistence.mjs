@@ -10,7 +10,7 @@ const USER_EMAIL = "guided-cloud-acceptance@easyerf.invalid";
 const LPI = "C03400140000157000000";
 const PARCEL_KEY = "E108C034001400001570000000";
 const PARCEL_ID = "csg:lpi:c03400140000157000000";
-const AUTH_STORAGE_KEYS = ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
+const AUTH_STORAGE_KEYS = ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
 const ACCEPTANCE_AT = "2026-08-29T08:00:00.000Z";
 assert.equal(new URL(baseUrl).hostname, "127.0.0.1");
 const artifacts = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/guided-cloud");
@@ -205,7 +205,7 @@ async function installSyntheticSignedInSupabase(context, name) {
             status: found ? 200 : 406,
             contentType: "application/json",
             body: found
-              ? JSON.stringify({ id: durableRow.id })
+              ? JSON.stringify(Object.fromEntries(select.split(",").map((key) => [key, durableRow[key]])))
               : JSON.stringify({
                   code: "PGRST116",
                   details: "The result contains 0 rows",
@@ -226,7 +226,7 @@ async function installSyntheticSignedInSupabase(context, name) {
       }
 
       if (
-        url.pathname === "/rest/v1/rpc/patch_saved_property_user_data" &&
+        url.pathname === "/rest/v1/rpc/patch_saved_property_user_data_if_unchanged" &&
         method === "POST"
       ) {
         const payload = request.postDataJSON();
@@ -248,6 +248,13 @@ async function installSyntheticSignedInSupabase(context, name) {
             body: JSON.stringify({ message: "Invalid acceptance RPC payload" }),
           });
           return;
+        }
+
+        for (const key of Object.keys(patch)) {
+          if (JSON.stringify(payload.p_expected?.[key]) !== JSON.stringify(durableRow.user_data[key])) {
+            await route.fulfill({ status: 409, json: { code: "40001", message: "Fixture rejected stale baseline" } });
+            return;
+          }
         }
 
         durableRow.user_data = { ...durableRow.user_data, ...patch };

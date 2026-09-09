@@ -1,16 +1,22 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { LockKeyhole } from "lucide-react";
 
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
+import { investigationClient } from "@/lib/investigation/investigationClient";
 
-export function AdminGuard({ children }: { children: ReactNode }) {
+const OperationsAccess = createContext({ isAdmin: false });
+export function useOperationsAccess() { return useContext(OperationsAccess); }
+
+export function AdminGuard({ children, allowAssignedInvestigations = false }: { children: ReactNode; allowAssignedInvestigations?: boolean }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [access, setAccess] = useState<{ userId: string; isAdmin: boolean; assigned: boolean } | null>(null);
+  const currentAccess = access?.userId === user?.id ? access : null;
+  const isAdmin = currentAccess?.isAdmin ?? null;
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -19,7 +25,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     if (!user) {
-      setIsAdmin(null);
+      setAccess(null);
       return;
     }
     supabase
@@ -28,17 +34,23 @@ export function AdminGuard({ children }: { children: ReactNode }) {
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setIsAdmin(Boolean(data));
+      .then(async ({ data, error }) => {
+        if (cancelled) return;
+        let assigned = false;
+        if (!data && !error && allowAssignedInvestigations) {
+          const result = await investigationClient.rpc("list_assigned_investigation_queue", {});
+          assigned = !result.error && Array.isArray(result.data) && result.data.length > 0;
+        }
+        if (!cancelled) setAccess({ userId: user.id, isAdmin: !error && Boolean(data), assigned });
       });
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, allowAssignedInvestigations]);
 
   if (loading || !user || isAdmin === null) return null;
 
-  if (!isAdmin) {
+  if (!isAdmin && !currentAccess?.assigned) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <TopNav />
@@ -77,8 +89,8 @@ export function AdminGuard({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
-      <nav
+    <OperationsAccess.Provider value={{ isAdmin }}>
+      {isAdmin && <nav
         aria-label="Founder Operations"
         className="absolute left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
       >
@@ -88,9 +100,9 @@ export function AdminGuard({ children }: { children: ReactNode }) {
         <OperationsLink href="/admin/launch-readiness">Launch</OperationsLink>
         <OperationsLink href="/admin/readiness">Providers</OperationsLink>
         <OperationsLink href="/admin/public-data-debug">Data debug</OperationsLink>
-      </nav>
+      </nav>}
       {children}
-    </>
+    </OperationsAccess.Provider>
   );
 }
 

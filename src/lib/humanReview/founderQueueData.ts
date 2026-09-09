@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { isOfficialParcelId } from "@/lib/parcels/officialParcelId";
 import { parseFocusedOrderId } from "./founderQueueSafety";
+import { investigationClient, requireInvestigationResult } from "@/lib/investigation/investigationClient";
 
 export type FounderQueueSummary = {
   id: string;
@@ -118,16 +119,25 @@ export function isLegacyFounderSummary(order: FounderQueueSummary): boolean {
 export const FOUNDER_DETAIL_COLUMNS =
   "id,user_id,parcel_id,report_type,status,status_enum,provider,payload,price_cents,pdf_storage_path,failure_reason,created_at,updated_at,completed_at,review_focus,intended_use,review_context,review_content,review_content_updated_at";
 
-export async function readFounderQueue(client: SupabaseClient<Database>, signal: AbortSignal) {
+export async function readFounderQueue(client: SupabaseClient<Database>, signal: AbortSignal, assignedOnly = false) {
+  if (assignedOnly) return parseFounderQueueSummaries(requireInvestigationResult(
+    await investigationClient.rpc("list_assigned_investigation_queue", {}).abortSignal(signal)));
   const queueClient = client as unknown as SupabaseClient<QueueDatabase>;
   const { data, error } = await queueClient.rpc("list_easy_erf_founder_queue", { p_limit: 100 }).abortSignal(signal);
   if (error) throw new Error("Could not load the investigation queue");
   return parseFounderQueueSummaries(data);
 }
 
-export async function readFounderOrder(client: SupabaseClient<Database>, id: string, signal: AbortSignal): Promise<FounderOrderDetail | null> {
+export async function readFounderOrder(client: SupabaseClient<Database>, id: string, signal: AbortSignal, assignedOnly = false): Promise<FounderOrderDetail | null> {
   if (!isFullFounderOrderId(id)) throw new Error("A complete order UUID is required");
   const expectedId = id.toLowerCase();
+  if (assignedOnly) {
+    const value = requireInvestigationResult(await investigationClient.rpc("read_assigned_investigation_header", { p_order_id: expectedId }).abortSignal(signal));
+    if (!value || typeof value !== "object" || Array.isArray(value) || value.id !== expectedId || value.provider !== "stripe") {
+      throw new Error("The returned investigation did not match the selected order");
+    }
+    return value as FounderOrderDetail;
+  }
   const { data, error } = await client.from("report_orders")
     .select(FOUNDER_DETAIL_COLUMNS)
     .eq("id", expectedId)

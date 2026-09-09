@@ -208,7 +208,7 @@ export function canonicalizeAskEasyErfAnswer(
   return { ...answer, evidenceReferences: resolved as AskEasyErfEvidenceReference[] };
 }
 
-function validateAnswerAgainstSelectedEvidence(
+export function validateAnswerAgainstSelectedEvidence(
   value: unknown,
   evidence: AskEasyErfSelectedEvidencePayload,
 ): AskEasyErfAnswer | null {

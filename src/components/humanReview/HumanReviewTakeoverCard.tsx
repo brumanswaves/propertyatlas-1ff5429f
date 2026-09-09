@@ -5,6 +5,7 @@ import {
   buildHumanReviewHref,
 } from "@/lib/humanReview/scope";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const HUMAN_REVIEW_BENEFITS = [
   "Easy Erf completes or reviews the standard property investigation for you",
@@ -17,9 +18,12 @@ const HUMAN_REVIEW_BENEFITS = [
 interface TakeoverCardContentProps {
   hasConfirmedParcel: boolean;
   href: string;
+  onPrepare?: () => Promise<void>;
 }
 
-function TakeoverCardContent({ hasConfirmedParcel, href }: TakeoverCardContentProps) {
+function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCardContentProps) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
@@ -77,11 +81,22 @@ function TakeoverCardContent({ hasConfirmedParcel, href }: TakeoverCardContentPr
         ) : null}
         <a
           href={href}
+          aria-disabled={saving}
+          onClick={onPrepare ? (event) => {
+            event.preventDefault();
+            if (saving) return;
+            setSaving(true); setError(null);
+            void onPrepare().then(() => window.location.assign(href)).catch((failure: unknown) => {
+              setError(failure instanceof Error ? failure.message : "Your investigation was not saved. Please reload before continuing.");
+              setSaving(false);
+            });
+          } : undefined}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff7d1f]"
         >
-          {hasConfirmedParcel ? "Yes — investigate it for me · R999" : "Find property on map"}
+          {saving ? "Saving your investigation..." : hasConfirmedParcel ? "Yes — investigate it for me · R999" : "Find property on map"}
           <ArrowRight className="h-4 w-4" />
         </a>
+        {error && <p role="alert" className="max-w-sm text-sm text-destructive">{error}</p>}
         {hasConfirmedParcel ? (
           <div className="text-left text-[10px] leading-4 text-[#64748B] lg:max-w-[16rem] lg:text-right">
             Property research and due-diligence support, not professional advice or municipal approval.
@@ -97,11 +112,13 @@ export function HumanReviewTakeoverCard({
   propertyReference,
   source = "investigation",
   compact = false,
+  onPrepare,
 }: {
   parcelId?: string | null;
   propertyReference?: string | null;
   source?: string;
   compact?: boolean;
+  onPrepare?: () => Promise<void>;
 }) {
   const hasConfirmedParcel = Boolean(parcelId?.trim());
   const href = hasConfirmedParcel
@@ -138,7 +155,7 @@ export function HumanReviewTakeoverCard({
             </div>
           </summary>
           <div className="border-t border-[#FF6A00]/15">
-            <TakeoverCardContent hasConfirmedParcel={hasConfirmedParcel} href={href} />
+            <TakeoverCardContent hasConfirmedParcel={hasConfirmedParcel} href={href} onPrepare={onPrepare} />
           </div>
         </details>
       </aside>
@@ -147,7 +164,7 @@ export function HumanReviewTakeoverCard({
 
   return (
     <aside className={cn(shellClass)} aria-label="Done-for-You Property Investigation option">
-      <TakeoverCardContent hasConfirmedParcel={hasConfirmedParcel} href={href} />
+      <TakeoverCardContent hasConfirmedParcel={hasConfirmedParcel} href={href} onPrepare={onPrepare} />
     </aside>
   );
 }

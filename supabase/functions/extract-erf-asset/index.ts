@@ -100,6 +100,18 @@ async function verifyUserToken(token: string): Promise<{ userId: string } | null
   }
 }
 
+async function authorizeInvestigationExtraction(token: string, orderId: string, assetId: string) {
+  const apikey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() || "";
+  if (!apikey) return false;
+  try {
+    const result = await fetch(`${supabaseUrl()}/rest/v1/rpc/authorize_order_investigation_extraction`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, apikey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_order_id: orderId, p_asset_id: assetId }),
+    });
+    return result.ok && await result.json() === true;
+  } catch { return false; }
+}
+
 interface AssetRow {
   id: string;
   user_id: string;
@@ -418,7 +430,7 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
     if (!response.ok) return expected;
     const rows = (await response.json().catch(() => null)) as Array<{ user_data?: unknown }> | null;
     const userData = (rows?.[0]?.user_data ?? null) as Record<string, unknown> | null;
-    const parcel = (userData?.parcel ?? userData?.officialParcel ?? userData) as Record<
+    const parcel = (userData?.parcel ?? userData?.officialParcel ?? userData?.normalizedParcel ?? userData) as Record<
       string,
       unknown
     > | null;
@@ -438,7 +450,7 @@ async function loadExpectedIdentity(asset: AssetRow): Promise<ErfExpectedIdentit
       portionNumber: expected.portionNumber ?? pick("portion", "portionNumber"),
       municipality: expected.municipality ?? pick("municipality"),
       province: expected.province ?? pick("province"),
-      town: expected.town ?? pick("town", "suburb"),
+      town: expected.town ?? pick("town", "suburb", "suburbOrArea"),
       streetAddress: expected.streetAddress ?? pick("streetAddress", "address"),
     };
   } catch {
@@ -667,7 +679,7 @@ Deno.serve(async (request: Request) => {
   if (rawBody.length > ERF_EXTRACTION_MAX_REQUEST_BYTES) {
     return fail("REQUEST_TOO_LARGE", "That request was too large.", 413);
   }
-  let body: { assetId?: unknown; expectedParcelId?: unknown; retry?: unknown } | null = null;
+  let body: { assetId?: unknown; expectedParcelId?: unknown; retry?: unknown; investigationOrderId?: unknown } | null = null;
   try {
     body = rawBody ? JSON.parse(rawBody) : null;
   } catch {
@@ -677,6 +689,10 @@ Deno.serve(async (request: Request) => {
   const expectedParcelId =
     typeof body?.expectedParcelId === "string" ? body.expectedParcelId.trim() : "";
   const retryRequested = body?.retry === true;
+  const investigationOrderId = typeof body?.investigationOrderId === "string" ? body.investigationOrderId.trim() : null;
+  if (body?.investigationOrderId !== undefined && (!investigationOrderId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(investigationOrderId))) {
+    return fail("INVALID_REQUEST", "A complete investigation order is required.", 400);
+  }
   if (!/^[0-9a-f-]{36}$/i.test(assetId)) {
     return fail("INVALID_REQUEST", "A valid assetId is required.", 400);
   }
@@ -690,7 +706,9 @@ Deno.serve(async (request: Request) => {
 
   const asset = await loadAsset(assetId);
   if (!asset) return fail("ASSET_NOT_FOUND", "That file could not be found.", 404);
-  if (callerUserId && asset.user_id !== callerUserId) {
+  const delegated = Boolean(investigationOrderId && callerUserId && await authorizeInvestigationExtraction(presented, investigationOrderId, asset.id));
+  if (investigationOrderId && !delegated) return fail("FORBIDDEN", "This document is not available for assigned processing.", 403);
+  if (callerUserId && asset.user_id !== callerUserId && !delegated) {
     log("forbidden", requestId);
     return fail("FORBIDDEN", "That file does not belong to this account.", 403);
   }
@@ -705,6 +723,9 @@ Deno.serve(async (request: Request) => {
     responseBody: Record<string, unknown>,
     httpStatus: number,
   ) => {
+    if (delegated && investigationOrderId && !await authorizeInvestigationExtraction(presented, investigationOrderId, asset.id)) {
+      return fail("FORBIDDEN", "Assigned processing access changed. The result was not released.", 403);
+    }
     const written = await patchAssetMetadata(asset, {
       extractionStatus: status,
       extractionModel: null,

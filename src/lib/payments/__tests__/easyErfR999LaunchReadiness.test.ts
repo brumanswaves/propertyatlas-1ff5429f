@@ -12,7 +12,7 @@ import {
 } from "../../../../supabase/functions/_shared/easyErfR999LaunchReadiness";
 
 function source(path: string) {
-  return readFileSync(resolve(process.cwd(), path), "utf8");
+  return readFileSync(resolve(process.cwd(), path), "utf8").replace(/\r\n/g, "\n");
 }
 
 const functionSource = source(

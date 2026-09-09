@@ -7,6 +7,21 @@ import {
 } from "../savedPropertyUserData";
 
 describe("saved property user_data patching", () => {
+  it("compares only changed namespaces without sending unrelated private data or a caller owner ID", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { easyErfInvestigation: { identityStatus: "checked" } }, error: null });
+    await patchSavedPropertyUserData("parcel", { easyErfInvestigation: { identityStatus: "checked" } }, { rpc } as never,
+      { easyErfInvestigation: { identityStatus: "none" }, privateNote: "DO NOT TRANSMIT" });
+    expect(rpc).toHaveBeenCalledWith("patch_saved_property_user_data_if_unchanged", {
+      p_parcel_id: "parcel", p_user_data_patch: { easyErfInvestigation: { identityStatus: "checked" } },
+      p_expected: { easyErfInvestigation: { identityStatus: "none" } },
+    });
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain("DO NOT TRANSMIT");
+  });
+  it("does not retry or silently overwrite a newer shared revision", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: "40001" } });
+    await expect(patchSavedPropertyUserData("parcel", { strategyWorkspace: {} }, { rpc } as never, {})).rejects.toThrow("Reload before saving");
+    expect(rpc).toHaveBeenCalledOnce();
+  });
   it("merges top-level namespaces without dropping unrelated data", () => {
     expect(
       mergeSavedPropertyUserDataPatch(

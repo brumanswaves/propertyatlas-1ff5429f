@@ -60,6 +60,8 @@ export interface ExtractErfAssetOptions {
   expectedParcelId: string;
   /** Only allowed for failed / partial / unverified assets. */
   retry?: boolean;
+  /** Assigned work only; the backend resolves and authorizes its customer and parcel. */
+  investigationOrderId?: string;
 }
 
 export interface ExtractErfAssetDeps {
@@ -133,6 +135,7 @@ export async function extractErfAsset(
         assetId,
         expectedParcelId,
         ...(options.retry ? { retry: true } : {}),
+        ...(options.investigationOrderId ? { investigationOrderId: options.investigationOrderId } : {}),
       }),
     });
   } catch {

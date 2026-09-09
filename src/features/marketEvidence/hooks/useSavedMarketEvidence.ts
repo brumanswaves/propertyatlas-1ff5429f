@@ -1,4 +1,6 @@
-import { useLayoutEffect, useEffect, useState } from "react";
+import { useLayoutEffect, useEffect, useMemo, useState } from "react";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -20,7 +22,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseEvidence(value: unknown, parcelId: string): SavedMarketEvidence[] {
+export function parseEvidence(value: unknown, parcelId: string): SavedMarketEvidence[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter(isRecord)
@@ -215,19 +217,27 @@ function applyUserData(
 }
 
 export function useSavedMarketEvidence(parcelId: string) {
+  const shared = useSharedInvestigationScope(parcelId);
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [savedPropertyExists, setSavedPropertyExists] = useState(false);
   const [userData, setUserData] = useState<Record<string, unknown>>({});
-  const [evidence, setEvidence] = useState<SavedMarketEvidence[]>([]);
-  const [candidates, setCandidates] = useState<ListingCandidate[]>([]);
-  const [dismissedCandidateIds, setDismissedCandidateIds] = useState<string[]>([]);
-  const [propertyIdentity, setPropertyIdentity] = useState<PropertyIdentityOverride | null>(null);
-  const [marketAddressIntelligence, setMarketAddressIntelligence] =
+  const [localEvidence, setEvidence] = useState<SavedMarketEvidence[]>([]);
+  const [localCandidates, setCandidates] = useState<ListingCandidate[]>([]);
+  const [localDismissedCandidateIds, setDismissedCandidateIds] = useState<string[]>([]);
+  const [localPropertyIdentity, setPropertyIdentity] = useState<PropertyIdentityOverride | null>(null);
+  const [localMarketAddressIntelligence, setMarketAddressIntelligence] =
     useState<MarketAddressIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
+  const sharedData = shared?.snapshot.userData;
+  const evidence = useMemo(() => sharedData ? parseEvidence(sharedData.savedMarketEvidence, parcelId) : localEvidence, [sharedData, parcelId, localEvidence]);
+  const candidates = useMemo(() => sharedData ? parseCandidates(sharedData.marketEvidenceCandidates) : localCandidates, [sharedData, localCandidates]);
+  const dismissedCandidateIds = useMemo(() => sharedData ? parseDismissed(sharedData.dismissedMarketEvidenceCandidateIds) : localDismissedCandidateIds, [sharedData, localDismissedCandidateIds]);
+  const propertyIdentity = useMemo(() => sharedData ? parsePropertyIdentity(sharedData.propertyIdentity) : localPropertyIdentity, [sharedData, localPropertyIdentity]);
+  const marketAddressIntelligence = useMemo(() => sharedData ? parseMarketAddressIntelligence(sharedData.marketAddressIntelligence) : localMarketAddressIntelligence, [sharedData, localMarketAddressIntelligence]);
 
   useLayoutEffect(() => {
+    if (shared) return;
     let alive = true;
     setLoading(true);
     setSavedPropertyExists(false);
@@ -275,9 +285,10 @@ export function useSavedMarketEvidence(parcelId: string) {
     return () => {
       alive = false;
     };
-  }, [parcelId, userId]);
+  }, [parcelId, userId, shared]);
 
   useEffect(() => {
+    if (shared) return;
     function refresh(event: Event) {
       const detail = (event as CustomEvent<{
         parcelId?: string;
@@ -297,11 +308,15 @@ export function useSavedMarketEvidence(parcelId: string) {
     }
     window.addEventListener("erfstoep:market-evidence-updated", refresh);
     return () => window.removeEventListener("erfstoep:market-evidence-updated", refresh);
-  }, [parcelId, userId]);
+  }, [parcelId, userId, shared]);
 
-  const canSave = true;
+  const canSave = shared ? shared.snapshot.canWork && !shared.busy : true;
 
   async function persistUserData(patch: Record<string, unknown>) {
+    if (shared) {
+      try { await shared.save(toSupabaseJson(patch)); return true; }
+      catch (error) { toast.error(error instanceof Error ? error.message : "The customer investigation could not be saved."); return false; }
+    }
     const nextUserData = { ...userData, ...patch };
     if (!userId) {
       writeLocalMarketEvidenceUserData(parcelId, nextUserData, userId);
@@ -318,7 +333,9 @@ export function useSavedMarketEvidence(parcelId: string) {
       return true;
     }
     try {
-      const mergedUserData = await patchSavedPropertyUserData(parcelId, patch);
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user.id !== userId) throw new Error("The signed-in account changed. Reload before saving.");
+      const mergedUserData = await patchSavedPropertyUserData(parcelId, patch, supabase, userData);
       setSavedPropertyExists(true);
       writeLocalMarketEvidenceUserData(parcelId, mergedUserData, userId);
       applyUserData(parcelId, mergedUserData, {
@@ -432,8 +449,8 @@ export function useSavedMarketEvidence(parcelId: string) {
 
   return {
     user,
-    loading,
-    savedPropertyExists,
+    loading: shared ? false : loading,
+    savedPropertyExists: shared ? true : savedPropertyExists,
     canSave,
     evidence,
     propertyIdentity,

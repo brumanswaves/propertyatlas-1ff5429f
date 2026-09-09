@@ -17,7 +17,7 @@ import {
 } from "@/lib/reports/contextSections";
 import type { SgEvidenceBlock, SgSectionModel } from "@/lib/reports/sgSection";
 import type { StillToVerifySummary } from "@/lib/reports/contextSections";
-import { createErfAssetPreviewSignedUrl } from "@/lib/workbench/erfFileVault";
+import { createErfAssetPreviewSignedUrl, type ErfAsset } from "@/lib/workbench/erfFileVault";
 import { repairSgPreview } from "@/lib/workbench/sgPreviewRepair";
 import { registerSgPreviewSettlement } from "@/lib/reports/sgPreviewSettlement";
 
@@ -166,9 +166,11 @@ export function ReportMunicipalSection({
 function SgPreview({
   block,
   onPreviewSettlement,
+  loadPreview,
 }: {
   block: SgEvidenceBlock;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
+  loadPreview?: (asset: ErfAsset, signal: AbortSignal) => Promise<Blob | null>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -176,12 +178,23 @@ function SgPreview({
 
   useEffect(() => {
     let alive = true;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    setUrl(null);
+    setFailed(false);
     const settlement = new Promise<void>((resolve) => {
       settleRef.current = resolve;
     });
     registerSgPreviewSettlement(onPreviewSettlement, settlement);
 
     void (async () => {
+      if (loadPreview) {
+        const blob = await loadPreview(block.asset, controller.signal);
+        if (!alive) return;
+        if (blob) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); }
+        else { setFailed(true); settleRef.current?.(); }
+        return;
+      }
       let signedUrl = await createErfAssetPreviewSignedUrl(block.asset);
       const mime = String(block.asset.mime_type ?? "").split(";", 1)[0].trim().toLowerCase();
       const canRepairTiff = mime === "image/tiff" || mime === "image/tif";
@@ -204,14 +217,18 @@ function SgPreview({
         setFailed(true);
         settleRef.current?.();
       }
-    })();
+    })().catch(() => {
+      if (alive) { setFailed(true); setUrl(null); settleRef.current?.(); }
+    });
 
     return () => {
       alive = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
       settleRef.current?.();
       settleRef.current = null;
     };
-  }, [block.asset, onPreviewSettlement]);
+  }, [block.asset, onPreviewSettlement, loadPreview]);
 
   if (!url || failed) {
     return (
@@ -240,12 +257,14 @@ export function ReportSgLineageSection({
   onOpenAsset,
   onOpenTab,
   onPreviewSettlement,
+  loadPreview,
 }: {
   anchorId: string;
   model: SgSectionModel;
   onOpenAsset?: (assetId: string) => void;
   onOpenTab?: (tab: string) => void;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
+  loadPreview?: (asset: ErfAsset, signal: AbortSignal) => Promise<Blob | null>;
 }) {
   return (
     <section id={anchorId} className={sectionShell()}>
@@ -377,7 +396,7 @@ export function ReportSgLineageSection({
               className="grid gap-4 rounded-2xl border border-[#D9E6F2] bg-[#F7FBFF] p-4 lg:grid-cols-[0.85fr_1.15fr]"
             >
               <div>
-                <SgPreview block={block} onPreviewSettlement={onPreviewSettlement} />
+                <SgPreview block={block} onPreviewSettlement={onPreviewSettlement} loadPreview={loadPreview} />
                 <div className="mt-2 text-xs font-semibold text-[#0D1B2A]">
                   {block.asset.original_file_name}
                 </div>

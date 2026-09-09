@@ -267,7 +267,7 @@ function strategyCalculationStatus(strategy: StrategyAnalysis) {
   return "Assumptions are saved, but no deterministic financial calculation is available for this scenario.";
 }
 
-function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis {
+export function analyzeStrategy(scenario: ErfStrategyScenario | null): StrategyAnalysis {
   if (!scenario || !STRATEGY_KINDS.includes(scenario.strategy as StrategyKind)) {
     if (scenario) {
       return {

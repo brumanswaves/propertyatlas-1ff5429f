@@ -70,7 +70,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
 await context.addInitScript(({ session }) => {
   // Local build uses a reserved .invalid URL; other keys support existing CI builds.
-  for (const key of ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
+  for (const key of ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
     localStorage.setItem(key, JSON.stringify(session));
   }
 }, { session });
@@ -79,6 +79,21 @@ await context.route("**/*", async (route) => {
   const url = new URL(request.url());
   const json = (body) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   if (url.pathname.startsWith("/auth/v1/")) return json(activeUser);
+  if (["/rest/v1/rpc/read_order_investigation", "/rest/v1/rpc/read_investigation_review"].includes(url.pathname)) {
+    const { p_order_id: id } = request.postDataJSON();
+    assert.equal(new URL(request.frame().url()).hash, `#order-${id}`);
+    const row = rows.find((entry) => entry.id === id);
+    assert.ok(row, "Shared investigation read requires the selected complete order UUID");
+    if (url.pathname.endsWith("read_investigation_review")) return json(null);
+    return json({ schemaVersion: 1, orderId: id, customerId: row.user_id, parcelId: parcel,
+      revision: 1, canWork: true, canApprove: true, assets: [], siteProject: null,
+      userData: { erfNumber: "1570", investigationWork: { property_checks: {
+        source: "Synthetic recorded source", checkedAt: "2026-01-01T00:00:00.000Z",
+        result: activeUser.id === user.id ? row.review_content.bottomLine : "OTHER ACCOUNT ONLY",
+        reason: "Synthetic investigation relevance", limitation: "Synthetic remaining check", disposition: "reviewed",
+      } } },
+    });
+  }
   if (url.pathname === "/rest/v1/rpc/list_easy_erf_founder_queue") {
     assert.equal(request.method(), "POST");
     assert.deepEqual(request.postDataJSON(), { p_limit: 100 });
@@ -182,7 +197,7 @@ page.on("response", (response) => {
 async function broadcastAuth(nextSession) {
   activeUser = nextSession?.user ?? null;
   await page.evaluate((value) => {
-    for (const key of ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
+    for (const key of ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
       if (value) localStorage.setItem(key, JSON.stringify(value));
       else localStorage.removeItem(key);
       const channel = new BroadcastChannel(key);
@@ -194,6 +209,12 @@ async function broadcastAuth(nextSession) {
 async function check(name, fn) { await fn(); checks.push(name); console.log(`PASS ${name}`); }
 const identity = () => page.locator('header[aria-label="Selected order identity"]');
 const workbench = () => page.getByRole("region", { name: "Exact order workbench" });
+async function sourceEditor() {
+  const summary = page.getByText("Record checks, unavailable evidence and limitations", { exact: true });
+  await summary.waitFor();
+  if (!(await summary.locator("..").evaluate((details) => details.open))) await summary.click();
+  return page.getByRole("textbox", { name: "Actual result and findings", exact: true });
+}
 async function scrollPageBy(amount) {
   // A viewport resize can leave the pointer outside the new window. Use the
   // page gutter, not a textarea's independent scrolling surface.
@@ -269,6 +290,8 @@ try {
       await page.goto(`${baseUrl}/admin/fulfillment`);
       await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
       await workbench().waitFor();
+      await sourceEditor();
+      await page.keyboard.press("Control+Home");
       await page.waitForFunction(() => scrollY === 0);
       await scrollPageBy(scenario.scroll);
       await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
@@ -276,6 +299,7 @@ try {
       await workbench().waitFor();
       assert.equal(await workbench().getAttribute("data-order-id"), A);
       const restoredScrollY = await page.evaluate(() => scrollY);
+      await sourceEditor();
       // Also exercise a user scroll after refresh: hydration can reset native
       // restoration, which must not make a formerly safe control interceptable.
       await page.keyboard.press("Control+Home");
@@ -287,8 +311,8 @@ try {
         assert.ok(pinned && pinned.y >= 0 && pinned.y + pinned.height < scenario.height);
         await page.screenshot({ path: resolve(artifacts, `${name}-pinned.png`) });
       }
-      await page.locator("textarea").first().fill("UNSAVED A ONLY");
-      await page.locator("select").first().selectOption("blocked");
+      await (await sourceEditor()).fill("UNSAVED A ONLY");
+      await page.getByRole("combobox", { name: /^Recorded outcome/ }).selectOption("unavailable");
       await page.getByText("Record an investigation failure", { exact: true }).click();
       await page.getByRole("textbox", { name: "Failure reason for this exact order" }).fill("A-only failure");
       await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -336,13 +360,13 @@ try {
       await page.locator("article").filter({ hasText: B }).getByRole("button", { name: "Open exact order" }).click();
       await workbench().waitFor();
       assert.equal(await workbench().getAttribute("data-order-id"), B);
-      assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
-      assert.equal(await page.locator("select").first().inputValue(), "complete");
+      assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
+      assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
       await page.getByText("Record an investigation failure", { exact: true }).click();
       assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
       await page.getByText("Optional PDF delivery", { exact: true }).click();
       assert.equal(await page.getByLabel("Optional report PDF for this order").inputValue(), "");
-      assert.equal(await workbench().getByRole("status").count(), 0);
+      assert.deepEqual(await workbench().getByRole("status").allTextContents(), ["Delivery blocked: Gather the investigation evidence, generate the brief and approve the combined report version first."]);
       assert.equal(requests.length, 0, "Navigation must not submit order or notification requests");
     });
   }
@@ -379,12 +403,12 @@ try {
     await page.evaluate((id) => { location.hash = `order-${id}`; }, B);
     await workbench().waitFor();
     assert.equal(await workbench().getAttribute("data-order-id"), B);
-    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
+    assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
     release();
     await finished;
     delayedDetail = null;
     assert.equal(await workbench().getAttribute("data-order-id"), B);
-    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
+    assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
     await page.getByRole("button", { name: "Back to read-only queue", exact: true }).click();
     await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
     assert.equal(await workbench().count(), 0);
@@ -416,12 +440,12 @@ try {
     await finished;
     delayedDetail = null;
     await workbench().waitFor();
-    assert.equal(await page.locator("textarea").first().inputValue(), "OTHER ACCOUNT ONLY");
+    assert.equal(await (await sourceEditor()).inputValue(), "OTHER ACCOUNT ONLY");
     assert.equal(requests.length, 0);
     activeUser = user;
     await page.reload();
     await workbench().waitFor();
-    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report A");
+    assert.equal(await (await sourceEditor()).inputValue(), "Persisted report A");
   });
   await check("exit and sign-out discard pending private details", async () => {
     for (const exit of ["queue", "sign-out"]) {
@@ -486,8 +510,8 @@ try {
     assert.equal(requests.at(-1).action, "reopen_review");
   });
   await check("report, checklist, failure, file and modal state cannot leak between orders", async () => {
-    await page.locator("textarea").first().fill("UNSAVED A ONLY");
-    await page.locator("select").first().selectOption("blocked");
+    await (await sourceEditor()).fill("UNSAVED A ONLY");
+    await page.getByRole("combobox", { name: /^Recorded outcome/ }).selectOption("unavailable");
     await page.getByText("Record an investigation failure", { exact: true }).click();
     await page.getByRole("textbox", { name: "Failure reason for this exact order" }).fill("A-only failure");
     await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -498,16 +522,16 @@ try {
     await page.locator("article").filter({ hasText: B }).getByRole("button", { name: "Open exact order" }).click();
     // A fresh exact-order read finds B ready; reopening must preserve B.
     await reopen(B);
-    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report B");
-    assert.equal(await page.locator("select").first().inputValue(), "complete");
+    assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
+    assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
     await page.getByText("Record an investigation failure", { exact: true }).click();
     assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
     await page.getByText("Optional PDF delivery", { exact: true }).click();
     assert.equal(await page.getByLabel("Optional report PDF for this order").inputValue(), "");
     await page.evaluate((id) => { location.hash = `order-${id}`; }, A);
     await page.waitForFunction((id) => document.querySelector('[data-order-id]')?.getAttribute("data-order-id") === id, A);
-    assert.equal(await page.locator("textarea").first().inputValue(), "Persisted report A");
-    assert.equal(await page.locator("select").first().inputValue(), "complete");
+    assert.equal(await (await sourceEditor()).inputValue(), "Persisted report A");
+      assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
   });
   await check("mobile pinned identity and primary action fit without horizontal overflow", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -519,6 +543,12 @@ try {
     await page.screenshot({ path: resolve(artifacts, "selected-mobile-viewport.png") });
   });
   await check("mark-ready outcomes distinguish acceptance, failure, disabled and already-sent", async () => {
+    if (rows[0].status === "ready") await reopen(A);
+    assert.ok(await page.getByRole("button", { name: "Mark this exact report ready", exact: true }).isDisabled());
+    // Explicit fixture attestation of a separately approved combined version.
+    // Actual database approval/delivery enforcement is covered by the isolated suite.
+    rows[0].review_content.combinedReviewVersionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    await page.reload(); await workbench().waitFor();
     for (const [response, expected] of [
       [{ ok: true, emailAccepted: true }, "customer email accepted"],
       [{ ok: false, code: "EMAIL_SEND_FAILED" }, "customer email failed"],

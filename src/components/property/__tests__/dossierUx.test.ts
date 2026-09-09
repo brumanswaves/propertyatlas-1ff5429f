@@ -481,8 +481,8 @@ describe("official dossier UX guardrails", () => {
       expect(source).not.toContain("[user, parcelId]");
     }
     expect(panel).toContain("[user?.id, parcelId]");
-    expect(vault).toContain("[categoryFilter, parcelId, userId]");
-    expect(market).toContain("[parcelId, userId]");
+    expect(vault).toContain("[categoryFilter, parcelId, userId, shared]");
+    expect(market).toContain("[parcelId, userId, shared]");
     expect(sitePotential).toContain("[parcelId, userId]");
     expect(vendors).toContain("[parcelId, userId]");
   });
@@ -520,7 +520,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("Return to guided investigation");
     expect(panel).toContain("guidedReturnStepId");
     expect(panel).toContain("continueGuidedFromExpert");
-    expect(panel).toContain('onConflict: "user_id,parcel_id"');
+    expect(panel).toContain("patchSavedPropertyUserData(parcelId");
+    expect(panel).toContain("}, supabase, baseline)");
+    expect(panel).toContain("flushSavedInvestigation(parcelId, user.id");
     expect(panel).toContain("buildSavedParcelMapHref");
     expect(panel).toContain("shareOfficialPropertyLink");
     expect(read("src/components/property/investigation/InvestigationProgress.tsx")).toContain(

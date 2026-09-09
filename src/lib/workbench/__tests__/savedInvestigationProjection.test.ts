@@ -7,9 +7,24 @@ import {
   mergeSavedInvestigationProjectionIntoWorkspace,
   readSavedInvestigationProjection,
   shouldHydrateSavedInvestigationProjection,
+  savedInvestigationMatchesWorkspace,
 } from "../savedInvestigationProjection";
 
 describe("saved investigation projection", () => {
+  it("does not treat newer browser timestamps as agreement with different saved evidence", () => {
+    const local = { ...createEmptyErfWorkspaceState(), identityStatus: "looks_correct" as const, updatedAt: "2026-09-10T00:00:00.000Z" };
+    const remote = buildSavedInvestigationProjection("parcel", { ...local, identityStatus: "uncertain", updatedAt: "2026-09-09T00:00:00.000Z" });
+    expect(shouldHydrateSavedInvestigationProjection({ hasStoredBrowserWorkspace: true, browserWorkspace: local, projection: remote })).toBe(false);
+    expect(savedInvestigationMatchesWorkspace("parcel", local, remote)).toBe(false);
+    expect(savedInvestigationMatchesWorkspace("parcel", local, { ...remote, identityStatus: "looks_correct" })).toBe(true);
+  });
+  it("retains existing source-check fields when restoring an older projection without them", () => {
+    const current = { ...createEmptyErfWorkspaceState(), reviewedSourceIds: ["existing-check"] };
+    const projection = buildSavedInvestigationProjection("parcel", createEmptyErfWorkspaceState());
+    delete projection.reviewedSourceIds;
+    const parsed = readSavedInvestigationProjection({ easyErfInvestigation: projection })!;
+    expect(mergeSavedInvestigationProjectionIntoWorkspace("parcel", current, parsed).reviewedSourceIds).toEqual(["existing-check"]);
+  });
   it("projects canonical workspace state without inventing completion", () => {
     const workspace = createEmptyErfWorkspaceState();
     workspace.updatedAt = "2026-08-15T14:00:00.000Z";

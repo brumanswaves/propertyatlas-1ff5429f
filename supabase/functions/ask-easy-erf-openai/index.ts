@@ -22,6 +22,7 @@ import {
   ASK_EASY_ERF_MAX_REQUEST_BYTES,
   validateAskEasyErfRequestPayload,
 } from "../_shared/askEasyErfSelectedEvidence.ts";
+import { generateInvestigationBrief } from "../_shared/investigationBrief.ts";
 
 declare const Deno: {
   env: { get(key: string): string | undefined };
@@ -133,7 +134,7 @@ Deno.serve(async (request: Request) => {
   } catch {
     return fail("INVALID_REQUEST", "Request body could not be read.", 400, requestId);
   }
-  if (text.length > ASK_EASY_ERF_MAX_REQUEST_BYTES) {
+  if (new TextEncoder().encode(text).byteLength > (isInternalCaller ? 410_000 : ASK_EASY_ERF_MAX_REQUEST_BYTES)) {
     log("request_too_large", requestId);
     return fail("INVALID_REQUEST", "Ask Easy Erf request is too large.", 413, requestId);
   }
@@ -146,6 +147,22 @@ Deno.serve(async (request: Request) => {
     return fail("INVALID_REQUEST", "Request body must be valid JSON.", 400, requestId);
   }
 
+  if (body && typeof body === "object" && "mode" in body && body.mode === "investigation_brief") {
+    if (!isInternalCaller) return fail("AUTH_REQUIRED", "An authorized investigation server request is required.", 403, requestId);
+    if (!("allowedSourceIds" in body) || !Array.isArray(body.allowedSourceIds)
+        || !body.allowedSourceIds.every((value): value is string => typeof value === "string")
+        || !("evidencePackage" in body)) return fail("INVALID_REQUEST", "Invalid investigation evidence package.", 400, requestId);
+    try {
+      const result = await generateInvestigationBrief({ evidencePackage: body.evidencePackage,
+        allowedSourceIds: body.allowedSourceIds, enabled: Deno.env.get("INVESTIGATION_BRIEF_ENABLED") === "true",
+        model: Deno.env.get("INVESTIGATION_BRIEF_MODEL"), reasoning: Deno.env.get("INVESTIGATION_BRIEF_REASONING"),
+        apiKey: Deno.env.get("OPENAI_API_KEY") });
+      return json({ success: true, ...result }, 200);
+    } catch {
+      // Do not reflect provider errors, document text, tokens or credentials.
+      return fail("SERVER_UNAVAILABLE", "Investigation AI review is unavailable or incomplete. Nothing was approved.", 503, requestId);
+    }
+  }
   const validated = validateAskEasyErfRequestPayload(body);
   if (!validated.ok) {
     log("invalid_payload", requestId, { code: validated.code });

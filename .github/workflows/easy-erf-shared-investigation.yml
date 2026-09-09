@@ -1,0 +1,109 @@
+name: Easy Erf isolated shared investigation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/easy-erf-shared-investigation.yml'
+      - 'scripts/verify-shared-investigation*'
+      - 'src/lib/investigation/**'
+      - 'src/components/humanReview/**'
+      - 'src/components/workbench/WorkspaceCloudSync.tsx'
+      - 'supabase/migrations/20260909094547_shared_investigation_fulfillment.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: isolated-investigation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out exact source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git checkout --detach FETCH_HEAD
+      - name: Install pinned isolated tools
+        run: |
+          mkdir -p "${RUNNER_TEMP}/investigation-tools"
+          curl -fsSL https://github.com/supabase/cli/releases/download/v2.117.0/supabase_2.117.0_linux_amd64.tar.gz -o "${RUNNER_TEMP}/cli.tar.gz"
+          echo "69c05f85b9e47ee706d30f1a6ca8a526b4e337bfd12c7ef1ef522d24e7280d24  ${RUNNER_TEMP}/cli.tar.gz" | sha256sum -c
+          tar -xzf "${RUNNER_TEMP}/cli.tar.gz" -C "${RUNNER_TEMP}/investigation-tools"
+          curl -fsSL https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip -o "${RUNNER_TEMP}/deno.zip"
+          echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2  ${RUNNER_TEMP}/deno.zip" | sha256sum -c
+          unzip -q "${RUNNER_TEMP}/deno.zip" -d "${RUNNER_TEMP}/investigation-tools"
+          echo "${RUNNER_TEMP}/investigation-tools" >> "${GITHUB_PATH}"
+          npm install --no-audit --no-fund
+          git restore -- package-lock.json
+          npm install --prefix "${RUNNER_TEMP}/browser-tools" --package-lock=false --no-audit --no-fund playwright@1.55.0
+          ln -s "${RUNNER_TEMP}/browser-tools/node_modules/playwright" node_modules/playwright
+          node "${RUNNER_TEMP}/browser-tools/node_modules/playwright/cli.js" install chromium
+      - name: Start real isolated Auth, REST and Storage with no container egress
+        run: |
+          STACK="${RUNNER_TEMP}/ee-r999-isolated"
+          mkdir -p "${STACK}"
+          cd "${STACK}"
+          supabase init
+          cp -r "${GITHUB_WORKSPACE}/supabase/migrations" supabase/
+          python3 - <<'PY'
+          import tomllib
+          with open('supabase/config.toml', 'rb') as config:
+              assert tomllib.load(config)['project_id'] == 'ee-r999-isolated'
+          PY
+          # Host-published CLI ports need a bridge gateway. Keep container egress
+          # denied explicitly, before any migration or application service starts.
+          docker network create --subnet 172.30.87.0/24 -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 ee-r999-investigation-test
+          sudo iptables -I DOCKER-USER 1 -s 172.30.87.0/24 ! -d 172.30.87.0/24 -m conntrack --ctstate NEW -j REJECT
+          sudo iptables -C DOCKER-USER -s 172.30.87.0/24 ! -d 172.30.87.0/24 -m conntrack --ctstate NEW -j REJECT
+          # No project link, production env, function deploy or real credentials.
+          # Historical cron cannot initiate external requests through this bridge.
+          supabase start --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
+          umask 077
+          supabase status -o json > "${RUNNER_TEMP}/investigation-runtime.json"
+          docker inspect $(docker ps -q --filter label=com.supabase.cli.project=ee-r999-isolated) --format '{{json .NetworkSettings.Ports}}' > "${RUNNER_TEMP}/isolated-port-bindings.jsonl"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ['RUNNER_TEMP'] + '/isolated-port-bindings.jsonl') as ports:
+              rows = [json.loads(line) for line in ports]
+          assert rows, 'No isolated containers found'
+          assert all(binding['HostIp'] == '127.0.0.1' for row in rows for bindings in row.values() for binding in (bindings or []))
+          PY
+      - name: Preserve sanitized isolated startup evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/shared-investigation
+          node --input-type=module <<'NODE'
+          import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+          const path = process.env.RUNNER_TEMP + '/local-stack.log';
+          if (existsSync(path)) {
+            const safe = readFileSync(path, 'utf8').split('Started supabase local development setup.')[0].split('\n')
+              .filter(line => !/password|secret|token|authorization|api.key|publishable.key/i.test(line))
+              .map(line => line.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]'))
+              .slice(-140).join('\n');
+            writeFileSync('artifacts/shared-investigation/local-stack-sanitized.log', safe);
+            console.log(safe);
+          }
+          NODE
+      - name: Exercise real isolated persistence, authorization and browser
+        env:
+          EASY_ERF_ISOLATED_RUNTIME: ${{ runner.temp }}/investigation-runtime.json
+          EASY_ERF_BROWSER_ARTIFACTS: artifacts/shared-investigation
+        run: node scripts/verify-shared-investigation-browser.mjs
+      - name: Stop isolated containers
+        if: always()
+        run: |
+          cd "${RUNNER_TEMP}/ee-r999-isolated"
+          supabase stop
+      - name: Upload redacted synthetic evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shared-investigation-${{ github.run_id }}
+          path: artifacts/shared-investigation
+          if-no-files-found: warn
+          retention-days: 14

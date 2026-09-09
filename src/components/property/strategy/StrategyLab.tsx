@@ -37,7 +37,10 @@ import {
   strategyDefaultsFromPropertyFacts,
   type StrategyInputFact,
 } from "@/lib/research/strategyInputs";
-import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { readStoredBuildEnvelopeInputs, parseStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { workspaceFromSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import { findPilotPlanningRecord } from "@/lib/sitePotential/pilotPlanningRecords";
 import { buildSitePotentialRulePrefill } from "@/lib/sitePotential/planningRuleAdapter";
 import { resolveSitePotentialInputs } from "@/lib/sitePotential/resolveSitePotentialInputs";
@@ -48,6 +51,8 @@ import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import {
   createEmptyStrategyWorkspace,
+  updateStrategyDraft,
+  chooseStrategyScenario,
   mergeStrategyWorkspaces,
   getChosenStrategyScenario,
   readStrategyWorkspace,
@@ -541,12 +546,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function persistStrategyWorkspaceToCloud(
   parcelId: string,
   workspace: ErfStrategyWorkspace,
+  expected: Record<string, unknown>,
 ) {
-  await patchSavedPropertyUserData(parcelId, {
+  return patchSavedPropertyUserData(parcelId, {
     normalizedParcelId: parcelId,
     strategyWorkspace: workspace,
     strategyWorkspaceUpdatedAt: workspace.draftUpdatedAt ?? new Date().toISOString(),
-  });
+  }, supabase, expected);
 }
 
 async function activeSupabaseUserMatches(expectedUserId: string | null) {
@@ -592,11 +598,20 @@ export function StrategyLab({
   const actionAvailability = strategyLabActionAvailability(isGuided);
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const shared = useSharedInvestigationScope(parcelId);
+  const isShared = Boolean(shared);
+  const sharedRef = useRef(shared);
+  sharedRef.current = shared;
+  const sharedPlanning = shared ? workspaceFromSavedInvestigation(parcelId, shared.snapshot.userData).planning : null;
   const { assets } = useErfFileVault(parcelId);
   const [manualZoneCode, setManualZoneCode] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readStoredPlanningZone(parcelId, userId),
+    sharedPlanning ? sharedPlanning.zoneCode : typeof window === "undefined" ? null : readStoredPlanningZone(parcelId, userId),
   );
   useEffect(() => {
+    if (isShared) {
+      setManualZoneCode(sharedPlanning?.zoneCode ?? null);
+      return;
+    }
     const sync = (event?: Event) => {
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
         ?.detail;
@@ -607,10 +622,14 @@ export function StrategyLab({
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
-  }, [parcelId, userId]);
+  }, [isShared, parcelId, sharedPlanning?.zoneCode, userId]);
 
-  const initialWorkspace = readStrategyWorkspace(parcelId, undefined, userId);
-  const initialBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
+  const initialWorkspace = shared
+    ? strategyWorkspaceFromUserData(parcelId, shared.snapshot.userData) ?? createEmptyStrategyWorkspace(parcelId)
+    : readStrategyWorkspace(parcelId, undefined, userId);
+  const initialBuildEnvelopeOverrides = shared
+    ? parseStoredBuildEnvelopeInputs(shared.snapshot.userData.buildEnvelopeInputs)
+    : readStoredBuildEnvelopeInputs(parcelId, userId);
   const initialResolvedSitePotentialInputs = resolveSitePotentialInputs({
     overrides: initialBuildEnvelopeOverrides,
     pilot: findPilotPlanningRecord({ parcelId, lpiCode: parcel.lpi ?? null }),
@@ -631,10 +650,11 @@ export function StrategyLab({
     ...initialWorkspace.draftInputs,
   }));
   const [savedScenarios, setSavedScenarios] = useState(() =>
-    readStrategyScenarios(parcelId, undefined, userId),
+    shared ? initialWorkspace.scenarios : readStrategyScenarios(parcelId, undefined, userId),
   );
   const [chosenScenario, setChosenScenario] = useState(() =>
-    getChosenStrategyScenario(parcelId, undefined, userId),
+    shared ? initialWorkspace.scenarios.find((item) => item.id === initialWorkspace.chosenScenarioId) ?? null
+      : getChosenStrategyScenario(parcelId, undefined, userId),
   );
   const [showChosenState, setShowChosenState] = useState(Boolean(chosenScenario));
   const [buildEnvelopeOverrides, setBuildEnvelopeOverrides] = useState(
@@ -646,6 +666,8 @@ export function StrategyLab({
   const defaultPriceRef = useRef(defaultPrice);
   const cloudSaveQueueRef = useRef<StrategyCloudSaveQueue | null>(null);
   const latestWorkspaceRef = useRef(initialWorkspace);
+  const loadedCloudUserData = useRef<Record<string, unknown> | null>(null);
+  const continueAfterSave = useRef(false);
   defaultPriceRef.current = defaultPrice;
   const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
   const planningRegistry = useMemo(
@@ -731,6 +753,7 @@ export function StrategyLab({
   );
 
   useLayoutEffect(() => {
+    if (isShared) return;
     const workspace = readStrategyWorkspace(parcelId, undefined, userId);
     const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
     const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
@@ -763,7 +786,7 @@ export function StrategyLab({
     setSaveError(null);
     setLastSavedAt(null);
     setSaveStatus(userId ? "loading" : "offline");
-  }, [documentZone, parcel, parcelId, pilotPlanningRecord, sitePotentialRulePrefill, userId]);
+  }, [documentZone, isShared, parcel, parcelId, pilotPlanningRecord, sitePotentialRulePrefill, userId]);
 
   useEffect(() => {
     setValues((current) => {
@@ -783,7 +806,21 @@ export function StrategyLab({
       parcelId,
       userId,
       canPersist: () => activeSupabaseUserMatches(userId),
-      persist: (workspace) => persistStrategyWorkspaceToCloud(parcelId, workspace),
+      persist: async (workspace) => {
+        if (!isShared) {
+          if (!loadedCloudUserData.current) throw new Error("The saved Strategy is still loading. Try again after it loads.");
+          loadedCloudUserData.current = await persistStrategyWorkspaceToCloud(parcelId, workspace, loadedCloudUserData.current);
+          return;
+        }
+        const scope = sharedRef.current;
+        if (!scope?.snapshot.canWork || scope.snapshot.parcelId !== parcelId) throw new Error("This investigation is no longer available for editing.");
+        const current = workspaceFromSavedInvestigation(parcelId, scope.snapshot.userData);
+        await scope.save(toSupabaseJson({
+          strategyWorkspace: workspace,
+          easyErfInvestigation: { ...current, calculatorStarted: true,
+            strategyScenarioCount: workspace.scenarios.length, chosenScenarioId: workspace.chosenScenarioId },
+        }));
+      },
     });
     cloudSaveQueueRef.current = queue;
     const unsubscribe = queue.subscribe((snapshot) => {
@@ -794,11 +831,11 @@ export function StrategyLab({
 
     return () => {
       unsubscribe();
-      void queue.flush();
+      if (!isShared) void queue.flush();
       queue.dispose();
       if (cloudSaveQueueRef.current === queue) cloudSaveQueueRef.current = null;
     };
-  }, [parcelId, userId]);
+  }, [isShared, parcelId, userId]);
 
   const queueCloudSave = useCallback(
     (workspace: ErfStrategyWorkspace, immediate = false) => {
@@ -820,7 +857,19 @@ export function StrategyLab({
   }, []);
 
   useEffect(() => {
+    if (isShared && continueAfterSave.current && saveStatus === "saved") {
+      continueAfterSave.current = false;
+      guidedReturn?.onContinue();
+    }
+  }, [guidedReturn, isShared, saveStatus]);
+
+  useEffect(() => {
     let alive = true;
+    if (!isShared) loadedCloudUserData.current = null;
+    if (isShared) {
+      setSaveStatus("cloud-restored");
+      return;
+    }
     if (!userId) {
       setSaveStatus("offline");
       return () => {
@@ -844,6 +893,7 @@ export function StrategyLab({
           return;
         }
         const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
+        loadedCloudUserData.current = isRecord(data?.user_data) ? data.user_data : {};
         const local = readStrategyWorkspace(parcelId, undefined, userId);
         const merged = writeStrategyWorkspace(
           parcelId,
@@ -879,10 +929,12 @@ export function StrategyLab({
     return () => {
       alive = false;
     };
-  }, [parcelId, propertyDefaults, queueCloudSave, userId]);
+  }, [isShared, parcelId, propertyDefaults, queueCloudSave, userId]);
 
   function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
-    const workspace = saveStrategyDraft(
+    const workspace = isShared ? updateStrategyDraft(latestWorkspaceRef.current, {
+      activeStrategy: nextActive, draftInputs: nextValues,
+    }) : saveStrategyDraft(
       parcelId,
       {
         activeStrategy: nextActive,
@@ -1257,26 +1309,32 @@ export function StrategyLab({
 
   function saveScenario(asNew = false) {
     const option = optionFor(active);
-    const { scenario, scenarios, workspace } = saveStrategyScenario(
-      parcelId,
-      {
+    const input = {
         label: `${option.label} scenario`,
         strategy: active,
         inputs: values,
         summary: summary.map(([label, value]) => ({ label, value })),
-      },
+      };
+    const { scenario, scenarios, workspace } = isShared
+      ? chooseStrategyScenario(latestWorkspaceRef.current, input, { asNew })
+      : saveStrategyScenario(parcelId, input,
       { asNew, userId },
     );
     setSavedScenarios(scenarios);
     setChosenScenario(scenario);
     setShowChosenState(true);
     queueCloudSave(workspace, true);
-    toast.success("Scenario chosen for this erf.");
+    if (!isShared) toast.success("Scenario chosen for this erf.");
     return scenario;
   }
 
   function saveGuidedScenarioAndContinue() {
     if (!guidedReturn) return;
+    if (isShared) {
+      continueAfterSave.current = true;
+      saveScenario();
+      return;
+    }
     completeGuidedStrategyScenario(() => saveScenario(), guidedReturn.onContinue);
   }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
 import {
   createErfAssetSignedUrl,
   confirmErfAssetIdentityForParcel,
@@ -30,6 +31,7 @@ export function dispatchErfFileVaultUpdated(parcelId: string) {
 }
 
 export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[]) {
+  const shared = useSharedInvestigationScope(parcelId);
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const categoryFilter = categories?.join("|") ?? "";
@@ -40,6 +42,7 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
   const [migration, setMigration] = useState<VaultMigrationResult | null>(null);
 
   const refresh = useCallback(async () => {
+    if (shared) { await shared.refresh(); return; }
     if (!userId) {
       setAssets([]);
       setLoading(false);
@@ -58,13 +61,14 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     } finally {
       setLoading(false);
     }
-  }, [categoryFilter, parcelId, userId]);
+  }, [categoryFilter, parcelId, userId, shared]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!shared) void refresh();
+  }, [refresh, shared]);
 
   useEffect(() => {
+    if (shared) return;
     function refreshFromVaultEvent(event: Event) {
       const detail = (event as CustomEvent<{ parcelId?: string }>).detail;
       if (detail?.parcelId !== parcelId) return;
@@ -73,10 +77,11 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
 
     window.addEventListener(ERF_FILE_VAULT_UPDATED_EVENT, refreshFromVaultEvent);
     return () => window.removeEventListener(ERF_FILE_VAULT_UPDATED_EVENT, refreshFromVaultEvent);
-  }, [parcelId, refresh]);
+  }, [parcelId, refresh, shared]);
 
   const upload = useCallback(
     async (input: Omit<UploadErfAssetInput, "parcelId" | "onProgress">) => {
+      if (shared) return shared.files.upload(input);
       if (!userId) throw new Error("Sign in to upload files to the Erf File Vault.");
       setError(null);
       setUploadState({ progress: 0, label: "Preparing upload" });
@@ -94,44 +99,48 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
         setUploadState(null);
       }
     },
-    [parcelId, refresh, userId],
+    [parcelId, refresh, userId, shared],
   );
 
   const remove = useCallback(
     async (asset: ErfAsset) => {
+      if (shared) { await shared.files.remove(asset); return; }
       await deleteErfAsset(asset);
       await refresh();
       dispatchErfFileVaultUpdated(parcelId);
     },
-    [parcelId, refresh],
+    [parcelId, refresh, shared],
   );
 
   const open = useCallback(async (asset: ErfAsset) => {
+    if (shared) { await shared.files.open(asset); return; }
     const url = await createErfAssetSignedUrl(asset);
     window.open(url, "_blank", "noopener,noreferrer");
-  }, []);
+  }, [shared]);
 
   const confirmIdentity = useCallback(
     async (asset: ErfAsset) => {
+      if (shared) { await shared.files.confirmIdentity(asset); return; }
       await confirmErfAssetIdentityForParcel(asset);
       await refresh();
       dispatchErfFileVaultUpdated(parcelId);
     },
-    [parcelId, refresh],
+    [parcelId, refresh, shared],
   );
 
   const migrateLocalAttachments = useCallback(async () => {
+    if (shared) return null;
     if (!userId) return null;
     const result = await migrateLocalWorkspaceAttachmentsToVault(parcelId);
     setMigration(result);
     await refresh();
     dispatchErfFileVaultUpdated(parcelId);
     return result;
-  }, [parcelId, refresh, userId]);
+  }, [parcelId, refresh, userId, shared]);
 
   return {
-    assets,
-    loading,
+    assets: shared ? shared.snapshot.assets.filter((asset) => !categories || categories.includes(asset.asset_category)) : assets,
+    loading: shared ? false : loading,
     error,
     uploadState,
     migration,
@@ -142,5 +151,6 @@ export function useErfFileVault(parcelId: string, categories?: ErfAssetCategory[
     open,
     confirmIdentity,
     migrateLocalAttachments,
+    investigationOrderId: shared?.snapshot.orderId,
   };
 }

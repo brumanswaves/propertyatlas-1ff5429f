@@ -9,7 +9,7 @@ import {
   type FounderQueueSummary,
 } from "./founderQueueData";
 
-export function useFounderOrderData(selectedId: string | null) {
+export function useFounderOrderData(selectedId: string | null, assignedOnly = false) {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
   const [queue, setQueue] = useState<{ userId: string | null; loading: boolean; error: boolean; orders: FounderQueueSummary[] }>({ userId: null, loading: true, error: false, orders: [] });
@@ -29,7 +29,7 @@ export function useFounderOrderData(selectedId: string | null) {
     queueRequest.current = request;
     setQueue({ userId, loading: true, error: false, orders: [] });
     try {
-      const rows = await readFounderQueue(supabase, request.signal);
+      const rows = await readFounderQueue(supabase, request.signal, assignedOnly);
       if (!mounted.current || request.signal.aborted || queueRequest.current !== request || userRef.current !== userId) return;
       setQueue({ userId, loading: false, error: false, orders: rows });
     } catch {
@@ -39,7 +39,7 @@ export function useFounderOrderData(selectedId: string | null) {
       setDetail({ userId, id: selectedRef.current, loading: false, order: null });
       toast.error("Could not load the done-for-you investigation queue.");
     }
-  }, [userId]);
+  }, [userId, assignedOnly]);
 
   const refreshDetail = useCallback(async (id: string) => {
     if (!userId || userRef.current !== userId || selectedRef.current !== id) return;
@@ -48,7 +48,7 @@ export function useFounderOrderData(selectedId: string | null) {
     detailRequest.current = request;
     setDetail({ userId, id, loading: true, order: null });
     try {
-      const order = await readFounderOrder(supabase, id, request.signal);
+      const order = await readFounderOrder(supabase, id, request.signal, assignedOnly);
       if (!mounted.current || request.signal.aborted || detailRequest.current !== request || selectedRef.current !== id || userRef.current !== userId) return;
       setDetail({ userId, id, loading: false, order });
     } catch {
@@ -56,7 +56,7 @@ export function useFounderOrderData(selectedId: string | null) {
       setDetail({ userId, id, loading: false, order: null });
       toast.error("Could not load this exact investigation. No other order was opened.");
     }
-  }, [userId]);
+  }, [userId, assignedOnly]);
 
   useEffect(() => {
     mounted.current = true;

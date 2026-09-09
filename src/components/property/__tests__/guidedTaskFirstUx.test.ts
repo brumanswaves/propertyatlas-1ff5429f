@@ -18,7 +18,9 @@ describe("guided task first workbench UX", () => {
     expect(panel.indexOf("<InvestigationHome")).toBeLessThan(offerIndex);
     expect(panel.indexOf('tab === "stoep-report"')).toBeLessThan(offerIndex);
     expect(panel.match(/<HumanReviewTakeoverCard/g)).toHaveLength(1);
-    expect(panel).toContain("compact\n          />");
+    const offer = panel.match(/<HumanReviewTakeoverCard\b[^>]*\/>/)?.[0];
+    expect(offer).toMatch(/\bcompact\b/);
+    expect(offer).toContain("onPrepare={preparePaidInvestigation}");
   });
 
   it("keeps the optional R999 offer collapsed until the user opens it", () => {

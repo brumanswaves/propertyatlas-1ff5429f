@@ -1,5 +1,26 @@
 # Easy Erf Current Release Contract
 
+## Current contract: 2026-09-09 shared investigation
+
+This section SUPERSEDES the historical #168 contract below. That release, metadata reader and owner TEST sequence were consumed; do not execute them again. PR #170/5598714672 records the consumed actions. No production action is authorized by this source task.
+
+- Verified main: `d44c0f54565f82c05e1721986067e5e1ea25ff3f`.
+- Sole candidate: draft #172, `codex/ee-r999-shared-investigation`. Final receipt must pin exact head/tree and evidence; never release a moving branch.
+- One customer/parcel investigation, performed by the customer or an explicitly assigned investigator. One complete common report; paid delivery adds substantive source-linked AI synthesis, actual human edits/approval, reviewer/date and an immutable reviewed version. Ask uses that version's permitted evidence.
+- Reuse identity/address, SG subject/parent evidence, paid/title evidence, planning, checks/conflicts, Market, saved Strategy and deterministic Site Potential. No generated houses. Preserve the free route and existing customer work on paid handoff. Overview remains zero-commit.
+- Missing is not not-applicable. Unavailability needs a dated source attempt, result, reason, limitation and reviewer disposition. Included third-party evidence must not create a second customer charge. Original redistribution and AI processing require permission.
+- Revocable order-derived access, narrow customer-file patches, optimistic revisions, actor audit, storage rights and retained bytes apply to workers. No impersonation or worker-owned copy. Future deliveries require combined approval; historical delivered reads remain compatible.
+- Source includes new migration `20260909094547_shared_investigation_fulfillment.sql`, three application-server routes and changes to `ask-easy-erf-openai` and `extract-erf-asset`. No remote application occurred.
+- Exact-head five-workflow evidence, actual isolated five-user Auth/REST/Storage/browser, all sections, negative signoff/access cases, frozen report/Ask, map handoff and inspected artifacts are required. Builder tests are not separate independent acceptance.
+- New Class B approval is required for merge, migration, the two functions, frontend, any runtime flag and a precisely bounded fresh TEST journey. Live model budget, document acquisition/processing rights and production runtime remain concrete gates, not implied by Codex allowance.
+- The owner reported inbox arrival/report opening for the earlier TEST. Existing order `384be2fe-f7aa-4687-970c-5a6db34cfeba` is consumed historical evidence, not a fresh fixture. Protected legacy `4e51dfbb-e931-4500-a622-2a766be398fc` must not be opened or changed.
+- Canonical stack unchanged: Supabase `xiqpfhsdlvwrwhclonsg`, Lovable `8680b46b-3325-4395-9767-a8c0ae2a3a50`, `easyerf.co.za`. No production inspection/change in this tranche.
+- Cap $0 additional discretionary spend; actual account spend UNKNOWN. No extra agents, live charge, purchase, host, Lovable implementation or production action. Class C genuine R999 commercial acceptance remains UNPASSED.
+
+Use the current section of `EE-R999-01_RELEASE_PACKET.md` and `EE-R999-ASTRA-STATE.md`. Historical details below preserve prior evidence only.
+
+## Historical #168 contract: superseded, not executable
+
 Release: EE-R999-01. Reconciled 2026-09-07 after independent PR #168 review.
 Status: CLASS A CANDIDATE; NO PRODUCTION AUTHORITY.
 Repository: brumanswaves/propertyatlas-1ff5429f.

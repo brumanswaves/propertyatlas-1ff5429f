@@ -36,6 +36,7 @@ export function AskEasyErfPanel({
   onSelectView,
   compact = false,
   maxSuggestions,
+  askFromReviewedVersion,
 }: {
   suggestionPayload: AskEasyErfEvidencePayload;
   evidencePack: PropertyEvidencePack | null;
@@ -45,6 +46,7 @@ export function AskEasyErfPanel({
   /** Compact layout for the Investigation Home; behaviour is unchanged. */
   compact?: boolean;
   maxSuggestions?: number;
+  askFromReviewedVersion?: (question: string, signal: AbortSignal) => ReturnType<typeof askEasyErfViaEdgeFunction>;
 }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<AskEasyErfAnswer | null>(null);
@@ -136,7 +138,7 @@ export function AskEasyErfPanel({
         setError("No relevant saved evidence was found for that question yet.");
         return;
       }
-      const result = await askEasyErfViaEdgeFunction({
+      const result = askFromReviewedVersion ? await askFromReviewedVersion(trimmed, controller.signal) : await askEasyErfViaEdgeFunction({
         parcelId: suggestionPayload.parcelId,
         question: trimmed,
         evidence: selectedEvidence,

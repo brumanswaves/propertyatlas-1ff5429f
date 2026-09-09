@@ -1,5 +1,84 @@
 # WHAT I NEED FROM YOU NOW
 
+## Current combined proposal: PR #172, 2026-09-09
+
+No release action is authorized by this document. Finish exact-head acceptance and separate independent review first. The final PR receipt must pin the approved head/tree, workflow and artifact evidence, remaining gates and this packet. This section SUPERSEDES the historical #168 packet below; do not replay any of its actions.
+
+### Frozen candidate and outcome
+
+Repository `brumanswaves/propertyatlas-1ff5429f`; sole draft #172; branch `codex/ee-r999-shared-investigation`.
+Expected pre-release main `d44c0f54565f82c05e1721986067e5e1ea25ff3f`, tree `496205483022470a1bca216d65679d58ca55ad3a`.
+Backend `xiqpfhsdlvwrwhclonsg`; existing Lovable project `8680b46b-3325-4395-9767-a8c0ae2a3a50`; `easyerf.co.za`.
+
+Customer or assigned investigator completes the SAME customer-owned property investigation. One common assembled report. Paid service adds source-linked AI analysis, human edits/approval, reviewer/date, immutable reviewed version and version-grounded Ask. Retain free self-service, all existing valid evidence and deterministic parcel/envelope Site Potential. Included paid/title evidence is part of fulfillment, not another customer charge.
+
+### Minimum changes requiring new Class B approval
+
+1. Mark only #172 ready and expected-head-guarded merge of the independently reviewed final SHA. Verify parents/tree and five required exact-merge workflows/artifacts. No other PR.
+2. Apply only `20260909094547_shared_investigation_fulfillment.sql` after authorized read-only absence/equivalence/dependency checks. Adds assignments/review versions/private revisions, server-maintained document processing dependency tombstones, narrow RPCs, canonical write/revision/delivery guards and restrictive original-file policies. This changes authorization and future delivery gates, not just metadata. No prior migration replay.
+3. Deploy only exact reviewed `ask-easy-erf-openai` and `extract-erf-asset` with their shared dependencies. No other manual function deployment.
+4. Publish exact merged application through existing Lovable after source/build/security/cost preflight. Verify the three application routes `/api/investigations/review`, `/api/investigations/upload`, `/api/investigations/asset`, not merely static assets. No Lovable implementation/Fix/Plan/update-preview. Ordinary publication may have internal backend effects; no proven frontend-only rollback is claimed. Owner must explicitly accept this risk for the new SHA.
+5. Only within specific model/data/budget approval, set the NONSECRET release settings `INVESTIGATION_BRIEF_MODEL=gpt-5.4-2026-03-05` and `INVESTIGATION_BRIEF_REASONING=high`, then temporarily enable `INVESTIGATION_BRIEF_ENABLED=true` in the existing Ask Edge runtime. This exact snapshot/high pair is the sole allowlist; absent, aliased or different values fail before a provider request. Ordinary Ask remains unchanged. Existing credentials/internal authentication must already be valid; missing credentials are a stop, not authority to invent or rotate secrets. End the enable flag false unless ongoing operation is separately approved.
+6. Email remains false during read-only preflight; a specifically approved finite TEST may enable it for one delivery and must disable it before a duplicate probe. Live checkout remains disarmed throughout. No Stripe, DNS, price, calculation formula, generated-concept, hosting or unrelated configuration changes.
+
+### Mandatory evidence and runtime gates
+
+Require exact final source tests/typecheck/changed-file lint/build/SQL and all five workflows, including actual isolated Auth/REST/Storage/application/browser. Download and inspect screenshots plus complete redacted synthetic responses, frozen records, rights and rejected signoffs. Builder self-checks are not independent approval.
+
+Reverify production schema/function/project identities and exact publisher sync/build linkage. A completed edit or deployment ID is not byte-for-byte proof. Inspect substantive warnings; stop on ambiguous source, rejection or unsupported effects. No alternative publication channel.
+
+Establish acquisition, redistribution and processing rights for the actual SG and included provider report. Product inclusion is not permission to purchase. Establish explicit available model allowance and an enforceable maximum charge BEFORE any real extraction/brief/Ask call. Codex allowance is not application API credit. Live response quality and required provider capacity are UNKNOWN. If $0 additional permitted capacity cannot be established, stop before those calls; the estimates below do not authorize spending.
+
+### Paid model and first-TEST budget proposal (not authorization)
+
+Proposed paid synthesis is `gpt-5.4-2026-03-05`, reasoning `high`, existing Chat Completions adapter, standard/default service tier, no tools, no temperature override, `store=false`, no retry, 90-second provider timeout. Ordinary Ask stays `gpt-4.1-mini`; it is NOT the paid synthesis model. The app validates the returned pinned model before saving a draft.
+
+The entire brief request (evidence, system instructions and repeated citation/schema text) is limited to **200,000 UTF-8 bytes**; `max_completion_tokens=24,000` includes reasoning AND visible output. Over-budget input fails without sending or silently truncating. Reserve 4,800 additional framing tokens in cost estimates: conservative input bound 204,800, below the 272,000 long-context pricing threshold.
+
+Official documentation checked 2026-09-09: [GPT-5.4 snapshot, supported reasoning and pricing](https://developers.openai.com/api/docs/models/gpt-5.4), [reasoning token accounting](https://developers.openai.com/api/docs/guides/reasoning), [ordinary Ask model pricing](https://developers.openai.com/api/docs/models/gpt-4.1-mini). Current standard GPT-5.4 prices are USD 2.50/M input and 15/M output tokens. This is a bounded cost-conscious professional-synthesis proposal, not a claim that a mocked response establishes real quality or current account access.
+
+- Estimated ONE brief: 30,000 input + 12,000 total output/reasoning = **USD 0.255**, approximately **$0.26**. These token quantities are assumptions, not observed live usage.
+- Conservative ONE brief ceiling at those prices: 204,800 input + 24,000 output = **USD 0.872**. Reserve **$1.00** for that single call; a timeout can still consume tokens and must not be retried.
+- The first TEST reuses already extracted, legitimately held SG/paid evidence in the exact customer's file. **No new document-extraction call or provider-report purchase is included in this first-TEST cost envelope.** Actual upload/extraction integration remains proven with isolated provider fixtures, not newly proved live by this TEST. If reusable evidence/rights are absent, STOP; do not replace it with a new uncosted extraction or fake findings.
+- ONE version-grounded Ask question retains its existing maximum two provider attempts (initial plus citation repair), 700 output tokens each. Reserve **$0.10** for both attempts, contingent on preflight confirming the unchanged bounded payload and current ordinary-Ask pricing ($0.40/M input, $1.60/M output).
+- Estimated first-TEST model cost approximately **$0.27**; maximum requested token-charge envelope **$1.10** before tax/FX. Proposed total owner ceiling **USD 2.00 including tax/fees**, using demonstrably existing permitted capacity only under the current $0-additional-spend rule. This is a later explicit owner budget/permission decision, not authority to activate billing. If tax/FX, account capacity or enforceable no-overage controls cannot establish that ceiling, stop before the first call. No ongoing generation, purchases, retries, automatic top-up or recurring spend is approved.
+
+Processing provenance is derived from the private database dependency ledger, never a client's claimed permission. The ledger retains archived/deleted source dependencies. Findings record document UUID references; unknown references cannot be transmitted. Legacy/unclassified user-authored namespaces conservatively depend on every recorded document. If any dependency is denied or provenance is absent, ALL such user material (including copied parcel labels, Market, Strategy and planning text) is withheld from AI; independently permitted asset evidence can remain. Restricted names, labels, UUIDs and excerpts are not sent. This may produce a deliberately partial draft; the human-only full report/manifest retains the evidence and the omission is explicit. A client cannot mark a derivative independent with an empty source list to bypass this boundary.
+
+Take a private all-order metadata baseline only under applicable owner read authority: UUID/count/status/timestamps, server-computed body/receipt hashes and audit counts. No bulk report/receipt content, customer joins or public raw dataset. Preserve all non-target orders and customer data.
+
+Version-grounded Ask uses the immutable filtered model evidence, but must recheck its original server-recorded dependencies against current processing permissions before a new request. Revoked, deleted-without-permission or unavailable dependencies block the call; the human report remains readable and no newer evidence is silently substituted.
+
+### Fresh owner TEST proposal: not currently authorized
+
+Old owner order `384be2fe-f7aa-4687-970c-5a6db34cfeba` and protected legacy `4e51dfbb-e931-4500-a622-2a766be398fc` must not be reopened/overwritten. PR #170/5598714672 records consumed V1/reopen/V2/email actions.
+
+Proposed smallest fresh acceptance is ONE new Stripe TEST-mode R999 order through the existing checkout, for the existing owner account and exact Erf 1570 / `csg:lpi:c03400140000157000000`. No real charge. This requires EXPLICIT new-order approval, which the present source task does not give. Capture/freeze its full UUID and private owner recipient before staff work. If the owner instead designates an eligible unconsumed existing TEST order, revise this exact target and obtain review before execution; never silently choose one.
+
+After source/privacy/runtime/rights/budget gates, propose these finite actions:
+
+1. One metadata queue/exact selection/refresh/scroll/Back inspection on desktop and narrow screen with mouse/touch/keyboard. No order write or email. Metadata must remain unchanged.
+2. Assign one existing non-admin investigator to that order using an existing admin. No new account or blanket role. One controlled pass through the customer's canonical file: actual identity/address, review already extracted authorized SG and included paid/title evidence, working zoning, recorded source/property checks with document references, one comparable, chosen Strategy and accepted deterministic envelope. Preserve existing valid work; record genuine unavailability with evidence and limitations. No new extraction or paid evidence purchase in this bounded first TEST. Missing reusable evidence/rights stops the affected step.
+3. Reload as investigator/customer; verify same ownership, saved namespaces, files/checksums and no worker-owned copy. Do not probe another real customer's body.
+4. Generate ONE AI brief within the approved budget; human inspect/edit/save once and approve once at exact evidence/brief revisions. Unsupported, conflicting or stale evidence blocks. No deterministic substitute for failed AI.
+5. Enable email for ONE delivery after approval, capture immutable version and successful receipt, then disable immediately. On ambiguous failure disable and STOP; no recovery/manual resend. ONE disabled-flag duplicate probe only after a verified sent receipt; it must contact no provider.
+6. Verify actual owner inbox separately from provider acceptance; open/reload only that exact customer report. Confirm approved brief plus full evidence, permitted documents, saved Strategy/envelope and at most ONE version-grounded question within budget. No general/protected order history.
+7. Verify frozen version, no duplicate send/order, all non-target metadata unchanged (apart from the explicitly approved one new TEST order), email false, brief flag false and live checkout disarmed. Revoke temporary assignment only if approved cleanup includes it. Do not erase reports/audits/receipts or sent mail.
+
+These are proposed actions, not consumed or currently authorized. Genuine commercial payment remains separate Class C after complete owner TEST and independent acceptance.
+
+### Recovery, stops, spend and receipt
+
+Stop on source/project/identity drift, incomplete checks, rejection, unsafe access, unselected data, unexpected write/send, missing rights, stale revision or paid requirement. Preserve evidence without retrying consequential steps. Disable only flags enabled by the new approval if an operation fails.
+
+No destructive down-migration: customer evidence/versions may already exist. No silent removal of delivery/permission guards. Prepare reviewed forward/source-revert repair if necessary; no automatic merge. Prior frontend alone is not adequate rollback because schema/server/Edge contracts change. No history reset, reconnect, alternate host or promise to undo sent email.
+
+Maximum additional discretionary spend $0. No API billing activation, paid runner, purchase/top-up/subscription, new service or live charge. Actual account spend UNKNOWN unless independently established. Production acceptance/model quality/rights/publisher effects remain distinct from isolated proof.
+
+Final receipt must pin SHA/tree/parents, functions/migration/frontend/configuration, deployment linkage and limits, actual target/reviewer/version, source-work findings/gaps, metadata comparison, model/provider versus inbox results, final flags, recovery, artifacts and process status. Keep credentials/customer content/private snapshots out of public evidence. No claim of genuine R999 completion.
+
+## Historical #168 proposal: superseded and NOT executable
+
 This is one proposed Class B release packet, not permission to execute it. The final PR #168 independent-review receipt must name the complete candidate SHA, successful exact-head runs and inspected artifact digests before owner approval. Never replay older PR #164/#166/#167 approvals.
 
 # EE-R999-01: selected-order privacy and owner TEST acceptance
