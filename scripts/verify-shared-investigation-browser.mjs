@@ -150,7 +150,7 @@ async function verifyCustomerEntry() {
   // primary entry action rather than ambiguously matching both controls.
   await page.getByRole("button", { name: "Continue investigation", exact: true }).first().click();
   await page.getByRole("button", { name: "Open full research workspace", exact: true }).click();
-  await page.getByRole("button", { name: "Easy Erf Report", exact: true }).click();
+  await page.getByRole("button", { name: "Report", exact: true }).click();
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).waitFor();
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-desktop.png"), fullPage: true });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });

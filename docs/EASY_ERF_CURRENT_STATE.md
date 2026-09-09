@@ -1,10 +1,20 @@
 # Easy Erf Current State
 
-_Last reconciled: 2026-09-07_
+_Last reconciled: 2026-09-09_
 
 This file is the concise operational snapshot for the Easy Erf control room. The product source of truth remains `docs/EASY_ERF_MASTER_PLAN.md`; GitHub `main` remains the code source of truth.
 
 ## Current release position
+
+The current position below supersedes the historical 2026-09-07 list retained afterward:
+
+- VERIFIED main is `d44c0f54565f82c05e1721986067e5e1ea25ff3f`. PRs #168/#169/#170 merged; #171 superseded. Prior metadata migration and owner TEST delivery/email actions were consumed, not pending.
+- Owner REPORTED inbox receipt and report opening. That does not establish the completed shared manual investigation or genuine R999 commercial acceptance.
+- Active source-only draft #172: `codex/ee-r999-shared-investigation`. Customer and assigned investigator use one canonical file; shared full report plus paid AI brief/human approval/frozen version. Actual isolated acceptance checkpoints are in `EE-R999-ASTRA-STATE.md`; do not infer full acceptance from a checkpoint.
+- New source includes one permission/revision/review migration, two changed Edge Functions and frontend/server plumbing. None applied or published in this tranche. Production configuration is UNKNOWN and untouched.
+- Exact-head evidence and independent review precede ONE new combined Class B packet. Live AI/processing/acquisition rights, budget, publication and a fresh finite owner TEST remain explicit gates. No old action replay, new order, email or production change under Class A.
+
+### Historical 2026-09-07 position (superseded)
 
 - VERIFIED GitHub main: `be28f4d0742885f5a483ef21d3ad44ac8753de6a`, after merged PR #167. Do not replay #166/#167.
 - Active source-only repair: existing draft PR #168, `chatgpt/ee-r999-selected-order-data`. Queue metadata must exclude private reports/payloads; detail requires deliberate complete-UUID selection. Existing navigation and lifecycle classification are preserved.
