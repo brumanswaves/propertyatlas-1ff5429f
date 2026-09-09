@@ -58,6 +58,21 @@ describe("shared complete investigation report", () => {
     expect(html).toContain("AI investigation draft · Not human reviewed.");
     expect(html).not.toContain("Human-reviewed investigation.");
   });
+  it("shows the frozen AI document coverage without exposing duplicated original material", () => {
+    const { rawVersion } = fixture();
+    const version = investigationReviewVersionSchema.parse({ ...rawVersion, evidence_manifest: [
+      { assetId: "10000000-0000-4000-8000-000000000001", name: "included.pdf", category: "sg_diagram", state: "included", reason: "Identity-gated extracted evidence; original binary is not transmitted.", originalMaterial: "PRIVATE DUPLICATE TEXT" },
+      { assetId: "10000000-0000-4000-8000-000000000002", name: "unreadable.pdf", category: "title_deed", state: "unreadable", reason: "No accepted readable evidence." },
+      { assetId: "10000000-0000-4000-8000-000000000003", name: "restricted.pdf", category: "paid_report", state: "omitted", reason: "No processing permission." },
+    ] });
+    const html = renderToStaticMarkup(<SharedInvestigationReport assembly={version.report_assembly} version={version} />);
+    expect(html).toContain("Included extracted evidence");
+    expect(html).toContain("Not readable as accepted evidence");
+    expect(html).toContain("Omitted from AI review");
+    expect(html).toContain("No processing permission.");
+    expect(html).toContain("restricted.pdf");
+    expect(html).not.toContain("PRIVATE DUPLICATE TEXT");
+  });
   it("renders the frozen source-check result and limitation, not just a completion badge", () => {
     const { snapshot, rawVersion } = fixture();
     snapshot.userData.investigationWork = { cadastral_evidence: {

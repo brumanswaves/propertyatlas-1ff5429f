@@ -20,6 +20,10 @@ export const investigationReviewVersionSchema = z.object({
   id: z.string().uuid(), order_id: z.string().uuid(), customer_id: z.string().uuid(), parcel_id: z.string(),
   evidence_revision: z.number().int(), brief_revision: z.number().int(), version_sequence: z.number().int(),
   evidence_snapshot: investigationSnapshotSchema, report_assembly: storedAssembly,
+  evidence_manifest: z.array(z.object({
+    assetId: z.string().uuid(), name: z.string(), category: z.string(),
+    state: z.enum(["included", "unreadable", "omitted"]), reason: z.string(),
+  })).optional(),
   generated_brief: z.unknown(), edited_brief: z.unknown(), provider_model: z.string(), generated_at: z.string(),
   approved_by: z.string().uuid().nullable(), approved_reviewer_label: z.string().nullable(),
   approved_at: z.string().nullable(), delivered_at: z.string().nullable(), currentEvidenceRevision: z.number().int(),

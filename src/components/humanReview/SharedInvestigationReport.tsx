@@ -65,6 +65,15 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
       reviewSlot={brief ? <section aria-label="Investigation brief" className="space-y-4 border-y border-border py-5">
         <h2 className="text-xl font-semibold">{approved ? "Human-approved investigation brief" : "Draft investigation brief"}</h2>
         <p className="text-xs text-muted-foreground">AI synthesis from recorded evidence, {new Date(version!.generated_at).toLocaleDateString("en-ZA")}. {approved ? "Checked and approved by the named reviewer." : "Requires human review and approval."}</p>
+        <section aria-label="AI review inputs" className="border-b border-border pb-4">
+          <h3 className="font-semibold">Documents considered by the AI</h3>
+          {version?.evidence_manifest ? version.evidence_manifest.length > 0
+            ? <ul className="mt-2 space-y-2 text-sm">{version.evidence_manifest.map((item) => <li key={item.assetId}>
+              <strong>{item.name}</strong><p>{item.state === "included" ? "Included extracted evidence" : item.state === "unreadable" ? "Not readable as accepted evidence" : "Omitted from AI review"}. {item.reason}</p>
+            </li>)}</ul>
+            : <p className="mt-2 text-sm">No document inputs were supplied to this AI brief. It used the recorded property evidence and source checks.</p>
+            : <p className="mt-2 text-sm">The document input record is unavailable for this saved version. Do not assume every document was reviewed by AI.</p>}
+        </section>
         {(["bottomLine", "known", "potential", "risks", "unknowns", "nextSteps"] as const).map((key) => {
           const statements = key === "bottomLine" ? [brief.bottomLine] : brief[key];
           const labels = { bottomLine: "Bottom line", known: "Supported facts", potential: "What appears possible", risks: "Material risks and contradictions", unknowns: "What remains unknown", nextSteps: "Practical next checks" };

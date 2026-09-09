@@ -178,9 +178,9 @@ async function saveCheck(page) {
 async function step(page, name) {
   await page.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name }).click();
 }
-async function savedAction(page, action, rpcName = "patch_order_investigation") {
+async function savedAction(page, action, rpcName = "patch_order_investigation", matches = () => true) {
   const [response] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith(`/rpc/${rpcName}`) && r.request().method() === "POST"),
+    page.waitForResponse((r) => r.url().endsWith(`/rpc/${rpcName}`) && r.request().method() === "POST" && matches(r)),
     action(),
   ]);
   assert.equal(response.status(), rpcName === "change_order_investigation_asset" ? 204 : 200);
@@ -242,8 +242,11 @@ async function gatherSections(page) {
   await savedAction(page, () => page.getByRole("button", { name: "Save evidence", exact: true }).click());
   await step(page, /Strategy & Calculators/);
   await page.getByLabel("Purchase price", { exact: true }).fill("1000000");
-  await page.getByLabel("Monthly rent", { exact: true }).fill("10000");
-  await page.getByRole("button", { name: "Use this scenario and continue", exact: true }).click();
+  // Wait for the actual draft write before choosing it. Scrolling to the
+  // completion button can overlap the debounce and disable its fieldset.
+  await savedAction(page, () => page.getByLabel("Monthly rent", { exact: true }).fill("10000"), "patch_order_investigation",
+    (r) => r.request().postDataJSON()?.p_patch?.strategyWorkspace?.draftInputs?.monthlyRent === "10000");
+  await savedAction(page, () => page.getByRole("button", { name: "Use this scenario and continue", exact: true }).click());
   await page.getByRole("heading", { name: "Where could a building potentially fit?", exact: true }).waitFor();
   await page.getByText("Review inputs and technical details", { exact: true }).click();
   await page.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
