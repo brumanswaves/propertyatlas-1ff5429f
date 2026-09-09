@@ -154,8 +154,15 @@ async function gatherSections(page) {
     await input.setInputFiles({ name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() });
     const response = await extracted; assert.equal(response.status(), 200);
     const result = await response.json(); assert.equal(result.success, true, JSON.stringify(result)); assert.equal(result.identityMatchStatus, "unverified");
-    await page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).waitFor();
-    await savedAction(page, () => page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).click(), "change_order_investigation_asset");
+    if (category === "sg_diagram") {
+      // The existing SG policy records the deliberate upload as user attachment,
+      // never an automatic identity match. Paid/title files require a separate decision.
+      await page.getByText("Identity: user-attached", { exact: true }).waitFor();
+      assert.equal(await page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).count(), 0);
+    } else {
+      await page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).waitFor();
+      await savedAction(page, () => page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).click(), "change_order_investigation_asset");
+    }
     const scope = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
     const asset = scope.assets.find((a) => a.asset_category === category);
     assert.equal(asset.metadata.identityBinding, "user_confirmed"); assert.equal(asset.user_id, ids.a);
