@@ -19,6 +19,11 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
+import { SharedInvestigationReport } from "@/components/humanReview/SharedInvestigationReport";
+import { assembleInvestigation } from "@/lib/investigation/sharedInvestigation";
+import { buildSavedInvestigationUserDataPatch } from "@/lib/workbench/savedInvestigationProjection";
+import { readStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
 import {
   AlertTriangle,
   ArrowRight,
@@ -88,7 +93,7 @@ import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
-import { prepareCustomerInvestigation } from "@/lib/investigation/investigationClient";
+import { prepareCustomerInvestigation, readCustomerInvestigation } from "@/lib/investigation/investigationClient";
 import {
   ReportEvidenceAppendix,
   ReportMarketSection,
@@ -1502,6 +1507,21 @@ function StoepAiReportView({
   const strategyWorkspace = readStrategyWorkspace(parcel.id, undefined, userId);
   const scenarios = readStrategyScenarios(parcel.id, undefined, userId);
   const chosenScenario = getChosenStrategyScenario(parcel.id, undefined, userId);
+  const savedInvestigation = useQuery({
+    queryKey: ["customer-investigation-report", userId, parcel.id], enabled: Boolean(userId), retry: false,
+    queryFn: ({ signal }) => readCustomerInvestigation(parcel.id, signal),
+  });
+  // Current local inputs remain usable before saving/purchasing. Source-check
+  // records come only from the owning customer's server-scoped investigation.
+  const sharedAssembly = assembleInvestigation({ schemaVersion: 1, parcelId: parcel.id,
+    revision: savedInvestigation.data?.revision ?? 0, assets: fileVault.assets, siteProject: null,
+    userData: { normalizedParcel: parcel, parcelRing,
+      ...buildSavedInvestigationUserDataPatch(parcel.id, workspaceState),
+      strategyWorkspace, savedMarketEvidence: evidence, marketAddressIntelligence,
+      buildEnvelopeInputs: readStoredBuildEnvelopeInputs(parcel.id, userId),
+      investigationWork: savedInvestigation.data?.userData.investigationWork,
+    },
+  });
   /**
    * Deterministic report hero. The envelope is only drawn from real geometry
    * plus rules the user actually recorded — never invented.
@@ -2524,6 +2544,20 @@ function StoepAiReportView({
         </>
       ),
     };
+
+    if (decisionMode === "standard") return <div className={cn("report-page space-y-5", printOnly && "report-print-document")}
+      aria-label={printOnly ? "Printable Easy Erf Report" : undefined}>
+      {savedInvestigation.isError && userId && <p role="status" className="report-no-print text-sm">Saved source-check records could not be loaded. Current evidence is shown without claiming those checks are complete.</p>}
+      <SharedInvestigationReport assembly={sharedAssembly} onPreviewSettlement={trackSignedAssetPreviewSettlement}
+        onOpenAsset={(assetId) => { const asset = fileVault.assets.find((file) => file.id === assetId); if (asset) void openVaultAsset(asset); }}
+        openingControls={{ printOnly, onPrint: handlePrint,
+          onOpenTab: (tab, options) => onSelectView?.(routeTabFor(tab), options),
+          modeSlot: <ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />,
+          heroSlot: sharedAssembly.envelope ? <ReportBuildableAreaVisual ring={parcelRing} result={sharedAssembly.envelope} printOnly={printOnly} compact /> : undefined,
+        }} />
+      {!printOnly && <HumanReviewTakeoverCard parcelId={parcel.id} propertyReference={parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : parcel.id}
+        source="self-service-report" onPrepare={userId ? () => prepareCustomerInvestigation(userId, parcel, parcelRing) : undefined} />}
+    </div>;
 
     return (
       <div

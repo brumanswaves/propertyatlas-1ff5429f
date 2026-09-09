@@ -55,6 +55,22 @@ jobs:
           supabase start --workdir "${STACK}" --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
           umask 077
           supabase status --workdir "${STACK}" -o json > "${RUNNER_TEMP}/investigation-runtime.json"
+      - name: Preserve sanitized isolated startup evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/shared-investigation
+          node --input-type=module <<'NODE'
+          import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+          const path = process.env.RUNNER_TEMP + '/local-stack.log';
+          if (existsSync(path)) {
+            const safe = readFileSync(path, 'utf8').split('\n')
+              .filter(line => !/password|secret|token|authorization|api.key|publishable.key/i.test(line))
+              .map(line => line.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]'))
+              .slice(-140).join('\n');
+            writeFileSync('artifacts/shared-investigation/local-stack-sanitized.log', safe);
+            console.log(safe);
+          }
+          NODE
       - name: Exercise real isolated persistence, authorization and browser
         env:
           EASY_ERF_ISOLATED_RUNTIME: ${{ runner.temp }}/investigation-runtime.json

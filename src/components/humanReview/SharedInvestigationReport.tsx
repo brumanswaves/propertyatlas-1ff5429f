@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { z } from "zod";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import { AskEasyErfPanel } from "@/components/property/dossier/AskEasyErfPanel";
@@ -15,8 +15,10 @@ import type { InvestigationReviewVersion } from "@/lib/investigation/investigati
 import { readInvestigationAsset, requestInvestigationReview } from "@/lib/investigation/investigationClient";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
-export function SharedInvestigationReport({ assembly, version, orderId, onOpenAsset }: {
+export function SharedInvestigationReport({ assembly, version, orderId, onOpenAsset, openingControls, onPreviewSettlement }: {
   assembly: InvestigationAssembly; version?: InvestigationReviewVersion; orderId?: string; onOpenAsset?: (id: string) => void;
+  openingControls?: Pick<ComponentProps<typeof ReportOpening>, "onPrint" | "modeSlot" | "onOpenTab" | "heroSlot" | "heroCaption" | "printOnly">;
+  onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
   const scopedOrderId = version?.order_id ?? orderId;
   const versionId = version?.id;
@@ -51,7 +53,7 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     return answer ? { success: true, answer } : { success: false, error: payload.error ?? "The answer could not be grounded in this report version." };
   }
   return <article className="mx-auto max-w-6xl space-y-5 break-words" data-investigation-report={assembly.parcel.id} data-review-version={version?.id}>
-    <ReportOpening doc={assembly.document}
+    <ReportOpening {...openingControls} doc={assembly.document}
       reviewIdentity={version ? <div>
         <p>{approved ? "Human-reviewed investigation." : "AI investigation draft · Not human reviewed."}</p>
         {approved && <p className="mt-1 text-xs font-normal">Reviewed by {version.approved_reviewer_label} on {new Date(version.approved_at!).toLocaleString("en-ZA")}.</p>}
@@ -81,7 +83,7 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
         <p className="text-xs text-muted-foreground">{claim.status} · {claim.sourceIds.map((id) => assembly.pack.sources.find((s) => s.id === id)?.label ?? id).join("; ")}</p>
       </div>)}</dl>
     </section>
-    <ReportSgLineageSection anchorId="investigation-sg" model={assembly.sg} onOpenAsset={openAsset} loadPreview={scopedOrderId ? loadPreview : undefined} />
+    <ReportSgLineageSection anchorId="investigation-sg" model={assembly.sg} onOpenAsset={openAsset} loadPreview={scopedOrderId ? loadPreview : undefined} onPreviewSettlement={onPreviewSettlement} />
     <ReportOwnershipSection ownership={assembly.report.ownership} />
     <section className="border-y border-border py-5" aria-label="Planning evidence">
       <h2 className="text-xl font-semibold">Zoning, planning and building controls</h2>

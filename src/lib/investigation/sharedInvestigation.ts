@@ -26,6 +26,7 @@ import { buildAskEasyErfEvidencePayload } from "@/lib/reports/askEasyErf";
 import { buildDecisionIntelligence } from "@/lib/reports/buildDecisionIntelligence";
 import { analyzeStrategy } from "@/lib/reports/buildInvestorDecisionMode";
 import { fingerprintPropertyEvidencePack } from "@/lib/evidence/evidenceFingerprint";
+import { canonicalReportAction } from "./canonicalNextAction";
 import { buildSiteRiskSectionModel, buildMunicipalServicesSectionModel, buildLocationLifestyleSectionModel } from "@/lib/reports/contextSections";
 
 const nullableText = z.string().nullable().optional();
@@ -140,7 +141,10 @@ export function assembleInvestigation(snapshot: InvestigationSnapshot, now = new
   pack.statistics.sourceCount = pack.sources.length;
   pack.fingerprint = fingerprintPropertyEvidencePack(pack);
   const report = buildReportViewModel({ ...input, evidencePack: pack });
-  const document = composeEasyErfReport({ report, pack });
+  const document = composeEasyErfReport({ report, pack, canonicalNextAction: canonicalReportAction({
+    parcel, workspaceState, assets, savedEvidence, scenarioCount: scenarios.length,
+    chosenScenarioId: chosen?.id ?? null, skippedTaskIds: workspaceState.investigation.skippedTaskIds,
+  }) });
   const appendix = buildEvidenceAppendixRows({ assets, pack });
   const facts = deriveInvestigationFacts({ ...input, planning, scenarioCount: scenarios.length,
     chosenScenarioId: chosen?.id, marketAddressLine: marketAddress?.userConfirmedAddress?.formattedAddress ?? text(snapshot.userData.approximateAddress) });
