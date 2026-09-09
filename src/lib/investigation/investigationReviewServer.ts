@@ -82,6 +82,14 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       if (!assembly.modelEvidencePack || assembly.modelEvidencePack.parcelId !== version.parcel_id) {
         return json({ error: "This saved report has no permitted question evidence. No new evidence was substituted." }, 409);
       }
+      // Frozen content does not freeze processing consent. Check its original
+      // server-recorded dependencies against current permissions, not new facts.
+      const currentPermissions = new Map((scope.processingSources ?? []).map((source) => [source.assetId, source.aiProcessingAllowed]));
+      if (scope.processingSources == null || version.evidence_snapshot.processingSources == null
+        || version.evidence_snapshot.processingSources.some((source) => source.aiProcessingAllowed
+          && currentPermissions.get(source.assetId) !== true)) {
+        return json({ error: "Document processing permission for this saved report is unavailable. Nothing was sent to AI." }, 409);
+      }
       const evidence = buildAskEasyErfSelectedEvidencePayload({ pack: assembly.modelEvidencePack, question: input.question });
       const result = await askEasyErfViaEdgeFunction({ parcelId: version.parcel_id, question: input.question, evidence,
         accessToken: auth.token, signal: request.signal,

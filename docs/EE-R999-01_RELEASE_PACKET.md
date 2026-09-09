@@ -47,6 +47,8 @@ Processing provenance is derived from the private database dependency ledger, ne
 
 Take a private all-order metadata baseline only under applicable owner read authority: UUID/count/status/timestamps, server-computed body/receipt hashes and audit counts. No bulk report/receipt content, customer joins or public raw dataset. Preserve all non-target orders and customer data.
 
+Version-grounded Ask uses the immutable filtered model evidence, but must recheck its original server-recorded dependencies against current processing permissions before a new request. Revoked, deleted-without-permission or unavailable dependencies block the call; the human report remains readable and no newer evidence is silently substituted.
+
 ### Fresh owner TEST proposal: not currently authorized
 
 Old owner order `384be2fe-f7aa-4687-970c-5a6db34cfeba` and protected legacy `4e51dfbb-e931-4500-a622-2a766be398fc` must not be reopened/overwritten. PR #170/5598714672 records consumed V1/reopen/V2/email actions.

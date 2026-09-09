@@ -162,6 +162,17 @@ describe("investigation review route (provider fixtures, no live AI)", () => {
     expect(payload.success).toBe(true);
     expect(payload.answer.confidence).not.toBe("high");
     expect(f.persist).not.toHaveBeenCalled();
+    // A saved version cannot perpetuate consent after revocation or deletion.
+    // No new working content replaces the frozen report to work around denial.
+    Object.assign(version.evidence_snapshot, { processingSources: [{ assetId, aiProcessingAllowed: true }] });
+    for (const processingSources of [[{ assetId, aiProcessingAllowed: false }], [], undefined]) {
+      Object.assign(f.record, { processingSources });
+      f.fetchImpl.mockClear();
+      const denied = await handleInvestigationReviewRequest(request({ action: "ask", orderId, versionId: assetId, question: "What is the identity?" }), f.deps);
+      expect(denied.status).toBe(409);
+      expect(await denied.text()).toContain("Nothing was sent to AI");
+      expect(f.fetchImpl).not.toHaveBeenCalled();
+    }
     delete (version.report_assembly as { modelEvidencePack?: unknown }).modelEvidencePack;
     f.fetchImpl.mockClear();
     expect((await handleInvestigationReviewRequest(request({ action: "ask", orderId, versionId: assetId, question: "What is the identity?" }), f.deps)).status).toBe(409);

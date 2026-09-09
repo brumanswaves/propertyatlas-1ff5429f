@@ -20,6 +20,8 @@ One canonical customer/parcel investigation, worked by the customer or an explic
 - Actual outbound tests assert absence of restricted filenames, extraction, manually copied findings/labels and forged empty dependency lists. New real isolated browser assertions additionally cover archived sources, retained human evidence and fixed model/configuration. No real model calls.
 - Existing five exact-edaa workflows all green and artifacts previously retrieved/inspected. Isolated run 34364869242, artifact 10109534207, SHA256 74cb4805e1a076cdf80879c3e72fa38da4d518c43c4ee234a2abf28d9e88fe83. This is PRIOR evidence only, not repair acceptance.
 
+Final outbound review also caught saved-report Ask retaining old permission. It now compares frozen server-recorded dependencies to current permission before calling AI. Revocation or unavailable provenance blocks the request without altering the report. Focused negative assertions and the real isolated browser probe cover this within blocker 1.
+
 ## Remaining verification and failures
 - Next Class A action: commit/push this candidate; inspect its five workflows including real isolated Auth/REST/Storage/browser and SQL, then download/hash/inspect complete synthetic responses, actual provider bodies and desktop/mobile screenshots. Repair actual failures in this branch; no unchanged green reruns.
 - Local PostgreSQL launch for the new SQL assertions failed with Windows restricted-token error 87; no server was started. Existing CI isolated database execution is the intended independent executable SQL gate.

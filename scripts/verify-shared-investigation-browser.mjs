@@ -509,6 +509,17 @@ try {
   await customer.getByRole("button", { name: "Ask", exact: true }).tap();
   assert.equal((await asked).status(), 200);
   await customer.getByText("Synthetic answer: this saved evidence still has recorded limitations.", { exact: true }).waitFor();
+  // Actual post-delivery revocation must block a fresh provider request without
+  // changing the immutable report. The private ledger outlives its snapshot.
+  const permissionAsset = (await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA })).assets.find((asset) => asset.asset_category === "paid_report");
+  must(await adminClient.from("erf_assets").update({ metadata: { ...permissionAsset.metadata, aiProcessingAllowed: false } }).eq("id", permissionAsset.id));
+  const requestsBeforeRevocationProbe = providerRequests.length;
+  const revokedAsk = await reviewRequest("a", { action: "ask", orderId: orderA, versionId: approved.id, question: "What does this saved evidence say?" });
+  assert.equal(revokedAsk.status, 409);
+  assert.match(revokedAsk.body.error, /Nothing was sent to AI/);
+  assert.equal(providerRequests.length, requestsBeforeRevocationProbe);
+  must(await adminClient.from("erf_assets").update({ metadata: permissionAsset.metadata }).eq("id", permissionAsset.id));
+  results.push("Post-delivery processing revocation blocks an actual version-grounded Ask request before any provider call; immutable report retained");
   await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile.png"), fullPage: true });
   await customer.getByText("Human-reviewed investigation.", { exact: true }).scrollIntoViewIfNeeded();
   await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile-viewport.png") });
