@@ -120,8 +120,11 @@ async function step(page, name) {
   await page.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name }).click();
 }
 async function savedAction(page, action, rpcName = "patch_order_investigation") {
-  const response = page.waitForResponse((r) => r.url().endsWith(`/rpc/${rpcName}`) && r.request().method() === "POST");
-  await action(); assert.equal((await response).status(), rpcName === "change_order_investigation_asset" ? 204 : 200);
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith(`/rpc/${rpcName}`) && r.request().method() === "POST"),
+    action(),
+  ]);
+  assert.equal(response.status(), rpcName === "change_order_investigation_asset" ? 204 : 200);
   await page.getByRole("button", { name: "Reload saved evidence", exact: true }).and(page.locator(":enabled")).waitFor();
 }
 function syntheticPdf() {
@@ -151,6 +154,7 @@ async function gatherSections(page) {
     await input.setInputFiles({ name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() });
     const response = await extracted; assert.equal(response.status(), 200);
     const result = await response.json(); assert.equal(result.success, true, JSON.stringify(result)); assert.equal(result.identityMatchStatus, "unverified");
+    await page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).waitFor();
     await savedAction(page, () => page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).click(), "change_order_investigation_asset");
     const scope = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
     const asset = scope.assets.find((a) => a.asset_category === category);
