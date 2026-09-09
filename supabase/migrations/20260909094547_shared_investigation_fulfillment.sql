@@ -24,6 +24,21 @@ create table investigation_private.revisions (
 );
 alter table investigation_private.revisions enable row level security;
 
+-- Server-maintained dependency closure, not client-asserted permission. Retain
+-- tombstones: archiving/deleting a document must not release its copied findings.
+create table investigation_private.processing_sources (
+  customer_id uuid not null references auth.users(id) on delete cascade,
+  parcel_id text not null,
+  asset_id uuid not null,
+  ai_processing_allowed boolean not null,
+  primary key (customer_id, parcel_id, asset_id)
+);
+alter table investigation_private.processing_sources enable row level security;
+revoke all on investigation_private.processing_sources from public, anon, authenticated, service_role;
+insert into investigation_private.processing_sources
+  select user_id, parcel_id, id, coalesce(metadata->'aiProcessingAllowed' = 'true'::jsonb, false)
+  from public.erf_assets;
+
 create table public.investigation_review_versions (
   id uuid primary key default gen_random_uuid(),
   version_sequence bigint generated always as identity unique,
@@ -100,6 +115,13 @@ begin
   if tg_op = 'UPDATE' and to_jsonb(new) - 'updated_at' = to_jsonb(old) - 'updated_at' then return new; end if;
   if tg_op = 'DELETE' then v_customer := old.user_id; v_parcel := old.parcel_id;
   else v_customer := new.user_id; v_parcel := new.parcel_id; end if;
+  if tg_table_name = 'erf_assets' then
+    insert into investigation_private.processing_sources(customer_id, parcel_id, asset_id, ai_processing_allowed)
+      values(v_customer, v_parcel, case when tg_op = 'DELETE' then old.id else new.id end,
+        case when tg_op = 'DELETE' then coalesce(old.metadata->'aiProcessingAllowed' = 'true'::jsonb,false)
+          else coalesce(new.metadata->'aiProcessingAllowed' = 'true'::jsonb,false) end)
+      on conflict(customer_id, parcel_id, asset_id) do update set ai_processing_allowed = excluded.ai_processing_allowed;
+  end if;
   insert into investigation_private.revisions(customer_id, parcel_id, revision)
     values(v_customer, v_parcel, 1)
     on conflict(customer_id, parcel_id) do update set revision = investigation_private.revisions.revision + 1;
@@ -200,6 +222,9 @@ returns jsonb language sql stable set search_path = '' as $$
   select jsonb_build_object(
     'schemaVersion', 1, 'parcelId', p_parcel,
     'revision', coalesce((select revision from investigation_private.revisions where customer_id = p_customer and parcel_id = p_parcel), 0),
+    'processingSources', coalesce((select jsonb_agg(jsonb_build_object('assetId', asset_id,
+      'aiProcessingAllowed', ai_processing_allowed) order by asset_id)
+      from investigation_private.processing_sources where customer_id = p_customer and parcel_id = p_parcel), '[]'::jsonb),
     'userData', coalesce((select jsonb_object_agg(k, v) from public.saved_properties s,
       lateral jsonb_each(coalesce(s.user_data, '{}'::jsonb)) e(k,v)
       where s.user_id = p_customer and s.parcel_id = p_parcel and k = any(array[

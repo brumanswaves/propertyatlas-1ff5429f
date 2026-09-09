@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
-import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, orderInvestigationSchema } from "./sharedInvestigation";
+import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, orderInvestigationSchema } from "./sharedInvestigation";
 import { investigationReviewVersionSchema } from "./investigationReviewVersion";
-import { validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
+import { INVESTIGATION_BRIEF_MODEL, validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
 import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import { buildAskEasyErfSelectedEvidencePayload, calibrateAskEasyErfAnswerConfidence } from "@/lib/reports/askEasyErf";
 import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
@@ -52,18 +52,18 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       if (!functionSecret || !url) return json({ error: "Investigation AI review is not configured. No review was generated." }, 503);
       const allowedSourceIds = evidencePackage.evidence.sources.map((source) => source.id);
       const generated = await (deps.fetchImpl ?? fetch)(`${url.replace(/\/$/, "")}/functions/v1/ask-easy-erf-openai`, {
-        method: "POST", signal: AbortSignal.timeout(50_000),
+        method: "POST", signal: AbortSignal.timeout(95_000),
         headers: { Authorization: `Bearer ${functionSecret}`, "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "investigation_brief", evidencePackage, allowedSourceIds }),
       });
       if (!generated.ok) return json({ error: "AI review is unavailable. No draft or approval was saved." }, 503);
-      const payload = z.object({ success: z.literal(true), brief: z.unknown(), model: z.string().min(1) }).parse(await generated.json());
+      const payload = z.object({ success: z.literal(true), brief: z.unknown(), model: z.literal(INVESTIGATION_BRIEF_MODEL) }).parse(await generated.json());
       const brief = validateInvestigationBrief(payload.brief, allowedSourceIds);
       if (!brief) return json({ error: "The generated review failed evidence validation. Nothing was approved." }, 502);
       const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
       const recorded = await service.rpc("record_investigation_brief", {
         p_order_id: input.orderId, p_actor_id: auth.user.id, p_expected_revision: scope.revision,
-        p_assembly: { ...assembly, modelEvidencePack: evidencePackage.evidence }, p_manifest: evidencePackage.inputs, p_assessment: evidencePackage.investigation,
+        p_assembly: { ...assembly, modelEvidencePack: evidencePackage.evidence }, p_manifest: investigationInputManifest(scope), p_assessment: assessInvestigationSignoff(scope, assembly),
         p_brief: brief, p_model: payload.model,
       });
       checkError(recorded.error);

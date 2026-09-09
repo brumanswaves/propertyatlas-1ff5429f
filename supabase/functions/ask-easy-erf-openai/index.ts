@@ -155,6 +155,7 @@ Deno.serve(async (request: Request) => {
     try {
       const result = await generateInvestigationBrief({ evidencePackage: body.evidencePackage,
         allowedSourceIds: body.allowedSourceIds, enabled: Deno.env.get("INVESTIGATION_BRIEF_ENABLED") === "true",
+        model: Deno.env.get("INVESTIGATION_BRIEF_MODEL"), reasoning: Deno.env.get("INVESTIGATION_BRIEF_REASONING"),
         apiKey: Deno.env.get("OPENAI_API_KEY") });
       return json({ success: true, ...result }, 200);
     } catch {

@@ -1,4 +1,11 @@
-import { ASK_EASY_ERF_MODEL, ASK_EASY_ERF_OPENAI_URL } from "./askEasyErfContract.ts";
+import { ASK_EASY_ERF_OPENAI_URL } from "./askEasyErfContract.ts";
+
+// Release-pinned paid synthesis, deliberately separate from ordinary Ask.
+// An explicit matching runtime setting AND enabled flag are required. No fallback.
+export const INVESTIGATION_BRIEF_MODEL = "gpt-5.4-2026-03-05";
+export const INVESTIGATION_BRIEF_REASONING = "high";
+export const INVESTIGATION_BRIEF_MAX_COMPLETION_TOKENS = 24_000;
+export const INVESTIGATION_BRIEF_MAX_REQUEST_BYTES = 200_000;
 
 export const INVESTIGATION_BRIEF_SECTIONS = ["known", "potential", "risks", "unknowns", "nextSteps"] as const;
 export interface InvestigationBriefStatement { text: string; sourceRefs: string[] }
@@ -59,20 +66,32 @@ export async function generateInvestigationBrief(input: {
   evidencePackage: unknown;
   allowedSourceIds: string[];
   enabled: boolean;
+  model?: string;
+  reasoning?: string;
   apiKey: string | undefined;
   fetchImpl?: typeof fetch;
 }): Promise<{ brief: InvestigationBrief; model: string }> {
   if (!input.enabled || !input.apiKey?.trim()) throw new Error("Investigation AI review is not enabled for this environment.");
+  if (input.model !== INVESTIGATION_BRIEF_MODEL || input.reasoning !== INVESTIGATION_BRIEF_REASONING) {
+    throw new Error("Investigation brief model configuration is not the approved release contract.");
+  }
   if (!input.allowedSourceIds.length || input.allowedSourceIds.length > 1000) throw new Error("Evidence sources are unavailable or exceed the review limit.");
   const serialized = JSON.stringify(input.evidencePackage);
   if (new TextEncoder().encode(serialized).byteLength > 400_000) throw new Error("Evidence exceeds the complete review limit.");
+  const body = JSON.stringify({ model: INVESTIGATION_BRIEF_MODEL, reasoning_effort: INVESTIGATION_BRIEF_REASONING,
+    max_completion_tokens: INVESTIGATION_BRIEF_MAX_COMPLETION_TOKENS, store: false, service_tier: "default",
+    response_format: investigationBriefFormat(input.allowedSourceIds),
+    messages: [{ role: "system", content: INVESTIGATION_BRIEF_SYSTEM_PROMPT }, { role: "user", content: serialized }],
+  });
+  // Bound the ENTIRE request, including duplicated citation enums and schema.
+  // UTF-8 bytes conservatively bound text tokens; no tools, images or retries.
+  if (new TextEncoder().encode(body).byteLength > INVESTIGATION_BRIEF_MAX_REQUEST_BYTES) {
+    throw new Error("Evidence exceeds the budgeted complete review request. Nothing was sent.");
+  }
   const response = await (input.fetchImpl ?? fetch)(ASK_EASY_ERF_OPENAI_URL, {
-    method: "POST", signal: AbortSignal.timeout(45_000),
+    method: "POST", signal: AbortSignal.timeout(90_000),
     headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: ASK_EASY_ERF_MODEL, temperature: 0.1, max_tokens: 6000,
-      response_format: investigationBriefFormat(input.allowedSourceIds),
-      messages: [{ role: "system", content: INVESTIGATION_BRIEF_SYSTEM_PROMPT }, { role: "user", content: serialized }],
-    }),
+    body,
   });
   if (!response.ok) throw new Error("The investigation review provider is temporarily unavailable. No review was approved.");
   const payload: unknown = await response.json();
@@ -84,5 +103,5 @@ export async function generateInvestigationBrief(input: {
   try { parsed = JSON.parse(choice.message.content); } catch { throw new Error("The investigation review could not be validated."); }
   const brief = validateInvestigationBrief(parsed, input.allowedSourceIds);
   if (!brief) throw new Error("The investigation review contains missing or invalid evidence references.");
-  return { brief, model: ASK_EASY_ERF_MODEL };
+  return { brief, model: INVESTIGATION_BRIEF_MODEL };
 }

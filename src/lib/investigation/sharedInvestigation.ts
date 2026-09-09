@@ -51,6 +51,9 @@ export const investigationAssetSchema = z.object({
 export const investigationSnapshotSchema = z.object({
   schemaVersion: z.literal(1), parcelId: z.string().min(1), revision: z.number().int().nonnegative(),
   userData: z.record(z.unknown()), assets: z.array(investigationAssetSchema), siteProject: z.record(z.unknown()).nullable(),
+  // Only the authenticated RPC populates this private, server-maintained ledger.
+  // Old snapshots remain readable, but missing provenance cannot authorize AI.
+  processingSources: z.array(z.object({ assetId: z.string().uuid(), aiProcessingAllowed: z.boolean() })).nullable().optional(),
 });
 export const orderInvestigationSchema = investigationSnapshotSchema.extend({
   orderId: z.string().uuid(), customerId: z.string().uuid(), canWork: z.boolean(), canApprove: z.boolean(),
@@ -62,6 +65,7 @@ export const investigationAttemptSchema = z.object({
   source: z.string().trim().min(3).max(500), checkedAt: z.string().datetime(), result: z.string().trim().min(3).max(2000),
   reason: z.string().trim().min(3).max(1000), limitation: z.string().trim().min(3).max(1000),
   disposition: z.enum(["reviewed", "unavailable", "not_applicable"]),
+  sourceAssetIds: z.array(z.string().uuid()).max(100).optional(),
 });
 export type InvestigationAttempt = z.infer<typeof investigationAttemptSchema>;
 export function recordedInvestigationWork(value: unknown) {
@@ -199,14 +203,8 @@ export function assessInvestigationSignoff(snapshot: InvestigationSnapshot, asse
   return { eligible: blockers.length === 0, blockers, items };
 }
 
-export function buildInvestigationModelPackage(snapshot: InvestigationSnapshot, assembly: InvestigationAssembly) {
-  // Permission applies to derived document claims as well as the extracted text.
-  // Reuse the canonical composer with permitted assets; merely removing text from
-  // the manifest would still transmit restricted fragments through the evidence pack.
-  const permittedAssets = snapshot.assets.filter((asset) => asset.metadata.aiProcessingAllowed === true);
-  const permitted = permittedAssets.length === snapshot.assets.length ? assembly
-    : assembleInvestigation({ ...snapshot, assets: permittedAssets }, new Date(assembly.pack.builtAt));
-  const manifest = snapshot.assets.map((asset) => {
+export function investigationInputManifest(snapshot: InvestigationSnapshot) {
+  return snapshot.assets.map((asset) => {
     const searchable = erfAssetHasSearchableExtraction(asset);
     const excluded = ["archived", "deleted"].includes(asset.status) || erfAssetIdentityMatchStatus(asset) === "mismatch"
       || asset.asset_category === "generated_design" || asset.metadata.aiProcessingAllowed !== true;
@@ -220,9 +218,45 @@ export function buildInvestigationModelPackage(snapshot: InvestigationSnapshot, 
       originalMaterialStatus: permittedOriginal ? "permitted_extracted_text" : "omitted_without_processing_permission",
     };
   });
+}
+
+export function buildInvestigationModelPackage(snapshot: InvestigationSnapshot, assembly: InvestigationAssembly) {
+  // The authenticated server supplies this complete customer/parcel snapshot.
+  // A client source list cannot narrow the dependency set: legacy/manual fields
+  // in any namespace may have copied a document, including its name or label.
+  // Until field-level provenance is independently established, all user-authored
+  // material depends conservatively on ALL attached documents, not just claimed IDs.
+  const dependencyMap = new Map((snapshot.processingSources ?? []).map((source) => [source.assetId, source.aiProcessingAllowed]));
+  const permittedAssets = snapshot.assets.filter((asset) => asset.metadata.aiProcessingAllowed === true && dependencyMap.get(asset.id) === true);
+  const userMaterialPermitted = snapshot.processingSources != null
+    && snapshot.processingSources.every((source) => source.aiProcessingAllowed)
+    && permittedAssets.length === snapshot.assets.length;
+  const knownAssets = new Set(snapshot.assets.map((asset) => asset.id));
+  const work = recordedInvestigationWork(snapshot.userData.investigationWork).filter((item) =>
+    (item.sourceAssetIds ?? []).every((id) => knownAssets.has(id)));
+  const projection: InvestigationSnapshot = { ...snapshot, assets: permittedAssets, siteProject: null,
+    userData: userMaterialPermitted
+      ? { ...snapshot.userData, investigationWork: Object.fromEntries(work.map((item) => [item.id, item])) }
+      : { normalizedParcel: { id: snapshot.parcelId, source: "manual", sourceLabel: "Canonical dossier identifier",
+        knownFields: [], missingFields: ["User-recorded context withheld from AI: document processing permission is incomplete."] } },
+  };
+  const permitted = assembleInvestigation(projection, new Date(assembly.pack.builtAt));
+  // Human-only manifests keep the original names. No metadata of a denied asset
+  // (even filename, category or UUID) belongs in the provider's manifest.
+  const manifest = investigationInputManifest({ ...snapshot, assets: permittedAssets });
   const payload = { parcelId: snapshot.parcelId, evidenceRevision: snapshot.revision,
     evidence: permitted.pack, savedStrategy: permitted.strategy, strategyAnalysis: permitted.strategyAnalysis, deterministicSite: permitted.site,
-    investigation: assessInvestigationSignoff(snapshot, assembly), inputs: manifest };
+    investigation: assessInvestigationSignoff(projection, permitted), inputs: manifest,
+    provenance: { policy: "server-snapshot-document-closure-v1", userMaterialPermitted,
+      permittedAssetIds: permittedAssets.map((asset) => asset.id),
+      omittedDocumentCount: new Set([...snapshot.assets.filter((asset) => !permittedAssets.includes(asset)).map((asset) => asset.id),
+        ...(snapshot.processingSources ?? []).filter((source) => !source.aiProcessingAllowed).map((source) => source.assetId)]).size,
+      workSources: userMaterialPermitted ? work.map((item) => ({ id: item.id,
+        declaredAssetIds: item.sourceAssetIds ?? null,
+        requiredAssetIds: [...dependencyMap.keys()] })) : [],
+      limitation: userMaterialPermitted ? null
+        : "Document-derived and unclassified user-recorded material is withheld. The human report retains it; this AI draft is a partial review.",
+    } };
   // Reject oversize instead of quietly dropping documents from a purported complete review.
   if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > 400_000) {
     throw new Error("Evidence exceeds the bounded review size. No complete AI review was generated.");

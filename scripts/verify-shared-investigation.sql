@@ -224,3 +224,24 @@ begin
     raise exception 'Concurrent customer update lost'; end if;
 end $$;
 select 'Shared investigation generation authority, approval, stale evidence and immutable delivery checks passed' as result;
+
+-- Permission provenance is server maintained, including deleted-source tombstones.
+reset role;
+select set_config('request.jwt.claim.sub','',false);
+insert into public.erf_assets(id,user_id,parcel_id,asset_category,asset_type,storage_bucket,storage_path,original_file_name,mime_type,size_bytes,status,metadata)
+values('cccccccc-cccc-4ccc-8ccc-cccccccccccc','22222222-2222-4222-8222-222222222222','synthetic:permission',
+  'paid_report','property_report','erf-files','synthetic/permission.pdf','restricted.pdf','application/pdf',4,'ready','{"aiProcessingAllowed":false}');
+do $$ declare v jsonb; begin
+  v := investigation_private.snapshot('22222222-2222-4222-8222-222222222222','synthetic:permission');
+  if v->'processingSources'->0->'aiProcessingAllowed' is distinct from 'false'::jsonb then raise exception 'Missing server dependency'; end if;
+  update public.erf_assets set status='archived' where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  v := investigation_private.snapshot('22222222-2222-4222-8222-222222222222','synthetic:permission');
+  if jsonb_array_length(v->'assets') <> 0 or jsonb_array_length(v->'processingSources') <> 1 then raise exception 'Archive released derivative dependency'; end if;
+  delete from public.erf_assets where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  v := investigation_private.snapshot('22222222-2222-4222-8222-222222222222','synthetic:permission');
+  if v->'processingSources'->0->'aiProcessingAllowed' is distinct from 'false'::jsonb then raise exception 'Delete released derivative dependency'; end if;
+  if has_table_privilege('authenticated','investigation_private.processing_sources','INSERT')
+    or has_table_privilege('authenticated','investigation_private.processing_sources','UPDATE')
+    or has_table_privilege('service_role','investigation_private.processing_sources','UPDATE') then raise exception 'Dependency ledger can be forged'; end if;
+end $$;
+select 'Processing provenance survives archival/deletion and cannot be directly forged' as result;

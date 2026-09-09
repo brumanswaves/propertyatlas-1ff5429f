@@ -201,7 +201,7 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
           onOpenTab={(tab) => setSelectedStep(tab === "zoning-build" ? "zoning" : "property-checks")} />}
       </fieldset>}
       {scope.canWork && <InvestigationWorkEditor key={JSON.stringify(scope.userData.investigationWork ?? {})}
-        value={scope.userData.investigationWork} disabled={busy} onSave={(work) => shared.save(toSupabaseJson({ investigationWork: work }))} />}
+        value={scope.userData.investigationWork} assets={scope.assets} disabled={busy} onSave={(work) => shared.save(toSupabaseJson({ investigationWork: work }))} />}
       <ul aria-label="Evidence required for approval" className="grid gap-2 sm:grid-cols-2">{assessment.items.map((item) => <li key={item.id} className="border-b border-border py-2 text-sm">
         <strong>{item.label}</strong><p>{item.supported ? "Recorded evidence available" : item.disposition ? "Recorded limitation awaiting reviewer disposition" : "Work still required"}</p>
       </li>)}</ul>
@@ -233,8 +233,8 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
   </section>;
 }
 
-function InvestigationWorkEditor({ value, disabled, onSave }: {
-  value: unknown; disabled: boolean; onSave: (work: Record<string, unknown>) => Promise<void>;
+function InvestigationWorkEditor({ value, assets, disabled, onSave }: {
+  value: unknown; assets: OrderInvestigation["assets"]; disabled: boolean; onSave: (work: Record<string, unknown>) => Promise<void>;
 }) {
   const existing = recordedInvestigationWork(value);
   const [itemId, setItemId] = useState("property_checks");
@@ -264,6 +264,14 @@ function InvestigationWorkEditor({ value, disabled, onSave }: {
         </select></label>
         <label className="text-sm">Source checked<input required maxLength={500} className="mt-1 min-h-11 w-full rounded-md border border-border p-2"
           value={draft.source} onChange={(event) => setDraft({ ...draft, source: event.target.value })} /></label>
+        <fieldset className="space-y-2 text-sm"><legend>Documents used for this finding</legend>
+          {assets.map((asset) => <label key={asset.id} className="flex items-start gap-2">
+            <input type="checkbox" checked={draft.sourceAssetIds?.includes(asset.id) ?? false}
+              onChange={(event) => setDraft({ ...draft, sourceAssetIds: event.target.checked
+                ? [...(draft.sourceAssetIds ?? []), asset.id] : (draft.sourceAssetIds ?? []).filter((id) => id !== asset.id) })} />
+            {asset.original_file_name}
+          </label>)}
+        </fieldset>
         <label className="text-sm">Date checked<input required type="date" className="mt-1 min-h-11 w-full rounded-md border border-border p-2"
           value={draft.checkedAt.slice(0, 10)} onChange={(event) => setDraft({ ...draft, checkedAt: event.target.value })} /></label>
         {(["result", "reason", "limitation"] as const).map((key) => <label key={key} className="text-sm sm:col-span-2">

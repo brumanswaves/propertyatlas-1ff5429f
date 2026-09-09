@@ -5,6 +5,7 @@ import { ApiRequestError } from "@/lib/sitePotential/serverAuth";
 import { buildSavedInvestigationUserDataPatch } from "@/lib/workbench/savedInvestigationProjection";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { assembleInvestigation, buildInvestigationModelPackage } from "../sharedInvestigation";
+import { INVESTIGATION_BRIEF_MODEL } from "../../../../supabase/functions/_shared/investigationBrief";
 
 const orderId = "88888888-8888-4888-8888-888888888888";
 const customerId = "22222222-2222-4222-8222-222222222222";
@@ -16,7 +17,7 @@ function scope() {
     userData: { normalizedParcel: { id: parcelId, source: "manual", sourceLabel: "Synthetic property",
       erfNumber: "42", knownFields: [], missingFields: [] },
       ...buildSavedInvestigationUserDataPatch(parcelId, createEmptyErfWorkspaceState()) },
-    assets: [], siteProject: null };
+    assets: [], siteProject: null, processingSources: [] };
 }
 function asset() {
   return { id: assetId, user_id: customerId, parcel_id: parcelId, asset_category: "sg_diagram", asset_type: "sg_diagram",
@@ -93,7 +94,7 @@ describe("investigation review route (provider fixtures, no live AI)", () => {
     const persist = vi.fn(async () => ({ data: assetId, error: null }));
     const statement = { text: "Synthetic property identity requires verification.", sourceRefs: ["manual-parcel-record"] };
     const brief = { bottomLine: statement, known: [statement], potential: [statement], risks: [statement], unknowns: [statement], nextSteps: [statement] };
-    const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ success: true, model: "provider-fixture", brief }));
+    const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ success: true, model: INVESTIGATION_BRIEF_MODEL, brief }));
     const deps = { authenticate: vi.fn(async () => ({ user: { id: workerId }, token: "synthetic", supabase: { rpc } })) as never,
       serviceClient: vi.fn(() => ({ rpc: persist })) as never, env: (key: string) => key === "SUPABASE_URL" ? "http://127.0.0.1:54321" : "synthetic-not-a-secret",
       fetchImpl };
@@ -119,7 +120,7 @@ describe("investigation review route (provider fixtures, no live AI)", () => {
   });
   it("rejects incomplete generation and invented sources without saving a draft", async () => {
     const f = reviewFixture();
-    f.fetchImpl.mockImplementation(async () => Response.json({ success: true, model: "fixture",
+    f.fetchImpl.mockImplementation(async () => Response.json({ success: true, model: INVESTIGATION_BRIEF_MODEL,
       brief: { ...f.brief, bottomLine: { text: "False source", sourceRefs: ["invented"] } } }));
     expect((await handleInvestigationReviewRequest(request({ action: "generate", orderId }), f.deps)).status).toBe(502);
     expect(f.persist).not.toHaveBeenCalled();

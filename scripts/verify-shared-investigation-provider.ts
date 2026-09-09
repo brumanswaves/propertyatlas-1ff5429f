@@ -12,6 +12,9 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url === ASK_EASY_ERF_OPENAI_URL) {
     const body = JSON.parse(String(init?.body));
+    await fetchImpl("http://127.0.0.1:54325/__fixture/provider-evidence", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
     let answer;
     if (body.response_format.json_schema.name === "erf_document_extraction") {
       const sg = body.messages[0].content.includes("This document is a Surveyor-General");
@@ -26,6 +29,10 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
           value: sg ? "600 m2" : "T42/2026", numericValue: sg ? 600 : null, unit: sg ? "m2" : null,
           page: 1, quote: sg ? "Extent 600 m2" : "Deed T42/2026", confidence: "high", interpretation: false }] };
     } else if (body.response_format.json_schema.name === "investigation_brief") {
+      if (body.model !== "gpt-5.4-2026-03-05" || body.reasoning_effort !== "high" || body.max_completion_tokens !== 24000) {
+        throw new Error("Paid brief release model contract changed");
+      }
+      if (JSON.stringify(body).includes("RESTRICTED_PERMISSION_SENTINEL")) throw new Error("Restricted material reached provider boundary");
       const content = JSON.parse(body.messages.at(-1).content);
       const source = content.evidence.sources.find((s: { id: string }) => s.id === "investigation-work-property_checks") ?? content.evidence.sources[0];
       const statement = { text: "Synthetic provider fixture: recorded evidence requires the stated follow-up checks.", sourceRefs: [source.id] };

@@ -25,6 +25,7 @@ const redact = (text) => secrets.reduce((safe, key) => safe.split(key).join("[RE
   .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED JWT]");
 const results = [];
 const requests = [];
+const providerRequests = [];
 const processes = [];
 const contexts = [];
 const errors = [];
@@ -43,6 +44,11 @@ const gateway = createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = Buffer.concat(chunks);
     const url = new URL(req.url, gatewayUrl);
+    if (url.pathname === "/__fixture/provider-evidence" && req.method === "POST") {
+      // Synthetic outbound payload capture; no headers, credentials or real provider traffic.
+      providerRequests.push(JSON.parse(body.toString()));
+      res.writeHead(200); res.end("recorded"); return;
+    }
     let target;
     if (url.pathname.startsWith("/functions/v1/")) {
       assert(allowedFunctions.has(url.pathname.split("/").at(-1)), "Unapproved function request blocked");
@@ -320,6 +326,49 @@ async function verifySignoffFailures() {
   must(await adminClient.from("erf_assets").update({ metadata: sg.metadata }).eq("id", sg.id));
   results.push("Actual application approval rejects unsupported completion, stale evidence and wrong-property SG despite stale user attachment; no rejected version was approved or delivered");
 }
+async function verifyProcessingPermission() {
+  const original = await rpc("worker", "read_order_investigation", { p_order_id: orderA });
+  const paid = original.assets.find((asset) => asset.asset_category === "paid_report");
+  const forbidden = "RESTRICTED_PERMISSION_SENTINEL";
+  must(await adminClient.from("erf_assets").update({ original_file_name: `${forbidden}-filename.pdf`,
+    source_label: `${forbidden}-source-label`, metadata: { ...paid.metadata, aiProcessingAllowed: false,
+      extractedText: `${forbidden}-extracted-text`, summary: `${forbidden}-extracted-finding` } }).eq("id", paid.id));
+  for (const { sourceAssetIds, archived } of [
+    { sourceAssetIds: [paid.id], archived: false },
+    { sourceAssetIds: [], archived: false },
+    { sourceAssetIds: [], archived: true },
+  ]) {
+    if (archived) must(await adminClient.from("erf_assets").update({ status: "archived" }).eq("id", paid.id));
+    const current = await rpc("worker", "read_order_investigation", { p_order_id: orderA });
+    await rpc("worker", "patch_order_investigation", { p_order_id: orderA, p_expected_revision: current.revision,
+      p_patch: { investigationWork: { ...original.userData.investigationWork, property_checks: {
+        sourceAssetIds, source: `${forbidden}-manual-source`, checkedAt: now, result: `${forbidden}-manual-derivative`,
+        reason: `${forbidden}-reason`, limitation: `${forbidden}-limitation`, disposition: "reviewed" } },
+      normalizedParcel: { ...original.userData.normalizedParcel, sourceLabel: `${forbidden}-copied-identity-label` } } });
+    const generated = await reviewRequest("worker", { action: "generate", orderId: orderA });
+    assert.equal(generated.status, 200, JSON.stringify(generated.body));
+    const outbound = providerRequests.at(-1);
+    assert.equal(outbound.model, "gpt-5.4-2026-03-05");
+    assert.equal(outbound.reasoning_effort, "high");
+    assert.equal(outbound.max_completion_tokens, 24000);
+    assert(!JSON.stringify(outbound).includes(forbidden), "Restricted document or derivative reached the provider");
+    assert(!JSON.stringify(outbound).includes(paid.id), "Restricted asset identifier reached the provider");
+    const model = JSON.parse(outbound.messages.at(-1).content);
+    assert.equal(model.provenance.userMaterialPermitted, false);
+    assert.equal(model.provenance.omittedDocumentCount, 1);
+    const version = await rpc("worker", "read_investigation_review", { p_order_id: orderA, p_version_id: generated.body.versionId });
+    assert(JSON.stringify(version.report_assembly).includes(`${forbidden}-manual-derivative`));
+    if (!archived) assert(JSON.stringify(version.evidence_manifest).includes(`${forbidden}-filename.pdf`));
+    assert(!JSON.stringify(version.report_assembly.modelEvidencePack).includes(forbidden));
+    assert.equal(version.approved_at, null);
+  }
+  must(await adminClient.from("erf_assets").update({ metadata: paid.metadata, status: paid.status,
+    original_file_name: paid.original_file_name, source_label: paid.source_label }).eq("id", paid.id));
+  const current = await rpc("worker", "read_order_investigation", { p_order_id: orderA });
+  await rpc("worker", "patch_order_investigation", { p_order_id: orderA, p_expected_revision: current.revision,
+    p_patch: { investigationWork: original.userData.investigationWork, normalizedParcel: original.userData.normalizedParcel } });
+  results.push("Actual outbound paid-model requests exclude restricted filename, extraction, manually derived finding/source/limitation and copied identity labels, even with forged empty dependencies or an archived source; human-only assembly retains findings");
+}
 try {
   for (const [actor, id] of Object.entries(ids)) {
     const email = `isolated-${actor}@example.invalid`;
@@ -353,6 +402,7 @@ try {
     NODE_ENV: "production", SUPABASE_URL: gatewayUrl, SUPABASE_ANON_KEY: anon, SUPABASE_PUBLISHABLE_KEY: anon,
     SUPABASE_SERVICE_ROLE_KEY: service, ASK_EASY_ERF_FN_SECRET: "isolated-internal-fixture",
     OPENAI_API_KEY: "isolated-model-fixture", INVESTIGATION_BRIEF_ENABLED: "true",
+    INVESTIGATION_BRIEF_MODEL: "gpt-5.4-2026-03-05", INVESTIGATION_BRIEF_REASONING: "high",
     EASY_ERF_CUSTOMER_EMAIL_ENABLED: "true", RESEND_API_KEY: "isolated-email-fixture",
     // The unchanged email handler requires this canonical HTTPS link. It is only
     // rendered into intercepted synthetic mail; no request may reach that host.
@@ -377,6 +427,7 @@ try {
   assert.equal(must(await adminClient.from("saved_properties").select("id").eq("user_id", ids.worker)).length, 0);
   await gatherSections(worker);
   await verifySignoffFailures();
+  await verifyProcessingPermission();
   await worker.reload();
   await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
   await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).click();
@@ -523,6 +574,7 @@ try {
     results, errors, productionAccess: false, liveProviderCalls: 0 };
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify(receipt, null, 2));
   await writeFile(resolve(artifacts, "network.json"), JSON.stringify(requests, null, 2));
+  await writeFile(resolve(artifacts, "provider-requests.json"), redact(JSON.stringify(providerRequests, null, 2)));
   await writeFile(resolve(artifacts, "processes.log"), redact(processes.map((p) => p.log.join("")).join("\n")));
   console.log(JSON.stringify(receipt, null, 2));
 }
