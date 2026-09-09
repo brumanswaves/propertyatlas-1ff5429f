@@ -159,7 +159,7 @@ try {
   await waitFor(`${appUrl}/admin/fulfillment`, app);
   browser = await chromium.launch({ headless: true });
   const worker = await open("worker");
-  await worker.goto(`${appUrl}/admin/fulfillment#order=${orderA}`);
+  await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   await worker.getByRole("button", { name: "Yes, this is the correct erf", exact: true }).waitFor();
   await worker.getByRole("button", { name: "Yes, this is the correct erf", exact: true }).click();
   await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Add address/ }).waitFor();
@@ -183,7 +183,7 @@ try {
   results.push("Assigned non-admin worker saved real customer records, generated fixture AI, edited draft; customer cannot read draft");
 
   const admin = await open("admin");
-  await admin.goto(`${appUrl}/admin/fulfillment#order=${orderA}`);
+  await admin.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   await admin.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Report/ }).click();
   const approvedResponse = admin.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "approve");
   await admin.getByRole("button", { name: "Approve this evidence and brief version", exact: true }).click();

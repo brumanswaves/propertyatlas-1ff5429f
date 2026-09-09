@@ -205,7 +205,7 @@ async function installSyntheticSignedInSupabase(context, name) {
             status: found ? 200 : 406,
             contentType: "application/json",
             body: found
-              ? JSON.stringify({ id: durableRow.id })
+              ? JSON.stringify(Object.fromEntries(select.split(",").map((key) => [key, durableRow[key]])))
               : JSON.stringify({
                   code: "PGRST116",
                   details: "The result contains 0 rows",
@@ -226,7 +226,7 @@ async function installSyntheticSignedInSupabase(context, name) {
       }
 
       if (
-        url.pathname === "/rest/v1/rpc/patch_saved_property_user_data" &&
+        url.pathname === "/rest/v1/rpc/patch_saved_property_user_data_if_unchanged" &&
         method === "POST"
       ) {
         const payload = request.postDataJSON();
@@ -248,6 +248,13 @@ async function installSyntheticSignedInSupabase(context, name) {
             body: JSON.stringify({ message: "Invalid acceptance RPC payload" }),
           });
           return;
+        }
+
+        for (const key of Object.keys(patch)) {
+          if (JSON.stringify(payload.p_expected?.[key]) !== JSON.stringify(durableRow.user_data[key])) {
+            await route.fulfill({ status: 409, json: { code: "40001", message: "Fixture rejected stale baseline" } });
+            return;
+          }
         }
 
         durableRow.user_data = { ...durableRow.user_data, ...patch };

@@ -49,9 +49,13 @@ jobs:
           mkdir -p "${STACK}"
           supabase init --workdir "${STACK}"
           cp -r supabase/migrations "${STACK}/supabase/"
-          docker network create --internal ee-r999-investigation-test
+          # Host-published CLI ports need a bridge gateway. Keep container egress
+          # denied explicitly, before any migration or application service starts.
+          docker network create --subnet 172.30.87.0/24 -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 ee-r999-investigation-test
+          sudo iptables -I DOCKER-USER 1 -s 172.30.87.0/24 ! -d 172.30.87.0/24 -m conntrack --ctstate NEW -j REJECT
+          sudo iptables -C DOCKER-USER -s 172.30.87.0/24 ! -d 172.30.87.0/24 -m conntrack --ctstate NEW -j REJECT
           # No project link, production env, function deploy or real credentials.
-          # Cron from historical migrations cannot reach the internet on this network.
+          # Historical cron cannot initiate external requests through this bridge.
           supabase start --workdir "${STACK}" --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
           umask 077
           supabase status --workdir "${STACK}" -o json > "${RUNNER_TEMP}/investigation-runtime.json"
