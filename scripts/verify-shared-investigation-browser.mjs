@@ -156,6 +156,8 @@ async function verifyCustomerEntry() {
   await page.getByRole("button", { name: "Report", exact: true }).click();
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).waitFor();
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-desktop.png"), fullPage: true });
+  await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: resolve(artifacts, "customer-self-service-viewport.png") });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
   // Exercise the expandable Workbench handoff, not the standalone report offer.
   const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" })
@@ -283,7 +285,10 @@ async function gatherSections(page) {
 async function reviewRequest(actor, body) {
   const response = await fetch(`${appUrl}/api/investigations/review`, { method: "POST", headers: {
     Authorization: `Bearer ${sessions[actor].access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  return { status: response.status, body: await response.json() };
+  const payload = await response.json();
+  requests.push({ path: "/api/investigations/review", actor, action: body.action, method: "POST",
+    status: response.status, response: redact(JSON.stringify(payload)) });
+  return { status: response.status, body: payload };
 }
 async function verifySignoffFailures() {
   const original = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
