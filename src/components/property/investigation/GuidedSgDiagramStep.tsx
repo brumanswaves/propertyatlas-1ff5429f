@@ -65,6 +65,7 @@ function extractionSummary(asset: ErfAsset) {
 }
 
 interface SgDiagramPollingOptions {
+  investigationOrderId?: string;
   assetId: string;
   parcelId: string;
   refreshVault: () => Promise<void> | void;
@@ -78,6 +79,7 @@ interface SgDiagramPollingOptions {
  * request, completion and cleanup path deterministic and testable.
  */
 export function startSgDiagramPolling({
+  investigationOrderId,
   assetId,
   parcelId,
   refreshVault,
@@ -99,7 +101,7 @@ export function startSgDiagramPolling({
     if (disposed || inFlight) return;
     inFlight = true;
     try {
-      const result = await extract(assetId, { expectedParcelId: parcelId });
+      const result = await extract(assetId, { expectedParcelId: parcelId, ...(investigationOrderId ? { investigationOrderId } : {}) });
       if (disposed) return;
       if (result.success && result.extractionStatus === "processing") {
         delay = 20_000;
@@ -179,10 +181,12 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
       assetId: processingAssetId,
       parcelId: parcel.id,
       refreshVault,
+      investigationOrderId: vault.investigationOrderId,
     });
-  }, [parcel.id, processingAssetId, refreshVault, signedIn]);
+  }, [parcel.id, processingAssetId, refreshVault, signedIn, vault.investigationOrderId]);
 
   function syncAttachmentCount(count: number) {
+    if (vault.investigationOrderId) return;
     updateErfWorkspaceState(parcel.id, {
       sgDiagramAttachmentCount: count,
       dirty: true,
@@ -202,6 +206,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
       const result = await extractErfAsset(asset.id, {
         expectedParcelId: parcel.id,
         retry,
+        ...(vault.investigationOrderId ? { investigationOrderId: vault.investigationOrderId } : {}),
       });
       await vault.refresh();
       dispatchErfFileVaultUpdated(parcel.id);

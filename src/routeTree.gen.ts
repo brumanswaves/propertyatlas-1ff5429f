@@ -51,6 +51,9 @@ import { Route as ApiSitePotentialBetaGrantRouteImport } from './routes/api/site
 import { Route as ApiReportsAskEasyErfRouteImport } from './routes/api/reports.ask-easy-erf'
 import { Route as ApiLocalServicesSearchRouteImport } from './routes/api/local-services.search'
 import { Route as ApiListingsImportRouteImport } from './routes/api/listings.import'
+import { Route as ApiInvestigationsUploadRouteImport } from './routes/api/investigations.upload'
+import { Route as ApiInvestigationsReviewRouteImport } from './routes/api/investigations.review'
+import { Route as ApiInvestigationsAssetRouteImport } from './routes/api/investigations.asset'
 import { Route as ApiAdminSupportRouteImport } from './routes/api/admin.support'
 import { Route as ApiAddressSuggestionsRouteImport } from './routes/api/address.suggestions'
 import { Route as ApiPublicSitePotentialProcessRouteImport } from './routes/api/public.site-potential.process'
@@ -273,6 +276,21 @@ const ApiListingsImportRoute = ApiListingsImportRouteImport.update({
   path: '/api/listings/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInvestigationsUploadRoute = ApiInvestigationsUploadRouteImport.update({
+  id: '/api/investigations/upload',
+  path: '/api/investigations/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvestigationsReviewRoute = ApiInvestigationsReviewRouteImport.update({
+  id: '/api/investigations/review',
+  path: '/api/investigations/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvestigationsAssetRoute = ApiInvestigationsAssetRouteImport.update({
+  id: '/api/investigations/asset',
+  path: '/api/investigations/asset',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSupportRoute = ApiAdminSupportRouteImport.update({
   id: '/api/admin/support',
   path: '/api/admin/support',
@@ -323,6 +341,9 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
+  '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
+  '/api/investigations/review': typeof ApiInvestigationsReviewRoute
+  '/api/investigations/upload': typeof ApiInvestigationsUploadRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -370,6 +391,9 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
+  '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
+  '/api/investigations/review': typeof ApiInvestigationsReviewRoute
+  '/api/investigations/upload': typeof ApiInvestigationsUploadRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -418,6 +442,9 @@ export interface FileRoutesById {
   '/admin_/users': typeof AdminUsersRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
+  '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
+  '/api/investigations/review': typeof ApiInvestigationsReviewRoute
+  '/api/investigations/upload': typeof ApiInvestigationsUploadRoute
   '/api/listings/import': typeof ApiListingsImportRoute
   '/api/local-services/search': typeof ApiLocalServicesSearchRoute
   '/api/reports/ask-easy-erf': typeof ApiReportsAskEasyErfRoute
@@ -467,6 +494,9 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
+    | '/api/investigations/asset'
+    | '/api/investigations/review'
+    | '/api/investigations/upload'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -514,6 +544,9 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
+    | '/api/investigations/asset'
+    | '/api/investigations/review'
+    | '/api/investigations/upload'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -561,6 +594,9 @@ export interface FileRouteTypes {
     | '/admin_/users'
     | '/api/address/suggestions'
     | '/api/admin/support'
+    | '/api/investigations/asset'
+    | '/api/investigations/review'
+    | '/api/investigations/upload'
     | '/api/listings/import'
     | '/api/local-services/search'
     | '/api/reports/ask-easy-erf'
@@ -607,6 +643,9 @@ export interface RootRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   ApiAddressSuggestionsRoute: typeof ApiAddressSuggestionsRoute
   ApiAdminSupportRoute: typeof ApiAdminSupportRoute
+  ApiInvestigationsAssetRoute: typeof ApiInvestigationsAssetRoute
+  ApiInvestigationsReviewRoute: typeof ApiInvestigationsReviewRoute
+  ApiInvestigationsUploadRoute: typeof ApiInvestigationsUploadRoute
   ApiListingsImportRoute: typeof ApiListingsImportRoute
   ApiLocalServicesSearchRoute: typeof ApiLocalServicesSearchRoute
   ApiReportsAskEasyErfRoute: typeof ApiReportsAskEasyErfRoute
@@ -918,6 +957,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiListingsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/investigations/upload': {
+      id: '/api/investigations/upload'
+      path: '/api/investigations/upload'
+      fullPath: '/api/investigations/upload'
+      preLoaderRoute: typeof ApiInvestigationsUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/investigations/review': {
+      id: '/api/investigations/review'
+      path: '/api/investigations/review'
+      fullPath: '/api/investigations/review'
+      preLoaderRoute: typeof ApiInvestigationsReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/investigations/asset': {
+      id: '/api/investigations/asset'
+      path: '/api/investigations/asset'
+      fullPath: '/api/investigations/asset'
+      preLoaderRoute: typeof ApiInvestigationsAssetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/support': {
       id: '/api/admin/support'
       path: '/api/admin/support'
@@ -985,6 +1045,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   ApiAddressSuggestionsRoute: ApiAddressSuggestionsRoute,
   ApiAdminSupportRoute: ApiAdminSupportRoute,
+  ApiInvestigationsAssetRoute: ApiInvestigationsAssetRoute,
+  ApiInvestigationsReviewRoute: ApiInvestigationsReviewRoute,
+  ApiInvestigationsUploadRoute: ApiInvestigationsUploadRoute,
   ApiListingsImportRoute: ApiListingsImportRoute,
   ApiLocalServicesSearchRoute: ApiLocalServicesSearchRoute,
   ApiReportsAskEasyErfRoute: ApiReportsAskEasyErfRoute,

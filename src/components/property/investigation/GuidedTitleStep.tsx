@@ -107,6 +107,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
       const result = await extractErfAsset(asset.id, {
         expectedParcelId: parcel.id,
         retry,
+        ...(vault.investigationOrderId ? { investigationOrderId: vault.investigationOrderId } : {}),
       });
       await vault.refresh();
       dispatchErfFileVaultUpdated(parcel.id);

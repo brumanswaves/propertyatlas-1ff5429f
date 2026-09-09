@@ -16,6 +16,8 @@ import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/Vac
 import { StreetSideBuildEnvelope } from "@/components/property/sitePotential/StreetSideBuildEnvelope";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { parseStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
 import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
 
 export interface SitePotentialTabProps {
@@ -46,13 +48,16 @@ export function SitePotentialTab({
 }: SitePotentialTabProps) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const shared = useSharedInvestigationScope(parcel.id);
+  const isShared = Boolean(shared);
+  const sharedInputs = shared?.snapshot.userData.buildEnvelopeInputs;
   const vault = useErfFileVault(parcel.id);
   const [envelopeResult, setEnvelopeResult] = useState<BuildEnvelopeResult | null>(null);
   const [acceptedEnvelope, setAcceptedEnvelope] = useState(false);
 
   const manualZoneCode = useMemo(
-    () => workspaceState.planning.zoneCode ?? readStoredPlanningZone(parcel.id, userId),
-    [parcel.id, userId, workspaceState.planning.zoneCode],
+    () => workspaceState.planning.zoneCode ?? (isShared ? null : readStoredPlanningZone(parcel.id, userId)),
+    [isShared, parcel.id, userId, workspaceState.planning.zoneCode],
   );
 
   const planningAssessment = useMemo(() => {
@@ -97,10 +102,11 @@ export function SitePotentialTab({
         planning: planningAssessment,
         recordedAreaM2,
         userId,
+        ...(isShared ? { storedInputs: parseStoredBuildEnvelopeInputs(sharedInputs) } : {}),
       });
       setAcceptedEnvelope(Boolean(candidate?.acceptance.accepted));
     },
-    [parcel, parcelRing, planningAssessment, recordedAreaM2, userId],
+    [isShared, sharedInputs, parcel, parcelRing, planningAssessment, recordedAreaM2, userId],
   );
 
   const identityLine = useMemo(() => {

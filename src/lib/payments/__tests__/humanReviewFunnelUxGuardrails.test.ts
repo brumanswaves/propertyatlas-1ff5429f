@@ -76,7 +76,9 @@ describe("Done-for-You founder fulfillment", () => {
     expect(fulfillment).toContain("orderPriority");
     expect(editor).toContain("Standard done-for-you investigation checklist");
     expect(fulfillment).toContain("Open full property investigation");
-    expect(fulfillment).toContain('defaultOpen={status === "processing"}');
+    expect(fulfillment).toContain('status === "processing" ? <OrderInvestigationWorkspace');
+    expect(fulfillment).toContain("defaultOpen={false}");
+    expect(fulfillment.indexOf("<OrderInvestigationWorkspace")).toBeLessThan(fulfillment.indexOf("<FounderHumanReviewEditor"));
     expect(fulfillment).toContain("Mark this exact report ready");
     expect(fulfillment).toContain("do not attach or redistribute the provider PDF");
   });

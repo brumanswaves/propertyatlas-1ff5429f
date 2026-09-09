@@ -113,7 +113,7 @@ describe("founder metadata and selected-detail boundary", () => {
   it("wires the route to isolated state and keeps bodies out of queue cards", () => {
     const route = readFileSync(resolve("src/routes/admin_.fulfillment.tsx"), "utf8");
     const hook = readFileSync(resolve("src/lib/humanReview/useFounderOrderData.ts"), "utf8");
-    expect(route).toContain("useFounderOrderData(focusedOrderId)");
+    expect(route).toContain("useFounderOrderData(focusedOrderId, !isAdmin)");
     expect(route).not.toContain('.from("report_orders")');
     const queue = route.slice(route.indexOf("function QueueOverview"), route.indexOf("function FocusedOrderWorkbench"));
     expect(queue).not.toContain("order.payload");

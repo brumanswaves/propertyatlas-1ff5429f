@@ -27,6 +27,13 @@ export type StoredBuildEnvelopeOverrides = Partial<StoredBuildEnvelopeInputs>;
 type BuildEnvelopeStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 const KEY_PREFIX = "erfstoep.build-envelope.v1:";
+export const BUILD_ENVELOPE_INPUTS_UPDATED_EVENT = "easyerf:build-envelope-inputs-updated";
+
+function dispatchUpdated(parcelId: string, userId: BrowserPersistenceUserId, storage: BuildEnvelopeStorage) {
+  if (typeof window !== "undefined" && storage === window.localStorage) {
+    window.dispatchEvent(new CustomEvent(BUILD_ENVELOPE_INPUTS_UPDATED_EVENT, { detail: { parcelId, userId } }));
+  }
+}
 
 export function buildEnvelopeStorageKey(
   parcelId: string,
@@ -60,11 +67,15 @@ export function readStoredBuildEnvelopeInputs(
   try {
     const raw = storage.getItem(buildEnvelopeStorageKey(parcelId, userId));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredBuildEnvelopeOverrides;
-    return parsed && typeof parsed === "object" ? stripEmpty(parsed) : null;
+    return parseStoredBuildEnvelopeInputs(JSON.parse(raw));
   } catch {
     return null;
   }
+}
+
+export function parseStoredBuildEnvelopeInputs(value: unknown): StoredBuildEnvelopeOverrides | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return stripEmpty(value);
 }
 
 export function writeStoredBuildEnvelopeInputs(
@@ -79,6 +90,7 @@ export function writeStoredBuildEnvelopeInputs(
       buildEnvelopeStorageKey(parcelId, userId),
       JSON.stringify(stripEmpty(inputs)),
     );
+    dispatchUpdated(parcelId, userId, storage);
   } catch {
     /* storage unavailable; the session still works, it just will not persist */
   }
@@ -92,6 +104,7 @@ export function clearStoredBuildEnvelopeInputs(
   if (!storage) return;
   try {
     storage.removeItem(buildEnvelopeStorageKey(parcelId, userId));
+    dispatchUpdated(parcelId, userId, storage);
   } catch {
     /* ignore */
   }

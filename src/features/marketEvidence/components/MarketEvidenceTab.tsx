@@ -20,6 +20,7 @@ import {
   type AddressAutocompleteSuggestion,
 } from "@/lib/search/addressAutocomplete";
 import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
 import { toast } from "sonner";
 import { evidenceFromCandidate, runActiveListingRadar } from "../activeListingRadar";
 import {
@@ -361,6 +362,7 @@ function suggestedAreaChips(identity: PropertyIdentity) {
 }
 
 export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel }) {
+  const shared = useSharedInvestigationScope(parcel.id);
   const {
     loading,
     evidence,
@@ -485,7 +487,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       notes: addressDraft.notes || null,
     });
     if (ok) {
-      updateErfWorkspaceState(parcel.id, {
+      if (!shared) updateErfWorkspaceState(parcel.id, {
         marketAddressSaved: true,
         marketEvidenceStarted: true,
         dirty: true,
@@ -509,7 +511,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       notes: marketAddressIntelligence?.notes ?? null,
     });
     if (ok) {
-      updateErfWorkspaceState(parcel.id, {
+      if (!shared) updateErfWorkspaceState(parcel.id, {
         marketAddressSaved: true,
         marketEvidenceStarted: true,
         dirty: true,
@@ -608,7 +610,7 @@ export function MarketEvidenceTab({ parcel }: { parcel: NormalizedOfficialParcel
       notes: compDraft.notes.trim() || null,
     });
     if (!ok) return;
-    updateErfWorkspaceState(parcel.id, { marketEvidenceStarted: true, dirty: true });
+    if (!shared) updateErfWorkspaceState(parcel.id, { marketEvidenceStarted: true, dirty: true });
     setCompDraft(emptyCompDraft());
     setShowCompForm(false);
   }

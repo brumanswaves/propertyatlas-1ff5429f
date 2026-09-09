@@ -7,6 +7,7 @@ import {
   updateErfWorkspaceState,
 } from "@/lib/workbench/erfWorkspaceState";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
 import {
   buildAddressCandidate,
   googleMapsPointUrl,
@@ -79,6 +80,7 @@ function buildParcelAddressSuggestion(parcel: NormalizedOfficialParcel): Address
 }
 
 export function AddAddressStep({ parcel, userId, onContinue }: AddAddressStepProps) {
+  const shared = useSharedInvestigationScope(parcel.id);
   const { loading, marketAddressIntelligence, saveMarketAddressIntelligence } =
     useSavedMarketEvidence(parcel.id);
   const savedAddress = selectedMarketAddress(marketAddressIntelligence);
@@ -198,7 +200,7 @@ export function AddAddressStep({ parcel, userId, onContinue }: AddAddressStepPro
       const ok = await saveMarketAddressIntelligence(next);
       if (!ok) return;
 
-      if (typeof window !== "undefined") {
+      if (!shared && typeof window !== "undefined") {
         window.localStorage.setItem(
           browserScopedParcelKey("working-address", parcel.id, userId),
           JSON.stringify({
@@ -210,7 +212,7 @@ export function AddAddressStep({ parcel, userId, onContinue }: AddAddressStepPro
           }),
         );
       }
-      updateErfWorkspaceState(parcel.id, {
+      if (!shared) updateErfWorkspaceState(parcel.id, {
         marketAddressSaved: true,
         dirty: true,
       }, undefined, userId);

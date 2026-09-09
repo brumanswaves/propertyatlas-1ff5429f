@@ -188,6 +188,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
       const result = await extractErfAsset(asset.id, {
         expectedParcelId: parcel.id,
         retry,
+        ...(vault.investigationOrderId ? { investigationOrderId: vault.investigationOrderId } : {}),
       });
       await vault.refresh();
       dispatchErfFileVaultUpdated(parcel.id);

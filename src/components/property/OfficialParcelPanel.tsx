@@ -99,6 +99,9 @@ import {
   workspaceProgressPatchForStartedTab,
 } from "@/lib/workbench/workbenchTabProgress";
 import { persistSavedProperty } from "@/lib/workbench/savedPropertyPersistence";
+import { patchSavedPropertyUserData, isSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
+import { buildSavedInvestigationUserDataPatch, flushSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { prepareCustomerInvestigation } from "@/lib/investigation/investigationClient";
 import {
   prepareGuidedIdentityConfirmationTransition,
   prepareExplicitWorkspaceTransition,
@@ -2018,6 +2021,13 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   ]);
   const selectedErfGoogleMapsUrl = googleMapsCoordinateUrl(normalizedParcel.coordinates);
 
+  async function preparePaidInvestigation() {
+    // Signed-out users keep their anonymous file; the existing checkout handles sign-in.
+    if (!userId) return;
+    await prepareCustomerInvestigation(userId, normalizedParcel, parcelRing);
+    setSaved(true);
+  }
+
   async function toggleSave() {
     if (!user) {
       toast.message("Sign in to save properties");
@@ -2041,6 +2051,8 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       } else {
         const userData = {
           normalizedParcelId: parcelId,
+          normalizedParcel,
+          parcelRing,
           provider: csg ? "Chief Surveyor-General" : "Kouga Municipality GIS",
           sourceLayer: selection.layer,
           displayTitle: resolved.displayTitle,
@@ -2072,6 +2084,9 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           fetchedAt: new Date().toISOString(),
         };
         try {
+          let baseline: Record<string, unknown> = {};
+          let isNew = false;
+          let storedUserData: Record<string, unknown> | undefined;
           await persistSavedProperty({
             userId: user.id,
             parcelId,
@@ -2091,24 +2106,26 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
                 .eq("parcel_id", parcelId)
                 .maybeSingle();
               if (error) throw error;
+              baseline = isSavedPropertyUserData(data?.user_data) ? data.user_data : {};
+              isNew = !data;
               return data
                 ? { userData: data.user_data, externalLinks: data.external_links }
                 : null;
             },
             write: async (record) => {
-              const { error } = await supabase.from("saved_properties").upsert(
-                {
-                  user_id: record.userId,
-                  parcel_id: record.parcelId,
-                  external_links: record.externalLinks as never,
-                  user_data: record.userData as never,
-                },
-                { onConflict: "user_id,parcel_id" },
-              );
+              const { data: session } = await supabase.auth.getSession();
+              if (session.session?.user.id !== user.id) throw new Error("The signed-in account changed.");
+              storedUserData = await patchSavedPropertyUserData(parcelId, {
+                ...userData, ...(isNew ? buildSavedInvestigationUserDataPatch(parcelId, readErfWorkspaceState(parcelId, undefined, user.id)) : {}),
+              }, supabase, baseline);
+              const { error } = await supabase.from("saved_properties").update({
+                external_links: record.externalLinks as never,
+              }).eq("user_id", user.id).eq("parcel_id", parcelId);
               if (error) throw error;
             },
           });
           setSaved(true);
+          await flushSavedInvestigation(parcelId, user.id, isNew ? storedUserData : undefined);
           toast.success("Property saved");
         } catch {
           toast.error("Could not save this property. Please try again.");
@@ -3185,6 +3202,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             parcelId={normalizedParcel.id}
             propertyReference={resolved.displayTitle}
             source={`workbench-${tab}`}
+            onPrepare={preparePaidInvestigation}
             compact
           />
         </section>

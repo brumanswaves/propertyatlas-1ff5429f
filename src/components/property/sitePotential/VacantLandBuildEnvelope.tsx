@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth/useAuth";
-import { CheckCircle2, Info, Ruler, RotateCcw } from "lucide-react";
+import { CheckCircle2, Info, Ruler, RotateCcw, Save } from "lucide-react";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import { cn } from "@/lib/utils";
 import {
   calculateBuildEnvelope,
@@ -13,6 +15,7 @@ import { buildEnvelopeAcceptanceState } from "@/lib/sitePotential/buildEnvelopeA
 import {
   clearStoredBuildEnvelopeInputs,
   readStoredBuildEnvelopeInputs,
+  parseStoredBuildEnvelopeInputs,
   writeStoredBuildEnvelopeInputs,
   type StoredBuildEnvelopeOverrides,
 } from "@/lib/sitePotential/buildEnvelopeStore";
@@ -94,6 +97,10 @@ export function VacantLandBuildEnvelope({
 }: VacantLandBuildEnvelopeProps) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const shared = useSharedInvestigationScope(parcelId);
+  const isShared = Boolean(shared);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [unsaved, setUnsaved] = useState(false);
   const prefill = useMemo(
     () => (assessment ? buildSitePotentialRulePrefill(assessment) : null),
     [assessment],
@@ -102,12 +109,14 @@ export function VacantLandBuildEnvelope({
 
   /** Only fields the user actually touched. Never seeded from a prefill. */
   const [overrides, setOverrides] = useState<StoredBuildEnvelopeOverrides>(
-    () => readStoredBuildEnvelopeInputs(parcelId, userId) ?? {},
+    () => shared ? parseStoredBuildEnvelopeInputs(shared.snapshot.userData.buildEnvelopeInputs) ?? {}
+      : readStoredBuildEnvelopeInputs(parcelId, userId) ?? {},
   );
 
   useLayoutEffect(() => {
+    if (isShared) return;
     setOverrides(readStoredBuildEnvelopeInputs(parcelId, userId) ?? {});
-  }, [parcelId, userId]);
+  }, [isShared, parcelId, userId]);
 
   const edgeLengths = useMemo(() => {
     const polygon = ring ? projectRingToLocalMetres(ring) : [];
@@ -146,7 +155,7 @@ export function VacantLandBuildEnvelope({
 
   // Detection evidence is audited separately from the confirmed answer.
   useEffect(() => {
-    if (detection.method !== "map_road_match") return;
+    if (isShared || detection.method !== "map_road_match") return;
     writeStoredStreetFrontageDetection(
       parcelId,
       {
@@ -158,7 +167,7 @@ export function VacantLandBuildEnvelope({
       undefined,
       userId,
     );
-  }, [detection, parcelId, userId]);
+  }, [detection, isShared, parcelId, userId]);
 
   const resolved = useMemo(
     () =>
@@ -189,12 +198,25 @@ export function VacantLandBuildEnvelope({
           delete merged.acceptedInputSignature;
           delete merged.acceptedAt;
         }
-        writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
+        if (!isShared) writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
         return merged;
       });
+      if (isShared) setUnsaved(true);
     },
-    [parcelId, userId],
+    [isShared, parcelId, userId],
   );
+
+  async function saveSharedInputs(next: StoredBuildEnvelopeOverrides) {
+    if (!shared) return;
+    setSaveError(null);
+    try {
+      await shared.save(toSupabaseJson({ buildEnvelopeInputs: next }));
+      setOverrides(next);
+      setUnsaved(false);
+    } catch (failure) {
+      setSaveError(failure instanceof Error ? failure.message : "The site inputs could not be saved.");
+    }
+  }
 
   const answers = resolved.answers;
   const additionalStreetEdgeIndexes = useMemo(
@@ -257,6 +279,14 @@ export function VacantLandBuildEnvelope({
 
   return (
     <section className="rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6">
+      {shared && <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button type="button" disabled={shared.busy || !unsaved} onClick={() => void saveSharedInputs(overrides)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50">
+          <Save className="h-4 w-4" /> Save site inputs
+        </button>
+        <p role="status" className="text-sm">{unsaved ? "Unsaved site inputs" : "Saved customer site inputs"}</p>
+        {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
+      </div>}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#FF6A00]">
@@ -526,10 +556,13 @@ export function VacantLandBuildEnvelope({
               type="button"
               disabled={!acceptance.eligible}
               onClick={() =>
-                patch({
+                (shared ? void saveSharedInputs({ ...overrides,
                   acceptedInputSignature: acceptance.signature,
                   acceptedAt: new Date().toISOString(),
-                })
+                }) : patch({
+                  acceptedInputSignature: acceptance.signature,
+                  acceptedAt: new Date().toISOString(),
+                }))
               }
               className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
@@ -766,6 +799,7 @@ export function VacantLandBuildEnvelope({
       <button
         type="button"
         onClick={() => {
+          if (shared) { void saveSharedInputs({}); return; }
           clearStoredBuildEnvelopeInputs(parcelId, userId);
           setOverrides({});
         }}

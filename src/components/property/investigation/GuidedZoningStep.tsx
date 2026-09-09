@@ -24,6 +24,8 @@ import {
   confirmStoredPlanningZone,
   readStoredPlanningZoneState,
   writeStoredPlanningZone,
+  selectPlanningZone,
+  confirmPlanningZone,
 } from "@/lib/planning/storedPlanningZone";
 import {
   findSupportingZoningClaim,
@@ -43,6 +45,9 @@ import {
 } from "@/lib/evidence/extractionMetadata";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/useAuth";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { workspaceFromSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { toSupabaseJson } from "@/lib/supabase/json";
 
 interface GuidedZoningStepProps {
   parcel: NormalizedOfficialParcel;
@@ -78,6 +83,7 @@ function zoningClaims(asset: ErfAsset) {
 }
 
 export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) {
+  const shared = useSharedInvestigationScope(parcel.id);
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -107,6 +113,11 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   );
 
   useLayoutEffect(() => {
+    if (shared) {
+      const planning = workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData).planning;
+      setSelectedZoneCode(planning.zoneCode); setUserConfirmedZoneCode(planning.userConfirmedZoneCode);
+      return;
+    }
     const sync = (event?: Event) => {
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
         ?.detail;
@@ -119,7 +130,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     sync();
     window.addEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
-  }, [parcel.id, userId]);
+  }, [parcel.id, userId, shared]);
 
   const usableDocuments = useMemo(
     () =>
@@ -147,13 +158,25 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     [vault.assets],
   );
 
-  function selectZone(code: string | null) {
+  async function selectZone(code: string | null) {
+    if (shared) {
+      const workspace = workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData);
+      try { await shared.save(toSupabaseJson({ easyErfInvestigation: { ...workspace, planning: selectPlanningZone(workspace.planning, code) } })); }
+      catch (error) { toast.error(error instanceof Error ? error.message : "Zoning could not be saved."); }
+      return;
+    }
     const next = writeStoredPlanningZone(parcel.id, code, userId);
     setSelectedZoneCode(next.zoneCode);
     setUserConfirmedZoneCode(next.userConfirmedZoneCode);
   }
 
-  function confirmWorkingZone() {
+  async function confirmWorkingZone() {
+    if (shared) {
+      const workspace = workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData);
+      try { await shared.save(toSupabaseJson({ easyErfInvestigation: { ...workspace, planning: confirmPlanningZone(workspace.planning) } })); }
+      catch (error) { toast.error(error instanceof Error ? error.message : "Zoning confirmation could not be saved."); }
+      return;
+    }
     const next = confirmStoredPlanningZone(parcel.id, userId);
     setSelectedZoneCode(next.zoneCode);
     setUserConfirmedZoneCode(next.userConfirmedZoneCode);
@@ -170,6 +193,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       const result = await extractErfAsset(asset.id, {
         expectedParcelId: parcel.id,
         retry,
+        ...(vault.investigationOrderId ? { investigationOrderId: vault.investigationOrderId } : {}),
       });
       await vault.refresh();
       dispatchErfFileVaultUpdated(parcel.id);

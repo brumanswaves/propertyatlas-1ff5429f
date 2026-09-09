@@ -88,6 +88,7 @@ import { canonicalReportAction } from "@/lib/investigation/canonicalNextAction";
 import { composeEasyErfReport } from "@/lib/reports/composeEasyErfReport";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
 import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
+import { prepareCustomerInvestigation } from "@/lib/investigation/investigationClient";
 import {
   ReportEvidenceAppendix,
   ReportMarketSection,
@@ -2562,6 +2563,7 @@ function StoepAiReportView({
             parcelId={parcel.id}
             propertyReference={parcel.erfNumber != null ? `Erf ${parcel.erfNumber}` : parcel.id}
             source="self-service-report"
+            onPrepare={userId ? () => prepareCustomerInvestigation(userId, parcel, parcelRing) : undefined}
           />
         ) : null}
 

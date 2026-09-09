@@ -352,7 +352,7 @@ function coercePlanningWorkspace(value: unknown): PlanningWorkspaceState {
   };
 }
 
-function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
+export function coerceWorkspaceState(value: unknown): ErfWorkspaceState {
   const base = createEmptyErfWorkspaceState();
   if (!value || typeof value !== "object") return base;
   const raw = value as Partial<ErfWorkspaceState>;
@@ -638,18 +638,24 @@ export function saveStrategyDraft(
   userId: BrowserPersistenceUserId = null,
 ) {
   const current = readStrategyWorkspace(parcelId, storage, userId);
-  const draftUpdatedAt = draft.updatedAt ?? nextMonotonicIso(current.draftUpdatedAt);
   return writeStrategyWorkspace(
     parcelId,
-    {
-      ...current,
-      activeStrategy: draft.activeStrategy,
-      draftInputs: coerceStrategyInputs(draft.draftInputs),
-      draftUpdatedAt,
-    },
+    updateStrategyDraft(current, draft),
     storage,
     userId,
   );
+}
+
+export function updateStrategyDraft(
+  current: ErfStrategyWorkspace,
+  draft: { activeStrategy: string; draftInputs: Record<string, string>; updatedAt?: string },
+): ErfStrategyWorkspace {
+  return {
+    ...current,
+    activeStrategy: draft.activeStrategy,
+    draftInputs: coerceStrategyInputs(draft.draftInputs),
+    draftUpdatedAt: draft.updatedAt ?? nextMonotonicIso(current.draftUpdatedAt),
+  };
 }
 
 export function mergeStrategyWorkspaces(
@@ -754,6 +760,18 @@ export function saveStrategyScenario(
       : storageArg ?? (typeof window !== "undefined" ? window.localStorage : undefined);
   const userId = "getItem" in optionsOrStorage ? null : options.userId ?? null;
   const currentWorkspace = readStrategyWorkspace(parcelId, storage, userId);
+  const result = chooseStrategyScenario(currentWorkspace, scenario, options);
+  const workspace = writeStrategyWorkspace(parcelId, result.workspace, storage, userId);
+  return { ...result, workspace, scenarios: workspace.scenarios };
+}
+
+/** Shared scenario rules; the caller owns persistence and authorization. */
+export function chooseStrategyScenario(
+  currentWorkspace: ErfStrategyWorkspace,
+  scenario: Omit<ErfStrategyScenario, "id" | "parcelId" | "savedAt" | "updatedAt"> & { id?: string },
+  options: { asNew?: boolean } = {},
+) {
+  const parcelId = currentWorkspace.parcelId;
   const current = currentWorkspace.scenarios;
   const existingChosen =
     !options.asNew && currentWorkspace.chosenScenarioId
@@ -785,9 +803,7 @@ export function saveStrategyScenario(
         selected: false,
       })),
   ];
-  const workspace = writeStrategyWorkspace(
-    parcelId,
-    {
+  const workspace: ErfStrategyWorkspace = {
       ...currentWorkspace,
       activeStrategy: saved.strategy,
       draftInputs: saved.inputs,
@@ -795,10 +811,7 @@ export function saveStrategyScenario(
       scenarios: next,
       chosenScenarioId: saved.id,
       chosenScenarioUpdatedAt: now,
-    },
-    storage,
-    userId,
-  );
+    };
   return { scenario: saved, scenarios: workspace.scenarios, workspace };
 }
 

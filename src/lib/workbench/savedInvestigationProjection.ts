@@ -1,7 +1,26 @@
-import type { ErfWorkspaceState } from "./erfWorkspaceState";
+import { createEmptyErfWorkspaceState, type ErfWorkspaceState } from "./erfWorkspaceState";
 
 export const SAVED_INVESTIGATION_PROJECTION_KEY = "easyErfInvestigation" as const;
 export const SAVED_INVESTIGATION_PROJECTION_VERSION = 1 as const;
+export const FLUSH_INVESTIGATION_EVENT = "easyerf:flush-investigation";
+export interface FlushInvestigationDetail {
+  parcelId: string;
+  userId: string;
+  newlySavedUserData?: Record<string, unknown>;
+  handled: boolean;
+  resolve: () => void;
+  reject: (reason: unknown) => void;
+}
+
+/** Await the existing cloud synchronizer before leaving for paid fulfillment. */
+export function flushSavedInvestigation(parcelId: string, userId: string, newlySavedUserData?: Record<string, unknown>) {
+  return new Promise<void>((resolve, reject) => {
+    if (typeof window === "undefined") { reject(new Error("Open the property in your browser before continuing.")); return; }
+    const detail: FlushInvestigationDetail = { parcelId, userId, newlySavedUserData, handled: false, resolve, reject };
+    window.dispatchEvent(new CustomEvent(FLUSH_INVESTIGATION_EVENT, { detail }));
+    if (!detail.handled) reject(new Error("The investigation save service is unavailable. Reload before continuing."));
+  });
+}
 
 export interface SavedInvestigationProjectionV1 {
   version: 1;
@@ -14,6 +33,10 @@ export interface SavedInvestigationProjectionV1 {
   strategyScenarioCount: number;
   chosenScenarioId: string | null;
   reportStarted: boolean;
+  openedSourceIds?: string[];
+  reviewedSourceIds?: string[];
+  marketAddressSaved?: boolean;
+  calculatorStarted?: boolean;
   planning: {
     zoneCode: string | null;
     userConfirmedZoneCode: string | null;
@@ -85,6 +108,10 @@ export function buildSavedInvestigationProjection(
     strategyScenarioCount: workspace.strategyScenarioCount,
     chosenScenarioId: workspace.chosenScenarioId,
     reportStarted: workspace.reportStarted,
+    openedSourceIds: [...workspace.openedSourceIds],
+    reviewedSourceIds: [...workspace.reviewedSourceIds],
+    marketAddressSaved: workspace.marketAddressSaved,
+    calculatorStarted: workspace.calculatorStarted,
     planning: {
       zoneCode: workspace.planning.zoneCode,
       userConfirmedZoneCode: workspace.planning.userConfirmedZoneCode,
@@ -168,6 +195,10 @@ export function readSavedInvestigationProjection(
     strategyScenarioCount: Math.max(0, Number(raw.strategyScenarioCount) || 0),
     chosenScenarioId: nullableString(raw.chosenScenarioId),
     reportStarted: Boolean(raw.reportStarted),
+    openedSourceIds: raw.openedSourceIds === undefined ? undefined : strings(raw.openedSourceIds),
+    reviewedSourceIds: raw.reviewedSourceIds === undefined ? undefined : strings(raw.reviewedSourceIds),
+    marketAddressSaved: raw.marketAddressSaved === undefined ? undefined : Boolean(raw.marketAddressSaved),
+    calculatorStarted: raw.calculatorStarted === undefined ? undefined : Boolean(raw.calculatorStarted),
     planning: {
       zoneCode: nullableString(planning.zoneCode),
       userConfirmedZoneCode: nullableString(planning.userConfirmedZoneCode),
@@ -229,6 +260,10 @@ export function mergeSavedInvestigationProjectionIntoWorkspace(
     strategyScenarioCount: projection.strategyScenarioCount,
     chosenScenarioId: projection.chosenScenarioId,
     reportStarted: projection.reportStarted,
+    openedSourceIds: projection.openedSourceIds ?? browserWorkspace.openedSourceIds,
+    reviewedSourceIds: projection.reviewedSourceIds ?? browserWorkspace.reviewedSourceIds,
+    marketAddressSaved: projection.marketAddressSaved ?? browserWorkspace.marketAddressSaved,
+    calculatorStarted: projection.calculatorStarted ?? browserWorkspace.calculatorStarted,
     planning: {
       ...browserWorkspace.planning,
       zoneCode: projection.planning.zoneCode,
@@ -252,4 +287,20 @@ export function mergeSavedInvestigationProjectionIntoWorkspace(
     },
     updatedAt: projection.workspaceUpdatedAt,
   };
+}
+
+/** Timestamps are bookkeeping, not permission to overwrite different saved facts. */
+export function savedInvestigationMatchesWorkspace(parcelId: string, workspace: ErfWorkspaceState, projection: SavedInvestigationProjectionV1) {
+  const fromSaved = mergeSavedInvestigationProjectionIntoWorkspace(parcelId, workspace, projection);
+  const comparable = (value: ErfWorkspaceState) => {
+    const data = buildSavedInvestigationProjection(parcelId, value, "");
+    return { ...data, syncedAt: "", workspaceUpdatedAt: "" };
+  };
+  return JSON.stringify(comparable(workspace)) === JSON.stringify(comparable(fromSaved));
+}
+
+export function workspaceFromSavedInvestigation(parcelId: string, userData: unknown): ErfWorkspaceState {
+  const empty = createEmptyErfWorkspaceState();
+  const projection = readSavedInvestigationProjection(userData);
+  return projection ? mergeSavedInvestigationProjectionIntoWorkspace(parcelId, empty, projection) : empty;
 }

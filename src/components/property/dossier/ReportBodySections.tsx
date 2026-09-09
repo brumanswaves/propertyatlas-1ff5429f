@@ -203,7 +203,7 @@ export function ReportMarketSection({
         </div>
       )}
 
-      {model.nextStep && (
+      {model.nextStep && onOpenMarket && (
         <button
           type="button"
           onClick={onOpenMarket}
@@ -313,13 +313,13 @@ export function ReportStrategySection({
       ) : (
         <div className="mt-4 rounded-2xl border border-[#FF6A00]/25 bg-[#FFF7ED] p-5">
           <p className="text-sm leading-6 text-[#0D1B2A]/75">{model.emptyMessage}</p>
-          <button
+          {onOpenStrategy && <button
             type="button"
             onClick={onOpenStrategy}
             className="report-no-print mt-3 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
           >
             Open Strategy <ArrowRight className="h-3.5 w-3.5" />
-          </button>
+          </button>}
         </div>
       )}
 
@@ -445,13 +445,13 @@ export function ReportSitePotentialSection({
       )}
 
       <div className="report-no-print mt-4 flex flex-wrap gap-2">
-        <button
+        {onOpenSitePotential && <button
           type="button"
           onClick={onOpenSitePotential}
           className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
         >
           Open Site Potential <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        </button>}
         {onOpenSourceFile && (
           <button
             type="button"

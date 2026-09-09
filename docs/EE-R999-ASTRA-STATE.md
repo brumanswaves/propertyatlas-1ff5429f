@@ -1,56 +1,39 @@
-# Easy Erf Release State
+# EE-R999-01 Execution State
 
-Reconciled 2026-09-08 from PR #169 receipts and the active local repair. Governance remains binding. This source-only candidate is not production approval.
+Reconciled 2026-09-09. Class A implementation only; no production authority.
 
-## Frozen outcome and source
+## Source and writer
+- Base main `d44c0f54565f82c05e1721986067e5e1ea25ff3f`, tree `496205483022470a1bca216d65679d58ca55ad3a`.
+- Sole branch `codex/ee-r999-shared-investigation`; isolated worktree `easy-erf-shared-investigation`. No open PR at reconciliation. Original dirty worktree protected/untouched.
+- Candidate is a work-in-progress checkpoint on the sole branch. The commit/PR receipt identifies the exact SHA; not approved for release.
+- Canonical backend `xiqpfhsdlvwrwhclonsg`; existing Lovable project `8680b46b-3325-4395-9767-a8c0ae2a3a50`; domain `easyerf.co.za`.
 
-- Release: EE-R999-01. Genuine R999 payment -> correct customer/parcel order -> actual investigation -> resolved checklist -> evidence-backed report -> automatic email -> exact customer report with no duplicates. Commercial acceptance remains UNPASSED.
-- GitHub main: `edc9739324ae8b76d938b15dace56cebee4da652`; tree `cb8bc41b3d29dc000ae815e357bc2db66b877bc2`. PRs #168 and #169 are merged; never replay them.
-- Candidate branch: `codex/ee-r999-pinned-order-navigation`. No competing open repair PR was found at start. Candidate SHA is the commit containing this file; the draft PR receipt pins the exact hash and final evidence. No self-referential hash is invented.
-- Canonical Supabase: `xiqpfhsdlvwrwhclonsg`; branded API `easyerf.supabase.co`. Existing Lovable project `8680b46b-3325-4395-9767-a8c0ae2a3a50`; production `https://easyerf.co.za`.
+## Frozen customer outcome
+One customer/parcel investigation, performed by the customer or an explicitly assigned worker. One common report; paid delivery adds a source-linked AI brief approved against exact evidence/brief revisions. Free self-service remains available. No worker-owned copy. Preserve delivered versions separately from later work.
 
-## Consumed release authority and verified evidence
+## Consumed actions
+PRs 168/169/170 merged; 171 superseded. Metadata reader applied. Receipt #170/5598714672 records publication, navigation/privacy checks, report save, two checklist saves, 409 probe, V1/email-off, reopen, V2/one owner email, email-off and duplicate probe. Never replay. Owner supplied inbox evidence/reported report opening. Final independent post-open readback limited. Genuine R999 commercial acceptance UNPASSED.
 
-- Owner explicitly approved the one-off normal-publication amendment in PR #169 comment 5588096522. It is not a missing approval anymore.
-- Execution receipt 5588589552 records one exact metadata-reader migration and ONE normal Publish changes operation, plus inspected production/privacy evidence. These steps are consumed; do not repeat them.
-- Authorized migration source: `20260907100000_founder_queue_metadata_read.sql`, blob `d5caaeb2d2357b363cb50407a369184a3b50eb68`. Applied remote version: `20260908162402_founder_queue_metadata_read`. Stable, admin-checked SECURITY INVOKER fourteen-field reader verified.
-- Published response-header deployment UUID: `7020dac8-2643-4647-99c6-83d03f60b09e`. Exact publisher SHA and substantive served assets/backend linkage inspected; independent byte-for-byte production Git-tree attestation remains unavailable.
-- Production queue returned fourteen metadata columns only. Deliberate complete-UUID TEST selection returned only its single private detail row and refresh preserved it. No unselected private report or protected legacy body was retrieved.
-- All four orders' permitted metadata remained identical before/after publication and read-only navigation. Existing public function definitions, policies and Edge Function metadata were unchanged apart from the authorized new reader.
-- Email remained false; custom live-enable flag absent and inspected code defaults it off. No owner TEST save, checklist change, lifecycle transition or email was started.
-- Private snapshots stay private. Public receipts contain aggregates only. This state file is not permission to reopen orders or read protected data.
+## Reuse and missing connections
+Reuse saved_properties.user_data, erf_assets, workspace/planning/Market/Strategy/Site Potential, PropertyEvidencePack, report composer/body/context sections and Ask provider.
+Existing founder narrative/status selections do not attest evidence. Its parcel link opens actor account context, not delegated customer access.
+Missing: revocable assignment/capabilities; customer-scoped saves/files; optimistic revisions/audit; evidence-linked work/dispositions; immutable full assembly; AI draft/edit/human approval; combined customer report and version-grounded Ask.
 
-## Actual blocker and minimal source repair
+## Implementation and next executable work
+Implemented source: migration 20260909094547 adds order-derived revocable delegation, narrow namespace patches, canonical revision triggers, append-only brief versions and evidence-bound delivery gate. New orders/enrolled orders use the gate; historical delivered reports are preserved. No migration applied remotely.
+Shared assembly calls existing workspace/planning/evidence/report/math readers. AI synthesis reuses the Ask provider/model behind a new disabled-by-default environment gate, with structured source references and explicit bounded-input manifest. Generation/approval server route added; no live model call.
+Verified locally: 5 focused assembly/render/projection/Strategy files, 39 tests; then 3 server/projection/guarded-save files, 26 tests. TypeScript passed at 13:41 on 2026-09-09. No full candidate gate yet.
+Real PostgreSQL 17.10 fixture runs existing payment/fulfillment/notification/queue contracts plus delegation, revocation, stale worker/customer writes, service-only generation/approval, stale approval, tampered delivery, immutable delivered snapshot, licensed storage RLS and retained-original protection. Latest database investigation_1788954026417 passed. A BEFORE INSERT revision bug counted skipped upserts; split BEFORE permission/lock guards from AFTER substantive revision counting and verified true no-ops.
+Connected source: assigned metadata queue/exact header, fulfillment-only worker guard, admin assignment/revocation, existing Guided editors, Strategy, Market and deterministic Site Potential through customer adapters. Shared upload/extraction/archive/confirmation, source-check records, exact-order preview/original route, source-linked draft/editor/approval and delivered-version reader. Original bytes are protected after approval; licensed worker-uploaded originals have a restrictive owner-read policy. No worker blanket file access.
+Canonical-state correction: reuse the EXISTING saved_properties.user_data.easyErfInvestigation projection and WorkspaceCloudSync, not a new workspace namespace. Added optional durable source-check fields, legacy-preserving reads, build-envelope hydration/event, guarded namespace compare-and-swap, actual-session checks and a flush awaited by the paid entry. Strategy uses pure existing state operations in delegated context; formulas unchanged. SQL rejects older unguarded customer overwrites of shared evidence. Initial explicit property save/handoff includes normalized parcel and boundary; Overview itself does not write.
+Checkpoint 14:15: customer explicit save/paid entry now uses guarded canonical patches and waits for cloud flush. Cloud hydration pauses on divergent newer browser work instead of silently rebasing. Model input excludes document-derived facts without processing permission; the permitted evidence projection is frozen for later version-bound Ask. HTML/SVG originals cannot enter a same-origin viewer. Actual storage-byte metadata changes invalidate draft revisions; mere access timestamps do not.
+Verified: production build with synthetic loopback public configuration passed; focused investigation 8 files/94 tests; previous grouped 10 files/107 tests; targeted lint 0 errors/5 component-export warnings; diff check passed. TypeScript checkpoint pending final polling. Full suite previously 1555 passed/9 failed in 153 files; all nine stale/source-line-ending guardrail failures were corrected and their focused tests passed. Full candidate rerun still required. Latest SQL fixture database investigation_1788954550670 passed.
+Unfinished: self-service/full paid report content parity, real mounted upload/editor behavior, all-section browser acceptance, final complete suite, exact-head CI and independent review. SQL role fixtures are NOT actual Auth/Storage acceptance.
+Next executable work: push one WIP checkpoint/draft PR solely to run the new real isolated Supabase Auth/REST/Storage browser workflow on standard public runners (local Docker unavailable). The fixture uses five real local users, actual app/Edge handlers, only synthetic external model/email responses, internal container network and loopback-only runtime traffic. Inspect failures and repair in the same branch/session; this draft checkpoint is not a release packet or stopping point. Then finish all-section/negative browser coverage, full candidate checks and ONE Class B packet.
 
-VERIFIED production failure: at 1920 x 975 and scrollY=975, Back was offscreen at y=-831. Only the identity card was sticky. The source had Back outside that header.
-
-The existing browser scenario nominally covered deep scrolling, but returned to 15 pixels before pressing Back. It tested a near-top exit, not a deep-scroll exit.
-
-This candidate moves the existing Back/isolation row inside the existing sticky identity header, pins the combined header near the viewport top, and gives Back a 44px minimum touch height. No data, permission, lifecycle, save, notification or classification code changes.
-
-The existing founder fixture now measures Back visibility BEFORE focus/click, retains the requested depth for mouse/touch/keyboard activation, checks pointer hit-testing and horizontal fit, and covers the reproduced 1920 x 975 / 975px case plus desktop/mobile 1600px cases. Existing private-sentinel, delayed-response, account, save and delivery-gate checks remain.
-
-## Candidate verification
-
-- Stronger browser regression failed against the unchanged main build: Back not visible at the requested deep-scroll position.
-- Repaired local node-server build passed 22 founder browser groups with synthetic data and external server/browser traffic blocked. Local development receipt was dirty=true before commit; it is not exact-head evidence.
-- Focused Vitest: 6 files / 79 tests passed. TypeScript and targeted ESLint passed. Production build passed without deployment.
-- Full Windows run: 150 files, 1,523 passed / 4 failed. All four are literal LF source assertions against CRLF checkout files; the same four failures reproduced in the unchanged main checkout (29 other tests passed). Do not edit unrelated tests to hide this. Final changed-candidate Linux CI is required.
-- Final clean-head browser/customer-link receipts, screenshots, CI and patch checks belong in the draft PR. Do not substitute earlier main CI for changed-candidate proof.
-
-## Next ranked actions and owner gates
-
-1. Finish clean-candidate verification, inspect actual screenshots/requests, publish one draft source PR and obtain independent review. Source work is Class A.
-2. Prepare one exact-candidate Class B decision for guarded merge, new frontend publication and only the remaining retained owner TEST sequence. Do NOT include another metadata-reader application or replay the prior publication.
-3. On an explicitly approved new release, repeat only necessary fresh source/runtime/privacy gates, then execute the finite TEST in the immutable packet. No TEST action has been consumed yet. Sender/domain/free capacity must be verified before email; previous configuration observations do not prove those prerequisites.
-4. Actual provider acceptance, owner inbox delivery and exact authenticated customer report are separate acceptance checks. The genuine R999 milestone still needs later separate authority.
-
-## Restrictions, spending and process honesty
-
-No new host, Lovable AI implementation, source rewrite through Lovable, manual Edge deployment, migration, production configuration/secret change, Stripe/live activation, customer contact, order action or publication is authorized by this source candidate. Do not alter unrelated worktrees.
-
-The prior normal-publish approval accepted limited automatic-backend-effect/rollback uncertainty for that consumed operation only. No proven frontend-only rollback exists. Revert, down-migration, unpublish and alternative hosting were prohibited; the additive reader remains. A new source release needs explicit review/approval.
-
-Astra was explicitly requested by the owner for reasoning. Deterministic local tools perform routine verification; no extra model/agent, API billing, paid runner/service, credits or purchases were invoked. Maximum additional discretionary spend $0. Actual account/runtime charges UNKNOWN.
-
-No state file, comment or PR starts background work. At handoff inspect actual CI/process state. The product is unfinished; production TEST remains blocked on reviewed/released navigation repair.
+## Gates and processes
+Real AI calls require permitted provider/data and spending authorization; Codex allowance is not application API credit. Fixtures do not prove live AI. No evidence purchases.
+Class B required for merge/migration/Edge/frontend/configuration/production acceptance; Class C for genuine payment.
+No Lovable agent/new host/provider, production data actions/email, paid model delegation or additional agents.
+Local PostgreSQL process PID 19380, exec session 35450, listens only on 127.0.0.1:55487; tools/data in sibling ee-r999-isolated-db-tools. Stop it before final handoff. Isolated test runner: node ../ee-r999-isolated-db-tools/run-sql.mjs <worktree> scripts/verify-shared-investigation.sql. No CI/browser server started. External process purposes UNKNOWN. No competing PR/branch found.
+Discretionary cap $0; actual account/runtime spend UNKNOWN. Existing owner-requested session; no claimed model switch.

@@ -27,6 +27,8 @@ export function ReportOpening({
   printOnly = false,
   onOpenTab,
   onPrint,
+  reviewSlot,
+  reviewIdentity,
 }: {
   doc: EasyErfReportDocument;
   askSlot?: ReactNode;
@@ -36,6 +38,8 @@ export function ReportOpening({
   printOnly?: boolean;
   onOpenTab?: (tab: string, options?: { anchorId?: string }) => void;
   onPrint?: () => void;
+  reviewSlot?: ReactNode;
+  reviewIdentity?: ReactNode;
 }) {
   const header = doc.header;
   const snapshot = doc.decisionSnapshot;
@@ -77,6 +81,9 @@ export function ReportOpening({
               Updated {new Date(header.generatedAtLabel).toLocaleString()} —{" "}
               {header.evidenceStatusLabel}.
             </p>
+            <div className="mt-2 text-sm font-semibold text-[#0D1B2A]">
+              {reviewIdentity ?? "Self-service investigation · Not human reviewed."}
+            </div>
           </div>
           {!printOnly && onPrint && (
             <div className="report-no-print flex items-center gap-2">
@@ -118,6 +125,7 @@ export function ReportOpening({
       </section>
 
       {/* C. DECISION AREA */}
+      {reviewSlot}
       <section
         id="report-decision"
         className="report-section report-decision-area grid gap-4 scroll-mt-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
@@ -188,7 +196,7 @@ export function ReportOpening({
       </section>
 
       {/* C2. THE SAME FIVE-QUESTION REPORT LENS USED BY HUMAN REVIEW */}
-      <section
+      {!reviewSlot && <section
         id="report-five-questions"
         className="report-section rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-4 scroll-mt-24 sm:p-5"
       >
@@ -204,7 +212,7 @@ export function ReportOpening({
           </p>
         </div>
         <FiveQuestionReportGrid content={fiveQuestionContent} />
-      </section>
+      </section>}
 
       {/* D. PROPERTY AT A GLANCE */}
       {doc.atAGlance.length > 0 && (

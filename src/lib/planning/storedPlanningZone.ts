@@ -88,15 +88,10 @@ export function writeStoredPlanningZone(
 ): PlanningWorkspaceState {
   const next = zoneCode?.trim() || null;
   const current = readStoredPlanningZoneState(parcelId, userId, storage);
-  const confirmationRemainsValid = current.userConfirmedZoneCode === next;
   const workspace = updateErfWorkspaceState(
     parcelId,
     {
-      planning: {
-        zoneCode: next,
-        userConfirmedZoneCode: confirmationRemainsValid ? current.userConfirmedZoneCode : null,
-        userConfirmedAt: confirmationRemainsValid ? current.userConfirmedAt : null,
-      },
+      planning: selectPlanningZone(current, next),
     },
     storage,
     userId,
@@ -116,14 +111,25 @@ export function confirmStoredPlanningZone(
   storage: PlanningStorage | undefined = defaultStorage(),
 ): PlanningWorkspaceState {
   const current = readStoredPlanningZoneState(parcelId, userId, storage);
-  const next: PlanningWorkspaceState = current.zoneCode
-    ? {
-        zoneCode: current.zoneCode,
-        userConfirmedZoneCode: current.zoneCode,
-        userConfirmedAt: new Date().toISOString(),
-      }
-    : current;
+  const next = confirmPlanningZone(current);
   updateErfWorkspaceState(parcelId, { planning: next }, storage, userId);
   dispatchPlanningZoneUpdated(parcelId, userId, next.zoneCode);
   return next;
+}
+
+export function selectPlanningZone(current: PlanningWorkspaceState, zoneCode: string | null): PlanningWorkspaceState {
+  const next = zoneCode?.trim() || null;
+  const confirmationRemainsValid = current.userConfirmedZoneCode === next;
+  return { zoneCode: next, userConfirmedZoneCode: confirmationRemainsValid ? current.userConfirmedZoneCode : null,
+    userConfirmedAt: confirmationRemainsValid ? current.userConfirmedAt : null };
+}
+
+export function confirmPlanningZone(current: PlanningWorkspaceState, now = new Date().toISOString()): PlanningWorkspaceState {
+  return current.zoneCode
+    ? {
+        zoneCode: current.zoneCode,
+        userConfirmedZoneCode: current.zoneCode,
+        userConfirmedAt: now,
+      }
+    : current;
 }

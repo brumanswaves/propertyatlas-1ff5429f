@@ -1,0 +1,73 @@
+name: Easy Erf isolated shared investigation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/easy-erf-shared-investigation.yml'
+      - 'scripts/verify-shared-investigation*'
+      - 'src/lib/investigation/**'
+      - 'src/components/humanReview/**'
+      - 'src/components/workbench/WorkspaceCloudSync.tsx'
+      - 'supabase/migrations/20260909094547_shared_investigation_fulfillment.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: isolated-investigation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out exact source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.head.sha || github.sha }}"
+          git checkout --detach FETCH_HEAD
+      - name: Install pinned isolated tools
+        run: |
+          mkdir -p "${RUNNER_TEMP}/investigation-tools"
+          curl -fsSL https://github.com/supabase/cli/releases/download/v2.117.0/supabase_2.117.0_linux_amd64.tar.gz -o "${RUNNER_TEMP}/cli.tar.gz"
+          echo "69c05f85b9e47ee706d30f1a6ca8a526b4e337bfd12c7ef1ef522d24e7280d24  ${RUNNER_TEMP}/cli.tar.gz" | sha256sum -c
+          tar -xzf "${RUNNER_TEMP}/cli.tar.gz" -C "${RUNNER_TEMP}/investigation-tools"
+          curl -fsSL https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip -o "${RUNNER_TEMP}/deno.zip"
+          echo "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2  ${RUNNER_TEMP}/deno.zip" | sha256sum -c
+          unzip -q "${RUNNER_TEMP}/deno.zip" -d "${RUNNER_TEMP}/investigation-tools"
+          echo "${RUNNER_TEMP}/investigation-tools" >> "${GITHUB_PATH}"
+          npm install --no-audit --no-fund
+          git restore -- package-lock.json
+          npm install --prefix "${RUNNER_TEMP}/browser-tools" --package-lock=false --no-audit --no-fund playwright@1.55.0
+          ln -s "${RUNNER_TEMP}/browser-tools/node_modules/playwright" node_modules/playwright
+          node "${RUNNER_TEMP}/browser-tools/node_modules/playwright/cli.js" install chromium
+      - name: Start real isolated Auth, REST and Storage with no container egress
+        run: |
+          STACK="${RUNNER_TEMP}/ee-r999-isolated"
+          mkdir -p "${STACK}"
+          supabase init --workdir "${STACK}"
+          cp -r supabase/migrations "${STACK}/supabase/"
+          docker network create --internal ee-r999-investigation-test
+          # No project link, production env, function deploy or real credentials.
+          # Cron from historical migrations cannot reach the internet on this network.
+          supabase start --workdir "${STACK}" --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
+          umask 077
+          supabase status --workdir "${STACK}" -o json > "${RUNNER_TEMP}/investigation-runtime.json"
+      - name: Exercise real isolated persistence, authorization and browser
+        env:
+          EASY_ERF_ISOLATED_RUNTIME: ${{ runner.temp }}/investigation-runtime.json
+          EASY_ERF_BROWSER_ARTIFACTS: artifacts/shared-investigation
+        run: node scripts/verify-shared-investigation-browser.mjs
+      - name: Stop isolated containers
+        if: always()
+        run: supabase stop --workdir "${RUNNER_TEMP}/ee-r999-isolated" || true
+      - name: Upload redacted synthetic evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shared-investigation-${{ github.run_id }}
+          path: artifacts/shared-investigation
+          if-no-files-found: warn
+          retention-days: 14

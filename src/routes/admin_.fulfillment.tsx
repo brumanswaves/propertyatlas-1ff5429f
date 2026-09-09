@@ -17,7 +17,8 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminGuard } from "@/components/admin/AdminGuard";
+import { AdminGuard, useOperationsAccess } from "@/components/admin/AdminGuard";
+import { OrderInvestigationWorkspace } from "@/components/humanReview/OrderInvestigationWorkspace";
 import { FounderHumanReviewEditor } from "@/components/admin/FounderHumanReviewEditor";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Footer } from "@/components/layout/Footer";
@@ -68,16 +69,17 @@ type TransitionValues = {
 
 function FounderFulfillmentPage() {
   return (
-    <AdminGuard>
+    <AdminGuard allowAssignedInvestigations>
       <FounderFulfillmentQueue />
     </AdminGuard>
   );
 }
 
 function FounderFulfillmentQueue() {
+  const { isAdmin } = useOperationsAccess();
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [focusedOrderId, setFocusedOrderId] = useState<string | null>(null);
-  const { orders, loading, queueError, focusedOrder, detailLoading, refresh } = useFounderOrderData(focusedOrderId);
+  const { orders, loading, queueError, focusedOrder, detailLoading, refresh } = useFounderOrderData(focusedOrderId, !isAdmin);
   const mutationInFlight = useRef(false);
   const [deliveryNotice, setDeliveryNotice] = useState<{ orderId: string; message: string } | null>(null);
 
@@ -466,6 +468,7 @@ function FocusedOrderWorkbench({
   onUploadReport: (order: ReportOrder, file: File) => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
+  const { isAdmin } = useOperationsAccess();
   if (loading) {
     return <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">Loading the exact order…</div>;
   }
@@ -545,7 +548,7 @@ function FocusedOrderWorkbench({
           </div>
         ) : null}
 
-        <FounderActionGuide status={status} propertyHref={propertyHref} />
+        <FounderActionGuide status={status} propertyHref={status === "processing" || !isAdmin ? null : propertyHref} />
         {deliveryNotice ? <p role="status" className="mt-4 rounded-lg border p-3 text-sm">{deliveryNotice}</p> : null}
 
         {order.failure_reason ? (
@@ -554,18 +557,19 @@ function FocusedOrderWorkbench({
           </div>
         ) : null}
 
-        {status === "processing" || status === "ready" ? (
+        {status === "processing" ? <OrderInvestigationWorkspace orderId={order.id} onApproved={onRefresh} /> : null}
+        {status === "ready" ? (
           <FounderHumanReviewEditor
             key={`${order.id}:${order.review_content_updated_at ?? order.updated_at}:${status}`}
             orderId={order.id}
             initialContent={order.review_content}
             disabled={busy || status === "ready"}
-            defaultOpen={status === "processing"}
+            defaultOpen={false}
             onSaved={onRefresh}
           />
         ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {isAdmin && <div className="mt-5 flex flex-wrap gap-2">
           {status === "paid" ? (
             <button
               type="button"
@@ -604,7 +608,7 @@ function FocusedOrderWorkbench({
             </AlertDialog>
           ) : null}
           {status === "paid" || status === "processing" ? <FailedAction order={order} busy={busy} onTransition={onTransition} /> : null}
-        </div>
+        </div>}
       </section>
     </>
   );

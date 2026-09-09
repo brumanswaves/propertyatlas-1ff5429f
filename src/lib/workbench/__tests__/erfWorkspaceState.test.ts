@@ -3,6 +3,9 @@ import {
   buildErfWorkspaceNextStep,
   buildStoepStepProgress,
   createEmptyErfWorkspaceState,
+  createEmptyStrategyWorkspace,
+  updateStrategyDraft,
+  chooseStrategyScenario,
   erfStrategyScenariosKey,
   erfStrategyWorkspaceKey,
   erfWorkspaceStateKey,
@@ -36,6 +39,22 @@ function memoryStorage(): Storage {
 }
 
 describe("erfWorkspaceState", () => {
+  it("uses the same Strategy selection rules without writing a worker browser record", () => {
+    const original = createEmptyStrategyWorkspace("manual:customer-fixture");
+    const draft = updateStrategyDraft(original, { activeStrategy: "custom", draftInputs: { customNotes: "Synthetic assumption" } });
+    expect(original.draftInputs).toEqual({});
+    expect(draft.scenarios).toEqual([]);
+    const chosen = chooseStrategyScenario(draft, { strategy: "custom", label: "Synthetic scenario",
+      inputs: draft.draftInputs, summary: [], selected: true });
+    expect(chosen.workspace.parcelId).toBe(original.parcelId);
+    expect(chosen.workspace.chosenScenarioId).toBe(chosen.scenario.id);
+    const edited = chooseStrategyScenario(chosen.workspace, { ...chosen.scenario, label: "Revised scenario" });
+    expect(edited.scenario.id).toBe(chosen.scenario.id);
+    expect(edited.scenarios).toHaveLength(1);
+    const alternative = chooseStrategyScenario(edited.workspace, { ...chosen.scenario, id: undefined, label: "Alternative" }, { asNew: true });
+    expect(alternative.scenario.id).not.toBe(chosen.scenario.id);
+    expect(alternative.scenarios.filter((item) => item.selected)).toHaveLength(1);
+  });
   it("persists workspace state per normalized parcel id", () => {
     const storage = memoryStorage();
     const parcelId = "csg:lpi:c03400140000096200000";

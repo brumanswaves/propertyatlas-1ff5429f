@@ -7,7 +7,7 @@ import {
 } from "@/lib/humanReview/scope";
 
 function source(path: string) {
-  return readFileSync(resolve(process.cwd(), path), "utf8");
+  return readFileSync(resolve(process.cwd(), path), "utf8").replace(/\r\n/g, "\n");
 }
 
 const founderContent = source("supabase/functions/easy-erf-founder-review-content/index.ts");
