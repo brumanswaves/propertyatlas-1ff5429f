@@ -154,7 +154,9 @@ async function verifyCustomerEntry() {
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).waitFor();
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-desktop.png"), fullPage: true });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
-  const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" });
+  // Exercise the expandable Workbench handoff, not the standalone report offer.
+  const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" })
+    .filter({ has: page.locator("details") });
   await offer.locator("summary").click();
   await offer.getByRole("link", { name: /Yes.*investigate it for me/ }).click();
   await page.waitForURL("**/pricing?**");
