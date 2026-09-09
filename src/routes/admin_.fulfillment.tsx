@@ -662,8 +662,14 @@ function ReadyAction({
   const reportReady = isHumanReviewReportContentComplete(order.review_content);
   const checklist = parseHumanReviewInvestigationChecklist(order.review_content);
   const checklistReady = Boolean(checklist && isHumanReviewInvestigationChecklistResolved(checklist));
-  const deliveryReady = reportReady && checklistReady;
-  const deliveryBlocker = !reportReady
+  const rawContent = order.review_content;
+  const hasCombinedVersion = Boolean(rawContent && typeof rawContent === "object" && !Array.isArray(rawContent)
+    && "combinedReviewVersionId" in rawContent && typeof rawContent.combinedReviewVersionId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawContent.combinedReviewVersionId));
+  const deliveryReady = hasCombinedVersion && reportReady && checklistReady;
+  const deliveryBlocker = !hasCombinedVersion
+    ? "Gather the investigation evidence, generate the brief and approve the combined report version first."
+    : !reportReady
     ? "Complete and save the reviewed bottom line plus all five report sections first."
     : !checklistReady
       ? "Resolve and save every standard investigation checklist item first."
@@ -711,7 +717,7 @@ function ReadyAction({
         <p role="status" className="mt-2 text-[11px] leading-5 text-amber-800">Delivery blocked: {deliveryBlocker}</p>
       ) : (
         <p className="mt-2 text-[11px] leading-5 text-emerald-700">
-          This exact report and every applicable checklist item are resolved. Delivery controls are enabled.
+          An approved combined report version is saved. Delivery will recheck the evidence revision and reviewer authority before proceeding.
         </p>
       )}
     </div>

@@ -472,23 +472,14 @@ $$;
 revoke all on function public.finish_order_investigation_asset(uuid,uuid,uuid,boolean,text,jsonb) from public, anon, authenticated;
 grant execute on function public.finish_order_investigation_asset(uuid,uuid,uuid,boolean,text,jsonb) to service_role;
 
-create table investigation_private.release_boundary (
-  id boolean primary key default true check(id),
-  activated_at timestamptz not null default now()
-);
-alter table investigation_private.release_boundary enable row level security;
-insert into investigation_private.release_boundary(id) values(true);
-
 create function investigation_private.require_combined_delivery()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare v_version public.investigation_review_versions; v_key text;
 begin
   if new.status_enum::text is distinct from 'complete' or old.status_enum::text = 'complete'
     or new.provider is distinct from 'stripe' or new.payload->>'orderKind' is distinct from 'easy_erf_investigation' then return new; end if;
-  -- Keep pre-existing delivered reports readable. Newly enrolled and new orders must use the combined product.
-  if new.created_at < (select activated_at from investigation_private.release_boundary where id)
-    and not exists(select 1 from public.investigation_assignments where order_id = new.id)
-    and not exists(select 1 from public.investigation_review_versions where order_id = new.id) then return new; end if;
+  -- Existing delivered rows remain readable. Every subsequent delivery transition,
+  -- including an older unfinished/reopened order, requires the combined product.
   perform investigation_private.lock_property(new.user_id, new.parcel_id);
   select * into v_version from public.investigation_review_versions
     where id::text = new.review_content->>'combinedReviewVersionId' and order_id = new.id

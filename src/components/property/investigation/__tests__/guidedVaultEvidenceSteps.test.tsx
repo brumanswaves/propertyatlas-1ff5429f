@@ -14,6 +14,7 @@ const vaultFixture = vi.hoisted(() => ({
   assets: [] as ErfAsset[],
   error: null as string | null,
   refresh: vi.fn(),
+  investigationOrderId: undefined as string | undefined,
 }));
 
 const extractionFixture = vi.hoisted(() => ({ extract: vi.fn() }));
@@ -28,6 +29,7 @@ vi.mock("@/lib/workbench/useErfFileVault", () => ({
   dispatchErfFileVaultUpdated: vi.fn(),
   useErfFileVault: vi.fn(() => ({
     assets: vaultFixture.assets,
+    investigationOrderId: vaultFixture.investigationOrderId,
     loading: false,
     error: vaultFixture.error,
     uploadState: null,
@@ -98,6 +100,7 @@ describe("guided vault evidence steps", () => {
   beforeEach(() => {
     vaultFixture.assets = [];
     vaultFixture.error = null;
+    vaultFixture.investigationOrderId = undefined;
     vaultFixture.refresh.mockReset();
     extractionFixture.extract.mockReset();
     toastFixture.error.mockReset();
@@ -220,6 +223,21 @@ describe("guided vault evidence steps", () => {
 
     expect(html).toContain("Readable title deed ready");
     expect(html).not.toContain("Report searchable");
+  });
+
+  it("assigned investigators obtain the included report without a second customer purchase", () => {
+    vaultFixture.investigationOrderId = "synthetic-order";
+    const html = renderToStaticMarkup(<GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />);
+    expect(html).toContain("Obtain and review the included property report");
+    expect(html).toContain("Included evidence, no second customer charge");
+    expect(html).toContain("provider license permits");
+    expect(html).not.toContain("Buy from Lightstone");
+    expect(html).not.toContain("Buy from WinDeed");
+    expect(html).toContain("Upload paid report PDF");
+    vaultFixture.investigationOrderId = undefined;
+    const customer = renderToStaticMarkup(<GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />);
+    expect(customer).toContain("Buy from Lightstone");
+    expect(customer).toContain("Upload paid report PDF");
   });
 
   it("TEST FIXTURE - NOT A REAL PROPERTY DOCUMENT: user-confirmed readable paid evidence can continue without claiming an official match", () => {

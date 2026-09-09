@@ -29,7 +29,7 @@ const processes = [];
 const contexts = [];
 const errors = [];
 let browser;
-const allowedFunctions = new Set(["ask-easy-erf-openai", "easy-erf-founder-fulfillment", "easy-erf-founder-customer-notification"]);
+const allowedFunctions = new Set(["ask-easy-erf-openai", "easy-erf-founder-fulfillment", "easy-erf-founder-customer-notification", "extract-erf-asset"]);
 const gateway = createServer(async (req, res) => {
   try {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
@@ -72,7 +72,7 @@ const work = Object.fromEntries(["cadastral_evidence", "ownership_title", "zonin
   reason: "Thin-path unavailable evidence test, not a real investigation.", limitation: "Obtain the actual evidence before making any real decision.", disposition: "unavailable",
 }]));
 const normalizedParcel = { id: parcelA, source: "manual", sourceLabel: "Synthetic customer property", erfNumber: "42", portion: "0",
-  municipality: "Synthetic municipality", province: "Eastern Cape", town: "Fixture town", coordinates: { lng: 24.83, lat: -34.16 }, knownFields: [], missingFields: [], rawProperties: { area_m2: 600 } };
+  municipality: "Kouga Local Municipality", province: "Eastern Cape", town: "Fixture town", coordinates: { lng: 24.83, lat: -34.16 }, knownFields: [], missingFields: [], rawProperties: { area_m2: 600 } };
 const dataA = { normalizedParcel, parcelRing: [[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602],[24.83,-34.16]],
   privateNote: "CUSTOMER_A_PRIVATE_NOTE", approximateAddress: "42 Synthetic Street",
   easyErfInvestigation: { version: 1, parcelId: parcelA, syncedAt: now, workspaceUpdatedAt: now, identityStatus: "none", marketAddressSaved: true,
@@ -116,6 +116,80 @@ async function saveCheck(page) {
   const saved = page.waitForResponse((response) => response.url().endsWith("/rpc/patch_order_investigation") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Save source check", exact: true }).click(); assert.equal((await saved).status(), 200);
 }
+async function step(page, name) {
+  await page.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name }).click();
+}
+async function savedAction(page, action, rpcName = "patch_order_investigation") {
+  const response = page.waitForResponse((r) => r.url().endsWith(`/rpc/${rpcName}`) && r.request().method() === "POST");
+  await action(); assert.equal((await response).status(), rpcName === "change_order_investigation_asset" ? 204 : 200);
+  await page.getByRole("button", { name: "Reload saved evidence", exact: true }).and(page.locator(":enabled")).waitFor();
+}
+function syntheticPdf() {
+  const text = "SYNTHETIC TEST EVIDENCE ONLY. Erf 42 Portion 0. Extent 600 m2. Deed T42/2026.";
+  const stream = `BT /F1 10 Tf 30 750 Td (${text}) Tj ET`;
+  const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+  let pdf = "%PDF-1.4\n"; const offsets = [0];
+  objects.forEach((body, i) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${i + 1} 0 obj\n${body}\nendobj\n`; });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((n) => `${String(n).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf);
+}
+async function gatherSections(page) {
+  await page.getByLabel("I have permission to process this document with the existing AI document reader.", { exact: true }).check();
+  await page.getByLabel("The document license permits sharing the original with this customer.", { exact: true }).check();
+  for (const [category, name, accept] of [["sg_diagram", /Add SG diagram/, "image"], ["paid_report", /Check title/, ".pdf,application/pdf"]]) {
+    await step(page, name);
+    if (category === "paid_report") {
+      assert.equal(await page.getByText("Included evidence, no second customer charge", { exact: true }).count(), 1);
+      // The provider original is licensed for worker review, not customer redistribution.
+      await page.getByLabel("The document license permits sharing the original with this customer.", { exact: true }).uncheck();
+    }
+    const extracted = page.waitForResponse((r) => r.url().endsWith("/functions/v1/extract-erf-asset") && r.request().method() === "POST");
+    const input = category === "sg_diagram" ? page.locator('input[type="file"]').first() : page.locator(`input[type="file"][accept="${accept}"]`);
+    await input.setInputFiles({ name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() });
+    const response = await extracted; assert.equal(response.status(), 200);
+    const result = await response.json(); assert.equal(result.success, true, JSON.stringify(result)); assert.equal(result.identityMatchStatus, "unverified");
+    await savedAction(page, () => page.getByRole("button", { name: "Yes, this document is for or supports Erf 42", exact: true }).click(), "change_order_investigation_asset");
+    const scope = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+    const asset = scope.assets.find((a) => a.asset_category === category);
+    assert.equal(asset.metadata.identityBinding, "user_confirmed"); assert.equal(asset.user_id, ids.a);
+    assert.equal(asset.metadata.aiProcessingAllowed, true);
+    const bytes = must(await adminClient.storage.from("erf-files").download(asset.storage_path));
+    assert.equal(createHash("sha256").update(Buffer.from(await bytes.arrayBuffer())).digest("hex"), asset.checksum_sha256);
+  }
+  await step(page, /Confirm zoning/);
+  await savedAction(page, () => page.getByRole("radio", { name: /^RES1 / }).click());
+  await savedAction(page, () => page.getByRole("button", { name: "Confirm working zoning", exact: true }).click());
+  assert.equal(await page.getByText("Working zoning confirmed by you", { exact: true }).count(), 1);
+  await step(page, /Market evidence/);
+  await page.getByRole("button", { name: "Add manual evidence", exact: true }).click();
+  await page.getByPlaceholder("Listing or comp URL required", { exact: true }).fill("https://example.invalid/synthetic-comparable");
+  await page.getByPlaceholder("Asking price", { exact: true }).fill("1200000");
+  await page.getByPlaceholder("Land size m2", { exact: true }).fill("600");
+  await page.getByPlaceholder("Notes", { exact: true }).fill("Synthetic comparable, not a real listing or valuation.");
+  await savedAction(page, () => page.getByRole("button", { name: "Save evidence", exact: true }).click());
+  await step(page, /Strategy & Calculators/);
+  await page.getByLabel("Purchase price", { exact: true }).fill("1000000");
+  await page.getByLabel("Monthly rent", { exact: true }).fill("10000");
+  await page.getByRole("button", { name: "Use this scenario and continue", exact: true }).click();
+  await page.getByRole("heading", { name: "Where could a building potentially fit?", exact: true }).waitFor();
+  await page.getByText("Review inputs and technical details", { exact: true }).click();
+  await page.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
+  await page.getByRole("button", { name: /^Boundary 1/ }).click();
+  await page.getByRole("button", { name: /^My own assumption/ }).click();
+  for (const [label, value] of [["Street (m)", "5"], ["Side (m)", "3"], ["Rear (m)", "3"], ["Max coverage (%)", "50"], ["Max height (m)", "8"]]) {
+    await page.getByLabel(label, { exact: true }).fill(value);
+  }
+  await savedAction(page, () => page.getByRole("button", { name: "Accept this Site Potential", exact: true }).click());
+  await page.locator('[data-site-potential-acceptance="accepted"]').waitFor();
+  await page.screenshot({ path: resolve(artifacts, "worker-site-desktop.png"), fullPage: true });
+  const all = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+  assert.equal(all.assets.length, 2); assert.equal(all.userData.savedMarketEvidence.length, 1);
+  assert(all.userData.strategyWorkspace.chosenScenarioId); assert(all.userData.buildEnvelopeInputs.acceptedInputSignature);
+  results.push("Actual worker uploads/extraction with fixture provider, user-bound SG/paid evidence, working zoning, comparable, chosen Strategy and accepted deterministic Site Potential persisted in customer file");
+}
 try {
   for (const [actor, id] of Object.entries(ids)) {
     const email = `isolated-${actor}@example.invalid`;
@@ -131,7 +205,7 @@ try {
   ]));
   must(await adminClient.from("report_orders").insert([
     { id: orderA, user_id: ids.a, parcel_id: parcelA, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", price_cents: 99900,
-      review_focus: "general", payload: { orderKind: "easy_erf_investigation", livemode: false, erfNumber: "42", address: "42 Synthetic Street", propertyReference: "Erf 42, 42 Synthetic Street", customerEmail: "isolated-a@example.invalid" } },
+      review_focus: "property_check", payload: { orderKind: "easy_erf_investigation", livemode: false, erfNumber: "42", address: "42 Synthetic Street", propertyReference: "Erf 42, 42 Synthetic Street", customerEmail: "isolated-a@example.invalid" } },
     { id: orderB, user_id: ids.b, parcel_id: parcelB, provider: "stripe", report_type: "human_review", status: "processing", status_enum: "fulfilling", payload: { orderKind: "easy_erf_investigation", livemode: false } },
   ]));
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
@@ -171,6 +245,7 @@ try {
   assert.equal(saved.userData.easyErfInvestigation.identityStatus, "looks_correct");
   assert(saved.userData.investigationWork.property_checks.result.includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(must(await adminClient.from("saved_properties").select("id").eq("user_id", ids.worker)).length, 0);
+  await gatherSections(worker);
   await worker.reload();
   await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
   await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).click();
@@ -180,7 +255,8 @@ try {
   const editSaved = worker.waitForResponse((r) => r.url().endsWith("/rpc/edit_investigation_brief") && r.request().method() === "POST");
   await worker.getByRole("button", { name: "Save review edits", exact: true }).click();
   assert.equal((await editSaved).status(), 200);
-  await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).waitFor();
+  await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).and(worker.locator(":enabled")).waitFor();
+  await worker.getByLabel("Bottom line 1", { exact: true }).and(worker.locator(":enabled")).waitFor();
   const draft = await rpc("worker", "read_investigation_review", { p_order_id: orderA });
   assert.equal(draft.approved_at, null); assert(draft.edited_brief.bottomLine.text.includes("SYNTHETIC_HUMAN_EDIT"));
   assert.equal(await rpc("a", "read_investigation_review", { p_order_id: orderA }), null);
@@ -207,6 +283,18 @@ try {
   assert((await customer.locator("body").innerText()).includes("SYNTHETIC_HUMAN_EDIT"));
   assert((await customer.locator("body").innerText()).includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(await customer.getByText("Human-reviewed investigation.", { exact: true }).count(), 1);
+  const report = customer.locator(`[data-review-version="${approved.id}"]`);
+  for (const section of ["Property identity and address", "Zoning, planning and building controls", "Sources checked and remaining limitations"]) {
+    await report.getByRole("heading", { name: section, exact: true }).waitFor();
+  }
+  assert((await report.innerText()).includes("T42/2026"));
+  assert((await report.innerText()).includes("SYNTHETIC-sg_diagram.pdf"));
+  assert.equal(await report.locator("#investigation-site svg").count() > 0, true);
+  await customer.getByPlaceholder("Example: What information is missing before I make an offer?", { exact: true }).fill("What evidence remains uncertain in this reviewed report?");
+  const asked = customer.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "ask");
+  await customer.getByRole("button", { name: "Ask", exact: true }).click();
+  assert.equal((await asked).status(), 200);
+  await customer.getByText("Synthetic answer: this saved evidence still has recorded limitations.", { exact: true }).waitFor();
   await customer.screenshot({ path: resolve(artifacts, "customer-combined-mobile.png"), fullPage: true });
   const persisted = await rpc("a", "read_investigation_review", { p_order_id: orderA, p_version_id: approved.id });
   assert(persisted.delivered_at); assert.equal(createHash("sha256").update(JSON.stringify(persisted.report_assembly)).digest("hex"), frozenHash);
@@ -215,6 +303,18 @@ try {
     p_user_data_patch: { easyErfInvestigation: { ...current.userData.easyErfInvestigation, identityStatus: "uncertain" } }, p_expected: current.userData });
   const later = await rpc("a", "read_investigation_review", { p_order_id: orderA, p_version_id: approved.id });
   assert.equal(createHash("sha256").update(JSON.stringify(later.report_assembly)).digest("hex"), frozenHash);
+  const assets = current.assets;
+  for (const actor of ["a", "b", "stranger", "worker"]) {
+    for (const asset of assets) {
+      const read = await fetch(`${appUrl}/api/investigations/asset`, { method: "POST", headers: {
+        Authorization: `Bearer ${sessions[actor].access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: orderA, assetId: asset.id, versionId: approved.id }) });
+      const permitted = actor === "worker" || (actor === "a" && asset.asset_category === "sg_diagram");
+      assert.equal(read.status, permitted ? 200 : 403, `${actor} ${asset.asset_category}`);
+      if (permitted) assert.equal(createHash("sha256").update(Buffer.from(await read.arrayBuffer())).digest("hex"), asset.checksum_sha256);
+    }
+  }
+  results.push("Combined report contains actual stored findings and envelope; version-bound Ask uses controlled provider; customer original-sharing rights and exact-order asset route enforced");
   results.push("Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version");
 
   const path = `${ids.a}/${parcelA}/other/${randomUUID()}/fixture.png`;

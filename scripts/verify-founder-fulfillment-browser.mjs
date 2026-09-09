@@ -543,6 +543,12 @@ try {
     await page.screenshot({ path: resolve(artifacts, "selected-mobile-viewport.png") });
   });
   await check("mark-ready outcomes distinguish acceptance, failure, disabled and already-sent", async () => {
+    if (rows[0].status === "ready") await reopen(A);
+    assert.ok(await page.getByRole("button", { name: "Mark this exact report ready", exact: true }).isDisabled());
+    // Explicit fixture attestation of a separately approved combined version.
+    // Actual database approval/delivery enforcement is covered by the isolated suite.
+    rows[0].review_content.combinedReviewVersionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    await page.reload(); await workbench().waitFor();
     for (const [response, expected] of [
       [{ ok: true, emailAccepted: true }, "customer email accepted"],
       [{ ok: false, code: "EMAIL_SEND_FAILED" }, "customer email failed"],

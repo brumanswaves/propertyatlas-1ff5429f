@@ -233,7 +233,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
               Ownership and deeds evidence
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Buy the property report, then upload the PDF here
+              {vault.investigationOrderId ? "Obtain and review the included property report" : "Buy the property report, then upload the PDF here"}
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
               The fastest practical route is usually a Lightstone or WinDeed report. Easy Erf can
@@ -264,7 +264,11 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
         </div>
       </section>
 
-      <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
+      {vault.investigationOrderId ? <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
+        <h4 className="text-base font-semibold text-[#0D1B2A]">Included evidence, no second customer charge</h4>
+        <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Obtain the included property-data report through the existing authorized provider process where coverage is available. Record the findings in this customer file. If unavailable, record the source checked, date, outcome and limitation for the reviewer.</p>
+        <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">Process or share the original only where the provider license permits. A provider report is not the certified title deed or municipal approval.</p>
+      </section> : <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
         <h4 className="text-base font-semibold text-[#0D1B2A]">One of the most important upgrades to your Easy Erf investigation</h4>
         <p className="mt-2 text-sm leading-6 text-[#0D1B2A]/68">Free public data helps Easy Erf identify the land. A paid property report adds deeds, transaction and market context that can materially change a buying or development decision.</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -314,7 +318,7 @@ export function GuidedTitleStep({ parcel, onContinue, onOpenPaidReports }: Guide
           not be the certified title deed. A conveyancer or the Deeds Office may still be needed for
           the actual deed and legal interpretation.
         </p>
-      </section>
+      </section>}
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-2">

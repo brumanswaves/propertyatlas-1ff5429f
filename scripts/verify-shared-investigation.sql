@@ -138,6 +138,13 @@ do $$
 declare v_id uuid; v_edited uuid; v_snapshot jsonb; v_before jsonb; v_revision bigint;
   v_content jsonb := '{"bottomLine":"Synthetic investigated result","known":["Known synthetic fact"],"potential":["Conditional potential"],"risks":["Known limitation"],"unknowns":["Unverified constraint"],"nextSteps":["Obtain professional confirmation"],"investigationChecklist":{"parcel_identity":"complete","cadastral_evidence":"complete","ownership_title":"complete","zoning_planning":"complete","property_checks":"complete","market_evidence":"complete","strategy_calculations":"complete","site_potential":"complete","reviewed_report":"complete"}}';
 begin
+  update public.report_orders set created_at='2000-01-01', review_content=v_content
+    where id='99999999-9999-4999-8999-999999999999';
+  begin
+    update public.report_orders set status='ready', status_enum='complete', completed_at=now()
+      where id='99999999-9999-4999-8999-999999999999';
+    raise exception 'Old unenrolled order bypassed evidence-bound approval';
+  exception when check_violation then null; end;
   v_snapshot := investigation_private.snapshot('22222222-2222-4222-8222-222222222222','synthetic:shared-a');
   v_revision := (v_snapshot->>'revision')::bigint;
   v_id := public.record_investigation_brief('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',
