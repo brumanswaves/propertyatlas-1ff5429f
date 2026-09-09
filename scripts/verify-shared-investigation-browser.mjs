@@ -475,7 +475,7 @@ try {
   await rpc("admin", "assign_order_investigator", { p_order_id: orderA, p_worker_id: ids.worker, p_can_approve: false, p_revoke: true });
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
   await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
-  await worker.getByRole("alert").first().waitFor();
+  await worker.getByRole("heading", { name: "Founder Operations access required", exact: true }).waitFor();
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   results.push("Real Storage denies non-owner direct reads; revocation clears worker access");
   assert(!JSON.stringify(requests).includes("NONSELECTED_PRIVATE_SENTINEL"), "Another customer's private content crossed the application boundary");
