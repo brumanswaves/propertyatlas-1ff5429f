@@ -600,7 +600,10 @@ describe("Report concision (dossier source)", () => {
     );
     expect(source).toContain("deriveAcceptedBuildEnvelope");
     expect(guidedSource).toContain("deriveAcceptedBuildEnvelope");
-    expect(source).not.toContain("readStoredBuildEnvelopeInputs");
+    const sharedSource = readFileSync(resolve(__dirname, "../../../../lib/investigation/sharedInvestigation.ts"), "utf8");
+    expect(source).toContain("assembleInvestigation");
+    expect(sharedSource).toContain("deriveAcceptedBuildEnvelope");
+    expect(sharedSource).not.toContain("calculateBuildEnvelope");
     expect(source).not.toContain("calculateBuildEnvelope");
   });
 

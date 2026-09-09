@@ -47,8 +47,14 @@ jobs:
         run: |
           STACK="${RUNNER_TEMP}/ee-r999-isolated"
           mkdir -p "${STACK}"
-          supabase init --workdir "${STACK}"
-          cp -r supabase/migrations "${STACK}/supabase/"
+          cd "${STACK}"
+          supabase init
+          cp -r "${GITHUB_WORKSPACE}/supabase/migrations" supabase/
+          python3 - <<'PY'
+          import tomllib
+          with open('supabase/config.toml', 'rb') as config:
+              assert tomllib.load(config)['project_id'] == 'ee-r999-isolated'
+          PY
           # Host-published CLI ports need a bridge gateway. Keep container egress
           # denied explicitly, before any migration or application service starts.
           docker network create --subnet 172.30.87.0/24 -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 ee-r999-investigation-test
@@ -56,9 +62,17 @@ jobs:
           sudo iptables -C DOCKER-USER -s 172.30.87.0/24 ! -d 172.30.87.0/24 -m conntrack --ctstate NEW -j REJECT
           # No project link, production env, function deploy or real credentials.
           # Historical cron cannot initiate external requests through this bridge.
-          supabase start --workdir "${STACK}" --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
+          supabase start --network-id ee-r999-investigation-test --exclude realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "${RUNNER_TEMP}/local-stack.log" 2>&1
           umask 077
-          supabase status --workdir "${STACK}" -o json > "${RUNNER_TEMP}/investigation-runtime.json"
+          supabase status -o json > "${RUNNER_TEMP}/investigation-runtime.json"
+          docker inspect $(docker ps -q --filter label=com.supabase.cli.project=ee-r999-isolated) --format '{{json .NetworkSettings.Ports}}' > "${RUNNER_TEMP}/isolated-port-bindings.jsonl"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ['RUNNER_TEMP'] + '/isolated-port-bindings.jsonl') as ports:
+              rows = [json.loads(line) for line in ports]
+          assert rows, 'No isolated containers found'
+          assert all(binding['HostIp'] == '127.0.0.1' for row in rows for bindings in row.values() for binding in (bindings or []))
+          PY
       - name: Preserve sanitized isolated startup evidence
         if: always()
         run: |
@@ -67,7 +81,7 @@ jobs:
           import { readFileSync, existsSync, writeFileSync } from 'node:fs';
           const path = process.env.RUNNER_TEMP + '/local-stack.log';
           if (existsSync(path)) {
-            const safe = readFileSync(path, 'utf8').split('\n')
+            const safe = readFileSync(path, 'utf8').split('Started supabase local development setup.')[0].split('\n')
               .filter(line => !/password|secret|token|authorization|api.key|publishable.key/i.test(line))
               .map(line => line.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]'))
               .slice(-140).join('\n');
@@ -82,7 +96,9 @@ jobs:
         run: node scripts/verify-shared-investigation-browser.mjs
       - name: Stop isolated containers
         if: always()
-        run: supabase stop --workdir "${RUNNER_TEMP}/ee-r999-isolated" || true
+        run: |
+          cd "${RUNNER_TEMP}/ee-r999-isolated"
+          supabase stop
       - name: Upload redacted synthetic evidence only
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

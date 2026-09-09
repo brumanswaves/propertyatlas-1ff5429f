@@ -169,7 +169,7 @@ try {
   assert(saved.userData.investigationWork.property_checks.result.includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(must(await adminClient.from("saved_properties").select("id").eq("user_id", ids.worker)).length, 0);
   await worker.reload();
-  await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Report/ }).click();
+  await worker.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
   await worker.getByRole("button", { name: "Generate investigation brief", exact: true }).click();
   await worker.getByLabel("Bottom line 1", { exact: true }).waitFor();
   assert.equal(await worker.getByRole("button", { name: "Approve this evidence and brief version", exact: true }).count(), 0);
@@ -184,7 +184,7 @@ try {
 
   const admin = await open("admin");
   await admin.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
-  await admin.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Report/ }).click();
+  await admin.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
   const approvedResponse = admin.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "approve");
   await admin.getByRole("button", { name: "Approve this evidence and brief version", exact: true }).click();
   assert.equal((await approvedResponse).status(), 200);

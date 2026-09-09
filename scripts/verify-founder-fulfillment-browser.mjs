@@ -70,7 +70,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
 await context.addInitScript(({ session }) => {
   // Local build uses a reserved .invalid URL; other keys support existing CI builds.
-  for (const key of ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
+  for (const key of ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
     localStorage.setItem(key, JSON.stringify(session));
   }
 }, { session });
@@ -197,7 +197,7 @@ page.on("response", (response) => {
 async function broadcastAuth(nextSession) {
   activeUser = nextSession?.user ?? null;
   await page.evaluate((value) => {
-    for (const key of ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
+    for (const key of ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"]) {
       if (value) localStorage.setItem(key, JSON.stringify(value));
       else localStorage.removeItem(key);
       const channel = new BroadcastChannel(key);
@@ -290,6 +290,8 @@ try {
       await page.goto(`${baseUrl}/admin/fulfillment`);
       await page.locator("article").filter({ hasText: A }).getByRole("button", { name: "Open exact order" }).click();
       await workbench().waitFor();
+      await sourceEditor();
+      await page.keyboard.press("Control+Home");
       await page.waitForFunction(() => scrollY === 0);
       await scrollPageBy(scenario.scroll);
       await page.waitForFunction((amount) => scrollY >= amount, scenario.scroll);
@@ -297,6 +299,7 @@ try {
       await workbench().waitFor();
       assert.equal(await workbench().getAttribute("data-order-id"), A);
       const restoredScrollY = await page.evaluate(() => scrollY);
+      await sourceEditor();
       // Also exercise a user scroll after refresh: hydration can reset native
       // restoration, which must not make a formerly safe control interceptable.
       await page.keyboard.press("Control+Home");
@@ -309,7 +312,7 @@ try {
         await page.screenshot({ path: resolve(artifacts, `${name}-pinned.png`) });
       }
       await (await sourceEditor()).fill("UNSAVED A ONLY");
-      await page.getByLabel("Recorded outcome", { exact: true }).selectOption("unavailable");
+      await page.getByRole("combobox", { name: /^Recorded outcome/ }).selectOption("unavailable");
       await page.getByText("Record an investigation failure", { exact: true }).click();
       await page.getByRole("textbox", { name: "Failure reason for this exact order" }).fill("A-only failure");
       await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -358,7 +361,7 @@ try {
       await workbench().waitFor();
       assert.equal(await workbench().getAttribute("data-order-id"), B);
       assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
-      assert.equal(await page.getByLabel("Recorded outcome", { exact: true }).inputValue(), "reviewed");
+      assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
       await page.getByText("Record an investigation failure", { exact: true }).click();
       assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
       await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -508,7 +511,7 @@ try {
   });
   await check("report, checklist, failure, file and modal state cannot leak between orders", async () => {
     await (await sourceEditor()).fill("UNSAVED A ONLY");
-    await page.getByLabel("Recorded outcome", { exact: true }).selectOption("unavailable");
+    await page.getByRole("combobox", { name: /^Recorded outcome/ }).selectOption("unavailable");
     await page.getByText("Record an investigation failure", { exact: true }).click();
     await page.getByRole("textbox", { name: "Failure reason for this exact order" }).fill("A-only failure");
     await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -520,7 +523,7 @@ try {
     // A fresh exact-order read finds B ready; reopening must preserve B.
     await reopen(B);
     assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
-    assert.equal(await page.getByLabel("Recorded outcome", { exact: true }).inputValue(), "reviewed");
+    assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
     await page.getByText("Record an investigation failure", { exact: true }).click();
     assert.equal(await page.getByRole("textbox", { name: "Failure reason for this exact order" }).inputValue(), "");
     await page.getByText("Optional PDF delivery", { exact: true }).click();
@@ -528,7 +531,7 @@ try {
     await page.evaluate((id) => { location.hash = `order-${id}`; }, A);
     await page.waitForFunction((id) => document.querySelector('[data-order-id]')?.getAttribute("data-order-id") === id, A);
     assert.equal(await (await sourceEditor()).inputValue(), "Persisted report A");
-    assert.equal(await page.getByLabel("Recorded outcome", { exact: true }).inputValue(), "reviewed");
+      assert.equal(await page.getByRole("combobox", { name: /^Recorded outcome/ }).inputValue(), "reviewed");
   });
   await check("mobile pinned identity and primary action fit without horizontal overflow", async () => {
     await page.setViewportSize({ width: 390, height: 844 });

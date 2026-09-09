@@ -10,7 +10,7 @@ const USER_EMAIL = "guided-cloud-acceptance@easyerf.invalid";
 const LPI = "C03400140000157000000";
 const PARCEL_KEY = "E108C034001400001570000000";
 const PARCEL_ID = "csg:lpi:c03400140000157000000";
-const AUTH_STORAGE_KEYS = ["sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
+const AUTH_STORAGE_KEYS = ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"];
 const ACCEPTANCE_AT = "2026-08-29T08:00:00.000Z";
 assert.equal(new URL(baseUrl).hostname, "127.0.0.1");
 const artifacts = resolve(process.env.EASY_ERF_BROWSER_ARTIFACTS || "artifacts/guided-cloud");
