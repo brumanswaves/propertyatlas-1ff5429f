@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
-import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, orderInvestigationSchema } from "./sharedInvestigation";
-import { investigationReviewVersionSchema } from "./investigationReviewVersion";
+import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, investigationSnapshotSchema, orderInvestigationSchema } from "./sharedInvestigation";
+import { HUMAN_ONLY_REVIEW_MODEL, investigationReviewVersionSchema } from "./investigationReviewVersion";
 import { INVESTIGATION_BRIEF_MODEL, validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
 import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import { buildAskEasyErfSelectedEvidencePayload, calibrateAskEasyErfAnswerConfidence } from "@/lib/reports/askEasyErf";
@@ -10,8 +10,10 @@ import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
 import { acquireIndependentEvidence } from "./independentEvidence.server";
 import { assessModelPackageQuality, buildRestrictedModelPackage, withModelEvidence } from "./restrictedModelPackage.server";
 
+const REVIEW_REQUEST_MAX_BYTES = 65_536;
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("generate"), orderId: z.string().uuid() }).strict(),
+  z.object({ action: z.literal("human_approve"), orderId: z.string().uuid(), content: z.unknown() }).strict(),
   z.object({ action: z.literal("approve"), orderId: z.string().uuid(), versionId: z.string().uuid(), briefRevision: z.number().int().positive() }).strict(),
   z.object({ action: z.literal("ask"), orderId: z.string().uuid(), versionId: z.string().uuid(), question: z.string().trim().min(1).max(2000) }).strict(),
 ]);
@@ -32,13 +34,19 @@ function checkError(error: { code?: string } | null) {
   if (error.code === "42501") throw new ApiRequestError("Access to this investigation is unavailable.", 403);
   throw new ApiRequestError("The investigation operation could not be completed.", 409);
 }
+function approvalChecklist(assessment: ReturnType<typeof assessInvestigationSignoff>) {
+  return Object.fromEntries([
+    ...assessment.items.map((item) => [item.id, item.disposition?.disposition === "not_applicable" && !item.supported ? "not_applicable" : "complete"]),
+    ["reviewed_report", "complete"],
+  ]);
+}
 
 export async function handleInvestigationReviewRequest(request: Request, deps: InvestigationReviewServerDeps = {}) {
   try {
     if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
     const auth = await (deps.authenticate ?? authenticateApiRequest)(request);
     const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > 8192) return json({ error: "Request too large." }, 413);
+    if (new TextEncoder().encode(body).byteLength > REVIEW_REQUEST_MAX_BYTES) return json({ error: "Request too large." }, 413);
     const parsed = requestSchema.safeParse(JSON.parse(body));
     if (!parsed.success) return json({ error: "Invalid investigation request." }, 400);
     const input = parsed.data;
@@ -89,6 +97,52 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       return json({ versionId: z.string().uuid().parse(recorded.data), approved: false });
     }
 
+    if (input.action === "human_approve") {
+      if (!scope.canApprove) return json({ error: "Approval permission is required." }, 403);
+      const validated = validateHumanReviewReportContent(input.content);
+      if (!validated.ok) return json({ error: validated.error }, 409);
+
+      // Human-only approval freezes the full human-visible investigation, not an
+      // AI-filtered derivative. Recheck access and revision immediately before
+      // creating the immutable review version. The database approval RPC checks
+      // the revision again before making the version deliverable.
+      const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
+      checkError(current.error);
+      const latest = orderInvestigationSchema.parse(current.data);
+      if (!latest.canApprove || latest.orderId !== scope.orderId || latest.customerId !== scope.customerId
+        || latest.parcelId !== scope.parcelId || latest.revision !== scope.revision) {
+        return json({ error: "Investigation access or evidence changed. Review the current property file before approval." }, 409);
+      }
+      const assembly = assembleInvestigation(latest);
+      const assessment = assessInvestigationSignoff(latest, assembly);
+      if (!assessment.eligible) return json({ error: "Investigation work is unfinished.", blockers: assessment.blockers }, 409);
+
+      const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+      const created = await service.from("investigation_review_versions").insert({
+        order_id: input.orderId,
+        customer_id: latest.customerId,
+        parcel_id: latest.parcelId,
+        evidence_revision: latest.revision,
+        evidence_snapshot: investigationSnapshotSchema.parse(latest),
+        report_assembly: assembly,
+        evidence_manifest: [],
+        signoff_assessment: assessment,
+        generated_brief: validated.content,
+        edited_brief: validated.content,
+        provider_model: HUMAN_ONLY_REVIEW_MODEL,
+        generated_by: auth.user.id,
+        brief_revision: 1,
+      }).select("id").single();
+      checkError(created.error);
+      const versionId = z.string().uuid().parse(created.data?.id);
+      const approval = await service.rpc("approve_investigation_review", {
+        p_order_id: input.orderId, p_version_id: versionId, p_actor_id: auth.user.id, p_expected_brief_revision: 1,
+        p_validated_content: { ...validated.content, investigationChecklist: approvalChecklist(assessment) },
+      });
+      checkError(approval.error);
+      return json({ approved: true, versionId, delivered: false, reviewMode: HUMAN_ONLY_REVIEW_MODEL });
+    }
+
     const selected = await auth.supabase.rpc("read_investigation_review", { p_order_id: input.orderId, p_version_id: input.versionId });
     checkError(selected.error);
     const version = investigationReviewVersionSchema.parse(selected.data);
@@ -133,10 +187,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
     const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
     const approval = await service.rpc("approve_investigation_review", {
       p_order_id: input.orderId, p_version_id: input.versionId, p_actor_id: auth.user.id, p_expected_brief_revision: input.briefRevision,
-      p_validated_content: { ...validated.content, investigationChecklist: Object.fromEntries([
-        ...assessment.items.map((item) => [item.id, item.disposition?.disposition === "not_applicable" && !item.supported ? "not_applicable" : "complete"]),
-        ["reviewed_report", "complete"],
-      ]) },
+      p_validated_content: { ...validated.content, investigationChecklist: approvalChecklist(assessment) },
     });
     checkError(approval.error);
     return json({ approved: true, versionId: input.versionId, delivered: false });
