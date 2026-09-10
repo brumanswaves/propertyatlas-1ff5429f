@@ -80,9 +80,14 @@ export function normalizeInvestigationPatch(parcelId: string, patch: Json): Json
   return toSupabaseJson({ ...record, ...buildSavedInvestigationUserDataPatch(parcelId,
     { ...workspace, updatedAt: new Date().toISOString() }) });
 }
-export async function requestInvestigationReview(input: {
-  action: "generate" | "approve" | "ask"; orderId: string; versionId?: string; briefRevision?: number; question?: string;
-}, signal: AbortSignal): Promise<unknown> {
+
+type InvestigationReviewRequest =
+  | { action: "generate"; orderId: string }
+  | { action: "human_approve"; orderId: string; content: Json }
+  | { action: "approve"; orderId: string; versionId: string; briefRevision: number }
+  | { action: "ask"; orderId: string; versionId: string; question: string };
+
+export async function requestInvestigationReview(input: InvestigationReviewRequest, signal: AbortSignal): Promise<unknown> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Sign in to continue.");
   const response = await fetch("/api/investigations/review", { method: "POST", signal,
