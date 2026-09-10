@@ -5,6 +5,8 @@ import { assembleInvestigation, investigationSnapshotSchema } from "../sharedInv
 import { investigationReviewVersionSchema } from "../investigationReviewVersion";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { buildSavedInvestigationUserDataPatch } from "@/lib/workbench/savedInvestigationProjection";
+import { acquireIndependentEvidence } from "../independentEvidence.server";
+import { buildRestrictedModelPackage, withModelEvidence } from "../restrictedModelPackage.server";
 
 function fixture() {
   const snapshot = investigationSnapshotSchema.parse({ schemaVersion: 1, parcelId: "manual:fixture", revision: 4,
@@ -24,6 +26,29 @@ function fixture() {
 }
 
 describe("shared complete investigation report", () => {
+  it("renders independent source citations separately from human-only evidence", async () => {
+    const { snapshot, rawVersion } = fixture();
+    snapshot.parcelId = "csg:lpi:c00000000000004200000";
+    snapshot.userData.normalizedParcel = { ...rawVersion.report_assembly.parcel, id: snapshot.parcelId };
+    snapshot.processingSources = [{ assetId: "10000000-0000-4000-8000-000000000003", aiProcessingAllowed: false }];
+    const handle = await acquireIndependentEvidence(snapshot.parcelId, async () => Response.json({ features: [{
+      attributes: { ID: "C00000000000004200000", PARCEL_NO: "42", PORTION: 0, GEOM_AREA: 600 },
+    }] }));
+    const assembly = assembleInvestigation(snapshot);
+    const payload = buildRestrictedModelPackage(snapshot, assembly, handle);
+    const model = withModelEvidence(assembly, payload);
+    const statement = { text: "Independent cadastral context, not full document review.", sourceRefs: ["independent-official-parcel-record"] };
+    const version = investigationReviewVersionSchema.parse({ ...rawVersion, parcel_id: snapshot.parcelId,
+      evidence_snapshot: snapshot, report_assembly: model,
+      generated_brief: { ...rawVersion.generated_brief, bottomLine: statement },
+      edited_brief: { ...rawVersion.edited_brief, bottomLine: statement } });
+    const html = renderToStaticMarkup(<SharedInvestigationReport assembly={model} version={version} />);
+    expect(html).toContain("restricted documents remain human-only");
+    expect(html).toContain('href="#investigation-source-independent-official-parcel-record"');
+    expect(html).toContain('id="investigation-source-independent-official-parcel-record"');
+    expect(html).toContain("Erf number: 42");
+    expect(html).not.toContain("AI reviewed all documents");
+  });
   it("self-service identifies its status and retains Ask, evidence, Strategy and deterministic Site Potential", () => {
     const { assembly } = fixture();
     const html = renderToStaticMarkup(<SharedInvestigationReport assembly={assembly} />);

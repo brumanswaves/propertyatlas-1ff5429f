@@ -21,7 +21,17 @@ net.Socket.prototype.connect = function (...args) {
 };
 const fetchImpl = globalThis.fetch;
 globalThis.fetch = (input, init) => {
-  check(new URL(input instanceof Request ? input.url : input).hostname);
+  const url = new URL(input instanceof Request ? input.url : input);
+  // Fixed synthetic public-source response, never a passthrough or saved-data
+  // assertion. The production collector still validates identity and provenance.
+  if (url.origin + url.pathname === "https://csggis.drdlr.gov.za/server/rest/services/CSGSearch/MapServer/2/query"
+    && url.searchParams.get("where") === "ID='C00000000000004200000'") {
+    return Promise.resolve(Response.json({ features: [{ attributes: {
+      ID: "C00000000000004200000", PARCEL_NO: "42", PORTION: 0, GEOM_AREA: 600,
+      MUNICIPALITY: "Kouga Local Municipality", PROVINCE: "Eastern Cape",
+    } }] }));
+  }
+  check(url.hostname);
   return fetchImpl(input, init);
 };
 for (const module of [net, tls]) {

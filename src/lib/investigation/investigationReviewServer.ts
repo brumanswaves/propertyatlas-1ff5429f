@@ -7,6 +7,8 @@ import { INVESTIGATION_BRIEF_MODEL, validateInvestigationBrief } from "../../../
 import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import { buildAskEasyErfSelectedEvidencePayload, calibrateAskEasyErfAnswerConfidence } from "@/lib/reports/askEasyErf";
 import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
+import { acquireIndependentEvidence } from "./independentEvidence.server";
+import { assessModelPackageQuality, buildRestrictedModelPackage, withModelEvidence } from "./restrictedModelPackage.server";
 
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("generate"), orderId: z.string().uuid() }).strict(),
@@ -19,6 +21,7 @@ export interface InvestigationReviewServerDeps {
   serviceClient?: typeof createServiceRoleSupabaseClient;
   env?: typeof readServerEnv;
   fetchImpl?: typeof fetch;
+  publicEvidenceFetch?: typeof fetch;
 }
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -46,7 +49,23 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
     if (input.action === "generate") {
       if (!scope.canWork) return json({ error: "Assigned investigator access is required." }, 403);
       const assembly = assembleInvestigation(scope);
-      const evidencePackage = buildInvestigationModelPackage(scope, assembly);
+      const initial = buildInvestigationModelPackage(scope, assembly);
+      const independent = initial.provenance.userMaterialPermitted ? undefined
+        : await acquireIndependentEvidence(scope.parcelId, deps.publicEvidenceFetch);
+      const evidencePackage = buildRestrictedModelPackage(scope, assembly, independent);
+      const quality = assessModelPackageQuality(evidencePackage);
+      if (!quality.useful) return json({ error: quality.reason, quality }, 422);
+      // Public acquisition can be slow. Recheck assignment, revision and consent
+      // before starting a paid request, not only when saving its eventual result.
+      const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
+      checkError(current.error);
+      const latest = orderInvestigationSchema.parse(current.data);
+      if (!latest.canWork || latest.orderId !== scope.orderId || latest.customerId !== scope.customerId
+        || latest.parcelId !== scope.parcelId || latest.revision !== scope.revision
+        || JSON.stringify(latest.processingSources) !== JSON.stringify(scope.processingSources)
+        || JSON.stringify(latest.assets) !== JSON.stringify(scope.assets)) {
+        return json({ error: "Investigation access, evidence or processing permission changed. Nothing was sent to AI." }, 409);
+      }
       const functionSecret = env("ASK_EASY_ERF_FN_SECRET") ?? env("SUPABASE_SERVICE_ROLE_KEY");
       const url = env("SUPABASE_URL");
       if (!functionSecret || !url) return json({ error: "Investigation AI review is not configured. No review was generated." }, 503);
@@ -63,7 +82,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
       const recorded = await service.rpc("record_investigation_brief", {
         p_order_id: input.orderId, p_actor_id: auth.user.id, p_expected_revision: scope.revision,
-        p_assembly: { ...assembly, modelEvidencePack: evidencePackage.evidence }, p_manifest: investigationInputManifest(scope), p_assessment: assessInvestigationSignoff(scope, assembly),
+        p_assembly: withModelEvidence(assembly, evidencePackage), p_manifest: investigationInputManifest(scope), p_assessment: assessInvestigationSignoff(scope, assembly),
         p_brief: brief, p_model: payload.model,
       });
       checkError(recorded.error);
