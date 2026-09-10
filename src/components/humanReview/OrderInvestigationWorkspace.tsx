@@ -71,7 +71,8 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
   const assessment = useMemo(() => scope && assembly ? assessInvestigationSignoff(scope, assembly) : null, [scope, assembly]);
   const journey = useMemo(() => assembly ? buildGuidedInvestigationJourney(assembly.facts, assembly.workspaceState) : [], [assembly]);
   const activeStep = selectedStep ?? journey.find((step) => step.current)?.id ?? "confirm-property";
-  const needsReviewVersion = !version || version.currentEvidenceRevision !== scope?.revision;
+  const needsAiReviewVersion = !version || version.currentEvidenceRevision !== scope?.revision;
+  const needsHumanApproval = !version?.approved_at || version.currentEvidenceRevision !== scope?.revision;
   function nextStep() {
     const index = journey.findIndex((step) => step.id === activeStep);
     setSelectedStep(journey[index + 1]?.id ?? "report");
@@ -208,10 +209,10 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
         <strong>{item.label}</strong><p>{item.supported ? "Recorded evidence available" : item.disposition ? "Recorded limitation awaiting reviewer disposition" : "Work still required"}</p>
       </li>)}</ul>
       {activeStep === "report" && <section className="space-y-5">
-      {scope.canWork && needsReviewVersion && <button type="button" className={button} disabled={busy} onClick={() => void operation(async (signal) => {
+      {scope.canWork && needsAiReviewVersion && <button type="button" className={button} disabled={busy} onClick={() => void operation(async (signal) => {
         await requestInvestigationReview({ action: "generate", orderId }, signal);
       })}><Sparkles className="h-4 w-4" /> Generate optional AI-assisted brief</button>}
-      {scope.canApprove && needsReviewVersion && <HumanOnlyReviewEditor disabled={busy} eligible={assessment.eligible} blockers={assessment.blockers}
+      {scope.canApprove && needsHumanApproval && <HumanOnlyReviewEditor disabled={busy} eligible={assessment.eligible} blockers={assessment.blockers}
         onApprove={(content) => operation(async (signal) => {
           await requestInvestigationReview({ action: "human_approve", orderId, content: toSupabaseJson(content) }, signal);
           onApproved();
