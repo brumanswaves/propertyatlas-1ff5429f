@@ -112,6 +112,14 @@ describe("human-only R999 review fallback", () => {
     expect(assessInvestigationSignoff(scope, assembleInvestigation(scope)).eligible).toBe(false);
   });
 
+  it("keeps ordinary Ask closed while a paid investigation is still work in progress", () => {
+    const assembly = assembleInvestigation(eligibleScope());
+    const html = renderToStaticMarkup(<SharedInvestigationReport assembly={assembly} orderId={orderId} />);
+    expect(html).toContain("Ask Easy Erf becomes available only after an evidence-bound reviewed version is delivered");
+    expect(html).toContain("Work-in-progress investigation evidence is not sent through the ordinary Ask path");
+    expect(html).not.toContain("Ask questions about this property");
+  });
+
   it("freezes and approves a human-only version without any AI transport", async () => {
     const scope = eligibleScope();
     const f = humanRouteDeps(scope);
