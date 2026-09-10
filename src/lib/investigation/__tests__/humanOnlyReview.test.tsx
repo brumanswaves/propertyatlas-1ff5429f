@@ -84,6 +84,22 @@ function request(body: unknown) {
   });
 }
 
+function humanRouteDeps(scope: OrderInvestigation) {
+  const authRpc = vi.fn(async () => ({ data: structuredClone(scope), error: null }));
+  const single = vi.fn(async () => ({ data: { id: versionId }, error: null }));
+  const select = vi.fn(() => ({ single }));
+  const insert = vi.fn(() => ({ select }));
+  const from = vi.fn(() => ({ insert }));
+  const serviceRpc = vi.fn(async () => ({ data: null, error: null }));
+  const fetchImpl = vi.fn<typeof fetch>();
+  const deps = {
+    authenticate: vi.fn(async () => ({ user: { id: reviewerId }, token: "synthetic", supabase: { rpc: authRpc } })) as never,
+    serviceClient: vi.fn(() => ({ from, rpc: serviceRpc })) as never,
+    fetchImpl,
+  };
+  return { authRpc, single, select, insert, from, serviceRpc, fetchImpl, deps };
+}
+
 describe("human-only R999 review fallback", () => {
   it("uses the same investigation signoff gate instead of treating missing evidence as complete", () => {
     const scope = eligibleScope();
@@ -98,29 +114,19 @@ describe("human-only R999 review fallback", () => {
 
   it("freezes and approves a human-only version without any AI transport", async () => {
     const scope = eligibleScope();
-    const authRpc = vi.fn(async () => ({ data: structuredClone(scope), error: null }));
-    const single = vi.fn(async () => ({ data: { id: versionId }, error: null }));
-    const select = vi.fn(() => ({ single }));
-    const insert = vi.fn(() => ({ select }));
-    const from = vi.fn(() => ({ insert }));
-    const serviceRpc = vi.fn(async () => ({ data: null, error: null }));
-    const fetchImpl = vi.fn<typeof fetch>();
+    const f = humanRouteDeps(scope);
     const response = await handleInvestigationReviewRequest(
       request({ action: "human_approve", orderId, content: humanContent() }),
-      {
-        authenticate: vi.fn(async () => ({ user: { id: reviewerId }, token: "synthetic", supabase: { rpc: authRpc } })) as never,
-        serviceClient: vi.fn(() => ({ from, rpc: serviceRpc })) as never,
-        fetchImpl,
-      },
+      f.deps,
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ approved: true, versionId, delivered: false, reviewMode: HUMAN_ONLY_REVIEW_MODEL });
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(authRpc).toHaveBeenCalledTimes(2);
-    expect(from).toHaveBeenCalledWith("investigation_review_versions");
-    expect(insert).toHaveBeenCalledOnce();
-    const inserted = insert.mock.calls[0][0];
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+    expect(f.authRpc).toHaveBeenCalledTimes(2);
+    expect(f.from).toHaveBeenCalledWith("investigation_review_versions");
+    expect(f.insert).toHaveBeenCalledOnce();
+    const inserted = f.insert.mock.calls[0][0];
     expect(inserted).toEqual(expect.objectContaining({
       order_id: orderId,
       customer_id: customerId,
@@ -133,41 +139,44 @@ describe("human-only R999 review fallback", () => {
       generated_by: reviewerId,
     }));
     expect(inserted.report_assembly).not.toHaveProperty("modelEvidencePack");
-    expect(serviceRpc).toHaveBeenCalledWith("approve_investigation_review", expect.objectContaining({
+    expect(f.serviceRpc).toHaveBeenCalledWith("approve_investigation_review", expect.objectContaining({
       p_order_id: orderId,
       p_version_id: versionId,
       p_actor_id: reviewerId,
       p_expected_brief_revision: 1,
-      p_validated_content: expect.objectContaining({ reviewed_report: undefined }),
     }));
-    const approval = serviceRpc.mock.calls[0][1];
+    const approval = f.serviceRpc.mock.calls[0][1];
+    expect(approval.p_validated_content.bottomLine).toBe(humanContent().bottomLine);
     expect(approval.p_validated_content.investigationChecklist.reviewed_report).toBe("complete");
   });
 
-  it("refuses human-only approval without approval permission or unresolved investigation work", async () => {
-    for (const mutate of [
-      (scope: OrderInvestigation) => { scope.canApprove = false; },
-      (scope: OrderInvestigation) => { delete (scope.userData.investigationWork as Record<string, unknown>).market_evidence; },
-    ]) {
-      const scope = eligibleScope();
-      mutate(scope);
-      const authRpc = vi.fn(async () => ({ data: structuredClone(scope), error: null }));
-      const from = vi.fn();
-      const serviceRpc = vi.fn();
-      const fetchImpl = vi.fn<typeof fetch>();
-      const response = await handleInvestigationReviewRequest(
-        request({ action: "human_approve", orderId, content: humanContent() }),
-        {
-          authenticate: vi.fn(async () => ({ user: { id: reviewerId }, token: "synthetic", supabase: { rpc: authRpc } })) as never,
-          serviceClient: vi.fn(() => ({ from, rpc: serviceRpc })) as never,
-          fetchImpl,
-        },
-      );
-      expect(response.status).toBe(mutate.toString().includes("canApprove") ? 403 : 409);
-      expect(from).not.toHaveBeenCalled();
-      expect(serviceRpc).not.toHaveBeenCalled();
-      expect(fetchImpl).not.toHaveBeenCalled();
-    }
+  it("refuses human-only approval without approval permission", async () => {
+    const scope = eligibleScope();
+    scope.canApprove = false;
+    const f = humanRouteDeps(scope);
+    const response = await handleInvestigationReviewRequest(
+      request({ action: "human_approve", orderId, content: humanContent() }),
+      f.deps,
+    );
+    expect(response.status).toBe(403);
+    expect(f.from).not.toHaveBeenCalled();
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("refuses human-only approval while investigation work is unresolved", async () => {
+    const scope = eligibleScope();
+    delete (scope.userData.investigationWork as Record<string, unknown>).market_evidence;
+    const f = humanRouteDeps(scope);
+    const response = await handleInvestigationReviewRequest(
+      request({ action: "human_approve", orderId, content: humanContent() }),
+      f.deps,
+    );
+    expect(response.status).toBe(409);
+    expect(await response.text()).toContain("unfinished");
+    expect(f.from).not.toHaveBeenCalled();
+    expect(f.serviceRpc).not.toHaveBeenCalled();
+    expect(f.fetchImpl).not.toHaveBeenCalled();
   });
 
   it("parses and renders a human-only frozen report without relabelling it as AI output", () => {
