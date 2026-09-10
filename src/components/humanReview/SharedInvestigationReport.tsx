@@ -52,6 +52,11 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     ? validateInvestigationBrief(version.edited_brief, assembly.pack.sources.map((s) => s.id)) : null,
   [version, assembly, humanOnly]);
   const approved = Boolean(version?.approved_at && version.approved_by);
+  const paidReviewNotDelivered = Boolean(orderId && (!version || !version.delivered_at));
+  const askUnavailable = humanOnly || paidReviewNotDelivered;
+  const askUnavailableMessage = humanOnly
+    ? "Ask Easy Erf is unavailable for this human-only reviewed version because no AI-permitted evidence package was frozen with it. Nothing from this reviewed version is sent to AI."
+    : "Ask Easy Erf becomes available only after an evidence-bound reviewed version is delivered. Work-in-progress investigation evidence is not sent through the ordinary Ask path.";
   async function askVersion(question: string, signal: AbortSignal): Promise<AskEasyErfClientResult> {
     if (!version) return { success: false, error: "No reviewed version was selected." };
     const payload = z.object({ success: z.boolean(), answer: z.unknown().optional(), error: z.string().optional() }).parse(
@@ -77,9 +82,9 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
         <p className="mt-1 break-all text-xs font-normal">Version {version.id} · Evidence revision {version.evidence_revision} · Brief revision {version.brief_revision}</p>
         {version.currentEvidenceRevision !== version.evidence_revision && <p className="mt-2 text-xs">The working investigation has changed. This report preserves the evidence reviewed for this version.</p>}
       </div> : undefined}
-      askSlot={humanOnly ? <section id="report-ask-easy-erf" className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-6">
+      askSlot={askUnavailable ? <section id="report-ask-easy-erf" className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-6">
         <h3 className="text-xl font-semibold">Ask Easy Erf</h3>
-        <p className="mt-2 text-sm leading-6">Ask Easy Erf is unavailable for this human-only reviewed version because no AI-permitted evidence package was frozen with it. Nothing from this reviewed version is sent to AI.</p>
+        <p className="mt-2 text-sm leading-6">{askUnavailableMessage}</p>
       </section> : <AskEasyErfPanel key={version?.id ?? assembly.pack.fingerprint} suggestionPayload={assembly.askSuggestions}
         evidencePack={assembly.pack} askFromReviewedVersion={version ? askVersion : undefined} />}
       reviewSlot={humanReview ? <section aria-label="Human-only investigation review" className="space-y-4 border-y border-border py-5">
