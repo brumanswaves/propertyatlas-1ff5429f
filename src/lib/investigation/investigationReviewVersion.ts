@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { investigationSnapshotSchema, type InvestigationAssembly } from "./sharedInvestigation";
 import { validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
+import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
+
+export const HUMAN_ONLY_REVIEW_MODEL = "human-only";
 
 // Assembly is written only by the authenticated server with a service-only RPC.
 // Check its stored contract and scope; never rebuild a delivered version against newer planning rules.
@@ -31,6 +34,15 @@ export const investigationReviewVersionSchema = z.object({
   if (value.parcel_id !== value.evidence_snapshot.parcelId || value.parcel_id !== value.report_assembly.parcel.id
     || value.parcel_id !== value.report_assembly.pack.parcelId) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stored report scope does not match." });
+  }
+  if (value.provider_model === HUMAN_ONLY_REVIEW_MODEL) {
+    if (!validateHumanReviewReportContent(value.edited_brief).ok) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stored human review is invalid." });
+    }
+    if ((value.evidence_manifest?.length ?? 0) > 0 || value.report_assembly.modelEvidencePack) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Human-only review cannot contain AI review inputs." });
+    }
+    return;
   }
   if (!validateInvestigationBrief(value.edited_brief, value.report_assembly.pack.sources.map((source) => source.id))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stored brief is missing its evidence references." });
