@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
+import { toSupabaseJson } from "@/lib/supabase/json";
 import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, investigationSnapshotSchema, orderInvestigationSchema } from "./sharedInvestigation";
 import { HUMAN_ONLY_REVIEW_MODEL, investigationReviewVersionSchema } from "./investigationReviewVersion";
 import { INVESTIGATION_BRIEF_MODEL, validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
@@ -63,8 +64,6 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const evidencePackage = buildRestrictedModelPackage(scope, assembly, independent);
       const quality = assessModelPackageQuality(evidencePackage);
       if (!quality.useful) return json({ error: quality.reason, quality }, 422);
-      // Public acquisition can be slow. Recheck assignment, revision and consent
-      // before starting a paid request, not only when saving its eventual result.
       const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
       checkError(current.error);
       const latest = orderInvestigationSchema.parse(current.data);
@@ -102,10 +101,6 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const validated = validateHumanReviewReportContent(input.content);
       if (!validated.ok) return json({ error: validated.error }, 409);
 
-      // Human-only approval freezes the full human-visible investigation, not an
-      // AI-filtered derivative. Recheck access and revision immediately before
-      // creating the immutable review version. The database approval RPC checks
-      // the revision again before making the version deliverable.
       const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
       checkError(current.error);
       const latest = orderInvestigationSchema.parse(current.data);
@@ -123,12 +118,12 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
         customer_id: latest.customerId,
         parcel_id: latest.parcelId,
         evidence_revision: latest.revision,
-        evidence_snapshot: investigationSnapshotSchema.parse(latest),
-        report_assembly: assembly,
+        evidence_snapshot: toSupabaseJson(investigationSnapshotSchema.parse(latest)),
+        report_assembly: toSupabaseJson(assembly),
         evidence_manifest: [],
-        signoff_assessment: assessment,
-        generated_brief: validated.content,
-        edited_brief: validated.content,
+        signoff_assessment: toSupabaseJson(assessment),
+        generated_brief: toSupabaseJson(validated.content),
+        edited_brief: toSupabaseJson(validated.content),
         provider_model: HUMAN_ONLY_REVIEW_MODEL,
         generated_by: auth.user.id,
         brief_revision: 1,
@@ -151,12 +146,12 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
     }
     const assembly = version.report_assembly;
     if (input.action === "ask") {
-      // Only immutable delivered evidence is used for a customer; SQL excludes undelivered versions.
+      if (version.provider_model === HUMAN_ONLY_REVIEW_MODEL) {
+        return json({ error: "Ask Easy Erf is unavailable for this human-only reviewed version. Nothing was sent to AI." }, 409);
+      }
       if (!assembly.modelEvidencePack || assembly.modelEvidencePack.parcelId !== version.parcel_id) {
         return json({ error: "This saved report has no permitted question evidence. No new evidence was substituted." }, 409);
       }
-      // Frozen content does not freeze processing consent. Check its original
-      // server-recorded dependencies against current permissions, not new facts.
       const currentPermissions = new Map((scope.processingSources ?? []).map((source) => [source.assetId, source.aiProcessingAllowed]));
       if (scope.processingSources == null || version.evidence_snapshot.processingSources == null
         || version.evidence_snapshot.processingSources.some((source) => source.aiProcessingAllowed
