@@ -329,10 +329,22 @@ async function verifySignoffFailures() {
 async function verifyProcessingPermission() {
   const original = await rpc("worker", "read_order_investigation", { p_order_id: orderA });
   const paid = original.assets.find((asset) => asset.asset_category === "paid_report");
+  const sg = original.assets.find((asset) => asset.asset_category === "sg_diagram");
   const forbidden = "RESTRICTED_PERMISSION_SENTINEL";
   must(await adminClient.from("erf_assets").update({ original_file_name: `${forbidden}-filename.pdf`,
     source_label: `${forbidden}-source-label`, metadata: { ...paid.metadata, aiProcessingAllowed: false,
       extractedText: `${forbidden}-extracted-text`, summary: `${forbidden}-extracted-finding` } }).eq("id", paid.id));
+  must(await adminClient.from("erf_assets").update({ metadata: { ...sg.metadata, aiProcessingAllowed: false } }).eq("id", sg.id));
+  const beforeSparse = providerRequests.length;
+  const sparse = await reviewRequest("worker", { action: "generate", orderId: orderA });
+  assert.equal(sparse.status, 422);
+  assert.equal(providerRequests.length, beforeSparse, "Sparse restricted package must not consume a model request");
+  // This separate, permitted synthetic SG contains a printed access condition.
+  // It is not copied from the denied paid report and exists only in this fixture.
+  must(await adminClient.from("erf_assets").update({ metadata: { ...sg.metadata,
+    extractedClaims: [...(sg.metadata.extractedClaims ?? []), { domain: "deeds", key: "accessCondition",
+      label: "Synthetic printed access condition", value: "Synthetic access condition requires conveyancer confirmation",
+      scope: "subject", interpretation: false }] } }).eq("id", sg.id));
   for (const { sourceAssetIds, archived } of [
     { sourceAssetIds: [paid.id], archived: false },
     { sourceAssetIds: [], archived: false },
@@ -356,6 +368,10 @@ async function verifyProcessingPermission() {
     const model = JSON.parse(outbound.messages.at(-1).content);
     assert.equal(model.provenance.userMaterialPermitted, false);
     assert.equal(model.provenance.omittedDocumentCount, 1);
+    assert.equal(model.provenance.policy, "server-acquired-independent-evidence-v1");
+    assert.equal(model.independentSources[0].kind, "public_csg_query");
+    assert.deepEqual(model.independentSources[0].documentDependencies, []);
+    assert(model.evidence.sources.some((s) => s.id === "independent-official-parcel-record"));
     const version = await rpc("worker", "read_investigation_review", { p_order_id: orderA, p_version_id: generated.body.versionId });
     assert(JSON.stringify(version.report_assembly).includes(`${forbidden}-manual-derivative`));
     if (!archived) assert(JSON.stringify(version.evidence_manifest).includes(`${forbidden}-filename.pdf`));
@@ -364,10 +380,12 @@ async function verifyProcessingPermission() {
   }
   must(await adminClient.from("erf_assets").update({ metadata: paid.metadata, status: paid.status,
     original_file_name: paid.original_file_name, source_label: paid.source_label }).eq("id", paid.id));
+  must(await adminClient.from("erf_assets").update({ metadata: sg.metadata }).eq("id", sg.id));
   const current = await rpc("worker", "read_order_investigation", { p_order_id: orderA });
   await rpc("worker", "patch_order_investigation", { p_order_id: orderA, p_expected_revision: current.revision,
     p_patch: { investigationWork: original.userData.investigationWork, normalizedParcel: original.userData.normalizedParcel } });
   results.push("Actual outbound paid-model requests exclude restricted filename, extraction, manually derived finding/source/limitation and copied identity labels, even with forged empty dependencies or an archived source; human-only assembly retains findings");
+  results.push("Both documents denied: identity-only public package blocks before model request. Mixed permitted fixture: freshly acquired cadastral source and explicit permitted SG only, with acquisition receipt and unchanged human-only material.");
 }
 try {
   for (const [actor, id] of Object.entries(ids)) {

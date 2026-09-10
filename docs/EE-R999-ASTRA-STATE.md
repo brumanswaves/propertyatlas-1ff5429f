@@ -1,5 +1,28 @@
 # EE-R999-01 Execution State
 
+## Current restricted-input repair: 2026-09-10
+
+This section supersedes the historical source-stage snapshot below.
+
+- Release: EE-R999-01. Frozen outcome remains one customer investigation with an AI-assisted, human-reviewed paid report. Genuine R999 commercial acceptance remains UNPASSED.
+- VERIFIED GitHub main: df2e012617e4a9f89cfabe2b68f8a4aaac84a9c5, tree 5b965dd9c642f2a032f450c7db1792a2f232eaed. PR #172 is merged; do not replay its release.
+- Sole repair branch: codex/ee-r999-independent-evidence. Candidate SHA and one draft PR will be pinned by the accompanying exact-head receipt. This state file is committed with the repair, not a separate speculative status commit.
+- Original dirty property-evidence-pack-foundation worktree remains protected. Isolated source work only.
+- Owner rights decision: neither existing document permission may change. No inference of permission from ownership, purchase or public availability. Replacement Generate remains UNCONSUMED. No new production order, assignment, extraction, email, paid call or flag change in this repair.
+- VERIFIED source finding: with denied/unknown document permission, the deployed model builder withholds every unclassified saved namespace. It cannot substantively analyze the current file from an identifier and missing-check lists.
+- Repair: a server-only, bounded, fixed-HTTPS public CSG acquisition keyed only by canonical LPI; opaque in-memory provenance handles; exact-identity validation; field allowlist; retrieval time and response hash. No client or saved provenance assertion is trusted. Fresh sources use distinct citation IDs and are frozen alongside the full human assembly.
+- Restricted documents and their unclassified derivatives in identity, Market, planning, Strategy, Site Potential and work notes remain withheld. Human-readable material is retained, not relabelled independent. Public acquisition does not establish document licensing rights.
+- Quality gate blocks before provider access when only identity/address/documents/notes remain. Three supported claims including substantive non-identity evidence are the minimum screen, not a guarantee of model quality. Assignment/revision/consent are reread before a paid request.
+- VERIFIED focused tests: 4 files / 45 tests; full local Vitest: 154 files / 1578 tests. TypeScript, targeted ESLint (Prettier rule disabled), node-server build and diff check passed. Provider transport is synthetic. Build initially hit local sandbox filesystem restrictions and passed with the same source under approved local execution. Exact-head isolated browser results must be taken from the PR receipt, not assumed from prior release evidence.
+- Local Docker/Deno/gh commands are unavailable on PATH. Existing public standard-runner isolated workflow is the executable Auth/REST/Storage/browser gate; no new workflow or paid runner.
+- BLOCKED live outcome: this collector proves public cadastral identity/area only. It does not invent independent planning, Market or cost assumptions. With both current documents excluded, useful comprehensive-analysis sufficiency is NOT established. A new source release alone must not be represented as permission or sufficient evidence to consume the replacement call.
+- Next ranked actions: finish candidate checks; push one draft; inspect exact-head isolated provider bodies/screenshots; independent review; only then one combined source-release decision. Before any real call, obtain sufficient genuinely independent substantive evidence and inspect the exact payload, plus reconfirm the SAME cumulative USD 2 ceiling.
+- Owner gates: no merge/publication of this changed candidate under Class A. No migrations, Edge deployments, production writes, document-permission changes, purchase or extraction. Existing end-state flags remain required: paid brief disabled, email disabled, live checkout disarmed.
+- Spend: existing approved Astra session, deterministic local tools; no agents/API delegation, provider calls, purchases or new services. Additional discretionary cap $0. Actual account spend UNKNOWN.
+- Process status: local checks and later exact-head CI only; no production acceptance worker or automatic continuation. Inspect their terminal/run status in the final receipt.
+
+## Historical PR #172 source-stage snapshot (superseded)
+
 Reconciled 2026-09-09. Class A source work only; no production release authority.
 
 ## Source and sole writer

@@ -4,7 +4,7 @@ import { handleInvestigationReviewRequest } from "../investigationReviewServer";
 import { ApiRequestError } from "@/lib/sitePotential/serverAuth";
 import { buildSavedInvestigationUserDataPatch } from "@/lib/workbench/savedInvestigationProjection";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
-import { assembleInvestigation, buildInvestigationModelPackage } from "../sharedInvestigation";
+import { assembleInvestigation, buildInvestigationModelPackage, type InvestigationSnapshot } from "../sharedInvestigation";
 import { INVESTIGATION_BRIEF_MODEL } from "../../../../supabase/functions/_shared/investigationBrief";
 
 const orderId = "88888888-8888-4888-8888-888888888888";
@@ -19,7 +19,7 @@ function scope() {
       ...buildSavedInvestigationUserDataPatch(parcelId, createEmptyErfWorkspaceState()) },
     assets: [], siteProject: null, processingSources: [] };
 }
-function asset() {
+function asset(): InvestigationSnapshot["assets"][number] {
   return { id: assetId, user_id: customerId, parcel_id: parcelId, asset_category: "sg_diagram", asset_type: "sg_diagram",
     source_label: "Synthetic source", storage_bucket: "erf-files", storage_path: `${customerId}/${parcelId}/sg_diagram/${assetId}/diagram.png`,
     original_file_name: "diagram.png", mime_type: "image/png", size_bytes: 4, checksum_sha256: null,
@@ -89,7 +89,13 @@ describe("investigation document route (isolated adapter fixtures)", () => {
 
 describe("investigation review route (provider fixtures, no live AI)", () => {
   function reviewFixture() {
-    const record = scope();
+    const record = { ...scope(), assets: [{ ...asset(), metadata: {
+      aiProcessingAllowed: true, extractionStatus: "ready", identityMatchStatus: "matched",
+      extractedText: "Synthetic licensed fixture: an access restriction requires conveyancer review.",
+      extractedClaims: [{ key: "accessRestriction", domain: "deeds", label: "Access restriction",
+        value: "Synthetic access servitude", scope: "subject" }],
+    } }], processingSources: [{ assetId, aiProcessingAllowed: true }] };
+    Object.assign(record.userData.normalizedParcel, { portion: "0", municipality: "Synthetic municipality" });
     const rpc = vi.fn(async () => ({ data: record, error: null }));
     const persist = vi.fn(async () => ({ data: assetId, error: null }));
     const statement = { text: "Synthetic property identity requires verification.", sourceRefs: ["manual-parcel-record"] };
@@ -130,8 +136,22 @@ describe("investigation review route (provider fixtures, no live AI)", () => {
     f.persist.mockResolvedValue({ data: null, error: { code: "40001" } } as never);
     expect((await handleInvestigationReviewRequest(request({ action: "generate", orderId }), f.deps)).status).toBe(409);
   });
+  it("rechecks assignment and consent before the outbound provider request", async () => {
+    for (const change of [{ canWork: false }, { revision: 2 }, { processingSources: [{ assetId, aiProcessingAllowed: false }] }]) {
+      const f = reviewFixture();
+      f.rpc.mockResolvedValueOnce({ data: f.record, error: null })
+        .mockResolvedValueOnce({ data: { ...f.record, ...change }, error: null });
+      const response = await handleInvestigationReviewRequest(request({ action: "generate", orderId }), f.deps);
+      expect(response.status).toBe(409);
+      expect(f.fetchImpl).not.toHaveBeenCalled();
+      expect(f.persist).not.toHaveBeenCalled();
+    }
+  });
   it("asks only the frozen permitted evidence, never later working changes", async () => {
     const f = reviewFixture();
+    f.record.assets = [];
+    f.record.processingSources = [];
+    f.record.userData.normalizedParcel = scope().userData.normalizedParcel;
     const assembly = assembleInvestigation(f.record);
     const version = {
       id: assetId, order_id: orderId, customer_id: customerId, parcel_id: parcelId,

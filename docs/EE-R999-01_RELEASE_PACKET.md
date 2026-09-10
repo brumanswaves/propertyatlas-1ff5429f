@@ -180,3 +180,90 @@ No other PR, migration, function deployment, production configuration/secret cha
 ## Final execution receipt
 
 Record exact approved and merged SHA/tree/parents, migration application or equivalence evidence, function-source checks, publication method/ID/linkage limitations, actual production navigation/save/reload/gating/V1/reopen/V2/deduplication/inbox/exact-link results, private all-order metadata comparison, final email/live flags, rollback if used, actual spend or UNKNOWN and inspected real process status. Distinguish VERIFIED from REPORTED. No commercial acceptance claim until a separate approved genuine R999 journey passes. No unrelated feature tranche.
+# Restricted-input repair packet: 2026-09-10
+
+This is the ONE combined packet for `codex/ee-r999-independent-evidence`.
+It supersedes only the pending restricted-input source decision, not consumed
+PR #172 actions. Exact candidate SHA/tree and verification links belong in the
+draft PR receipt after this file is committed with the repair.
+
+## Decision and scope
+
+Class A source candidate; NOT production authority. Base main:
+`df2e012617e4a9f89cfabe2b68f8a4aaac84a9c5`.
+The owner has forbidden changing either existing document's AI permission.
+The replacement call remains unconsumed.
+
+The repair separates freshly acquired public CSG facts from unclassified saved
+material. Only the fixed server collector can issue its provenance handle; it
+accepts a canonical LPI, not saved fields or caller URLs. Ambiguous/wrong/oversize/
+unavailable responses fail closed. Only allowlisted attributes survive. Each
+receipt identifies endpoint, retrieval timestamp, response hash, fields and zero
+document dependencies. No copied value is relabelled independent.
+
+The outbound projection drops ALL saved namespaces while document permissions
+are incomplete. Human-only evidence stays in the report. Actual AI sources have
+separate, visible citations. Sparse payloads stop BEFORE a model request.
+Assignment, revision and permissions are checked again after acquisition.
+
+## Required evidence
+
+- Focused negative provider-payload tests, cross-namespace sentinels for two
+  denied documents, forged/cross-parcel provenance, sparse-call prevention,
+  actual serialized provider-body capture and consent-change tests.
+- Rendered report citation/coverage tests; full Vitest, TypeScript, targeted lint,
+  node-server production build and diff check.
+- Existing isolated shared-investigation workflow on the exact candidate:
+  synthetic public CSG transport; real local Auth/REST/Storage; both-documents-
+  denied quality stop; mixed permitted fixture outbound exclusion; unchanged
+  human evidence; browser screenshots and captured provider bodies.
+- No real provider call proves model quality in this candidate. Inspect artifacts
+  and obtain independent review before proposing an exact-head release.
+
+## Minimum later Class B operation (not executable yet)
+
+Guarded merge of this exact reviewed candidate, required merged-head checks,
+one ordinary existing-project frontend/server publication with the same disclosed
+automatic-backend/rollback uncertainties. No schema change, Edge deployment,
+model change or secret update is required by this source patch. Preserve
+Supabase `xiqpfhsdlvwrwhclonsg`, Lovable project
+`8680b46b-3325-4395-9767-a8c0ae2a3a50` and the existing domain.
+Verify source equivalence, runtime privacy and non-target metadata.
+Do not replay PR #172 release, order creation, checkout, assignment or extraction.
+
+**This release alone does not establish sufficient evidence for a useful brief.**
+The new collector establishes cadastral identity/area, not independently verified
+planning, Market or development inputs. No commercial-rights claim follows.
+The current two-document-denied case must remain blocked if this is all that
+remains. Independent substantive evidence requires its actual origin to be
+proven; neither a source label nor the worker's claim of independence suffices.
+
+Only after inspecting a substantive, rights-filtered exact payload and verifying
+remaining enforceable capacity within the SAME cumulative USD 2 ceiling may the
+already-authorized ONE replacement call be consumed. Existing pinned model
+`gpt-5.4-2026-03-05`, high reasoning, 24k output cap, 200k UTF-8 request ceiling,
+no retry/tools/fallback remain unchanged. Disable paid AI immediately afterward;
+failure/ambiguity stops without retry. No new allowance or auto top-up.
+
+After a saved useful brief, retain the previously authorized finite owner-only
+review/delivery/inbox/reopen sequence. Human additions based on excluded documents
+must NOT be sent back to AI. At most the previously authorized version-grounded
+Ask may use frozen permitted evidence, subject to current consent and cumulative
+budget. No new order, non-target access, extra email or payment.
+
+End paid AI and email disabled, checkout disarmed. Compare non-target metadata.
+No advance claim of inbox delivery, full investigation completion or commercial
+acceptance. Preserve protected legacy content.
+
+## Stop, rollback and spend
+
+Stop on source/project mismatch, unsafe access, safety rejection, insufficient
+rights/evidence, stale revision, budget ambiguity, unexpected mutation or paid
+requirement. No bypass. No proven frontend-only rollback is asserted. For this
+source candidate, prepare a reviewed revert PR if needed; no unapproved rollback,
+reset, provider control or new host.
+
+Actual account spend UNKNOWN. No live AI, purchase, production action or new paid
+service in this repair. Class A additional discretionary cap $0.
+
+---

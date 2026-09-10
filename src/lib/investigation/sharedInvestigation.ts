@@ -167,6 +167,14 @@ export function assembleInvestigation(snapshot: InvestigationSnapshot, now = new
 export type InvestigationAssembly = ReturnType<typeof assembleInvestigation> & {
   /** Frozen processing-permitted projection, stored with the reviewed version. */
   modelEvidencePack?: ReturnType<typeof assembleInvestigation>["pack"];
+  modelProvenance?: {
+    policy: string;
+    userMaterialPermitted: boolean;
+    omittedDocumentCount: number;
+    limitation: string | null;
+    independentSources: Array<{ kind: string; parcelId: string; endpoint: string; retrievedAt: string;
+      responseSha256: string; fields: string[]; documentDependencies: string[] }>;
+  };
 };
 
 export function assessInvestigationSignoff(snapshot: InvestigationSnapshot, assembly: InvestigationAssembly) {

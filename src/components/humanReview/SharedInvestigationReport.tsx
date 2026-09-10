@@ -66,6 +66,11 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
         <h2 className="text-xl font-semibold">{approved ? "Human-approved investigation brief" : "Draft investigation brief"}</h2>
         <p className="text-xs text-muted-foreground">AI synthesis from recorded evidence, {new Date(version!.generated_at).toLocaleDateString("en-ZA")}. {approved ? "Checked and approved by the named reviewer." : "Requires human review and approval."}</p>
         <section aria-label="AI review inputs" className="border-b border-border pb-4">
+          {assembly.modelProvenance?.limitation && <p className="mb-3 text-sm">{assembly.modelProvenance.limitation}</p>}
+          {assembly.modelProvenance?.independentSources.map((source) => <p key={source.responseSha256} className="mb-2 text-sm">
+            Independently retrieved public evidence: <a href={source.endpoint} className="underline">{source.kind === "public_csg_query" ? "CSG parcel record" : source.kind}</a>
+            {" "}on {new Date(source.retrievedAt).toLocaleDateString("en-ZA")}. Document dependencies: none.
+          </p>)}
           <h3 className="font-semibold">Documents considered by the AI</h3>
           {version?.evidence_manifest ? version.evidence_manifest.length > 0
             ? <ul className="mt-2 space-y-2 text-sm">{version.evidence_manifest.map((item) => <li key={item.assetId}>
