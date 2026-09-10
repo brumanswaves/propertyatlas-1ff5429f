@@ -22,9 +22,10 @@ import { StrategyLab } from "@/components/property/strategy/StrategyLab";
 import { SitePotentialTab } from "@/components/property/dossier/SitePotentialTab";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
 import { buildGuidedInvestigationJourney, type GuidedInvestigationStepId } from "@/lib/investigation/guidedJourney";
-import { investigationReviewVersionSchema, type InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
+import { HUMAN_ONLY_REVIEW_MODEL, investigationReviewVersionSchema, type InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
 import { validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
 import { SharedInvestigationReport } from "./SharedInvestigationReport";
+import { HumanOnlyReviewEditor } from "./HumanOnlyReviewEditor";
 
 const button = "inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50";
 
@@ -70,6 +71,7 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
   const assessment = useMemo(() => scope && assembly ? assessInvestigationSignoff(scope, assembly) : null, [scope, assembly]);
   const journey = useMemo(() => assembly ? buildGuidedInvestigationJourney(assembly.facts, assembly.workspaceState) : [], [assembly]);
   const activeStep = selectedStep ?? journey.find((step) => step.current)?.id ?? "confirm-property";
+  const needsReviewVersion = !version || version.currentEvidenceRevision !== scope?.revision;
   function nextStep() {
     const index = journey.findIndex((step) => step.id === activeStep);
     setSelectedStep(journey[index + 1]?.id ?? "report");
@@ -206,16 +208,21 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
         <strong>{item.label}</strong><p>{item.supported ? "Recorded evidence available" : item.disposition ? "Recorded limitation awaiting reviewer disposition" : "Work still required"}</p>
       </li>)}</ul>
       {activeStep === "report" && <section className="space-y-5">
-      {scope.canWork && <button type="button" className={button} disabled={busy} onClick={() => void operation(async (signal) => {
+      {scope.canWork && needsReviewVersion && <button type="button" className={button} disabled={busy} onClick={() => void operation(async (signal) => {
         await requestInvestigationReview({ action: "generate", orderId }, signal);
-      })}><Sparkles className="h-4 w-4" /> Generate investigation brief</button>}
-      {version && <BriefEditor key={version.id} version={version} disabled={busy || !scope.canWork}
+      })}><Sparkles className="h-4 w-4" /> Generate optional AI-assisted brief</button>}
+      {scope.canApprove && needsReviewVersion && <HumanOnlyReviewEditor disabled={busy} eligible={assessment.eligible} blockers={assessment.blockers}
+        onApprove={(content) => operation(async (signal) => {
+          await requestInvestigationReview({ action: "human_approve", orderId, content: toSupabaseJson(content) }, signal);
+          onApproved();
+        })} />}
+      {version && version.provider_model !== HUMAN_ONLY_REVIEW_MODEL && <BriefEditor key={version.id} version={version} disabled={busy || !scope.canWork}
         onSave={(brief) => operation(async (signal) => {
           requireInvestigationResult(await investigationClient.rpc("edit_investigation_brief", {
             p_order_id: orderId, p_version_id: version.id, p_expected_brief_revision: version.brief_revision, p_brief: brief,
           }).abortSignal(signal));
         })} />}
-      {version && scope.canApprove && <div>
+      {version && version.provider_model !== HUMAN_ONLY_REVIEW_MODEL && scope.canApprove && <div>
         <button type="button" className={button} disabled={busy || !assessment.eligible || version.evidence_revision !== scope.revision || Boolean(version.approved_at)}
           onClick={() => void operation(async (signal) => {
             await requestInvestigationReview({ action: "approve", orderId, versionId: version.id, briefRevision: version.brief_revision }, signal);
