@@ -36,7 +36,8 @@ export const investigationReviewVersionSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stored report scope does not match." });
   }
   if (value.provider_model === HUMAN_ONLY_REVIEW_MODEL) {
-    if (!validateHumanReviewReportContent(value.edited_brief).ok) {
+    if (!validateHumanReviewReportContent(value.generated_brief).ok
+      || !validateHumanReviewReportContent(value.edited_brief).ok) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stored human review is invalid." });
     }
     if ((value.evidence_manifest?.length ?? 0) > 0 || value.report_assembly.modelEvidencePack) {
