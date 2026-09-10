@@ -11,7 +11,8 @@ import { askEasyErfViaEdgeFunction } from "@/lib/reports/askEasyErfClient";
 import { acquireIndependentEvidence } from "./independentEvidence.server";
 import { assessModelPackageQuality, buildRestrictedModelPackage, withModelEvidence } from "./restrictedModelPackage.server";
 
-const REVIEW_REQUEST_MAX_BYTES = 65_536;
+const REVIEW_REQUEST_MAX_BYTES = 8192;
+const HUMAN_REVIEW_REQUEST_MAX_BYTES = 65_536;
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("generate"), orderId: z.string().uuid() }).strict(),
   z.object({ action: z.literal("human_approve"), orderId: z.string().uuid(), content: z.unknown() }).strict(),
@@ -47,10 +48,14 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
     if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
     const auth = await (deps.authenticate ?? authenticateApiRequest)(request);
     const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > REVIEW_REQUEST_MAX_BYTES) return json({ error: "Request too large." }, 413);
+    const bodyBytes = new TextEncoder().encode(body).byteLength;
+    if (bodyBytes > HUMAN_REVIEW_REQUEST_MAX_BYTES) return json({ error: "Request too large." }, 413);
     const parsed = requestSchema.safeParse(JSON.parse(body));
     if (!parsed.success) return json({ error: "Invalid investigation request." }, 400);
     const input = parsed.data;
+    if (input.action !== "human_approve" && bodyBytes > REVIEW_REQUEST_MAX_BYTES) {
+      return json({ error: "Request too large." }, 413);
+    }
     const { data, error } = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
     checkError(error);
     const scope = orderInvestigationSchema.parse(data);
@@ -64,6 +69,8 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const evidencePackage = buildRestrictedModelPackage(scope, assembly, independent);
       const quality = assessModelPackageQuality(evidencePackage);
       if (!quality.useful) return json({ error: quality.reason, quality }, 422);
+      // Public acquisition can be slow. Recheck assignment, revision and consent
+      // before starting a paid request, not only when saving its eventual result.
       const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
       checkError(current.error);
       const latest = orderInvestigationSchema.parse(current.data);
@@ -101,6 +108,10 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const validated = validateHumanReviewReportContent(input.content);
       if (!validated.ok) return json({ error: validated.error }, 409);
 
+      // Human-only approval freezes the full human-visible investigation, not an
+      // AI-filtered derivative. Recheck access and revision immediately before
+      // creating the immutable review version. The existing approval RPC rechecks
+      // the revision before making the version deliverable.
       const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
       checkError(current.error);
       const latest = orderInvestigationSchema.parse(current.data);
@@ -149,9 +160,12 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       if (version.provider_model === HUMAN_ONLY_REVIEW_MODEL) {
         return json({ error: "Ask Easy Erf is unavailable for this human-only reviewed version. Nothing was sent to AI." }, 409);
       }
+      // Only immutable delivered evidence is used for a customer; SQL excludes undelivered versions.
       if (!assembly.modelEvidencePack || assembly.modelEvidencePack.parcelId !== version.parcel_id) {
         return json({ error: "This saved report has no permitted question evidence. No new evidence was substituted." }, 409);
       }
+      // Frozen content does not freeze processing consent. Check its original
+      // server-recorded dependencies against current permissions, not new facts.
       const currentPermissions = new Map((scope.processingSources ?? []).map((source) => [source.assetId, source.aiProcessingAllowed]));
       if (scope.processingSources == null || version.evidence_snapshot.processingSources == null
         || version.evidence_snapshot.processingSources.some((source) => source.aiProcessingAllowed
