@@ -85,12 +85,12 @@ function request(body: unknown) {
 }
 
 function humanRouteDeps(scope: OrderInvestigation) {
-  const authRpc = vi.fn(async () => ({ data: structuredClone(scope), error: null }));
+  const authRpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: structuredClone(scope), error: null }));
   const single = vi.fn(async () => ({ data: { id: versionId }, error: null }));
-  const select = vi.fn(() => ({ single }));
-  const insert = vi.fn(() => ({ select }));
-  const from = vi.fn(() => ({ insert }));
-  const serviceRpc = vi.fn(async () => ({ data: null, error: null }));
+  const select = vi.fn((_columns: string) => ({ single }));
+  const insert = vi.fn((row: Record<string, unknown>) => ({ select, row }));
+  const from = vi.fn((_table: string) => ({ insert }));
+  const serviceRpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: null, error: null }));
   const fetchImpl = vi.fn<typeof fetch>();
   const deps = {
     authenticate: vi.fn(async () => ({ user: { id: reviewerId }, token: "synthetic", supabase: { rpc: authRpc } })) as never,
@@ -138,7 +138,7 @@ describe("human-only R999 review fallback", () => {
       edited_brief: humanContent(),
       generated_by: reviewerId,
     }));
-    expect(inserted.report_assembly).not.toHaveProperty("modelEvidencePack");
+    expect(inserted).toEqual(expect.objectContaining({ report_assembly: expect.not.objectContaining({ modelEvidencePack: expect.anything() }) }));
     expect(f.serviceRpc).toHaveBeenCalledWith("approve_investigation_review", expect.objectContaining({
       p_order_id: orderId,
       p_version_id: versionId,
@@ -146,8 +146,12 @@ describe("human-only R999 review fallback", () => {
       p_expected_brief_revision: 1,
     }));
     const approval = f.serviceRpc.mock.calls[0][1];
-    expect(approval.p_validated_content.bottomLine).toBe(humanContent().bottomLine);
-    expect(approval.p_validated_content.investigationChecklist.reviewed_report).toBe("complete");
+    expect(approval).toEqual(expect.objectContaining({
+      p_validated_content: expect.objectContaining({
+        bottomLine: humanContent().bottomLine,
+        investigationChecklist: expect.objectContaining({ reviewed_report: "complete" }),
+      }),
+    }));
   });
 
   it("refuses human-only approval without approval permission", async () => {
