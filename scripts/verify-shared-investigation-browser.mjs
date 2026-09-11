@@ -165,11 +165,12 @@ async function verifyCustomerEntry() {
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-viewport.png") });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
-  // Exercise the expandable Workbench handoff, not the standalone report offer.
-  const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" })
-    .filter({ has: page.locator("details") });
-  await offer.locator("summary").click();
-  await offer.getByRole("link", { name: /Yes.*investigate it for me/ }).click();
+  // Exercise the prominent Workbench handoff, not the standalone report offer.
+  const offer = page.locator("[data-done-for-you-persistent]");
+  await offer.waitFor();
+  assert.equal(await offer.locator("details, summary").count(), 0);
+  await offer.screenshot({ path: resolve(artifacts, "customer-prominent-paid-handoff.png") });
+  await offer.getByRole("link", { name: "Investigate it for me · R999", exact: true }).click();
   await page.waitForURL("**/pricing?**");
   assert.equal(new URL(page.url()).searchParams.get("parcelId"), parcelA);
   const after = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
