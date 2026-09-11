@@ -13,8 +13,8 @@ const scope = readFileSync(
 
 describe("Done-for-You investigation takeover value proposition", () => {
   it("keeps the R999 product prominent after the exact erf is selected", () => {
+    expect(scope).toContain("Done-for-You Property Investigation");
     for (const requiredCopy of [
-      "Done-for-You Property Investigation",
       "Want Easy Erf to investigate this property for you?",
       "What you get",
       "standard property investigation",
