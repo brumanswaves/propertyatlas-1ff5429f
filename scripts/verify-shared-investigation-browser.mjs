@@ -120,6 +120,14 @@ async function open(actor, mobile = false) {
   await context.addInitScript(({ session, origin }) => { if (location.origin === origin) localStorage.setItem("sb-127-auth-token", JSON.stringify(session)); }, { session: sessions[actor], origin: appUrl });
   await context.route("**/*", (route) => {
     const url = new URL(route.request().url());
+    if ((url.hostname === "events.mapbox.com" && url.pathname === "/events/v2") ||
+        (url.hostname === "api.mapbox.com" && url.pathname === "/map-sessions/v1")) {
+      // These are external-provider fixtures, not permission or application mocks.
+      // Aborting a pending SDK telemetry request after map.remove() invokes its
+      // cleared errorCb. Settle it locally; keep every application error fatal.
+      requests.push({ syntheticMapSessionResponse: `${url.origin}${url.pathname}` });
+      return route.fulfill({ status: 200, json: {} });
+    }
     if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
       return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "synthetic-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
     }
