@@ -86,18 +86,17 @@ function request(body: unknown) {
 
 function humanRouteDeps(scope: OrderInvestigation) {
   const authRpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: structuredClone(scope), error: null }));
-  const single = vi.fn(async () => ({ data: { id: versionId }, error: null }));
-  const select = vi.fn((_columns: string) => ({ single }));
-  const insert = vi.fn((row: Record<string, unknown>) => ({ select, row }));
-  const from = vi.fn((_table: string) => ({ insert }));
-  const serviceRpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: null, error: null }));
+  const serviceRpc = vi.fn(async (name: string, _args: Record<string, unknown>) => ({
+    data: name === "record_investigation_brief" ? versionId : null,
+    error: null,
+  }));
   const fetchImpl = vi.fn<typeof fetch>();
   const deps = {
     authenticate: vi.fn(async () => ({ user: { id: reviewerId }, token: "synthetic", supabase: { rpc: authRpc } })) as never,
-    serviceClient: vi.fn(() => ({ from, rpc: serviceRpc })) as never,
+    serviceClient: vi.fn(() => ({ rpc: serviceRpc })) as never,
     fetchImpl,
   };
-  return { authRpc, single, select, insert, from, serviceRpc, fetchImpl, deps };
+  return { authRpc, serviceRpc, fetchImpl, deps };
 }
 
 describe("human-only R999 review fallback", () => {
@@ -120,7 +119,7 @@ describe("human-only R999 review fallback", () => {
     expect(html).not.toContain("Ask questions about this property");
   });
 
-  it("freezes and approves a human-only version without any AI transport", async () => {
+  it("records and approves a human-only version through the canonical transaction without any AI transport", async () => {
     const scope = eligibleScope();
     const f = humanRouteDeps(scope);
     const response = await handleInvestigationReviewRequest(
@@ -132,34 +131,44 @@ describe("human-only R999 review fallback", () => {
     expect(await response.json()).toEqual({ approved: true, versionId, delivered: false, reviewMode: HUMAN_ONLY_REVIEW_MODEL });
     expect(f.fetchImpl).not.toHaveBeenCalled();
     expect(f.authRpc).toHaveBeenCalledTimes(2);
-    expect(f.from).toHaveBeenCalledWith("investigation_review_versions");
-    expect(f.insert).toHaveBeenCalledOnce();
-    const inserted = f.insert.mock.calls[0][0];
-    expect(inserted).toEqual(expect.objectContaining({
-      order_id: orderId,
-      customer_id: customerId,
-      parcel_id: parcelId,
-      evidence_revision: 7,
-      provider_model: HUMAN_ONLY_REVIEW_MODEL,
-      evidence_manifest: [],
-      generated_brief: humanContent(),
-      edited_brief: humanContent(),
-      generated_by: reviewerId,
+    expect(f.serviceRpc).toHaveBeenCalledTimes(2);
+    expect(f.serviceRpc).toHaveBeenNthCalledWith(1, "record_investigation_brief", expect.objectContaining({
+      p_order_id: orderId,
+      p_actor_id: reviewerId,
+      p_expected_revision: 7,
+      p_manifest: [],
+      p_brief: humanContent(),
+      p_model: HUMAN_ONLY_REVIEW_MODEL,
+      p_assembly: expect.not.objectContaining({ modelEvidencePack: expect.anything() }),
     }));
-    expect(inserted).toEqual(expect.objectContaining({ report_assembly: expect.not.objectContaining({ modelEvidencePack: expect.anything() }) }));
-    expect(f.serviceRpc).toHaveBeenCalledWith("approve_investigation_review", expect.objectContaining({
+    expect(f.serviceRpc).toHaveBeenNthCalledWith(2, "approve_investigation_review", expect.objectContaining({
       p_order_id: orderId,
       p_version_id: versionId,
       p_actor_id: reviewerId,
       p_expected_brief_revision: 1,
-    }));
-    const approval = f.serviceRpc.mock.calls[0][1];
-    expect(approval).toEqual(expect.objectContaining({
       p_validated_content: expect.objectContaining({
         bottomLine: humanContent().bottomLine,
         investigationChecklist: expect.objectContaining({ reviewed_report: "complete" }),
       }),
     }));
+  });
+
+  it("stops before approval if the canonical version recorder detects a revision race", async () => {
+    const scope = eligibleScope();
+    const f = humanRouteDeps(scope);
+    f.serviceRpc.mockImplementation(async (name: string) => name === "record_investigation_brief"
+      ? { data: null, error: { code: "40001" } }
+      : { data: null, error: null });
+
+    const response = await handleInvestigationReviewRequest(
+      request({ action: "human_approve", orderId, content: humanContent() }),
+      f.deps,
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.text()).toContain("changed");
+    expect(f.serviceRpc).toHaveBeenCalledTimes(1);
+    expect(f.fetchImpl).not.toHaveBeenCalled();
   });
 
   it("refuses human-only approval without approval permission", async () => {
@@ -171,7 +180,6 @@ describe("human-only R999 review fallback", () => {
       f.deps,
     );
     expect(response.status).toBe(403);
-    expect(f.from).not.toHaveBeenCalled();
     expect(f.serviceRpc).not.toHaveBeenCalled();
     expect(f.fetchImpl).not.toHaveBeenCalled();
   });
@@ -186,7 +194,6 @@ describe("human-only R999 review fallback", () => {
     );
     expect(response.status).toBe(409);
     expect(await response.text()).toContain("unfinished");
-    expect(f.from).not.toHaveBeenCalled();
     expect(f.serviceRpc).not.toHaveBeenCalled();
     expect(f.fetchImpl).not.toHaveBeenCalled();
   });
