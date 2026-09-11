@@ -10,8 +10,9 @@ import { ReportFindingsBlock, ReportActionPlan } from "@/components/property/dos
 import { buildAskEasyErfSelectedEvidencePayload } from "@/lib/reports/askEasyErf";
 import { validateAnswerAgainstSelectedEvidence, type AskEasyErfClientResult } from "@/lib/reports/askEasyErfClient";
 import { validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
+import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
 import type { InvestigationAssembly } from "@/lib/investigation/sharedInvestigation";
-import type { InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
+import { HUMAN_ONLY_REVIEW_MODEL, type InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
 import { readInvestigationAsset, requestInvestigationReview } from "@/lib/investigation/investigationClient";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 
@@ -41,8 +42,21 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     if (!scopedOrderId) return null;
     return readInvestigationAsset({ orderId: scopedOrderId, assetId: asset.id, versionId, preview: true }, signal);
   }, [scopedOrderId, versionId]);
-  const brief = useMemo(() => version ? validateInvestigationBrief(version.edited_brief, assembly.pack.sources.map((s) => s.id)) : null, [version, assembly]);
+  const humanOnly = version?.provider_model === HUMAN_ONLY_REVIEW_MODEL;
+  const humanReview = useMemo(() => {
+    if (!version || !humanOnly) return null;
+    const validated = validateHumanReviewReportContent(version.edited_brief);
+    return validated.ok ? validated.content : null;
+  }, [version, humanOnly]);
+  const brief = useMemo(() => version && !humanOnly
+    ? validateInvestigationBrief(version.edited_brief, assembly.pack.sources.map((s) => s.id)) : null,
+  [version, assembly, humanOnly]);
   const approved = Boolean(version?.approved_at && version.approved_by);
+  const paidReviewNotDelivered = Boolean(orderId && (!version || !version.delivered_at));
+  const askUnavailable = humanOnly || paidReviewNotDelivered;
+  const askUnavailableMessage = humanOnly
+    ? "Ask Easy Erf is unavailable for this human-only reviewed version because no AI-permitted evidence package was frozen with it. Nothing from this reviewed version is sent to AI."
+    : "Ask Easy Erf becomes available only after an evidence-bound reviewed version is delivered. Work-in-progress investigation evidence is not sent through the ordinary Ask path.";
   async function askVersion(question: string, signal: AbortSignal): Promise<AskEasyErfClientResult> {
     if (!version) return { success: false, error: "No reviewed version was selected." };
     const payload = z.object({ success: z.boolean(), answer: z.unknown().optional(), error: z.string().optional() }).parse(
@@ -52,17 +66,39 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     const answer = payload.success ? validateAnswerAgainstSelectedEvidence(payload.answer, evidence) : null;
     return answer ? { success: true, answer } : { success: false, error: payload.error ?? "The answer could not be grounded in this report version." };
   }
+  const humanReviewLabels = {
+    bottomLine: "Bottom line",
+    known: "What we know",
+    potential: "What appears possible",
+    risks: "What could be a problem",
+    unknowns: "What we do not know yet",
+    nextSteps: "What should be verified next",
+  } as const;
   return <article className="mx-auto max-w-6xl space-y-5 break-words" data-investigation-report={assembly.parcel.id} data-review-version={version?.id}>
     <ReportOpening {...openingControls} doc={assembly.document}
       reviewIdentity={version ? <div>
-        <p>{approved ? "Human-reviewed investigation." : "AI investigation draft · Not human reviewed."}</p>
+        <p>{approved ? "Human-reviewed investigation." : humanOnly ? "Human-only review draft · Not approved." : "AI investigation draft · Not human reviewed."}</p>
         {approved && <p className="mt-1 text-xs font-normal">Reviewed by {version.approved_reviewer_label} on {new Date(version.approved_at!).toLocaleString("en-ZA")}.</p>}
         <p className="mt-1 break-all text-xs font-normal">Version {version.id} · Evidence revision {version.evidence_revision} · Brief revision {version.brief_revision}</p>
         {version.currentEvidenceRevision !== version.evidence_revision && <p className="mt-2 text-xs">The working investigation has changed. This report preserves the evidence reviewed for this version.</p>}
       </div> : undefined}
-      askSlot={<AskEasyErfPanel key={version?.id ?? assembly.pack.fingerprint} suggestionPayload={assembly.askSuggestions}
+      askSlot={askUnavailable ? <section id="report-ask-easy-erf" className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-6">
+        <h3 className="text-xl font-semibold">Ask Easy Erf</h3>
+        <p className="mt-2 text-sm leading-6">{askUnavailableMessage}</p>
+      </section> : <AskEasyErfPanel key={version?.id ?? assembly.pack.fingerprint} suggestionPayload={assembly.askSuggestions}
         evidencePack={assembly.pack} askFromReviewedVersion={version ? askVersion : undefined} />}
-      reviewSlot={brief ? <section aria-label="Investigation brief" className="space-y-4 border-y border-border py-5">
+      reviewSlot={humanReview ? <section aria-label="Human-only investigation review" className="space-y-4 border-y border-border py-5">
+        <h2 className="text-xl font-semibold">Human-reviewed investigation summary</h2>
+        <p className="text-xs text-muted-foreground">{approved
+          ? "Written and approved by the human reviewer from the frozen investigation evidence."
+          : "Written by the human reviewer from the frozen investigation evidence. This draft is not approved or deliverable yet."} No AI synthesis was used for this summary. The underlying evidence and provenance remain in the full report below.</p>
+        {(["bottomLine", "known", "potential", "risks", "unknowns", "nextSteps"] as const).map((key) => {
+          const statements = key === "bottomLine" ? [humanReview.bottomLine] : humanReview[key];
+          return <section key={key} className="py-2"><h3 className="font-semibold">{humanReviewLabels[key]}</h3>
+            <ul className="mt-2 space-y-3">{statements.map((statement, i) => <li key={i}><p className="text-sm leading-6">{statement}</p></li>)}</ul>
+          </section>;
+        })}
+      </section> : brief ? <section aria-label="Investigation brief" className="space-y-4 border-y border-border py-5">
         <h2 className="text-xl font-semibold">{approved ? "Human-approved investigation brief" : "Draft investigation brief"}</h2>
         <p className="text-xs text-muted-foreground">AI synthesis from recorded evidence, {new Date(version!.generated_at).toLocaleDateString("en-ZA")}. {approved ? "Checked and approved by the named reviewer." : "Requires human review and approval."}</p>
         <section aria-label="AI review inputs" className="border-b border-border pb-4">
