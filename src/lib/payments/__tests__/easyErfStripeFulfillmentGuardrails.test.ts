@@ -127,7 +127,7 @@ describe("Easy Erf signed Stripe webhook", () => {
 });
 
 describe("Easy Erf payment operations surfaces", () => {
-  it("requires map/property confirmation before the done-for-you payment handoff", () => {
+  it("requires map/property confirmation before the done-for-you payment handoff and keeps the R999 offer prominent", () => {
     expect(pricing).toContain("Erf numbers repeat across South Africa");
     expect(pricing).toContain("Find and confirm property on map");
     expect(pricing).toContain("done-for-you investigation is locked to this parcel");
@@ -136,10 +136,12 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(pricing).toContain("propertyReferenceHint: propertyReference");
     expect(pricing).toContain("Stripe handles payment only.");
     expect(pricing).not.toContain("Property address, Erf or LPI reference");
-    expect(takeover).toContain("Want Easy Erf to do the property investigation for you?");
+    expect(takeover).toContain("Want Easy Erf to investigate this property for you?");
     expect(takeover).toContain("What you get");
-    expect(takeover).toContain("Yes — investigate it for me · R999");
+    expect(takeover).toContain("Investigate it for me · R999");
     expect(takeover).toContain("Erf numbers can repeat in different places");
+    expect(takeover).toContain("data-done-for-you-prominent");
+    expect(takeover).not.toContain("View option");
   });
 
   it("rejects checkout unless the brief carries a confirmed canonical parcel", () => {
@@ -190,6 +192,7 @@ describe("Easy Erf payment operations surfaces", () => {
     expect(admin).toContain('orderPayloadText(order, "propertyReference")');
     expect(admin).toContain('orderPayloadText(order, "customerEmail")');
     expect(admin).toContain('/admin/fulfillment#order-${order.id}');
-    expect(admin).toContain("Open / change review");
+    expect(admin).toContain("Open investigation");
+    expect(admin).toContain("Review next Done-for-You investigation");
   });
 });
