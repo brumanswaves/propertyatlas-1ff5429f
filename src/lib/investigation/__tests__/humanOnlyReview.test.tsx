@@ -14,6 +14,11 @@ const versionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const parcelId = "manual:human-only-fixture";
 const checkedAt = "2026-09-10T00:00:00.000Z";
 
+type ServiceRpcResult = {
+  data: string | null;
+  error: { code: string } | null;
+};
+
 function attempt(disposition: "reviewed" | "unavailable" = "unavailable") {
   return {
     source: "Reviewed Easy Erf source",
@@ -86,7 +91,7 @@ function request(body: unknown) {
 
 function humanRouteDeps(scope: OrderInvestigation) {
   const authRpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: structuredClone(scope), error: null }));
-  const serviceRpc = vi.fn(async (name: string, _args: Record<string, unknown>) => ({
+  const serviceRpc = vi.fn(async (name: string, _args: Record<string, unknown>): Promise<ServiceRpcResult> => ({
     data: name === "record_investigation_brief" ? versionId : null,
     error: null,
   }));
