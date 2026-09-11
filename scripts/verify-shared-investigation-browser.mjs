@@ -478,7 +478,7 @@ try {
     })]);
     const heldRequest = await heldRequestStarted;
     const cancelled = worker.waitForEvent("requestfailed", { predicate: (request) => request === heldRequest });
-    const back = worker.getByRole("button", { name: "Back to read-only queue", exact: true });
+    const back = worker.getByRole("button", { name: "Back to investigation queue", exact: true });
     await back.focus(); await back.press("Enter");
     await cancelled;
     delayed.release();

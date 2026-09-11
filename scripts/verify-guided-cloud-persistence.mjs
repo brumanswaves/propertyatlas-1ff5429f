@@ -441,6 +441,25 @@ try {
   }
 
   await firstPage.screenshot({ path: resolve(artifacts, "initial-add-address.png"), fullPage: true });
+  for (const width of [1440, 390]) {
+    await firstPage.setViewportSize({ width, height: 950 });
+    const offer = firstPage.locator("[data-done-for-you-persistent]");
+    await offer.waitFor();
+    const action = offer.getByRole("link", { name: "Investigate it for me · R999", exact: true });
+    const box = await action.boundingBox();
+    assert.ok(box && box.y >= 0 && box.y + box.height <= 950);
+    assert.ok((await action.getAttribute("href")).includes(encodeURIComponent(PARCEL_ID)));
+    assert.equal(await offer.locator("details").count(), 0);
+    assert.ok(await firstPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await firstPage.screenshot({ path: resolve(artifacts, `prominent-r999-${width}.png`) });
+    await firstPage.getByRole("button", { name: "Save and continue to SG diagram", exact: true }).click({ trial: true, timeout: 5000 });
+    await firstPage.screenshot({ path: resolve(artifacts, `guided-controls-${width}.png`) });
+  }
+  await firstPage.setViewportSize({ width: 1440, height: 1000 });
+  await firstPage.locator("[data-done-for-you-persistent]").getByRole("link", { name: "Investigate it for me · R999", exact: true }).click();
+  await firstPage.waitForURL((url) => url.pathname === "/pricing");
+  assert.equal(new URL(firstPage.url()).searchParams.get("parcelId"), PARCEL_ID);
+  await firstPage.screenshot({ path: resolve(artifacts, "r999-selected-property-destination.png"), fullPage: true });
   // Keep both contexts until their traces are saved in finally.
 
   const reopenContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });

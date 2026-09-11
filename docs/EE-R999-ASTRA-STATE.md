@@ -1,5 +1,35 @@
 # EE-R999-01 Execution State
 
+## PR #175 sole-writer candidate verification: 2026-09-11
+
+This section supersedes the coordination checkpoint below. The owner authorized this task as sole writer; the existing branch and PR are retained.
+
+- VERIFIED main: 76b1269052e52200e8050a2bf4ae028cafeb71dc. Reconciled the seven preserved local repairs onto exact remote head 22ac34df0a17b4036a40372d93bff0fa4c1357f1 by fast-forward without overwriting the newer persistent R999 offer. Branch chatgpt/ee-product-recovery-ux, draft PR #175 only.
+- VERIFIED source-stage focused checks: 10 files / 81 tests. Full Vitest: 156 files / 1593 tests. TypeScript and synthetic node-server production build passed. Targeted ESLint: no errors, three existing dependency warnings in ReportParcelSatelliteMap. Diff check passed; generated route-tree line-ending churn excluded.
+- VERIFIED built-browser founder acceptance: recovery confirmation/cancel and single reopen retaining report; searchable existing investigator and exact-order assignment; empty optional Property Checks advancing to Market; report map canvas and recorded boundary at desktop/narrow widths. Existing metadata-only queue, actual response sentinels, delayed responses, account changes, complete UUID isolation and delivery guards retained.
+- VERIFIED built-browser Guided acceptance: signed-in confirm and atomic persistence, fresh-context reload at Add address, persistent R999 action at desktop/mobile, unobstructed Guided save action, and actual navigation to pricing with the same canonical parcel. Screenshots inspected, not inferred from unit tests.
+- Browser fixtures add workload-first admin entry and a failed-order workload count. Final exact-commit fixture and GitHub results, artifact IDs and independently inspected screenshots must be pinned in the accompanying PR receipt; dirty precommit evidence is not a substitute.
+- Scope remains exactly the six recovery behaviors. No application implementation was rewritten in this reconciliation; stale assertions/selectors were updated without restoring collapsed offers, mandatory optional uploads or AI-required delivery. Synthetic map style verifies canvas, boundary and requested satellite style, not live provider availability or surveyed geometry. Production behavior remains unverified under Class A.
+- Next ranked actions: freeze and push this candidate; verify exact-head workflows including isolated database/shared investigation and inspect browser artifacts; address any real failure on this branch; present one independent-review candidate. No new PR or feature tranche.
+- Owner gates: independent review then explicit Class B authority before any merge, migration application, deployment or publication. Paid AI remains unconsumed, document permissions unchanged. No customer, order, email, payment or production operation was performed.
+- Original dirty property-evidence-pack-foundation worktree remains untouched. Test server is loopback-only with server network denial; browser fixtures intercept synthetic services and abort external traffic. Stop local processes after final checks; record inspected process state in the PR receipt.
+- Spend: existing approved session and deterministic tooling only. No API billing, purchases, paid runners/services or additional agents activated. Actual account spend UNKNOWN; discretionary cap remains $0.
+
+## Historical coordination checkpoint (superseded)
+
+- VERIFIED main: 76b1269052e52200e8050a2bf4ae028cafeb71dc. Existing draft PR #175, branch chatgpt/ee-product-recovery-ux only. No new implementation branch or PR.
+- Isolated checkout: easy-erf-product-recovery-ux. The original dirty property-evidence-pack-foundation worktree was not edited.
+- VERIFIED remote head advanced during recovery: a39bcaa -> 9e77a07 -> 2d0a3ef -> 5f96f4d -> 22ac34df0a17b4036a40372d93bff0fa4c1357f1. Another writer changed source while this checkpoint was being verified. Local repairs are based on 5f96f4d and remain uncommitted pending sole-writer coordination; do not overwrite remote work.
+- Scope remains the six customer/reviewer recovery items: prominent R999, optional Property Checks, audited failed-order recovery, deterministic satellite/map report hero, searchable investigator assignment, and workload-first admin.
+- VERIFIED initial inspected founder guardrail run 34614768817 failed on old start/reopen/stop labels and AI-required delivery copy, not a demonstrated missing delivery guard. These assertions were already repaired in remote commits. Later founder run 34616259139 failed because its browser script still expected Open exact order.
+- Local repairs update browser selectors to the approved lifecycle actions and preserve complete-UUID selection, metadata-only queue, private sentinels, delayed-response/account-switch isolation, confirmation and delivery checks. Four additional stale full-suite guards were updated: admin labels, protected-action wording, collapsed R999 offer and explicit migration inventory.
+- VERIFIED focused recovery checks: 6 files / 50 tests; additional corrected guards: 4 files / 31 tests. TypeScript and node-server production build passed locally. The first build was blocked by sandbox filesystem access; the same build passed with approved local execution and synthetic configuration.
+- VERIFIED local built-browser founder fixture: 22 groups passed, including desktop/narrow mouse/touch/keyboard Back, scroll, refresh, metadata/detail privacy, stale responses, form isolation and delivery guards. It used synthetic fixtures and blocked real backend traffic. This is dirty-tree 5f96f4d-based evidence, NOT evidence for the newer remote head or production.
+- VERIFIED after the focused repairs: full local Vitest 156 files / 1593 tests passed; targeted ESLint exited 0 with three dependency warnings in the existing report satellite component; git diff --check passed. Inspected route-tree line-ending churn was restored. The local fixture server was stopped; no local test/build process from this pass remains running.
+- BLOCKED final exact-head acceptance: concurrent source pushes invalidate a frozen candidate. Remaining work includes six-behavior browser evidence (especially actual map rendering, optional checks and assignment), reconciling these test repairs with the latest remote work, final exact-head CI/artifact inspection and independent review.
+- Owner action is coordination of the other writer, not another Class A approval. No merge, migration application, deployment, publication, paid AI, document-permission change, order/customer action or provider call was performed.
+- Spend: existing approved session and deterministic tooling only; no API billing, credits, paid runners/services or purchases activated. Actual account spend UNKNOWN. Process results and final CI status must be taken from the next receipt, not inferred from this checkpoint.
+
 ## Current restricted-input repair: 2026-09-10
 
 This section supersedes the historical source-stage snapshot below.

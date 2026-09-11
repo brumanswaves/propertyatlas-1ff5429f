@@ -23,13 +23,13 @@ describe("guided task first workbench UX", () => {
     expect(offer).toContain("onPrepare={preparePaidInvestigation}");
   });
 
-  it("keeps the optional R999 offer collapsed until the user opens it", () => {
-    expect(takeoverCard).toContain("data-collapsed-done-for-you-offer");
-    expect(takeoverCard).toContain("<details");
-    expect(takeoverCard).toContain("<summary");
-    expect(takeoverCard).toContain("Optional help");
-    expect(takeoverCard).toContain("View option");
-    expect(takeoverCard).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/);
+  it("keeps the R999 alternative prominent without hiding the price or action", () => {
+    expect(takeoverCard).toContain("data-done-for-you-prominent");
+    expect(takeoverCard).toContain("Investigate it for me · R999");
+    expect(takeoverCard).toContain("You choose the property. We do the investigation.");
+    expect(takeoverCard).not.toContain("data-collapsed-done-for-you-offer");
+    expect(takeoverCard).not.toContain("<details");
+    expect(takeoverCard).not.toContain("<summary");
   });
 
   it("uses a compact mobile header and lets the content area consume remaining height", () => {

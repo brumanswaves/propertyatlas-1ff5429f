@@ -44,8 +44,9 @@ describe("Easy Erf Founder Operations guardrails", () => {
   it("does not invent unsafe support or financial actions", () => {
     const source = routeSource();
 
-    expect(source).toMatch(/next operations tranche should add a narrowly authorized support boundary/i);
-    expect(source).toMatch(/No refund, credit-grant, destructive repair or impersonation control/i);
+    expect(source).toContain("Protected actions");
+    expect(source).toContain("Refunds, destructive repairs, impersonation and other high-risk support actions remain unavailable unless a real audited backend action exists");
+    expect(source).toContain("existing trusted server boundaries");
     expect(source).not.toContain("service_role");
     expect(source).not.toMatch(/onClick=.*refund/i);
     expect(source).not.toMatch(/onClick=.*grant/i);

@@ -113,6 +113,7 @@ jobs:
       - name: Build production bundle and generate routes
         env:
           NITRO_PRESET: node-server
+          VITE_MAPBOX_ACCESS_TOKEN: pk.synthetic-browser-fixture
         run: npm run build
 
       - name: Check TypeScript
