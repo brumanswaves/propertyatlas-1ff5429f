@@ -4,7 +4,7 @@ import {
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
   buildHumanReviewHref,
 } from "@/lib/humanReview/scope";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const HUMAN_REVIEW_BENEFITS = [
   "Easy Erf completes or reviews the standard property investigation for you",
@@ -134,8 +134,23 @@ function PersistentTakeoverBar({
   onPrepare?: () => Promise<void>;
 }) {
   const { saving, error, navigate } = usePreparedNavigation(href, onPrepare);
+  const barRef = useRef<HTMLElement | null>(null);
+  const [reservedHeight, setReservedHeight] = useState(200);
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const measure = () => setReservedHeight(bar.getBoundingClientRect().height + 24);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
   return (
+    <>
+    {/* Keep the final Guided/Expert controls scrollable above the fixed offer. */}
+    <div aria-hidden="true" className="report-no-print" style={{ height: reservedHeight }} />
     <aside
+      ref={barRef}
       className="report-no-print fixed bottom-3 left-1/2 z-[95] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 overflow-hidden rounded-[1.25rem] border-2 border-[#FF6A00]/55 bg-white/96 shadow-[0_24px_70px_-26px_rgba(13,27,42,0.55)] backdrop-blur-xl"
       aria-label="Done-for-You Property Investigation option"
       data-done-for-you-prominent
@@ -174,6 +189,7 @@ function PersistentTakeoverBar({
         </p>
       ) : null}
     </aside>
+    </>
   );
 }
 

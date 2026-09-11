@@ -453,6 +453,8 @@ try {
     assert.ok(await firstPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await firstPage.screenshot({ path: resolve(artifacts, `prominent-r999-${width}.png`) });
     await firstPage.getByRole("button", { name: "Save and continue to SG diagram", exact: true }).click({ trial: true, timeout: 5000 });
+    await firstPage.getByRole("button", { name: "Open full research workspace", exact: true }).scrollIntoViewIfNeeded();
+    await firstPage.getByRole("button", { name: "Open full research workspace", exact: true }).click({ trial: true });
     await firstPage.screenshot({ path: resolve(artifacts, `guided-controls-${width}.png`) });
   }
   await firstPage.setViewportSize({ width: 1440, height: 1000 });
