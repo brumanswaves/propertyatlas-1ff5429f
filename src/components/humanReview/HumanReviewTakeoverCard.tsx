@@ -20,9 +20,31 @@ interface TakeoverCardContentProps {
   onPrepare?: () => Promise<void>;
 }
 
-function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCardContentProps) {
+function usePreparedNavigation(href: string, onPrepare?: () => Promise<void>) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  function navigate(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!onPrepare) return;
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    void onPrepare()
+      .then(() => window.location.assign(href))
+      .catch((failure: unknown) => {
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Your investigation was not saved. Please reload before continuing.",
+        );
+        setSaving(false);
+      });
+  }
+  return { saving, error, navigate };
+}
+
+function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCardContentProps) {
+  const { saving, error, navigate } = usePreparedNavigation(href, onPrepare);
   return (
     <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
@@ -81,18 +103,14 @@ function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCa
         <a
           href={href}
           aria-disabled={saving}
-          onClick={onPrepare ? (event) => {
-            event.preventDefault();
-            if (saving) return;
-            setSaving(true); setError(null);
-            void onPrepare().then(() => window.location.assign(href)).catch((failure: unknown) => {
-              setError(failure instanceof Error ? failure.message : "Your investigation was not saved. Please reload before continuing.");
-              setSaving(false);
-            });
-          } : undefined}
+          onClick={navigate}
           className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#ff7d1f]"
         >
-          {saving ? "Saving your investigation..." : hasConfirmedParcel ? "Investigate it for me · R999" : "Find property on map"}
+          {saving
+            ? "Saving your investigation..."
+            : hasConfirmedParcel
+              ? "Investigate it for me · R999"
+              : "Find property on map"}
           <ArrowRight className="h-4 w-4" />
         </a>
         {error && <p role="alert" className="max-w-sm text-sm text-destructive">{error}</p>}
@@ -103,6 +121,59 @@ function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCa
         ) : null}
       </div>
     </div>
+  );
+}
+
+function PersistentTakeoverBar({
+  href,
+  propertyReference,
+  onPrepare,
+}: {
+  href: string;
+  propertyReference?: string | null;
+  onPrepare?: () => Promise<void>;
+}) {
+  const { saving, error, navigate } = usePreparedNavigation(href, onPrepare);
+  return (
+    <aside
+      className="report-no-print fixed bottom-3 left-1/2 z-[95] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 overflow-hidden rounded-[1.25rem] border-2 border-[#FF6A00]/55 bg-white/96 shadow-[0_24px_70px_-26px_rgba(13,27,42,0.55)] backdrop-blur-xl"
+      aria-label="Done-for-You Property Investigation option"
+      data-done-for-you-prominent
+      data-done-for-you-persistent
+    >
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">
+              Done-for-You Property Investigation
+            </span>
+            <span className="rounded-full bg-[#FFF1E6] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#92400E]">
+              R999 once-off
+            </span>
+          </div>
+          <div className="mt-1 truncate text-sm font-semibold text-[#0D1B2A] sm:text-base">
+            Want Easy Erf to investigate this property for you?
+          </div>
+          <div className="mt-0.5 truncate text-xs text-[#64748B]">
+            {propertyReference || "This selected erf"} · You choose the property. We do the investigation.
+          </div>
+        </div>
+        <a
+          href={href}
+          aria-disabled={saving}
+          onClick={navigate}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F]"
+        >
+          {saving ? "Saving..." : "Investigate it for me · R999"}
+          <ArrowRight className="h-4 w-4" />
+        </a>
+      </div>
+      {error ? (
+        <p role="alert" className="border-t border-red-200 bg-red-50 px-5 py-2 text-xs text-red-800">
+          {error}
+        </p>
+      ) : null}
+    </aside>
   );
 }
 
@@ -123,15 +194,22 @@ export function HumanReviewTakeoverCard({
   const href = hasConfirmedParcel
     ? buildHumanReviewHref({ parcelId, propertyReference, source })
     : "/";
-  const shellClass =
-    "report-no-print overflow-hidden rounded-[1.5rem] border-2 border-[#FF6A00]/35 bg-gradient-to-br from-[#fff4e6] via-white to-[#F7FBFF] shadow-[0_22px_50px_-34px_rgba(255,106,0,0.45)]";
+
+  if (compact && hasConfirmedParcel) {
+    return (
+      <PersistentTakeoverBar
+        href={href}
+        propertyReference={propertyReference}
+        onPrepare={onPrepare}
+      />
+    );
+  }
 
   return (
     <aside
-      className={shellClass}
+      className="report-no-print overflow-hidden rounded-[1.5rem] border-2 border-[#FF6A00]/35 bg-gradient-to-br from-[#fff4e6] via-white to-[#F7FBFF] shadow-[0_22px_50px_-34px_rgba(255,106,0,0.45)]"
       aria-label="Done-for-You Property Investigation option"
       data-done-for-you-prominent
-      data-compact-requested={compact ? "true" : undefined}
     >
       <TakeoverCardContent hasConfirmedParcel={hasConfirmedParcel} href={href} onPrepare={onPrepare} />
     </aside>
