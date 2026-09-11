@@ -1,7 +1,8 @@
 \set ON_ERROR_STOP on
 
 -- Run after scripts/verify-easy-erf-founder-queue.sql in the same isolated PostgreSQL job.
--- The queue proof creates this paid synthetic Easy Erf order and the canonical fulfillment contracts.
+-- The queue proof creates this paid synthetic order. Add the current orderKind marker here
+-- because the older queue fixture predates that controlled product discriminator.
 \i supabase/migrations/20260911180000_recover_failed_easy_erf_investigation.sql
 
 do $$
@@ -13,13 +14,17 @@ declare
   v_events_after integer;
   v_payload_before jsonb;
 begin
+  update public.report_orders
+  set payload = coalesce(payload, '{}'::jsonb) || '{"orderKind":"easy_erf_investigation"}'::jsonb
+  where id = v_order_id;
+
   select payload, (select count(*) from public.report_order_events where report_order_id = v_order_id)
     into v_payload_before, v_events_before
   from public.report_orders
   where id = v_order_id;
 
-  if v_payload_before is null then
-    raise exception 'Synthetic paid order for recovery proof is missing';
+  if v_payload_before is null or v_payload_before->>'orderKind' <> 'easy_erf_investigation' then
+    raise exception 'Synthetic Easy Erf order for recovery proof is missing';
   end if;
 
   select * into v_row from public.transition_easy_erf_report_order(
