@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
-import { toSupabaseJson } from "@/lib/supabase/json";
-import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, investigationSnapshotSchema, orderInvestigationSchema } from "./sharedInvestigation";
+import { assembleInvestigation, assessInvestigationSignoff, buildInvestigationModelPackage, investigationInputManifest, orderInvestigationSchema } from "./sharedInvestigation";
 import { HUMAN_ONLY_REVIEW_MODEL, investigationReviewVersionSchema } from "./investigationReviewVersion";
 import { INVESTIGATION_BRIEF_MODEL, validateInvestigationBrief } from "../../../supabase/functions/_shared/investigationBrief";
 import { validateHumanReviewReportContent } from "../../../supabase/functions/_shared/easyErfHumanReviewContract";
@@ -108,10 +107,6 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const validated = validateHumanReviewReportContent(input.content);
       if (!validated.ok) return json({ error: validated.error }, 409);
 
-      // Human-only approval freezes the full human-visible investigation, not an
-      // AI-filtered derivative. Recheck access and revision immediately before
-      // creating the immutable review version. The existing approval RPC rechecks
-      // the revision before making the version deliverable.
       const current = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
       checkError(current.error);
       const latest = orderInvestigationSchema.parse(current.data);
@@ -123,24 +118,23 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const assessment = assessInvestigationSignoff(latest, assembly);
       if (!assessment.eligible) return json({ error: "Investigation work is unfinished.", blockers: assessment.blockers }, 409);
 
+      // Reuse the canonical service-only version recorder. It rechecks the exact
+      // evidence revision inside the database transaction and leaves the same
+      // immutable audit trail used by the AI-assisted route. No AI transport is
+      // involved because the reviewer-authored content is passed directly.
       const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
-      const created = await service.from("investigation_review_versions").insert({
-        order_id: input.orderId,
-        customer_id: latest.customerId,
-        parcel_id: latest.parcelId,
-        evidence_revision: latest.revision,
-        evidence_snapshot: toSupabaseJson(investigationSnapshotSchema.parse(latest)),
-        report_assembly: toSupabaseJson(assembly),
-        evidence_manifest: [],
-        signoff_assessment: toSupabaseJson(assessment),
-        generated_brief: toSupabaseJson(validated.content),
-        edited_brief: toSupabaseJson(validated.content),
-        provider_model: HUMAN_ONLY_REVIEW_MODEL,
-        generated_by: auth.user.id,
-        brief_revision: 1,
-      }).select("id").single();
-      checkError(created.error);
-      const versionId = z.string().uuid().parse(created.data?.id);
+      const recorded = await service.rpc("record_investigation_brief", {
+        p_order_id: input.orderId,
+        p_actor_id: auth.user.id,
+        p_expected_revision: latest.revision,
+        p_assembly: assembly,
+        p_manifest: [],
+        p_assessment: assessment,
+        p_brief: validated.content,
+        p_model: HUMAN_ONLY_REVIEW_MODEL,
+      });
+      checkError(recorded.error);
+      const versionId = z.string().uuid().parse(recorded.data);
       const approval = await service.rpc("approve_investigation_review", {
         p_order_id: input.orderId, p_version_id: versionId, p_actor_id: auth.user.id, p_expected_brief_revision: 1,
         p_validated_content: { ...validated.content, investigationChecklist: approvalChecklist(assessment) },
