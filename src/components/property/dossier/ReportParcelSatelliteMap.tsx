@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin } from "lucide-react";
@@ -41,9 +41,6 @@ export function ReportParcelSatelliteMap({
   label?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [failed, setFailed] = useState(false);
-
   const usableRing = useMemo(
     () => (ring && ring.length >= 3 && ring.every(validCoordinate) ? closeRing(ring) : null),
     [ring],
@@ -54,12 +51,8 @@ export function ReportParcelSatelliteMap({
       : usableRing?.[0] ?? null;
 
   useEffect(() => {
-    if (!TOKEN || !containerRef.current || !usableCenter) {
-      setFailed(true);
-      return;
-    }
+    if (!TOKEN || !containerRef.current || !usableCenter) return;
 
-    setFailed(false);
     mapboxgl.accessToken = TOKEN;
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -69,7 +62,6 @@ export function ReportParcelSatelliteMap({
       attributionControl: true,
       interactive: true,
     });
-    mapRef.current = map;
 
     map.on("load", () => {
       if (usableRing) {
@@ -99,15 +91,10 @@ export function ReportParcelSatelliteMap({
       }
     });
 
-    map.on("error", () => setFailed(true));
-
-    return () => {
-      mapRef.current = null;
-      map.remove();
-    };
+    return () => map.remove();
   }, [usableCenter?.[0], usableCenter?.[1], usableRing]);
 
-  if (failed || !TOKEN || !usableCenter) {
+  if (!TOKEN || !usableCenter) {
     return (
       <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-[#0D1B2A] p-8 text-center text-white/70">
         <MapPin className="h-6 w-6 text-[#FF6A00]" />
