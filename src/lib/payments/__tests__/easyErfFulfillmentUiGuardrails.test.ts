@@ -36,16 +36,18 @@ describe("Easy Erf founder fulfillment UI", () => {
   it("makes the founder complete the standard investigation before final report delivery", () => {
     expect(source("src/components/admin/FounderHumanReviewEditor.tsx")).toContain("DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS");
     expect(founderRoute).toContain("Open full property investigation");
-    expect(founderRoute).toContain("Start this exact investigation");
+    expect(founderRoute).toContain("Start this investigation");
+    expect(founderRoute).toContain("Continue investigation");
     expect(founderRoute).toContain("Mark this exact report ready");
     expect(founderRoute).toContain("do not attach or redistribute the provider PDF");
   });
 
-  it("disables both delivery paths until the saved report and checklist are resolved", () => {
+  it("disables both delivery paths until the saved report and checklist are resolved without requiring AI", () => {
     expect(founderRoute).toContain("isHumanReviewReportContentComplete(order.review_content)");
     expect(founderRoute).toContain("parseHumanReviewInvestigationChecklist(order.review_content)");
     expect(founderRoute).toContain("const deliveryReady = hasCombinedVersion && reportReady && checklistReady");
-    expect(founderRoute).toContain("Gather the investigation evidence, generate the brief and approve the combined report version first.");
+    expect(founderRoute).toContain("Complete the investigation and approve one reviewed report version first. AI is not required.");
+    expect(founderRoute).not.toContain("Gather the investigation evidence, generate the brief and approve the combined report version first.");
     expect(founderRoute).toContain("disabled={busy || !deliveryReady}");
     expect(founderRoute).toContain("disabled={busy || !file || !deliveryReady}");
     expect(founderRoute).toContain(
@@ -89,6 +91,15 @@ describe("Easy Erf founder fulfillment UI", () => {
     expect(founderRoute).not.toContain("window.confirm");
   });
 
+  it("makes a stopped investigation recoverable and protects the stop action with confirmation", () => {
+    expect(founderRoute).toContain("Needs recovery");
+    expect(founderRoute).toContain("Reopen and continue investigation");
+    expect(founderRoute).toContain("Stop this investigation (rare)");
+    expect(founderRoute).toContain("Why this investigation cannot continue");
+    expect(founderRoute).toContain("Saved evidence is retained");
+    expect(founderRoute).toContain("<AlertDialogTitle>Stop this investigation?</AlertDialogTitle>");
+  });
+
   it("uploads only a selected optional Easy Erf PDF through a short-lived signed upload", () => {
     expect(founderRoute).toContain('accept="application/pdf,.pdf"');
     expect(founderRoute).toContain("uploadToSignedUrl(prepared.path, prepared.token, file");
@@ -96,17 +107,18 @@ describe("Easy Erf founder fulfillment UI", () => {
     expect(founderRoute).toContain('action: "mark_ready"');
     expect(founderRoute).toContain("pdfStoragePath: prepared.path");
     expect(founderRoute).not.toContain('placeholder="Report PDF storage path"');
-    expect(founderRoute).toContain('placeholder="Failure reason for this exact order"');
   });
 
-  it("keys every workbench form by the complete order, not just its report editor", () => {
+  it("keys every workbench form by the complete order and gives the queue one clear action", () => {
     expect(founderRoute).toMatch(/<FocusedOrderWorkbench\s+key=\{focusedOrderId\}/);
     expect(founderRoute).toContain('aria-label="Selected order identity"');
     expect(founderRoute).toContain('data-order-id={order.id}');
     expect(founderRoute).toContain("No other order has been opened or made actionable.");
     const queue = founderRoute.slice(founderRoute.indexOf("function QueueOverview"), founderRoute.indexOf("function FocusedOrderWorkbench"));
     expect(queue).not.toMatch(/onTransition|onUploadReport|FounderHumanReviewEditor|FounderCustomerNotification|<input|<textarea|<select/);
-    expect(queue).toContain("Open exact order");
+    expect(queue).toContain("data-up-next-investigation");
+    expect(queue).toContain("UP NEXT");
+    expect(queue).toContain("Continue investigation");
   });
 });
 
@@ -117,7 +129,6 @@ describe("Easy Erf customer fulfillment status", () => {
     expect(customerRoute).not.toMatch(/from\("report_orders"\)[\s\S]{0,200}\.(update|insert|delete)\(/);
   });
 
-  // This guard complements actual built-browser request and response checks.
   it("binds customer email-link reads and visible state to one account and complete UUID", () => {
     expect(customerRoute).toContain('if (selectedReportId !== null) query = query.eq("id", selectedReportId)');
     expect(customerRoute).toContain("selectedReportId !== null && !REPORT_UUID_PATTERN.test(selectedReportId)");
