@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { z } from "zod";
 import { ReportOpening } from "@/components/property/dossier/ReportOpening";
+import { ReportParcelSatelliteMap } from "@/components/property/dossier/ReportParcelSatelliteMap";
 import { AskEasyErfPanel } from "@/components/property/dossier/AskEasyErfPanel";
 import { ReportMarketSection, ReportStrategySection, ReportSitePotentialSection, ReportEvidenceAppendix } from "@/components/property/dossier/ReportBodySections";
 import { ReportContextSection, ReportMunicipalSection, ReportSgLineageSection } from "@/components/property/dossier/ReportContextSections";
@@ -57,6 +58,17 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
   const askUnavailableMessage = humanOnly
     ? "Ask Easy Erf is unavailable for this human-only reviewed version because no AI-permitted evidence package was frozen with it. Nothing from this reviewed version is sent to AI."
     : "Ask Easy Erf becomes available only after an evidence-bound reviewed version is delivered. Work-in-progress investigation evidence is not sent through the ordinary Ask path.";
+  const parcelCenter = assembly.parcel.coordinates
+    ? { lng: assembly.parcel.coordinates.lng, lat: assembly.parcel.coordinates.lat }
+    : null;
+  const parcelLabel = assembly.document.header.addressLine ?? assembly.document.header.officialLine ?? "Selected erf";
+  const defaultHero = (
+    <ReportParcelSatelliteMap ring={assembly.ring} center={parcelCenter} label={parcelLabel} />
+  );
+  const defaultHeroCaption = assembly.ring
+    ? "Satellite context with the recorded parcel boundary. The overlay is property context, not a survey or boundary confirmation."
+    : "Satellite context for the recorded property location. No parcel boundary is shown unless saved geometry is available.";
+
   async function askVersion(question: string, signal: AbortSignal): Promise<AskEasyErfClientResult> {
     if (!version) return { success: false, error: "No reviewed version was selected." };
     const payload = z.object({ success: z.boolean(), answer: z.unknown().optional(), error: z.string().optional() }).parse(
@@ -76,6 +88,8 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
   } as const;
   return <article className="mx-auto max-w-6xl space-y-5 break-words" data-investigation-report={assembly.parcel.id} data-review-version={version?.id}>
     <ReportOpening {...openingControls} doc={assembly.document}
+      heroSlot={openingControls?.heroSlot ?? defaultHero}
+      heroCaption={openingControls?.heroCaption ?? defaultHeroCaption}
       reviewIdentity={version ? <div>
         <p>{approved ? "Human-reviewed investigation." : humanOnly ? "Human-only review draft · Not approved." : "AI investigation draft · Not human reviewed."}</p>
         {approved && <p className="mt-1 text-xs font-normal">Reviewed by {version.approved_reviewer_label} on {new Date(version.approved_at!).toLocaleString("en-ZA")}.</p>}
