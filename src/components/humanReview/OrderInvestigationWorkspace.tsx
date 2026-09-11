@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useOperationsAccess } from "@/components/admin/AdminGuard";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { searchFounderSupportUsers } from "@/lib/admin/founderSupportClient";
+import type { FounderSupportUserSummary } from "@/lib/admin/founderSupportTypes";
 import { assembleInvestigation, assessInvestigationSignoff, investigationAttemptSchema, recordedInvestigationWork, type InvestigationAttempt, type OrderInvestigation } from "@/lib/investigation/sharedInvestigation";
 import { DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS } from "@/lib/humanReview/scope";
 import { investigationClient, patchOrderInvestigation, readOrderInvestigation, readInvestigationAsset, uploadInvestigationAsset, requireInvestigationResult, requestInvestigationReview } from "@/lib/investigation/investigationClient";
@@ -316,15 +318,36 @@ function BriefEditor({ version, disabled, onSave }: { version: InvestigationRevi
 }
 
 function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: string; actorId: string; customerId: string }) {
-  const [workerId, setWorkerId] = useState("");
+  const [query, setQuery] = useState("");
+  const [users, setUsers] = useState<FounderSupportUserSummary[]>([]);
+  const [selected, setSelected] = useState<FounderSupportUserSummary | null>(null);
   const [canApprove, setCanApprove] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
+
+  async function search(event: React.FormEvent) {
+    event.preventDefault();
+    const value = query.trim();
+    if (!value || searching) return;
+    setSearching(true); setResult(null); setSelected(null);
+    try {
+      const response = await searchFounderSupportUsers(value);
+      if (!response.success) throw new Error(response.error);
+      const available = response.users.filter((user) => user.id !== customerId);
+      setUsers(available);
+      if (available.length === 1) setSelected(available[0]);
+      if (available.length === 0) setResult("No existing Easy Erf account matched that search. The investigator must have an Easy Erf account before assignment.");
+    } catch (failure) {
+      setUsers([]);
+      setResult(failure instanceof Error ? failure.message : "Could not search Easy Erf users.");
+    } finally { setSearching(false); }
+  }
+
   async function assign(revoke: boolean) {
-    const parsed = z.string().uuid().safeParse(workerId.trim());
-    if (!parsed.success || parsed.data === customerId) { setResult("Choose an existing investigator account UUID, not the customer's account."); return; }
+    if (!selected) { setResult("Choose an existing Easy Erf user first."); return; }
     if (pending) return;
     const active = new AbortController(); controller.current = active;
     setPending(true); setResult(null);
@@ -332,24 +355,51 @@ function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: str
       const { data } = await supabase.auth.getSession();
       if (active.signal.aborted || data.session?.user.id !== actorId) throw new Error("The active account changed.");
       requireInvestigationResult(await investigationClient.rpc("assign_order_investigator", {
-        p_order_id: orderId, p_worker_id: parsed.data, p_can_approve: canApprove, p_revoke: revoke,
+        p_order_id: orderId, p_worker_id: selected.id, p_can_approve: canApprove, p_revoke: revoke,
       }).abortSignal(active.signal));
-      if (!active.signal.aborted) setResult(revoke ? "Access revoked for this investigation." : "Investigator assigned to this customer file.");
+      if (!active.signal.aborted) setResult(revoke
+        ? `Access revoked for ${selected.fullName || selected.email || "this investigator"}.`
+        : `${selected.fullName || selected.email || "Investigator"} can now work on this customer investigation${canApprove ? " and approve its reviewed report" : ""}.`);
     } catch (failure) {
       if (!active.signal.aborted) setResult(failure instanceof Error ? failure.message : "Assignment was not changed.");
     } finally { if (!active.signal.aborted) setPending(false); }
   }
-  return <details className="border-y border-border py-3">
-    <summary className="cursor-pointer font-semibold">Investigator access</summary>
-    <fieldset disabled={pending} className="mt-3 space-y-3">
-      <label className="block text-sm">Existing investigator account UUID<input className="mt-1 min-h-11 w-full rounded-md border border-border p-2"
-        value={workerId} onChange={(event) => setWorkerId(event.target.value)} /></label>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={canApprove} onChange={(event) => setCanApprove(event.target.checked)} />May approve the evidence-linked report</label>
+
+  return <section className="rounded-xl border-2 border-[#0D1B2A]/12 bg-[#F7FBFF] p-4" data-investigator-access>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3 className="font-semibold text-[#0D1B2A]">Users & investigators</h3>
+        <p className="mt-1 max-w-2xl text-sm leading-5 text-[#64748B]">
+          Assign another existing Easy Erf account to work on this exact investigation. Search by name or email. No account UUID is required.
+        </p>
+      </div>
+      <a href="/admin/users" className="text-xs font-semibold text-[#B24A00] underline">Open user directory</a>
+    </div>
+    <form onSubmit={(event) => void search(event)} className="mt-3 flex flex-col gap-2 sm:flex-row">
+      <input
+        aria-label="Search investigator by name or email"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Name or email"
+        className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-white px-3 py-2 text-sm"
+      />
+      <button type="submit" className={button} disabled={searching || !query.trim()}>{searching ? "Searching..." : "Find user"}</button>
+    </form>
+    {users.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      {users.map((user) => <button key={user.id} type="button" onClick={() => { setSelected(user); setResult(null); }}
+        className={`rounded-md border p-3 text-left text-sm ${selected?.id === user.id ? "border-[#FF6A00] bg-[#FFF7ED]" : "border-border bg-white"}`}>
+        <strong>{user.fullName || user.email || "Easy Erf user"}</strong>
+        <div className="mt-1 text-xs text-muted-foreground">{user.email || "No email shown"}</div>
+      </button>)}
+    </div>}
+    {selected && <fieldset disabled={pending} className="mt-3 space-y-3 rounded-md border border-border bg-white p-3">
+      <div className="text-sm"><strong>Selected:</strong> {selected.fullName || selected.email || "Easy Erf user"}</div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={canApprove} onChange={(event) => setCanApprove(event.target.checked)} />May approve the final reviewed report</label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={button} onClick={() => void assign(false)}>Assign investigator</button>
+        <button type="button" className={button} onClick={() => void assign(false)}>Assign to this investigation</button>
         <button type="button" className={button} onClick={() => void assign(true)}>Revoke access</button>
       </div>
-    </fieldset>
-    {result && <p role="status" className="mt-2 text-sm">{result}</p>}
-  </details>;
+    </fieldset>}
+    {result && <p role="status" className="mt-3 text-sm">{result}</p>}
+  </section>;
 }
