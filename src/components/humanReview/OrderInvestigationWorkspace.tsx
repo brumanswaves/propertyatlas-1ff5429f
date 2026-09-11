@@ -209,9 +209,9 @@ function ScopedOrderWorkspace({ orderId, actorId, onApproved }: { orderId: strin
         <strong>{item.label}</strong><p>{item.supported ? "Recorded evidence available" : item.disposition ? "Recorded limitation awaiting reviewer disposition" : "Work still required"}</p>
       </li>)}</ul>
       {activeStep === "report" && <section className="space-y-5">
-      {scope.canWork && needsAiReviewVersion && <button type="button" className={button} disabled={busy} onClick={() => void operation(async (signal) => {
+      {scope.canWork && needsAiReviewVersion && <button type="button" className={button} disabled={busy} title="Optional AI-assisted draft" onClick={() => void operation(async (signal) => {
         await requestInvestigationReview({ action: "generate", orderId }, signal);
-      })}><Sparkles className="h-4 w-4" /> Generate optional AI-assisted brief</button>}
+      })}><Sparkles className="h-4 w-4" /> Generate investigation brief</button>}
       {scope.canApprove && needsHumanApproval && <HumanOnlyReviewEditor disabled={busy} eligible={assessment.eligible} blockers={assessment.blockers}
         onApprove={(content) => operation(async (signal) => {
           await requestInvestigationReview({ action: "human_approve", orderId, content: toSupabaseJson(content) }, signal);
