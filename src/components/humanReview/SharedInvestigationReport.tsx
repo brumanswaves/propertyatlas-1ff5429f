@@ -89,7 +89,9 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
         evidencePack={assembly.pack} askFromReviewedVersion={version ? askVersion : undefined} />}
       reviewSlot={humanReview ? <section aria-label="Human-only investigation review" className="space-y-4 border-y border-border py-5">
         <h2 className="text-xl font-semibold">Human-reviewed investigation summary</h2>
-        <p className="text-xs text-muted-foreground">Written and approved by the human reviewer from the frozen investigation evidence. No AI synthesis was used for this summary. The underlying evidence and provenance remain in the full report below.</p>
+        <p className="text-xs text-muted-foreground">{approved
+          ? "Written and approved by the human reviewer from the frozen investigation evidence."
+          : "Written by the human reviewer from the frozen investigation evidence. This draft is not approved or deliverable yet."} No AI synthesis was used for this summary. The underlying evidence and provenance remain in the full report below.</p>
         {(["bottomLine", "known", "potential", "risks", "unknowns", "nextSteps"] as const).map((key) => {
           const statements = key === "bottomLine" ? [humanReview.bottomLine] : humanReview[key];
           return <section key={key} className="py-2"><h3 className="font-semibold">{humanReviewLabels[key]}</h3>
