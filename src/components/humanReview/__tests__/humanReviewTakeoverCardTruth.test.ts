@@ -12,10 +12,10 @@ const scope = readFileSync(
 );
 
 describe("Done-for-You investigation takeover value proposition", () => {
-  it("explains the full investigation the customer receives before asking for R999", () => {
+  it("keeps the R999 product prominent after the exact erf is selected", () => {
     for (const requiredCopy of [
       "Done-for-You Property Investigation",
-      "Want Easy Erf to do the property investigation for you?",
+      "Want Easy Erf to investigate this property for you?",
       "What you get",
       "standard property investigation",
       "SG/cadastral",
@@ -23,11 +23,15 @@ describe("Done-for-You investigation takeover value proposition", () => {
       "One third-party property data report is reviewed during Early Access where available",
       "Human-Reviewed Easy Erf Report",
       "R999 once-off · no subscription",
-      "Yes — investigate it for me · R999",
+      "Investigate it for me · R999",
       "You choose the property. We do the investigation.",
+      "data-done-for-you-prominent",
     ]) {
       expect(takeoverCard).toContain(requiredCopy);
     }
+    expect(takeoverCard).not.toContain("<details");
+    expect(takeoverCard).not.toContain("View option");
+    expect(takeoverCard).not.toContain("OPTIONAL HELP");
   });
 
   it("keeps the commercial CTA inside the controlled product and provider boundary", () => {
