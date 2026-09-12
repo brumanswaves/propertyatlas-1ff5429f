@@ -51,6 +51,10 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', false);
 do $$ begin
   begin
+    perform public.assign_order_investigator('88888888-8888-4888-8888-888888888888','11111111-1111-4111-8111-111111111111',false);
+    raise exception 'Founder/admin was assigned as an investigator';
+  exception when invalid_parameter_value then null; end;
+  begin
     perform public.assign_order_investigator('88888888-8888-4888-8888-888888888888','77777777-7777-4777-8777-777777777777',false);
     raise exception 'Ordinary customer was assigned as an investigator';
   exception when invalid_parameter_value then null; end;

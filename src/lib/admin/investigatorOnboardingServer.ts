@@ -116,15 +116,23 @@ export async function listFounderInvestigators(
   dependencies: InvestigatorOnboardingDependencies = productionDependencies,
 ) {
   const context = await dependencies.authenticate(request);
-  const { data: roleRows, error } = await context.serviceSupabase
+  const { data: accessRows, error } = await context.serviceSupabase
     .from("user_roles")
-    .select("user_id,created_at")
-    .eq("role", INVESTIGATOR_ROLE)
+    .select("user_id,role,created_at")
+    .in("role", [INVESTIGATOR_ROLE, "admin"])
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(400);
   if (error) throw new ApiRequestError("Could not load investigators.", 500);
 
-  const ids = (roleRows ?? []).map((row) => row.user_id);
+  const adminIds = new Set(
+    (accessRows ?? [])
+      .filter((row) => row.role === "admin")
+      .map((row) => row.user_id),
+  );
+  const roleRows = (accessRows ?? []).filter(
+    (row) => row.role === INVESTIGATOR_ROLE && !adminIds.has(row.user_id),
+  );
+  const ids = roleRows.map((row) => row.user_id);
   if (!ids.length) return [] as FounderInvestigatorSummary[];
 
   const { data: profiles, error: profileError } = await context.serviceSupabase
@@ -134,7 +142,7 @@ export async function listFounderInvestigators(
     .limit(200);
   if (profileError) throw new ApiRequestError("Could not load investigator profiles.", 500);
   const names = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name]));
-  const grantedAt = new Map((roleRows ?? []).map((row) => [row.user_id, row.created_at]));
+  const grantedAt = new Map(roleRows.map((row) => [row.user_id, row.created_at]));
 
   const investigators = await Promise.all(ids.map(async (id) => {
     const { data, error: userError } = await context.serviceSupabase.auth.admin.getUserById(id);

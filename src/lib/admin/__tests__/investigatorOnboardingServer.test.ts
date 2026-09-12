@@ -223,4 +223,22 @@ describe("Founder investigator onboarding", () => {
       { id: activeId, status: "active" },
     ]);
   });
+
+  it("keeps founder/admin accounts out of the investigator directory even if a stale moderator role remains", async () => {
+    const founder = authUser({
+      id: ADMIN,
+      email: "founder@example.com",
+      email_confirmed_at: "2026-09-01T08:00:00.000Z",
+    });
+    const fixture = fakeDependencies({
+      users: [founder],
+      roles: [
+        { user_id: ADMIN, role: "admin", created_at: "2026-09-01T08:00:00.000Z" },
+        { user_id: ADMIN, role: "moderator", created_at: "2026-09-01T08:01:00.000Z" },
+      ],
+    });
+
+    await expect(listFounderInvestigators(request, fixture.dependencies)).resolves.toEqual([]);
+    await expect(searchFounderInvestigators(request, "founder", fixture.dependencies)).resolves.toEqual([]);
+  });
 });

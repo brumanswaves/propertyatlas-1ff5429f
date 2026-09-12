@@ -69,6 +69,7 @@ with granted as (
   join public.report_orders report_order on report_order.id = assignment.order_id
   where assignment.revoked_at is null
     and assignment.worker_id is distinct from report_order.user_id
+    and not coalesce(public.has_role(assignment.worker_id, 'admin'::public.app_role), false)
   on conflict(user_id, role) do nothing
   returning user_id
 )
@@ -127,7 +128,8 @@ begin
     raise exception 'Customer is not a delegated reviewer' using errcode = '22023';
   end if;
   if not p_revoke and (
-    not coalesce(public.has_role(p_worker_id, 'moderator'), false)
+    coalesce(public.has_role(p_worker_id, 'admin'), false)
+    or not coalesce(public.has_role(p_worker_id, 'moderator'), false)
     or not exists (
       select 1 from auth.users
       where id = p_worker_id and email_confirmed_at is not null
