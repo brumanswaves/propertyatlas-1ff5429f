@@ -13,6 +13,7 @@ const workspace = source("src/components/humanReview/OrderInvestigationWorkspace
 const sharedReport = source("src/components/humanReview/SharedInvestigationReport.tsx");
 const satelliteMap = source("src/components/property/dossier/ReportParcelSatelliteMap.tsx");
 const recoveryMigration = source("supabase/migrations/20260911180000_recover_failed_easy_erf_investigation.sql");
+const investigatorMigration = source("supabase/migrations/20260912133210_secure_investigator_onboarding.sql");
 
 describe("Easy Erf product recovery guardrails", () => {
   it("does not require a municipal plan, photo or survey to leave Property Checks", () => {
@@ -43,12 +44,14 @@ describe("Easy Erf product recovery guardrails", () => {
   });
 
   it("lets an admin find and assign an existing investigator without a raw UUID", () => {
-    expect(workspace).toContain("searchFounderSupportUsers");
+    expect(workspace).toContain("searchFounderInvestigators");
     expect(workspace).toContain("Search investigator by name or email");
     expect(workspace).toContain("No account UUID is required");
     expect(workspace).toContain("Assign to this investigation");
     expect(workspace).toContain("/admin/users");
     expect(workspace).not.toContain("Existing investigator account UUID");
+    expect(investigatorMigration).toContain("An active investigator account is required");
+    expect(investigatorMigration).toContain("not v_investigator");
   });
 
   it("uses real satellite map context in the paid investigation report", () => {

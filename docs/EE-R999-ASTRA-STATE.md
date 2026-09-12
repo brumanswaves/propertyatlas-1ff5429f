@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## PR #175 secure investigator onboarding: 2026-09-12
+
+- VERIFIED starting state: draft PR #175 and branch `chatgpt/ee-product-recovery-ux`, exact reviewed head `443c3ace6ee596884c2c56f32f2b6572e78d4930`, current `origin/main` `76b1269052e52200e8050a2bf4ae028cafeb71dc`. The original dirty `property-evidence-pack-foundation` worktree remains protected and untouched.
+- Source repair keeps Supabase Auth as the sole account system. The dormant `moderator` app role is now the explicit least-privilege investigator marker; a role alone grants no customer data. Active, non-revoked `investigation_assignments` continue to grant access to one order only, and assignment now requires an activated Auth account with that role.
+- Founder-only server onboarding uses the existing bearer-authenticated Founder Operations boundary. New emails use Supabase Auth invitation server-side; existing customer emails are not changed until a separate exact-user/exact-email role grant. Founder/admin accounts are rejected. Service-role credentials never enter browser code or responses.
+- A server-only onboarding audit records invitation and role-grant events. Existing active delegated workers receive a migration-time role backfill before the stricter access predicate takes effect. Assignment revocation remains the existing order-scoped removal path; a removed investigator role also prevents a stale assignment from authorizing work.
+- VERIFIED local checks: focused security/product inventory 4 files / 36 passed; full Vitest 157 files / 1,599 passed; TypeScript; targeted lint; whitespace check; exact Founder `node-server` production build. Built-browser acceptance passed 28 groups with zero external backend requests, including desktop/mobile onboarding, pending/active states, no silent customer escalation, active-only name/email assignment, exact-order isolation, optional Property Checks, failed-investigation recovery, workload priority and deterministic report map. Screenshots were inspected.
+- Local Docker/PostgreSQL/Deno executables are unavailable, so the real isolated SQL/Auth/REST/Storage assertions must be taken from the exact-head public-repository workflow after push. Exact-head CI and retrieved artifact inspection remain required before independent review; prior-head results are not substitutes.
+- No migration was applied, invitation sent, role changed, order accessed, production service called, paid AI enabled, deployment/publish action taken, or customer contacted. No new PR. Additional discretionary spend remains capped at $0; actual account spend UNKNOWN.
+
 ## PR #175 owner placement correction: 2026-09-12
 
 - VERIFIED starting head f91b7450d56277f3647a990eda39aec6c766da7c, main 76b1269052e52200e8050a2bf4ae028cafeb71dc. Existing branch chatgpt/ee-product-recovery-ux and draft PR #175 retained; original dirty worktree and mistaken Venture Compass work preserved, not modified by this repair.

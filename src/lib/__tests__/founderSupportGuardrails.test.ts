@@ -8,6 +8,7 @@ function read(...parts: string[]) {
 
 describe("Founder Operations trusted support guardrails", () => {
   const server = read("src", "lib", "admin", "founderSupportServer.ts");
+  const onboarding = read("src", "lib", "admin", "investigatorOnboardingServer.ts");
   const client = read("src", "lib", "admin", "founderSupportClient.ts");
   const api = read("src", "routes", "api", "admin.support.ts");
   const page = read("src", "routes", "admin_.users.tsx");
@@ -28,6 +29,7 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(client).not.toContain("SERVICE_ROLE");
     expect(page).not.toContain("SERVICE_ROLE");
     expect(api).not.toContain("SERVICE_ROLE");
+    expect(onboarding).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(client).toContain("data.session.access_token");
     expect(client).toContain("Authorization: `Bearer ${data.session.access_token}`");
     expect(client).toContain('credentials: "same-origin"');
@@ -41,16 +43,21 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(server).not.toMatch(/select\([^)]*metadata/);
   });
 
-  it("keeps the Users support screen read-only while the API mutation surface remains narrow", () => {
+  it("keeps customer records read-only while exposing only deliberate investigator onboarding actions", () => {
     expect(api).toContain("GET:");
     expect(api).toContain("POST:");
     expect(api).not.toContain("PATCH:");
     expect(api).not.toContain("DELETE:");
     expect(api).toContain('body.action === "grant-complimentary-site-potential"');
+    expect(api).toContain('body.action === "invite-investigator"');
+    expect(api).toContain('body.action === "grant-existing-investigator"');
     expect(api).not.toMatch(/refund/i);
     expect(api).not.toMatch(/retry/i);
     expect(api).not.toMatch(/impersonat/i);
-    expect(page).toMatch(/This screen is read-only/i);
+    expect(page).toContain("Customer records remain read-only");
+    expect(page).toContain("Add investigator");
+    expect(page).toContain("No access was changed");
+    expect(page).toContain("Grant investigator role to this existing customer");
     expect(page).not.toMatch(/grant credits/i);
     expect(page).not.toMatch(/refund payment/i);
     expect(page).not.toMatch(/impersonate/i);

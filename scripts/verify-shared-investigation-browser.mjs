@@ -404,7 +404,10 @@ try {
     sessions[actor] = must(await clients[actor].auth.signInWithPassword({ email, password })).session;
     assert.equal(sessions[actor].user.id, id); secrets.push(sessions[actor].access_token, sessions[actor].refresh_token);
   }
-  must(await adminClient.from("user_roles").insert({ user_id: ids.admin, role: "admin" }));
+  must(await adminClient.from("user_roles").insert([
+    { user_id: ids.admin, role: "admin" },
+    { user_id: ids.worker, role: "moderator" },
+  ]));
   must(await adminClient.from("saved_properties").insert([
     { user_id: ids.a, parcel_id: parcelA, user_data: dataA },
     { user_id: ids.b, parcel_id: parcelB, user_data: { normalizedParcel: { ...normalizedParcel, id: parcelB }, privateNote: "NONSELECTED_PRIVATE_SENTINEL" } },

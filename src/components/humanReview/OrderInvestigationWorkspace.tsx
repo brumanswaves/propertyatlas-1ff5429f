@@ -5,8 +5,8 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useOperationsAccess } from "@/components/admin/AdminGuard";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { searchFounderSupportUsers } from "@/lib/admin/founderSupportClient";
-import type { FounderSupportUserSummary } from "@/lib/admin/founderSupportTypes";
+import { searchFounderInvestigators } from "@/lib/admin/founderSupportClient";
+import type { FounderInvestigatorSummary } from "@/lib/admin/founderSupportTypes";
 import { assembleInvestigation, assessInvestigationSignoff, investigationAttemptSchema, recordedInvestigationWork, type InvestigationAttempt, type OrderInvestigation } from "@/lib/investigation/sharedInvestigation";
 import { DONE_FOR_YOU_INVESTIGATION_CHECKLIST_ITEMS } from "@/lib/humanReview/scope";
 import { investigationClient, patchOrderInvestigation, readOrderInvestigation, readInvestigationAsset, uploadInvestigationAsset, requireInvestigationResult, requestInvestigationReview } from "@/lib/investigation/investigationClient";
@@ -319,8 +319,8 @@ function BriefEditor({ version, disabled, onSave }: { version: InvestigationRevi
 
 function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: string; actorId: string; customerId: string }) {
   const [query, setQuery] = useState("");
-  const [users, setUsers] = useState<FounderSupportUserSummary[]>([]);
-  const [selected, setSelected] = useState<FounderSupportUserSummary | null>(null);
+  const [users, setUsers] = useState<FounderInvestigatorSummary[]>([]);
+  const [selected, setSelected] = useState<FounderInvestigatorSummary | null>(null);
   const [canApprove, setCanApprove] = useState(false);
   const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState(false);
@@ -334,12 +334,12 @@ function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: str
     if (!value || searching) return;
     setSearching(true); setResult(null); setSelected(null);
     try {
-      const response = await searchFounderSupportUsers(value);
+      const response = await searchFounderInvestigators(value);
       if (!response.success) throw new Error(response.error);
-      const available = response.users.filter((user) => user.id !== customerId);
+      const available = response.investigators.filter((user) => user.id !== customerId);
       setUsers(available);
       if (available.length === 1) setSelected(available[0]);
-      if (available.length === 0) setResult("No existing Easy Erf account matched that search. The investigator must have an Easy Erf account before assignment.");
+      if (available.length === 0) setResult("No active investigator matched that search. Add or activate the investigator in Users & Investigators first.");
     } catch (failure) {
       setUsers([]);
       setResult(failure instanceof Error ? failure.message : "Could not search Easy Erf users.");
@@ -370,10 +370,10 @@ function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: str
       <div>
         <h3 className="font-semibold text-[#0D1B2A]">Users & investigators</h3>
         <p className="mt-1 max-w-2xl text-sm leading-5 text-[#64748B]">
-          Assign another existing Easy Erf account to work on this exact investigation. Search by name or email. No account UUID is required.
+          Assign an active Easy Erf investigator to this exact investigation. Search by name or email. No account UUID is required, and the investigator receives no access to other orders.
         </p>
       </div>
-      <a href="/admin/users" className="text-xs font-semibold text-[#B24A00] underline">Open user directory</a>
+      <a href="/admin/users" className="text-xs font-semibold text-[#B24A00] underline">Open Users &amp; Investigators</a>
     </div>
     <form onSubmit={(event) => void search(event)} className="mt-3 flex flex-col gap-2 sm:flex-row">
       <input

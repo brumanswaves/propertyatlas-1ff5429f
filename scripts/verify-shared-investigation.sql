@@ -3,6 +3,7 @@
 
 -- Isolated PostgreSQL fixture: real role enforcement and committed canonical rows.
 alter table auth.users add column if not exists raw_user_meta_data jsonb default '{}';
+alter table auth.users add column if not exists email_confirmed_at timestamptz;
 \i supabase/migrations/20260610065719_286b13eb-4dee-460b-a0c0-6339f6162c22.sql
 create or replace function public.update_updated_at_column() returns trigger
 language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
@@ -17,10 +18,28 @@ alter table storage.objects add column last_accessed_at timestamptz;
 \i supabase/migrations/20260720193000_patch_saved_property_user_data.sql
 \i supabase/migrations/20260909094547_shared_investigation_fulfillment.sql
 
-insert into auth.users(id) values
-  ('55555555-5555-4555-8555-555555555555'), -- worker
-  ('66666666-6666-4666-8666-666666666666'), -- customer B
-  ('77777777-7777-4777-8777-777777777777'); -- unauthorized
+create table if not exists public.user_roles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role public.app_role not null,
+  created_at timestamptz not null default now(),
+  unique(user_id, role)
+);
+create or replace function public.has_role(_user_id uuid, _role public.app_role)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists(select 1 from public.user_roles where user_id = _user_id and role = _role)
+$$;
+
+insert into auth.users(id, email_confirmed_at) values
+  ('55555555-5555-4555-8555-555555555555', now()), -- active investigator
+  ('66666666-6666-4666-8666-666666666666', now()), -- customer B
+  ('77777777-7777-4777-8777-777777777777', now()); -- unauthorized
+insert into public.user_roles(user_id, role)
+values
+  ('11111111-1111-4111-8111-111111111111', 'admin'),
+  ('55555555-5555-4555-8555-555555555555', 'moderator')
+on conflict(user_id, role) do nothing;
+\i supabase/migrations/20260912133210_secure_investigator_onboarding.sql
 insert into public.saved_properties(user_id, parcel_id, user_data) values
   ('22222222-2222-4222-8222-222222222222', 'synthetic:shared-a', '{"privateNote":"A ONLY", "strategyWorkspace":{"draftInputs":{"landCost":"900000"}}}'),
   ('66666666-6666-4666-8666-666666666666', 'synthetic:shared-b', '{"privateNote":"B PRIVATE SENTINEL"}');
@@ -30,6 +49,12 @@ insert into public.report_orders(id, user_id, parcel_id, provider, report_type, 
 
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', false);
+do $$ begin
+  begin
+    perform public.assign_order_investigator('88888888-8888-4888-8888-888888888888','77777777-7777-4777-8777-777777777777',false);
+    raise exception 'Ordinary customer was assigned as an investigator';
+  exception when invalid_parameter_value then null; end;
+end $$;
 select public.assign_order_investigator('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',false);
 select set_config('request.jwt.claim.sub', '55555555-5555-4555-8555-555555555555', false);
 do $$

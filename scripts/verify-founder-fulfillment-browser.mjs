@@ -64,6 +64,7 @@ const navigationChecks = [];
 const networkResponses = [];
 const responseSettlements = [];
 const assignmentRequests = [];
+const onboardingRequests = [];
 const mapRequests = [];
 const WORKER = "77777777-7777-4777-8777-777777777777";
 const selectionAtRequest = new WeakMap();
@@ -86,13 +87,48 @@ await context.route("**/*", async (route) => {
     return json({ version: 8, sources: {}, layers: [{ id: "synthetic-background", type: "background", paint: { "background-color": "#467b60" } }] });
   }
   if (url.pathname === "/api/admin/support") {
+    if (request.method() === "POST") {
+      const body = request.postDataJSON();
+      onboardingRequests.push(body);
+      if (body.action === "invite-investigator" && body.email === "existing@example.invalid") {
+        return json({ success: true, outcome: "existing_customer", customer: {
+          id: B, fullName: "Existing Customer", email: body.email, accessKind: "customer",
+        } });
+      }
+      if (body.action === "grant-existing-investigator") {
+        return json({ success: true, outcome: "already_investigator", investigator: {
+          id: B, fullName: "Existing Customer", email: body.email, status: "active",
+          invitedAt: null, activatedAt: "2026-09-12T12:00:00Z", roleGrantedAt: "2026-09-12T12:00:00Z",
+        } });
+      }
+      assert.deepEqual(body, {
+        action: "invite-investigator",
+        name: "New Investigator",
+        email: "new-investigator@example.invalid",
+      });
+      return json({ success: true, outcome: "invited", investigator: {
+        id: "88888888-8888-4888-8888-888888888888", fullName: body.name, email: body.email,
+        status: "invited", invitedAt: "2026-09-12T12:00:00Z", activatedAt: null,
+        roleGrantedAt: "2026-09-12T12:00:00Z",
+      } });
+    }
     assert.equal(request.method(), "GET");
-    assert.equal(url.searchParams.get("mode"), "search");
-    assert.equal(url.searchParams.get("q"), "Synthetic Investigator");
-    return json({ success: true, users: [
-      { id: B, fullName: "Customer account", email: "customer@example.invalid" },
-      { id: WORKER, fullName: "Synthetic Investigator", email: "investigator@example.invalid" },
+    const mode = url.searchParams.get("mode");
+    if (mode === "investigators") return json({ success: true, investigators: [
+      { id: WORKER, fullName: "Synthetic Investigator", email: "investigator@example.invalid", status: "active", invitedAt: null, activatedAt: "2026-09-01T00:00:00Z", roleGrantedAt: "2026-09-01T00:00:00Z" },
+      { id: "88888888-8888-4888-8888-888888888888", fullName: "Pending Reviewer", email: "pending@example.invalid", status: "invited", invitedAt: "2026-09-12T00:00:00Z", activatedAt: null, roleGrantedAt: "2026-09-12T00:00:00Z" },
     ] });
+    if (mode === "investigator-search") {
+      assert.equal(url.searchParams.get("q"), "Synthetic Investigator");
+      return json({ success: true, investigators: [
+        { id: WORKER, fullName: "Synthetic Investigator", email: "investigator@example.invalid", status: "active", invitedAt: null, activatedAt: "2026-09-01T00:00:00Z", roleGrantedAt: "2026-09-01T00:00:00Z" },
+      ] });
+    }
+    if (mode === "search") return json({ success: true, users: [
+      { id: B, fullName: "Customer account", email: "customer@example.invalid", accessKind: "customer", savedPropertyCount: 1, reportOrderCount: 1 },
+      { id: WORKER, fullName: "Synthetic Investigator", email: "investigator@example.invalid", accessKind: "investigator", savedPropertyCount: 0, reportOrderCount: 0 },
+    ] });
+    assert.fail(`Unexpected Founder Support mode: ${mode}`);
   }
   if (url.pathname === "/rest/v1/rpc/assign_order_investigator") {
     const body = request.postDataJSON();
@@ -403,7 +439,7 @@ try {
     await page.waitForFunction(() => scrollY === 0);
     const operations = page.getByRole("navigation", { name: "Founder Operations", exact: true });
     await operations.getByRole("link", { name: "Users", exact: true }).click();
-    await page.getByRole("heading", { name: "User support", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Users & Investigators", exact: true, level: 1 }).waitFor();
     await keyboardReach(operations.getByRole("link", { name: "Entitlements", exact: true }));
     await page.keyboard.press("Enter");
     await page.getByRole("heading", { name: "Entitlements", exact: true }).waitFor();
@@ -675,6 +711,34 @@ try {
     assert.deepEqual(rows[0].review_content, saved);
     assert.equal(requests.at(-1).action, "reopen_review");
   });
+  await check("Founder Ops onboards investigators without silently escalating customers", async () => {
+    const usersPage = await context.newPage();
+    usersPage.on("pageerror", (error) => failures.push(error.message));
+    await usersPage.goto(`${baseUrl}/admin/users`);
+    await usersPage.getByRole("heading", { name: "Users & Investigators", exact: true, level: 1 }).waitFor();
+    await usersPage.getByRole("button", { name: "Add investigator", exact: true }).click();
+    await usersPage.getByLabel("Name", { exact: true }).fill("New Investigator");
+    await usersPage.getByLabel("Email", { exact: true }).fill("new-investigator@example.invalid");
+    await usersPage.screenshot({ path: resolve(artifacts, "investigator-onboarding-desktop.png"), fullPage: true });
+    await usersPage.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await usersPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await usersPage.screenshot({ path: resolve(artifacts, "investigator-onboarding-mobile.png"), fullPage: true });
+    await usersPage.getByRole("button", { name: "Send investigator invitation", exact: true }).click();
+    await usersPage.getByRole("status").filter({ hasText: "They remain pending" }).waitFor();
+
+    await usersPage.getByLabel("Name", { exact: true }).fill("Existing Customer");
+    await usersPage.getByLabel("Email", { exact: true }).fill("existing@example.invalid");
+    const beforeExisting = onboardingRequests.length;
+    await usersPage.getByRole("button", { name: "Send investigator invitation", exact: true }).click();
+    await usersPage.getByRole("alert").filter({ hasText: "ordinary customer account" }).waitFor();
+    assert.equal(onboardingRequests.length, beforeExisting + 1);
+    assert.equal(onboardingRequests.at(-1).action, "invite-investigator");
+    await usersPage.getByRole("button", { name: "Grant investigator role to this existing customer", exact: true }).click();
+    await usersPage.getByRole("status").filter({ hasText: "least-privilege investigator role" }).waitFor();
+    assert.equal(onboardingRequests.at(-1).action, "grant-existing-investigator");
+    assert.ok(!(await usersPage.locator("body").innerText()).includes("service_role"));
+    await usersPage.close();
+  });
   await check("existing investigator is found by name and assigned only to this customer order", async () => {
     const panel = page.locator("[data-investigator-access]");
     await panel.getByRole("textbox", { name: "Search investigator by name or email" }).fill("Synthetic Investigator");
@@ -720,6 +784,6 @@ try {
   throw error;
 } finally {
   await context.tracing.stop({ path: resolve(artifacts, "trace.zip") });
-  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, summaryReads, detailReads, networkResponses, assignmentRequests, mapRequests, failures, mockedRequests: requests, productionAccess: false, imagery: "Synthetic isolated style; not provider uptime or cadastral proof" }, null, 2));
+  await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({ sha, dirty: Boolean(dirty), checks, navigationChecks, summaryReads, detailReads, networkResponses, assignmentRequests, onboardingRequests, mapRequests, failures, mockedRequests: requests, productionAccess: false, imagery: "Synthetic isolated style; not provider uptime or cadastral proof" }, null, 2));
   await browser.close();
 }
