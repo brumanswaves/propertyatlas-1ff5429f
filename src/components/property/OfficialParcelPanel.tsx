@@ -2565,6 +2565,15 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   const fileRegion = [normalizedParcel.municipality, normalizedParcel.province]
     .filter(Boolean)
     .join(" / ");
+  const takeoverOffer = (
+    <HumanReviewTakeoverCard
+      parcelId={normalizedParcel.id}
+      propertyReference={resolved.displayTitle}
+      source={`workbench-${tab}`}
+      onPrepare={preparePaidInvestigation}
+      compact
+    />
+  );
 
   return (
     <aside className="pointer-events-auto fixed inset-0 z-[80] flex h-[100dvh] flex-col overflow-hidden bg-[#f8fafc]/96 shadow-[0_28px_90px_rgba(13,27,42,0.28)] backdrop-blur-xl">
@@ -2863,6 +2872,11 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           expertWorkspaceOpen ? "md:ml-64" : "",
         )}
       >
+        {!isOverview && (
+          <section className="mx-4 mt-4 md:mx-7" data-done-for-you-placement="before-primary-work">
+            {takeoverOffer}
+          </section>
+        )}
         {expertWorkspaceOpen && (
           <>
             <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">
@@ -2921,6 +2935,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
         {isOverview && (
           <section className="mx-4 mt-4 md:mx-7 md:mt-7">
             <PropertyFirstRead
+              takeoverSlot={takeoverOffer}
               parcel={normalizedParcel}
               displayTitle={resolved.displayTitle}
               displaySubtitle={resolved.displaySubtitle}
@@ -3193,19 +3208,6 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             />
           )}
         </div>
-
-        <section
-          className="mx-4 mt-4 md:mx-7 md:mt-6"
-          data-done-for-you-placement="after-primary-work"
-        >
-          <HumanReviewTakeoverCard
-            parcelId={normalizedParcel.id}
-            propertyReference={resolved.displayTitle}
-            source={`workbench-${tab}`}
-            onPrepare={preparePaidInvestigation}
-            compact
-          />
-        </section>
       </div>
     </aside>
   );

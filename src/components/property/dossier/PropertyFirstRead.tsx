@@ -84,6 +84,7 @@ export interface PropertyFirstReadProps {
   chosenScenario: ErfStrategyScenario | null;
   mapSlot: ReactNode;
   askSlot?: ReactNode;
+  takeoverSlot?: ReactNode;
   onInvestigate: () => void;
   onOpenExpertTools: () => void;
 }
@@ -465,6 +466,7 @@ export function PropertyFirstRead(props: PropertyFirstReadProps) {
                 <ShieldCheck className="h-4 w-4" /> Property first read
               </div>
               <h1 className="mt-5 text-3xl font-semibold tracking-tight md:text-5xl">{model.title}</h1>
+              {props.takeoverSlot && <div className="mt-4">{props.takeoverSlot}</div>}
               {model.addressLine && (
                 <p className="mt-3 text-lg font-medium text-white/88">{model.addressLine}</p>
               )}
@@ -487,9 +489,9 @@ export function PropertyFirstRead(props: PropertyFirstReadProps) {
             </div>
             <div className="mt-8">
               <p className="max-w-xl text-sm leading-6 text-white/68">
-                Use Easy Erf&apos;s guided property investigation to gather records, confirm planning
-                controls, analyse site potential and bring everything together in one report. This
-                first read stays read-only until you choose to investigate.
+                Investigate this property yourself with Guided Investigation. Gather records and
+                review the evidence at your own pace. This first read stays read-only until you choose
+                to investigate.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button

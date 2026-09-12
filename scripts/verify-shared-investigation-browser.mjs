@@ -174,7 +174,7 @@ async function verifyCustomerEntry() {
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-viewport.png") });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
   // Exercise the prominent Workbench handoff, not the standalone report offer.
-  const offer = page.locator("[data-done-for-you-persistent]");
+  const offer = page.locator("[data-done-for-you-top]");
   await offer.waitFor();
   assert.equal(await offer.locator("details, summary").count(), 0);
   await offer.screenshot({ path: resolve(artifacts, "customer-prominent-paid-handoff.png") });

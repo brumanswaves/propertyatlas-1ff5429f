@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## PR #175 owner placement correction: 2026-09-12
+
+- VERIFIED starting head f91b7450d56277f3647a990eda39aec6c766da7c, main 76b1269052e52200e8050a2bf4ae028cafeb71dc. Existing branch chatgpt/ee-product-recovery-ux and draft PR #175 retained; original dirty worktree and mistaken Venture Compass work preserved, not modified by this repair.
+- Owner rejected the bottom-fixed R999 offer. Source now renders one in-flow compact offer inside the First Read hero after the property title, or before Guided/Expert content. Exact CTA: Investigate it for me · R999. The self-service explanation explicitly says the customer does Guided; the paid offer says Easy Erf plus a human reviewer does the investigation. No overlay, spacer, resize observer, payment or persistence rewrite.
+- VERIFIED source-stage checks: focused 7 files / 48 tests; full Vitest 156 files / 1594 tests; TypeScript; synthetic node-server production build; PR-wide targeted lint with zero errors and three pre-existing ReportParcelSatelliteMap dependency warnings; whitespace check. Generated route-tree line-ending churn excluded.
+- VERIFIED source-stage browser evidence: First Read and all ten Guided steps at 1440/390 widths with visible top CTA and no horizontal overflow. All ten steps exercise the real prepared-navigation handler, same canonical parcel, current draft flush and retained prior recorded values. Existing empty-envelope normalization and map-fetch timestamp refresh are distinguished from lost work. First Read comes from actual official search, not a special reopen link. Founder fixture retains all 27 groups including optional Checks, recovery, assignment, admin priority and deterministic report map. Screenshots inspected for First Read and representative Guided stages; synthetic map fixtures are not live satellite-provider proof.
+- Final candidate SHA, exact-head CI, isolated shared-backend acceptance, retrieved artifacts and inspection results belong in the accompanying PR receipt. Prior checkpoints do not substitute for this candidate. No merge or deployment authorized; production/owner acceptance remains unpassed. Investigator onboarding requested earlier is not demonstrated by the existing-users assignment proof and must not be claimed from it.
+- Next ranked actions: finish exact-head candidate verification and inspect artifacts; repair any actual failure on this same PR; submit for independent review. Owner Class B approval is required before any merge, migration or publication, not for these source checks.
+- Spend: existing approved session and deterministic local/standard public-repository CI tools only. No agents, paid AI, purchases, services, customer contact or production operations. Actual account spend UNKNOWN; additional discretionary cap $0. No production acceptance process is running.
+
 ## PR #175 sole-writer candidate verification: 2026-09-11
 
 This section supersedes the coordination checkpoint below. The owner authorized this task as sole writer; the existing branch and PR are retained.

@@ -4,7 +4,7 @@ import {
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
   buildHumanReviewHref,
 } from "@/lib/humanReview/scope";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 const HUMAN_REVIEW_BENEFITS = [
   "Easy Erf completes or reviews the standard property investigation for you",
@@ -124,7 +124,7 @@ function TakeoverCardContent({ hasConfirmedParcel, href, onPrepare }: TakeoverCa
   );
 }
 
-function PersistentTakeoverBar({
+function TopTakeoverBar({
   href,
   propertyReference,
   onPrepare,
@@ -134,27 +134,12 @@ function PersistentTakeoverBar({
   onPrepare?: () => Promise<void>;
 }) {
   const { saving, error, navigate } = usePreparedNavigation(href, onPrepare);
-  const barRef = useRef<HTMLElement | null>(null);
-  const [reservedHeight, setReservedHeight] = useState(200);
-  useEffect(() => {
-    const bar = barRef.current;
-    if (!bar) return;
-    const measure = () => setReservedHeight(bar.getBoundingClientRect().height + 24);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(bar);
-    return () => observer.disconnect();
-  }, []);
   return (
-    <>
-    {/* Keep the final Guided/Expert controls scrollable above the fixed offer. */}
-    <div aria-hidden="true" className="report-no-print" style={{ height: reservedHeight }} />
     <aside
-      ref={barRef}
-      className="report-no-print fixed bottom-3 left-1/2 z-[95] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 overflow-hidden rounded-[1.25rem] border-2 border-[#FF6A00]/55 bg-white/96 shadow-[0_24px_70px_-26px_rgba(13,27,42,0.55)] backdrop-blur-xl"
+      className="report-no-print w-full rounded-lg border-2 border-[#FF6A00]/55 bg-white"
       aria-label="Done-for-You Property Investigation option"
       data-done-for-you-prominent
-      data-done-for-you-persistent
+      data-done-for-you-top
     >
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
@@ -166,11 +151,11 @@ function PersistentTakeoverBar({
               R999 once-off
             </span>
           </div>
-          <div className="mt-1 truncate text-sm font-semibold text-[#0D1B2A] sm:text-base">
-            Want Easy Erf to investigate this property for you?
+          <div className="mt-1 text-sm font-semibold text-[#0D1B2A]">
+            Easy Erf + a human reviewer does the investigation.
           </div>
-          <div className="mt-0.5 truncate text-xs text-[#64748B]">
-            {propertyReference || "This selected erf"} · You choose the property. We do the investigation.
+          <div className="mt-0.5 break-words text-xs text-[#64748B]">
+            {propertyReference || "This selected erf"} · Your completed work stays with this property.
           </div>
         </div>
         <a
@@ -189,7 +174,6 @@ function PersistentTakeoverBar({
         </p>
       ) : null}
     </aside>
-    </>
   );
 }
 
@@ -213,7 +197,7 @@ export function HumanReviewTakeoverCard({
 
   if (compact && hasConfirmedParcel) {
     return (
-      <PersistentTakeoverBar
+      <TopTakeoverBar
         href={href}
         propertyReference={propertyReference}
         onPrepare={onPrepare}
