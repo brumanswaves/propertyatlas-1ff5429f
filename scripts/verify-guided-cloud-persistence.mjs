@@ -592,6 +592,9 @@ try {
 
   // Opening the selected parcel without a saved-workspace entry is zero-commit First Read.
   await reopenPage.goto(baseUrl);
+  // The launcher is server-rendered before its click handler is hydrated.
+  // Match the existing official-search fixture's mounted-map readiness gate.
+  await reopenPage.getByText(/CSG parcels loaded:/i).first().waitFor();
   await reopenPage.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
   await reopenPage.getByRole("button", { name: /^Erf Search/ }).click();
   await reopenPage.getByPlaceholder("LPI or parcel key", { exact: true }).fill(LPI);
