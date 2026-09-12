@@ -15,6 +15,7 @@ import {
   RotateCcw,
   TestTube2,
   Upload,
+  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGuard, useOperationsAccess } from "@/components/admin/AdminGuard";
@@ -139,10 +140,10 @@ function FounderFulfillmentQueue() {
     } else {
       toast.success(
         action === "start_review"
-          ? "Done-for-you investigation started"
+          ? "Done-for-You investigation started"
           : action === "reopen_review"
-            ? "Investigation reopened"
-            : "Order marked failed",
+            ? "Investigation reopened and ready to continue"
+            : "Investigation stopped. It can be reopened from this order.",
       );
     }
 
@@ -234,7 +235,7 @@ function FounderFulfillmentQueue() {
         {queueError ? (
           <section role="alert" className="space-y-3">
             <h1 className="text-xl font-semibold">Investigation queue unavailable</h1>
-            <p>Could not load the done-for-you investigation queue.</p>
+            <p>Could not load the Done-for-You investigation queue.</p>
             <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded border px-3 py-2">
               <RotateCcw className="h-4 w-4" /> Retry queue
             </button>
@@ -291,20 +292,29 @@ function QueueOverview({
             Property investigation queue
           </h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
-            The queue is read-only. Open one exact order before starting, reopening, editing, delivering or emailing a report.
+            Start with the orange UP NEXT card. It tells you which customer investigation needs attention and gives one clear action.
           </p>
         </div>
-        <Link
-          to="/admin"
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/admin/users"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#FF6A00]/25 bg-[#FFF7ED] px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/50"
+          >
+            <UsersRound className="h-3.5 w-3.5 text-[#FF6A00]" /> Users & investigators
+          </Link>
+          <Link
+            to="/admin"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:bg-[#fff8ec]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Metric label="Waiting to start" value={currentOrders.filter((order) => orderStatus(order) === "paid").length} />
         <Metric label="In progress" value={currentOrders.filter((order) => orderStatus(order) === "processing").length} />
+        <Metric label="Needs recovery" value={currentOrders.filter((order) => orderStatus(order) === "failed").length} />
         <Metric label="Delivered" value={deliveredCurrent.length} />
         <Metric label="Legacy format" value={legacyOrders.length} />
       </div>
@@ -312,8 +322,8 @@ function QueueOverview({
       {!loading ? <NextWorkPanel order={nextOrder} onFocus={onFocus} /> : null}
 
       <QueueSection
-        title="Current paid investigations"
-        description="These orders use the current Done-for-You brief and are eligible for normal prioritization."
+        title="Current Done-for-You investigations"
+        description="Each card represents one customer order. Use its plain-language action to start, continue, recover or view it."
         orders={currentOrders}
         loading={loading}
         empty="No current-format investigations are in the queue."
@@ -375,6 +385,14 @@ function QueueSection({
   );
 }
 
+function orderActionLabel(status: string) {
+  if (status === "paid") return "Start investigation";
+  if (status === "processing") return "Continue investigation";
+  if (status === "failed") return "Recover investigation";
+  if (status === "ready") return "View delivered report";
+  return "Open investigation";
+}
+
 function CompactOrderCard({
   order,
   legacy = false,
@@ -386,18 +404,19 @@ function CompactOrderCard({
 }) {
   const propertyReference = order.parcel_id ?? "Property reference pending";
   const mode = order.payment_mode;
+  const status = orderStatus(order);
 
   return (
     <article className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-4 shadow-soft">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={orderStatus(order)} />
+            <StatusBadge status={status} />
             <ModeBadge mode={mode} />
             {legacy ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-900">Legacy format</span> : null}
           </div>
           <div className="mt-3 break-all text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
-          <div className="mt-1 text-xs text-[#64748B]">Customer and report details load only after selection.</div>
+          <div className="mt-1 text-xs text-[#64748B]">{status === "failed" ? "This investigation was stopped and can be reopened without deleting its evidence." : "Open this order to continue its exact customer investigation."}</div>
           <div className="mt-2 break-all font-mono text-[10px] text-[#64748B]">Order {order.id}</div>
           <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">Parcel {order.parcel_id ?? "not matched"}</div>
         </div>
@@ -406,7 +425,7 @@ function CompactOrderCard({
           onClick={() => onFocus(order.id)}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2 text-xs font-semibold text-white"
         >
-          Open exact order <ChevronRight className="h-4 w-4" />
+          {orderActionLabel(status)} <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     </article>
@@ -418,31 +437,33 @@ function NextWorkPanel({ order, onFocus }: { order: FounderQueueSummary | null; 
     return (
       <div className="mt-6 rounded-[1.5rem] border border-emerald-500/20 bg-emerald-50 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> No current-format investigation is waiting for action
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> No Done-for-You investigation is waiting for action
         </div>
       </div>
     );
   }
 
   const propertyReference = order.parcel_id ?? "Property reference pending";
+  const status = orderStatus(order);
 
   return (
-    <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[#FF6A00]/30 bg-white shadow-soft">
+    <div className="mt-6 overflow-hidden rounded-[1.5rem] border-2 border-[#FF6A00]/45 bg-white shadow-soft" data-up-next-investigation>
       <div className="grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
         <div className="bg-[#FF6A00] px-5 py-4 text-white lg:self-stretch lg:py-5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">Next current order</div>
-          <div className="mt-1 text-lg font-semibold">Open before acting</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/80">UP NEXT</div>
+          <div className="mt-1 text-lg font-semibold">{orderActionLabel(status)}</div>
         </div>
         <div className="min-w-0 px-5 py-4">
-          <div className="break-all text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
-          <div className="mt-1 break-all font-mono text-[10px] text-[#64748B]">{order.id}</div>
+          <div className="flex flex-wrap items-center gap-2"><StatusBadge status={status} /><ModeBadge mode={order.payment_mode} /></div>
+          <div className="mt-2 break-all text-sm font-semibold text-[#0D1B2A]">{propertyReference}</div>
+          <div className="mt-1 text-xs text-[#64748B]">{status === "failed" ? "Reopen this order and continue from the evidence already saved." : "This is the next current-format customer investigation in the queue."}</div>
         </div>
         <button
           type="button"
           onClick={() => onFocus(order.id)}
-          className="mx-5 mb-4 inline-flex min-h-10 items-center justify-center rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0"
+          className="mx-5 mb-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#0D1B2A] px-5 py-2 text-xs font-semibold text-white lg:mx-5 lg:mb-0"
         >
-          Open exact order
+          {orderActionLabel(status)}
         </button>
       </div>
     </div>
@@ -505,10 +526,10 @@ function FocusedOrderWorkbench({
             onClick={onExit}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#0D1B2A]/10 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to read-only queue
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to investigation queue
           </button>
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
-            <LockKeyhole className="h-4 w-4" /> One exact order is isolated
+            <LockKeyhole className="h-4 w-4" /> One customer order selected
           </div>
         </div>
 
@@ -552,8 +573,8 @@ function FocusedOrderWorkbench({
         {deliveryNotice ? <p role="status" className="mt-4 rounded-lg border p-3 text-sm">{deliveryNotice}</p> : null}
 
         {order.failure_reason ? (
-          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {order.failure_reason}
+          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-950">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> <span><strong>Why it was stopped:</strong> {order.failure_reason}</span>
           </div>
         ) : null}
 
@@ -577,10 +598,34 @@ function FocusedOrderWorkbench({
               onClick={() => void onTransition(order, "start_review")}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
-              <PlayCircle className="h-3.5 w-3.5" /> Start this exact investigation
+              <PlayCircle className="h-3.5 w-3.5" /> Start this investigation
             </button>
           ) : null}
           {status === "processing" ? <ReadyAction order={order} busy={busy} onUploadReport={onUploadReport} onTransition={onTransition} /> : null}
+          {status === "failed" ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button type="button" disabled={busy} className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                  <RotateCcw className="h-3.5 w-3.5" /> Reopen and continue investigation
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="z-[100] max-h-[90dvh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+                <AlertDialogTitle>Reopen this investigation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This returns the exact order to investigation status and clears the active failure label. Saved evidence and audit history stay intact. Nothing is delivered or emailed.
+                </AlertDialogDescription>
+                <dl className="space-y-2 break-all text-sm">
+                  <div><dt className="font-semibold">Property</dt><dd>{propertyReference}</dd></div>
+                  <div><dt className="font-semibold">Customer</dt><dd>{customerEmail}</dd></div>
+                  <div><dt className="font-semibold">Order</dt><dd>{order.id}</dd></div>
+                </dl>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep stopped</AlertDialogCancel>
+                  <AlertDialogAction disabled={busy} onClick={() => void onTransition(order, "reopen_review")}>Reopen investigation</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
           {status === "ready" ? (
             <AlertDialog>
             <AlertDialogTrigger asChild><button
@@ -617,11 +662,11 @@ function FocusedOrderWorkbench({
 function FounderActionGuide({ status, propertyHref }: { status: string; propertyHref: string | null }) {
   const statusIntro =
     status === "paid"
-      ? "Start this exact order, then complete or review the full standard investigation before writing the final report."
+      ? "Start this customer investigation, then work through the standard Easy Erf checks and final reviewed report."
       : status === "processing"
-        ? "This exact investigation is underway. Work through every applicable item, then write and deliver the final report."
+        ? "Continue this customer investigation from the saved evidence. Complete the applicable checks, then approve the final reviewed report."
         : status === "failed"
-          ? "Resolve the failure before continuing this exact investigation."
+          ? "This investigation was stopped. Reopen it to continue from the evidence already saved. The failure record remains in the audit history."
           : "Delivered. Reopen only when intentionally correcting or replacing this exact report.";
 
   return (
@@ -668,7 +713,7 @@ function ReadyAction({
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawContent.combinedReviewVersionId));
   const deliveryReady = hasCombinedVersion && reportReady && checklistReady;
   const deliveryBlocker = !hasCombinedVersion
-    ? "Gather the investigation evidence, generate the brief and approve the combined report version first."
+    ? "Complete the investigation and approve one reviewed report version first. AI is not required."
     : !reportReady
     ? "Complete and save the reviewed bottom line plus all five report sections first."
     : !checklistReady
@@ -717,7 +762,7 @@ function ReadyAction({
         <p role="status" className="mt-2 text-[11px] leading-5 text-amber-800">Delivery blocked: {deliveryBlocker}</p>
       ) : (
         <p className="mt-2 text-[11px] leading-5 text-emerald-700">
-          An approved combined report version is saved. Delivery will recheck the evidence revision and reviewer authority before proceeding.
+          An approved reviewed report version is saved. Delivery will recheck the evidence revision and reviewer authority before proceeding.
         </p>
       )}
     </div>
@@ -735,24 +780,39 @@ function FailedAction({
 }) {
   const [reason, setReason] = useState("");
   return (
-    <details className="mt-3 min-w-0 basis-full">
-      <summary className="cursor-pointer text-xs font-semibold text-destructive">Record an investigation failure</summary>
-      <div className="mt-2 flex flex-wrap gap-2">
-      <input
-        aria-label="Failure reason for this exact order"
-        value={reason}
-        onChange={(event) => setReason(event.target.value)}
-        placeholder="Failure reason for this exact order"
-        className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]"
-      />
-      <button
-        type="button"
-        disabled={busy || !reason.trim()}
-        onClick={() => void onTransition(order, "mark_failed", { failureReason: reason.trim() })}
-        className="rounded-full border border-destructive/30 px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50"
-      >
-        Mark this order failed
-      </button>
+    <details className="mt-4 min-w-0 basis-full rounded-xl border border-destructive/15 bg-destructive/5 p-3">
+      <summary className="cursor-pointer text-xs font-semibold text-destructive">Stop this investigation (rare)</summary>
+      <p className="mt-2 max-w-3xl text-[11px] leading-5 text-[#64748B]">
+        Use this only when the order genuinely cannot continue. This does not delete evidence and the order can be reopened later. A confirmation is required.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          aria-label="Reason for stopping this exact investigation"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Why this investigation cannot continue"
+          className="min-w-0 flex-1 rounded-full border border-[#D9E6F2] bg-white px-3 py-2 text-xs outline-none focus:border-[#FF6A00]"
+        />
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button type="button" disabled={busy || !reason.trim()} className="rounded-full border border-destructive/30 bg-white px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50">
+              Review stop action
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="z-[100] max-h-[90dvh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+            <AlertDialogTitle>Stop this investigation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The order will show Needs recovery and cannot continue until an admin reopens it. Saved evidence is retained and this stop remains in the audit history.
+            </AlertDialogDescription>
+            <p className="rounded-md bg-muted p-3 text-sm"><strong>Reason:</strong> {reason.trim()}</p>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={busy || !reason.trim()} onClick={() => void onTransition(order, "mark_failed", { failureReason: reason.trim() })}>
+                Stop this investigation
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </details>
   );
@@ -797,10 +857,11 @@ function ModeBadge({ mode }: { mode: ReturnType<typeof reportOrderMode> }) {
 
 function StatusBadge({ status }: { status: string }) {
   const Icon = status === "ready" ? CheckCircle2 : status === "failed" ? AlertCircle : status === "processing" ? CircleDashed : ReceiptText;
-  const label = status === "paid" ? "Payment received" : status === "processing" ? "Investigation underway" : status === "ready" ? "Report delivered" : status;
+  const label = status === "paid" ? "Waiting to start" : status === "processing" ? "In progress" : status === "ready" ? "Delivered" : status === "failed" ? "Needs recovery" : status;
+  const tone = status === "failed" ? "bg-amber-700" : "bg-[#0D1B2A]";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0D1B2A] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-      <Icon className="h-3.5 w-3.5 text-[#FF8A33]" /> {label}
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white ${tone}`}>
+      <Icon className="h-3.5 w-3.5 text-[#FFB166]" /> {label}
     </span>
   );
 }
@@ -812,7 +873,7 @@ function orderStatus(order: Pick<ReportOrder, "status" | "status_enum">) {
 
 function orderPriority(order: Pick<ReportOrder, "status" | "status_enum">) {
   const status = orderStatus(order);
-  return status === "paid" ? 0 : status === "processing" ? 1 : status === "failed" ? 2 : 3;
+  return status === "paid" ? 0 : status === "failed" ? 1 : status === "processing" ? 2 : 3;
 }
 
 function payloadText(payload: unknown, key: string): string | null {

@@ -56,7 +56,7 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
     id: "approved_plans",
     label: "Approved municipal plans",
     helper:
-      "Upload the approved plan set, not a sales plan, concept drawing, or unapproved architect sketch.",
+      "Upload the approved plan set if you have it. Do not use a sales plan, concept drawing, or unapproved architect sketch as proof of municipal approval.",
     category: "architectural_plan",
     assetType: "approved_building_plan",
     sourceLabel: "User identified municipal plan file, approval not verified",
@@ -66,7 +66,7 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
     id: "existing_house_photo",
     label: "Photos of existing buildings",
     helper:
-      "Photograph every structure, addition, garage, flatlet, deck, pool enclosure, and outbuilding.",
+      "Optional. If available, photograph structures, additions, garages, flatlets, decks, pool enclosures, and outbuildings.",
     category: "existing_house_photo",
     assetType: "existing_building_photo",
     sourceLabel: "User uploaded photo of an existing building or improvement",
@@ -76,7 +76,7 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
     id: "site_photo",
     label: "Site and boundary photos",
     helper:
-      "Show access, slope, retaining walls, visible services, boundaries, vegetation, and neighbouring levels.",
+      "Optional. If available, show access, slope, retaining walls, visible services, boundaries, vegetation, and neighbouring levels.",
     category: "site_photo",
     assetType: "site_condition_photo",
     sourceLabel: "User uploaded site or boundary photo",
@@ -86,7 +86,7 @@ const EVIDENCE_OPTIONS: EvidenceOption[] = [
     id: "topography",
     label: "Topographic or land survey",
     helper:
-      "Upload a survey tied to this erf. Easy Erf will read it and check the property identity.",
+      "Optional. Upload a survey tied to this erf if you have one. Easy Erf will read it and check the property identity.",
     category: "topography",
     assetType: "topographical_survey",
     sourceLabel: "User uploaded topographic or land survey",
@@ -147,7 +147,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
   );
   const sitePhotos = vault.assets.filter((asset) => asset.asset_category === "site_photo");
   const usableTopography = vault.assets.filter(isUsableTopography);
-  const canContinue =
+  const hasOptionalEvidence =
     planFiles.length > 0 ||
     existingBuildingPhotos.length > 0 ||
     sitePhotos.length > 0 ||
@@ -275,33 +275,31 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-property-checks-optional>
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F8FAFC] p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-              Buildings and site evidence
+              Optional supporting evidence
             </div>
             <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Check for unapproved or irregular improvements
+              Add plans, photos or a survey only if you have them
             </h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Add approved municipal plans, photos of every existing structure, site photos, or a
-              matched survey. Easy Erf can organize the evidence, but an architect, surveyor, or
-              municipality must compare what exists with what was approved.
+              These files can strengthen the property check, but they are not required to continue the investigation. If none are available, continue and record that limitation in the investigation rather than blocking the whole report.
             </p>
           </div>
           <span
             className={cn(
               "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-              canContinue
+              hasOptionalEvidence
                 ? irregularBuildingRisk
                   ? "bg-amber-100 text-amber-900"
                   : "bg-emerald-100 text-emerald-800"
                 : "bg-slate-100 text-slate-700",
             )}
           >
-            {canContinue ? (
+            {hasOptionalEvidence ? (
               irregularBuildingRisk ? (
                 <AlertTriangle className="h-3.5 w-3.5" />
               ) : (
@@ -310,11 +308,11 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             ) : (
               <FileText className="h-3.5 w-3.5" />
             )}
-            {canContinue
+            {hasOptionalEvidence
               ? irregularBuildingRisk
                 ? "Evidence added, approval still unverified"
-                : "Property evidence added"
-              : "No property evidence added"}
+                : "Optional evidence added"
+              : "No optional files added"}
           </span>
         </div>
       </section>
@@ -405,8 +403,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
         </div>
         {!vault.signedIn ? (
           <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. You can skip this step until the plans, photos, or survey are
-            available.
+            Sign in before uploading files. Uploads are optional, so you can continue without them.
           </p>
         ) : null}
         {vault.uploadState ? (
@@ -442,7 +439,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
             <h4 className="text-sm font-semibold text-[#0D1B2A]">Property-check evidence</h4>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
               Plans are user-classified until confirmed by the municipality. Surveys must be
-              readable and matched.
+              readable and matched. Having no files does not stop the investigation.
             </p>
           </div>
           <span className="text-xs font-semibold text-[#64748B]">
@@ -572,17 +569,19 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
           </div>
         ) : (
           <p className="mt-4 text-sm text-[#0D1B2A]/58">
-            No property-check evidence has been added yet.
+            No optional property-check files have been added. You can continue and record the limitation in the investigation.
           </p>
         )}
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-[#64748B]">
+          No upload is required to move on. Continue when you have reviewed what is available.
+        </p>
         <button
           type="button"
-          disabled={!canContinue}
           onClick={onContinue}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F]"
         >
           Continue to Market evidence
         </button>

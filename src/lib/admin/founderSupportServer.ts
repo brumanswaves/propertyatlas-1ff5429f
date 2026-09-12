@@ -63,6 +63,7 @@ function profileSummary(
   profile: Record<string, unknown>,
   savedPropertyCount = 0,
   reportOrderCount = 0,
+  roles: string[] = [],
 ): FounderSupportUserSummary {
   return {
     id: String(profile.id ?? ""),
@@ -73,6 +74,11 @@ function profileSummary(
     updatedAt: nullableString(profile.updated_at),
     savedPropertyCount,
     reportOrderCount,
+    accessKind: roles.includes("admin")
+      ? "founder_admin"
+      : roles.includes("moderator")
+        ? "investigator"
+        : "customer",
   };
 }
 
@@ -137,11 +143,12 @@ export async function searchFounderSupportUsers(request: Request, rawQuery: stri
   const ids = [...profiles.keys()].slice(0, 20);
   if (!ids.length) return [];
 
-  const [savedResult, orderResult] = await Promise.all([
+  const [savedResult, orderResult, roleResult] = await Promise.all([
     serviceSupabase.from("saved_properties").select("user_id").in("user_id", ids).limit(1000),
     serviceSupabase.from("report_orders").select("user_id").in("user_id", ids).limit(1000),
+    serviceSupabase.from("user_roles").select("user_id,role").in("user_id", ids).limit(100),
   ]);
-  if (savedResult.error || orderResult.error) {
+  if (savedResult.error || orderResult.error || roleResult.error) {
     throw new ApiRequestError("Could not summarize Easy Erf user activity.", 500);
   }
 
@@ -153,8 +160,18 @@ export async function searchFounderSupportUsers(request: Request, rawQuery: stri
   for (const row of orderResult.data ?? []) {
     orderCounts.set(String(row.user_id), (orderCounts.get(String(row.user_id)) ?? 0) + 1);
   }
+  const roles = new Map<string, string[]>();
+  for (const row of roleResult.data ?? []) {
+    const id = String(row.user_id);
+    roles.set(id, [...(roles.get(id) ?? []), String(row.role)]);
+  }
 
-  return ids.map((id) => profileSummary(profiles.get(id)!, savedCounts.get(id) ?? 0, orderCounts.get(id) ?? 0));
+  return ids.map((id) => profileSummary(
+    profiles.get(id)!,
+    savedCounts.get(id) ?? 0,
+    orderCounts.get(id) ?? 0,
+    roles.get(id) ?? [],
+  ));
 }
 
 export async function readFounderSupportUser(request: Request, targetUserId: string) {
@@ -171,6 +188,7 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
     betaCreditsResult,
     orderResult,
     providerResult,
+    roleResult,
   ] = await Promise.all([
     serviceSupabase.from("profiles").select(PROFILE_FIELDS).eq("id", targetUserId).maybeSingle(),
     serviceSupabase
@@ -221,6 +239,11 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
       .eq("user_id", targetUserId)
       .order("at", { ascending: false })
       .limit(60),
+    serviceSupabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", targetUserId)
+      .limit(10),
   ]);
 
   const failure = [
@@ -233,6 +256,7 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
     betaCreditsResult.error,
     orderResult.error,
     providerResult.error,
+    roleResult.error,
   ].find(Boolean);
   if (failure) throw new ApiRequestError("Could not load this Easy Erf support record.", 500);
   if (!profileResult.data) throw new ApiRequestError("Easy Erf user not found.", 404);
@@ -355,7 +379,12 @@ export async function readFounderSupportUser(request: Request, targetUserId: str
   );
 
   const detail: FounderSupportUserDetail = {
-    user: profileSummary(profileResult.data as Record<string, unknown>, savedProperties.length, reportOrders.length),
+    user: profileSummary(
+      profileResult.data as Record<string, unknown>,
+      savedProperties.length,
+      reportOrders.length,
+      (roleResult.data ?? []).map((row) => String(row.role)),
+    ),
     savedProperties,
     assets,
     sitePotentialProjects,

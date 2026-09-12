@@ -8,28 +8,34 @@ function source(path: string) {
 
 const panel = source("src/components/property/OfficialParcelPanel.tsx");
 const takeoverCard = source("src/components/humanReview/HumanReviewTakeoverCard.tsx");
+const firstRead = source("src/components/property/dossier/PropertyFirstRead.tsx");
 
 describe("guided task first workbench UX", () => {
-  it("renders the active overview and guided work before the optional R999 offer", () => {
-    const offerIndex = panel.indexOf('data-done-for-you-placement="after-primary-work"');
+  it("puts the R999 choice inside the First Read hero and before every Guided task", () => {
+    const offerIndex = panel.indexOf('data-done-for-you-placement="before-primary-work"');
 
     expect(offerIndex).toBeGreaterThan(-1);
-    expect(panel.indexOf("<PropertyFirstRead")).toBeLessThan(offerIndex);
-    expect(panel.indexOf("<InvestigationHome")).toBeLessThan(offerIndex);
-    expect(panel.indexOf('tab === "stoep-report"')).toBeLessThan(offerIndex);
+    expect(panel.indexOf("<InvestigationHome")).toBeGreaterThan(offerIndex);
+    expect(panel).toContain("takeoverSlot={takeoverOffer}");
+    expect(firstRead.indexOf("{props.takeoverSlot &&")).toBeGreaterThan(firstRead.indexOf("<h1"));
+    expect(firstRead.indexOf("{props.takeoverSlot &&")).toBeLessThan(firstRead.indexOf("{model.addressLine &&"));
+    expect(firstRead).toContain("Investigate this property yourself with Guided Investigation.");
     expect(panel.match(/<HumanReviewTakeoverCard/g)).toHaveLength(1);
     const offer = panel.match(/<HumanReviewTakeoverCard\b[^>]*\/>/)?.[0];
     expect(offer).toMatch(/\bcompact\b/);
     expect(offer).toContain("onPrepare={preparePaidInvestigation}");
+    expect(offer).toContain("parcelId={normalizedParcel.id}");
+    expect(takeoverCard).toContain("data-done-for-you-top");
+    expect(takeoverCard).not.toMatch(/\bfixed\b|\bsticky\b|reservedHeight/);
   });
 
-  it("keeps the optional R999 offer collapsed until the user opens it", () => {
-    expect(takeoverCard).toContain("data-collapsed-done-for-you-offer");
-    expect(takeoverCard).toContain("<details");
-    expect(takeoverCard).toContain("<summary");
-    expect(takeoverCard).toContain("Optional help");
-    expect(takeoverCard).toContain("View option");
-    expect(takeoverCard).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/);
+  it("keeps the R999 alternative prominent without hiding the price or action", () => {
+    expect(takeoverCard).toContain("data-done-for-you-prominent");
+    expect(takeoverCard).toContain("Investigate it for me · R999");
+    expect(takeoverCard).toContain("You choose the property. We do the investigation.");
+    expect(takeoverCard).not.toContain("data-collapsed-done-for-you-offer");
+    expect(takeoverCard).not.toContain("<details");
+    expect(takeoverCard).not.toContain("<summary");
   });
 
   it("uses a compact mobile header and lets the content area consume remaining height", () => {

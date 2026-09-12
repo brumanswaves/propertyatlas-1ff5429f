@@ -4,6 +4,12 @@ import {
   readFounderSupportUser,
   searchFounderSupportUsers,
 } from "@/lib/admin/founderSupportServer";
+import {
+  grantExistingFounderInvestigator,
+  initiateFounderInvestigatorOnboarding,
+  listFounderInvestigators,
+  searchFounderInvestigators,
+} from "@/lib/admin/investigatorOnboardingServer";
 import { ApiRequestError } from "@/lib/sitePotential/serverAuth";
 
 const HEADERS = {
@@ -36,6 +42,19 @@ export async function handleFounderSupportRequest(request: Request) {
       return json({ success: true, detail }, 200);
     }
 
+    if (mode === "investigators") {
+      const investigators = await listFounderInvestigators(request);
+      return json({ success: true, investigators }, 200);
+    }
+
+    if (mode === "investigator-search") {
+      const investigators = await searchFounderInvestigators(
+        request,
+        url.searchParams.get("q") ?? "",
+      );
+      return json({ success: true, investigators }, 200);
+    }
+
     return json({ success: false, error: "Unknown Founder Operations support request." }, 400);
   } catch (error) {
     return supportErrorResponse(error, "Could not load Founder Operations support data.");
@@ -44,7 +63,14 @@ export async function handleFounderSupportRequest(request: Request) {
 
 export async function handleFounderSupportMutation(request: Request) {
   try {
-    let body: { action?: string; targetUserId?: string; reason?: string } = {};
+    let body: {
+      action?: string;
+      targetUserId?: string;
+      reason?: string;
+      name?: string;
+      email?: string;
+      userId?: string;
+    } = {};
     try {
       body = await request.json();
     } catch {
@@ -58,6 +84,22 @@ export async function handleFounderSupportMutation(request: Request) {
         reason: body.reason ?? "",
       });
       return json({ success: true, grant: result }, 200);
+    }
+
+    if (body.action === "invite-investigator") {
+      const result = await initiateFounderInvestigatorOnboarding(request, {
+        name: body.name ?? "",
+        email: body.email ?? "",
+      });
+      return json(result, 200);
+    }
+
+    if (body.action === "grant-existing-investigator") {
+      const result = await grantExistingFounderInvestigator(request, {
+        userId: body.userId ?? "",
+        email: body.email ?? "",
+      });
+      return json(result, 200);
     }
 
     return json({ success: false, error: "Unknown Founder Operations support action." }, 400);

@@ -30,6 +30,8 @@ const targetFeature = {
 };
 const mapChecks = [];
 const contexts = [];
+const topOfferChecks = [];
+const handoffChecks = [];
 let acceptancePassed = false;
 
 async function installIsolatedMap(context, name) {
@@ -345,6 +347,27 @@ function attachPageDiagnostics(page) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 }
 
+async function verifyTopOffer(page, label, width) {
+  await page.setViewportSize({ width, height: 900 });
+  const offer = page.locator("[data-done-for-you-top]");
+  await offer.waitFor();
+  // Reset the real Workbench scroller, not the page behind the dossier.
+  await offer.evaluate((element) => {
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      if (getComputedStyle(parent).overflowY === "auto") parent.scrollTop = 0;
+    }
+  });
+  const action = offer.getByRole("link", { name: "Investigate it for me · R999", exact: true });
+  const box = await action.boundingBox();
+  assert.ok(box && box.y >= 0 && box.y + box.height < 900, `${label}/${width}: offer requires scrolling`);
+  assert.equal(await offer.evaluate((el) => getComputedStyle(el).position), "static");
+  assert.ok((await action.getAttribute("href")).includes(encodeURIComponent(PARCEL_ID)));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await action.click({ trial: true });
+  await page.screenshot({ path: resolve(artifacts, `top-r999-${label}-${width}.png`) });
+  topOfferChecks.push({ label, width, box, selectedParcel: PARCEL_ID, inFlow: true });
+}
+
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 
 try {
@@ -441,6 +464,26 @@ try {
   }
 
   await firstPage.screenshot({ path: resolve(artifacts, "initial-add-address.png"), fullPage: true });
+  for (const width of [1440, 390]) {
+    await firstPage.setViewportSize({ width, height: 950 });
+    const offer = firstPage.locator("[data-done-for-you-top]");
+    await offer.waitFor();
+    const action = offer.getByRole("link", { name: "Investigate it for me · R999", exact: true });
+    await verifyTopOffer(firstPage, "address", width);
+    assert.ok((await action.getAttribute("href")).includes(encodeURIComponent(PARCEL_ID)));
+    assert.equal(await offer.locator("details").count(), 0);
+    assert.ok(await firstPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await firstPage.screenshot({ path: resolve(artifacts, `prominent-r999-${width}.png`) });
+    await firstPage.getByRole("button", { name: "Save and continue to SG diagram", exact: true }).click({ trial: true, timeout: 5000 });
+    await firstPage.getByRole("button", { name: "Open full research workspace", exact: true }).scrollIntoViewIfNeeded();
+    await firstPage.getByRole("button", { name: "Open full research workspace", exact: true }).click({ trial: true });
+    await firstPage.screenshot({ path: resolve(artifacts, `guided-controls-${width}.png`) });
+  }
+  await firstPage.setViewportSize({ width: 1440, height: 1000 });
+  await firstPage.locator("[data-done-for-you-top]").getByRole("link", { name: "Investigate it for me · R999", exact: true }).click();
+  await firstPage.waitForURL((url) => url.pathname === "/pricing");
+  assert.equal(new URL(firstPage.url()).searchParams.get("parcelId"), PARCEL_ID);
+  await firstPage.screenshot({ path: resolve(artifacts, "r999-selected-property-destination.png"), fullPage: true });
   // Keep both contexts until their traces are saved in finally.
 
   const reopenContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -499,6 +542,69 @@ try {
     "reopened Guided working-address heading",
   );
 
+  for (const label of ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"]) {
+    const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
+    const step = navigator.getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
+    await step.click();
+    await reopenPage.waitForFunction((text) =>
+      [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith(text)), label);
+    await reopenPage.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.ok(await reopenPage.locator("[data-done-for-you-top]").evaluate((el) => {
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+        if (getComputedStyle(parent).overflowY === "auto") return parent.scrollTop <= 1;
+      }
+      return false;
+    }), `${label}: changing step must open at the top without manual scrolling`);
+    for (const width of [1440, 390]) await verifyTopOffer(reopenPage, label.toLowerCase(), width);
+    const offer = reopenPage.locator("[data-done-for-you-top]");
+    assert.ok(await offer.evaluate((el) => Boolean(el.compareDocumentPosition(
+      document.querySelector('[aria-label="Guided investigation steps"]')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+    const before = structuredClone(durableRow.user_data);
+    const browserBefore = JSON.parse(await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey));
+    await offer.getByRole("link", { name: "Investigate it for me · R999", exact: true }).click();
+    await reopenPage.waitForURL((url) => url.pathname === "/pricing");
+    assert.equal(new URL(reopenPage.url()).searchParams.get("parcelId"), PARCEL_ID);
+    assert.equal(durableRow.user_data.easyErfInvestigation.identityStatus, "looks_correct");
+    for (const [key, value] of Object.entries(durableRow.user_data.easyErfInvestigation.investigation)) {
+      assert.deepEqual(value, browserBefore.investigation[key], `${label} handoff must flush current ${key}`);
+    }
+    for (const key of Object.keys(before).filter((key) => key !== "easyErfInvestigation")) {
+      // Existing handoff normalizes an absent envelope to an empty object, not lost work.
+      if (key === "buildEnvelopeInputs" && before[key] === null) {
+        assert.deepEqual(durableRow.user_data[key], {});
+        continue;
+      }
+      if (key === "normalizedParcel") {
+        const actual = structuredClone(durableRow.user_data[key]);
+        const expected = structuredClone(before[key]);
+        delete actual.rawProperties.propertyatlas_fetched_at;
+        delete expected.rawProperties.propertyatlas_fetched_at;
+        assert.deepEqual(actual, expected, `${label} handoff changed parcel identity`);
+        continue;
+      }
+      assert.deepEqual(durableRow.user_data[key], before[key], `${label} handoff lost ${key}`);
+    }
+    handoffChecks.push({ label, sameParcel: true, currentDraftFlushed: true, priorWorkPreserved: true });
+    await reopenPage.goto(`${baseUrl}/dashboard`);
+    await reopenPage.getByRole("button", { name: /^Continue Investigation$/i }).first().click();
+    await reopenPage.getByRole("region", { name: "Guided investigation steps" }).waitFor();
+  }
+
+  // Opening the selected parcel without a saved-workspace entry is zero-commit First Read.
+  await reopenPage.goto(baseUrl);
+  // The launcher is server-rendered before its click handler is hydrated.
+  // Match the existing official-search fixture's mounted-map readiness gate.
+  await reopenPage.getByText(/CSG parcels loaded:/i).first().waitFor();
+  await reopenPage.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
+  await reopenPage.getByRole("button", { name: /^Erf Search/ }).click();
+  await reopenPage.getByPlaceholder("LPI or parcel key", { exact: true }).fill(LPI);
+  await reopenPage.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+  await reopenPage.getByRole("button", { name: /^Open Erf 1570/ }).click();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  for (const width of [1440, 390]) await verifyTopOffer(reopenPage, "first-read", width);
+  assert.ok(await reopenPage.locator("[data-done-for-you-top]").evaluate((el) =>
+    Boolean(el.compareDocumentPosition(document.getElementById("property-facts-heading")) & Node.DOCUMENT_POSITION_FOLLOWING)));
+
   if (routeErrors.length > 0) {
     throw new Error(`Acceptance route handlers failed: ${routeErrors.join(" | ")}`);
   }
@@ -516,7 +622,7 @@ try {
   acceptancePassed = true;
 
   console.log(
-    "Guided cloud persistence verified: signed-in saved Erf 1570 -> confirm -> durable projection RPC -> fresh browser hydration -> dashboard and Guided reopen at Add address, with no production persistence mutation.",
+    "Guided cloud persistence verified: confirm, durable save, fresh hydration; top R999 offer on First Read and all ten Guided steps at desktop/mobile; exact-parcel handoff preserving current work from all ten steps. No production persistence mutation.",
   );
 
 } finally {
@@ -529,7 +635,7 @@ try {
     await context.tracing.stop({ path: resolve(artifacts, `${name}-trace.zip`) });
   }
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({
-    sha, dirty, acceptancePassed, mapChecks, routeErrors, pageErrors, unexpectedMutations,
+    sha, dirty, acceptancePassed, topOfferChecks, handoffChecks, mapChecks, routeErrors, pageErrors, unexpectedMutations,
     productionAccess: false, geometry: "synthetic test-only bounds; not cadastral proof",
     checks: acceptancePassed ? ["signed-in confirm and atomic persistence", "fresh-context hydration", "dashboard reopen at Add address", "late pre-pan response isolation"] : [],
   }, null, 2));

@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
 import { describe, expect, it, vi } from "vitest";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAssessment";
@@ -74,6 +75,22 @@ function props(overrides: Partial<PropertyFirstReadProps> = {}): PropertyFirstRe
 }
 
 describe("PropertyFirstRead", () => {
+  it("offers Done-for-You inside the property hero before evidence without starting self-service", () => {
+    const input = props();
+    const markup = renderToStaticMarkup(<PropertyFirstRead {...input} takeoverSlot={
+      <HumanReviewTakeoverCard parcelId={input.parcel.id} propertyReference={input.displayTitle} compact />
+    } />);
+    const offerIndex = markup.indexOf("data-done-for-you-top");
+    expect(offerIndex).toBeGreaterThan(markup.indexOf("</h1>"));
+    expect(offerIndex).toBeLessThan(markup.indexOf("property-facts-heading"));
+    expect(markup).toContain("Investigate it for me · R999");
+    expect(markup).toContain("Easy Erf + a human reviewer does the investigation.");
+    expect(markup).toContain("Investigate this property yourself with Guided Investigation.");
+    expect(markup).toContain(encodeURIComponent(input.parcel.id));
+    expect(input.onInvestigate).not.toHaveBeenCalled();
+    expect(input.investigationInput.workspaceState.investigation.startedAt).toBeNull();
+  });
+
   it("renders a canonical property first read without copied showcase values", () => {
     const input = props({ askSlot: <div>Shared Ask Easy Erf panel</div> });
     const model = buildPropertyFirstReadModel(input);

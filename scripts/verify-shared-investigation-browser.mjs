@@ -120,6 +120,14 @@ async function open(actor, mobile = false) {
   await context.addInitScript(({ session, origin }) => { if (location.origin === origin) localStorage.setItem("sb-127-auth-token", JSON.stringify(session)); }, { session: sessions[actor], origin: appUrl });
   await context.route("**/*", (route) => {
     const url = new URL(route.request().url());
+    if ((url.hostname === "events.mapbox.com" && url.pathname === "/events/v2") ||
+        (url.hostname === "api.mapbox.com" && url.pathname === "/map-sessions/v1")) {
+      // These are external-provider fixtures, not permission or application mocks.
+      // Aborting a pending SDK telemetry request after map.remove() invokes its
+      // cleared errorCb. Settle it locally; keep every application error fatal.
+      requests.push({ syntheticMapSessionResponse: `${url.origin}${url.pathname}` });
+      return route.fulfill({ status: 200, json: {} });
+    }
     if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
       return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "synthetic-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
     }
@@ -165,11 +173,12 @@ async function verifyCustomerEntry() {
   await page.getByText("Self-service investigation · Not human reviewed.", { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: resolve(artifacts, "customer-self-service-viewport.png") });
   const before = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
-  // Exercise the expandable Workbench handoff, not the standalone report offer.
-  const offer = page.getByRole("complementary", { name: "Done-for-You Property Investigation option" })
-    .filter({ has: page.locator("details") });
-  await offer.locator("summary").click();
-  await offer.getByRole("link", { name: /Yes.*investigate it for me/ }).click();
+  // Exercise the prominent Workbench handoff, not the standalone report offer.
+  const offer = page.locator("[data-done-for-you-top]");
+  await offer.waitFor();
+  assert.equal(await offer.locator("details, summary").count(), 0);
+  await offer.screenshot({ path: resolve(artifacts, "customer-prominent-paid-handoff.png") });
+  await offer.getByRole("link", { name: "Investigate it for me · R999", exact: true }).click();
   await page.waitForURL("**/pricing?**");
   assert.equal(new URL(page.url()).searchParams.get("parcelId"), parcelA);
   const after = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
@@ -395,7 +404,10 @@ try {
     sessions[actor] = must(await clients[actor].auth.signInWithPassword({ email, password })).session;
     assert.equal(sessions[actor].user.id, id); secrets.push(sessions[actor].access_token, sessions[actor].refresh_token);
   }
-  must(await adminClient.from("user_roles").insert({ user_id: ids.admin, role: "admin" }));
+  must(await adminClient.from("user_roles").insert([
+    { user_id: ids.admin, role: "admin" },
+    { user_id: ids.worker, role: "moderator" },
+  ]));
   must(await adminClient.from("saved_properties").insert([
     { user_id: ids.a, parcel_id: parcelA, user_data: dataA },
     { user_id: ids.b, parcel_id: parcelB, user_data: { normalizedParcel: { ...normalizedParcel, id: parcelB }, privateNote: "NONSELECTED_PRIVATE_SENTINEL" } },
@@ -478,7 +490,7 @@ try {
     })]);
     const heldRequest = await heldRequestStarted;
     const cancelled = worker.waitForEvent("requestfailed", { predicate: (request) => request === heldRequest });
-    const back = worker.getByRole("button", { name: "Back to read-only queue", exact: true });
+    const back = worker.getByRole("button", { name: "Back to investigation queue", exact: true });
     await back.focus(); await back.press("Enter");
     await cancelled;
     delayed.release();

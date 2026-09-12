@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FormEvent, useMemo, useState, type ReactNode } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   Boxes,
@@ -8,21 +8,27 @@ import {
   FileSearch2,
   FileText,
   HardHat,
+  MailPlus,
   ReceiptText,
   Search,
   ShieldCheck,
   Sparkles,
   UserRound,
+  UserPlus,
   UsersRound,
 } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import {
+  grantExistingFounderInvestigator,
+  inviteFounderInvestigator,
+  listFounderInvestigators,
   readFounderSupportUser,
   searchFounderSupportUsers,
 } from "@/lib/admin/founderSupportClient";
 import type {
+  FounderInvestigatorSummary,
   FounderSupportUserDetail,
   FounderSupportUserSummary,
 } from "@/lib/admin/founderSupportTypes";
@@ -53,6 +59,96 @@ function FounderUsers() {
   const [searching, setSearching] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [investigators, setInvestigators] = useState<FounderInvestigatorSummary[]>([]);
+  const [loadingInvestigators, setLoadingInvestigators] = useState(true);
+  const [showAddInvestigator, setShowAddInvestigator] = useState(false);
+  const [investigatorName, setInvestigatorName] = useState("");
+  const [investigatorEmail, setInvestigatorEmail] = useState("");
+  const [onboarding, setOnboarding] = useState(false);
+  const [onboardingMessage, setOnboardingMessage] = useState<string | null>(null);
+  const [existingCustomer, setExistingCustomer] = useState<{
+    id: string;
+    email: string;
+    fullName: string | null;
+  } | null>(null);
+
+  const refreshInvestigators = useCallback(async () => {
+    setLoadingInvestigators(true);
+    try {
+      const response = await listFounderInvestigators();
+      if (!response.success) throw new Error(response.error);
+      setInvestigators(response.investigators);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load investigators.");
+    } finally {
+      setLoadingInvestigators(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshInvestigators();
+  }, [refreshInvestigators]);
+
+  async function onboardInvestigator(event: FormEvent) {
+    event.preventDefault();
+    if (onboarding) return;
+    setOnboarding(true);
+    setError(null);
+    setOnboardingMessage(null);
+    setExistingCustomer(null);
+    try {
+      const response = await inviteFounderInvestigator(investigatorName, investigatorEmail);
+      if (!response.success) throw new Error(response.error);
+      if (response.outcome === "existing_customer") {
+        if (!response.customer.email) throw new Error("This customer account has no email address.");
+        setExistingCustomer({
+          id: response.customer.id,
+          email: response.customer.email,
+          fullName: response.customer.fullName,
+        });
+        setOnboardingMessage("This email already belongs to a customer. No access was changed.");
+      } else {
+        setOnboardingMessage(
+          response.outcome === "invited"
+            ? `Invitation created for ${response.investigator.email}. They remain pending until the Supabase Auth invitation is accepted.`
+            : `${response.investigator.email} is already an investigator.`,
+        );
+        setInvestigatorName("");
+        setInvestigatorEmail("");
+        await refreshInvestigators();
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not start investigator onboarding.");
+    } finally {
+      setOnboarding(false);
+    }
+  }
+
+  async function grantExistingCustomer() {
+    if (!existingCustomer || onboarding) return;
+    setOnboarding(true);
+    setError(null);
+    try {
+      const response = await grantExistingFounderInvestigator(
+        existingCustomer.id,
+        existingCustomer.email,
+      );
+      if (!response.success || response.outcome === "existing_customer") {
+        throw new Error(response.success ? "The account was not changed." : response.error);
+      }
+      setOnboardingMessage(
+        `${response.investigator.email} now has the least-privilege investigator role. Customer history remains attached to the same account.`,
+      );
+      setExistingCustomer(null);
+      setInvestigatorName("");
+      setInvestigatorEmail("");
+      await refreshInvestigators();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not grant investigator access.");
+    } finally {
+      setOnboarding(false);
+    }
+  }
 
   async function search(event: FormEvent) {
     event.preventDefault();
@@ -96,9 +192,9 @@ function FounderUsers() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <ShieldCheck className="h-3 w-3 text-accent" /> Easy Erf Operations
             </span>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">User support</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Users &amp; Investigators</h1>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Find an Easy Erf customer and inspect the property work, processing state and commercial access already attached to their account. This screen is read-only.
+              Invite a least-privilege investigator or inspect an existing Easy Erf account. Customer records remain read-only, and investigation access is granted separately per order.
             </p>
           </div>
           <a
@@ -108,6 +204,96 @@ function FounderUsers() {
             Operations overview
           </a>
         </header>
+
+        <section className="mt-7 rounded-2xl border border-[#FF6A00]/30 bg-[#FFF7ED] p-4 shadow-soft" data-investigator-onboarding>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-[#C45100]" />
+                <h2 className="text-lg font-semibold text-[#0D1B2A]">Users &amp; Investigators</h2>
+              </div>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#475569]">
+                Investigators use normal Easy Erf sign-in. Their role does not grant Founder Operations or blanket customer access; each R999 investigation must still be assigned explicitly.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddInvestigator((value) => !value)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white"
+            >
+              <MailPlus className="h-4 w-4" /> Add investigator
+            </button>
+          </div>
+
+          {showAddInvestigator ? (
+            <form onSubmit={onboardInvestigator} className="mt-4 grid gap-3 rounded-xl border border-[#0D1B2A]/10 bg-white p-4 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-[#0D1B2A]">
+                Name
+                <input
+                  required
+                  value={investigatorName}
+                  onChange={(event) => setInvestigatorName(event.target.value)}
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm font-normal"
+                  placeholder="Investigator name"
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#0D1B2A]">
+                Email
+                <input
+                  required
+                  type="email"
+                  value={investigatorEmail}
+                  onChange={(event) => setInvestigatorEmail(event.target.value)}
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm font-normal"
+                  placeholder="investigator@example.com"
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={onboarding}
+                  className="rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {onboarding ? "Starting onboarding..." : "Send investigator invitation"}
+                </button>
+                <p className="mt-2 text-xs leading-5 text-[#64748B]">
+                  A new account is invited through Supabase Auth. If the email already belongs to a customer, Easy Erf stops and asks for a separate explicit role grant.
+                </p>
+              </div>
+            </form>
+          ) : null}
+
+          {onboardingMessage ? <p role="status" className="mt-3 text-sm font-medium text-[#0D1B2A]">{onboardingMessage}</p> : null}
+          {existingCustomer ? (
+            <div role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+              <strong>{existingCustomer.fullName || existingCustomer.email}</strong> is an ordinary customer account. Confirming below adds only the investigator role; it does not grant Founder Operations or access to any order.
+              <div className="mt-3">
+                <button
+                  type="button"
+                  disabled={onboarding}
+                  onClick={() => void grantExistingCustomer()}
+                  className="rounded-full border border-amber-500 bg-white px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                >
+                  Grant investigator role to this existing customer
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {loadingInvestigators ? <p className="text-sm text-[#64748B]">Loading investigators...</p> : investigators.length ? investigators.map((investigator) => (
+              <div key={investigator.id} className="rounded-xl border border-[#0D1B2A]/10 bg-white p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-[#0D1B2A]">{investigator.fullName || investigator.email}</div>
+                    <div className="mt-1 truncate text-xs text-[#64748B]">{investigator.email}</div>
+                  </div>
+                  <StateChip value={investigator.status === "active" ? "Active investigator" : "Invited / pending"} />
+                </div>
+              </div>
+            )) : <p className="text-sm text-[#64748B]">No investigator accounts have been onboarded yet.</p>}
+          </div>
+        </section>
 
         <section className="mt-7 rounded-2xl border border-border bg-card p-4 shadow-soft">
           <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">
@@ -167,6 +353,7 @@ function FounderUsers() {
                     <UserRound className="h-4 w-4 shrink-0 text-accent" />
                   </div>
                   <div className="mt-3 flex gap-3 text-[11px] text-muted-foreground">
+                    <StateChip value={accessKindLabel(user.accessKind)} />
                     <span>{user.savedPropertyCount} properties</span>
                     <span>{user.reportOrderCount} report orders</span>
                   </div>
@@ -206,7 +393,7 @@ function UserDetail({ detail }: { detail: FounderSupportUserDetail }) {
               <p className="mt-2 font-mono text-[11px] text-muted-foreground">{detail.user.id}</p>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <Info label="Account type" value={detail.user.accountType || "registered"} />
+              <Info label="Access" value={accessKindLabel(detail.user.accessKind)} />
               <Info label="Joined" value={formatDate(detail.user.createdAt)} />
             </div>
           </div>
@@ -458,7 +645,7 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function StateChip({ value }: { value: string }) {
   const normalized = value.toLowerCase().replaceAll("_", " ");
-  const good = ["ready", "complete", "concepts ready", "design selected", "looks correct", "ok", "paid"].some((item) => normalized.includes(item));
+  const good = ["ready", "complete", "concepts ready", "design selected", "looks correct", "ok", "paid", "active investigator"].some((item) => normalized.includes(item));
   const bad = ["failed", "error", "uncertain", "partial failed"].some((item) => normalized.includes(item));
   return (
     <span
@@ -474,6 +661,12 @@ function StateChip({ value }: { value: string }) {
       {normalized}
     </span>
   );
+}
+
+function accessKindLabel(value: FounderSupportUserSummary["accessKind"]) {
+  if (value === "founder_admin") return "Founder / admin";
+  if (value === "investigator") return "Investigator / reviewer";
+  return "Customer";
 }
 
 function Empty({ text }: { text: string }) {

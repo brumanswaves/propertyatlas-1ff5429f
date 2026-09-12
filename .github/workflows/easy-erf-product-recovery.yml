@@ -1,0 +1,97 @@
+name: Easy Erf product recovery verification
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/easy-erf-product-recovery.yml
+      - scripts/verify-easy-erf-failed-recovery.sql
+      - src/components/humanReview/HumanReviewTakeoverCard.tsx
+      - src/components/humanReview/OrderInvestigationWorkspace.tsx
+      - src/components/humanReview/SharedInvestigationReport.tsx
+      - src/components/property/dossier/ReportParcelSatelliteMap.tsx
+      - src/components/property/investigation/GuidedPropertyChecksStep.tsx
+      - src/lib/__tests__/productRecoveryUxGuardrails.test.ts
+      - src/routes/admin.tsx
+      - src/routes/admin_.fulfillment.tsx
+      - supabase/migrations/20260911180000_recover_failed_easy_erf_investigation.sql
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out exact source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          REF="${{ github.event.pull_request.head.sha || github.sha }}"
+          git fetch --no-tags --depth=100 origin "${REF}"
+          git checkout --detach FETCH_HEAD
+          git fetch --no-tags --depth=100 origin main:refs/remotes/origin/main
+
+      - name: Install dependencies
+        run: |
+          npm install --no-audit --no-fund
+          git restore -- package-lock.json
+
+      - name: Run product recovery guardrails
+        run: >-
+          npx vitest run
+          src/lib/__tests__/productRecoveryUxGuardrails.test.ts
+          src/components/humanReview/__tests__/humanReviewTakeoverCardTruth.test.ts
+          src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx
+          src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts
+          src/lib/payments/__tests__/easyErfStripeFulfillmentGuardrails.test.ts
+          src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts
+
+      - name: Prove failed-order recovery in isolated PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --port 54329 --username postgres --dbname postgres --file scripts/verify-easy-erf-founder-queue.sql
+          psql --host 127.0.0.1 --port 54329 --username postgres --dbname postgres --file scripts/verify-easy-erf-failed-recovery.sql
+
+      - name: Build production bundle
+        env:
+          NITRO_PRESET: node-server
+        run: npm run build
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit --pretty false
+
+      - name: Lint recovery source
+        run: >-
+          npx eslint
+          --no-warn-ignored
+          --rule 'prettier/prettier: off'
+          src/components/humanReview/HumanReviewTakeoverCard.tsx
+          src/components/humanReview/OrderInvestigationWorkspace.tsx
+          src/components/humanReview/SharedInvestigationReport.tsx
+          src/components/property/dossier/ReportParcelSatelliteMap.tsx
+          src/components/property/investigation/GuidedPropertyChecksStep.tsx
+          src/lib/__tests__/productRecoveryUxGuardrails.test.ts
+          src/routes/admin.tsx
+          src/routes/admin_.fulfillment.tsx
+
+      - name: Check patch whitespace
+        run: git diff --check origin/main...HEAD

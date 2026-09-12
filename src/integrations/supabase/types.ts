@@ -706,6 +706,33 @@ export type Database = {
           },
         ]
       }
+      investigator_onboarding_events: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_user_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_user_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       report_orders: {
         Row: {
           completed_at: string | null
@@ -1161,6 +1188,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      founder_grant_investigator_role: {
+        Args: {
+          p_action: string
+          p_actor_user_id: string
+          p_target_user_id: string
+        }
+        Returns: undefined
       }
       grant_site_potential_credits: {
         Args: {

@@ -72,7 +72,8 @@ describe("Done-for-You founder fulfillment", () => {
   it("prioritizes open work and tells the founder to complete the standard investigation first", () => {
     expect(fulfillment).toContain("Property investigation queue");
     expect(fulfillment).toContain("Waiting to start");
-    expect(fulfillment).toContain("Next current order");
+    expect(fulfillment).toContain("UP NEXT");
+    expect(fulfillment).toContain("Continue investigation");
     expect(fulfillment).toContain("orderPriority");
     expect(editor).toContain("Standard done-for-you investigation checklist");
     expect(fulfillment).toContain("Open full property investigation");

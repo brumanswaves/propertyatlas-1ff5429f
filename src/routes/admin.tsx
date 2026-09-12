@@ -155,6 +155,9 @@ function FounderOperations() {
   const operationalSummary = useMemo(() => {
     const recentErrors = auditRows.filter((row) => row.status !== "ok").length;
     const failedOrders = orders.filter((order) => orderStatus(order) === "failed").length;
+    const doneForYouNeedsAction = orders.filter((order) =>
+      orderPayloadText(order, "orderKind") === "easy_erf_investigation" && orderStatus(order) !== "ready",
+    ).length;
     const users = new Set<string>();
     for (const order of orders) if (order.user_id) users.add(order.user_id);
     for (const row of auditRows) if (row.user_id) users.add(row.user_id);
@@ -163,6 +166,7 @@ function FounderOperations() {
     return {
       recentErrors,
       failedOrders,
+      doneForYouNeedsAction,
       recentUsers: users.size,
       enabledProviders,
     };
@@ -181,17 +185,21 @@ function FounderOperations() {
               Founder Operations
             </h1>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Operational truth for report orders, provider activity and system health. This first
-              console is deliberately read-first so support visibility grows without bypassing Easy
-              Erf authorization or inventing business controls.
+              Start with customer Done-for-You investigations. System and provider diagnostics stay available below when something needs troubleshooting.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
               to="/admin/fulfillment"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-5 py-2.5 text-xs font-semibold text-white shadow-soft hover:bg-[#FF7D1F]"
             >
-              <ReceiptText className="h-3.5 w-3.5" /> Human-review fulfillment
+              <ReceiptText className="h-3.5 w-3.5" /> Review next Done-for-You investigation
+            </Link>
+            <Link
+              to="/admin/users"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"
+            >
+              <UsersRound className="h-3.5 w-3.5" /> Users & investigators
             </Link>
             <Link
               to="/dashboard"
@@ -201,6 +209,23 @@ function FounderOperations() {
             </Link>
           </div>
         </header>
+
+        <section className="mt-6 overflow-hidden rounded-[1.5rem] border-2 border-[#FF6A00]/35 bg-[#FFF7ED] shadow-soft" data-done-for-you-admin-priority>
+          <div className="grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B24A00]">Customer work first</div>
+              <h2 className="mt-1 text-xl font-semibold text-[#0D1B2A]">
+                {loading ? "Checking the Done-for-You queue..." : `${operationalSummary.doneForYouNeedsAction} investigation${operationalSummary.doneForYouNeedsAction === 1 ? "" : "s"} need attention`}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-[#64748B]">
+                Open the queue to see one clear UP NEXT action. Failed orders are shown as Needs recovery and can be reopened without losing their saved evidence.
+              </p>
+            </div>
+            <Link to="/admin/fulfillment" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2 text-sm font-semibold text-white">
+              Open investigation queue <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
 
         <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 text-xs font-semibold">
           <Anchor href="#overview">Overview</Anchor>
@@ -224,7 +249,7 @@ function FounderOperations() {
           <SectionHeading
             icon={<Gauge className="h-4 w-4" />}
             title="Overview"
-            description="Live operational signals from the data this admin role is already authorized to read."
+            description="Supporting operational signals. Customer investigation work is prioritized above."
           />
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -235,7 +260,7 @@ function FounderOperations() {
             />
             <MetricCard
               icon={<AlertCircle className="h-4 w-4" />}
-              label="Failed recent orders"
+              label="Needs recovery"
               value={loading ? "..." : String(operationalSummary.failedOrders)}
               attention={operationalSummary.failedOrders > 0}
               detail={`Within the ${orders.length} most recent loaded orders`}
@@ -266,7 +291,7 @@ function FounderOperations() {
           <SectionHeading
             icon={<FileText className="h-4 w-4" />}
             title="Investigation and report orders"
-            description="Open an order to review, replace or redeliver the human-reviewed report while keeping payment truth read-only."
+            description="Open an order to inspect its exact property, customer, status and report history. Use the Done-for-You queue for the guided work sequence."
           />
           <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             {loading ? (
@@ -301,10 +326,10 @@ function FounderOperations() {
                             {order.report_type}
                           </a>
                           <div className="mt-1 font-mono text-[10px] text-muted-foreground">
-                            {shortId(order.id)} · Open / change review
+                            {shortId(order.id)} · Open investigation
                           </div>
                           {order.failure_reason ? (
-                            <div className="mt-2 max-w-xs text-[11px] leading-relaxed text-destructive">
+                            <div className="mt-2 max-w-xs text-[11px] leading-relaxed text-amber-800">
                               {order.failure_reason}
                             </div>
                           ) : null}
@@ -518,18 +543,18 @@ function FounderOperations() {
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <OperationalPanel title="Available now" icon={<CheckCircle2 className="h-4 w-4" />}>
               <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <li>Report-order status, provider linkage and recorded failures.</li>
+                <li>Done-for-You investigation status, property linkage and recorded failures.</li>
+                <li>Searchable user directory and per-investigation reviewer assignment.</li>
                 <li>Provider audit activity, errors and latency where recorded.</li>
                 <li>Provider configuration health that the existing admin role may read.</li>
-                <li>Existing readiness and public-data diagnostics.</li>
               </ul>
             </OperationalPanel>
-            <OperationalPanel title="Next trusted support layer" icon={<ShieldCheck className="h-4 w-4" />}>
+            <OperationalPanel title="Protected actions" icon={<ShieldCheck className="h-4 w-4" />}>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Cross-user property investigations, uploaded evidence, Site Potential jobs, entitlements and intervention history are not exposed here by pretending the browser is privileged. The next operations tranche should add a narrowly authorized support boundary with an audit trail before those customer-support tools appear.
+                Refunds, destructive repairs, impersonation and other high-risk support actions remain unavailable unless a real audited backend action exists for them.
               </p>
               <p className="mt-3 text-xs font-medium text-foreground">
-                No refund, credit-grant, destructive repair or impersonation control is shown until a real trusted action exists behind it.
+                Customer investigation work and reviewer access use the existing trusted server boundaries rather than exposing privileged credentials in the browser.
               </p>
             </OperationalPanel>
           </div>
@@ -643,8 +668,17 @@ function LoadingRows() {
 
 function StatusChip({ status }: { status: string }) {
   const normalized = status.toLowerCase();
-  const positive = ["ok", "active", "complete", "paid"].includes(normalized);
+  const positive = ["ok", "active", "ready"].includes(normalized);
   const negative = ["failed", "error", "down", "cancelled"].includes(normalized);
+  const label = normalized === "paid"
+    ? "Waiting to start"
+    : normalized === "processing"
+      ? "In progress"
+      : normalized === "failed"
+        ? "Needs recovery"
+        : normalized === "ready"
+          ? "Delivered"
+          : readableLabel(status);
 
   return (
     <span
@@ -652,7 +686,7 @@ function StatusChip({ status }: { status: string }) {
         positive
           ? "bg-success/10 text-success"
           : negative
-            ? "bg-destructive/10 text-destructive"
+            ? "bg-amber-100 text-amber-900"
             : "bg-muted text-muted-foreground"
       }`}
     >
@@ -663,7 +697,7 @@ function StatusChip({ status }: { status: string }) {
       ) : (
         <CircleDashed className="h-3 w-3" />
       )}
-      {readableLabel(status)}
+      {label}
     </span>
   );
 }
@@ -689,7 +723,8 @@ function orderPayloadText(order: ReportOrderRow, key: string) {
 }
 
 function orderStatus(order: ReportOrderRow) {
-  return order.status_enum ?? order.status ?? "unknown";
+  const status = (order.status_enum ?? order.status ?? "unknown").toLowerCase();
+  return status === "fulfilling" ? "processing" : status === "complete" ? "ready" : status;
 }
 
 function readableLabel(value: string) {

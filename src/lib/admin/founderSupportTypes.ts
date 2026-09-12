@@ -9,7 +9,35 @@ export interface FounderSupportUserSummary {
   updatedAt: string | null;
   savedPropertyCount: number;
   reportOrderCount: number;
+  accessKind: "founder_admin" | "investigator" | "customer";
 }
+
+export interface FounderInvestigatorSummary {
+  id: string;
+  email: string;
+  fullName: string | null;
+  status: "invited" | "active";
+  invitedAt: string | null;
+  activatedAt: string | null;
+  roleGrantedAt: string | null;
+}
+
+export type FounderInvestigatorOnboardingResponse =
+  | {
+      success: true;
+      outcome: "invited" | "already_investigator";
+      investigator: FounderInvestigatorSummary;
+    }
+  | {
+      success: true;
+      outcome: "existing_customer";
+      customer: Pick<FounderSupportUserSummary, "id" | "email" | "fullName" | "accessKind">;
+    }
+  | { success: false; error: string };
+
+export type FounderInvestigatorDirectoryResponse =
+  | { success: true; investigators: FounderInvestigatorSummary[] }
+  | { success: false; error: string };
 
 export interface FounderSupportSavedProperty {
   parcelId: string;
