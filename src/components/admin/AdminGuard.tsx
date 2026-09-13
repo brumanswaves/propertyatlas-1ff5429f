@@ -8,11 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { investigationClient } from "@/lib/investigation/investigationClient";
 
-const OperationsAccess = createContext({ isAdmin: false });
+const OperationsAccess = createContext({ isAdmin: false, accessToken: null as string | null });
 export function useOperationsAccess() { return useContext(OperationsAccess); }
 
 export function AdminGuard({ children, allowAssignedInvestigations = false }: { children: ReactNode; allowAssignedInvestigations?: boolean }) {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const navigate = useNavigate();
   const [access, setAccess] = useState<{ userId: string; isAdmin: boolean; assigned: boolean } | null>(null);
   const currentAccess = access?.userId === user?.id ? access : null;
@@ -89,7 +89,7 @@ export function AdminGuard({ children, allowAssignedInvestigations = false }: { 
   }
 
   return (
-    <OperationsAccess.Provider value={{ isAdmin }}>
+    <OperationsAccess.Provider value={{ isAdmin, accessToken: session?.access_token ?? null }}>
       {isAdmin && <nav
         aria-label="Founder Operations"
         className="absolute left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"

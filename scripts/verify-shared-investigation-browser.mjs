@@ -114,10 +114,10 @@ async function waitFor(url, child) {
   }
   throw new Error("Isolated process did not become available");
 }
-async function open(actor, mobile = false) {
+async function open(actor, mobile = false, seedSession = true) {
   const context = await browser.newContext(mobile ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : { viewport: { width: 1440, height: 1000 } });
   contexts.push(context);
-  await context.addInitScript(({ session, origin }) => { if (location.origin === origin) localStorage.setItem("sb-127-auth-token", JSON.stringify(session)); }, { session: sessions[actor], origin: appUrl });
+  if (seedSession) await context.addInitScript(({ session, origin }) => { if (location.origin === origin) localStorage.setItem("sb-127-auth-token", JSON.stringify(session)); }, { session: sessions[actor], origin: appUrl });
   await context.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if ((url.hostname === "events.mapbox.com" && url.pathname === "/events/v2") ||
@@ -399,10 +399,19 @@ async function verifyProcessingPermission() {
 try {
   for (const [actor, id] of Object.entries(ids)) {
     const email = `isolated-${actor}@example.invalid`;
-    must(await adminClient.auth.admin.createUser({ id, email, password, email_confirm: true, user_metadata: { full_name: `Synthetic ${actor}` } }));
     clients[actor] = createClient(gatewayUrl, anon, options);
-    sessions[actor] = must(await clients[actor].auth.signInWithPassword({ email, password })).session;
-    assert.equal(sessions[actor].user.id, id); secrets.push(sessions[actor].access_token, sessions[actor].refresh_token);
+    if (actor === "worker") {
+      // Generates a local Auth invitation without sending any email.
+      const invite = must(await adminClient.auth.admin.generateLink({ type: "invite", email,
+        options: { redirectTo: "https://easyerf.co.za/invite/accept", data: { full_name: "Synthetic worker" } } }));
+      ids.worker = invite.user.id;
+      assert(!invite.user.email_confirmed_at, "Invited worker must start pending");
+      sessions.worker = must(await clients.worker.auth.verifyOtp({ type: "invite", token_hash: invite.properties.hashed_token })).session;
+    } else {
+      must(await adminClient.auth.admin.createUser({ id, email, password, email_confirm: true, user_metadata: { full_name: `Synthetic ${actor}` } }));
+      sessions[actor] = must(await clients[actor].auth.signInWithPassword({ email, password })).session;
+    }
+    assert.equal(sessions[actor].user.id, ids[actor]); secrets.push(sessions[actor].access_token, sessions[actor].refresh_token);
   }
   must(await adminClient.from("user_roles").insert([
     { user_id: ids.admin, role: "admin" },
@@ -445,7 +454,36 @@ try {
   const app = start(process.execPath, ["--import", resolve("scripts/verify-shared-investigation-network.mjs"), ".output/server/index.mjs"], { ...commonEnv, HOST: "127.0.0.1", PORT: "4177" });
   await waitFor(`${appUrl}/admin/fulfillment`, app);
   browser = await chromium.launch({ headless: true });
-  const worker = await open("worker");
+  for (const [token, expected] of [[null, 401], ["expired-synthetic-token", 401], [sessions.worker.access_token, 403]]) {
+    const response = await fetch(`${appUrl}/api/admin/support?mode=investigators`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    assert.equal(response.status, expected, "Founder support must retain server authorization");
+  }
+  const worker = await open("worker", false, false);
+  const inviteFragment = new URLSearchParams({
+    access_token: sessions.worker.access_token, refresh_token: sessions.worker.refresh_token,
+    expires_in: "3600", token_type: "bearer", type: "invite",
+  });
+  await worker.goto(`${appUrl}/invite/accept#${inviteFragment}`);
+  await worker.getByLabel("New password", { exact: true }).fill(password);
+  assert.equal(new URL(worker.url()).hash, "", "Invite tokens must be removed from the visible URL");
+  await worker.getByLabel("Confirm password", { exact: true }).fill(password);
+  await worker.screenshot({ path: resolve(artifacts, "invite-acceptance-desktop.png") });
+  await worker.getByRole("button", { name: "Set password and activate account", exact: true }).click();
+  await worker.getByRole("status").filter({ hasText: "Your password is saved" }).waitFor();
+  const freshWorker = createClient(gatewayUrl, anon, options);
+  assert.equal(must(await freshWorker.auth.signInWithPassword({ email: "isolated-worker@example.invalid", password })).user.id, ids.worker);
+  const workerRoles = must(await adminClient.from("user_roles").select("role").eq("user_id", ids.worker));
+  assert(workerRoles.some((row) => row.role === "moderator"));
+  assert(!workerRoles.some((row) => row.role === "admin"));
+  const directory = await fetch(`${appUrl}/api/admin/support?mode=investigator-search&q=isolated-worker`, {
+    headers: { Authorization: `Bearer ${sessions.admin.access_token}` },
+  });
+  assert.equal(directory.status, 200);
+  const directoryBody = await directory.json();
+  assert(directoryBody.investigators.some((row) => row.id === ids.worker && row.status === "active"));
+  results.push("Real local Auth invite accepted and password login verified; investigator role preserved without admin");
   await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
   await worker.getByRole("button", { name: "Yes, this is the correct erf", exact: true }).waitFor();
   await worker.getByRole("button", { name: "Yes, this is the correct erf", exact: true }).click();

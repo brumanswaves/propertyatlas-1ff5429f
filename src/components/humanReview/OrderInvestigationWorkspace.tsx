@@ -318,6 +318,7 @@ function BriefEditor({ version, disabled, onSave }: { version: InvestigationRevi
 }
 
 function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: string; actorId: string; customerId: string }) {
+  const { accessToken } = useOperationsAccess();
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<FounderInvestigatorSummary[]>([]);
   const [selected, setSelected] = useState<FounderInvestigatorSummary | null>(null);
@@ -334,7 +335,7 @@ function InvestigatorAssignment({ orderId, actorId, customerId }: { orderId: str
     if (!value || searching) return;
     setSearching(true); setResult(null); setSelected(null);
     try {
-      const response = await searchFounderInvestigators(value);
+      const response = await searchFounderInvestigators(accessToken, value);
       if (!response.success) throw new Error(response.error);
       const available = response.investigators.filter((user) => user.id !== customerId);
       setUsers(available);

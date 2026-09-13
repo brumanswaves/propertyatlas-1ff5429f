@@ -30,8 +30,8 @@ describe("Founder Operations trusted support guardrails", () => {
     expect(page).not.toContain("SERVICE_ROLE");
     expect(api).not.toContain("SERVICE_ROLE");
     expect(onboarding).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(client).toContain("data.session.access_token");
-    expect(client).toContain("Authorization: `Bearer ${data.session.access_token}`");
+    expect(client).not.toContain("getSession");
+    expect(client).toContain("Authorization: `Bearer ${accessToken}`");
     expect(client).toContain('credentials: "same-origin"');
   });
 

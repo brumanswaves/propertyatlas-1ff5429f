@@ -9,7 +9,7 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
+import { AdminGuard, useOperationsAccess } from "@/components/admin/AdminGuard";
 import { EntitlementGrantHistory } from "@/components/admin/EntitlementGrantHistory";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
@@ -42,6 +42,7 @@ function FounderEntitlementsPage() {
 }
 
 function FounderEntitlements() {
+  const { accessToken } = useOperationsAccess();
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<FounderSupportUserSummary[]>([]);
   const [selected, setSelected] = useState<FounderSupportUserDetail | null>(null);
@@ -59,7 +60,7 @@ function FounderEntitlements() {
     setError(null);
     setSuccess(null);
     try {
-      const response = await searchFounderSupportUsers(query);
+      const response = await searchFounderSupportUsers(accessToken, query);
       if (!response.success) throw new Error(response.error);
       setUsers(response.users);
       if (response.users.length === 1) await selectUser(response.users[0].id);
@@ -78,7 +79,7 @@ function FounderEntitlements() {
     setSuccess(null);
     setReason("");
     try {
-      const response = await readFounderSupportUser(userId);
+      const response = await readFounderSupportUser(accessToken, userId);
       if (!response.success) throw new Error(response.error);
       setSelected(response.detail);
     } catch (caught) {
@@ -104,7 +105,7 @@ function FounderEntitlements() {
         `Granted 1 complimentary Site Potential generation. Beta credits: ${response.grant.previousBetaCreditsRemaining} → ${response.grant.betaCreditsRemaining}.`,
       );
       setReason("");
-      const refreshed = await readFounderSupportUser(selected.user.id);
+      const refreshed = await readFounderSupportUser(accessToken, selected.user.id);
       if (refreshed.success) setSelected(refreshed.detail);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not grant Site Potential access.");
