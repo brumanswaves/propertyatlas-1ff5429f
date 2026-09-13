@@ -26,6 +26,20 @@ async function supportRequest<T>(accessToken: string | null, path: string, body?
   return payload as T;
 }
 
+export type AccountAccess = { userId: string; email: string | null; suspended: boolean; protectedAccount: boolean };
+
+export function readFounderAccountAccess(accessToken: string | null, userId: string) {
+  return supportRequest<{ success: true; account: AccountAccess }>(
+    accessToken, `/api/admin/support?mode=account-access&userId=${encodeURIComponent(userId)}`,
+  );
+}
+
+export function changeFounderAccountAccess(accessToken: string | null, userId: string, email: string, action: "suspend" | "restore", reason: string) {
+  return supportRequest<{ success: true; account: Pick<AccountAccess, "userId" | "suspended"> }>(
+    accessToken, "/api/admin/support", { userId, email, action, reason },
+  );
+}
+
 export async function searchFounderSupportUsers(accessToken: string | null, query: string) {
   return supportRequest<FounderSupportSearchResponse>(
     accessToken, `/api/admin/support?mode=search&q=${encodeURIComponent(query.trim())}`,

@@ -1,5 +1,17 @@
 # EE-R999-01 Execution State
 
+## Reversible account access: 2026-09-13
+
+- Active release EE-R999-01. Owner requested suspension/restoration, explicitly preserving reports and audit history rather than deleting accounts.
+- VERIFIED source base: f1378af42d4b73e3f27a2bdce2da715fa02a937a. Isolated branch codex/founder-account-access; candidate SHA and draft PR will be recorded in the GitHub receipt. Original dirty worktree is protected.
+- Source uses Supabase Auth banned_until through the server-only Auth admin API. Founder-only checks, self/admin protection, an audit intent before mutation, completion verification, and a pending-attempt uniqueness guard prevent blind retries. Existing roles and assignments are retained.
+- A new unapplied migration denies suspended sessions at the REST pre-request boundary and through restrictive RLS for existing public/storage tables. New assignments and role grants to suspended users are rejected. Existing data-ownership policies are not relaxed.
+- VERIFIED local focused checks: 3 files / 22 tests; full Vitest 161 files / 1,640 tests after updating the explicit migration inventory. TypeScript, targeted lint and node-server production build pass. Initial full-suite failure was only the stale migration count/list.
+- UNVERIFIED: real isolated Auth/REST/Storage integration and desktop/mobile browser evidence; exact-head CI. The existing isolated workflow now exercises browser suspension/restoration, old-token denial and preserved report/assignment/history snapshots. Local Docker is unavailable.
+- Limitations: downloaded content and already-issued signed URLs cannot be recalled by account suspension. Ambiguous Auth writes remain pending and require reviewed reconciliation; the UI does not retry them. Newly added RLS tables must retain the suspension policy. Production application requires separately approved migration/publication and acceptance.
+- Next: inspect exact-head isolated CI/artifacts, repair any proven failure, then independent review. No merge, database application, real account mutation, email, paid AI, publication or purchase authorized here.
+- Spend: deterministic local tools and existing allowance only; no API billing or credit purchase initiated. Actual spend UNKNOWN; discretionary cap $0. Earlier preview-token containment and exact production-source linkage remain unverified, not resolved by this source work.
+
 ## Founder runtime authentication repair: 2026-09-13
 
 - Active release EE-R999-01; frozen outcome remains one usable owner investigation and reviewer journey.

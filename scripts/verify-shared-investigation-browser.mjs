@@ -614,6 +614,61 @@ try {
 
   await verifyCustomerEntry();
 
+  // Exercise the real Founder UI and Auth ban with old JWTs, not a hidden UI.
+  const preservedBefore = {};
+  const snapshotTable = async table => JSON.stringify(must(await adminClient.from(table).select("*")).map(row => JSON.stringify(row)).sort());
+  for (const table of ["report_orders", "report_order_events", "saved_properties", "investigation_assignments", "user_roles"]) {
+    preservedBefore[table] = await snapshotTable(table);
+  }
+  await admin.goto(`${appUrl}/admin/users`);
+  await admin.getByRole("button", { name: "Manage account", exact: true }).click();
+  const access = admin.getByRole("region", { name: "Account access", exact: true });
+  await access.getByRole("button", { name: "Suspend access", exact: true }).click();
+  await access.getByLabel("Reason", { exact: true }).fill("Synthetic owner suspension acceptance");
+  await admin.screenshot({ path: resolve(artifacts, "account-suspend-desktop.png"), fullPage: true });
+  const suspendedResponse = admin.waitForResponse(r => r.url().endsWith("/api/admin/support") && r.request().postDataJSON()?.action === "suspend");
+  await access.getByRole("button", { name: "Confirm suspend access", exact: true }).click();
+  assert.equal((await suspendedResponse).status(), 200);
+  await access.getByText("Suspended", { exact: true }).waitFor();
+  const oldHeaders = { apikey: anon, Authorization: `Bearer ${sessions.worker.access_token}`, "Content-Type": "application/json" };
+  assert.equal((await fetch(`${backend}/auth/v1/user`, { headers: oldHeaders })).status, 403);
+  const blockedRpc = await fetch(`${backend}/rest/v1/rpc/read_order_investigation`, {
+    method: "POST", headers: oldHeaders, body: JSON.stringify({ p_order_id: orderA }),
+  });
+  assert.equal(blockedRpc.status, 403);
+  assert.equal((await blockedRpc.json()).code, "42501");
+  assert.equal((await fetch(`${backend}/rest/v1/saved_properties?select=id`, { headers: oldHeaders })).status, 403);
+  const bannedLogin = createClient(backend, anon, options);
+  assert((await bannedLogin.auth.signInWithPassword({ email: "isolated-worker@example.invalid", password })).error);
+  const searchSuspended = await fetch(`${appUrl}/api/admin/support?mode=investigator-search&q=isolated-worker`, {
+    headers: { Authorization: `Bearer ${sessions.admin.access_token}` },
+  });
+  assert.equal(searchSuspended.status, 200);
+  assert.equal((await searchSuspended.json()).investigators.length, 0);
+  await denied("admin", "assign_order_investigator", { p_order_id: orderA, p_worker_id: ids.worker, p_can_approve: false });
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await access.scrollIntoViewIfNeeded();
+  await admin.screenshot({ path: resolve(artifacts, "account-suspended-mobile.png") });
+  await access.getByRole("button", { name: "Restore access", exact: true }).click();
+  await access.getByLabel("Reason", { exact: true }).fill("Synthetic owner restoration acceptance");
+  const restoredResponse = admin.waitForResponse(r => r.url().endsWith("/api/admin/support") && r.request().postDataJSON()?.action === "restore");
+  await access.getByRole("button", { name: "Confirm restore access", exact: true }).click();
+  assert.equal((await restoredResponse).status(), 200);
+  await access.getByText("Access enabled", { exact: true }).waitFor();
+  assert.equal(must(await bannedLogin.auth.signInWithPassword({ email: "isolated-worker@example.invalid", password })).user.id, ids.worker);
+  await rpc("worker", "read_order_investigation", { p_order_id: orderA });
+  await denied("worker", "read_order_investigation", { p_order_id: orderB });
+  const nonAdminChange = await fetch(`${appUrl}/api/admin/support`, { method: "POST", headers: oldHeaders,
+    body: JSON.stringify({ action: "suspend", userId: ids.a, email: "isolated-a@example.invalid", reason: "Unauthorized synthetic attempt" }) });
+  assert.equal(nonAdminChange.status, 403);
+  for (const table of Object.keys(preservedBefore)) {
+    assert.equal(await snapshotTable(table), preservedBefore[table], `${table} changed during suspend/restore`);
+  }
+  const accessAudit = must(await adminClient.from("account_access_events").select("action,completed_at").eq("target_id", ids.worker).order("created_at"));
+  assert.deepEqual(accessAudit.map(row => row.action), ["suspend", "restore"]);
+  assert(accessAudit.every(row => row.completed_at));
+  results.push("Founder suspended/restored through browser; old Auth/REST/RPC token denied; assignment blocked while suspended; same account restored with reports, history, roles and assignments unchanged; non-admin and unrelated order denied");
+
   const path = `${ids.a}/${parcelA}/other/${randomUUID()}/fixture.png`;
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jh/kAAAAASUVORK5CYII=", "base64");
   must(await adminClient.storage.from("erf-files").upload(path, png, { contentType: "image/png" }));

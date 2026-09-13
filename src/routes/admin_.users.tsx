@@ -18,6 +18,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { AdminGuard, useOperationsAccess } from "@/components/admin/AdminGuard";
+import { AccountAccessControl } from "@/components/admin/AccountAccessControl";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import {
@@ -296,8 +297,9 @@ function FounderUsers() {
                     <div className="truncate text-sm font-semibold text-[#0D1B2A]">{investigator.fullName || investigator.email}</div>
                     <div className="mt-1 truncate text-xs text-[#64748B]">{investigator.email}</div>
                   </div>
-                  <StateChip value={investigator.status === "active" ? "Active investigator" : "Invited / pending"} />
+                  <StateChip value={investigator.status === "suspended" ? "Suspended" : investigator.status === "active" ? "Active investigator" : "Invited / pending"} />
                 </div>
+                <button type="button" onClick={() => void openUser(investigator.id)} className="mt-2 min-h-11 rounded-md border px-3 text-sm">Manage account</button>
               </div>
             )) : <p className="text-sm text-[#64748B]">No investigator accounts have been onboarded yet.</p>}
           </div>
@@ -371,7 +373,10 @@ function FounderUsers() {
           </section>
         ) : null}
 
-        {loadingUser ? <LoadingDetail /> : selected ? <UserDetail detail={selected} /> : null}
+        {loadingUser ? <LoadingDetail /> : selected ? <>
+          <AccountAccessControl key={selected.user.id} accessToken={accessToken} userId={selected.user.id} onChanged={() => void refreshInvestigators()} />
+          <UserDetail detail={selected} />
+        </> : null}
       </main>
       <Footer />
     </div>

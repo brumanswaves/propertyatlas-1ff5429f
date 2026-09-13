@@ -1197,6 +1197,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      founder_begin_account_access: {
+        Args: { p_actor: string; p_target: string; p_email: string; p_action: string; p_reason: string }
+        Returns: string
+      }
+      founder_finish_account_access: {
+        Args: { p_attempt: string }
+        Returns: undefined
+      }
       grant_site_potential_credits: {
         Args: {
           p_credits: number
