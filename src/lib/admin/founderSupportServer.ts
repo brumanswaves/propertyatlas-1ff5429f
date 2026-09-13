@@ -1,4 +1,5 @@
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
+import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
 import { readSavedInvestigationProjection } from "@/lib/workbench/savedInvestigationProjection";
 import type {
   FounderSupportAssetSummary,
@@ -82,9 +83,55 @@ function profileSummary(
   };
 }
 
+export function founderSupportBackendConfig() {
+  // Hosting-injected SUPABASE_* values may belong to the retired Cloud project.
+  // Select one complete credential set; never mix projects or derive a URL from a JWT.
+  const names = [
+    "EASY_ERF_SUPABASE_URL",
+    "EASY_ERF_SUPABASE_PUBLISHABLE_KEY",
+    "EASY_ERF_SUPABASE_SERVICE_ROLE_KEY",
+  ];
+  const explicit = names.map((name) => readServerEnv(name)?.trim());
+  const useExplicit = explicit.some((value) => value !== undefined);
+  const url = useExplicit ? explicit[0] : readServerEnv("SUPABASE_URL")?.trim();
+  const publishableKey = useExplicit
+    ? explicit[1]
+    : (readServerEnv("SUPABASE_PUBLISHABLE_KEY") ?? readServerEnv("SUPABASE_ANON_KEY"))?.trim();
+  const serviceRoleKey = useExplicit
+    ? explicit[2]
+    : readServerEnv("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+  const unavailable = () =>
+    new ApiRequestError(
+      "Founder Operations backend connection is not configured for Easy Erf. Contact the administrator.",
+      503,
+    );
+  if (!url || !publishableKey || !serviceRoleKey) throw unavailable();
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw unavailable();
+  }
+  const canonical = parsed.origin === "https://xiqpfhsdlvwrwhclonsg.supabase.co";
+  const local =
+    parsed.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname);
+  if (
+    (!canonical && !local) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== "/"
+  ) {
+    throw unavailable();
+  }
+  return { url: parsed.origin, publishableKey, serviceRoleKey };
+}
+
 export async function authenticateFounderSupportRequest(request: Request) {
-  const { user } = await authenticateApiRequest(request);
-  const serviceSupabase = createServiceRoleSupabaseClient();
+  const config = founderSupportBackendConfig();
+  const { user } = await authenticateApiRequest(request, config);
+  const serviceSupabase = createServiceRoleSupabaseClient(config);
   const { data: adminRole, error } = await serviceSupabase
     .from("user_roles")
     .select("role")
