@@ -19,9 +19,17 @@ function serverSupabaseUrl() {
   return supabaseUrl;
 }
 
-export async function authenticateApiRequest(request: Request) {
+export type ServerSupabaseConfig = {
+  url: string;
+  publishableKey: string;
+  serviceRoleKey: string;
+};
+
+export async function authenticateApiRequest(request: Request, config?: ServerSupabaseConfig) {
   const publishableKey =
-    readServerEnv("SUPABASE_PUBLISHABLE_KEY") ?? readServerEnv("SUPABASE_ANON_KEY");
+    config?.publishableKey ??
+    readServerEnv("SUPABASE_PUBLISHABLE_KEY") ??
+    readServerEnv("SUPABASE_ANON_KEY");
   if (!publishableKey) {
     throw new ApiRequestError("Supabase server environment is not configured.", 500);
   }
@@ -30,7 +38,7 @@ export async function authenticateApiRequest(request: Request) {
     throw new ApiRequestError("Sign in is required.", 401);
   }
   const token = authorization.slice("Bearer ".length).trim();
-  const supabase = createClient(serverSupabaseUrl(), publishableKey, {
+  const supabase = createClient(config?.url ?? serverSupabaseUrl(), publishableKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: {
       storage: undefined,
@@ -43,12 +51,12 @@ export async function authenticateApiRequest(request: Request) {
   return { supabase, user: data.user, token };
 }
 
-export function createServiceRoleSupabaseClient() {
-  const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
+export function createServiceRoleSupabaseClient(config?: ServerSupabaseConfig) {
+  const serviceRoleKey = config?.serviceRoleKey ?? readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) {
     throw new ApiRequestError("Trusted Supabase service role is not configured.", 500);
   }
-  return createClient(serverSupabaseUrl(), serviceRoleKey, {
+  return createClient(config?.url ?? serverSupabaseUrl(), serviceRoleKey, {
     auth: {
       storage: undefined,
       persistSession: false,

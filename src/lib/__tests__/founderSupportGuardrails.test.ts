@@ -15,14 +15,16 @@ describe("Founder Operations trusted support guardrails", () => {
   const guard = read("src", "components", "admin", "AdminGuard.tsx");
 
   it("authenticates the request and verifies the existing admin role before privileged reads", () => {
-    expect(server).toContain("authenticateApiRequest(request)");
+    expect(server).toContain("authenticateApiRequest(request, config)");
     expect(server).toContain('from("user_roles")');
     expect(server).toContain('.eq("user_id", user.id)');
     expect(server).toContain('.eq("role", "admin")');
-    expect(server).toContain("createServiceRoleSupabaseClient()");
+    expect(server).toContain("createServiceRoleSupabaseClient(config)");
     expect(
-      server.indexOf("const { user } = await authenticateApiRequest(request);"),
-    ).toBeLessThan(server.indexOf("const serviceSupabase = createServiceRoleSupabaseClient();"));
+      server.indexOf("const { user } = await authenticateApiRequest(request, config);"),
+    ).toBeLessThan(
+      server.indexOf("const serviceSupabase = createServiceRoleSupabaseClient(config);"),
+    );
   });
 
   it("keeps the service role behind the trusted server boundary", () => {

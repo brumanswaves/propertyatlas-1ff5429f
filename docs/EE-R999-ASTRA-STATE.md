@@ -1,5 +1,17 @@
 # EE-R999-01 Execution State
 
+## Founder runtime authentication repair: 2026-09-13
+
+- Active release EE-R999-01; frozen outcome remains one usable owner investigation and reviewer journey.
+- VERIFIED main/base: 5975ea05e141444b91049bcd7927849e5d37c319, merged PR #176. Isolated branch codex/founder-runtime-auth; candidate not yet committed.
+- VERIFIED live authenticated directory GET has an unexpired canonical-project bearer token but returns 401. Corresponding older Lovable Cloud Auth log records bad_jwt/unrecognized signing key. No real invitation consumed.
+- Source repair selects one canonical server-only backend credential set for Founder support, with no mixed-project fallback and no admin authorization relaxation.
+- User saved custom SMTP; enabled state, masked password, branded invitation and exact invite redirect inspected. Actual SMTP delivery remains UNVERIFIED.
+- VERIFIED focused 4 files/33 tests (including real isolated HTTP transport), full 160 files/1628 tests before the additional passing HTTP test, TypeScript, lint and production build. Exact-head browser/CI evidence belongs in the repair PR receipt.
+- Next: independent review and one combined release/configuration approval after exact-head checks. Production is still unfixed.
+- No production source/config changes in this repair, no email, role/order action, paid AI or purchase. Actual spend UNKNOWN; discretionary cap remains zero.
+- Original dirty worktree remains untouched. Other surfaces/backend defaults are outside this narrow repair.
+
 ## Investigator invitation follow-up: 2026-09-13
 
 - VERIFIED main 1f49976b9cee3b751c7bf86a95f4f699fe02c4cd merges PR #175. This follow-up uses isolated branch codex/investigator-invite-acceptance, not the merged PR or original dirty worktree.
