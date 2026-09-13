@@ -136,7 +136,8 @@ do $$
 declare t record;
 begin
   for t in select n.nspname, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-    where c.relkind = 'r' and c.relrowsecurity and n.nspname in ('public', 'storage')
+    where c.relkind = 'r' and c.relrowsecurity
+      and (n.nspname = 'public' or (n.nspname = 'storage' and c.relname in ('objects', 'buckets')))
   loop
     execute format('create policy account_not_suspended on %I.%I as restrictive for all to authenticated using ((select public.account_access_allowed())) with check ((select public.account_access_allowed()))', t.nspname, t.relname);
   end loop;

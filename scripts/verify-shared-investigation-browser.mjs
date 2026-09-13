@@ -616,6 +616,10 @@ try {
 
   // Exercise the real Founder UI and Auth ban with old JWTs, not a hidden UI.
   const preservedBefore = {};
+  const suspensionFile = `${ids.worker}/suspension-fixture.png`;
+  const suspensionBytes = Buffer.from("synthetic suspension fixture");
+  must(await adminClient.storage.from("erf-files").upload(suspensionFile, suspensionBytes, { contentType: "image/png" }));
+  assert.equal(Buffer.from(await must(await clients.worker.storage.from("erf-files").download(suspensionFile)).arrayBuffer()).toString(), suspensionBytes.toString());
   const snapshotTable = async table => JSON.stringify(must(await adminClient.from(table).select("*")).map(row => JSON.stringify(row)).sort());
   for (const table of ["report_orders", "report_order_events", "saved_properties", "investigation_assignments", "user_roles"]) {
     preservedBefore[table] = await snapshotTable(table);
@@ -638,6 +642,7 @@ try {
   assert.equal(blockedRpc.status, 403);
   assert.equal((await blockedRpc.json()).code, "42501");
   assert.equal((await fetch(`${backend}/rest/v1/saved_properties?select=id`, { headers: oldHeaders })).status, 403);
+  assert((await clients.worker.storage.from("erf-files").download(suspensionFile)).error, "Suspended old token retained Storage access");
   const bannedLogin = createClient(backend, anon, options);
   assert((await bannedLogin.auth.signInWithPassword({ email: "isolated-worker@example.invalid", password })).error);
   const searchSuspended = await fetch(`${appUrl}/api/admin/support?mode=investigator-search&q=isolated-worker`, {
@@ -656,6 +661,7 @@ try {
   assert.equal((await restoredResponse).status(), 200);
   await access.getByText("Access enabled", { exact: true }).waitFor();
   assert.equal(must(await bannedLogin.auth.signInWithPassword({ email: "isolated-worker@example.invalid", password })).user.id, ids.worker);
+  assert.equal(Buffer.from(await must(await clients.worker.storage.from("erf-files").download(suspensionFile)).arrayBuffer()).toString(), suspensionBytes.toString());
   await rpc("worker", "read_order_investigation", { p_order_id: orderA });
   await denied("worker", "read_order_investigation", { p_order_id: orderB });
   const nonAdminChange = await fetch(`${appUrl}/api/admin/support`, { method: "POST", headers: oldHeaders,
