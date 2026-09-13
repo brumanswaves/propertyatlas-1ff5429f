@@ -33,6 +33,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as AdminUsersRouteImport } from './routes/admin_.users'
 import { Route as AdminLaunchReadinessRouteImport } from './routes/admin_.launch-readiness'
 import { Route as AdminFulfillmentRouteImport } from './routes/admin_.fulfillment'
@@ -176,6 +177,11 @@ const AboutRoute = AboutRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteAcceptRoute = InviteAcceptRouteImport.update({
+  id: '/invite/accept',
+  path: '/invite/accept',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin/users': typeof AdminUsersRoute
+  '/invite/accept': typeof InviteAcceptRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/admin/fulfillment': typeof AdminFulfillmentRoute
   '/admin/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin/users': typeof AdminUsersRoute
+  '/invite/accept': typeof InviteAcceptRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
@@ -440,6 +448,7 @@ export interface FileRoutesById {
   '/admin_/fulfillment': typeof AdminFulfillmentRoute
   '/admin_/launch-readiness': typeof AdminLaunchReadinessRoute
   '/admin_/users': typeof AdminUsersRoute
+  '/invite/accept': typeof InviteAcceptRoute
   '/api/address/suggestions': typeof ApiAddressSuggestionsRoute
   '/api/admin/support': typeof ApiAdminSupportRoute
   '/api/investigations/asset': typeof ApiInvestigationsAssetRoute
@@ -492,6 +501,7 @@ export interface FileRouteTypes {
     | '/admin/fulfillment'
     | '/admin/launch-readiness'
     | '/admin/users'
+    | '/invite/accept'
     | '/api/address/suggestions'
     | '/api/admin/support'
     | '/api/investigations/asset'
@@ -542,6 +552,7 @@ export interface FileRouteTypes {
     | '/admin/fulfillment'
     | '/admin/launch-readiness'
     | '/admin/users'
+    | '/invite/accept'
     | '/api/address/suggestions'
     | '/api/admin/support'
     | '/api/investigations/asset'
@@ -592,6 +603,7 @@ export interface FileRouteTypes {
     | '/admin_/fulfillment'
     | '/admin_/launch-readiness'
     | '/admin_/users'
+    | '/invite/accept'
     | '/api/address/suggestions'
     | '/api/admin/support'
     | '/api/investigations/asset'
@@ -641,6 +653,7 @@ export interface RootRouteChildren {
   AdminFulfillmentRoute: typeof AdminFulfillmentRoute
   AdminLaunchReadinessRoute: typeof AdminLaunchReadinessRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  InviteAcceptRoute: typeof InviteAcceptRoute
   ApiAddressSuggestionsRoute: typeof ApiAddressSuggestionsRoute
   ApiAdminSupportRoute: typeof ApiAdminSupportRoute
   ApiInvestigationsAssetRoute: typeof ApiInvestigationsAssetRoute
@@ -829,6 +842,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/accept': {
+      id: '/invite/accept'
+      path: '/invite/accept'
+      fullPath: '/invite/accept'
+      preLoaderRoute: typeof InviteAcceptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/users': {
@@ -1043,6 +1063,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFulfillmentRoute: AdminFulfillmentRoute,
   AdminLaunchReadinessRoute: AdminLaunchReadinessRoute,
   AdminUsersRoute: AdminUsersRoute,
+  InviteAcceptRoute: InviteAcceptRoute,
   ApiAddressSuggestionsRoute: ApiAddressSuggestionsRoute,
   ApiAdminSupportRoute: ApiAdminSupportRoute,
   ApiInvestigationsAssetRoute: ApiInvestigationsAssetRoute,

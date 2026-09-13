@@ -216,9 +216,10 @@ export async function initiateFounderInvestigatorOnboarding(
 
   const { data, error } = await context.serviceSupabase.auth.admin.inviteUserByEmail(email, {
     data: { full_name: name },
+    redirectTo: "https://easyerf.co.za/invite/accept",
   });
   if (error || !data.user) {
-    throw new ApiRequestError("The investigator invitation could not be created.", 502);
+    throw new ApiRequestError("Invitation delivery failed. Check Supabase Auth custom SMTP delivery using mail.easyerf.co.za before trying again. No investigator access was granted.", 502);
   }
   await grantInvestigatorRole(context, data.user.id, "invite_sent");
   const role = await readRoles(context.serviceSupabase, data.user.id);

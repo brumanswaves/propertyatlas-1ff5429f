@@ -42,6 +42,7 @@ const summaryReads = [];
 let detailFailure = null;
 let delayedDetail = null;
 let queueFailure = false;
+let investigatorDirectoryFailure = false;
 function queueMetadata(row) {
   const content = row.review_content;
   const hasText = (value) => typeof value === "string" && Boolean(value.trim());
@@ -87,6 +88,7 @@ await context.route("**/*", async (route) => {
     return json({ version: 8, sources: {}, layers: [{ id: "synthetic-background", type: "background", paint: { "background-color": "#467b60" } }] });
   }
   if (url.pathname === "/api/admin/support") {
+    assert.equal(request.headers().authorization, `Bearer ${session.access_token}`);
     if (request.method() === "POST") {
       const body = request.postDataJSON();
       onboardingRequests.push(body);
@@ -114,6 +116,9 @@ await context.route("**/*", async (route) => {
     }
     assert.equal(request.method(), "GET");
     const mode = url.searchParams.get("mode");
+    if (mode === "investigators" && investigatorDirectoryFailure) {
+      return route.fulfill({ status: 503, json: { success: false, error: "Synthetic directory unavailable" } });
+    }
     if (mode === "investigators") return json({ success: true, investigators: [
       { id: WORKER, fullName: "Synthetic Investigator", email: "investigator@example.invalid", status: "active", invitedAt: null, activatedAt: "2026-09-01T00:00:00Z", roleGrantedAt: "2026-09-01T00:00:00Z" },
       { id: "88888888-8888-4888-8888-888888888888", fullName: "Pending Reviewer", email: "pending@example.invalid", status: "invited", invitedAt: "2026-09-12T00:00:00Z", activatedAt: null, roleGrantedAt: "2026-09-12T00:00:00Z" },
@@ -716,6 +721,14 @@ try {
     usersPage.on("pageerror", (error) => failures.push(error.message));
     await usersPage.goto(`${baseUrl}/admin/users`);
     await usersPage.getByRole("heading", { name: "Users & Investigators", exact: true, level: 1 }).waitFor();
+    await usersPage.getByRole("button", { name: "Refresh investigators" }).and(usersPage.locator(":enabled")).waitFor();
+    assert(!(await usersPage.locator("body").innerText()).includes("Sign in is required"));
+    investigatorDirectoryFailure = true;
+    await usersPage.getByRole("button", { name: "Refresh investigators" }).click();
+    await usersPage.getByText("Synthetic directory unavailable", { exact: true }).waitFor();
+    investigatorDirectoryFailure = false;
+    await usersPage.getByRole("button", { name: "Refresh investigators" }).click();
+    await usersPage.getByText("Synthetic directory unavailable", { exact: true }).waitFor({ state: "hidden" });
     await usersPage.getByRole("button", { name: "Add investigator", exact: true }).click();
     await usersPage.getByLabel("Name", { exact: true }).fill("New Investigator");
     await usersPage.getByLabel("Email", { exact: true }).fill("new-investigator@example.invalid");
@@ -776,6 +789,51 @@ try {
     assert.ok((await hero.innerText()).includes("recorded parcel boundary"));
   });
   await Promise.all(responseSettlements);
+  await check("invite acceptance saves password without changing roles; expired/admin sessions rejected", async () => {
+    for (const mode of ["invited", "expired", "admin"]) {
+      const inviteContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+      const inviteUser = { ...user, id: WORKER, email: "invite@example.invalid", invited_at: "2026-09-13T00:00:00Z" };
+      await inviteContext.addInitScript(({ session }) => {
+        for (const key of ["sb-127-auth-token", "sb-fixture-auth-token", "sb-easyerf-auth-token", "sb-xiqpfhsdlvwrwhclonsg-auth-token"])
+          localStorage.setItem(key, JSON.stringify(session));
+      }, { session: { ...session, user: inviteUser } });
+      let passwordWrites = 0;
+      await inviteContext.route("**/*", (route) => {
+        const request = route.request(), url = new URL(request.url());
+        if (url.pathname === "/auth/v1/user") {
+          if (mode === "expired") return route.fulfill({ status: 401, json: { message: "Session expired" } });
+          if (request.method() === "PUT") {
+            assert.deepEqual(request.postDataJSON(), {
+              password: "Synthetic-invite-password", code_challenge: null, code_challenge_method: null,
+            });
+            passwordWrites++;
+          } else assert.equal(request.method(), "GET");
+          return route.fulfill({ json: inviteUser });
+        }
+        if (url.pathname === "/rest/v1/user_roles") {
+          assert.equal(request.method(), "GET");
+          return route.fulfill({ json: [{ role: mode === "admin" ? "admin" : "moderator" }] });
+        }
+        if (url.origin === new URL(baseUrl).origin && !url.pathname.startsWith("/api/")) return route.continue();
+        return route.abort("blockedbyclient");
+      });
+      const invitePage = await inviteContext.newPage();
+      await invitePage.goto(`${baseUrl}/invite/accept`);
+      if (mode === "invited") {
+        await invitePage.getByLabel("New password", { exact: true }).fill("Synthetic-invite-password");
+        await invitePage.getByLabel("Confirm password", { exact: true }).fill("Synthetic-invite-password");
+        await invitePage.screenshot({ path: resolve(artifacts, "invite-acceptance-mobile.png"), fullPage: true });
+        await invitePage.getByRole("button", { name: "Set password and activate account" }).click();
+        await invitePage.getByRole("status").filter({ hasText: "Your password is saved" }).waitFor();
+        assert.equal(passwordWrites, 1);
+      } else {
+        await invitePage.getByRole("alert").waitFor();
+        assert.equal(await invitePage.getByLabel("New password", { exact: true }).count(), 0);
+        assert.equal(passwordWrites, 0);
+      }
+      await inviteContext.close();
+    }
+  });
   assert.deepEqual(failures, []);
   console.log(`VERIFIED built-browser fixture acceptance: ${checks.length} groups; candidate ${sha}; dirty=${Boolean(dirty)}; external backend requests: 0`);
 } catch (error) {

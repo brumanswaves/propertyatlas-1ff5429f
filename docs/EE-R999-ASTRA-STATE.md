@@ -1,5 +1,14 @@
 # EE-R999-01 Execution State
 
+## Investigator invitation follow-up: 2026-09-13
+
+- VERIFIED main 1f49976b9cee3b751c7bf86a95f4f699fe02c4cd merges PR #175. This follow-up uses isolated branch codex/investigator-invite-acceptance, not the merged PR or original dirty worktree.
+- Source repair passes AdminGuard's hydrated token into Founder support requests, retains backend Auth/admin checks, and clears directory errors on successful refresh. Supabase invitation uses the explicit https://easyerf.co.za/invite/accept redirect and surfaces delivery errors without granting a role on failure.
+- Dedicated acceptance verifies the invited Auth user and investigator-only role, saves the password with Supabase Auth, and links to assigned investigations. No new identity, role, activation, order or persistence model.
+- VERIFIED local full Vitest: 159 files / 1,613 tests; focused 4 files / 25 tests. TypeScript and node-server production build pass. Targeted lint has zero errors and one existing AdminGuard fast-refresh warning. Built-browser acceptance passed 29 synthetic groups, including invite password save, expired/admin rejection and directory-error refresh; desktop/mobile screenshots inspected. Exact committed CI and isolated real Auth acceptance remain required.
+- Production SMTP/redirect/template configuration and real inbox acceptance are UNVERIFIED and outside this source task; see INVESTIGATOR_INVITE_RELEASE.md. No production access, email, AI, migration, purchase or publication. Actual spend UNKNOWN; discretionary cap $0.
+- Next: finish browser evidence, push one draft follow-up PR, inspect exact-head CI and isolated Auth/password/order boundaries. Merge and production changes still require owner authority.
+
 ## PR #175 secure investigator onboarding: 2026-09-12
 
 - VERIFIED starting state: draft PR #175 and branch `chatgpt/ee-product-recovery-ux`, exact reviewed head `443c3ace6ee596884c2c56f32f2b6572e78d4930`, current `origin/main` `76b1269052e52200e8050a2bf4ae028cafeb71dc`. The original dirty `property-evidence-pack-foundation` worktree remains protected and untouched.

@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import type {
   FounderInvestigatorDirectoryResponse,
   FounderInvestigatorOnboardingResponse,
@@ -6,14 +5,13 @@ import type {
   FounderSupportUserResponse,
 } from "./founderSupportTypes";
 
-async function supportRequest<T>(path: string, body?: Record<string, string>): Promise<T> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error || !data.session?.access_token) throw new Error("Sign in is required.");
+async function supportRequest<T>(accessToken: string | null, path: string, body?: Record<string, string>): Promise<T> {
+  if (!accessToken) throw new Error("Your session has ended. Sign in again.");
 
   const response = await fetch(path, {
     method: body ? "POST" : "GET",
     headers: {
-      Authorization: `Bearer ${data.session.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     credentials: "same-origin",
@@ -28,40 +26,40 @@ async function supportRequest<T>(path: string, body?: Record<string, string>): P
   return payload as T;
 }
 
-export async function searchFounderSupportUsers(query: string) {
+export async function searchFounderSupportUsers(accessToken: string | null, query: string) {
   return supportRequest<FounderSupportSearchResponse>(
-    `/api/admin/support?mode=search&q=${encodeURIComponent(query.trim())}`,
+    accessToken, `/api/admin/support?mode=search&q=${encodeURIComponent(query.trim())}`,
   );
 }
 
-export async function readFounderSupportUser(userId: string) {
+export async function readFounderSupportUser(accessToken: string | null, userId: string) {
   return supportRequest<FounderSupportUserResponse>(
-    `/api/admin/support?mode=user&userId=${encodeURIComponent(userId)}`,
+    accessToken, `/api/admin/support?mode=user&userId=${encodeURIComponent(userId)}`,
   );
 }
 
-export async function listFounderInvestigators() {
+export async function listFounderInvestigators(accessToken: string | null) {
   return supportRequest<FounderInvestigatorDirectoryResponse>(
-    "/api/admin/support?mode=investigators",
+    accessToken, "/api/admin/support?mode=investigators",
   );
 }
 
-export async function searchFounderInvestigators(query: string) {
+export async function searchFounderInvestigators(accessToken: string | null, query: string) {
   return supportRequest<FounderInvestigatorDirectoryResponse>(
-    `/api/admin/support?mode=investigator-search&q=${encodeURIComponent(query.trim())}`,
+    accessToken, `/api/admin/support?mode=investigator-search&q=${encodeURIComponent(query.trim())}`,
   );
 }
 
-export async function inviteFounderInvestigator(name: string, email: string) {
-  return supportRequest<FounderInvestigatorOnboardingResponse>("/api/admin/support", {
+export async function inviteFounderInvestigator(accessToken: string | null, name: string, email: string) {
+  return supportRequest<FounderInvestigatorOnboardingResponse>(accessToken, "/api/admin/support", {
     action: "invite-investigator",
     name,
     email,
   });
 }
 
-export async function grantExistingFounderInvestigator(userId: string, email: string) {
-  return supportRequest<FounderInvestigatorOnboardingResponse>("/api/admin/support", {
+export async function grantExistingFounderInvestigator(accessToken: string | null, userId: string, email: string) {
+  return supportRequest<FounderInvestigatorOnboardingResponse>(accessToken, "/api/admin/support", {
     action: "grant-existing-investigator",
     userId,
     email,

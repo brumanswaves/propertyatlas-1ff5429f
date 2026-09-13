@@ -32,7 +32,7 @@ function fakeDependencies(input?: {
   const users = [...(input?.users ?? [])];
   const roles = [...(input?.roles ?? [])];
   const profiles = [...(input?.profiles ?? [])];
-  const invitations: Array<{ email: string; data: object | undefined }> = [];
+  const invitations: Array<{ email: string; data: object | undefined; redirectTo?: string }> = [];
   const grants: Array<Record<string, string>> = [];
 
   class Query {
@@ -63,8 +63,8 @@ function fakeDependencies(input?: {
           data: { user: users.find((user) => user.id === id) ?? null },
           error: null,
         })),
-        inviteUserByEmail: vi.fn(async (email: string, options: { data?: object }) => {
-          invitations.push({ email, data: options.data });
+        inviteUserByEmail: vi.fn(async (email: string, options: { data?: object; redirectTo?: string }) => {
+          invitations.push({ email, data: options.data, redirectTo: options.redirectTo });
           const user = authUser({
             id: INVESTIGATOR,
             email,
@@ -105,6 +105,16 @@ const request = new Request("http://localhost/api/admin/support", {
 });
 
 describe("Founder investigator onboarding", () => {
+  it("surfaces SMTP failure without granting investigator access or claiming success", async () => {
+    const fixture = fakeDependencies();
+    vi.mocked(fixture.serviceSupabase.auth.admin.inviteUserByEmail).mockResolvedValue({
+      data: { user: null }, error: { message: "SMTP rejected", name: "AuthApiError", status: 500 },
+    } as Awaited<ReturnType<typeof fixture.serviceSupabase.auth.admin.inviteUserByEmail>>);
+    await expect(initiateFounderInvestigatorOnboarding(request, {
+      name: "Synthetic Investigator", email: "investigator@example.com",
+    }, fixture.dependencies)).rejects.toMatchObject({ status: 502, message: expect.stringContaining("Invitation delivery failed") });
+    expect(fixture.grants).toEqual([]);
+  });
   it("lets an authenticated founder invite the intended email through Supabase Auth", async () => {
     const fixture = fakeDependencies();
     const result = await initiateFounderInvestigatorOnboarding(request, {
@@ -116,6 +126,7 @@ describe("Founder investigator onboarding", () => {
     expect(fixture.invitations).toEqual([{
       email: "investigator@example.com",
       data: { full_name: "Synthetic Investigator" },
+      redirectTo: "https://easyerf.co.za/invite/accept",
     }]);
     expect(fixture.grants).toEqual([{
       p_actor_user_id: ADMIN,

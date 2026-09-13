@@ -17,7 +17,7 @@ import {
   UserPlus,
   UsersRound,
 } from "lucide-react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
+import { AdminGuard, useOperationsAccess } from "@/components/admin/AdminGuard";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import {
@@ -53,6 +53,7 @@ function FounderUsersPage() {
 }
 
 function FounderUsers() {
+  const { accessToken } = useOperationsAccess();
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<FounderSupportUserSummary[]>([]);
   const [selected, setSelected] = useState<FounderSupportUserDetail | null>(null);
@@ -73,17 +74,19 @@ function FounderUsers() {
   } | null>(null);
 
   const refreshInvestigators = useCallback(async () => {
+    if (!accessToken) return;
     setLoadingInvestigators(true);
     try {
-      const response = await listFounderInvestigators();
+      const response = await listFounderInvestigators(accessToken);
       if (!response.success) throw new Error(response.error);
       setInvestigators(response.investigators);
+      setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load investigators.");
     } finally {
       setLoadingInvestigators(false);
     }
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
     void refreshInvestigators();
@@ -97,7 +100,7 @@ function FounderUsers() {
     setOnboardingMessage(null);
     setExistingCustomer(null);
     try {
-      const response = await inviteFounderInvestigator(investigatorName, investigatorEmail);
+      const response = await inviteFounderInvestigator(accessToken, investigatorName, investigatorEmail);
       if (!response.success) throw new Error(response.error);
       if (response.outcome === "existing_customer") {
         if (!response.customer.email) throw new Error("This customer account has no email address.");
@@ -130,6 +133,7 @@ function FounderUsers() {
     setError(null);
     try {
       const response = await grantExistingFounderInvestigator(
+        accessToken,
         existingCustomer.id,
         existingCustomer.email,
       );
@@ -156,7 +160,7 @@ function FounderUsers() {
     setSearching(true);
     setError(null);
     try {
-      const response = await searchFounderSupportUsers(query);
+      const response = await searchFounderSupportUsers(accessToken, query);
       if (!response.success) throw new Error(response.error);
       setUsers(response.users);
       if (response.users.length === 1) await openUser(response.users[0].id);
@@ -172,7 +176,7 @@ function FounderUsers() {
     setLoadingUser(true);
     setError(null);
     try {
-      const response = await readFounderSupportUser(userId);
+      const response = await readFounderSupportUser(accessToken, userId);
       if (!response.success) throw new Error(response.error);
       setSelected(response.detail);
     } catch (caught) {
@@ -222,6 +226,10 @@ function FounderUsers() {
               className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2.5 text-sm font-semibold text-white"
             >
               <MailPlus className="h-4 w-4" /> Add investigator
+            </button>
+            <button type="button" onClick={() => void refreshInvestigators()} disabled={loadingInvestigators}
+              className="min-h-11 rounded-md border border-border bg-white px-3 text-sm">
+              Refresh investigators
             </button>
           </div>
 
