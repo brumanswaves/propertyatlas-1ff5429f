@@ -532,7 +532,7 @@ try {
     await back.focus(); await back.press("Enter");
     await cancelled;
     delayed.release();
-    await worker.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    await worker.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
     assert.equal(new URL(worker.url()).hash, "");
     assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
     assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
