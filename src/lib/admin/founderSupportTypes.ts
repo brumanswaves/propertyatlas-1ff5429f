@@ -16,7 +16,7 @@ export interface FounderInvestigatorSummary {
   id: string;
   email: string;
   fullName: string | null;
-  status: "invited" | "active";
+  status: "invited" | "active" | "suspended";
   invitedAt: string | null;
   activatedAt: string | null;
   roleGrantedAt: string | null;

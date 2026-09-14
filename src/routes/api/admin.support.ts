@@ -11,6 +11,7 @@ import {
   searchFounderInvestigators,
 } from "@/lib/admin/investigatorOnboardingServer";
 import { ApiRequestError } from "@/lib/sitePotential/serverAuth";
+import { changeFounderAccountAccess, readFounderAccountAccess } from "@/lib/admin/accountAccessServer";
 
 const HEADERS = {
   "Content-Type": "application/json",
@@ -30,6 +31,11 @@ export async function handleFounderSupportRequest(request: Request) {
   try {
     const url = new URL(request.url);
     const mode = url.searchParams.get("mode");
+
+    if (mode === "account-access") {
+      const account = await readFounderAccountAccess(request, url.searchParams.get("userId") ?? "");
+      return json({ success: true, account }, 200);
+    }
 
     if (mode === "search") {
       const users = await searchFounderSupportUsers(request, url.searchParams.get("q") ?? "");
@@ -84,6 +90,14 @@ export async function handleFounderSupportMutation(request: Request) {
         reason: body.reason ?? "",
       });
       return json({ success: true, grant: result }, 200);
+    }
+
+    if (body.action === "suspend" || body.action === "restore") {
+      const account = await changeFounderAccountAccess(request, {
+        userId: body.userId ?? "", email: body.email ?? "",
+        action: body.action, reason: body.reason ?? "",
+      });
+      return json({ success: true, account }, 200);
     }
 
     if (body.action === "invite-investigator") {

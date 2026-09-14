@@ -105,6 +105,12 @@ const request = new Request("http://localhost/api/admin/support", {
 });
 
 describe("Founder investigator onboarding", () => {
+  it("labels suspended investigators and excludes them from new assignment search", async () => {
+    const user = { ...authUser({ id: INVESTIGATOR, email: "worker@example.com", email_confirmed_at: "2026-01-01" }), banned_until: "2126-01-01" };
+    const fixture = fakeDependencies({ users: [user], roles: [{ user_id: INVESTIGATOR, role: "moderator", created_at: "2026-01-01" }] });
+    expect((await listFounderInvestigators(request, fixture.dependencies))[0].status).toBe("suspended");
+    expect(await searchFounderInvestigators(request, "worker", fixture.dependencies)).toEqual([]);
+  });
   it("surfaces SMTP failure without granting investigator access or claiming success", async () => {
     const fixture = fakeDependencies();
     vi.mocked(fixture.serviceSupabase.auth.admin.inviteUserByEmail).mockResolvedValue({

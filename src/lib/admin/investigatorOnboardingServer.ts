@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { ApiRequestError } from "@/lib/sitePotential/serverAuth";
 import { authenticateFounderSupportRequest } from "./founderSupportServer";
+import { accountIsSuspended } from "./accountAccessServer";
 import type {
   FounderInvestigatorOnboardingResponse,
   FounderInvestigatorSummary,
@@ -91,7 +92,7 @@ async function investigatorSummary(
     id: user.id,
     email,
     fullName: userFullName(user, profileName),
-    status: activatedAt ? "active" : "invited",
+    status: accountIsSuspended(user) ? "suspended" : activatedAt ? "active" : "invited",
     invitedAt: user.invited_at ?? null,
     activatedAt,
     roleGrantedAt,
