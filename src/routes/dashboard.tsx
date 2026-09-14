@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { CustomerWorkspaceShell } from "@/components/account/CustomerWorkspaceShell";
 import { useAuth } from "@/lib/auth/useAuth";
+import { StaffDashboardLinks } from "@/components/admin/StaffDashboardLinks";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildSavedParcelMapHref,
@@ -195,6 +196,7 @@ function Dashboard() {
 
   return (
     <CustomerWorkspaceShell activeTab="investigations">
+      <StaffDashboardLinks />
       <section aria-label="My Investigations">
         <div>
           <h2 className="text-xl font-semibold tracking-tight md:text-2xl">My Investigations</h2>

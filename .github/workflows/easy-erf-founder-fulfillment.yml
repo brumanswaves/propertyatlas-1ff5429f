@@ -12,6 +12,14 @@ on:
       - scripts/verify-easy-erf-customer-notification.sql
       - scripts/verify-easy-erf-founder-queue.sql
       - scripts/verify-founder-fulfillment-browser.mjs
+      - scripts/verify-staff-dashboards-browser.mjs
+      - src/lib/auth/StaffAccess.tsx
+      - src/lib/auth/useAuth.tsx
+      - src/lib/auth/__tests__/staffNavigation.test.ts
+      - src/lib/navigation.ts
+      - src/components/layout/TopNav.tsx
+      - src/components/admin/StaffDashboardLinks.tsx
+      - src/routes/investigator.tsx
       - scripts/verify-customer-report-link-browser.mjs
       - supabase/config.toml
       - supabase/functions/_shared/easyErfHumanReviewContract.ts
@@ -92,6 +100,7 @@ jobs:
           # generated lockfile update out of the source acceptance receipt.
           git restore -- package-lock.json
           npx vitest run \
+            src/lib/auth/__tests__/staffNavigation.test.ts \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/humanReview/__tests__/founderQueueData.test.ts \
             src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts \
@@ -125,6 +134,13 @@ jobs:
           --no-warn-ignored
           --rule 'prettier/prettier: off'
           scripts/verify-founder-fulfillment-browser.mjs
+          scripts/verify-staff-dashboards-browser.mjs
+          src/lib/auth/StaffAccess.tsx
+          src/lib/auth/useAuth.tsx
+          src/lib/auth/__tests__/staffNavigation.test.ts
+          src/lib/navigation.ts
+          src/components/admin/StaffDashboardLinks.tsx
+          src/routes/investigator.tsx
           scripts/verify-customer-report-link-browser.mjs
           src/components/admin/AdminGuard.tsx
           src/components/admin/FounderCustomerNotification.tsx
@@ -153,7 +169,7 @@ jobs:
           npm install --prefix "${BROWSER_TOOLS}" --package-lock=false --no-audit --no-fund playwright@1.55.0
           ln -s "${BROWSER_TOOLS}/node_modules/playwright" node_modules/playwright
           node "${BROWSER_TOOLS}/node_modules/playwright/cli.js" install chromium
-          HOST=127.0.0.1 PORT=4174 node .output/server/index.mjs > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
+          HOST=127.0.0.1 PORT=4174 node --import ./scripts/verify-shared-investigation-network.mjs .output/server/index.mjs > "${EASY_ERF_BROWSER_ARTIFACTS}/preview.log" 2>&1 &
           PREVIEW_PID=$!
           trap 'kill "${PREVIEW_PID}" 2>/dev/null || true' EXIT
 
@@ -171,6 +187,7 @@ jobs:
           curl --fail --silent --show-error "${EASY_ERF_BROWSER_BASE_URL}/admin/fulfillment" >/dev/null
           git diff --exit-code
           node scripts/verify-founder-fulfillment-browser.mjs
+          node scripts/verify-staff-dashboards-browser.mjs
           timeout 120s node scripts/verify-customer-report-link-browser.mjs
 
       - name: Upload founder browser acceptance evidence

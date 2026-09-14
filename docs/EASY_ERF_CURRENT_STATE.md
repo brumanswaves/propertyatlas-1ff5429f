@@ -2,6 +2,10 @@
 
 _Last reconciled: 2026-09-09_
 
+## Source follow-up: issue #179 (2026-09-14)
+
+The isolated `codex/founder-investigator-dashboards` candidate starts at canonical main `3f7ae873371792b52d343fc47afa92c5669a50bd`. It separates Founder landing/management from the investigator work dashboard using existing Auth roles and unchanged order permissions. It is source work, not a production rollout. Exact candidate checks and browser evidence are recorded in the PR receipt; older production statements below remain historical.
+
 This file is the concise operational snapshot for the Easy Erf control room. The product source of truth remains `docs/EASY_ERF_MASTER_PLAN.md`; GitHub `main` remains the code source of truth.
 
 ## Current release position

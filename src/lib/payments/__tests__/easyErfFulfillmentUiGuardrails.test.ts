@@ -23,7 +23,8 @@ describe("Easy Erf founder fulfillment UI", () => {
     }
     expect(founderRoute).toContain("pb-16 pt-36");
     expect(founderRoute).toContain('onClick={onExit}');
-    expect(guard).toContain('.eq("role", "admin")');
+    expect(guard).toContain('role === "founder"');
+    expect(guard).toContain("useStaffAccess()");
   });
 
   it("uses authenticated Edge Functions instead of writing report orders directly", () => {

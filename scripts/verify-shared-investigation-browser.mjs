@@ -682,16 +682,18 @@ try {
   await rpc("admin", "assign_order_investigator", { p_order_id: orderA, p_worker_id: ids.worker, p_can_approve: false, p_revoke: true });
   await denied("worker", "read_order_investigation", { p_order_id: orderA });
   await worker.goto(`${appUrl}/admin/fulfillment#order-${orderA}`);
-  // Same-document hash entry retains the outer guard but the exact-order reader
-  // denies access. A full reload must also reject entry at the outer guard.
+  // Assignment revocation denies this order, not the investigator's dashboard.
   await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
   assert.equal(await worker.getByRole("region", { name: "Customer investigation workspace" }).count(), 0);
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   await worker.reload();
-  await worker.getByRole("heading", { name: "Founder Operations access required", exact: true }).waitFor();
+  await worker.getByRole("heading", { name: "The requested order was not found", exact: true }).waitFor();
+  await worker.goto(`${appUrl}/investigator`);
+  await worker.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
+  await worker.getByText("No investigations assigned yet.", { exact: false }).waitFor();
   assert.equal(await worker.locator("[data-investigation-report]").count(), 0);
   await worker.screenshot({ path: resolve(artifacts, "revoked-worker.png") });
-  results.push("Real Storage denies non-owner direct reads; revocation clears worker access");
+  results.push("Real Storage denies non-owner direct reads; assignment revocation denies exact order across reloads while active investigator retains empty work dashboard");
   assert(!JSON.stringify(requests).includes("NONSELECTED_PRIVATE_SENTINEL"), "Another customer's private content crossed the application boundary");
   assert.equal(errors.length, 0, errors.join("\n"));
 } catch (error) {

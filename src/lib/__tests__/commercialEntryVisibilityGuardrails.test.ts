@@ -34,12 +34,12 @@ describe("Easy Erf commercial entry visibility", () => {
 
   it("keeps paid investigation fulfillment discoverable from Founder Operations", () => {
     const source = read("src/routes/admin.tsx");
-    expect(source).toContain('to="/admin/fulfillment"');
+    expect(source).toContain('to="/investigator"');
     expect(source).toContain("Open investigation");
     expect(source).toContain("Open investigation queue");
     const fulfillment = read("src/routes/admin_.fulfillment.tsx");
     expect(fulfillment).toContain("Done-for-You Operations");
-    expect(fulfillment).toContain("Property investigation queue");
+    expect(fulfillment).toContain("Investigator Dashboard");
     expect(fulfillment).toContain("reopen_review");
     expect(fulfillment).toContain("Reopen this exact report");
   });

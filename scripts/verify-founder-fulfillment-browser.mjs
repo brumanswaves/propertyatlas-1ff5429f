@@ -180,7 +180,7 @@ await context.route("**/*", async (route) => {
       failures.push(`Unexpected data mutation: ${url.pathname}`);
       return route.abort();
     }
-    if (url.pathname.endsWith("/user_roles")) return json({ role: "admin" });
+    if (url.pathname.endsWith("/user_roles")) return json([{ role: "admin" }]);
     if (url.pathname.endsWith("/report_orders")) {
       const ids = url.searchParams.getAll("id");
       const match = ids.length === 1 && /^eq\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(ids[0]);
@@ -314,7 +314,7 @@ async function reopen(id) {
 }
 try {
   await page.goto(`${baseUrl}/admin/fulfillment`);
-  await page.getByRole("heading", { name: "Property investigation queue" }).waitFor();
+  await page.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
   await page.getByRole("button", { name: "View delivered report", exact: true }).first().waitFor();
   await check("compact read-only queue, including legacy cards", async () => {
     await page.getByText(/Legacy-format orders, excluded/).click();
@@ -420,7 +420,7 @@ try {
       if (scenario.input === "touch") await page.touchscreen.tap(point.x, point.y);
       else if (scenario.input === "keyboard") await page.keyboard.press("Enter");
       else await page.mouse.click(point.x, point.y);
-      await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor({ timeout: 5000 });
+      await page.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor({ timeout: 5000 });
       assert.equal(new URL(page.url()).hash, "");
       assert.equal(await workbench().count(), 0);
       assert.equal(await identity().count(), 0);
@@ -443,7 +443,7 @@ try {
     await page.keyboard.press("Control+Home");
     await page.waitForFunction(() => scrollY === 0);
     const operations = page.getByRole("navigation", { name: "Founder Operations", exact: true });
-    await operations.getByRole("link", { name: "Users", exact: true }).click();
+    await operations.getByRole("link", { name: "Users & Investigators", exact: true }).click();
     await page.getByRole("heading", { name: "Users & Investigators", exact: true, level: 1 }).waitFor();
     await keyboardReach(operations.getByRole("link", { name: "Entitlements", exact: true }));
     await page.keyboard.press("Enter");
@@ -479,7 +479,7 @@ try {
     assert.equal(await workbench().getAttribute("data-order-id"), B);
     assert.equal(await (await sourceEditor()).inputValue(), "Persisted report B");
     await page.getByRole("button", { name: "Back to investigation queue", exact: true }).click();
-    await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
     assert.equal(await workbench().count(), 0);
     detailFailure = A;
     await page.locator("article").filter({ hasText: A }).getByRole("button", { name: /^(Start investigation|Continue investigation|Recover investigation|View delivered report|Open investigation)$/ }).click();
@@ -487,7 +487,7 @@ try {
     assert.equal(await workbench().count(), 0);
     assert.equal(await page.locator("main input, main textarea, main select").count(), 0);
     await page.getByRole("button", { name: "Return to queue", exact: true }).click();
-    await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
     detailFailure = null;
     assert.equal(requests.length, 0, "Detail navigation and read failures must submit zero mutations");
     await page.screenshot({ path: resolve(artifacts, "queue-after-private-read-regression.png") });
@@ -532,7 +532,7 @@ try {
       const count = detailReads.length;
       if (exit === "queue") {
         await page.evaluate(() => { location.hash = ""; });
-        await page.getByRole("heading", { name: "Property investigation queue", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "Investigator Dashboard", exact: true }).waitFor();
       } else {
         await broadcastAuth(null);
         await page.waitForURL(/\/auth/);
@@ -589,7 +589,7 @@ try {
       await admin.screenshot({ path: resolve(artifacts, `admin-priority-${width}.png`) });
     }
     await priority.getByRole("link", { name: "Open investigation queue" }).click();
-    await admin.getByRole("heading", { name: "Property investigation queue" }).waitFor();
+    await admin.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
     assert.equal(new URL(admin.url()).hash, "");
     await admin.close();
     rows[0].status = rows[0].status_enum = previousStatus;
@@ -672,7 +672,7 @@ try {
     await page.getByRole("heading", { name: "The requested order was not found" }).waitFor();
     assert.equal(await workbench().count(), 0);
     await page.goto(`${baseUrl}/admin/fulfillment#order-384be2fe`);
-    await page.getByRole("heading", { name: "Property investigation queue" }).waitFor();
+    await page.getByRole("heading", { name: "Investigator Dashboard" }).waitFor();
     assert.equal(await workbench().count(), 0);
   });
   await check("incomplete saved content blocks both delivery controls", async () => {

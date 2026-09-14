@@ -1,56 +1,31 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { LockKeyhole } from "lucide-react";
 
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth/useAuth";
-import { investigationClient } from "@/lib/investigation/investigationClient";
+import { useStaffAccess } from "@/lib/auth/StaffAccess";
 
 const OperationsAccess = createContext({ isAdmin: false, accessToken: null as string | null });
 export function useOperationsAccess() { return useContext(OperationsAccess); }
 
-export function AdminGuard({ children, allowAssignedInvestigations = false }: { children: ReactNode; allowAssignedInvestigations?: boolean }) {
-  const { user, session, loading } = useAuth();
+export function AdminGuard({ children, allowAssignedInvestigations = false, redirectInvestigator = false }: { children: ReactNode; allowAssignedInvestigations?: boolean; redirectInvestigator?: boolean }) {
+  const { user, session, loading, role, checking, unavailable } = useStaffAccess();
   const navigate = useNavigate();
-  const [access, setAccess] = useState<{ userId: string; isAdmin: boolean; assigned: boolean } | null>(null);
-  const currentAccess = access?.userId === user?.id ? access : null;
-  const isAdmin = currentAccess?.isAdmin ?? null;
+  const isAdmin = role === "founder";
+  const isInvestigator = role === "investigator";
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) navigate({ to: "/auth", search: { redirect: `${window.location.pathname}${window.location.search}${window.location.hash}` } });
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!user) {
-      setAccess(null);
-      return;
-    }
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(async ({ data, error }) => {
-        if (cancelled) return;
-        let assigned = false;
-        if (!data && !error && allowAssignedInvestigations) {
-          const result = await investigationClient.rpc("list_assigned_investigation_queue", {});
-          assigned = !result.error && Array.isArray(result.data) && result.data.length > 0;
-        }
-        if (!cancelled) setAccess({ userId: user.id, isAdmin: !error && Boolean(data), assigned });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, allowAssignedInvestigations]);
+    if (redirectInvestigator && isInvestigator) navigate({ to: "/investigator", replace: true, hash: window.location.hash.slice(1) });
+  }, [redirectInvestigator, isInvestigator, navigate]);
 
-  if (loading || !user || isAdmin === null) return null;
+  if (loading || !user || checking || (redirectInvestigator && isInvestigator)) return null;
 
-  if (!isAdmin && !currentAccess?.assigned) {
+  if (!isAdmin && !(allowAssignedInvestigations && isInvestigator)) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <TopNav />
@@ -60,14 +35,15 @@ export function AdminGuard({ children, allowAssignedInvestigations = false }: { 
               <LockKeyhole className="h-5 w-5" />
             </span>
             <h1 className="mt-4 text-xl font-semibold tracking-tight">
-              Founder Operations access required
+              {unavailable ? "Staff access could not be verified" : allowAssignedInvestigations ? "Investigator access required" : "Founder Operations access required"}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Easy Erf Operations is limited to accounts with the admin role. Normal customer
-              investigations and account tools remain available below.
+              {unavailable ? "Your session or staff access could not be confirmed. Sign in again or refresh to check your current access."
+                : "This area is limited to authorised staff. Customer investigations and account tools remain available."}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">Signed in as {user.email}</p>
             <div className="mt-5 flex flex-wrap gap-2">
+              {isInvestigator && <Link to="/investigator" className="rounded border border-border px-4 py-2 text-xs font-semibold">Back to Investigator Dashboard</Link>}
               <Link
                 to="/"
                 className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
@@ -89,13 +65,14 @@ export function AdminGuard({ children, allowAssignedInvestigations = false }: { 
   }
 
   return (
-    <OperationsAccess.Provider value={{ isAdmin, accessToken: session?.access_token ?? null }}>
+    <OperationsAccess.Provider key={`${user.id}:${role}`} value={{ isAdmin, accessToken: session?.access_token ?? null }}>
       {isAdmin && <nav
         aria-label="Founder Operations"
         className="absolute left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
       >
-        <OperationsLink href="/admin">Overview</OperationsLink>
-        <OperationsLink href="/admin/users">Users</OperationsLink>
+        <OperationsLink href="/admin">Founder Dashboard</OperationsLink>
+        <OperationsLink href="/admin/users">Users & Investigators</OperationsLink>
+        <OperationsLink href="/investigator">Investigator Dashboard</OperationsLink>
         <OperationsLink href="/admin/entitlements">Entitlements</OperationsLink>
         <OperationsLink href="/admin/launch-readiness">Launch</OperationsLink>
         <OperationsLink href="/admin/readiness">Providers</OperationsLink>

@@ -68,7 +68,7 @@ type TransitionValues = {
   failureReason?: string;
 };
 
-function FounderFulfillmentPage() {
+export function FounderFulfillmentPage() {
   return (
     <AdminGuard allowAssignedInvestigations>
       <FounderFulfillmentQueue />
@@ -277,6 +277,7 @@ function QueueOverview({
   legacyOrders: FounderQueueSummary[];
   onFocus: (orderId: string) => void;
 }) {
+  const { isAdmin } = useOperationsAccess();
   const openCurrent = currentOrders.filter((order) => orderStatus(order) !== "ready");
   const deliveredCurrent = currentOrders.filter((order) => orderStatus(order) === "ready");
   const nextOrder = openCurrent[0] ?? null;
@@ -289,13 +290,13 @@ function QueueOverview({
             <ReceiptText className="h-3 w-3 text-[#FF8A33]" /> Done-for-You Operations
           </span>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#0D1B2A] md:text-3xl">
-            Property investigation queue
+            Investigator Dashboard
           </h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748B]">
             Start with the orange UP NEXT card. It tells you which customer investigation needs attention and gives one clear action.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {isAdmin && <div className="flex flex-wrap gap-2">
           <Link
             to="/admin/users"
             className="inline-flex items-center gap-1.5 rounded-full border border-[#FF6A00]/25 bg-[#FFF7ED] px-4 py-2 text-xs font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/50"
@@ -308,7 +309,7 @@ function QueueOverview({
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Founder Operations
           </Link>
-        </div>
+        </div>}
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -326,7 +327,7 @@ function QueueOverview({
         description="Each card represents one customer order. Use its plain-language action to start, continue, recover or view it."
         orders={currentOrders}
         loading={loading}
-        empty="No current-format investigations are in the queue."
+        empty={isAdmin ? "No current-format investigations are in the queue." : "No investigations assigned yet. Your assigned investigations will appear here."}
         onFocus={onFocus}
       />
 

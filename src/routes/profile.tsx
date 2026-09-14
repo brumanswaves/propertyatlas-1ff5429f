@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/useAuth";
+import { StaffDashboardLinks } from "@/components/admin/StaffDashboardLinks";
 import { getUserDisplayName } from "@/lib/auth/profile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -169,6 +170,7 @@ function AccountPage() {
           </Link>
         </div>
 
+        <StaffDashboardLinks />
         <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)]">
           <section className="rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6">
             <div className="flex items-start gap-3">

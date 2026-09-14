@@ -1,5 +1,16 @@
 # EE-R999-01 Execution State
 
+## Issue #179 staff dashboards: source candidate, 2026-09-14
+
+- Active release: EE-R999-01. Frozen outcome: separate Founder oversight/user management and assigned-investigator work, with normal navigation and no broader data privileges.
+- Verified starting main: `3f7ae873371792b52d343fc47afa92c5669a50bd`. Branch: `codex/founder-investigator-dashboards`. Follow-up draft PR and exact candidate SHA will be recorded in its receipt. Original dirty worktree preserved.
+- Implemented: canonical role-based staff entry (including empty investigator queue), shared work route, visible navigation/account links, safe local post-login destinations, fail-closed stale-session handling. Existing order, report and approval models unchanged.
+- VERIFIED local candidate: focused auth/payment/navigation checks 19 files / 138 tests; full Vitest 162 files / 1643 tests; TypeScript; node-server production build; lint (zero errors, three Fast Refresh export warnings); whitespace check. Built-browser Founder fixture passed 29 groups. Dashboard matrix covers desktop/mobile visible navigation, empty queue, exact-order/back/legacy entry, founder/customer denial, account switch, expiry and suspension. Final exact-head CI and retrieved artifact inspection remain pending. No production acceptance is claimed.
+- Repaired during verification: stale old-label/old-guard assertions, bounded expiry timer for long-lived sessions, and successful focus revalidation preserving the existing work form. Local npm ci exposes pre-existing package/lock drift; the existing npm-install workflow is used without changing tracked dependencies.
+- Next ranked actions: repair actual verification failures, inspect desktop/mobile and isolated permission evidence, commit/push one draft candidate, request independent review.
+- Owner gates: merge/publication/production acceptance require separate Class B authority. No migration, invitation, account/order mutation, paid AI, email, provider purchase, production action or additional agent is part of this task.
+- Spend: deterministic local/repository checks only; additional discretionary cap $0. No API billing, credit purchase or paid runner/service activated. Actual account spend UNKNOWN.
+
 ## Reversible account access: 2026-09-13
 
 - Active release EE-R999-01. Owner requested suspension/restoration, explicitly preserving reports and audit history rather than deleting accounts.
