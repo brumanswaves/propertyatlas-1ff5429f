@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## PR #180 same-user renewal repair, 2026-09-14
+
+- Review 5199204718 applies to checkpoint `8692fca7796e9a29b66c7a37de3838f05d7fa2f0`. Rechecked unchanged remote branch/main before editing; original dirty worktree preserved. Same PR/branch and no competing implementation.
+- VERIFIED regression first: the built real human-only editor unmounted on a different-token, future-expiry renewal for the same synthetic account, losing unsaved text (local `artifacts/renewal-before/staff-dashboards/receipt.json`).
+- Repair is limited to StaffAccess, AdminGuard and the existing staff browser fixture: same-account/path draft retention is separate from validated access; pending work is hidden/inert, click/submit/key actions blocked and Operations access token withheld. Both identity and roles must validate before resuming. No draft persistence or new authorization model.
+- VERIFIED isolated browser: unsaved human-only text, selected order and Report step survive delayed successful renewal; next investigation read uses the new credential; no save/approval/email/provider request. Rejected renewal, revoked staff role and logout remove the retained draft. Existing account switch, expiry, suspension, unrelated-order and desktop/mobile dashboard checks pass.
+- VERIFIED local full Vitest: 162 files / 1643 tests; focused guardrails 3 files / 10 tests; TypeScript passes; lint zero errors with three existing Fast Refresh warnings. Final build, exact committed browser evidence and all applicable exact-head workflows are recorded in the follow-up PR receipt, not inferred from the old head.
+- Remaining gates: final candidate artifact inspection and independent review; production/OAuth acceptance remains unverified and separately authorized. No merge, publication, migration, account/order action, paid AI or email.
+- Spend cap $0; no paid service/API/credit purchase or additional agent initiated. Actual account spend UNKNOWN. Final process state and exact candidate SHA belong to the PR receipt.
+
 ## Issue #179 staff dashboards: source candidate, 2026-09-14
 
 - Active release: EE-R999-01. Frozen outcome: separate Founder oversight/user management and assigned-investigator work, with normal navigation and no broader data privileges.

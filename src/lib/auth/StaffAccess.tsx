@@ -10,8 +10,8 @@ export function staffRoleFromRows(rows: Array<{ role: string }>): StaffRole {
 }
 
 type AuthState = ReturnType<typeof useAuth>;
-type StaffAccess = AuthState & { role: StaffRole | null; checking: boolean; unavailable: boolean };
-const StaffContext = createContext<StaffAccess>({ user: null, session: null, loading: true, role: null, checking: true, unavailable: false });
+type StaffAccess = AuthState & { role: StaffRole | null; retainedRole: StaffRole | null; checking: boolean; unavailable: boolean };
+const StaffContext = createContext<StaffAccess>({ user: null, session: null, loading: true, role: null, retainedRole: null, checking: true, unavailable: false });
 export function useStaffAccess() { return useContext(StaffContext); }
 
 // Navigation hints use existing Auth + self-readable roles. Order/API/RLS checks
@@ -61,10 +61,14 @@ export function StaffAccessProvider({ children }: { children: ReactNode }) {
     return () => { request.abort(); window.clearTimeout(expiryTimer); };
   }, [token, userId, expiresAt, auth.loading, pathname, generation]);
 
-  // A focus recheck uses the same identity and must not unmount an in-progress
-  // form. A rejected recheck still removes access; changed auth never reuses it.
+  // Retention is only a mounted-draft hint, never validated access. The guard
+  // hides/inerts it until the new credential passes identity AND role checks.
   const current = !auth.loading && token && resolved?.token === token && resolved.userId === userId &&
     resolved.expiresAt === expiresAt && resolved.pathname === pathname ? resolved : null;
+  const retainedRole = !auth.loading && token && !current && resolved && resolved.userId === userId &&
+    resolved.pathname === pathname && !resolved.unavailable && (!expiresAt || expiresAt * 1000 > Date.now())
+    ? resolved.role : null;
   return <StaffContext.Provider value={{ ...auth, role: current?.role ?? null,
+    retainedRole,
     checking: auth.loading || Boolean(token && !current), unavailable: current?.unavailable ?? false }}>{children}</StaffContext.Provider>;
 }

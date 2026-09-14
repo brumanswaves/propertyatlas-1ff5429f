@@ -10,8 +10,9 @@ const OperationsAccess = createContext({ isAdmin: false, accessToken: null as st
 export function useOperationsAccess() { return useContext(OperationsAccess); }
 
 export function AdminGuard({ children, allowAssignedInvestigations = false, redirectInvestigator = false }: { children: ReactNode; allowAssignedInvestigations?: boolean; redirectInvestigator?: boolean }) {
-  const { user, session, loading, role, checking, unavailable } = useStaffAccess();
+  const { user, session, loading, role: validatedRole, retainedRole, checking, unavailable } = useStaffAccess();
   const navigate = useNavigate();
+  const role = validatedRole ?? (checking ? retainedRole : null);
   const isAdmin = role === "founder";
   const isInvestigator = role === "investigator";
 
@@ -20,10 +21,10 @@ export function AdminGuard({ children, allowAssignedInvestigations = false, redi
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (redirectInvestigator && isInvestigator) navigate({ to: "/investigator", replace: true, hash: window.location.hash.slice(1) });
-  }, [redirectInvestigator, isInvestigator, navigate]);
+    if (!checking && redirectInvestigator && isInvestigator) navigate({ to: "/investigator", replace: true, hash: window.location.hash.slice(1) });
+  }, [checking, redirectInvestigator, isInvestigator, navigate]);
 
-  if (loading || !user || checking || (redirectInvestigator && isInvestigator)) return null;
+  if (loading || !user || (checking && !retainedRole) || (redirectInvestigator && isInvestigator)) return null;
 
   if (!isAdmin && !(allowAssignedInvestigations && isInvestigator)) {
     return (
@@ -65,7 +66,12 @@ export function AdminGuard({ children, allowAssignedInvestigations = false, redi
   }
 
   return (
-    <OperationsAccess.Provider key={`${user.id}:${role}`} value={{ isAdmin, accessToken: session?.access_token ?? null }}>
+    <OperationsAccess.Provider key={`${user.id}:${role}`} value={{ isAdmin, accessToken: checking ? null : session?.access_token ?? null }}>
+      {checking && <p role="status" className="px-4 py-28 text-center">Checking staff access. Your unsaved work is held while your session is verified.</p>}
+      <div data-staff-work hidden={checking} inert={checking}
+        onClickCapture={(event) => { if (checking) { event.preventDefault(); event.stopPropagation(); } }}
+        onSubmitCapture={(event) => { if (checking) { event.preventDefault(); event.stopPropagation(); } }}
+        onKeyDownCapture={(event) => { if (checking) { event.preventDefault(); event.stopPropagation(); } }}>
       {isAdmin && <nav
         aria-label="Founder Operations"
         className="absolute left-1/2 top-20 z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-full border border-border bg-card/95 p-1 shadow-panel backdrop-blur"
@@ -79,6 +85,7 @@ export function AdminGuard({ children, allowAssignedInvestigations = false, redi
         <OperationsLink href="/admin/public-data-debug">Data debug</OperationsLink>
       </nav>}
       {children}
+      </div>
     </OperationsAccess.Provider>
   );
 }

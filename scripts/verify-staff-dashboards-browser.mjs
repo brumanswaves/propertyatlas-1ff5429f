@@ -32,7 +32,7 @@ const detail = { ...metadata, user_id: B, review_focus: "property_check", review
 const checks = [], network = [], errors = [];
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 async function fixture(actor, width) {
-  const state = { actor, empty: false, suspended: false, delayed: null };
+  const state = { actor, empty: false, suspended: false, delayed: null, renewal: null, roleRevoked: false };
   const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: "block" });
   await context.addInitScript(({ keys, session }) => {
     for (const key of keys) localStorage.setItem(key, JSON.stringify(session));
@@ -41,15 +41,22 @@ async function fixture(actor, width) {
     const request = route.request(), url = new URL(request.url());
     const json = (value, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(value) });
     if (url.pathname.startsWith("/auth/v1/")) {
-      if (url.pathname.endsWith("/user")) return state.suspended ? json({ code: "user_banned" }, 403) : json(sessionFor(state.actor).user);
+      if (url.pathname.endsWith("/user")) {
+        if (state.renewal && request.headers().authorization === `Bearer ${state.renewal.session.access_token}`) {
+          state.renewal.started();
+          await state.renewal.gate;
+        }
+        return state.suspended ? json({ code: "user_banned" }, 403) : json(sessionFor(state.actor).user);
+      }
       return json({ error: "Invalid or expired session" }, 401);
     }
-    if (url.pathname === "/rest/v1/user_roles") return json(state.actor === "founder" ? [{ role: "admin" }] : state.actor === "worker" ? [{ role: "moderator" }] : []);
+    if (url.pathname === "/rest/v1/user_roles") return json(state.roleRevoked ? [] : state.actor === "founder" ? [{ role: "admin" }] : state.actor === "worker" ? [{ role: "moderator" }] : []);
     if (url.pathname.startsWith("/rest/v1/rpc/")) {
       const name = url.pathname.split("/").at(-1), body = request.postDataJSON();
       const allowed = ["list_easy_erf_founder_queue", "list_assigned_investigation_queue", "read_assigned_investigation_header", "read_order_investigation", "read_investigation_review"];
       assert(allowed.includes(name), `Unexpected RPC: ${name}`);
-      network.push({ actor: state.actor, name, order: body.p_order_id ?? null });
+      network.push({ actor: state.actor, name, order: body.p_order_id ?? null,
+        renewedCredential: Boolean(state.renewal && request.headers().authorization === `Bearer ${state.renewal.session.access_token}`) });
       if (state.actor === "customer" || state.suspended) return json({ code: "42501" }, 403);
       if (name === "list_easy_erf_founder_queue") { assert.equal(state.actor, "founder"); return json([metadata]); }
       if (name === "list_assigned_investigation_queue") return json(state.empty ? [] : [metadata]);
@@ -61,7 +68,7 @@ async function fixture(actor, width) {
       }
       if (name === "read_investigation_review") return json(null);
       return json({ schemaVersion: 1, orderId: A, customerId: B, parcelId: parcel, revision: 17,
-        canWork: true, canApprove: false, assets: [], siteProject: null, userData: {
+        canWork: true, canApprove: state.actor === "founder", assets: [], siteProject: null, userData: {
           normalizedParcel: { id: parcel, source: "manual", sourceLabel: "Independent synthetic fixture",
             erfNumber: "1570", portion: "0", knownFields: [], missingFields: [] },
         } });
@@ -100,6 +107,77 @@ async function screenshot(page, name) {
   await page.screenshot({ path: resolve(artifacts, name) });
 }
 try {
+  // A new token (not a focus event) must retain the real, unsaved report editor.
+  const renewal = await fixture("founder", 1440);
+  await renewal.page.goto(`${base}/investigator#order-${A}`);
+  const renewalWorkspace = renewal.page.getByRole("region", { name: "Customer investigation workspace", exact: true, includeHidden: true });
+  await renewalWorkspace.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
+  const editor = renewal.page.getByRole("form", { name: "Human-only investigation review", includeHidden: true });
+  const draft = "Unsaved synthetic human-only findings must survive session renewal.";
+  await editor.getByLabel("Bottom line", { exact: true }).fill(draft);
+  const selectedStep = await renewalWorkspace.locator('[aria-current="step"]').innerText();
+  let finishRenewal, renewalStarted;
+  const renewing = new Promise(done => { renewalStarted = done; });
+  const renewedSession = { ...sessionFor("founder"), expires_at: 4102448400 };
+  renewedSession.access_token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: renewedSession.user.id, exp: renewedSession.expires_at, aud: "authenticated", role: "authenticated", jti: "synthetic-renewal" })}.fixture-only`;
+  renewal.state.renewal = { session: renewedSession, gate: new Promise(done => { finishRenewal = done; }), started: renewalStarted };
+  await renewal.page.evaluate(({ keys, session }) => {
+    for (const key of keys) {
+      localStorage.setItem(key, JSON.stringify(session));
+      const channel = new BroadcastChannel(key);
+      channel.postMessage({ event: "TOKEN_REFRESHED", session }); channel.close();
+    }
+  }, { keys, session: renewedSession });
+  await renewing;
+  // Keep the request unresolved long enough to observe the intermediate render.
+  await renewal.page.waitForTimeout(100);
+  assert.equal(await editor.count(), 1, "Same-user renewal unmounted the unsaved human-only editor");
+  assert.equal(await editor.locator("textarea").first().inputValue(), draft);
+  assert.equal(await editor.isVisible(), false, "Unvalidated session must not expose actionable work");
+  assert.equal(await renewal.page.locator("[data-staff-work]").getAttribute("inert"), "");
+  await screenshot(renewal.page, "renewal-validation-pending.png");
+  const requestsBeforeResume = network.length;
+  await editor.evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await renewalWorkspace.locator("button").filter({ hasText: "Generate investigation brief" }).evaluate(button => button.click());
+  await renewal.page.waitForTimeout(150);
+  assert.equal(network.length, requestsBeforeResume, "Pending renewal initiated a work request");
+  finishRenewal();
+  await editor.waitFor({ state: "visible" });
+  assert.equal(await editor.locator("textarea").first().inputValue(), draft);
+  assert.equal(await renewalWorkspace.locator('[aria-current="step"]').innerText(), selectedStep);
+  assert.equal(new URL(renewal.page.url()).hash, `#order-${A}`);
+  await editor.locator("textarea").first().scrollIntoViewIfNeeded();
+  await screenshot(renewal.page, "renewed-human-only-draft.png");
+  const renewedRead = renewal.page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/read_order_investigation"));
+  await renewalWorkspace.getByRole("button", { name: "Reload saved evidence", exact: true }).click();
+  await renewedRead;
+  assert(network.slice(requestsBeforeResume).some(entry => entry.name === "read_order_investigation" && entry.renewedCredential));
+  await renewal.context.close();
+  checks.push("Different-token same-user renewal preserves real human-only unsaved text, selected order and step; pending work is inaccessible; next evidence read uses renewed credential; no save/approval/email/provider request");
+  for (const failure of ["rejected", "revoked", "logout"]) {
+    const denied = await fixture("founder", 1440);
+    await denied.page.goto(`${base}/investigator#order-${A}`);
+    await denied.page.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Review report/ }).click();
+    await denied.page.getByRole("form", { name: "Human-only investigation review" }).getByLabel("Bottom line", { exact: true }).fill(draft);
+    denied.state.suspended = failure === "rejected";
+    denied.state.roleRevoked = failure === "revoked";
+    await denied.page.evaluate(({ keys, session, failure }) => {
+      for (const key of keys) {
+        if (failure === "logout") localStorage.removeItem(key);
+        else localStorage.setItem(key, JSON.stringify(session));
+        const channel = new BroadcastChannel(key);
+        channel.postMessage({ event: failure === "logout" ? "SIGNED_OUT" : "TOKEN_REFRESHED", session: failure === "logout" ? null : session });
+        channel.close();
+      }
+    }, { keys, session: renewedSession, failure });
+    if (failure === "logout") await denied.page.waitForURL(url => url.pathname === "/auth");
+    else await denied.page.getByRole("heading", { name: failure === "rejected" ? "Staff access could not be verified" : "Investigator access required", exact: true }).waitFor();
+    assert.equal(await denied.page.getByRole("form", { name: "Human-only investigation review", includeHidden: true }).count(), 0);
+    assert(!(await denied.page.locator("body").textContent()).includes(draft));
+    await denied.context.close();
+  }
+  checks.push("Rejected renewed identity, revoked staff role and logout remove the retained human-only draft, not just hide it");
+
   for (const width of [1440, 390]) {
     const founder = await fixture("founder", width);
     await founder.page.goto(`${base}/auth`);
