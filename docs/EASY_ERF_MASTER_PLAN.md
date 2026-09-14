@@ -10,6 +10,10 @@ When a future idea, branch, PR, external-builder prompt, or design decision conf
 
 GitHub `main` is the code source of truth. This document is the product source of truth.
 
+### Staff entry and work ownership
+
+Founder Dashboard at `/admin` owns user/access management, assignment and permitted oversight. Investigator Dashboard at `/investigator` reuses the existing exact-order investigation/report work area. An active authorised investigator can enter an empty work dashboard before receiving an assignment, but can read or act on only authorised orders. Normal desktop, mobile and account navigation exposes the appropriate dashboard. Founder privileges are not implied by investigator access; legacy `/admin/fulfillment#order-<uuid>` links remain supported.
+
 ---
 
 ## 2. North Star

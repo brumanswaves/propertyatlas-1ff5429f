@@ -195,6 +195,14 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Do not regress: Do not expose service-role credentials in the browser, add unaudited entitlement or financial mutations, duplicate the admin-role system, or present unavailable operational coverage as zero activity.
 - Related: `docs/EASY_ERF_DESIGN_SYSTEM.md`, `src/components/admin/AdminGuard.tsx`, `/admin/readiness`, `/admin/public-data-debug`.
 
+### EE-023 clarification: Founder and investigator entry (2026-09-14, issue #179)
+
+- Founder `admin` and investigator `moderator` remain the existing canonical roles. Assignment count is not a role or a dashboard-entry gate.
+- `/admin` remains Founder Dashboard. Investigators opening that landing are directed to `/investigator`; founder-only user management stays denied with a work-dashboard return link.
+- Investigator Dashboard shares the current metadata queue, deliberate full-UUID selection and investigation/report tools. Zero assignments is an honest empty state. Backend order/approval permissions remain authoritative.
+- Visible desktop/mobile/account links and role-aware sign-in entry must preserve explicit local property/order destinations. Legacy fulfillment URLs and hashes remain valid. Account changes and failed session validation must remove stale staff content.
+- This refines EE-023 navigation, not its privileged-action boundary; no new authentication or permission system is introduced.
+
 ## EE-024 - Canonical backend ownership is separate from browser cutover
 
 - Date: 2026-08-17.

@@ -17,9 +17,10 @@ describe("Easy Erf Founder Operations guardrails", () => {
   it("extends the existing protected admin architecture", () => {
     const source = routeSource();
 
-    expect(source).toContain("<AdminGuard>");
-    expect(source).toContain("Founder Operations");
-    expect(guardSource()).toContain('.eq("role", "admin")');
+    expect(source).toContain("<AdminGuard redirectInvestigator>");
+    expect(source).toContain("Founder Dashboard");
+    expect(guardSource()).toContain('role === "founder"');
+    expect(guardSource()).toContain("useStaffAccess()");
   });
 
   it("uses real admin-readable operational records instead of demo KPIs", () => {

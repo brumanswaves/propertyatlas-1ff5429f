@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { BRAND } from "@/lib/brand";
 import { PRIMARY_NAV_LINKS, SIGNED_IN_NAV_LINKS } from "@/lib/navigation";
+import { staffNavigation } from "@/lib/navigation";
+import { useStaffAccess } from "@/lib/auth/StaffAccess";
 
 interface TopNavProps {
   center?: ReactNode;
@@ -19,6 +21,8 @@ interface TopNavProps {
 
 export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavProps = {}) {
   const { user } = useAuth();
+  const { role } = useStaffAccess();
+  const signedInLinks = [...staffNavigation(role), ...SIGNED_IN_NAV_LINKS];
   const [open, setOpen] = useState(false);
   const greetingName = getUserGreetingName(user);
   const mapHeader = Boolean(center || mobileCenter || subtitle);
@@ -58,7 +62,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
 
         {center && <div className="hidden min-w-0 flex-1 md:block">{center}</div>}
 
-        <nav className="hidden shrink-0 items-center gap-0.5 md:flex" aria-label="Primary navigation">
+        <nav className="hidden shrink-0 items-center gap-0.5 xl:flex" aria-label="Primary navigation">
           {PRIMARY_NAV_LINKS.map((link) => (
             <Link
               key={link.to}
@@ -73,7 +77,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
 
           {user ? (
             <>
-              {SIGNED_IN_NAV_LINKS.map((link) => (
+              {signedInLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
@@ -112,7 +116,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
 
         <button
           onClick={() => setOpen((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/[0.06] text-primary-foreground ring-1 ring-primary-foreground/15 backdrop-blur md:hidden"
+          className="grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/[0.06] text-primary-foreground ring-1 ring-primary-foreground/15 backdrop-blur xl:hidden"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
         >
@@ -141,9 +145,9 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
         <>
           <div
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm xl:hidden"
           />
-          <div className="fixed inset-x-3 top-16 z-50 max-h-[80vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-panel md:hidden">
+          <div className="fixed inset-x-3 top-16 z-50 max-h-[80vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-panel xl:hidden">
             <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Easy Erf
             </div>
@@ -162,7 +166,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                 </li>
               ))}
               {user &&
-                SIGNED_IN_NAV_LINKS.map((link) => (
+                signedInLinks.map((link) => (
                   <li key={link.to}>
                     <Link
                       to={link.to}

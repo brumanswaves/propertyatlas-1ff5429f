@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useStaffAccess } from "@/lib/auth/StaffAccess";
+import { safeReturnPath } from "@/lib/navigation";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -12,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({ redirect: safeReturnPath(search.redirect) ?? undefined }),
   head: () => ({
     meta: [
       { title: `Sign in - ${BRAND.site}` },
@@ -24,12 +27,21 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const { redirect } = Route.useSearch();
+  const { user, role, checking, unavailable } = useStaffAccess();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user || checking || unavailable || !role) return;
+    const destination = redirect ?? (role === "founder" ? "/admin" : role === "investigator" ? "/investigator" : "/");
+    // A validated same-origin path preserves explicit property/order links.
+    window.location.replace(destination);
+  }, [user, role, checking, unavailable, redirect]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,11 +58,11 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Account created — you're signed in.");
-        navigate({ to: "/" });
+        // Staff role resolution chooses the default landing after sign-in.
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/" });
+        // Preserve the requested destination through the shared auth state.
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
@@ -61,7 +73,7 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const redirectTo = window.location.origin;
+    const redirectTo = `${window.location.origin}/auth${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
 
     if (resolveGoogleAuthTransport() === "supabase") {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -86,7 +98,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/" });
+    navigate({ to: "/auth", search: { redirect } });
   }
 
   return (
@@ -133,6 +145,7 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "signin" ? "Sign in to continue exploring." : "Free forever. Upgrade anytime."}
           </p>
+          {user && unavailable && <p role="alert" className="mt-3 text-sm text-destructive">Your current access could not be verified. Sign in again to continue.</p>}
 
           <Button
             type="button"

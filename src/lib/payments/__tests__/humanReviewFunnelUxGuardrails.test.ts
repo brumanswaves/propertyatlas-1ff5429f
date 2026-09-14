@@ -70,7 +70,7 @@ describe("Done-for-You customer funnel", () => {
 
 describe("Done-for-You founder fulfillment", () => {
   it("prioritizes open work and tells the founder to complete the standard investigation first", () => {
-    expect(fulfillment).toContain("Property investigation queue");
+    expect(fulfillment).toContain("Investigator Dashboard");
     expect(fulfillment).toContain("Waiting to start");
     expect(fulfillment).toContain("UP NEXT");
     expect(fulfillment).toContain("Continue investigation");

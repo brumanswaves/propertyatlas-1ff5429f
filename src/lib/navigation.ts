@@ -9,6 +9,22 @@ export const SIGNED_IN_NAV_LINKS = [
   { to: "/profile", label: "Account" },
 ] as const;
 
+export function staffNavigation(role: "founder" | "investigator" | "customer" | null) {
+  if (role === "founder") return [
+    { to: "/admin", label: "Founder Dashboard" },
+    { to: "/investigator", label: "Investigator Dashboard" },
+  ] as const;
+  return role === "investigator" ? [{ to: "/investigator", label: "Investigator Dashboard" }] as const : [];
+}
+
+export function safeReturnPath(value: unknown): string | null {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") ||
+      [...value].some(char => char === "\\" || char.charCodeAt(0) <= 32)) return null;
+  const url = new URL(value, "https://easyerf.invalid");
+  if (url.origin !== "https://easyerf.invalid" || url.pathname === "/auth") return null;
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export const FOOTER_PRODUCT_LINKS = [
   { to: "/", label: "Find a Property" },
   { to: "/how-it-works", label: "How It Works" },

@@ -25,7 +25,7 @@ import { AdminGuard } from "@/components/admin/AdminGuard";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Founder Operations | Easy Erf" },
+      { title: "Founder Dashboard | Easy Erf" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -76,7 +76,7 @@ type ProviderHealth = {
 
 function AdminPage() {
   return (
-    <AdminGuard>
+    <AdminGuard redirectInvestigator>
       <FounderOperations />
     </AdminGuard>
   );
@@ -182,7 +182,7 @@ function FounderOperations() {
               <ShieldCheck className="h-3 w-3 text-accent" /> Easy Erf Operations
             </span>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              Founder Operations
+              Founder Dashboard
             </h1>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               Start with customer Done-for-You investigations. System and provider diagnostics stay available below when something needs troubleshooting.
@@ -190,7 +190,7 @@ function FounderOperations() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              to="/admin/fulfillment"
+              to="/investigator"
               className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6A00] px-5 py-2.5 text-xs font-semibold text-white shadow-soft hover:bg-[#FF7D1F]"
             >
               <ReceiptText className="h-3.5 w-3.5" /> Review next Done-for-You investigation
@@ -221,7 +221,7 @@ function FounderOperations() {
                 Open the queue to see one clear UP NEXT action. Failed orders are shown as Needs recovery and can be reopened without losing their saved evidence.
               </p>
             </div>
-            <Link to="/admin/fulfillment" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2 text-sm font-semibold text-white">
+            <Link to="/investigator" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0D1B2A] px-5 py-2 text-sm font-semibold text-white">
               Open investigation queue <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

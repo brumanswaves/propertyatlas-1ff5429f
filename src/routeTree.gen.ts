@@ -19,6 +19,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PartnershipsRouteImport } from './routes/partnerships'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as InvestigatorRouteImport } from './routes/investigator'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ForInvestorsRouteImport } from './routes/for-investors'
 import { Route as ForHomeownersRouteImport } from './routes/for-homeowners'
@@ -107,6 +108,11 @@ const PartnershipsRoute = PartnershipsRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestigatorRoute = InvestigatorRouteImport.update({
+  id: '/investigator',
+  path: '/investigator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -329,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/investigator': typeof InvestigatorRoute
   '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/investigator': typeof InvestigatorRoute
   '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
@@ -432,6 +440,7 @@ export interface FileRoutesById {
   '/for-homeowners': typeof ForHomeownersRoute
   '/for-investors': typeof ForInvestorsRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/investigator': typeof InvestigatorRoute
   '/orders': typeof OrdersRoute
   '/partnerships': typeof PartnershipsRoute
   '/pricing': typeof PricingRoute
@@ -485,6 +494,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/investigator'
     | '/orders'
     | '/partnerships'
     | '/pricing'
@@ -536,6 +546,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/investigator'
     | '/orders'
     | '/partnerships'
     | '/pricing'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/for-homeowners'
     | '/for-investors'
     | '/how-it-works'
+    | '/investigator'
     | '/orders'
     | '/partnerships'
     | '/pricing'
@@ -639,6 +651,7 @@ export interface RootRouteChildren {
   ForHomeownersRoute: typeof ForHomeownersRoute
   ForInvestorsRoute: typeof ForInvestorsRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  InvestigatorRoute: typeof InvestigatorRoute
   OrdersRoute: typeof OrdersRoute
   PartnershipsRoute: typeof PartnershipsRoute
   PricingRoute: typeof PricingRoute
@@ -744,6 +757,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investigator': {
+      id: '/investigator'
+      path: '/investigator'
+      fullPath: '/investigator'
+      preLoaderRoute: typeof InvestigatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -1049,6 +1069,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForHomeownersRoute: ForHomeownersRoute,
   ForInvestorsRoute: ForInvestorsRoute,
   HowItWorksRoute: HowItWorksRoute,
+  InvestigatorRoute: InvestigatorRoute,
   OrdersRoute: OrdersRoute,
   PartnershipsRoute: PartnershipsRoute,
   PricingRoute: PricingRoute,

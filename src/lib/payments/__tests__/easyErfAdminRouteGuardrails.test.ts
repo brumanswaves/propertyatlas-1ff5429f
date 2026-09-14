@@ -24,6 +24,6 @@ describe("Easy Erf founder route accessibility", () => {
   it("does not require the Founder Operations page to act as a child-route layout", () => {
     const adminOverview = source("src/routes/admin.tsx");
     expect(adminOverview).not.toContain("<Outlet");
-    expect(adminOverview).toContain('to="/admin/fulfillment"');
+    expect(adminOverview).toContain('to="/investigator"');
   });
 });

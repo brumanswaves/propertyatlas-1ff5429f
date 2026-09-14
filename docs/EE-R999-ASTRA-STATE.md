@@ -1,5 +1,27 @@
 # EE-R999-01 Execution State
 
+## PR #180 same-user renewal repair, 2026-09-14
+
+- Review 5199204718 applies to checkpoint `8692fca7796e9a29b66c7a37de3838f05d7fa2f0`. Rechecked unchanged remote branch/main before editing; original dirty worktree preserved. Same PR/branch and no competing implementation.
+- VERIFIED regression first: the built real human-only editor unmounted on a different-token, future-expiry renewal for the same synthetic account, losing unsaved text (local `artifacts/renewal-before/staff-dashboards/receipt.json`).
+- Repair is limited to StaffAccess, AdminGuard and the existing staff browser fixture: same-account/path draft retention is separate from validated access; pending work is hidden/inert, click/submit/key actions blocked and Operations access token withheld. Both identity and roles must validate before resuming. No draft persistence or new authorization model.
+- VERIFIED isolated browser: unsaved human-only text, selected order and Report step survive delayed successful renewal; next investigation read uses the new credential; no save/approval/email/provider request. Rejected renewal, revoked staff role and logout remove the retained draft. Existing account switch, expiry, suspension, unrelated-order and desktop/mobile dashboard checks pass.
+- VERIFIED local full Vitest: 162 files / 1643 tests; focused guardrails 3 files / 10 tests; TypeScript passes; lint zero errors with three existing Fast Refresh warnings. Final build, exact committed browser evidence and all applicable exact-head workflows are recorded in the follow-up PR receipt, not inferred from the old head.
+- Remaining gates: final candidate artifact inspection and independent review; production/OAuth acceptance remains unverified and separately authorized. No merge, publication, migration, account/order action, paid AI or email.
+- Spend cap $0; no paid service/API/credit purchase or additional agent initiated. Actual account spend UNKNOWN. Final process state and exact candidate SHA belong to the PR receipt.
+
+## Issue #179 staff dashboards: source candidate, 2026-09-14
+
+- Active release: EE-R999-01. Frozen outcome: separate Founder oversight/user management and assigned-investigator work, with normal navigation and no broader data privileges.
+- Verified starting main: `3f7ae873371792b52d343fc47afa92c5669a50bd`. Branch: `codex/founder-investigator-dashboards`, draft PR #180. Implementation checkpoint: `13b7e3cf1f711ea4d5b366a61f791d0b3d7b7898`; the final candidate SHA is recorded in the PR receipt. Original dirty worktree preserved.
+- Implemented: canonical role-based staff entry (including empty investigator queue), shared work route, visible navigation/account links, safe local post-login destinations, fail-closed stale-session handling. Existing order, report and approval models unchanged.
+- VERIFIED local candidate: focused auth/payment/navigation checks 19 files / 138 tests; full Vitest 162 files / 1643 tests; TypeScript; node-server production build; lint (zero errors, three Fast Refresh export warnings); whitespace check. Built-browser Founder fixture passed 29 groups. Dashboard matrix covers desktop/mobile visible navigation, empty queue, exact-order/back/legacy entry, founder/customer denial, account switch, expiry and suspension. Final exact-head CI and retrieved artifact inspection remain pending. No production acceptance is claimed.
+- Repaired during verification: stale old-label/old-guard assertions, bounded expiry timer for long-lived sessions, and successful focus revalidation preserving the existing work form. Local npm ci exposes pre-existing package/lock drift; the existing npm-install workflow is used without changing tracked dependencies.
+- Exact checkpoint CI: Founder, Stripe, Human Review, product recovery and Guided passed. Retrieved Founder artifact 10347498890 (SHA256 `1ca0b2d57b45d6f9807924ff353e67b71fde5bc3ee2957e48dd3a88107d1aa64`) pins the checkpoint and passes the dashboard network/browser matrix and customer-link isolation; screenshots inspected. Isolated shared run 34846369527 passed real delegation/persistence and stopped on one remaining old queue-heading selector after cancelling a delayed read. Artifact 10348435881 (SHA256 `ec1df9e1c9537ca36dddc290e30ccd555e2039c0b789811cfa2556de09f72864`) was retrieved and inspected. Only that stale selector is corrected in this follow-up; backend assertions are not weakened. New exact-head CI remains required.
+- Next ranked actions: repair actual verification failures, inspect desktop/mobile and isolated permission evidence, commit/push one draft candidate, request independent review.
+- Owner gates: merge/publication/production acceptance require separate Class B authority. No migration, invitation, account/order mutation, paid AI, email, provider purchase, production action or additional agent is part of this task.
+- Spend: deterministic local/repository checks only; additional discretionary cap $0. No API billing, credit purchase or paid runner/service activated. Actual account spend UNKNOWN.
+
 ## Reversible account access: 2026-09-13
 
 - Active release EE-R999-01. Owner requested suspension/restoration, explicitly preserving reports and audit history rather than deleting accounts.

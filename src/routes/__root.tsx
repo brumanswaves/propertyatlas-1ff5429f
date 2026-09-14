@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { BRAND } from "../lib/brand";
 import { WorkspaceCloudSync } from "@/components/workbench/WorkspaceCloudSync";
+import { StaffAccessProvider } from "@/lib/auth/StaffAccess";
 
 const OG_IMAGE_URL = "/easy-erf/social/easy-erf-og-banner.png";
 const FAVICON_ICO_URL = "/easy-erf/icons/favicon.ico";
@@ -138,9 +139,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <StaffAccessProvider>
       <WorkspaceCloudSync />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      </StaffAccessProvider>
     </QueryClientProvider>
   );
 }
