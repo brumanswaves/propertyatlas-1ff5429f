@@ -1,5 +1,16 @@
 # EE-R999-01 Execution State
 
+## Issue #181 self-service continuity: review candidate, 2026-09-16
+
+- Active release EE-R999-01. Frozen batch: safe self-service saves/conflicts, browser history, zoning, Strategy, deterministic Site Potential and optional Checks workflow completion.
+- VERIFIED rechecked main/base: `284a20cfeffb2c2560d428f4bd56e71743d3a704`. Isolated branch `codex/self-service-continuity-181`; the draft PR receipt pins the exact candidate SHA and evidence. Original dirty `property-evidence-pack-foundation` worktree remains protected. No competing open PR was found at preflight or readiness.
+- VERIFIED regression first: Strategy flush returned before an in-flight save and swallowed persistence failures (two failing tests). Focused combined repair: 10 files / 83 tests. The first full gate exposed two stale source-string guardrails; these now protect awaited saves and canonical acceptance instead of the superseded implementation (32 focused tests passed). Final full suite: 164 files / 1,653 tests, zero failures. A second full run retained a JSON receipt after the first run's terminal output was lost. TypeScript and node-server production build pass. Targeted lint: zero errors, four Fast Refresh warnings.
+- EXECUTED repairs: account/parcel-scoped conflict notice, acknowledged sync baseline and non-destructive draft backups; transient errors remain retryable; Strategy drains/flushes pending writes before continuation and rehydration; signed-in zoning initializes; no-file Checks acknowledge workflow only; Site Potential canonical acceptance saves before continuation or explicit skip; browser history restores selected erf, Guided step and expert-return context.
+- VERIFIED isolated browser checkpoint: fresh/saved desktop and mobile self-service journey, no-file Checks, zoning reload, accepted envelope / explicit skip, Strategy offline and failed-save retry, navigation during delayed save, same-user renewed credential, account switch, and genuine conflicting drafts. These are synthetic fixtures with all non-local service traffic blocked; geometry is synthetic, not cadastral proof. Final committed screenshots and exact-head CI must be inspected and recorded in the PR receipt before review readiness.
+- Items 1-6 have source and isolated behavioral evidence, not production acceptance. SG first-useful-result (item 7) and concise report/actions (item 8) remain REQUIRED NEXT BATCHES in issue #181. Do not close the issue or claim those are completed by this repair.
+- Next ranked actions: collect and inspect committed browser evidence; push one draft PR and inspect exact-head workflows/artifacts; independent review. Class B rollout requires separate owner approval. No production mutation, deployment, invitation, provider call or purchase is authorized.
+- Spend cap $0. Deterministic local tooling only; no additional agents, API billing, credits or paid services initiated. Actual account spend UNKNOWN. Process status must be freshly inspected in the final receipt.
+
 ## PR #180 same-user renewal repair, 2026-09-14
 
 - Review 5199204718 applies to checkpoint `8692fca7796e9a29b66c7a37de3838f05d7fa2f0`. Rechecked unchanged remote branch/main before editing; original dirty worktree preserved. Same PR/branch and no competing implementation.

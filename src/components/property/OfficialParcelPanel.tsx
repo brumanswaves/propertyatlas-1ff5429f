@@ -101,6 +101,8 @@ import {
 import { persistSavedProperty } from "@/lib/workbench/savedPropertyPersistence";
 import { patchSavedPropertyUserData, isSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 import { buildSavedInvestigationUserDataPatch, flushSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { readPropertyJourneyLocation, writePropertyJourneyLocation } from "@/lib/workbench/propertyJourneyHistory";
+import { InvestigationSaveNotice } from "@/components/workbench/InvestigationSaveNotice";
 import { prepareCustomerInvestigation } from "@/lib/investigation/investigationClient";
 import {
   prepareGuidedIdentityConfirmationTransition,
@@ -1843,6 +1845,25 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     setWorkflowFeedback(null);
   }, [parcelId, userId]);
   useEffect(() => {
+    const restoreNavigation = () => {
+      const location = readPropertyJourneyLocation(userId);
+      if (!location || location.parcelId !== parcelId || !Object.hasOwn(WORKBENCH_SECTIONS, location.tab)) return;
+      setTab(location.tab as Tab);
+      setWorkspaceState((current) => ({ ...current, investigation: {
+        ...current.investigation,
+        currentStepId: location.stepId,
+        intentionallyVisitedStepIds: location.stepId
+          ? Array.from(new Set([...current.investigation.intentionallyVisitedStepIds, location.stepId]))
+          : current.investigation.intentionallyVisitedStepIds,
+        expertWorkspaceOpen: location.tab !== "overview" && location.tab !== "investigation",
+        guidedReturnStepId: location.guidedReturnStepId ?? null,
+      } }));
+    };
+    restoreNavigation();
+    window.addEventListener("popstate", restoreNavigation);
+    return () => window.removeEventListener("popstate", restoreNavigation);
+  }, [parcelId, userId]);
+  useEffect(() => {
     function refresh(event: Event) {
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }>).detail;
       if (detail?.parcelId && detail.parcelId !== parcelId) return;
@@ -2218,7 +2239,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       expertWorkspaceOpen: false,
       lastMeaningfulActionAt: new Date().toISOString(),
     });
-    setTab("investigation");
+    navigateJourney("investigation", stepId);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
@@ -2245,7 +2266,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
           ? tab
           : workspaceState.investigation.lastExpertView,
     }, false);
-    setTab("investigation");
+    navigateJourney("investigation");
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
@@ -2259,7 +2280,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       guidedReturnStepId: null,
       lastMeaningfulActionAt: new Date().toISOString(),
     });
-    setTab("investigation");
+    navigateJourney("investigation", nextStepId);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
@@ -2274,6 +2295,12 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     selectWorkbenchTab(view as Tab, { ...options, markStarted: options?.markStarted });
   }
 
+  function navigateJourney(nextTab: Tab, stepId = readErfWorkspaceState(parcelId, undefined, userId).investigation.currentStepId) {
+    const guidedReturnStepId = readErfWorkspaceState(parcelId, undefined, userId).investigation.guidedReturnStepId;
+    writePropertyJourneyLocation({ userId, selection, parcelId, tab: nextTab, stepId, guidedReturnStepId });
+    setTab(nextTab);
+  }
+
   function selectWorkbenchTab(
     nextTab: Tab,
     options?: {
@@ -2283,7 +2310,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     },
   ) {
     if (nextTab === "overview") {
-      setTab("overview");
+      navigateJourney("overview", null);
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
       return;
     }
@@ -2307,7 +2334,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       if (progressPatch) setWorkspacePatch(progressPatch);
       if (feedback) setWorkflowFeedback(feedback);
     }
-    setTab(nextTab);
+    navigateJourney(nextTab);
     requestAnimationFrame(() => {
       if (options?.anchorId) {
         const target = document.getElementById(options.anchorId);
@@ -2877,6 +2904,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
             {takeoverOffer}
           </section>
         )}
+        <InvestigationSaveNotice parcelId={parcelId} userId={userId} />
         {expertWorkspaceOpen && (
           <>
             <section className="mx-4 mt-4 rounded-[1.35rem] border border-[#0D1B2A]/10 bg-white/88 px-4 py-3 shadow-[0_16px_44px_-36px_rgba(13,27,42,0.45)] md:mx-7 md:mt-5">

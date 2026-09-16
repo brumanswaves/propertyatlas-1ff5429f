@@ -106,6 +106,9 @@ const fakeSession = {
   refresh_token: "acceptance-refresh-token",
   user: fakeUser,
 };
+const renewedToken = `${encodeJwtPart({ alg: "HS256", typ: "JWT" })}.${encodeJwtPart({ aud: "authenticated", exp: 4_102_444_801, iat: 1_787_963_201, role: "authenticated", sub: USER_ID, email: USER_EMAIL })}.${encodeJwtPart("renewed-fixture-signature")}`;
+const otherUser = { ...fakeUser, id: "00000000-0000-4000-8000-000000000158", email: "other-self-service@easyerf.invalid" };
+const otherToken = `${encodeJwtPart({ alg: "HS256", typ: "JWT" })}.${encodeJwtPart({ aud: "authenticated", exp: 4_102_444_801, role: "authenticated", sub: otherUser.id, email: otherUser.email })}.${encodeJwtPart("other-fixture-signature")}`;
 
 const durableRow = {
   id: "00000000-0000-4000-8000-000000001570",
@@ -137,6 +140,10 @@ const rpcCalls = [];
 const unexpectedMutations = [];
 const routeErrors = [];
 const pageErrors = [];
+const selfServiceChecks = [];
+let rejectNextStrategySave = false;
+let simulateOffline = false;
+let holdNextStrategySave = null;
 
 function isObjectResponse(request) {
   const accept = request.headers().accept || "";
@@ -166,13 +173,14 @@ async function installSyntheticSignedInSupabase(context, name) {
   );
 
   await context.route("**/auth/v1/**", async (route) => {
+    if (simulateOffline) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === "GET" && url.pathname.endsWith("/auth/v1/user")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(fakeUser),
+        body: JSON.stringify(request.headers().authorization === `Bearer ${otherToken}` ? otherUser : fakeUser),
       });
       return;
     }
@@ -188,6 +196,7 @@ async function installSyntheticSignedInSupabase(context, name) {
   });
 
   await context.route("**/rest/v1/**", async (route) => {
+    if (simulateOffline) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
@@ -196,6 +205,7 @@ async function installSyntheticSignedInSupabase(context, name) {
       if (url.pathname === "/rest/v1/saved_properties" && method === "GET") {
         const requestedUserId = filterValue(url, "user_id");
         const requestedParcelId = filterValue(url, "parcel_id");
+        if (request.headers().authorization === `Bearer ${otherToken}`) assert.notEqual(requestedUserId, USER_ID, "Account B must not request account A's saved properties");
         const userMatches = !requestedUserId || requestedUserId === USER_ID;
         const parcelMatches = !requestedParcelId || requestedParcelId === PARCEL_ID;
         const found = userMatches && parcelMatches;
@@ -242,6 +252,17 @@ async function installSyntheticSignedInSupabase(context, name) {
           authorization: request.headers().authorization || "",
         };
         rpcCalls.push(call);
+        if (patch?.strategyWorkspace && holdNextStrategySave) {
+          const held = holdNextStrategySave;
+          holdNextStrategySave = null;
+          held.started();
+          await held.release;
+        }
+        if (patch?.strategyWorkspace && rejectNextStrategySave) {
+          rejectNextStrategySave = false;
+          await route.fulfill({ status: 503, json: { code: "FIXTURE_OFFLINE", message: "Synthetic offline save" } });
+          return;
+        }
 
         if (parcelId !== PARCEL_ID || !patch || typeof patch !== "object") {
           await route.fulfill({
@@ -344,7 +365,7 @@ async function waitForRpc(predicate, page, timeout = 20_000) {
 }
 
 function attachPageDiagnostics(page) {
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("pageerror", (error) => pageErrors.push(error.stack ?? error.message));
 }
 
 async function verifyTopOffer(page, label, width) {
@@ -542,7 +563,7 @@ try {
     "reopened Guided working-address heading",
   );
 
-  for (const label of ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"]) {
+  for (const label of (process.env.EASY_ERF_SELF_SERVICE_ONLY ? [] : ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"])) {
     const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
     const step = navigator.getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
     await step.click();
@@ -605,6 +626,129 @@ try {
   assert.ok(await reopenPage.locator("[data-done-for-you-top]").evaluate((el) =>
     Boolean(el.compareDocumentPosition(document.getElementById("property-facts-heading")) & Node.DOCUMENT_POSITION_FOLLOWING)));
 
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    if (width === 1440) await reopenPage.getByRole("button", { name: /^(Investigate this property|Continue investigation)$/i }).first().click();
+    const step = (label) => reopenPage.getByRole("region", { name: "Guided investigation steps" })
+      .getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
+    await step("Zoning").click();
+    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+    const confirm = reopenPage.getByRole("button", { name: "Confirm working zoning", exact: true });
+    if (await confirm.count()) await confirm.click();
+    await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).waitFor();
+    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+    assert.equal(await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).isDisabled(), true);
+    await reopenPage.getByRole("button", { name: "Continue to Property checks", exact: true }).click();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    await reopenPage.getByRole("button", { name: "Continue to Market evidence", exact: true }).click();
+    await step("Strategy").click();
+    assert.ok(durableRow.user_data.easyErfInvestigation.investigation.acknowledgedTaskIds.includes("property-checks"));
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).click();
+    const price = reopenPage.getByLabel("Purchase price", { exact: true });
+    if (width === 1440) {
+      await reopenPage.getByText(/Cloud draft restored|Draft saved/i).first().waitFor();
+      simulateOffline = true;
+      await price.fill("1220000");
+      await price.blur();
+      await reopenPage.getByText("Offline draft saved in this browser", { exact: false }).waitFor();
+      assert.equal(await price.inputValue(), "1220000");
+      simulateOffline = false;
+      await reopenPage.getByRole("button", { name: "Retry", exact: true }).click();
+      await reopenPage.getByText(/Draft saved at/i).first().waitFor();
+      assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, "1220000");
+    }
+    rejectNextStrategySave = true;
+    await price.fill(String(1234000 + width));
+    await price.blur();
+    await reopenPage.getByRole("alert").filter({ hasText: /draft is still kept locally/ }).waitFor();
+    assert.equal(await price.inputValue(), String(1234000 + width));
+    await reopenPage.getByRole("button", { name: "Retry", exact: true }).click();
+    await reopenPage.getByText(/Draft saved at/i).first().waitFor();
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, String(1234000 + width));
+    let signalStarted, releaseSave;
+    const started = new Promise((resolve) => { signalStarted = resolve; });
+    holdNextStrategySave = { started: signalStarted, release: new Promise((resolve) => { releaseSave = resolve; }) };
+    await price.fill(String(1235000 + width));
+    await price.blur();
+    await started;
+    await reopenPage.goBack();
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).waitFor();
+    await reopenPage.goForward();
+    await price.waitFor();
+    assert.equal(await price.inputValue(), String(1235000 + width));
+    releaseSave();
+    await reopenPage.getByText(/Cloud draft restored|Draft saved at/i).first().waitFor();
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, String(1235000 + width));
+    await price.fill(String(1236000 + width));
+    await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+      const { supabase } = await import("/src/integrations/supabase/client.ts");
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) throw new Error(`Synthetic renewal failed: ${error.name}: ${error.message}`);
+    }, { access_token: renewedToken, refresh_token: "renewed-fixture-refresh" });
+    assert.equal(await price.inputValue(), String(1236000 + width));
+    await price.blur();
+    await waitForRpc((call) => call.patch?.strategyWorkspace?.draftInputs.purchasePrice === String(1236000 + width) && call.authorization === `Bearer ${renewedToken}`, reopenPage);
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-strategy-${width}.png`) });
+    await reopenPage.getByRole("button", { name: "Use this scenario and continue", exact: true }).click();
+    await reopenPage.getByRole("button", { name: /Open Site Potential/i }).click();
+    if (width === 1440) {
+      await reopenPage.getByText("Review inputs and technical details", { exact: true }).click();
+      await reopenPage.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
+      await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
+      await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
+      await reopenPage.getByRole("button", { name: "Continue to report", exact: true }).click();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+      assert.ok(durableRow.user_data.buildEnvelopeInputs.acceptedInputSignature);
+    } else {
+      await reopenPage.getByRole("button", { name: "Skip Site Potential", exact: true }).click();
+    }
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    assert.equal(durableRow.user_data.easyErfInvestigation.sitePotential.skipped, width !== 1440);
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-report-${width}.png`) });
+    const beforeHistory = structuredClone(durableRow.user_data);
+    await reopenPage.goBack();
+    await reopenPage.getByRole("button", { name: "Skip Site Potential", exact: true }).waitFor();
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, beforeHistory.strategyWorkspace.draftInputs.purchasePrice);
+    await reopenPage.reload();
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    await step("Zoning").click();
+    await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).waitFor();
+    selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: true, retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
+  }
+
+  // A second session changes the acknowledged record; the browser must not overwrite it.
+  const remoteIdentity = "uncertain";
+  durableRow.user_data.easyErfInvestigation.identityStatus = remoteIdentity;
+  await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+  await reopenPage.getByRole("region", { name: "This property's save status" })
+    .getByRole("alert").filter({ hasText: /changed in another session/ }).waitFor();
+  assert.equal(durableRow.user_data.easyErfInvestigation.identityStatus, remoteIdentity);
+  const draftBeforeResolution = await reopenPage.evaluate((key) => JSON.parse(localStorage.getItem(key)), scopedWorkspaceKey);
+  assert.equal(draftBeforeResolution.identityStatus, "looks_correct");
+  await reopenPage.getByRole("button", { name: "Keep a draft backup and load saved version", exact: true }).click();
+  await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).waitFor();
+  const backups = await reopenPage.evaluate(({ userId, parcelId }) => JSON.parse(localStorage.getItem(
+    `easyerf.user.${encodeURIComponent(userId)}.investigation-conflict-backups.${encodeURIComponent(parcelId)}`)), { userId: USER_ID, parcelId: PARCEL_ID });
+  assert.equal(backups.at(-1).local.workspace.identityStatus, "looks_correct");
+  assert.equal(backups.at(-1).remote.easyErfInvestigation.identityStatus, remoteIdentity);
+  selfServiceChecks.push({ concurrentEditRejected: true, localAndRemoteDraftsPreserved: true });
+  await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (error) throw new Error("Synthetic account switch failed");
+  }, { access_token: otherToken, refresh_token: "other-fixture-refresh" });
+  await reopenPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  assert.equal(await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).count(), 0);
+  await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (error) throw new Error("Synthetic account restore failed");
+  }, { access_token: renewedToken, refresh_token: "renewed-fixture-refresh" });
+  await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).waitFor();
+  selfServiceChecks.push({ sameUserRenewalRetainsInput: true, renewedCredentialUsed: true, otherAccountCannotSeeDrafts: true, originalAccountDraftsReturn: true });
+
   if (routeErrors.length > 0) {
     throw new Error(`Acceptance route handlers failed: ${routeErrors.join(" | ")}`);
   }
@@ -622,7 +766,7 @@ try {
   acceptancePassed = true;
 
   console.log(
-    "Guided cloud persistence verified: confirm, durable save, fresh hydration; top R999 offer on First Read and all ten Guided steps at desktop/mobile; exact-parcel handoff preserving current work from all ten steps. No production persistence mutation.",
+    `Guided cloud persistence verified: confirm, durable save, fresh hydration; self-service desktop/mobile saves, history, conflicts and account isolation. R999 handoff steps checked: ${handoffChecks.length}. No production persistence mutation.`,
   );
 
 } finally {
@@ -635,7 +779,7 @@ try {
     await context.tracing.stop({ path: resolve(artifacts, `${name}-trace.zip`) });
   }
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({
-    sha, dirty, acceptancePassed, topOfferChecks, handoffChecks, mapChecks, routeErrors, pageErrors, unexpectedMutations,
+    sha, dirty, acceptancePassed, topOfferChecks, handoffChecks, selfServiceChecks, mapChecks, routeErrors, pageErrors, unexpectedMutations,
     productionAccess: false, geometry: "synthetic test-only bounds; not cadastral proof",
     checks: acceptancePassed ? ["signed-in confirm and atomic persistence", "fresh-context hydration", "dashboard reopen at Add address", "late pre-pan response isolation"] : [],
   }, null, 2));

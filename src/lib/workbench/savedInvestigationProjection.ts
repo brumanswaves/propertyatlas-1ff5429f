@@ -53,6 +53,7 @@ export interface SavedInvestigationProjectionV1 {
     lastViewedAt: string | null;
     currentStepId: string | null;
     skippedStepIds: string[];
+    acknowledgedTaskIds?: string[];
     lastMeaningfulActionAt: string | null;
   };
 }
@@ -128,6 +129,7 @@ export function buildSavedInvestigationProjection(
       lastViewedAt: workspace.investigation.lastViewedAt,
       currentStepId: workspace.investigation.currentStepId,
       skippedStepIds: [...workspace.investigation.skippedStepIds],
+      acknowledgedTaskIds: [...workspace.investigation.acknowledgedTaskIds],
       lastMeaningfulActionAt: workspace.investigation.lastMeaningfulActionAt,
     },
   };
@@ -215,6 +217,7 @@ export function readSavedInvestigationProjection(
       lastViewedAt: nullableString(investigation.lastViewedAt),
       currentStepId: nullableString(investigation.currentStepId),
       skippedStepIds: strings(investigation.skippedStepIds),
+      acknowledgedTaskIds: strings(investigation.acknowledgedTaskIds),
       lastMeaningfulActionAt: nullableString(investigation.lastMeaningfulActionAt),
     },
   };
@@ -283,6 +286,7 @@ export function mergeSavedInvestigationProjectionIntoWorkspace(
       lastViewedAt: projection.investigation.lastViewedAt,
       currentStepId: projection.investigation.currentStepId,
       skippedStepIds: [...projection.investigation.skippedStepIds],
+      acknowledgedTaskIds: [...(projection.investigation.acknowledgedTaskIds ?? [])],
       lastMeaningfulActionAt: projection.investigation.lastMeaningfulActionAt,
     },
     updatedAt: projection.workspaceUpdatedAt,

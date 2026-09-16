@@ -227,11 +227,29 @@ describe("Strategy Lab deal snapshot", () => {
 });
 
 describe("Guided Strategy completion", () => {
-  it("saves the current scenario through the chosen-scenario path before continuing", () => {
+  it("waits for acknowledgement and does not continue after a failed save", async () => {
+    let acknowledge!: () => void;
+    const calls: string[] = [];
+    const pending = completeGuidedStrategyScenario(
+      () => new Promise<void>((resolve) => { acknowledge = resolve; }),
+      () => { calls.push("continue"); },
+    );
+    await Promise.resolve();
+    expect(calls).toEqual([]);
+    acknowledge();
+    await pending;
+    expect(calls).toEqual(["continue"]);
+    await expect(completeGuidedStrategyScenario(
+      () => Promise.reject(new Error("offline")),
+      () => { calls.push("unexpected"); },
+    )).rejects.toThrow("offline");
+    expect(calls).toEqual(["continue"]);
+  });
+  it("saves the current scenario through the chosen-scenario path before continuing", async () => {
     const calls: string[] = [];
     const savedScenario = { id: "chosen-scenario" };
 
-    const result = completeGuidedStrategyScenario(
+    const result = await completeGuidedStrategyScenario(
       () => {
         calls.push("save-chosen-scenario");
         return savedScenario;
@@ -243,10 +261,10 @@ describe("Guided Strategy completion", () => {
     expect(calls).toEqual(["save-chosen-scenario", "continue-to-site-potential"]);
   });
 
-  it("does not require an existing chosen scenario before Guided completion can save one", () => {
+  it("does not require an existing chosen scenario before Guided completion can save one", async () => {
     let saved = false;
 
-    completeGuidedStrategyScenario(
+    await completeGuidedStrategyScenario(
       () => {
         saved = true;
         return { id: "new-chosen-scenario" };

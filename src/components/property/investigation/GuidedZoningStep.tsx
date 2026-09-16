@@ -122,7 +122,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
         ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      if ((detail?.userId ?? null) !== userId) return;
+      if (event && (detail?.userId ?? null) !== userId) return;
       const planningState = readStoredPlanningZoneState(parcel.id, userId);
       setSelectedZoneCode(planningState.zoneCode);
       setUserConfirmedZoneCode(planningState.userConfirmedZoneCode);

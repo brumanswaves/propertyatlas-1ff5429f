@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { CheckCircle2, FileWarning } from "lucide-react";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { canonicalAreaM2 } from "@/lib/evidence/parcelArea";
@@ -10,14 +10,13 @@ import { buildParcelPlanningAssessment } from "@/lib/planning/parcelPlanningAsse
 import { derivePlanningEvidenceSignals } from "@/lib/planning/planningEvidenceSignals";
 import { readStoredPlanningZone } from "@/lib/planning/storedPlanningZone";
 import { isUsableSubjectZoningDocument } from "@/lib/planning/zoningEvidence";
-import { deriveBuildEnvelopeCandidate } from "@/lib/sitePotential/acceptedBuildEnvelope";
 import type { BuildEnvelopeResult } from "@/lib/sitePotential/buildEnvelope";
 import { VacantLandBuildEnvelope } from "@/components/property/sitePotential/VacantLandBuildEnvelope";
 import { StreetSideBuildEnvelope } from "@/components/property/sitePotential/StreetSideBuildEnvelope";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
-import { parseStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
+import { flushSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
 import type { ErfWorkspaceState, SitePotentialSnapshot } from "@/lib/workbench/erfWorkspaceState";
 
 export interface SitePotentialTabProps {
@@ -50,10 +49,19 @@ export function SitePotentialTab({
   const userId = user?.id ?? null;
   const shared = useSharedInvestigationScope(parcel.id);
   const isShared = Boolean(shared);
-  const sharedInputs = shared?.snapshot.userData.buildEnvelopeInputs;
+  const operationScope = useMemo(() => ({ active: true, parcelId: parcel.id, userId }), [parcel.id, userId]);
+  useLayoutEffect(() => {
+    operationScope.active = true;
+    setSaving(false);
+    setSaveError(null);
+    setAcceptedEnvelope(false);
+    return () => { operationScope.active = false; };
+  }, [operationScope]);
   const vault = useErfFileVault(parcel.id);
   const [envelopeResult, setEnvelopeResult] = useState<BuildEnvelopeResult | null>(null);
   const [acceptedEnvelope, setAcceptedEnvelope] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const manualZoneCode = useMemo(
     () => workspaceState.planning.zoneCode ?? (isShared ? null : readStoredPlanningZone(parcel.id, userId)),
@@ -96,17 +104,8 @@ export function SitePotentialTab({
   const handleEnvelopeResult = useCallback(
     (result: BuildEnvelopeResult) => {
       setEnvelopeResult(result);
-      const candidate = deriveBuildEnvelopeCandidate({
-        parcel,
-        parcelRing,
-        planning: planningAssessment,
-        recordedAreaM2,
-        userId,
-        ...(isShared ? { storedInputs: parseStoredBuildEnvelopeInputs(sharedInputs) } : {}),
-      });
-      setAcceptedEnvelope(Boolean(candidate?.acceptance.accepted));
     },
-    [isShared, sharedInputs, parcel, parcelRing, planningAssessment, recordedAreaM2, userId],
+    [],
   );
 
   const identityLine = useMemo(() => {
@@ -115,13 +114,23 @@ export function SitePotentialTab({
     return area ? `${erf} - ${area}` : erf;
   }, [parcel]);
 
-  function skipSitePotential() {
-    onUpdateSite({
-      mode: "skipped",
-      skipped: true,
-      progressState: "skipped",
-    });
-    guidedReturn?.onContinue();
+  async function saveAndContinue(skip = false) {
+    if (saving || (!skip && !acceptedEnvelope)) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (skip) {
+        await onUpdateSite({ mode: "skipped", skipped: true, progressState: "skipped" });
+      } else if (workspaceState.sitePotential.skipped) {
+        await onUpdateSite({ mode: "vacant_land", skipped: false, progressState: "inputs_added" });
+      }
+      if (userId && !isShared) await flushSavedInvestigation(parcel.id, userId);
+      if (operationScope.active) guidedReturn?.onContinue();
+    } catch (failure) {
+      if (operationScope.active) setSaveError(failure instanceof Error ? failure.message : "Your inputs are retained. Retry saving before continuing.");
+    } finally {
+      if (operationScope.active) setSaving(false);
+    }
   }
 
   return (
@@ -183,9 +192,11 @@ export function SitePotentialTab({
         lpiCode={parcel.lpi ?? null}
         onOpenTab={onOpenTab}
         onResultChange={handleEnvelopeResult}
+        onAcceptanceChange={setAcceptedEnvelope}
       />
 
       <StreetSideBuildEnvelope result={envelopeResult} />
+      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
 
       {guidedReturn ? (
         <section className="flex flex-col gap-3 rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -199,15 +210,16 @@ export function SitePotentialTab({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={skipSitePotential}
+              onClick={() => void saveAndContinue(true)}
+              disabled={saving}
               className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#0D1B2A]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0D1B2A]"
             >
               Skip Site Potential
             </button>
             <button
               type="button"
-              onClick={guidedReturn.onContinue}
-              disabled={!acceptedEnvelope}
+              onClick={() => void saveAndContinue()}
+              disabled={!acceptedEnvelope || saving}
               className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
               Continue to report

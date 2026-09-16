@@ -700,7 +700,9 @@ describe("official dossier UX guardrails", () => {
     expect(strategyLab).toContain("Use this scenario and continue");
     expect(strategyLab).not.toContain("disabled={!chosenScenario}");
     expect(strategyLab).toContain("showDirectReport: !isGuided");
-    expect(strategyLab).toContain("completeGuidedStrategyScenario(() => saveScenario(), guidedReturn.onContinue)");
+    expect(strategyLab).toContain("await completeGuidedStrategyScenario(async () => {");
+    expect(strategyLab).toContain("await queue?.flush()");
+    expect(strategyLab).toContain('queue?.getStatus().status !== "saved"');
     expect(strategyLab).not.toContain("Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 8 of 10");
     expect(strategyLab).toContain("Guided completion · Strategy");
     expect(marketEvidence).toContain("Active listing for this erf");

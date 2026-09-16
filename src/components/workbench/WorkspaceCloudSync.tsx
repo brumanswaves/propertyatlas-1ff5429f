@@ -11,20 +11,19 @@ import {
   listErfAssets,
   type ErfAssetCategory,
 } from "@/lib/workbench/erfFileVault";
-import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
+import { patchSavedPropertyUserData, SavedPropertyConflictError } from "@/lib/workbench/savedPropertyUserData";
+import { investigationSyncDecision, preserveInvestigationConflict, readInvestigationSyncBaseline, writeInvestigationSyncBaseline } from "@/lib/workbench/investigationSyncBaseline";
 import {
   buildSavedInvestigationUserDataPatch,
   mergeSavedInvestigationProjectionIntoWorkspace,
   readSavedInvestigationProjection,
-  shouldHydrateSavedInvestigationProjection,
-  savedInvestigationMatchesWorkspace,
   FLUSH_INVESTIGATION_EVENT,
   type FlushInvestigationDetail,
 } from "@/lib/workbench/savedInvestigationProjection";
 import { readSitePotentialProject } from "@/lib/sitePotential/sitePotentialService";
 import { buildCanonicalSitePotentialSnapshot } from "@/lib/sitePotential/sitePotentialSnapshotSync";
 import { PLANNING_ZONE_UPDATED_EVENT } from "@/lib/planning/storedPlanningZone";
-import { toast } from "sonner";
+import { setInvestigationSaveNotice } from "./InvestigationSaveNotice";
 import { BUILD_ENVELOPE_INPUTS_UPDATED_EVENT, parseStoredBuildEnvelopeInputs, readStoredBuildEnvelopeInputs, writeStoredBuildEnvelopeInputs } from "@/lib/sitePotential/buildEnvelopeStore";
 
 interface WorkspaceUpdatedDetail {
@@ -71,6 +70,39 @@ export function WorkspaceCloudSync() {
     const conflicted = new Set<string>();
     const restoring = new Set<string>();
     const saves = new Map<string, Promise<void>>();
+    const loadingSaved = new Set<string>();
+    const loadSavedVersion = async (parcelId: string) => {
+      if (cancelled || loadingSaved.has(parcelId)) return;
+      loadingSaved.add(parcelId);
+      try {
+        const { data, error } = await supabase.from("saved_properties").select("user_data")
+          .eq("user_id", userId).eq("parcel_id", parcelId).maybeSingle();
+        if (cancelled) return;
+        if (error || !data) throw new Error("The saved version could not be read. Your browser draft has not been replaced.");
+        const projection = readSavedInvestigationProjection(data.user_data);
+        if (projection && projection.parcelId !== parcelId) throw new Error("The saved investigation belongs to another property. Your draft is unchanged.");
+        const userData = data.user_data as Record<string, unknown>;
+        if (!projection && !Object.hasOwn(userData, "buildEnvelopeInputs")) throw new Error("No readable saved investigation was found. Your draft is unchanged.");
+        const inputs = parseStoredBuildEnvelopeInputs(userData.buildEnvelopeInputs) ?? {};
+        const remote = { easyErfInvestigation: projection, buildEnvelopeInputs: inputs };
+        const workspace = readErfWorkspaceState(parcelId, window.localStorage, userId);
+        preserveInvestigationConflict(window.localStorage, parcelId, userId,
+          { workspace, buildEnvelopeInputs: readStoredBuildEnvelopeInputs(parcelId, userId) }, remote);
+        restoring.add(parcelId);
+        if (projection) writeErfWorkspaceState(parcelId, mergeSavedInvestigationProjectionIntoWorkspace(parcelId, workspace, projection), window.localStorage, userId);
+        writeStoredBuildEnvelopeInputs(parcelId, inputs, userId);
+        loadedUserData.set(parcelId, userData);
+        writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, remote);
+        conflicted.delete(parcelId);
+        window.dispatchEvent(new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, { detail: { parcelId, userId } }));
+        setInvestigationSaveNotice(parcelId, userId, null);
+      } catch (failure) {
+        if (!cancelled) setInvestigationSaveNotice(parcelId, userId, { message: failure instanceof Error ? failure.message : "The saved version could not be loaded.", loadSaved: () => loadSavedVersion(parcelId) });
+      } finally {
+        restoring.delete(parcelId);
+        loadingSaved.delete(parcelId);
+      }
+    };
 
     const reconcileSitePotentialParcel = async (parcelId: string) => {
       const currentWorkspace = readErfWorkspaceState(parcelId, window.localStorage, userId);
@@ -79,17 +111,18 @@ export function WorkspaceCloudSync() {
         if (cancelled || !project) return currentWorkspace;
         const assets = await listErfAssets(parcelId, SITE_POTENTIAL_ASSET_CATEGORIES);
         if (cancelled) return currentWorkspace;
+        const latestWorkspace = readErfWorkspaceState(parcelId, window.localStorage, userId);
         const nextSitePotential = buildCanonicalSitePotentialSnapshot(
-          currentWorkspace.sitePotential,
+          latestWorkspace.sitePotential,
           project,
           assets,
         );
-        if (!nextSitePotential) return currentWorkspace;
+        if (!nextSitePotential) return latestWorkspace;
 
         return writeErfWorkspaceState(
           parcelId,
           {
-            ...currentWorkspace,
+            ...latestWorkspace,
             sitePotential: nextSitePotential,
           },
           window.localStorage,
@@ -171,33 +204,28 @@ export function WorkspaceCloudSync() {
         const cloudInputs = userData && Object.hasOwn(userData, "buildEnvelopeInputs")
           ? parseStoredBuildEnvelopeInputs(userData.buildEnvelopeInputs) ?? {} : null;
         const browserInputs = readStoredBuildEnvelopeInputs(parcelId, userId);
-        const inputsDiffer = cloudInputs && browserInputs && JSON.stringify(cloudInputs) !== JSON.stringify(browserInputs);
-        const shouldHydrate = projection && projection.parcelId === parcelId &&
-          shouldHydrateSavedInvestigationProjection({ hasStoredBrowserWorkspace, browserWorkspace, projection });
-        if (projection && projection.parcelId === parcelId && !shouldHydrate &&
-            (!savedInvestigationMatchesWorkspace(parcelId, browserWorkspace, projection) || inputsDiffer)) {
+        const local = { ...buildSavedInvestigationUserDataPatch(parcelId, browserWorkspace), buildEnvelopeInputs: browserInputs };
+        const remote = { easyErfInvestigation: projection, buildEnvelopeInputs: cloudInputs };
+        const baseline = readInvestigationSyncBaseline(window.localStorage, parcelId, userId);
+        const decision = investigationSyncDecision(local, remote, baseline, hasStoredBrowserWorkspace);
+        const shouldHydrate = decision === "hydrate";
+        if ((hasUsableProjection || (cloudInputs && Object.keys(cloudInputs).length > 0)) && decision === "conflict") {
           // A newer browser timestamp is not a known cloud baseline. Keep both
           // versions and require an explicit choice instead of silently rebasing.
           conflicted.add(parcelId);
-          toast.error("This browser has changes that differ from the saved investigation. Cloud saving is paused.", {
-            action: { label: "Load saved version", onClick: () => {
-              if (cancelled) return;
-              restoring.add(parcelId);
-              writeErfWorkspaceState(parcelId, mergeSavedInvestigationProjectionIntoWorkspace(
-                parcelId, readErfWorkspaceState(parcelId, window.localStorage, userId), projection), window.localStorage, userId);
-              if (cloudInputs) writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
-              window.dispatchEvent(new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, { detail: { parcelId, userId, zoneCode: projection.planning.zoneCode } }));
-              restoring.delete(parcelId);
-              conflicted.delete(parcelId);
-            } },
+          setInvestigationSaveNotice(parcelId, userId, {
+            message: "This property's browser draft differs from its saved investigation. Neither version has been overwritten.",
+            loadSaved: () => loadSavedVersion(parcelId),
           });
           continue;
         }
-        if (cloudInputs) {
+        if (cloudInputs && shouldHydrate) {
           restoring.add(parcelId);
           writeStoredBuildEnvelopeInputs(parcelId, cloudInputs, userId);
           restoring.delete(parcelId);
         }
+
+        if (shouldHydrate) writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, remote);
         if (
           projection &&
           projection.parcelId === parcelId &&
@@ -258,11 +286,21 @@ export function WorkspaceCloudSync() {
           supabase,
           loadedUserData.get(parcelId),
         );
-        if (!cancelled) loadedUserData.set(parcelId, savedUserData);
+        if (!cancelled) {
+          loadedUserData.set(parcelId, savedUserData);
+          writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, {
+            easyErfInvestigation: savedUserData.easyErfInvestigation,
+            buildEnvelopeInputs: savedUserData.buildEnvelopeInputs ?? null,
+          });
+          setInvestigationSaveNotice(parcelId, userId, null);
+        }
       } catch (failure) {
         if (cancelled) throw failure;
-        conflicted.add(parcelId);
-        toast.error(failure instanceof Error ? failure.message : "Cloud changes were not saved. Reload the investigation before retrying.");
+        if (failure instanceof SavedPropertyConflictError) conflicted.add(parcelId);
+        setInvestigationSaveNotice(parcelId, userId, {
+          message: failure instanceof Error ? failure.message : "Cloud changes were not saved. Your draft is retained; retry when connected.",
+          ...(failure instanceof SavedPropertyConflictError ? { loadSaved: () => loadSavedVersion(parcelId) } : {}),
+        });
         throw failure;
       }
     };
@@ -312,6 +350,9 @@ export function WorkspaceCloudSync() {
 
     return () => {
       cancelled = true;
+      for (const parcelId of loadedUserData.keys()) {
+        setInvestigationSaveNotice(parcelId, userId, null);
+      }
       window.removeEventListener(WORKSPACE_UPDATED_EVENT, onWorkspaceUpdated);
       window.removeEventListener(BUILD_ENVELOPE_INPUTS_UPDATED_EVENT, onWorkspaceUpdated);
       window.removeEventListener(FLUSH_INVESTIGATION_EVENT, onFlush);
