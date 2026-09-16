@@ -2551,7 +2551,7 @@ function StoepAiReportView({
       <SharedInvestigationReport assembly={sharedAssembly} onPreviewSettlement={trackSignedAssetPreviewSettlement}
         onOpenAsset={(assetId) => { const asset = fileVault.assets.find((file) => file.id === assetId); if (asset) void openVaultAsset(asset); }}
         openingControls={{ printOnly, onPrint: handlePrint,
-          onOpenTab: (tab, options) => onSelectView?.(routeTabFor(tab), options),
+          onOpenTab: onSelectView ? (tab, options) => onSelectView(routeTabFor(tab), options) : undefined,
           modeSlot: <ReportViewSelector mode={decisionMode} onChange={updateDecisionMode} />,
           heroSlot: sharedAssembly.envelope ? <ReportBuildableAreaVisual ring={parcelRing} result={sharedAssembly.envelope} printOnly={printOnly} compact /> : undefined,
         }} />

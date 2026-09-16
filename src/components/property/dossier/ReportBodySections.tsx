@@ -47,7 +47,7 @@ function FigureKindChip({ kind }: { kind: MarketFigureKind }) {
 
 function sectionShell(extra?: string) {
   return cn(
-    "report-section rounded-[1.5rem] border border-[#0D1B2A]/10 bg-white p-6 scroll-mt-24",
+    "report-section border-b border-border py-5 scroll-mt-6",
     extra,
   );
 }

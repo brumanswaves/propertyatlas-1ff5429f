@@ -824,6 +824,19 @@ try {
       assert.ok(mapRequests.some((path) => path.includes("satellite-streets-v12")));
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await hero.screenshot({ path: resolve(artifacts, `report-map-${width}.png`) });
+      await page.locator("#report-opening-header").evaluate((header) => {
+        const pinned = document.querySelector('header[aria-label="Selected order identity"]');
+        header.style.scrollMarginTop = `${(pinned?.getBoundingClientRect().height ?? 0) + 24}px`;
+        header.scrollIntoView({ block: "start" });
+      });
+      await page.screenshot({ path: resolve(artifacts, `report-decision-brief-app-${width}.png`) });
+      const beforeReading = requests.length;
+      await page.getByRole("link", { name: "Explore the supporting evidence", exact: true }).click();
+      await page.locator("#report-evidence").waitFor({ state: "visible" });
+      assert.ok(await page.locator("#report-evidence").evaluate((evidence) =>
+        evidence.getBoundingClientRect().top >= document.querySelector('header[aria-label="Selected order identity"]').getBoundingClientRect().bottom),
+      "Report destinations must remain below the pinned order header");
+      assert.equal(requests.length, beforeReading, "Reading report evidence must not save, approve or call a provider");
     }
     assert.ok((await hero.innerText()).includes("recorded parcel boundary"));
   });
