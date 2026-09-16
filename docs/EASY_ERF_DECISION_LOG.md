@@ -102,6 +102,13 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Implementation: Modules feed shared report view models and canonical actions; print is a presentation of the living report state.
 - Related: `docs/easy-erf-report-roadmap.md`, PR #60 and PR #61.
 
+### EE-012 presentation clarification (2026-09-16, issue #181 item 8)
+
+- The existing report opens with the property, evidence-supported assessment, selected Strategy numbers, material risks/unknowns and at most three grouped actions. Supporting evidence remains accessible progressively, and expanded in the print document.
+- This is a presentation of the canonical document, not a new report or action-ranking model. Grouped planning checks retain their individual requirements and sources; the canonical next action remains first. Material conflicts are never truncated to improve the appearance of the summary.
+- View evidence, return to an investigation task and find a professional are distinct destinations. Task controls require a real caller; frozen customer versions do not expose editing controls. In-report navigation preserves exact-order selection and returns focus to its originating link.
+- Owner design review is required before release. No saved findings, calculations, permissions, approval or delivery behavior changes. Saving/history and SG first-useful-result work remain separate batches of issue #181.
+
 ## EE-013 - Paid reports are evidence/commercial pathways
 
 - Date: historical; exact date not recorded.

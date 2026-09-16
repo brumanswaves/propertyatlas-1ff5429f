@@ -216,8 +216,8 @@ describe("Done-for-You appears where users actually work", () => {
     expect(dossier).toContain("Full evidence dossier");
     expect(dossier).toContain("The report opening above is the readable summary");
     expect(dossier).toContain("open={printOnly ? true : undefined}");
-    expect(reportOpening).toContain("<FiveQuestionReportGrid");
-    expect(reportOpening).toContain("buildSelfServiceFiveQuestionContent(doc)");
+    expect(reportOpening).toContain("What could change the decision");
+    expect(reportOpening).toContain("<ReportActionPlan");
     expect(humanReviewedReport).toContain("<FiveQuestionReportGrid");
   });
 });

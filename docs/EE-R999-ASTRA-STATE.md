@@ -1,5 +1,16 @@
 # EE-R999-01 Execution State
 
+## Issue #181 report decision brief: local design candidate, 2026-09-16
+
+- Active release: EE-R999-01. Frozen outcome for this bounded task: a readable existing report with useful assessment/numbers, visible material uncertainty and working source/task/professional destinations. The genuine commercial outcome remains unpassed.
+- VERIFIED main and starting source: `284a20cfeffb2c2560d428f4bd56e71743d3a704`. Sole-writer report branch: `codex/report-decision-brief-181`. Candidate SHA is the commit containing this entry and is pinned by the final browser receipts. No competing PR opened: draft #182 (`84bb2d29f696ddc78234697b5f917166c5c6979a`) is the separate frozen saving/history batch. Original dirty worktree remains untouched.
+- Implemented: a brief opening over canonical evidence; saved Strategy figures with assumptions; all material conflicts visible; three grouped next actions; six expandable evidence sections; source/professional links; property/order-preserving return focus; no enabled task buttons without a caller. Existing approval, frozen-version contents, AI permissions and calculations remain unchanged.
+- VERIFIED final local checks: 96 focused tests; full Vitest 163 files / 1649 tests; TypeScript; node-server build; targeted lint without errors/warnings; diff check. Synthetic sparse/supported report matrix passes at 1440/390 widths with zero backend/provider requests. Built-app Founder fixture passes 29 groups with mocked services and a nonblank deterministic map. Inspection found the pinned staff header could cover in-report destinations; the repaired measured scroll offset passes the built-browser visibility assertion at both widths. Exact candidate browser receipts and screenshots are retained locally; no remote CI result is claimed.
+- Reported but unverified: real-user comprehension, live satellite/provider availability and production appearance. Synthetic screenshots are not customer acceptance. There are no known automated source failures at this checkpoint. Design and independent review remain required.
+- Next ranked actions: verify the final candidate and inspect screenshots; owner reviews the design; after #182 coordination resolves, prepare one non-competing report PR for independent review. SG first-useful-result redesign remains outstanding, not included here.
+- Owner gates/restrictions: design acceptance before release; no merge, deploy, publish, backend/schema/permission change, production data, paid AI, report purchase, order/email action, credential access, Lovable work or new hosting.
+- Spend: existing session and deterministic local tools only; no additional agents, API billing, purchased credits or paid services initiated. Actual account spend UNKNOWN; additional discretionary cap $0. Model/reasoning UI setting is not observable to this task. Preview-server status is reported separately; a preview server is not an implementation worker.
+
 ## PR #180 same-user renewal repair, 2026-09-14
 
 - Review 5199204718 applies to checkpoint `8692fca7796e9a29b66c7a37de3838f05d7fa2f0`. Rechecked unchanged remote branch/main before editing; original dirty worktree preserved. Same PR/branch and no competing implementation.

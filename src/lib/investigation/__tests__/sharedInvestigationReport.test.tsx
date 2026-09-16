@@ -63,14 +63,14 @@ describe("shared complete investigation report", () => {
     expect(html).toContain("investigation-site");
     expect(html).not.toContain("Human-reviewed investigation.");
   });
-  it("paid rendering places Ask then source-linked approved brief above the same investigation", () => {
+  it("paid rendering places the approved brief before optional Ask and the same investigation", () => {
     const { rawVersion } = fixture();
     const version = investigationReviewVersionSchema.parse(rawVersion);
     const html = renderToStaticMarkup(<SharedInvestigationReport assembly={version.report_assembly} version={version} />);
     expect(html).toContain("Human-reviewed investigation.");
     expect(html).toContain("Synthetic Reviewer");
     expect(html).toContain(version.id);
-    expect(html.indexOf('id="report-ask"')).toBeLessThan(html.indexOf('aria-label="Investigation brief"'));
+    expect(html.indexOf('id="report-ask"')).toBeGreaterThan(html.indexOf('aria-label="Investigation brief"'));
     expect(html.indexOf('aria-label="Investigation brief"')).toBeLessThan(html.indexOf('aria-label="Recorded identity"'));
     expect(html).toContain("investigation-source-manual-parcel-record");
     expect(html).not.toContain("This self-service summary");
