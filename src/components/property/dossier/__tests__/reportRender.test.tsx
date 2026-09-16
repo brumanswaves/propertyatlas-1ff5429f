@@ -150,7 +150,8 @@ describe("ReportOpening (rendered)", () => {
   it("renders exactly one opening and one Ask block, before the supporting sections", () => {
     expect(web.match(/class="report-opening /g)?.length ?? 0).toBe(1);
     expect(web.match(/id="report-ask"/g)?.length ?? 0).toBe(1);
-    expect(web.indexOf('id="report-ask"')).toBeGreaterThan(web.indexOf('id="report-next-action"'));
+    expect(web.indexOf('id="report-ask"')).toBeGreaterThan(web.indexOf('id="report-opening-header"'));
+    expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
     expect(web.indexOf('id="report-decision"')).toBeLessThan(
       web.indexOf('id="report-next-action"'),
     );
@@ -162,7 +163,7 @@ describe("ReportOpening (rendered)", () => {
     expect(web).toContain("What could change the decision");
     expect(web).toContain("Evidence readiness");
     expect(web).toContain("Official parcel identity");
-    expect(web.indexOf('id="report-ask"')).toBeGreaterThan(web.indexOf('id="report-decision"'));
+    expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
   });
 
   it("keeps manual parcel values recorded rather than calling them official", () => {
@@ -461,7 +462,7 @@ describe("Report view selector (rendered)", () => {
       />,
     );
 
-  it("renders one obvious Report view control before Ask Easy Erf", () => {
+  it("keeps report perspectives secondary to the top Ask Easy Erf entry", () => {
     const web = render("standard");
     expect(web).toContain("Report view");
     expect(web).toContain("Buyer due diligence");
@@ -469,7 +470,7 @@ describe("Report view selector (rendered)", () => {
     expect(web.indexOf('id="report-view-mode"')).toBeGreaterThan(
       web.indexOf('id="report-opening-header"'),
     );
-    expect(web.indexOf('id="report-view-mode"')).toBeLessThan(web.indexOf('id="report-ask"'));
+    expect(web.indexOf('id="report-view-mode"')).toBeGreaterThan(web.indexOf('id="report-ask"'));
     expect(web.match(/aria-label="Report view"/g)?.length ?? 0).toBe(1);
   });
 
