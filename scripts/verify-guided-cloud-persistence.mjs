@@ -44,6 +44,12 @@ async function installIsolatedMap(context, name) {
     if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
       return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "fixture-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
     }
+    // Local-only acknowledgements: aborting these vendor requests can call a
+    // removed map's error callback. No telemetry or session reaches Mapbox.
+    if (url.hostname === "events.mapbox.com" ||
+        (url.hostname === "api.mapbox.com" && url.pathname === "/map-sessions/v1")) {
+      return route.fulfill({ status: 200, json: {} });
+    }
     if (url.origin === new URL(baseUrl).origin) return route.continue();
     // Supabase mock routes registered below take precedence. All other traffic
     // (map tiles, fonts, telemetry, direct ArcGIS fallback) stays off production.
@@ -643,6 +649,7 @@ try {
     await reopenPage.getByRole("button", { name: "Continue to Market evidence", exact: true }).click();
     await step("Strategy").click();
     assert.ok(durableRow.user_data.easyErfInvestigation.investigation.acknowledgedTaskIds.includes("property-checks"));
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-checks-complete-${width}.png`) });
     await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).click();
     const price = reopenPage.getByLabel("Purchase price", { exact: true });
     if (width === 1440) {
@@ -696,6 +703,7 @@ try {
       await reopenPage.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
       await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
       await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
+      await reopenPage.screenshot({ path: resolve(artifacts, `self-service-envelope-accepted-${width}.png`) });
       await reopenPage.getByRole("button", { name: "Continue to report", exact: true }).click();
       await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
       assert.ok(durableRow.user_data.buildEnvelopeInputs.acceptedInputSignature);
@@ -715,7 +723,7 @@ try {
     await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
     await step("Zoning").click();
     await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).waitFor();
-    selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: true, retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
+    selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: width === 1440 ? true : "covered at desktop", retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
   }
 
   // A second session changes the acknowledged record; the browser must not overwrite it.
