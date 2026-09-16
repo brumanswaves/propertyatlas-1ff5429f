@@ -37,6 +37,8 @@ export function ReportOpening({ doc, askSlot, modeSlot, heroSlot, heroCaption, p
       <div className="mt-2 text-xs text-muted-foreground">{reviewIdentity ?? "Self-service investigation · Not human reviewed."}</div>
     </header>
 
+    {!printOnly && askSlot && <details id="report-ask" className="report-no-print border-b border-border py-2"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">Ask Easy Erf about this erf</summary><div className="mt-4">{askSlot}</div></details>}
+
     <section id="report-decision" aria-label="Property assessment" className="report-section grid gap-5 scroll-mt-6 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <div className="min-w-0">
         <p className="text-xs font-semibold text-accent">The assessment</p>
@@ -95,7 +97,6 @@ export function ReportOpening({ doc, askSlot, modeSlot, heroSlot, heroCaption, p
     </details>}
     {!printOnly && modeSlot && <details id="report-view-mode" className="report-no-print border-b border-border py-4"><summary className="cursor-pointer text-sm font-semibold">Other report perspectives</summary><div className="mt-3">{modeSlot}</div></details>}
     {printOnly && <p className="text-xs text-muted-foreground">{doc.ask.printExplanation}</p>}
-    {!printOnly && askSlot && <details id="report-ask" className="report-no-print border-b border-border py-4"><summary className="cursor-pointer text-sm font-semibold">Ask Easy Erf about this evidence</summary><div className="mt-4">{askSlot}</div></details>}
     {hasEvidenceSections && <a href="#report-evidence" className="report-no-print inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4">Explore the supporting evidence <ArrowDown className="h-4 w-4" /></a>}
   </div>;
 }

@@ -37,6 +37,20 @@ try {
       const interactions = [];
       if (phase !== "before") {
         const originalHash = new URL(page.url()).hash;
+        const ask = page.locator("#report-ask");
+        const askBounds = await ask.boundingBox();
+        const assessmentBounds = await page.locator("#report-decision").boundingBox();
+        assert.ok(askBounds.y >= 0 && askBounds.y + askBounds.height < height, "Ask must be visible without scrolling");
+        assert.ok(askBounds.y + askBounds.height <= assessmentBounds.y, "Ask must be above the assessment");
+        await ask.locator("summary").click();
+        await ask.locator("textarea").fill("What remains unverified for this synthetic erf?");
+        await page.screenshot({ path: `${artifacts}/${evidence}-${screen}-ask.png` });
+        await ask.locator("summary").click();
+        await ask.locator("summary").click();
+        assert.equal(await ask.locator("textarea").inputValue(), "What remains unverified for this synthetic erf?");
+        await ask.locator("summary").click();
+        assert.equal(new URL(page.url()).hash, originalHash);
+        interactions.push("Ask is visible at the top; expands and retains the unsent question; no AI request");
         assert.equal(await page.locator("#report-next-action [data-action-id]").count(), 3);
         assert.equal(await page.locator(".report-evidence-details[open]").count(), 0);
         const sourceLink = page.locator('#report-next-action a[href="#investigation-sg"]').first();

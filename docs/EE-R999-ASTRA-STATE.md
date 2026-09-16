@@ -1,5 +1,12 @@
 # EE-R999-01 Execution State
 
+## Report owner acceptance: Ask stays at the top, 2026-09-16
+
+- Owner accepted the report direction with the explicit condition that erf questions remain at the top. The existing report branch is retained; no competing PR or production action.
+- Narrow follow-up: move the same expandable Ask panel beneath the property heading and before the assessment. Question state, evidence grounding, frozen-version availability, model settings and provider execution remain unchanged.
+- VERIFIED follow-up: 4 focused files / 61 tests; TypeScript; targeted lint; node-server build. Four desktop/mobile sparse/supported browser cases pass first-viewport Ask visibility, opening the real question field and retaining an unsent question with zero AI/backend requests. Screenshots inspected. The preceding candidate's full-suite and built-app results below are not represented as a new full run. Exact final SHA and diff-check result belong to the follow-up receipt.
+- Remaining: independent review and coordinated PR entry after the separate frozen #182 batch. No merge/publication authorization is inferred from design acceptance. Project remains unfinished; spend cap $0, actual account spend UNKNOWN.
+
 ## Issue #181 report decision brief: local design candidate, 2026-09-16
 
 - Active release: EE-R999-01. Frozen outcome for this bounded task: a readable existing report with useful assessment/numbers, visible material uncertainty and working source/task/professional destinations. The genuine commercial outcome remains unpassed.

@@ -16,13 +16,14 @@ const guidedSitePotential = source("src/components/property/investigation/Guided
 const acceptedEnvelope = source("src/lib/sitePotential/acceptedBuildEnvelope.ts");
 
 describe("report and investigation coherence guardrails", () => {
-  it("places the assessment before optional perspectives and Ask Easy Erf", () => {
+  it("keeps the compact Ask entry above the assessment and perspectives below it", () => {
     const modeIndex = reportOpening.indexOf('id="report-view-mode"');
     const askIndex = reportOpening.indexOf('id="report-ask"');
     const decisionIndex = reportOpening.indexOf('id="report-decision"');
 
     expect(modeIndex).toBeGreaterThan(-1);
-    expect(askIndex).toBeGreaterThan(modeIndex);
+    expect(askIndex).toBeGreaterThan(reportOpening.indexOf('id="report-opening-header"'));
+    expect(askIndex).toBeLessThan(decisionIndex);
     expect(decisionIndex).toBeLessThan(modeIndex);
   });
 
@@ -35,7 +36,7 @@ describe("report and investigation coherence guardrails", () => {
 
     expect(guidedSources).not.toContain("AskEasyErfPanel");
     expect(reportOpening).toContain("askSlot?: ReactNode");
-    expect(reportOpening).toMatch(/id="report-decision"[\s\S]*id="report-ask"[\s\S]*askSlot/);
+    expect(reportOpening).toMatch(/id="report-ask"[\s\S]*askSlot[\s\S]*id="report-decision"/);
     expect(reportComposer).toMatch(/askSlot=\{\s*<AskEasyErfPanel/);
   });
 
