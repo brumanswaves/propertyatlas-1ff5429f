@@ -150,6 +150,9 @@ const selfServiceChecks = [];
 let rejectNextStrategySave = false;
 let simulateOffline = false;
 let holdNextStrategySave = null;
+let rejectNextZoningSave = false;
+let holdNextZoningSave = null;
+let zoningAssets = [];
 
 function isObjectResponse(request) {
   const accept = request.headers().accept || "";
@@ -258,6 +261,17 @@ async function installSyntheticSignedInSupabase(context, name) {
           authorization: request.headers().authorization || "",
         };
         rpcCalls.push(call);
+        if (patch?.easyErfInvestigation?.planning && holdNextZoningSave) {
+          const held = holdNextZoningSave;
+          holdNextZoningSave = null;
+          held.started();
+          await held.release;
+        }
+        if (patch?.easyErfInvestigation?.planning && rejectNextZoningSave) {
+          rejectNextZoningSave = false;
+          await route.fulfill({ status: 503, json: { code: "FIXTURE_OFFLINE", message: "Synthetic zoning save failure" } });
+          return;
+        }
         if (patch?.strategyWorkspace && holdNextStrategySave) {
           const held = holdNextStrategySave;
           holdNextStrategySave = null;
@@ -296,6 +310,12 @@ async function installSyntheticSignedInSupabase(context, name) {
       }
 
       if (method === "GET" || method === "HEAD") {
+        if (url.pathname === "/rest/v1/erf_assets") {
+          const categories = url.searchParams.get("asset_category");
+          const matches = filterValue(url, "parcel_id") === PARCEL_ID && filterValue(url, "user_id") === USER_ID
+            && (!categories || categories.includes("zoning_document"));
+          return route.fulfill({ json: matches ? zoningAssets : [] });
+        }
         const body = isObjectResponse(request) ? "null" : "[]";
         await route.fulfill({ status: 200, contentType: "application/json", body });
         return;
@@ -446,6 +466,11 @@ try {
   );
 
   const projection = persistedCall.patch.easyErfInvestigation;
+  await firstPage.goBack();
+  await firstPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  await firstPage.goForward();
+  await firstPage.getByRole("heading", { name: "Add the address people use to find this erf", exact: true }).waitFor();
+  assert.equal(await firstPage.evaluate(() => history.state.easyErfJourney.stepId), "add-address");
   if (persistedCall.hasBrowserUserId) {
     throw new Error("Guided persistence RPC included a browser-supplied user_id.");
   }
@@ -632,20 +657,117 @@ try {
   assert.ok(await reopenPage.locator("[data-done-for-you-top]").evaluate((el) =>
     Boolean(el.compareDocumentPosition(document.getElementById("property-facts-heading")) & Node.DOCUMENT_POSITION_FOLLOWING)));
 
+  // The real root-route First Read entry must survive same-parcel traversal.
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), PARCEL_ID);
+  const secondParcel = registry.records.find((record) => record.lpi && record.id !== PARCEL_ID && record.erf !== "1570");
+  assert.ok(secondParcel);
+  const selectFromSearch = async (record) => {
+    await reopenPage.getByRole("button", { name: "Back to full map", exact: true }).first().click();
+    await reopenPage.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
+    await reopenPage.getByRole("button", { name: /^Erf Search/ }).click();
+    await reopenPage.getByPlaceholder("LPI or parcel key", { exact: true }).fill(record.lpi);
+    await reopenPage.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+    await reopenPage.getByRole("button", { name: new RegExp(`^Open Erf ${record.erf}`) }).click();
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  };
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    await reopenPage.waitForTimeout(1000);
+    const beforeNavigation = rpcCalls.length;
+    const storedWork = await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey);
+    await selectFromSearch(secondParcel);
+    assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction((id) => history.state?.easyErfJourney?.parcelId === id, PARCEL_ID);
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction((id) => history.state?.easyErfJourney?.parcelId === id, secondParcel.id);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goBack();
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+    await reopenPage.waitForTimeout(1000);
+    assert.equal(rpcCalls.length, beforeNavigation, "History replay must not save investigation data");
+    assert.equal(await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey), storedWork);
+    await reopenPage.screenshot({ path: resolve(artifacts, `first-read-history-${width}.png`) });
+  }
+  await reopenPage.getByRole("button", { name: /^(Investigate this property|Continue investigation)$/i }).first().click();
+  await reopenPage.getByRole("region", { name: "Guided investigation steps" }).waitFor();
+  const guidedEntry = await reopenPage.evaluate(() => history.state.easyErfJourney);
+  await reopenPage.goBack();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  await reopenPage.goBack();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor({ state: "hidden" });
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.selection), null);
+  await reopenPage.goForward();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  await reopenPage.goForward();
+  await reopenPage.getByRole("region", { name: "Guided investigation steps" }).waitFor();
+  assert.deepEqual(await reopenPage.evaluate(() => history.state.easyErfJourney), guidedEntry);
+  await reopenPage.goBack();
+  await reopenPage.reload();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), PARCEL_ID);
+
   for (const width of [1440, 390]) {
     await reopenPage.setViewportSize({ width, height: 1000 });
     if (width === 1440) await reopenPage.getByRole("button", { name: /^(Investigate this property|Continue investigation)$/i }).first().click();
     const step = (label) => reopenPage.getByRole("region", { name: "Guided investigation steps" })
       .getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
+    if (width === 1440) {
+      await step("Address").click();
+      await reopenPage.getByRole("button", { name: "Skip for now", exact: true }).click();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("SG")));
+      await waitForRpc((call) => call.patch?.easyErfInvestigation?.investigation?.skippedStepIds.includes("add-address"), reopenPage);
+      await reopenPage.waitForTimeout(1000);
+      const beforeReplay = rpcCalls.length;
+      await reopenPage.goBack();
+      await reopenPage.getByRole("heading", { name: "Add the address people use to find this erf", exact: true }).waitFor();
+      await reopenPage.goForward();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("SG")));
+      await reopenPage.waitForTimeout(1000);
+      assert.equal(rpcCalls.length, beforeReplay, "Replaying a skipped step must not save again");
+    }
     await step("Zoning").click();
+    if (width === 1440) {
+      await reopenPage.getByText("No supported zoning match for this erf", { exact: false }).waitFor();
+      await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+      await reopenPage.screenshot({ path: resolve(artifacts, "zoning-no-match-1440.png") });
+      await reopenPage.setViewportSize({ width: 390, height: 1000 });
+      await reopenPage.screenshot({ path: resolve(artifacts, "zoning-no-match-390.png") });
+      await reopenPage.setViewportSize({ width, height: 1000 });
+      await reopenPage.getByRole("button", { name: "Not sure - continue without confirming", exact: true }).click();
+      await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+      assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, null);
+      assert.ok(durableRow.user_data.easyErfInvestigation.investigation.skippedStepIds.includes("zoning"));
+      await step("Zoning").click();
+    }
+    const zoningChooser = reopenPage.getByRole("button", { name: /^(Choose zoning|Change zoning)$/ });
+    if (await zoningChooser.getAttribute("aria-expanded") !== "true") await zoningChooser.click();
     await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
-    const confirm = reopenPage.getByRole("button", { name: "Confirm working zoning", exact: true });
-    if (await confirm.count()) await confirm.click();
-    await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).waitFor();
-    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
-    assert.equal(await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).isDisabled(), true);
-    await reopenPage.getByRole("button", { name: "Continue to Property checks", exact: true }).click();
+    await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+    await reopenPage.screenshot({ path: resolve(artifacts, `zoning-working-option-${width}.png`) });
+    if (width === 1440) {
+      await reopenPage.waitForTimeout(1200);
+      rejectNextZoningSave = true;
+      await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+      await reopenPage.getByRole("alert").filter({ hasText: /Your selection is retained/ }).waitFor();
+      assert.equal(await reopenPage.getByRole("radio", { name: /^RES1 / }).getAttribute("aria-checked"), "true");
+    }
+    let zoningStarted, releaseZoning;
+    const zoningPending = new Promise((resolve) => { zoningStarted = resolve; });
+    holdNextZoningSave = { started: zoningStarted, release: new Promise((resolve) => { releaseZoning = resolve; }) };
+    await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+    await Promise.race([zoningPending, new Promise((_, reject) => setTimeout(() => reject(new Error("Zoning save did not start")), 15000))]);
+    assert.ok(await reopenPage.getByRole("region", { name: "Zoning decision" }).isVisible());
+    assert.equal(await reopenPage.getByRole("button", { name: "Saving zoning...", exact: true }).isDisabled(), true);
+    releaseZoning();
     await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, "RES1");
     await reopenPage.getByRole("button", { name: "Continue without additional documents", exact: true }).click();
     await step("Checks").click();
     await reopenPage.getByText("Done - Optional checks reviewed. Property evidence remains unverified.", { exact: true }).waitFor();
@@ -725,9 +847,37 @@ try {
     await reopenPage.reload();
     await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
     await step("Zoning").click();
-    await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).waitFor();
+    await reopenPage.getByText("Working zoning confirmed by you", { exact: false }).waitFor();
+    await reopenPage.getByRole("button", { name: "Change zoning", exact: true }).click();
+    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+    await reopenPage.getByText("Working zoning confirmed by you", { exact: false }).waitFor();
     selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: width === 1440 ? true : "covered at desktop", retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
   }
+
+  // Existing matched, readable subject evidence is a suggestion, never municipal approval.
+  zoningAssets = [{ id: "00000000-0000-4000-8000-000000000942", user_id: USER_ID, parcel_id: PARCEL_ID,
+    asset_category: "zoning_document", asset_type: "zoning_certificate", source_label: "Synthetic municipal record",
+    original_file_name: "synthetic-zoning.pdf", storage_bucket: "erf-files", storage_path: "synthetic/not-requested.pdf",
+    mime_type: "application/pdf", size_bytes: 1024, status: "ready", created_at: ACCEPTANCE_AT, updated_at: ACCEPTANCE_AT,
+    metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractedClaims: [{
+      domain: "planning", key: "zoning", label: "Zoning", value: "RES1", scope: "subject", confidence: "high", interpretation: false,
+    }] } }];
+  await reopenPage.reload();
+  await reopenPage.getByText("Suggested zoning for this erf", { exact: true }).waitFor();
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+    await reopenPage.screenshot({ path: resolve(artifacts, `zoning-supported-${width}.png`) });
+    await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, "RES1");
+    await reopenPage.getByRole("region", { name: "Guided investigation steps" }).getByRole("button", { name: /Step \d+ Zoning$/ }).click();
+  }
+  zoningAssets = [];
+  await reopenPage.reload();
+  await reopenPage.getByRole("button", { name: "Change zoning", exact: true }).click();
+  selfServiceChecks.push({ noSupportedMatch: true, notSureSavedWithoutConfirmation: true, supportedSuggestionDesktopMobile: true,
+    zoningDelayedSaveBlocksContinue: true, zoningFailureRetainsSelection: true });
 
   // A second session changes the acknowledged record; the browser must not overwrite it.
   const remoteIdentity = "uncertain";

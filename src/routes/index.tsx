@@ -24,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
   clearSavedOfficialReopenSearch,
+  buildSelectedOfficialParcelId,
   parseOfficialParcelReopenSearch,
   type OfficialParcelReopenRequest,
 } from "@/lib/parcels/officialParcelId";
@@ -37,6 +38,7 @@ import type { PropertySearchResult } from "@/lib/search/propertySearch";
 import type { AddressMapTarget } from "@/components/map/SearchBar";
 import { useAuth } from "@/lib/auth/useAuth";
 import { readPropertyJourneyLocation, writePropertyJourneyLocation } from "@/lib/workbench/propertyJourneyHistory";
+import { resolvePropertyEntryTab } from "@/lib/workbench/propertyOverviewEntry";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -201,7 +203,8 @@ function AtlasHome() {
   const handleOfficialSelect = useCallback(
     (sel: OfficialFeatureSelection | null) => {
       setSelectedOfficial(sel);
-      writePropertyJourneyLocation({ userId, selection: sel, parcelId: null, tab: "overview", stepId: null });
+      writePropertyJourneyLocation({ userId, selection: sel, parcelId: sel ? buildSelectedOfficialParcelId(sel) : null,
+        tab: sel ? resolvePropertyEntryTab(window.location.search) : "overview", stepId: null });
       if (sel) {
         setSelectedId(null);
         setSearchHighlight(null);

@@ -25,7 +25,7 @@ import { type OfficialFeatureSelection } from "@/components/map/MapCanvas";
 import { ErfResearchDossier } from "./ErfResearchDossier";
 import { HumanReviewTakeoverCard } from "@/components/humanReview/HumanReviewTakeoverCard";
 import {
-  buildOfficialParcelId,
+  buildSelectedOfficialParcelId,
   buildSavedParcelMapHref,
   type NormalizedOfficialParcel,
 } from "@/lib/parcels/officialParcelId";
@@ -1764,19 +1764,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     "LOCAL_MUNICIPALITY",
     "LOCAL_MUNIC",
   ]);
-  const parcelId = buildOfficialParcelId({
-    source: isCsg ? "csg" : "kouga",
-    layer: selection.layer,
-    objectId: objectId as string | number | null | undefined,
-    lpi: csg?.lpi,
-    parcelKey: csg?.parcelKey,
-    erfNumber: csg?.erfNumber,
-    portion: csg?.portion ?? 0,
-    municipality: selectedMunicipality,
-    province: csg?.province ?? "Eastern Cape",
-    lng: csg?.longitude ?? lng,
-    lat: csg?.latitude ?? lat,
-  });
+  const parcelId = buildSelectedOfficialParcelId(selection);
   const {
     loading: marketAddressLoading,
     evidence: savedMarketEvidence,
@@ -1845,13 +1833,14 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     setWorkflowFeedback(null);
   }, [parcelId, userId]);
   useEffect(() => {
-    const restoreNavigation = () => {
+    const restoreNavigation = (event?: PopStateEvent) => {
       const location = readPropertyJourneyLocation(userId);
       if (!location || location.parcelId !== parcelId || !Object.hasOwn(WORKBENCH_SECTIONS, location.tab)) return;
       setTab(location.tab as Tab);
       setWorkspaceState((current) => ({ ...current, investigation: {
         ...current.investigation,
-        currentStepId: location.stepId,
+        // Initial null entries retain hydration; a replayed auto-step resolves from current evidence.
+        currentStepId: location.stepId ?? (event && location.tab === "investigation" ? null : current.investigation.currentStepId),
         intentionallyVisitedStepIds: location.stepId
           ? Array.from(new Set([...current.investigation.intentionallyVisitedStepIds, location.stepId]))
           : current.investigation.intentionallyVisitedStepIds,
@@ -2253,6 +2242,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
       lastMeaningfulActionAt: new Date().toISOString(),
     });
     setWorkflowFeedback("Step skipped. Easy Erf will move to the next available investigation step.");
+    navigateJourney("investigation", null);
   }
 
   function returnToGuidedInvestigation() {
@@ -2348,6 +2338,10 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
   }
 
   function confirmGuidedIdentity() {
+    const location = readPropertyJourneyLocation(userId);
+    if (location?.parcelId === parcelId && location.tab === "investigation") {
+      writePropertyJourneyLocation({ ...location, stepId: "confirm-property" }, true);
+    }
     const now = new Date().toISOString();
     const next = updateErfWorkspaceState(
       parcelId,
@@ -2366,7 +2360,7 @@ export function OfficialParcelPanel({ selection, onClose }: Props) {
     }
     setWorkflowFeedback(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
     toast.success(GUIDED_IDENTITY_CONFIRMATION_SUCCESS_MESSAGE);
-    setTab("investigation");
+    navigateJourney("investigation", "add-address");
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 

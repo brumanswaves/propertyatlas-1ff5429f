@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## PR #182 independent-review repair, 2026-09-16
+
+- Active release EE-R999-01; same six-item self-service continuity scope, branch `codex/self-service-continuity-181`, draft PR #182. Rechecked main `284a20cfeffb2c2560d428f4bd56e71743d3a704` and remote checkpoint `84bb2d29f696ddc78234697b5f917166c5c6979a` before editing. Original dirty worktree is protected.
+- Review 5225399288 identified two genuine gaps despite the prior green workflows: First Read history had no canonical parcel ID, and zoning lacked one clear supported-choice/working-option save-and-continue path. The actual root-route browser regression reproduced the null-ID defect before repair.
+- Entry and panel now share the existing canonical ID fallback logic. History retains explicit saved-entry destinations and same-account/parcel guards; identity confirmation records Confirm property -> Add address. Navigation replay is display-only and does not overwrite saved work.
+- Zoning shows an existing readable matched subject source when available, otherwise a clearly unverified working choice. Confirm-and-continue awaits the canonical save; errors retain the selection. Not sure records a skip without property verification. Document upload and planning details are secondary; no new planning acquisition or model.
+- VERIFIED local checkpoint: focused Guided/history checks 11 files / 88 tests; full Vitest 164 files / 1,661 tests; TypeScript; node-server production build; lint zero errors (four existing Fast Refresh warnings); whitespace check. Expanded real-route synthetic browser acceptance passed on desktop/mobile: two parcels, First Read/map/Guided traversal, reload, identity and skipped-step progression, no replay writes, supported/no-match zoning, Not sure, delayed save, retry, conflicts and account isolation. Actual screenshots inspected. Final exact-head workflows, committed browser evidence and artifact hashes must be pinned in the PR receipt, not inferred from this checkpoint.
+- Owner-approved report design remains separately frozen at `9762338cdb484368417be5f091b66d0e9a0d80bb`, with Ask Easy Erf at the top. No competing report PR is opened while #182 is under repair. SG and report batches remain outstanding for issue #181; this repair does not complete them.
+- Next: finish local/browser verification, inspect artifacts, commit and push this existing draft, inspect exact-head workflows, request independent review. No merge/publication or production action is authorized. Spend cap $0; no paid API, agent, credit purchase or service initiated; actual account spend UNKNOWN. Final SHA and process status belong in the receipt.
+
 ## Issue #181 self-service continuity: review candidate, 2026-09-16
 
 - Active release EE-R999-01. Frozen batch: safe self-service saves/conflicts, browser history, zoning, Strategy, deterministic Site Potential and optional Checks workflow completion.

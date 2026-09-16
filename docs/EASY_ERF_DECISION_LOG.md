@@ -164,6 +164,12 @@ This is a concise register of durable product and engineering decisions. Exact d
 - Do not regress: Do not create a second confirmation ledger or promote a user confirmation into official or document-backed evidence.
 - Related: `docs/EASY_ERF_MASTER_PLAN.md` Section 5, `docs/EASY_ERF_CURRENT_STATE.md` Canonical shared-state contract.
 
+### EE-020 clarification: self-service navigation and zoning (2026-09-16, issue #181)
+
+- Property First Read and Guided history entries use the same canonical parcel identity as the selected workbench. Browser Back/Forward restores the account-scoped view without replaying persistence actions or erasing drafts. Explicit saved-investigation destinations remain valid.
+- Guided zoning leads with a supported existing subject-document suggestion or an honestly labelled working option. Municipal registry coverage alone is not property-specific detection. One confirm-and-continue action waits for the canonical save; failed saves retain input. Not sure permits progression while leaving zoning unconfirmed.
+- Optional documents and deeper planning details strengthen the same canonical investigation; they are not prerequisites for progressing with an assumption or unknown. This adds no planning-acquisition service or separate confirmation ledger.
+
 ## EE-021 - Portable Supabase worker configuration
 
 - Date: 2026-08-13.
