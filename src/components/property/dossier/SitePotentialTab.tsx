@@ -222,7 +222,7 @@ export function SitePotentialTab({
               disabled={!acceptedEnvelope || saving}
               className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Continue to report
+              {saving ? "Saving envelope..." : "Save this envelope and continue"}
             </button>
           </div>
         </section>

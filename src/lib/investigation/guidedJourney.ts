@@ -277,7 +277,9 @@ export function buildGuidedInvestigationJourney(
       index: index + 1,
       label: definition.label,
       shortLabel: definition.shortLabel,
-      description: definition.description,
+      description: definition.id === "property-checks" && complete && !definition.isComplete(facts)
+        ? "Done - Optional checks reviewed. Property evidence remains unverified."
+        : definition.description,
       status,
       complete,
       skipped,

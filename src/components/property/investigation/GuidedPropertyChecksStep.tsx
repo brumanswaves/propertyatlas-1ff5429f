@@ -625,7 +625,7 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
           disabled={continuing}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F]"
         >
-          Continue to Market evidence
+          {continuing ? "Saving decision..." : vault.assets.length ? "Continue to Market evidence" : "Continue without additional documents"}
         </button>
       </div>
     </div>

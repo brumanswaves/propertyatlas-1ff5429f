@@ -778,7 +778,7 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotential).toContain("VacantLandBuildEnvelope");
     expect(sitePotential).toContain("StreetSideBuildEnvelope");
     expect(sitePotential).toContain("Build envelope accepted");
-    expect(sitePotential).toContain("Continue to report");
+    expect(sitePotential).toContain("Save this envelope and continue");
     expect(sitePotential).not.toContain(
       "Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 9 of 10",
     );

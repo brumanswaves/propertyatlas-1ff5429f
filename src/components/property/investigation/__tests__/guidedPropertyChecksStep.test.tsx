@@ -45,6 +45,16 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
 }
 
 describe("guided property checks", () => {
+  it("labels a no-document acknowledgement as workflow completion, not evidence", () => {
+    const workspace = createEmptyErfWorkspaceState();
+    workspace.investigation.acknowledgedTaskIds = ["property-checks"];
+    const journey = buildGuidedInvestigationJourney(facts(), workspace);
+    expect(journey.find((step) => step.id === "property-checks")).toMatchObject({
+      complete: true,
+      status: "complete",
+      description: "Done - Optional checks reviewed. Property evidence remains unverified.",
+    });
+  });
   it("starts at property checks after zoning is confirmed", () => {
     const workspace = createEmptyErfWorkspaceState();
     expect(selectGuidedInvestigationStep(facts(), workspace.investigation)).toBe("property-checks");

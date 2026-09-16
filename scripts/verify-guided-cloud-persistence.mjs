@@ -646,10 +646,13 @@ try {
     assert.equal(await reopenPage.getByRole("button", { name: "Working zoning confirmed", exact: true }).isDisabled(), true);
     await reopenPage.getByRole("button", { name: "Continue to Property checks", exact: true }).click();
     await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
-    await reopenPage.getByRole("button", { name: "Continue to Market evidence", exact: true }).click();
+    await reopenPage.getByRole("button", { name: "Continue without additional documents", exact: true }).click();
+    await step("Checks").click();
+    await reopenPage.getByText("Done - Optional checks reviewed. Property evidence remains unverified.", { exact: true }).waitFor();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-checks-complete-${width}.png`) });
     await step("Strategy").click();
     assert.ok(durableRow.user_data.easyErfInvestigation.investigation.acknowledgedTaskIds.includes("property-checks"));
-    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-checks-complete-${width}.png`) });
     await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).click();
     const price = reopenPage.getByLabel("Purchase price", { exact: true });
     if (width === 1440) {
@@ -704,7 +707,7 @@ try {
       await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
       await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
       await reopenPage.screenshot({ path: resolve(artifacts, `self-service-envelope-accepted-${width}.png`) });
-      await reopenPage.getByRole("button", { name: "Continue to report", exact: true }).click();
+      await reopenPage.getByRole("button", { name: "Save this envelope and continue", exact: true }).click();
       await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
       assert.ok(durableRow.user_data.buildEnvelopeInputs.acceptedInputSignature);
     } else {
