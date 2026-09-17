@@ -44,6 +44,12 @@ async function installIsolatedMap(context, name) {
     if (url.hostname === "api.mapbox.com" && url.pathname.includes("/styles/")) {
       return route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: "fixture-background", type: "background", paint: { "background-color": "#e5e7eb" } }] } });
     }
+    // Local-only acknowledgements: aborting these vendor requests can call a
+    // removed map's error callback. No telemetry or session reaches Mapbox.
+    if (url.hostname === "events.mapbox.com" ||
+        (url.hostname === "api.mapbox.com" && url.pathname === "/map-sessions/v1")) {
+      return route.fulfill({ status: 200, json: {} });
+    }
     if (url.origin === new URL(baseUrl).origin) return route.continue();
     // Supabase mock routes registered below take precedence. All other traffic
     // (map tiles, fonts, telemetry, direct ArcGIS fallback) stays off production.
@@ -106,6 +112,9 @@ const fakeSession = {
   refresh_token: "acceptance-refresh-token",
   user: fakeUser,
 };
+const renewedToken = `${encodeJwtPart({ alg: "HS256", typ: "JWT" })}.${encodeJwtPart({ aud: "authenticated", exp: 4_102_444_801, iat: 1_787_963_201, role: "authenticated", sub: USER_ID, email: USER_EMAIL })}.${encodeJwtPart("renewed-fixture-signature")}`;
+const otherUser = { ...fakeUser, id: "00000000-0000-4000-8000-000000000158", email: "other-self-service@easyerf.invalid" };
+const otherToken = `${encodeJwtPart({ alg: "HS256", typ: "JWT" })}.${encodeJwtPart({ aud: "authenticated", exp: 4_102_444_801, role: "authenticated", sub: otherUser.id, email: otherUser.email })}.${encodeJwtPart("other-fixture-signature")}`;
 
 const durableRow = {
   id: "00000000-0000-4000-8000-000000001570",
@@ -137,6 +146,13 @@ const rpcCalls = [];
 const unexpectedMutations = [];
 const routeErrors = [];
 const pageErrors = [];
+const selfServiceChecks = [];
+let rejectNextStrategySave = false;
+let simulateOffline = false;
+let holdNextStrategySave = null;
+let rejectNextZoningSave = false;
+let holdNextZoningSave = null;
+let zoningAssets = [];
 
 function isObjectResponse(request) {
   const accept = request.headers().accept || "";
@@ -166,13 +182,14 @@ async function installSyntheticSignedInSupabase(context, name) {
   );
 
   await context.route("**/auth/v1/**", async (route) => {
+    if (simulateOffline) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === "GET" && url.pathname.endsWith("/auth/v1/user")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(fakeUser),
+        body: JSON.stringify(request.headers().authorization === `Bearer ${otherToken}` ? otherUser : fakeUser),
       });
       return;
     }
@@ -188,6 +205,7 @@ async function installSyntheticSignedInSupabase(context, name) {
   });
 
   await context.route("**/rest/v1/**", async (route) => {
+    if (simulateOffline) return route.abort("internetdisconnected");
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
@@ -196,6 +214,7 @@ async function installSyntheticSignedInSupabase(context, name) {
       if (url.pathname === "/rest/v1/saved_properties" && method === "GET") {
         const requestedUserId = filterValue(url, "user_id");
         const requestedParcelId = filterValue(url, "parcel_id");
+        if (request.headers().authorization === `Bearer ${otherToken}`) assert.notEqual(requestedUserId, USER_ID, "Account B must not request account A's saved properties");
         const userMatches = !requestedUserId || requestedUserId === USER_ID;
         const parcelMatches = !requestedParcelId || requestedParcelId === PARCEL_ID;
         const found = userMatches && parcelMatches;
@@ -242,6 +261,28 @@ async function installSyntheticSignedInSupabase(context, name) {
           authorization: request.headers().authorization || "",
         };
         rpcCalls.push(call);
+        if (patch?.easyErfInvestigation?.planning && holdNextZoningSave) {
+          const held = holdNextZoningSave;
+          holdNextZoningSave = null;
+          held.started();
+          await held.release;
+        }
+        if (patch?.easyErfInvestigation?.planning && rejectNextZoningSave) {
+          rejectNextZoningSave = false;
+          await route.fulfill({ status: 503, json: { code: "FIXTURE_OFFLINE", message: "Synthetic zoning save failure" } });
+          return;
+        }
+        if (patch?.strategyWorkspace && holdNextStrategySave) {
+          const held = holdNextStrategySave;
+          holdNextStrategySave = null;
+          held.started();
+          await held.release;
+        }
+        if (patch?.strategyWorkspace && rejectNextStrategySave) {
+          rejectNextStrategySave = false;
+          await route.fulfill({ status: 503, json: { code: "FIXTURE_OFFLINE", message: "Synthetic offline save" } });
+          return;
+        }
 
         if (parcelId !== PARCEL_ID || !patch || typeof patch !== "object") {
           await route.fulfill({
@@ -269,6 +310,12 @@ async function installSyntheticSignedInSupabase(context, name) {
       }
 
       if (method === "GET" || method === "HEAD") {
+        if (url.pathname === "/rest/v1/erf_assets") {
+          const categories = url.searchParams.get("asset_category");
+          const matches = filterValue(url, "parcel_id") === PARCEL_ID && filterValue(url, "user_id") === USER_ID
+            && (!categories || categories.includes("zoning_document"));
+          return route.fulfill({ json: matches ? zoningAssets : [] });
+        }
         const body = isObjectResponse(request) ? "null" : "[]";
         await route.fulfill({ status: 200, contentType: "application/json", body });
         return;
@@ -344,7 +391,7 @@ async function waitForRpc(predicate, page, timeout = 20_000) {
 }
 
 function attachPageDiagnostics(page) {
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("pageerror", (error) => pageErrors.push(error.stack ?? error.message));
 }
 
 async function verifyTopOffer(page, label, width) {
@@ -419,6 +466,11 @@ try {
   );
 
   const projection = persistedCall.patch.easyErfInvestigation;
+  await firstPage.goBack();
+  await firstPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  await firstPage.goForward();
+  await firstPage.getByRole("heading", { name: "Add the address people use to find this erf", exact: true }).waitFor();
+  assert.equal(await firstPage.evaluate(() => history.state.easyErfJourney.stepId), "add-address");
   if (persistedCall.hasBrowserUserId) {
     throw new Error("Guided persistence RPC included a browser-supplied user_id.");
   }
@@ -542,7 +594,7 @@ try {
     "reopened Guided working-address heading",
   );
 
-  for (const label of ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"]) {
+  for (const label of (process.env.EASY_ERF_SELF_SERVICE_ONLY ? [] : ["Confirm", "Address", "SG", "Title", "Zoning", "Checks", "Market", "Strategy", "Potential", "Report"])) {
     const navigator = reopenPage.getByRole("region", { name: "Guided investigation steps" });
     const step = navigator.getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
     await step.click();
@@ -605,6 +657,259 @@ try {
   assert.ok(await reopenPage.locator("[data-done-for-you-top]").evaluate((el) =>
     Boolean(el.compareDocumentPosition(document.getElementById("property-facts-heading")) & Node.DOCUMENT_POSITION_FOLLOWING)));
 
+  // The real root-route First Read entry must survive same-parcel traversal.
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), PARCEL_ID);
+  const secondParcel = registry.records.find((record) => record.lpi && record.id !== PARCEL_ID && record.erf !== "1570");
+  assert.ok(secondParcel);
+  const selectFromSearch = async (record) => {
+    await reopenPage.getByRole("button", { name: "Back to full map", exact: true }).first().click();
+    await reopenPage.getByRole("button", { name: /Search address, erf number, suburb, LPI, or parcel key/i }).click();
+    await reopenPage.getByRole("button", { name: /^Erf Search/ }).click();
+    await reopenPage.getByPlaceholder("LPI or parcel key", { exact: true }).fill(record.lpi);
+    await reopenPage.getByRole("button", { name: "Search official parcel identity", exact: true }).click();
+    await reopenPage.getByRole("button", { name: new RegExp(`^Open Erf ${record.erf}`) }).click();
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  };
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    await reopenPage.waitForTimeout(1000);
+    const beforeNavigation = rpcCalls.length;
+    const storedWork = await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey);
+    await selectFromSearch(secondParcel);
+    assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), secondParcel.id);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction((id) => history.state?.easyErfJourney?.parcelId === id, PARCEL_ID);
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction((id) => history.state?.easyErfJourney?.parcelId === id, secondParcel.id);
+    await reopenPage.goBack();
+    await reopenPage.waitForFunction(() => history.state?.easyErfJourney?.selection === null);
+    await reopenPage.goBack();
+    await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+    await reopenPage.waitForTimeout(1000);
+    assert.equal(rpcCalls.length, beforeNavigation, "History replay must not save investigation data");
+    assert.equal(await reopenPage.evaluate((key) => localStorage.getItem(key), scopedWorkspaceKey), storedWork);
+    await reopenPage.screenshot({ path: resolve(artifacts, `first-read-history-${width}.png`) });
+  }
+  await reopenPage.getByRole("button", { name: /^(Investigate this property|Continue investigation)$/i }).first().click();
+  await reopenPage.getByRole("region", { name: "Guided investigation steps" }).waitFor();
+  const guidedEntry = await reopenPage.evaluate(() => history.state.easyErfJourney);
+  await reopenPage.goBack();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  await reopenPage.goBack();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor({ state: "hidden" });
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.selection), null);
+  await reopenPage.goForward();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  await reopenPage.goForward();
+  await reopenPage.getByRole("region", { name: "Guided investigation steps" }).waitFor();
+  assert.deepEqual(await reopenPage.evaluate(() => history.state.easyErfJourney), guidedEntry);
+  await reopenPage.goBack();
+  await reopenPage.reload();
+  await reopenPage.getByText("Property first read", { exact: true }).waitFor();
+  assert.equal(await reopenPage.evaluate(() => history.state.easyErfJourney.parcelId), PARCEL_ID);
+
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    if (width === 1440) await reopenPage.getByRole("button", { name: /^(Investigate this property|Continue investigation)$/i }).first().click();
+    const step = (label) => reopenPage.getByRole("region", { name: "Guided investigation steps" })
+      .getByRole("button", { name: new RegExp(`Step \\d+ ${label}$`) });
+    if (width === 1440) {
+      await step("Address").click();
+      await reopenPage.getByRole("button", { name: "Skip for now", exact: true }).click();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("SG")));
+      await waitForRpc((call) => call.patch?.easyErfInvestigation?.investigation?.skippedStepIds.includes("add-address"), reopenPage);
+      await reopenPage.waitForTimeout(1000);
+      const beforeReplay = rpcCalls.length;
+      await reopenPage.goBack();
+      await reopenPage.getByRole("heading", { name: "Add the address people use to find this erf", exact: true }).waitFor();
+      await reopenPage.goForward();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("SG")));
+      await reopenPage.waitForTimeout(1000);
+      assert.equal(rpcCalls.length, beforeReplay, "Replaying a skipped step must not save again");
+    }
+    await step("Zoning").click();
+    if (width === 1440) {
+      await reopenPage.getByText("No supported zoning match for this erf", { exact: false }).waitFor();
+      await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+      await reopenPage.screenshot({ path: resolve(artifacts, "zoning-no-match-1440.png") });
+      await reopenPage.setViewportSize({ width: 390, height: 1000 });
+      await reopenPage.screenshot({ path: resolve(artifacts, "zoning-no-match-390.png") });
+      await reopenPage.setViewportSize({ width, height: 1000 });
+      await reopenPage.getByRole("button", { name: "Not sure - continue without confirming", exact: true }).click();
+      await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+      assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, null);
+      assert.ok(durableRow.user_data.easyErfInvestigation.investigation.skippedStepIds.includes("zoning"));
+      await step("Zoning").click();
+    }
+    const zoningChooser = reopenPage.getByRole("button", { name: /^(Choose zoning|Change zoning)$/ });
+    if (await zoningChooser.getAttribute("aria-expanded") !== "true") await zoningChooser.click();
+    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+    await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+    await reopenPage.screenshot({ path: resolve(artifacts, `zoning-working-option-${width}.png`) });
+    if (width === 1440) {
+      await reopenPage.waitForTimeout(1200);
+      rejectNextZoningSave = true;
+      await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+      await reopenPage.getByRole("alert").filter({ hasText: /Your selection is retained/ }).waitFor();
+      assert.equal(await reopenPage.getByRole("radio", { name: /^RES1 / }).getAttribute("aria-checked"), "true");
+    }
+    let zoningStarted, releaseZoning;
+    const zoningPending = new Promise((resolve) => { zoningStarted = resolve; });
+    holdNextZoningSave = { started: zoningStarted, release: new Promise((resolve) => { releaseZoning = resolve; }) };
+    await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+    await Promise.race([zoningPending, new Promise((_, reject) => setTimeout(() => reject(new Error("Zoning save did not start")), 15000))]);
+    assert.ok(await reopenPage.getByRole("region", { name: "Zoning decision" }).isVisible());
+    assert.equal(await reopenPage.getByRole("button", { name: "Saving zoning...", exact: true }).isDisabled(), true);
+    releaseZoning();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, "RES1");
+    await reopenPage.getByRole("button", { name: "Continue without additional documents", exact: true }).click();
+    await step("Checks").click();
+    await reopenPage.getByText("Done - Optional checks reviewed. Property evidence remains unverified.", { exact: true }).waitFor();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-checks-complete-${width}.png`) });
+    await step("Strategy").click();
+    assert.ok(durableRow.user_data.easyErfInvestigation.investigation.acknowledgedTaskIds.includes("property-checks"));
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).click();
+    const price = reopenPage.getByLabel("Purchase price", { exact: true });
+    if (width === 1440) {
+      await reopenPage.getByText(/Cloud draft restored|Draft saved/i).first().waitFor();
+      simulateOffline = true;
+      await price.fill("1220000");
+      await price.blur();
+      await reopenPage.getByText("Offline draft saved in this browser", { exact: false }).waitFor();
+      assert.equal(await price.inputValue(), "1220000");
+      simulateOffline = false;
+      await reopenPage.getByRole("button", { name: "Retry", exact: true }).click();
+      await reopenPage.getByText(/Draft saved at/i).first().waitFor();
+      assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, "1220000");
+    }
+    rejectNextStrategySave = true;
+    await price.fill(String(1234000 + width));
+    await price.blur();
+    await reopenPage.getByRole("alert").filter({ hasText: /draft is still kept locally/ }).waitFor();
+    assert.equal(await price.inputValue(), String(1234000 + width));
+    await reopenPage.getByRole("button", { name: "Retry", exact: true }).click();
+    await reopenPage.getByText(/Draft saved at/i).first().waitFor();
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, String(1234000 + width));
+    let signalStarted, releaseSave;
+    const started = new Promise((resolve) => { signalStarted = resolve; });
+    holdNextStrategySave = { started: signalStarted, release: new Promise((resolve) => { releaseSave = resolve; }) };
+    await price.fill(String(1235000 + width));
+    await price.blur();
+    await started;
+    await reopenPage.goBack();
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).waitFor();
+    await reopenPage.goForward();
+    await price.waitFor();
+    assert.equal(await price.inputValue(), String(1235000 + width));
+    releaseSave();
+    await reopenPage.getByText(/Cloud draft restored|Draft saved at/i).first().waitFor();
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, String(1235000 + width));
+    await price.fill(String(1236000 + width));
+    await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+      const { supabase } = await import("/src/integrations/supabase/client.ts");
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) throw new Error(`Synthetic renewal failed: ${error.name}: ${error.message}`);
+    }, { access_token: renewedToken, refresh_token: "renewed-fixture-refresh" });
+    assert.equal(await price.inputValue(), String(1236000 + width));
+    await price.blur();
+    await waitForRpc((call) => call.patch?.strategyWorkspace?.draftInputs.purchasePrice === String(1236000 + width) && call.authorization === `Bearer ${renewedToken}`, reopenPage);
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-strategy-${width}.png`) });
+    await reopenPage.getByRole("button", { name: "Use this scenario and continue", exact: true }).click();
+    await reopenPage.getByRole("button", { name: /Open Site Potential/i }).click();
+    if (width === 1440) {
+      await reopenPage.getByText("Review inputs and technical details", { exact: true }).click();
+      await reopenPage.getByRole("checkbox", { name: /The outline shown matches the erf/ }).check();
+      await reopenPage.getByRole("button", { name: /^Boundary 1(?: ·|$)/ }).click();
+      await reopenPage.getByRole("button", { name: "Accept this Site Potential", exact: true }).click();
+      await reopenPage.screenshot({ path: resolve(artifacts, `self-service-envelope-accepted-${width}.png`) });
+      await reopenPage.getByRole("button", { name: "Save this envelope and continue", exact: true }).click();
+      await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+      assert.ok(durableRow.user_data.buildEnvelopeInputs.acceptedInputSignature);
+    } else {
+      await reopenPage.getByRole("button", { name: "Skip Site Potential", exact: true }).click();
+    }
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    assert.equal(durableRow.user_data.easyErfInvestigation.sitePotential.skipped, width !== 1440);
+    await reopenPage.screenshot({ path: resolve(artifacts, `self-service-report-${width}.png`) });
+    const beforeHistory = structuredClone(durableRow.user_data);
+    await reopenPage.goBack();
+    await reopenPage.getByRole("button", { name: "Skip Site Potential", exact: true }).waitFor();
+    await reopenPage.goForward();
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    assert.equal(durableRow.user_data.strategyWorkspace.draftInputs.purchasePrice, beforeHistory.strategyWorkspace.draftInputs.purchasePrice);
+    await reopenPage.reload();
+    await reopenPage.waitForFunction(() => [...document.querySelectorAll('[aria-current="step"]')].some((el) => el.textContent.endsWith("Report")));
+    await step("Zoning").click();
+    await reopenPage.getByText("Working zoning confirmed by you", { exact: false }).waitFor();
+    await reopenPage.getByRole("button", { name: "Change zoning", exact: true }).click();
+    await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+    await reopenPage.getByText("Working zoning confirmed by you", { exact: false }).waitFor();
+    selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: width === 1440 ? true : "covered at desktop", retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
+  }
+
+  // Existing matched, readable subject evidence is a suggestion, never municipal approval.
+  zoningAssets = [{ id: "00000000-0000-4000-8000-000000000942", user_id: USER_ID, parcel_id: PARCEL_ID,
+    asset_category: "zoning_document", asset_type: "zoning_certificate", source_label: "Synthetic municipal record",
+    original_file_name: "synthetic-zoning.pdf", storage_bucket: "erf-files", storage_path: "synthetic/not-requested.pdf",
+    mime_type: "application/pdf", size_bytes: 1024, status: "ready", created_at: ACCEPTANCE_AT, updated_at: ACCEPTANCE_AT,
+    metadata: { extractionStatus: "ready", identityMatchStatus: "matched", extractedClaims: [{
+      domain: "planning", key: "zoning", label: "Zoning", value: "RES1", scope: "subject", confidence: "high", interpretation: false,
+    }] } }];
+  await reopenPage.reload();
+  await reopenPage.getByText("Suggested zoning for this erf", { exact: true }).waitFor();
+  for (const width of [1440, 390]) {
+    await reopenPage.setViewportSize({ width, height: 1000 });
+    await reopenPage.getByRole("region", { name: "Zoning decision" }).scrollIntoViewIfNeeded();
+    await reopenPage.screenshot({ path: resolve(artifacts, `zoning-supported-${width}.png`) });
+    await reopenPage.getByRole("button", { name: "Use this zoning and continue", exact: true }).click();
+    await reopenPage.getByText("No optional property-check files have been added.", { exact: false }).waitFor();
+    assert.equal(durableRow.user_data.easyErfInvestigation.planning.userConfirmedZoneCode, "RES1");
+    await reopenPage.getByRole("region", { name: "Guided investigation steps" }).getByRole("button", { name: /Step \d+ Zoning$/ }).click();
+  }
+  zoningAssets = [];
+  await reopenPage.reload();
+  await reopenPage.getByRole("button", { name: "Change zoning", exact: true }).click();
+  selfServiceChecks.push({ noSupportedMatch: true, notSureSavedWithoutConfirmation: true, supportedSuggestionDesktopMobile: true,
+    zoningDelayedSaveBlocksContinue: true, zoningFailureRetainsSelection: true });
+
+  // A second session changes the acknowledged record; the browser must not overwrite it.
+  const remoteIdentity = "uncertain";
+  durableRow.user_data.easyErfInvestigation.identityStatus = remoteIdentity;
+  await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
+  await reopenPage.getByRole("region", { name: "This property's save status" })
+    .getByRole("alert").filter({ hasText: /changed in another session/ }).waitFor();
+  assert.equal(durableRow.user_data.easyErfInvestigation.identityStatus, remoteIdentity);
+  const draftBeforeResolution = await reopenPage.evaluate((key) => JSON.parse(localStorage.getItem(key)), scopedWorkspaceKey);
+  assert.equal(draftBeforeResolution.identityStatus, "looks_correct");
+  await reopenPage.getByRole("button", { name: "Keep a draft backup and load saved version", exact: true }).click();
+  await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).waitFor();
+  const backups = await reopenPage.evaluate(({ userId, parcelId }) => JSON.parse(localStorage.getItem(
+    `easyerf.user.${encodeURIComponent(userId)}.investigation-conflict-backups.${encodeURIComponent(parcelId)}`)), { userId: USER_ID, parcelId: PARCEL_ID });
+  assert.equal(backups.at(-1).local.workspace.identityStatus, "looks_correct");
+  assert.equal(backups.at(-1).remote.easyErfInvestigation.identityStatus, remoteIdentity);
+  selfServiceChecks.push({ concurrentEditRejected: true, localAndRemoteDraftsPreserved: true });
+  await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (error) throw new Error("Synthetic account switch failed");
+  }, { access_token: otherToken, refresh_token: "other-fixture-refresh" });
+  await reopenPage.getByRole("heading", { name: "Confirm this is the correct erf", exact: true }).waitFor();
+  assert.equal(await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).count(), 0);
+  await reopenPage.evaluate(async ({ access_token, refresh_token }) => {
+    const { supabase } = await import("/src/integrations/supabase/client.ts");
+    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (error) throw new Error("Synthetic account restore failed");
+  }, { access_token: renewedToken, refresh_token: "renewed-fixture-refresh" });
+  await reopenPage.getByRole("button", { name: "Download preserved drafts", exact: true }).waitFor();
+  selfServiceChecks.push({ sameUserRenewalRetainsInput: true, renewedCredentialUsed: true, otherAccountCannotSeeDrafts: true, originalAccountDraftsReturn: true });
+
   if (routeErrors.length > 0) {
     throw new Error(`Acceptance route handlers failed: ${routeErrors.join(" | ")}`);
   }
@@ -622,7 +927,7 @@ try {
   acceptancePassed = true;
 
   console.log(
-    "Guided cloud persistence verified: confirm, durable save, fresh hydration; top R999 offer on First Read and all ten Guided steps at desktop/mobile; exact-parcel handoff preserving current work from all ten steps. No production persistence mutation.",
+    `Guided cloud persistence verified: confirm, durable save, fresh hydration; self-service desktop/mobile saves, history, conflicts and account isolation. R999 handoff steps checked: ${handoffChecks.length}. No production persistence mutation.`,
   );
 
 } finally {
@@ -635,7 +940,7 @@ try {
     await context.tracing.stop({ path: resolve(artifacts, `${name}-trace.zip`) });
   }
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({
-    sha, dirty, acceptancePassed, topOfferChecks, handoffChecks, mapChecks, routeErrors, pageErrors, unexpectedMutations,
+    sha, dirty, acceptancePassed, topOfferChecks, handoffChecks, selfServiceChecks, mapChecks, routeErrors, pageErrors, unexpectedMutations,
     productionAccess: false, geometry: "synthetic test-only bounds; not cadastral proof",
     checks: acceptancePassed ? ["signed-in confirm and atomic persistence", "fresh-context hydration", "dashboard reopen at Add address", "late pre-pan response isolation"] : [],
   }, null, 2));

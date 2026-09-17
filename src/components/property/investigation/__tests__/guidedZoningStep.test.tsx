@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GuidedZoningStep } from "../GuidedZoningStep";
+import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import { InvestigationStepShell } from "@/components/property/investigation/InvestigationStepShell";
 import {
   buildGuidedInvestigationJourney,
@@ -17,6 +19,16 @@ import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 
 const noop = vi.fn();
+const vaultFixture = vi.hoisted(() => ({ assets: [] as ErfAsset[] }));
+vi.mock("@/lib/auth/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1" } }) }));
+vi.mock("@/lib/investigation/sharedInvestigationContext", () => ({ useSharedInvestigationScope: () => null }));
+vi.mock("@/lib/workbench/useErfFileVault", () => ({
+  dispatchErfFileVaultUpdated: vi.fn(),
+  useErfFileVault: () => ({ assets: vaultFixture.assets, loading: false, signedIn: true }),
+}));
+const parcel: NormalizedOfficialParcel = { id: "parcel-1", source: "csg", sourceLabel: "CSG",
+  municipality: "Kouga Local Municipality", knownFields: [], missingFields: [] };
+beforeEach(() => { vaultFixture.assets = []; });
 
 const zone: ZoneDefinition = {
   code: "RES1",
@@ -116,10 +128,41 @@ describe("guided zoning evidence gate", () => {
     expect(source).toContain('role="radiogroup"');
     expect(source).toContain('role="radio"');
     expect(source).toContain("min-h-[5.25rem]");
-    expect(source).toContain("Confirmed by user");
-    expect(source).toContain("Municipally verified");
     expect(source).toContain("Working zoning confirmed");
-    expect(source).toContain("Continue to Property checks");
+    expect(source).toContain("Use this zoning and continue");
+    expect(source).toContain("await flushSavedInvestigation");
+    expect(source).not.toContain('onClick={onContinue}');
+  });
+
+  it("does not promote a municipal registry option into property-specific detection", () => {
+    const html = renderToStaticMarkup(<GuidedZoningStep parcel={parcel} onContinue={noop} />);
+    expect(html).toContain("No supported zoning match for this erf");
+    expect(html).toContain("Choose zoning");
+    expect(html).toContain("Not sure - continue without confirming");
+    expect(html).not.toContain("Suggested zoning for this erf");
+    expect(html).not.toContain("Use this zoning and continue");
+  });
+
+  it("offers only a readable matched subject zoning with its actual source", () => {
+    vaultFixture.assets = [asset()];
+    const html = renderToStaticMarkup(<GuidedZoningStep parcel={parcel} onContinue={noop} />);
+    expect(html).toContain("Suggested zoning for this erf");
+    expect(html).toContain("RES1");
+    expect(html).toContain("Municipal zoning certificate");
+    expect(html).toContain("Use this zoning and continue");
+    expect(html).not.toContain("Municipally verified");
+  });
+
+  it.each(["wrong-parcel", "mismatch", "parent", "unreadable"])("does not suggest %s evidence", (reason) => {
+    const candidate = asset();
+    if (reason === "wrong-parcel") candidate.parcel_id = "parcel-2";
+    if (reason === "mismatch") candidate.metadata = { ...candidate.metadata, identityMatchStatus: "mismatch" };
+    if (reason === "parent") candidate.metadata = { ...candidate.metadata, identityMatchStatus: "parent_lineage_match" };
+    if (reason === "unreadable") candidate.metadata = { ...candidate.metadata, extractionStatus: "failed" };
+    vaultFixture.assets = [candidate];
+    const html = renderToStaticMarkup(<GuidedZoningStep parcel={parcel} onContinue={noop} />);
+    expect(html).not.toContain("Suggested zoning for this erf");
+    expect(html).not.toContain("Use this zoning and continue");
   });
 
   it("matches common zoning wording to the selected registry zone", () => {

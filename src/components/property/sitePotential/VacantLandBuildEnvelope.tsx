@@ -14,6 +14,7 @@ import {
 import { buildEnvelopeAcceptanceState } from "@/lib/sitePotential/buildEnvelopeAcceptance";
 import {
   clearStoredBuildEnvelopeInputs,
+  BUILD_ENVELOPE_INPUTS_UPDATED_EVENT,
   readStoredBuildEnvelopeInputs,
   parseStoredBuildEnvelopeInputs,
   writeStoredBuildEnvelopeInputs,
@@ -40,6 +41,7 @@ export interface VacantLandBuildEnvelopeProps {
   recordedAreaM2: number | null;
   zoneLabel?: string | null;
   onResultChange?: (result: BuildEnvelopeResult) => void;
+  onAcceptanceChange?: (accepted: boolean) => void;
   /** Same planning assessment that powers Zoning & Build, as a single source of truth. */
   assessment?: ParcelPlanningAssessment | null;
   /**
@@ -90,6 +92,7 @@ export function VacantLandBuildEnvelope({
   recordedAreaM2,
   zoneLabel = null,
   onResultChange,
+  onAcceptanceChange,
   assessment = null,
   documentRuleEvidence = false,
   lpiCode = null,
@@ -115,7 +118,14 @@ export function VacantLandBuildEnvelope({
 
   useLayoutEffect(() => {
     if (isShared) return;
-    setOverrides(readStoredBuildEnvelopeInputs(parcelId, userId) ?? {});
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)?.detail;
+      if (event && (detail?.parcelId !== parcelId || (detail?.userId ?? null) !== userId)) return;
+      setOverrides(readStoredBuildEnvelopeInputs(parcelId, userId) ?? {});
+    };
+    sync();
+    window.addEventListener(BUILD_ENVELOPE_INPUTS_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(BUILD_ENVELOPE_INPUTS_UPDATED_EVENT, sync);
   }, [isShared, parcelId, userId]);
 
   const edgeLengths = useMemo(() => {
@@ -192,18 +202,17 @@ export function VacantLandBuildEnvelope({
 
   const patch = useCallback(
     (next: StoredBuildEnvelopeOverrides) => {
-      setOverrides((current) => {
+        const current = isShared ? overrides : readStoredBuildEnvelopeInputs(parcelId, userId) ?? overrides;
         const merged = { ...current, ...next };
         if (!Object.prototype.hasOwnProperty.call(next, "acceptedInputSignature")) {
           delete merged.acceptedInputSignature;
           delete merged.acceptedAt;
         }
         if (!isShared) writeStoredBuildEnvelopeInputs(parcelId, merged, userId);
-        return merged;
-      });
+        setOverrides(merged);
       if (isShared) setUnsaved(true);
     },
-    [isShared, parcelId, userId],
+    [isShared, overrides, parcelId, userId],
   );
 
   async function saveSharedInputs(next: StoredBuildEnvelopeOverrides) {
@@ -273,6 +282,10 @@ export function VacantLandBuildEnvelope({
   useEffect(() => {
     onResultChange?.(result);
   }, [onResultChange, result]);
+
+  useEffect(() => {
+    onAcceptanceChange?.(acceptance.accepted && (!isShared || !unsaved));
+  }, [acceptance.accepted, isShared, unsaved, onAcceptanceChange]);
 
   const edgeOptions = result.parcelPolygon.map((_, index) => index);
   const coverageAreaM2 = result.summary.theoreticalGroundFloorM2;

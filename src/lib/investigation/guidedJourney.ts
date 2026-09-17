@@ -192,12 +192,15 @@ function skippedSet(snapshot: InvestigationSnapshot) {
   return new Set(snapshot.skippedStepIds.filter(isGuidedInvestigationStepId));
 }
 
-function completedStepIds(facts: InvestigationFacts) {
-  return new Set(
+function completedStepIds(facts: InvestigationFacts, snapshot: InvestigationSnapshot) {
+  const completed = new Set(
     GUIDED_INVESTIGATION_STEPS.filter((definition) => definition.isComplete(facts)).map(
       (definition) => definition.id,
     ),
   );
+  // An optional workflow acknowledgement is not property evidence.
+  if (snapshot.acknowledgedTaskIds.includes("property-checks")) completed.add("property-checks");
+  return completed;
 }
 
 function prerequisitesMet(
@@ -212,7 +215,7 @@ export function selectGuidedInvestigationStep(
   facts: InvestigationFacts,
   snapshot: InvestigationSnapshot,
 ): GuidedInvestigationStepId {
-  const completeIds = completedStepIds(facts);
+  const completeIds = completedStepIds(facts, snapshot);
   const skippedIds = skippedSet(snapshot);
   const currentStepId = isGuidedInvestigationStepId(snapshot.currentStepId)
     ? snapshot.currentStepId
@@ -235,7 +238,7 @@ export function selectGuidedInvestigationStep(
   const next = GUIDED_INVESTIGATION_STEPS.find(
     (definition) =>
       definition.isApplicable(facts) &&
-      !definition.isComplete(facts) &&
+      !completeIds.has(definition.id) &&
       !skippedIds.has(definition.id) &&
       prerequisitesMet(definition, completeIds, skippedIds),
   );
@@ -249,7 +252,7 @@ export function buildGuidedInvestigationJourney(
 ) {
   const snapshot = workspaceState.investigation;
   const currentStepId = selectGuidedInvestigationStep(facts, snapshot);
-  const completeIds = completedStepIds(facts);
+  const completeIds = completedStepIds(facts, snapshot);
   const skippedIds = skippedSet(snapshot);
 
   return GUIDED_INVESTIGATION_STEPS.map((definition, index): GuidedInvestigationStep => {
@@ -274,7 +277,9 @@ export function buildGuidedInvestigationJourney(
       index: index + 1,
       label: definition.label,
       shortLabel: definition.shortLabel,
-      description: definition.description,
+      description: definition.id === "property-checks" && complete && !definition.isComplete(facts)
+        ? "Done - Optional checks reviewed. Property evidence remains unverified."
+        : definition.description,
       status,
       complete,
       skipped,

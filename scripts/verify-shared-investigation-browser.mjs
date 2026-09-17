@@ -262,9 +262,13 @@ async function gatherSections(page) {
     assert.equal(createHash("sha256").update(Buffer.from(await bytes.arrayBuffer())).digest("hex"), asset.checksum_sha256);
   }
   await step(page, /Confirm zoning/);
+  await page.getByRole("button", { name: /^(Choose zoning|Change zoning)$/ }).click();
   await savedAction(page, () => page.getByRole("radio", { name: /^RES1 / }).click());
-  await savedAction(page, () => page.getByRole("button", { name: "Confirm working zoning", exact: true }).click());
-  assert.equal(await page.getByText("Working zoning confirmed by you", { exact: true }).count(), 1);
+  await savedAction(page, () => page.getByRole("button", { name: "Use this zoning and continue", exact: true }).click());
+  const zoningSaved = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+  assert.equal(zoningSaved.userData.easyErfInvestigation.planning.userConfirmedZoneCode, "RES1");
+  await step(page, /Confirm zoning/);
+  assert.equal(await page.getByText("Working zoning confirmed by you", { exact: false }).count(), 1);
   await step(page, /Market evidence/);
   await page.getByRole("button", { name: "Add manual evidence", exact: true }).click();
   await page.getByPlaceholder("Listing or comp URL required", { exact: true }).fill("https://example.invalid/synthetic-comparable");

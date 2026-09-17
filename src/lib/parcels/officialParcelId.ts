@@ -390,6 +390,30 @@ export function isOfficialPointParcelId(id: string | null | undefined): boolean 
   return typeof id === "string" && id.trim().toLowerCase().startsWith("official:point:");
 }
 
+/** Shared by selected-property entry and its workbench; preserves their existing identity fallbacks. */
+export function buildSelectedOfficialParcelId(selection: {
+  layer: string;
+  properties: Record<string, unknown>;
+  lngLat: [number, number];
+}): string {
+  const p = selection.properties;
+  const csg = selection.layer === "csg-parcels";
+  const municipality = ["MUNICIPALITY", "MUNICIPAL", "MUN_NAME", "MUNIC_NAME", "LOCAL_MUNICIPALITY", "LOCAL_MUNIC"]
+    .map((key) => p[key]).find((value) => (typeof value === "string" && value.trim()) || (typeof value === "number" && Number.isFinite(value)));
+  return buildOfficialParcelId({
+    source: csg ? "csg" : "kouga", layer: selection.layer,
+    objectId: (p.OBJECTID ?? p.ObjectID ?? p.objectid) as string | number | undefined,
+    lpi: csg ? p.ID as string | undefined : undefined,
+    parcelKey: csg ? p.PRCL_KEY as string | undefined : undefined,
+    erfNumber: csg ? (p.PARCEL_NO ?? p.TAG_VALUE) as string | number | undefined : undefined,
+    portion: csg ? (p.PORTION ?? 0) as string | number : 0,
+    municipality: municipality == null ? null : String(municipality).trim(),
+    province: csg ? (p.PROVINCE ?? "Eastern Cape") as string : "Eastern Cape",
+    lng: csg ? (p.TAG_X ?? selection.lngLat[0]) as number : selection.lngLat[0],
+    lat: csg ? (p.TAG_Y ?? selection.lngLat[1]) as number : selection.lngLat[1],
+  });
+}
+
 export function buildOfficialParcelId(input: OfficialParcelIdInput): string {
   if (input.source === "demo") {
     if (input.demoId && isDemoParcelId(input.demoId)) return input.demoId;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -33,6 +33,11 @@ import {
   planApprovalStatusLabel,
 } from "@/lib/evidence/planApprovalMetadata";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/useAuth";
+import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
+import { readErfWorkspaceState, updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import { buildSavedInvestigationUserDataPatch, flushSavedInvestigation, workspaceFromSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { toSupabaseJson } from "@/lib/supabase/json";
 
 interface GuidedPropertyChecksStepProps {
   parcel: NormalizedOfficialParcel;
@@ -126,6 +131,41 @@ function categoryLabel(asset: ErfAsset) {
 }
 
 export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyChecksStepProps) {
+  const { user } = useAuth();
+  const shared = useSharedInvestigationScope(parcel.id);
+  const operationScope = useMemo(() => ({ active: true, parcelId: parcel.id, userId: user?.id }), [parcel.id, user?.id]);
+  useLayoutEffect(() => {
+    operationScope.active = true;
+    setContinuing(false);
+    setContinueError(null);
+    return () => { operationScope.active = false; };
+  }, [operationScope]);
+  const [continuing, setContinuing] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
+  async function completeOptionalChecks() {
+    if (continuing) return;
+    setContinuing(true);
+    setContinueError(null);
+    try {
+      const workspace = shared
+        ? workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData)
+        : readErfWorkspaceState(parcel.id, undefined, user?.id ?? null);
+      const investigation = { ...workspace.investigation,
+        acknowledgedTaskIds: Array.from(new Set([...workspace.investigation.acknowledgedTaskIds, "property-checks"])),
+      };
+      if (shared) {
+        await shared.save(toSupabaseJson(buildSavedInvestigationUserDataPatch(parcel.id, { ...workspace, investigation })));
+      } else {
+        updateErfWorkspaceState(parcel.id, { investigation, dirty: true }, undefined, user?.id ?? null);
+        if (user) await flushSavedInvestigation(parcel.id, user.id);
+      }
+      if (operationScope.active) onContinue();
+    } catch (failure) {
+      if (operationScope.active) setContinueError(failure instanceof Error ? failure.message : "Progress could not be saved. Retry to continue.");
+    } finally {
+      if (operationScope.active) setContinuing(false);
+    }
+  }
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, [
     "architectural_plan",
@@ -574,16 +614,18 @@ export function GuidedPropertyChecksStep({ parcel, onContinue }: GuidedPropertyC
         )}
       </section>
 
+      {continueError ? <p role="alert" className="text-sm text-red-700">{continueError}</p> : null}
       <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-[#64748B]">
           No upload is required to move on. Continue when you have reviewed what is available.
         </p>
         <button
           type="button"
-          onClick={onContinue}
+          onClick={completeOptionalChecks}
+          disabled={continuing}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F]"
         >
-          Continue to Market evidence
+          {continuing ? "Saving decision..." : vault.assets.length ? "Continue to Market evidence" : "Continue without additional documents"}
         </button>
       </div>
     </div>

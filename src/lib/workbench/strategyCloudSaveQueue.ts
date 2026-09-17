@@ -1,5 +1,11 @@
 import type { ErfStrategyWorkspace } from "./erfWorkspaceState";
 
+const pendingWrites = new Map<string, Promise<void>>();
+const scopeKey = (parcelId: string, userId: string | null) => JSON.stringify([userId, parcelId]);
+export function waitForStrategyWrites(parcelId: string, userId: string | null) {
+  return (pendingWrites.get(scopeKey(parcelId, userId)) ?? Promise.resolve()).catch(() => {});
+}
+
 export type StrategyCloudSaveStatus = "idle" | "saving" | "saved" | "failed" | "offline";
 
 export interface StrategyCloudSaveSnapshot {
@@ -13,6 +19,7 @@ export interface StrategyCloudSaveQueue {
   schedule(workspace: ErfStrategyWorkspace): void;
   flush(): Promise<void>;
   retry(): Promise<void>;
+  discardPending(): boolean;
   dispose(): void;
   getStatus(): StrategyCloudSaveSnapshot;
   subscribe(listener: (snapshot: StrategyCloudSaveSnapshot) => void): () => void;
@@ -45,7 +52,7 @@ export function createStrategyCloudSaveQueue({
 }: StrategyCloudSaveQueueOptions): StrategyCloudSaveQueue {
   let disposed = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let inFlight = false;
+  let inFlight: Promise<void> | null = null;
   let pendingWorkspace: ErfStrategyWorkspace | null = null;
   let latestWorkspace: ErfStrategyWorkspace | null = null;
   let snapshot: StrategyCloudSaveSnapshot = {
@@ -70,44 +77,40 @@ export function createStrategyCloudSaveQueue({
     }
   };
 
-  const drain = async (workspace: ErfStrategyWorkspace | null): Promise<void> => {
-    if (!workspace || workspace.parcelId !== parcelId) return;
-    const workspaceToSave = workspace;
+  const drain = (): Promise<void> => {
+    if (inFlight) return inFlight;
+    if (!pendingWorkspace) return Promise.resolve();
     if (!userId) {
       emit({ status: "offline", error: null });
-      return;
+      return Promise.resolve();
     }
-    if (inFlight) {
-      pendingWorkspace = workspace;
-      emit({ status: "saving", error: null });
-      return;
-    }
-
-    inFlight = true;
-    if (pendingWorkspace === workspaceToSave) pendingWorkspace = null;
-    emit({ status: "saving", error: null });
-    try {
-      const allowed = await canPersist();
-      if (!allowed) {
-        inFlight = false;
-        if (!isSameParcel(parcelId, pendingWorkspace)) pendingWorkspace = workspaceToSave;
-        emit({ status: "offline", error: null });
-        return;
-      }
-      await persist(workspaceToSave);
-      inFlight = false;
-      const pending = pendingWorkspace;
-      if (isSameParcel(parcelId, pending)) {
+    // All flush callers join one drain, including edits queued during a write.
+    inFlight = (async () => {
+      while (pendingWorkspace) {
+        const workspaceToSave = pendingWorkspace;
         pendingWorkspace = null;
-        await drain(pending);
-        return;
+        emit({ status: "saving", error: null });
+        try {
+          if (!(await canPersist())) {
+            pendingWorkspace ??= workspaceToSave;
+            emit({ status: "offline", error: null });
+            return;
+          }
+          await persist(workspaceToSave);
+        } catch (error) {
+          pendingWorkspace ??= workspaceToSave;
+          clearTimer();
+          emit({ status: "failed", error: errorMessage(error) });
+          throw error;
+        }
       }
       emit({ status: "saved", lastSavedAt: now(), error: null });
-    } catch (error) {
-      inFlight = false;
-      if (!isSameParcel(parcelId, pendingWorkspace)) pendingWorkspace = workspaceToSave;
-      emit({ status: "failed", error: errorMessage(error) });
-    }
+    })().finally(() => {
+      if (pendingWrites.get(scopeKey(parcelId, userId)) === inFlight) pendingWrites.delete(scopeKey(parcelId, userId));
+      inFlight = null;
+    });
+    pendingWrites.set(scopeKey(parcelId, userId), inFlight);
+    return inFlight;
   };
 
   return {
@@ -123,21 +126,27 @@ export function createStrategyCloudSaveQueue({
       clearTimer();
       timer = setTimeout(() => {
         timer = null;
-        const pending = pendingWorkspace;
-        if (pending) void drain(pending);
+        void drain().catch(() => {});
       }, debounceMs);
     },
     async flush() {
       if (disposed) return;
       clearTimer();
-      const workspace = pendingWorkspace ?? latestWorkspace;
-      await drain(workspace);
+      await drain();
     },
     async retry() {
       if (disposed) return;
       clearTimer();
-      const workspace = pendingWorkspace ?? latestWorkspace;
-      await drain(workspace);
+      pendingWorkspace ??= latestWorkspace;
+      await drain();
+    },
+    discardPending() {
+      if (inFlight) return false;
+      clearTimer();
+      pendingWorkspace = null;
+      latestWorkspace = null;
+      emit({ status: "idle", error: null });
+      return true;
     },
     dispose() {
       disposed = true;

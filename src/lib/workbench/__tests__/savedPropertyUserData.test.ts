@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   mergeSavedPropertyUserDataPatch,
   patchSavedPropertyUserData,
+  SavedPropertyConflictError,
 } from "../savedPropertyUserData";
 
 describe("saved property user_data patching", () => {
@@ -19,7 +20,7 @@ describe("saved property user_data patching", () => {
   });
   it("does not retry or silently overwrite a newer shared revision", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: "40001" } });
-    await expect(patchSavedPropertyUserData("parcel", { strategyWorkspace: {} }, { rpc } as never, {})).rejects.toThrow("Reload before saving");
+    await expect(patchSavedPropertyUserData("parcel", { strategyWorkspace: {} }, { rpc } as never, {})).rejects.toBeInstanceOf(SavedPropertyConflictError);
     expect(rpc).toHaveBeenCalledOnce();
   });
   it("merges top-level namespaces without dropping unrelated data", () => {

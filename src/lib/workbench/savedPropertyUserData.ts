@@ -14,6 +14,14 @@ type GuardedPatchDatabase = Omit<Database, "public"> & { public: Omit<Database["
 
 export type SavedPropertyUserDataPatch = Record<string, unknown>;
 
+export class SavedPropertyConflictError extends Error {
+  readonly code = "40001";
+  constructor() {
+    super("This investigation changed in another session. Your browser draft is retained; review the saved version before retrying.");
+    this.name = "SavedPropertyConflictError";
+  }
+}
+
 export function isSavedPropertyUserData(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -42,7 +50,7 @@ export async function patchSavedPropertyUserData(
     p_user_data_patch: patch as Json,
   });
   const { data, error } = result;
-  if (error?.code === "40001") throw new Error("This investigation changed in another session. Reload before saving; your changes were not applied.");
+  if (error?.code === "40001") throw new SavedPropertyConflictError();
   if (error) throw error;
   return isSavedPropertyUserData(data) ? data : mergeSavedPropertyUserDataPatch({}, patch);
 }

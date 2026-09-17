@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
-import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth/useAuth";
+import { investigationSyncDecision, preserveInvestigationConflict, readInvestigationSyncBaseline, writeInvestigationSyncBaseline } from "@/lib/workbench/investigationSyncBaseline";
 import {
   calculateAcquisition,
   calculateBond,
@@ -53,7 +53,6 @@ import {
   createEmptyStrategyWorkspace,
   updateStrategyDraft,
   chooseStrategyScenario,
-  mergeStrategyWorkspaces,
   getChosenStrategyScenario,
   readStrategyWorkspace,
   readStrategyScenarios,
@@ -68,6 +67,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { patchSavedPropertyUserData } from "@/lib/workbench/savedPropertyUserData";
 import {
   createStrategyCloudSaveQueue,
+  waitForStrategyWrites,
   type StrategyCloudSaveQueue,
 } from "@/lib/workbench/strategyCloudSaveQueue";
 import { useSavedMarketEvidence } from "@/features/marketEvidence/hooks/useSavedMarketEvidence";
@@ -562,11 +562,11 @@ async function activeSupabaseUserMatches(expectedUserId: string | null) {
   return data.user?.id === expectedUserId;
 }
 
-export function completeGuidedStrategyScenario<T>(
-  saveChosenScenario: () => T,
+export async function completeGuidedStrategyScenario<T>(
+  saveChosenScenario: () => T | Promise<T>,
   onContinue: () => void,
 ) {
-  const scenario = saveChosenScenario();
+  const scenario = await saveChosenScenario();
   onContinue();
   return scenario;
 }
@@ -663,11 +663,15 @@ export function StrategyLab({
   const [saveStatus, setSaveStatus] = useState<StrategySaveStatus>(userId ? "loading" : "offline");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [strategyConflict, setStrategyConflict] = useState(false);
+  const [loadingSavedStrategy, setLoadingSavedStrategy] = useState(false);
   const defaultPriceRef = useRef(defaultPrice);
   const cloudSaveQueueRef = useRef<StrategyCloudSaveQueue | null>(null);
   const latestWorkspaceRef = useRef(initialWorkspace);
   const loadedCloudUserData = useRef<Record<string, unknown> | null>(null);
-  const continueAfterSave = useRef(false);
+  const initializedScope = useRef<string | null>(null);
+  const activeScopeRef = useRef({ parcelId, userId });
+  activeScopeRef.current = { parcelId, userId };
   defaultPriceRef.current = defaultPrice;
   const { evidence: savedMarketEvidence } = useSavedMarketEvidence(parcelId);
   const planningRegistry = useMemo(
@@ -751,9 +755,14 @@ export function StrategyLab({
     () => strategyDefaultsFromPropertyFacts(propertyInputFacts),
     [propertyInputFacts],
   );
+  const propertyDefaultsRef = useRef(propertyDefaults);
+  propertyDefaultsRef.current = propertyDefaults;
 
   useLayoutEffect(() => {
     if (isShared) return;
+    const scope = JSON.stringify([userId, parcelId]);
+    if (initializedScope.current === scope) return;
+    initializedScope.current = scope;
     const workspace = readStrategyWorkspace(parcelId, undefined, userId);
     const chosen = getChosenStrategyScenario(parcelId, undefined, userId);
     const nextBuildEnvelopeOverrides = readStoredBuildEnvelopeInputs(parcelId, userId);
@@ -784,6 +793,7 @@ export function StrategyLab({
     setBuildEnvelopeOverrides(nextBuildEnvelopeOverrides);
     latestWorkspaceRef.current = workspace;
     setSaveError(null);
+    setStrategyConflict(false);
     setLastSavedAt(null);
     setSaveStatus(userId ? "loading" : "offline");
   }, [documentZone, isShared, parcel, parcelId, pilotPlanningRecord, sitePotentialRulePrefill, userId]);
@@ -793,6 +803,7 @@ export function StrategyLab({
       let changed = false;
       const next = { ...current };
       for (const [key, value] of Object.entries(propertyDefaults)) {
+        if (Object.hasOwn(latestWorkspaceRef.current.draftInputs, key)) continue;
         if (next[key]?.trim()) continue;
         next[key] = value;
         changed = true;
@@ -805,11 +816,15 @@ export function StrategyLab({
     const queue = createStrategyCloudSaveQueue({
       parcelId,
       userId,
-      canPersist: () => activeSupabaseUserMatches(userId),
+      canPersist: async () => (await activeSupabaseUserMatches(userId)) &&
+        activeScopeRef.current.userId === userId && activeScopeRef.current.parcelId === parcelId,
       persist: async (workspace) => {
         if (!isShared) {
           if (!loadedCloudUserData.current) throw new Error("The saved Strategy is still loading. Try again after it loads.");
-          loadedCloudUserData.current = await persistStrategyWorkspaceToCloud(parcelId, workspace, loadedCloudUserData.current);
+          const acknowledged = await persistStrategyWorkspaceToCloud(parcelId, workspace, loadedCloudUserData.current);
+          if (activeScopeRef.current.userId !== userId || activeScopeRef.current.parcelId !== parcelId) return;
+          loadedCloudUserData.current = acknowledged;
+          if (userId) writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, { strategyWorkspace: workspace }, "strategy");
           return;
         }
         const scope = sharedRef.current;
@@ -827,11 +842,12 @@ export function StrategyLab({
       setSaveStatus(snapshot.status);
       setLastSavedAt(snapshot.lastSavedAt);
       setSaveError(snapshot.error);
+      if (snapshot.error?.includes("changed in another session")) setStrategyConflict(true);
     });
 
     return () => {
       unsubscribe();
-      if (!isShared) void queue.flush();
+      if (!isShared) void queue.flush().catch(() => {});
       queue.dispose();
       if (cloudSaveQueueRef.current === queue) cloudSaveQueueRef.current = null;
     };
@@ -846,22 +862,15 @@ export function StrategyLab({
       }
       cloudSaveQueueRef.current?.schedule(workspace);
       if (immediate) {
-        void cloudSaveQueueRef.current?.flush();
+        void cloudSaveQueueRef.current?.flush().catch(() => {});
       }
     },
     [userId],
   );
 
   const flushStrategySave = useCallback(() => {
-    void cloudSaveQueueRef.current?.flush();
+    void cloudSaveQueueRef.current?.flush().catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (isShared && continueAfterSave.current && saveStatus === "saved") {
-      continueAfterSave.current = false;
-      guidedReturn?.onContinue();
-    }
-  }, [guidedReturn, isShared, saveStatus]);
 
   useEffect(() => {
     let alive = true;
@@ -878,14 +887,15 @@ export function StrategyLab({
     }
 
     setSaveStatus("loading");
-    supabase
+    waitForStrategyWrites(parcelId, userId).then(async () => !alive ? null : await supabase
       .from("saved_properties")
       .select("user_data")
       .eq("user_id", userId)
       .eq("parcel_id", parcelId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!alive) return;
+      .maybeSingle())
+      .then((result) => {
+        if (!alive || !result) return;
+        const { data, error } = result;
         if (error) {
           console.warn("[Easy Erf] Strategy workspace cloud load failed", error.message);
           setSaveStatus("failed");
@@ -895,9 +905,19 @@ export function StrategyLab({
         const remote = strategyWorkspaceFromUserData(parcelId, data?.user_data);
         loadedCloudUserData.current = isRecord(data?.user_data) ? data.user_data : {};
         const local = readStrategyWorkspace(parcelId, undefined, userId);
+        const decision = investigationSyncDecision({ strategyWorkspace: local }, { strategyWorkspace: remote },
+          readInvestigationSyncBaseline(window.localStorage, parcelId, userId, "strategy"),
+          Boolean(local.draftUpdatedAt || local.scenarios.length));
+        if (remote && decision === "conflict") {
+          setStrategyConflict(true);
+          loadedCloudUserData.current = null;
+          setSaveStatus("failed");
+          setSaveError("This Strategy differs from the saved version. Both are retained; resolve the conflict before saving.");
+          return;
+        }
         const merged = writeStrategyWorkspace(
           parcelId,
-          mergeStrategyWorkspaces(parcelId, local, remote),
+          remote && decision === "hydrate" ? remote : local,
           undefined,
           userId,
         );
@@ -910,11 +930,12 @@ export function StrategyLab({
             : selectedStrategyId(chosen),
         );
         setValues({
-          ...strategyDefaults(defaultPriceRef.current, propertyDefaults),
+          ...strategyDefaults(defaultPriceRef.current, propertyDefaultsRef.current),
           ...merged.draftInputs,
         });
         setShowChosenState(Boolean(chosen));
         latestWorkspaceRef.current = merged;
+        if (remote && decision === "hydrate") writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, { strategyWorkspace: remote }, "strategy");
         const cloudMissing = !remote && Boolean(local.draftUpdatedAt || local.scenarios.length);
         const localHadNewer =
           JSON.stringify(merged) !== JSON.stringify(remote ?? createEmptyStrategyWorkspace(parcelId));
@@ -929,7 +950,37 @@ export function StrategyLab({
     return () => {
       alive = false;
     };
-  }, [isShared, parcelId, propertyDefaults, queueCloudSave, userId]);
+  }, [isShared, parcelId, queueCloudSave, userId]);
+
+  async function loadSavedStrategy() {
+    if (!userId || isShared || loadingSavedStrategy) return;
+    setLoadingSavedStrategy(true);
+    try {
+      const { data, error } = await supabase.from("saved_properties").select("user_data")
+        .eq("user_id", userId).eq("parcel_id", parcelId).maybeSingle();
+      if (activeScopeRef.current.userId !== userId || activeScopeRef.current.parcelId !== parcelId) return;
+      if (error || !isRecord(data?.user_data)) throw new Error("The saved Strategy could not be read. Your draft is unchanged.");
+      const remote = strategyWorkspaceFromUserData(parcelId, data.user_data);
+      if (!remote) throw new Error("No readable saved Strategy was found. Your draft is unchanged.");
+      preserveInvestigationConflict(window.localStorage, parcelId, userId,
+        { strategyWorkspace: readStrategyWorkspace(parcelId, undefined, userId) }, { strategyWorkspace: remote });
+      if (!cloudSaveQueueRef.current?.discardPending()) throw new Error("A save is still settling. Both drafts are retained; try loading again after it finishes.");
+      loadedCloudUserData.current = data.user_data;
+      writeStrategyWorkspace(parcelId, remote, undefined, userId);
+      writeInvestigationSyncBaseline(window.localStorage, parcelId, userId, { strategyWorkspace: remote }, "strategy");
+      latestWorkspaceRef.current = remote;
+      setSavedScenarios(remote.scenarios);
+      setChosenScenario(getChosenStrategyScenario(parcelId, undefined, userId));
+      setActive(STRATEGY_OPTIONS.some((option) => option.id === remote.activeStrategy) ? remote.activeStrategy as StrategyType : "buy_hold");
+      setValues({ ...strategyDefaults(defaultPriceRef.current, propertyDefaultsRef.current), ...remote.draftInputs });
+      setStrategyConflict(false);
+      setSaveError(null);
+      setSaveStatus("cloud-restored");
+    } catch (failure) {
+      setSaveError(failure instanceof Error ? failure.message : "The saved Strategy could not be loaded.");
+      setSaveStatus("failed");
+    } finally { setLoadingSavedStrategy(false); }
+  }
 
   function persistDraft(nextActive: StrategyType, nextValues: Record<string, string>, immediate = false) {
     const workspace = isShared ? updateStrategyDraft(latestWorkspaceRef.current, {
@@ -1324,18 +1375,26 @@ export function StrategyLab({
     setChosenScenario(scenario);
     setShowChosenState(true);
     queueCloudSave(workspace, true);
-    if (!isShared) toast.success("Scenario chosen for this erf.");
     return scenario;
   }
 
-  function saveGuidedScenarioAndContinue() {
+  async function saveGuidedScenarioAndContinue() {
     if (!guidedReturn) return;
-    if (isShared) {
-      continueAfterSave.current = true;
-      saveScenario();
-      return;
+    const queue = cloudSaveQueueRef.current;
+    try {
+      await completeGuidedStrategyScenario(async () => {
+        const scenario = saveScenario();
+        await queue?.flush();
+        if (userId && queue?.getStatus().status !== "saved") {
+          throw new Error("Your draft is retained in this browser. Retry saving before continuing.");
+        }
+        return scenario;
+      }, () => {
+        if (queue === cloudSaveQueueRef.current) guidedReturn.onContinue();
+      });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Save failed. Your draft is retained.");
     }
-    completeGuidedStrategyScenario(() => saveScenario(), guidedReturn.onContinue);
   }
 
   const activeOption = optionFor(active);
@@ -1520,7 +1579,7 @@ export function StrategyLab({
               )}
             >
               {saveStatusCopy(saveStatus, lastSavedAt)}
-              {saveStatus === "failed" && (
+              {(saveStatus === "failed" || saveStatus === "offline") && (
                 <button
                   type="button"
                   onClick={flushStrategySave}
@@ -1531,8 +1590,9 @@ export function StrategyLab({
               )}
             </div>
             {saveError && saveStatus === "failed" && (
-              <p className="mt-1 text-xs text-red-700">Cloud save failed. Your browser draft is still kept locally.</p>
+              <p role="alert" className="mt-1 text-xs text-red-700">{saveError} Your browser draft is still kept locally.</p>
             )}
+            {strategyConflict ? <button type="button" disabled={loadingSavedStrategy} onClick={() => void loadSavedStrategy()} className="mt-2 text-sm font-semibold underline">Keep a draft backup and load saved Strategy</button> : null}
             <p className="mt-1 text-sm leading-6 text-[#0D1B2A]/62">
               Adjust these assumptions before relying on the result.
             </p>

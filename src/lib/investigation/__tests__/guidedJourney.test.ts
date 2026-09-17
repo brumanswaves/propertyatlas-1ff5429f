@@ -44,6 +44,18 @@ function facts(overrides: Partial<InvestigationFacts> = {}): InvestigationFacts 
   };
 }
 
+it("completes optional Checks without manufacturing property evidence", () => {
+  const evidence = facts({ identityConfirmed: true });
+  const workspace = createEmptyErfWorkspaceState();
+  workspace.investigation.acknowledgedTaskIds = ["property-checks"];
+  const checks = buildGuidedInvestigationJourney(evidence, workspace).find((step) => step.id === "property-checks");
+  expect(checks?.status).toBe("complete");
+  expect(evidence.approvedPlansOnFile).toBe(false);
+  expect(evidence.usableTopographySurveyCount).toBe(0);
+  expect(evidence.sitePhotoCount).toBe(0);
+  expect(evidence.existingHousePhotoCount).toBe(0);
+});
+
 function completedThroughPropertyChecks(overrides: Partial<InvestigationFacts> = {}) {
   return facts({
     identityConfirmed: true,

@@ -44,9 +44,9 @@ describe("report and investigation coherence guardrails", () => {
     expect(sitePotential).toContain("acceptedInputSignature: acceptance.signature");
     expect(sitePotential).toContain('data-site-potential-acceptance={acceptance.accepted ? "accepted" : "pending"}');
     expect(acceptedEnvelope).toContain("candidate?.acceptance.accepted");
-    expect(sitePotentialTab).toContain("deriveBuildEnvelopeCandidate");
-    expect(sitePotentialTab).toContain("candidate?.acceptance.accepted");
-    expect(sitePotentialTab).toContain("disabled={!acceptedEnvelope}");
+    expect(sitePotential).toContain("onAcceptanceChange?.(acceptance.accepted && (!isShared || !unsaved))");
+    expect(sitePotentialTab).toContain("onAcceptanceChange={setAcceptedEnvelope}");
+    expect(sitePotentialTab).toContain("disabled={!acceptedEnvelope || saving}");
     expect(guidedSitePotential).toContain("acceptedBuildEnvelope");
     expect(guidedSitePotential).toContain("Accepted building area map");
   });

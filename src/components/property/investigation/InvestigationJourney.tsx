@@ -127,8 +127,8 @@ export function InvestigationJourney({
           />
         ) : activeStep.id === "zoning" ? (
           <div className="space-y-4">
-            <PlanningInvestigationPanel job={planningInvestigationJob} />
             <GuidedZoningStep parcel={parcel} onContinue={() => onSelectStep("property-checks")} />
+            <details><summary className="min-h-11 cursor-pointer text-sm font-semibold">Planning investigation details</summary><PlanningInvestigationPanel job={planningInvestigationJob} /></details>
           </div>
         ) : activeStep.id === "property-checks" ? (
           <GuidedPropertyChecksStep parcel={parcel} onContinue={() => onSelectStep("market")} />

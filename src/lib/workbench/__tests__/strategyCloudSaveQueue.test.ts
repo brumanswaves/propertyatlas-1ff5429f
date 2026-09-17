@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createStrategyCloudSaveQueue } from "../strategyCloudSaveQueue";
+import { createStrategyCloudSaveQueue, waitForStrategyWrites } from "../strategyCloudSaveQueue";
 import type { ErfStrategyWorkspace } from "../erfWorkspaceState";
 
 function workspace(parcelId: string, label: string): ErfStrategyWorkspace {
@@ -28,6 +28,59 @@ function deferred<T>() {
 }
 
 describe("strategy cloud save queue", () => {
+  it("keeps a scoped in-flight barrier across navigation without blocking another account", async () => {
+    const write = deferred<void>();
+    const queue = createStrategyCloudSaveQueue({ parcelId: "parcel", userId: "A", persist: () => write.promise });
+    queue.schedule(workspace("parcel", "draft"));
+    const saving = queue.flush();
+    let settled = false;
+    const wait = waitForStrategyWrites("parcel", "A").then(() => { settled = true; });
+    await waitForStrategyWrites("parcel", "B");
+    expect(settled).toBe(false);
+    expect(queue.discardPending()).toBe(false);
+    queue.dispose();
+    write.resolve();
+    await saving;
+    await wait;
+    expect(settled).toBe(true);
+  });
+  it("flush waits for both the in-flight write and the newest queued draft", async () => {
+    const first = deferred<void>();
+    const second = deferred<void>();
+    const persist = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const queue = createStrategyCloudSaveQueue({ parcelId: "parcel-a", userId: "user-a", persist });
+    queue.schedule(workspace("parcel-a", "old"));
+    const initial = queue.flush();
+    await Promise.resolve();
+    queue.schedule(workspace("parcel-a", "new"));
+    let settled = false;
+    const latest = queue.flush().then(() => { settled = true; });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    first.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    second.resolve();
+    await Promise.all([initial, latest]);
+    expect(persist).toHaveBeenLastCalledWith(workspace("parcel-a", "new"));
+    expect(queue.getStatus().status).toBe("saved");
+    queue.dispose();
+  });
+
+  it("explicit flush rejects a failed save and retains the draft for retry", async () => {
+    const persist = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(undefined);
+    const queue = createStrategyCloudSaveQueue({ parcelId: "parcel-a", userId: "user-a", persist });
+    const draft = workspace("parcel-a", "retained");
+    queue.schedule(draft);
+    await expect(queue.flush()).rejects.toThrow("offline");
+    await queue.retry();
+    expect(persist).toHaveBeenLastCalledWith(draft);
+    expect(queue.getStatus().status).toBe("saved");
+    queue.dispose();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();

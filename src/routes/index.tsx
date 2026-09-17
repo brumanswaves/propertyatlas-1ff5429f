@@ -24,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
   clearSavedOfficialReopenSearch,
+  buildSelectedOfficialParcelId,
   parseOfficialParcelReopenSearch,
   type OfficialParcelReopenRequest,
 } from "@/lib/parcels/officialParcelId";
@@ -35,6 +36,9 @@ import {
 } from "@/lib/search/officialParcelIndex";
 import type { PropertySearchResult } from "@/lib/search/propertySearch";
 import type { AddressMapTarget } from "@/components/map/SearchBar";
+import { useAuth } from "@/lib/auth/useAuth";
+import { readPropertyJourneyLocation, writePropertyJourneyLocation } from "@/lib/workbench/propertyJourneyHistory";
+import { resolvePropertyEntryTab } from "@/lib/workbench/propertyOverviewEntry";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -103,8 +107,20 @@ function geometryBounds(geometry: Geometry | null): [number, number, number, num
 }
 
 function AtlasHome() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialFeatureSelection | null>(null);
+  useEffect(() => {
+    const restore = () => {
+      const location = readPropertyJourneyLocation(userId);
+      setSelectedOfficial(location?.selection ?? null);
+      setSelectedId(null);
+    };
+    if (readPropertyJourneyLocation(userId)) restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [userId]);
   const [requestedOfficialParcel, setRequestedOfficialParcel] =
     useState<OfficialParcelReopenRequest | null>(null);
   const [officialReopenStatus, setOfficialReopenStatus] =
@@ -187,6 +203,8 @@ function AtlasHome() {
   const handleOfficialSelect = useCallback(
     (sel: OfficialFeatureSelection | null) => {
       setSelectedOfficial(sel);
+      writePropertyJourneyLocation({ userId, selection: sel, parcelId: sel ? buildSelectedOfficialParcelId(sel) : null,
+        tab: sel ? resolvePropertyEntryTab(window.location.search) : "overview", stepId: null });
       if (sel) {
         setSelectedId(null);
         setSearchHighlight(null);
@@ -196,7 +214,7 @@ function AtlasHome() {
         clearSavedReopenUrl();
       }
     },
-    [clearSavedReopenUrl],
+    [clearSavedReopenUrl, userId],
   );
 
   const selected = selectedId ? (getProperty(selectedId) ?? null) : null;
@@ -241,11 +259,11 @@ function AtlasHome() {
       const lngLat = selectionPointForParcel(parcel);
       if (!lngLat) return;
       setSelectedId(null);
-      setSelectedOfficial({
+      handleOfficialSelect({
         source: parcel.sourceLabel as OfficialFeatureSelection["source"],
         layer: parcel.layer as OfficialFeatureSelection["layer"],
         properties: parcel.properties,
-        geometry: parcel.geometry ?? null,
+        geometry: parcel.geometry ?? officialParcelIndex.find((loaded) => loaded.id === parcel.id)?.geometry ?? null,
         lngLat,
       });
 
@@ -253,7 +271,7 @@ function AtlasHome() {
       setOfficialReopenStatus("resolved");
       clearSavedReopenUrl();
     },
-    [clearSavedReopenUrl],
+    [clearSavedReopenUrl, handleOfficialSelect, officialParcelIndex],
   );
 
   const handleOfficialSearchHighlight = useCallback((result: PropertySearchResult) => {
@@ -561,7 +579,7 @@ function AtlasHome() {
       {selectedOfficial ? (
         <OfficialParcelPanel
           selection={selectedOfficial}
-          onClose={() => setSelectedOfficial(null)}
+          onClose={() => handleOfficialSelect(null)}
         />
       ) : (
         <PropertyPanel property={selected} onClose={() => setSelectedId(null)} />

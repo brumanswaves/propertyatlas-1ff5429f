@@ -1,13 +1,9 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle,
-  CheckCircle2,
   ExternalLink,
   FileCheck2,
-  FileText,
   Loader2,
   RotateCcw,
-  ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -21,7 +17,6 @@ import {
 } from "@/lib/planning/municipalityPlanningRegistry";
 import {
   PLANNING_ZONE_UPDATED_EVENT,
-  confirmStoredPlanningZone,
   readStoredPlanningZoneState,
   writeStoredPlanningZone,
   selectPlanningZone,
@@ -46,7 +41,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useSharedInvestigationScope } from "@/lib/investigation/sharedInvestigationContext";
-import { workspaceFromSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { buildSavedInvestigationUserDataPatch, flushSavedInvestigation, workspaceFromSavedInvestigation } from "@/lib/workbench/savedInvestigationProjection";
+import { readErfWorkspaceState, updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { toSupabaseJson } from "@/lib/supabase/json";
 
 interface GuidedZoningStepProps {
@@ -92,6 +88,16 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
   const [userConfirmedZoneCode, setUserConfirmedZoneCode] = useState<string | null>(null);
   const [readingAssetId, setReadingAssetId] = useState<string | null>(null);
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
+  const operationScope = useMemo(() => ({ active: true, pending: false, parcelId: parcel.id, userId,
+    orderId: shared?.snapshot.orderId }), [parcel.id, userId, shared?.snapshot.orderId]);
+  useLayoutEffect(() => {
+    operationScope.active = true;
+    setChoosing(false); setContinuing(false); setContinueError(null);
+    return () => { operationScope.active = false; };
+  }, [operationScope]);
 
   const registry = useMemo(
     () => findMunicipalityPlanningRegistry(parcel.municipality ?? null),
@@ -122,7 +128,7 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
       const detail = (event as CustomEvent<{ parcelId?: string; userId?: string | null }> | undefined)
         ?.detail;
       if (detail?.parcelId && detail.parcelId !== parcel.id) return;
-      if ((detail?.userId ?? null) !== userId) return;
+      if (event && (detail?.userId ?? null) !== userId) return;
       const planningState = readStoredPlanningZoneState(parcel.id, userId);
       setSelectedZoneCode(planningState.zoneCode);
       setUserConfirmedZoneCode(planningState.userConfirmedZoneCode);
@@ -132,17 +138,14 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     return () => window.removeEventListener(PLANNING_ZONE_UPDATED_EVENT, sync);
   }, [parcel.id, userId, shared]);
 
-  const usableDocuments = useMemo(
-    () =>
-      selectedZone
-        ? vault.assets.filter((asset) => isUsableSubjectZoningDocument(asset, selectedZone))
-        : [],
-    [selectedZone, vault.assets],
-  );
-  const documentBacked = usableDocuments.length > 0;
   const userConfirmedWorkingZone =
     Boolean(selectedZoneCode) && userConfirmedZoneCode === selectedZoneCode;
-  const canContinue = documentBacked || userConfirmedWorkingZone;
+  const supportedZones = zoneOptions.filter((zone) => vault.assets.some((asset) =>
+    asset.parcel_id === parcel.id && isUsableSubjectZoningDocument(asset, zone)));
+  const suggestedZone = supportedZones.length === 1 ? supportedZones[0] : null;
+  const workingZone = selectedZone ?? suggestedZone;
+  const supportingDocument = workingZone && vault.assets.find((asset) =>
+    asset.parcel_id === parcel.id && isUsableSubjectZoningDocument(asset, workingZone));
   const extractedPlanningClaims = useMemo(
     () =>
       vault.assets
@@ -170,16 +173,33 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     setUserConfirmedZoneCode(next.userConfirmedZoneCode);
   }
 
-  async function confirmWorkingZone() {
-    if (shared) {
-      const workspace = workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData);
-      try { await shared.save(toSupabaseJson({ easyErfInvestigation: { ...workspace, planning: confirmPlanningZone(workspace.planning) } })); }
-      catch (error) { toast.error(error instanceof Error ? error.message : "Zoning confirmation could not be saved."); }
-      return;
+  async function confirmAndContinue(notSure = false) {
+    if (operationScope.pending || shared?.busy || (!notSure && !workingZone)) return;
+    operationScope.pending = true;
+    setContinuing(true); setContinueError(null);
+    try {
+      const workspace = shared
+        ? workspaceFromSavedInvestigation(parcel.id, shared.snapshot.userData)
+        : readErfWorkspaceState(parcel.id, undefined, userId);
+      const planning = notSure ? { ...workspace.planning, userConfirmedZoneCode: null, userConfirmedAt: null }
+        : confirmPlanningZone(selectPlanningZone(workspace.planning, workingZone!.code));
+      const investigation = { ...workspace.investigation, skippedStepIds: notSure
+        ? Array.from(new Set([...workspace.investigation.skippedStepIds, "zoning"]))
+        : workspace.investigation.skippedStepIds.filter((id) => id !== "zoning") };
+      if (shared) {
+        await shared.save(toSupabaseJson(buildSavedInvestigationUserDataPatch(parcel.id, { ...workspace, planning, investigation })));
+      } else {
+        updateErfWorkspaceState(parcel.id, { planning, investigation, dirty: true }, undefined, userId);
+        window.dispatchEvent(new CustomEvent(PLANNING_ZONE_UPDATED_EVENT, { detail: { parcelId: parcel.id, userId, zoneCode: planning.zoneCode } }));
+        if (userId) await flushSavedInvestigation(parcel.id, userId);
+      }
+      if (operationScope.active) onContinue();
+    } catch (error) {
+      if (operationScope.active) setContinueError(error instanceof Error ? error.message : "Zoning could not be saved. Your selection is retained; retry to continue.");
+    } finally {
+      operationScope.pending = false;
+      if (operationScope.active) setContinuing(false);
     }
-    const next = confirmStoredPlanningZone(parcel.id, userId);
-    setSelectedZoneCode(next.zoneCode);
-    setUserConfirmedZoneCode(next.userConfirmedZoneCode);
   }
 
   async function readZoningDocument(asset: ErfAsset, retry = false) {
@@ -279,283 +299,76 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
     }
   }
 
-  const statusText = documentBacked
-    ? "Document-backed zoning confirmed"
-    : userConfirmedWorkingZone
-      ? "Working zoning confirmed by you"
-    : selectedZone
-      ? "Working zoning selected, unverified"
-      : vault.assets.length
-        ? "Select the zoning shown by the record"
-        : "No working zoning selected";
-
   return (
     <div className="space-y-4">
-      <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-[#F8FAFC] p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF6A00]">
-              Working zoning and supporting evidence
-            </div>
-            <h4 className="mt-1 text-lg font-semibold tracking-tight text-[#0D1B2A]">
-              Select the zoning, then strengthen it with the municipal record
-            </h4>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#0D1B2A]/66">
-              Select the zoning shown by your source, then confirm it as your working conclusion
-              before continuing. A readable, property-specific record is still stronger evidence;
-              Easy Erf keeps user-confirmed zoning clearly distinct from municipal proof.
-            </p>
-          </div>
-          <span
-            className={cn(
-              "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-              documentBacked
-                ? "bg-emerald-100 text-emerald-800"
-                : userConfirmedWorkingZone
-                  ? "bg-sky-100 text-sky-900"
-                  : selectedZone || vault.assets.length
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-slate-100 text-slate-700",
-            )}
-          >
-            {documentBacked ? (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            ) : userConfirmedWorkingZone ? (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            ) : selectedZone || vault.assets.length ? (
-              <AlertTriangle className="h-3.5 w-3.5" />
-            ) : (
-              <FileText className="h-3.5 w-3.5" />
-            )}
-            {statusText}
-          </span>
-        </div>
-      </section>
-
-      <section className="rounded-[1.25rem] border border-[#FF6A00]/18 bg-[#fff8ec] p-4">
-        <h4 className="text-sm font-semibold text-[#0D1B2A]">How to use this page</h4>
-        <ol className="mt-3 grid gap-3 md:grid-cols-3">
-          {[
-            "Open a municipal source or property report and identify the zoning stated for this erf.",
-            "Choose that zoning below, then confirm it as your working conclusion before continuing.",
-            "Upload the erf-specific municipal record when available to upgrade the zoning to document-backed.",
-          ].map((line, index) => (
-            <li key={line} className="flex gap-3 rounded-xl border border-[#0D1B2A]/8 bg-white p-3">
-              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6A00]/12 text-[11px] font-bold text-[#FF6A00]">
-                {index + 1}
-              </span>
-              <span className="text-xs leading-5 text-[#0D1B2A]/68">{line}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div>
-            <div className="text-sm font-semibold text-[#0D1B2A]">
-              Working zoning for this erf
-            </div>
-            <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/60">
-              Choose the zone stated by your source. This records a working conclusion, not a
-              municipal certificate.
-            </p>
-            {zoneOptions.length ? (
-              <div
-                className="mt-3 grid gap-2"
-                role="radiogroup"
-                aria-label="Working zoning for this erf"
-              >
-                {zoneOptions.map((zone) => {
-                  const selected = selectedZoneCode === zone.code;
-                  return (
-                    <button
-                      key={zone.code}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => selectZone(zone.code)}
-                      className={cn(
-                        "flex min-h-[5.25rem] w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6A00]/45",
-                        selected
-                          ? "border-[#FF6A00]/65 bg-[#fff8ec] shadow-[0_14px_30px_-24px_rgba(255,106,0,0.8)] ring-1 ring-[#FF6A00]/20"
-                          : "border-[#0D1B2A]/10 bg-white hover:border-[#FF6A00]/30 hover:bg-[#fffaf5]",
-                      )}
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-base font-bold text-[#0D1B2A]">{zone.code}</span>
-                        <span className="mt-1 block text-sm leading-5 text-[#0D1B2A]/68">
-                          {zone.name}
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]",
-                          selected
-                            ? "bg-[#FF6A00] text-white"
-                            : "bg-slate-100 text-slate-600",
-                        )}
-                      >
-                        {selected
-                          ? documentBacked
-                            ? "Document supported"
-                            : userConfirmedWorkingZone
-                              ? "Confirmed by you"
-                              : "Selected"
-                          : "Choose"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt-3 rounded-2xl border border-dashed border-[#0D1B2A]/16 bg-slate-50 p-4 text-sm text-slate-600">
-                No reviewed zoning options are available for this municipality yet.
-              </div>
-            )}
-            {!registry ? (
-              <p className="mt-2 text-xs leading-5 text-amber-800">
-                Easy Erf does not yet have a reviewed zoning list for {parcel.municipality ?? "this municipality"}.
-                Keep the official record attached and skip this step for now.
-              </p>
-            ) : null}
-            {selectedZone ? (
-              <div
-                className={cn(
-                  "mt-3 rounded-xl border p-3",
-                  documentBacked
-                    ? "border-emerald-300/45 bg-emerald-50"
-                    : "border-amber-300/45 bg-amber-50",
-                )}
-              >
-                <div className="text-xs font-semibold text-[#0D1B2A]">
-                  {selectedZone.code} · {selectedZone.name}
-                </div>
-                <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/64">
-                  {documentBacked
-                    ? "A readable matched document supports this selection."
-                    : userConfirmedWorkingZone
-                      ? "You confirmed this as the working zoning for this erf. It is not municipal proof yet."
-                      : "Saved as an unverified working zoning. It is not municipal proof yet."}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/64">
-                  Zoning alone does not confirm height, coverage, building lines, consent uses,
-                  departures, title restrictions or approval to build.
-                </p>
-                <dl className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
-                      Selected
-                    </dt>
-                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">Yes</dd>
-                  </div>
-                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
-                      Confirmed by user
-                    </dt>
-                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">
-                      {userConfirmedWorkingZone ? "Yes" : "Not yet"}
-                    </dd>
-                  </div>
-                  <div className="rounded-lg border border-[#0D1B2A]/8 bg-white/80 p-2.5">
-                    <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B]">
-                      Municipally verified
-                    </dt>
-                    <dd className="mt-1 text-xs font-semibold text-[#0D1B2A]">
-                      {documentBacked ? "Record attached" : "Not yet"}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rounded-xl border border-[#0D1B2A]/8 bg-[#F8FAFC] p-4">
-            <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#0D1B2A]">
-              <ShieldCheck className="h-4 w-4 text-[#FF6A00]" />
-              Official planning sources
-            </div>
-            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/62">
-              Look for an erf-specific zoning certificate, zoning extract, municipal property record
-              or a paid report that states the zoning. A general scheme explains rules but does not
-              prove this erf's zoning.
-            </p>
-            {sources.length ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {sources.map((source) => (
-                  <a
-                    key={source.id}
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-2 text-xs font-semibold text-[#0D1B2A]"
-                  >
-                    {source.title}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-xs text-[#0D1B2A]/58">No reviewed municipal source links are registered yet.</p>
-            )}
-          </div>
-        </div>
-
-        {selectedZone && !documentBacked ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[#0D1B2A]/8 pt-4">
-            <button
-              type="button"
-              disabled={userConfirmedWorkingZone}
-              onClick={confirmWorkingZone}
-              className="inline-flex min-h-12 items-center rounded-full border border-[#FF6A00] bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F] disabled:cursor-default disabled:border-emerald-700 disabled:bg-emerald-700 disabled:opacity-100"
-            >
-              {userConfirmedWorkingZone ? "Working zoning confirmed" : "Confirm working zoning"}
-            </button>
-            <p className="max-w-xl text-xs leading-5 text-[#0D1B2A]/62">
-              This records your working conclusion for this erf. Published rules and municipal proof
-              remain separate.
-            </p>
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-[#0D1B2A]/8 pt-4">
-          <button
-            type="button"
-            disabled={!vault.signedIn}
-            onClick={() => inputRef.current?.click()}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white disabled:opacity-55"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Upload zoning document
+      <section aria-label="Zoning decision" className="border-b border-[#0D1B2A]/10 pb-5">
+        <h4 className="text-lg font-semibold text-[#0D1B2A]">
+          {workingZone ? (supportingDocument ? "Suggested zoning for this erf" : "Your working zoning") : "Choose a working zoning"}
+        </h4>
+        {workingZone ? <>
+          <p className="mt-2 text-base font-semibold">{workingZone.code} · {workingZone.name}</p>
+          <p className="mt-1 text-sm text-[#0D1B2A]/70">
+            {supportingDocument
+              ? `Document supported · Extraction confidence: ${findSupportingZoningClaim(supportingDocument, workingZone)?.confidence ?? "unverified"} · ${supportingDocument.source_label || supportingDocument.original_file_name}`
+              : userConfirmedWorkingZone ? "Working zoning confirmed by you · Not municipal proof" : "User selection · Working assumption, not municipal proof"}
+          </p>
+          <p className="mt-2 text-sm text-[#0D1B2A]/70">Confirming this choice does not establish development rights or municipal approval.</p>
+        </> : <p className="mt-2 text-sm text-[#0D1B2A]/70">
+          {supportedZones.length > 1 ? "Attached records disagree on zoning. Check the sources before choosing." : "No supported zoning match for this erf is recorded."}
+          {" "}The municipal list supplies working options, not property-specific confirmation.
+        </p>}
+        <div className="mt-4 flex flex-wrap gap-3">
+          {workingZone && <button type="button" disabled={continuing || shared?.busy || vault.loading}
+            onClick={() => void confirmAndContinue()}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#FF6A00] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {continuing && <Loader2 className="h-4 w-4 animate-spin" />}
+            {continuing ? "Saving zoning..." : "Use this zoning and continue"}
+          </button>}
+          <button type="button" disabled={continuing || shared?.busy} aria-expanded={choosing}
+            onClick={() => setChoosing(!choosing)}
+            className="min-h-11 rounded-lg border border-[#0D1B2A]/20 px-4 py-2 text-sm font-semibold">
+            {workingZone ? "Change zoning" : "Choose zoning"}
           </button>
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff"
-            className="hidden"
-            onChange={(event) => {
-              void uploadFiles(event.currentTarget.files);
-              event.currentTarget.value = "";
-            }}
-          />
+          <button type="button" disabled={continuing || shared?.busy}
+            onClick={() => void confirmAndContinue(true)}
+            className="min-h-11 rounded-lg border border-[#0D1B2A]/20 px-4 py-2 text-sm">
+            Not sure - continue without confirming
+          </button>
         </div>
-        {!vault.signedIn ? (
-          <p className="mt-3 rounded-xl border border-amber-300/45 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-            Sign in before uploading. You can still open the sources, save a working zoning or skip.
-          </p>
-        ) : null}
-        {vault.uploadState ? (
-          <p className="mt-3 rounded-xl border border-[#D9E6F2] bg-[#F7FBFF] px-3 py-2 text-xs text-[#0D1B2A]/66">
-            Upload progress: {vault.uploadState.progress}% · {vault.uploadState.label}
-          </p>
-        ) : null}
-        {vault.error ? (
-          <p className="mt-3 rounded-xl border border-red-300/40 bg-red-50 px-3 py-2 text-xs text-red-900">
-            {vault.error}
-          </p>
-        ) : null}
+        {!userId && !shared && <p className="mt-2 text-xs text-[#0D1B2A]/65">Saved in this browser only. Sign in to save to your account.</p>}
+        {continueError && <p role="alert" className="mt-3 text-sm text-red-800">{continueError} Your selection is retained. Retry to continue.</p>}
+        {choosing && <div className="mt-4">
+          {zoneOptions.length ? <div role="radiogroup" aria-label="Working zoning for this erf" className="grid gap-2 sm:grid-cols-2">
+            {zoneOptions.map((zone) => <button key={zone.code} type="button" role="radio"
+              aria-checked={selectedZoneCode === zone.code} disabled={continuing || shared?.busy}
+              onClick={() => void selectZone(zone.code)}
+              className={cn("min-h-[5.25rem] rounded-lg border p-3 text-left text-sm disabled:opacity-50",
+                selectedZoneCode === zone.code ? "border-[#FF6A00] bg-[#FFF7ED]" : "border-[#0D1B2A]/15 bg-white")}>
+              <span className="block font-semibold">{zone.code} · {zone.name}</span>
+              <span className="mt-1 block text-xs">{selectedZoneCode === zone.code ? "Selected working option" : "Working option"}</span>
+            </button>)}
+          </div> : <p className="text-sm">No reviewed zoning options are available for this municipality yet. You can continue without confirming.</p>}
+        </div>}
       </section>
+
+      <details className="rounded-lg border border-[#0D1B2A]/10 p-4">
+        <summary className="min-h-10 cursor-pointer text-sm font-semibold">Optional zoning documents and official sources</summary>
+        <p className="mt-2 text-sm text-[#0D1B2A]/70">A readable property-specific record can strengthen a working choice. No document is required to continue with an assumption or leave zoning unconfirmed.</p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {sources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer"
+            className="inline-flex min-h-10 items-center gap-2 text-sm underline">{source.title}<ExternalLink className="h-3.5 w-3.5" /></a>)}
+        </div>
+        <button type="button" disabled={!vault.signedIn} onClick={() => inputRef.current?.click()}
+          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm disabled:opacity-50">
+          <Upload className="h-4 w-4" />Upload zoning document
+        </button>
+        <input ref={inputRef} type="file" multiple
+          accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff"
+          className="hidden" onChange={(event) => { void uploadFiles(event.currentTarget.files); event.currentTarget.value = ""; }} />
+        {!vault.signedIn && <p className="mt-2 text-xs">Sign in to upload zoning documents.</p>}
+        {vault.uploadState && <p className="mt-2 text-xs">Upload progress: {vault.uploadState.progress}% · {vault.uploadState.label}</p>}
+        {vault.error && <p role="alert" className="mt-2 text-sm text-red-800">{vault.error}</p>}
+      </details>
 
       <section className="rounded-[1.25rem] border border-[#0D1B2A]/10 bg-white p-4">
         <div className="flex items-center justify-between gap-3">
@@ -748,23 +561,6 @@ export function GuidedZoningStep({ parcel, onContinue }: GuidedZoningStepProps) 
         </section>
       ) : null}
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          disabled={!canContinue}
-          onClick={onContinue}
-          title={
-            selectedZone && !canContinue
-              ? "Confirm this working zoning or attach a matching municipal record before continuing."
-              : undefined
-          }
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {documentBacked || userConfirmedWorkingZone
-            ? "Continue to Property checks"
-            : "Confirm working zoning to continue"}
-        </button>
-      </div>
     </div>
   );
 }
