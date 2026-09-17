@@ -194,7 +194,20 @@ try {
   await failure.page.goto(base + "/profile");
   failure.state.logoutFail = true;
   await failure.page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await failure.page.getByRole("alert").filter({ hasText: "server sign-out could not be confirmed" }).waitFor();
+  // SDK versions differ on whether remote failure also clears the local session.
+  // In either case the visible message must honestly match the remaining access.
+  const logoutError = failure.page.getByRole("alert").filter({
+    hasText: /server sign-out could not be confirmed|Sign-out did not complete/,
+  });
+  await logoutError.waitFor();
+  const retainedSession = await failure.page.evaluate(key => Boolean(localStorage.getItem(key)), failure.state.authKey);
+  if (retainedSession) {
+    assert.match(await logoutError.innerText(), /Sign-out did not complete/);
+    assert.equal(new URL(failure.page.url()).pathname, "/profile");
+  } else {
+    assert.match(await logoutError.innerText(), /server sign-out could not be confirmed/);
+    assert.equal(new URL(failure.page.url()).pathname, "/auth");
+  }
   await failure.context.close();
   checks.push("Rejected password update retains input; failed logout is visible and not presented as success");
   assert.deepEqual(errors, []);
