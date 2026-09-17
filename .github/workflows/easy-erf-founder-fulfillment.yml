@@ -13,6 +13,12 @@ on:
       - scripts/verify-easy-erf-founder-queue.sql
       - scripts/verify-founder-fulfillment-browser.mjs
       - scripts/verify-staff-dashboards-browser.mjs
+      - scripts/verify-account-access-browser.mjs
+      - src/lib/auth/accountAccess.ts
+      - src/lib/auth/__tests__/accountAccess.test.ts
+      - src/routes/account.password.tsx
+      - src/routes/auth.tsx
+      - src/routes/profile.tsx
       - src/lib/auth/StaffAccess.tsx
       - src/lib/auth/useAuth.tsx
       - src/lib/auth/__tests__/staffNavigation.test.ts
@@ -100,6 +106,8 @@ jobs:
           # generated lockfile update out of the source acceptance receipt.
           git restore -- package-lock.json
           npx vitest run \
+            src/lib/auth/__tests__/accountAccess.test.ts \
+            src/lib/auth/__tests__/googleAuthTransport.test.ts \
             src/lib/auth/__tests__/staffNavigation.test.ts \
             src/lib/humanReview/__tests__/founderQueueSafety.test.ts \
             src/lib/humanReview/__tests__/founderQueueData.test.ts \
@@ -123,6 +131,9 @@ jobs:
         env:
           NITRO_PRESET: node-server
           VITE_MAPBOX_ACCESS_TOKEN: pk.synthetic-browser-fixture
+          VITE_SUPABASE_URL: https://fixture.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: synthetic-public-key
+          VITE_FOUNDER_SUPABASE_AUTH: 'true'
         run: npm run build
 
       - name: Check TypeScript
@@ -135,6 +146,12 @@ jobs:
           --rule 'prettier/prettier: off'
           scripts/verify-founder-fulfillment-browser.mjs
           scripts/verify-staff-dashboards-browser.mjs
+          scripts/verify-account-access-browser.mjs
+          src/lib/auth/accountAccess.ts
+          src/lib/auth/__tests__/accountAccess.test.ts
+          src/routes/account.password.tsx
+          src/routes/auth.tsx
+          src/routes/profile.tsx
           src/lib/auth/StaffAccess.tsx
           src/lib/auth/useAuth.tsx
           src/lib/auth/__tests__/staffNavigation.test.ts
@@ -188,6 +205,7 @@ jobs:
           git diff --exit-code
           node scripts/verify-founder-fulfillment-browser.mjs
           node scripts/verify-staff-dashboards-browser.mjs
+          node scripts/verify-account-access-browser.mjs
           timeout 120s node scripts/verify-customer-report-link-browser.mjs
 
       - name: Upload founder browser acceptance evidence

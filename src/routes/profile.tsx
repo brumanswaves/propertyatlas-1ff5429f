@@ -162,6 +162,7 @@ function AccountPage() {
               Keep the account details that help Easy Erf identify you and make the product more useful. These fields are user preferences, not official property evidence.
             </p>
           </div>
+          <Link to="/account/password" className="text-sm font-semibold underline">Set or change password</Link>
           <Link
             to="/dashboard"
             className="inline-flex rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-soft hover:bg-muted"

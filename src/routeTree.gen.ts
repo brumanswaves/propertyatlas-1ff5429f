@@ -41,6 +41,7 @@ import { Route as AdminFulfillmentRouteImport } from './routes/admin_.fulfillmen
 import { Route as AdminEntitlementsRouteImport } from './routes/admin_.entitlements'
 import { Route as AdminReadinessRouteImport } from './routes/admin.readiness'
 import { Route as AdminPublicDataDebugRouteImport } from './routes/admin.public-data-debug'
+import { Route as AccountPasswordRouteImport } from './routes/account.password'
 import { Route as ApiSitePotentialRetryPackRouteImport } from './routes/api/site-potential.retry-pack'
 import { Route as ApiSitePotentialProcessRouteImport } from './routes/api/site-potential.process'
 import { Route as ApiSitePotentialPackStatusRouteImport } from './routes/api/site-potential.pack-status'
@@ -220,6 +221,11 @@ const AdminPublicDataDebugRoute = AdminPublicDataDebugRouteImport.update({
   path: '/public-data-debug',
   getParentRoute: () => AdminRoute,
 } as any)
+const AccountPasswordRoute = AccountPasswordRouteImport.update({
+  id: '/account/password',
+  path: '/account/password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSitePotentialRetryPackRoute =
   ApiSitePotentialRetryPackRouteImport.update({
     id: '/api/site-potential/retry-pack',
@@ -346,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/account/password': typeof AccountPasswordRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/account/password': typeof AccountPasswordRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin/entitlements': typeof AdminEntitlementsRoute
@@ -451,6 +459,7 @@ export interface FileRoutesById {
   '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/why': typeof WhyRoute
+  '/account/password': typeof AccountPasswordRoute
   '/admin/public-data-debug': typeof AdminPublicDataDebugRoute
   '/admin/readiness': typeof AdminReadinessRoute
   '/admin_/entitlements': typeof AdminEntitlementsRoute
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/account/password'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/account/password'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin/entitlements'
@@ -609,6 +620,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/terms'
     | '/why'
+    | '/account/password'
     | '/admin/public-data-debug'
     | '/admin/readiness'
     | '/admin_/entitlements'
@@ -662,6 +674,7 @@ export interface RootRouteChildren {
   SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   WhyRoute: typeof WhyRoute
+  AccountPasswordRoute: typeof AccountPasswordRoute
   AdminEntitlementsRoute: typeof AdminEntitlementsRoute
   AdminFulfillmentRoute: typeof AdminFulfillmentRoute
   AdminLaunchReadinessRoute: typeof AdminLaunchReadinessRoute
@@ -913,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPublicDataDebugRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/account/password': {
+      id: '/account/password'
+      path: '/account/password'
+      fullPath: '/account/password'
+      preLoaderRoute: typeof AccountPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/site-potential/retry-pack': {
       id: '/api/site-potential/retry-pack'
       path: '/api/site-potential/retry-pack'
@@ -1080,6 +1100,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   WhyRoute: WhyRoute,
+  AccountPasswordRoute: AccountPasswordRoute,
   AdminEntitlementsRoute: AdminEntitlementsRoute,
   AdminFulfillmentRoute: AdminFulfillmentRoute,
   AdminLaunchReadinessRoute: AdminLaunchReadinessRoute,

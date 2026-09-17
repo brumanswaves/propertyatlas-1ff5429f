@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## Account sign-in repair, 2026-09-17
+
+- Active release EE-R999-01. Owner reported ineffective sign-out, unwanted Google account reuse and missing ordinary password setup/recovery. Source-only branch `codex/account-signin-recovery` starts from canonical main `2fe047e17de753add75bbade0fadde544c863a8d`. PR #182 is already merged; do not replay its merge/publication. Original dirty worktree and live browser drafts remain untouched.
+- VERIFIED source defects: both navigation sign-out controls discarded completion/errors; OAuth did not request account selection; ordinary Account had no password management and sign-in had no recovery action. Existing-user signup also claimed immediate success despite the provider's intentionally obfuscated response.
+- Source repair: awaited local-session sign-out with postcondition/error reporting (including errors after the SDK clears local auth); Google account-choice parameter through both existing transports; canonical Auth password update for a server-verified existing identity; same-origin reset callback and neutral recovery response. No roles, identities, evidence, reports, schema, provider configuration or account-scoped draft storage are changed.
+- VERIFIED local focused checks: 4 files / 23 tests. Full Vitest: 165 files / 1,669 tests. TypeScript and targeted lint pass. Built-app synthetic browser checks pass on desktop/mobile: password setup, same-account password login, draft preservation, local logout, reset request/callback, explicit Google chooser request, account switch, expired/missing session, rejected password save and visible remote logout failure. Screenshots inspected; exact committed-head checks/artifacts belong in the PR receipt.
+- Remaining gates: final candidate build/browser replay, exact-head CI, independent review, then separately bounded rollout and real owner acceptance. The hosted Google chooser/broker, real recovery email delivery and deployed redirect allow-list are NOT proven by synthetic tests. Release must verify `https://easyerf.co.za/account/password` is an allowed recovery destination; no configuration change was made here.
+- PR #182 live acceptance remains incomplete: Strategy timestamp-only conflict is a separate recorded blocker; SG/report refinement remains separate. No conflict was forced and no production save was repeated during this auth repair.
+- Spend cap $0. Deterministic tools/existing allowance only; no paid API, credit purchase, real email, account mutation or deployment initiated. Actual account spend UNKNOWN. Final candidate SHA, draft PR, CI and process state are recorded in the receipt; do not infer continued background implementation from this ledger.
+
 ## PR #182 independent-review repair, 2026-09-16
 
 - Active release EE-R999-01; same six-item self-service continuity scope, branch `codex/self-service-continuity-181`, draft PR #182. Rechecked main `284a20cfeffb2c2560d428f4bd56e71743d3a704` and remote checkpoint `84bb2d29f696ddc78234697b5f917166c5c6979a` before editing. Original dirty worktree is protected.
