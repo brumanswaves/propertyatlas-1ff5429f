@@ -1,22 +1,35 @@
 import { readFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GOOGLE_ACCOUNT_CHOICE, requestPasswordRecovery, saveAccountPassword, signOutCurrentSession, verifyPasswordAccount } from "../accountAccess";
 
 function fixture() {
+  let listener: (event: string, session: { user: { id: string } } | null) => void = () => {};
+  const session = { user: { id: "google-owner" }, access_token: "synthetic-owner-credential" };
+  const unsubscribe = vi.fn();
+  const request = vi.fn().mockResolvedValue(Response.json({ id: "google-owner" }));
+  vi.stubGlobal("fetch", request);
+  vi.stubEnv("VITE_SUPABASE_URL", "https://fixture.supabase.co");
+  vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "synthetic-public-key");
   const auth = {
     signOut: vi.fn().mockResolvedValue({ error: null }),
-    getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+    getSession: vi.fn().mockResolvedValue({ data: { session }, error: null }),
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "google-owner", email: "owner@example.invalid" } }, error: null }),
     updateUser: vi.fn().mockResolvedValue({ error: null }),
     resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+    onAuthStateChange: vi.fn().mockImplementation(callback => {
+      listener = callback;
+      return { data: { subscription: { unsubscribe } } };
+    }),
   };
-  return { auth, client: { auth } as unknown as SupabaseClient };
+  return { auth, request, unsubscribe, emit: (id: string | null) => listener(id ? "SIGNED_IN" : "SIGNED_OUT", id ? { user: { id } } : null), client: { auth } as unknown as SupabaseClient };
 }
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("account access repair", () => {
   it("awaits current-session sign-out and verifies removal without signing out other browsers", async () => {
     const f = fixture();
+    f.auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
     await signOutCurrentSession(f.client);
     expect(f.auth.signOut).toHaveBeenCalledExactlyOnceWith({ scope: "local" });
     expect(f.auth.getSession).toHaveBeenCalledTimes(1);
@@ -50,7 +63,14 @@ describe("account access repair", () => {
   it("adds a password to the verified existing OAuth identity without changing roles or email", async () => {
     const f = fixture();
     await saveAccountPassword(f.client, "google-owner", "synthetic-long-password");
-    expect(f.auth.updateUser).toHaveBeenCalledExactlyOnceWith({ password: "synthetic-long-password" });
+    expect(f.auth.getUser).toHaveBeenCalledExactlyOnceWith("synthetic-owner-credential");
+    expect(f.request).toHaveBeenCalledExactlyOnceWith("https://fixture.supabase.co/auth/v1/user", {
+      method: "PUT", credentials: "omit", redirect: "error",
+      headers: { apikey: "synthetic-public-key", Authorization: "Bearer synthetic-owner-credential", "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "synthetic-long-password" }),
+    });
+    expect(f.auth.updateUser).not.toHaveBeenCalled();
+    expect(f.unsubscribe).toHaveBeenCalledOnce();
   });
   it("rejects expired, missing and changed accounts before updating a password", async () => {
     const f = fixture();
@@ -63,8 +83,41 @@ describe("account access repair", () => {
     const f = fixture();
     await expect(saveAccountPassword(f.client, "google-owner", "short")).rejects.toThrow("12 characters");
     expect(f.auth.updateUser).not.toHaveBeenCalled();
-    f.auth.updateUser.mockResolvedValue({ error: new Error("reauthentication needed") });
+    f.request.mockResolvedValue(new Response(null, { status: 422 }));
     await expect(saveAccountPassword(f.client, "google-owner", "synthetic-long-password")).rejects.toThrow("could not be saved");
-    expect(f.auth.updateUser).toHaveBeenCalledTimes(1);
+    expect(f.request).toHaveBeenCalledTimes(1);
+  });
+  it.each(["other", null])("invalidates delayed verification after switch/logout to %s", async id => {
+    const f = fixture();
+    let release!: (value: unknown) => void;
+    f.auth.getUser.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    const result = saveAccountPassword(f.client, "google-owner", "synthetic-long-password");
+    const rejected = expect(result).rejects.toThrow("account changed");
+    await vi.waitFor(() => expect(f.auth.getUser).toHaveBeenCalled());
+    f.emit(id);
+    release({ data: { user: { id: "google-owner" } }, error: null });
+    await rejected;
+    expect(f.request).not.toHaveBeenCalled();
+    expect(f.unsubscribe).toHaveBeenCalledOnce();
+  });
+  it("does not retarget a dispatched request or mutate shared session state", async () => {
+    const f = fixture();
+    let release!: (response: Response) => void;
+    f.request.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    const result = saveAccountPassword(f.client, "google-owner", "synthetic-long-password");
+    const rejected = expect(result).rejects.toThrow("account changed");
+    await vi.waitFor(() => expect(f.request).toHaveBeenCalled());
+    f.emit("other");
+    release(Response.json({ id: "google-owner" }));
+    await rejected;
+    expect(f.request.mock.calls[0][1].headers.Authorization).toBe("Bearer synthetic-owner-credential");
+    expect(f.request).toHaveBeenCalledOnce();
+    expect(f.auth.updateUser).not.toHaveBeenCalled();
+  });
+  it("does not retry an ambiguous write or claim the password was saved", async () => {
+    const f = fixture();
+    f.request.mockRejectedValue(new Error("private transport detail"));
+    await expect(saveAccountPassword(f.client, "google-owner", "synthetic-long-password")).rejects.toThrow("could not be confirmed");
+    expect(f.request).toHaveBeenCalledOnce();
   });
 });

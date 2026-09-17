@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { chromium } from "playwright";
 
 const base = process.env.EASY_ERF_BROWSER_BASE_URL || "http://127.0.0.1:4174";
@@ -19,9 +20,16 @@ const session = id => ({
   user: { id, email: id === owner ? "owner@example.invalid" : "other@example.invalid", aud: "authenticated", role: "authenticated", app_metadata: { provider: "google" }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" },
 });
 const checks = [], errors = [];
+let acceptancePassed = false;
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+function requestGate() { return { entered: deferred(), released: deferred() }; }
 const browser = await chromium.launch({ headless: true, channel: process.env.EASY_ERF_BROWSER_CHANNEL || undefined });
 async function fixture(width, signedIn = true) {
-  const state = { id: owner, expired: false, logoutFail: false, resetFail: false, passwordFail: false, writes: [], oauth: false, authKey: null };
+  const state = { id: owner, expired: false, logoutFail: false, resetFail: false, passwordFail: false, writes: [], passwordTargets: [], oauth: false, authKey: null, verificationGate: null, mutationGate: null };
   const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: "block" });
   await context.addInitScript(({ keys, session, draftKey }) => {
     if (!sessionStorage.getItem("fixture-initialized")) {
@@ -63,14 +71,26 @@ async function fixture(width, signedIn = true) {
       return json(session(owner));
     }
     if (url.pathname === "/auth/v1/user") {
+      const requestId = [owner, other].find(id => request.headers().authorization === "Bearer " + session(id).access_token);
+      assert.ok(requestId, "Only known synthetic credentials may reach Auth");
       if (request.method() === "PUT") {
         assert.equal(state.expired, false);
-        assert.deepEqual(request.postDataJSON(), { password: "synthetic-password-123", code_challenge: null, code_challenge_method: null });
-        assert.equal(request.headers().authorization, "Bearer " + session(state.id).access_token);
+        const body = request.postDataJSON();
+        assert.equal(body.password, "synthetic-password-123");
+        assert.deepEqual(Object.keys(body).filter(key => !["code_challenge", "code_challenge_method"].includes(key)), ["password"]);
         state.writes.push("password");
-        return state.passwordFail ? json({ message: "synthetic policy failure" }, 422) : json(session(state.id).user);
+        state.passwordTargets.push(requestId);
+        if (state.mutationGate) {
+          const gate = state.mutationGate; state.mutationGate = null;
+          gate.entered.resolve(); await gate.released.promise;
+        }
+        return state.passwordFail ? json({ message: "synthetic policy failure" }, 422) : json(session(requestId).user);
       }
-      return state.expired ? json({ message: "expired", code: "bad_jwt" }, 401) : json(session(state.id).user);
+      if (state.verificationGate) {
+        const gate = state.verificationGate; state.verificationGate = null;
+        gate.entered.resolve(); await gate.released.promise;
+      }
+      return state.expired ? json({ message: "expired", code: "bad_jwt" }, 401) : json(session(requestId).user);
     }
     if (url.pathname === "/rest/v1/user_roles") return json([]);
     if (url.pathname.startsWith("/rest/v1/") && request.method() === "GET") return json([]);
@@ -87,7 +107,64 @@ async function screenshot(page, name) {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: resolve(artifacts, name + ".png"), fullPage: true });
 }
+async function changeSession(f, id) {
+  f.state.id = id;
+  await f.page.evaluate(({ keys, session }) => {
+    for (const key of keys) {
+      if (session) localStorage.setItem(key, JSON.stringify(session));
+      else localStorage.removeItem(key);
+      const channel = new BroadcastChannel(key);
+      channel.postMessage({ event: session ? "SIGNED_IN" : "SIGNED_OUT", session }); channel.close();
+    }
+  }, { keys: [f.state.authKey], session: id ? session(id) : null });
+}
 try {
+  for (const phase of ["verification", "mutation"]) {
+    for (const replacement of [other, null]) {
+      for (const failed of phase === "mutation" ? [false, true] : [false]) {
+        const f = await fixture(replacement ? 1440 : 390);
+        await f.page.goto(base + "/account/password");
+        await f.page.getByLabel("New password", { exact: true }).fill("synthetic-password-123");
+        await f.page.getByLabel("Confirm password", { exact: true }).fill("synthetic-password-123");
+        const gate = requestGate();
+        f.state[phase + "Gate"] = gate;
+        f.state.passwordFail = failed;
+        await f.page.getByRole("button", { name: "Save password", exact: true }).click();
+        let timer;
+        try {
+          await Promise.race([gate.entered.promise, new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`No ${phase} request received`)), 15000);
+          })]);
+        } finally { clearTimeout(timer); }
+        await changeSession(f, replacement);
+        if (phase === "mutation" && replacement) {
+          await f.page.getByText(/Password for other@example.invalid/).waitFor();
+          await f.page.getByLabel("New password", { exact: true }).fill("replacement-account-draft");
+          await f.page.getByLabel("Confirm password", { exact: true }).fill("replacement-account-draft");
+        }
+        gate.released.resolve();
+        if (replacement) await f.page.getByText(/Password for other@example.invalid/).waitFor();
+        else await f.page.getByRole("alert").filter({ hasText: "Sign in" }).waitFor();
+        await f.page.waitForTimeout(500);
+        assert.deepEqual(f.state.passwordTargets, phase === "verification" ? [] : [owner], "Pending A submission must never write B");
+        assert.equal(await f.page.getByText(/Password saved/).count(), 0, "No stale completion in replacement session");
+        assert.equal(await f.page.getByText(/could not be saved/).count(), 0, "No stale error in replacement session");
+        assert.equal(await f.page.evaluate(key => {
+          const saved = localStorage.getItem(key);
+          return saved ? JSON.parse(saved).user.id : null;
+        }, f.state.authKey), replacement, "Late password response cannot resurrect the previous session");
+        assert.deepEqual(f.state.writes, phase === "verification" ? [] : ["password"]);
+        if (phase === "mutation" && replacement) {
+          assert.equal(await f.page.getByLabel("New password", { exact: true }).inputValue(), "replacement-account-draft");
+          assert.equal(await f.page.getByLabel("Confirm password", { exact: true }).inputValue(), "replacement-account-draft");
+        }
+        if (!replacement) assert.equal(await f.page.getByRole("button", { name: "Save password", exact: true }).count(), 0);
+        await screenshot(f.page, `pending-${phase}-${replacement ? "switch" : "logout"}-${failed ? "error" : "success"}`);
+        checks.push(`Pending ${phase}, ${replacement ? "switch" : "logout"}, late ${failed ? "error" : "success"}: original credential only; no stale completion/error or replacement draft loss`);
+        await f.context.close();
+      }
+    }
+  }
   for (const width of [1440, 390]) {
     const f = await fixture(width);
     await f.page.goto(base + "/profile");
@@ -211,10 +288,17 @@ try {
   await failure.context.close();
   checks.push("Rejected password update retains input; failed logout is visible and not presented as success");
   assert.deepEqual(errors, []);
+  acceptancePassed = true;
+} catch (error) {
+  for (const context of browser.contexts()) for (const page of context.pages()) {
+    await page.screenshot({ path: resolve(artifacts, "failure.png"), fullPage: true });
+  }
+  throw error;
 } finally {
   await browser.close();
   await writeFile(resolve(artifacts, "receipt.json"), JSON.stringify({
     source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+    acceptancePassed, authSdkVersion: createRequire(import.meta.url)("@supabase/auth-js/package.json").version,
     checks, errors, isolation: "Synthetic identities; all backend requests intercepted; external browser traffic blocked",
   }, null, 2));
 }

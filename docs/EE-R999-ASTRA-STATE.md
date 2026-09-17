@@ -1,5 +1,14 @@
 # EE-R999-01 Execution State
 
+## PR #183 pending password identity repair, 2026-09-17
+
+- Review 5238784821 reproduced a real cross-account pending-password defect at 6eeda19f0e27e88791346f1a794391864109732e. Remote head and main 2fe047e17de753add75bbade0fadde544c863a8d were rechecked; same sole-writer branch and draft PR retained.
+- Regression first: the actual browser and bundled Auth client, with synthetic intercepted requests, sent A's submitted password using B's credential after delayed verification and an account switch. No real credential or backend was used.
+- Repair captures A's session credential, verifies that exact credential with Auth, invalidates unsent work on logout/account change/unmount, and sends one ordinary Auth user-update request with that same bearer and the existing public browser configuration. It does not use the shared updateUser method that can re-read/write another session. No admin key, new persisted session, role change or retry. A dispatched request stays A-bound; its late response never writes shared Auth storage.
+- The page's operation identity guards completion, errors and field clearing. Six pending-operation browser cases cover switch/logout during verification, and switch/logout with late success/error after dispatch; B's new input and the replacement session remain intact. Existing unchanged-account, recovery, expiry and sign-out cases remain.
+- Local focused 4 files / 31 tests, TypeScript, targeted lint and production build passed. Built-app synthetic browser acceptance passed all 14 groups. Local Auth SDK is 2.115.0; exact-head CI must verify the lockfile-resolved 2.108.1 and records the installed version in the browser receipt. An attempted local dependency-junction change was blocked by policy and was not retried or bypassed. No tracked dependency/config change.
+- Strategy comparison repair, draft preservation and navigation remain unchanged. Final exact-head checks/review precede any separate production release. No merge, publication, real password/account change, recovery email, paid provider call or purchase. Spend cap $0; actual account spend UNKNOWN. PR description update is expressly authorized; no previously rejected public-comment action is retried.
+
 ## Owner-directed stabilization review, 2026-09-17
 
 - Owner requested a stop/review of repeated delivery failures and authorized repair of the reported issues. One writer and existing draft PR #183 are retained; no competing PR or production action.

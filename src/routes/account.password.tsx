@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/useAuth";
 import { saveAccountPassword, verifyPasswordAccount } from "@/lib/auth/accountAccess";
@@ -23,9 +23,20 @@ function AccountPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const pending = useRef<{ id: string; controller: AbortController } | null>(null);
   const [invalidLink] = useState(() => typeof window !== "undefined" &&
     (new URLSearchParams(window.location.hash.slice(1)).has("error") ||
      new URLSearchParams(window.location.search).has("error")));
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const operation = pending.current;
+      if (operation && (event === "SIGNED_OUT" || session?.user.id !== operation.id)) {
+        operation.controller.abort(); pending.current = null;
+      }
+    });
+    return () => { pending.current?.controller.abort(); pending.current = null; data.subscription.unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -50,13 +61,20 @@ function AccountPasswordPage() {
     event.preventDefault();
     if (!identity || identity.id !== user?.id || status !== "ready") return;
     if (password !== confirmation) { setError("Passwords do not match."); return; }
+    const operation = { id: identity.id, controller: new AbortController() };
+    pending.current?.controller.abort(); pending.current = operation;
+    const isCurrent = () => pending.current === operation && !operation.controller.signal.aborted;
     setStatus("saving"); setError(null);
     try {
-      await saveAccountPassword(supabase, identity.id, password);
+      await saveAccountPassword(supabase, identity.id, password, operation.controller.signal);
+      if (!isCurrent()) return;
       setPassword(""); setConfirmation(""); setStatus("complete");
     } catch (caught) {
+      if (!isCurrent()) return;
       setError(caught instanceof Error ? caught.message : "Could not save password.");
       setStatus("ready");
+    } finally {
+      if (pending.current === operation) pending.current = null;
     }
   }
 
