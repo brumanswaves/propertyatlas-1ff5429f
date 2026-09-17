@@ -851,6 +851,31 @@ try {
     await reopenPage.getByRole("button", { name: "Change zoning", exact: true }).click();
     await reopenPage.getByRole("radio", { name: /^RES1 / }).click();
     await reopenPage.getByText("Working zoning confirmed by you", { exact: false }).waitFor();
+    // Reproduce the live owner's identical saved/draft values with clock-only drift.
+    const savedStrategy = structuredClone(durableRow.user_data.strategyWorkspace);
+    assert.ok(savedStrategy.scenarios.length > 0);
+    await reopenPage.evaluate(({ userId, parcelId, workspace }) => {
+      const key = `easyerf.user.${encodeURIComponent(userId)}.strategy-workspace.v1.${encodeURIComponent(parcelId)}`;
+      workspace.draftUpdatedAt = "2027-01-01T00:00:00.000Z";
+      workspace.chosenScenarioUpdatedAt = "2027-01-02T00:00:00.000Z";
+      for (const scenario of workspace.scenarios) scenario.updatedAt = "2027-01-03T00:00:00.000Z";
+      localStorage.setItem(key, JSON.stringify(workspace));
+      localStorage.removeItem(`easyerf.user.${encodeURIComponent(userId)}.strategy-sync-baseline.${encodeURIComponent(parcelId)}`);
+    }, { userId: USER_ID, parcelId: PARCEL_ID, workspace: structuredClone(savedStrategy) });
+    const strategyWritesBefore = rpcCalls.filter(call => call.patch?.strategyWorkspace).length;
+    await step("Strategy").click();
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).click();
+    await reopenPage.getByText(/Cloud draft restored/i).first().waitFor();
+    assert.equal(await reopenPage.getByLabel("Purchase price", { exact: true }).inputValue(), savedStrategy.draftInputs.purchasePrice);
+    assert.equal(await reopenPage.getByText(/This Strategy differs from the saved version/).count(), 0);
+    await reopenPage.waitForTimeout(1000);
+    assert.deepEqual(durableRow.user_data.strategyWorkspace, savedStrategy, "Timestamp-only hydration must not rewrite the saved scenario");
+    assert.equal(rpcCalls.filter(call => call.patch?.strategyWorkspace).length, strategyWritesBefore);
+    await reopenPage.screenshot({ path: resolve(artifacts, `strategy-clock-drift-restored-${width}.png`) });
+    selfServiceChecks.push({ width, strategyClockDriftRestored: true, retainedSavedInputs: true, noStrategyReplayWrite: true });
+    await reopenPage.goBack();
+    await reopenPage.getByRole("button", { name: "Open Strategy & Calculators", exact: true }).waitFor();
+    await step("Zoning").click();
     selfServiceChecks.push({ width, noFileChecksComplete: true, zoningReloaded: true, offlineDraftRetained: width === 1440 ? true : "covered at desktop", retryPersisted: true, siteDisposition: width === 1440 ? "accepted and saved" : "skip saved", historyRestored: true });
   }
 

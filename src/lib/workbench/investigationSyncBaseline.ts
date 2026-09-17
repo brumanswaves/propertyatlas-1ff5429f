@@ -13,12 +13,15 @@ export function writeInvestigationSyncBaseline(storage: BrowserStorage, parcelId
 }
 
 export function sameInvestigationContent(left: unknown, right: unknown): boolean {
-  const normalize = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(normalize);
+  const normalize = (value: unknown, path: string[] = []): unknown => {
+    if (Array.isArray(value)) return value.map((item) => normalize(item, path));
     if (!value || typeof value !== "object") return value;
+    // Strategy bookkeeping can drift without changing any financial assumption.
+    const strategyWorkspace = path.length === 1 && path[0] === "strategyWorkspace";
     return Object.fromEntries(Object.entries(value).filter(([key]) =>
-      !["syncedAt", "workspaceUpdatedAt", "updatedAt", "lastViewedAt", "lastMeaningfulActionAt"].includes(key),
-    ).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, normalize(item)]));
+      !["syncedAt", "workspaceUpdatedAt", "updatedAt", "lastViewedAt", "lastMeaningfulActionAt"].includes(key) &&
+      !(strategyWorkspace && ["draftUpdatedAt", "chosenScenarioUpdatedAt"].includes(key)),
+    ).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, normalize(item, [...path, key])]));
   };
   return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
 }
