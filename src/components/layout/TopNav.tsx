@@ -11,6 +11,7 @@ import { BRAND } from "@/lib/brand";
 import { PRIMARY_NAV_LINKS, SIGNED_IN_NAV_LINKS } from "@/lib/navigation";
 import { staffNavigation } from "@/lib/navigation";
 import { useStaffAccess } from "@/lib/auth/StaffAccess";
+import { signOutCurrentSession } from "@/lib/auth/accountAccess";
 
 interface TopNavProps {
   center?: ReactNode;
@@ -24,6 +25,29 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
   const { role } = useStaffAccess();
   const signedInLinks = [...staffNavigation(role), ...SIGNED_IN_NAV_LINKS];
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOutCurrentSession(supabase);
+      window.location.replace("/auth");
+    } catch {
+      // The SDK can clear the local session even when remote revocation fails.
+      // Protected pages then unmount this menu: carry the honest result to auth.
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!error && !data.session) {
+          window.location.replace("/auth?signout=unconfirmed");
+          return;
+        }
+      } catch { /* Keep the error visible when local state is also unavailable. */ }
+      setSignOutError("Sign-out did not complete. Check your connection and try again.");
+      setSigningOut(false);
+    }
+  }
   const greetingName = getUserGreetingName(user);
   const mapHeader = Boolean(center || mobileCenter || subtitle);
 
@@ -91,9 +115,10 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                 size="sm"
                 variant="ghost"
                 className="ml-1 h-8 rounded-full border border-primary-foreground/15 bg-primary-foreground/[0.04] text-[12px] font-semibold text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-                onClick={() => supabase.auth.signOut()}
+                onClick={handleSignOut}
+                disabled={signingOut}
               >
-                Sign out
+                {signingOut ? "Signing out..." : "Sign out"}
               </Button>
             </>
           ) : (
@@ -190,12 +215,10 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                     size="sm"
                     variant="outline"
                     className="h-9 rounded-lg text-xs"
-                    onClick={() => {
-                      setOpen(false);
-                      supabase.auth.signOut();
-                    }}
+                    onClick={handleSignOut}
+                    disabled={signingOut}
                   >
-                    Sign out
+                    {signingOut ? "Signing out..." : "Sign out"}
                   </Button>
                 </div>
               ) : (
@@ -220,6 +243,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
           </div>
         </>
       )}
+      {signOutError && <p role="alert" className="fixed inset-x-3 top-28 z-[80] mx-auto max-w-md rounded-md border border-destructive bg-background p-3 text-sm text-destructive">{signOutError}</p>}
     </header>
   );
 }

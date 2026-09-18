@@ -12,9 +12,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { BRAND } from "@/lib/brand";
+import { GOOGLE_ACCOUNT_CHOICE, requestPasswordRecovery } from "@/lib/auth/accountAccess";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({ redirect: safeReturnPath(search.redirect) ?? undefined }),
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; signout?: "unconfirmed" } => ({
+    redirect: safeReturnPath(search.redirect) ?? undefined,
+    signout: search.signout === "unconfirmed" ? "unconfirmed" : undefined,
+  }),
   head: () => ({
     meta: [
       { title: `Sign in - ${BRAND.site}` },
@@ -27,9 +31,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, signout } = Route.useSearch();
   const { user, role, checking, unavailable } = useStaffAccess();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
+  const [notice, setNotice] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -46,8 +51,12 @@ function AuthPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setNotice(null);
     try {
-      if (mode === "signup") {
+      if (mode === "recovery") {
+        await requestPasswordRecovery(supabase, email, window.location.origin);
+        setNotice("If an account can receive a reset link, it will arrive by email. Check your inbox and spam folder.");
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -57,7 +66,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created — you're signed in.");
+        setNotice("Check your email to confirm your account. Already used Google? Sign in with Google, then set a password in Account.");
         // Staff role resolution chooses the default landing after sign-in.
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -73,32 +82,26 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const redirectTo = `${window.location.origin}/auth${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
+    try {
+      const redirectTo = `${window.location.origin}/auth${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
 
-    if (resolveGoogleAuthTransport() === "supabase") {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo },
-      });
-      if (error) {
-        toast.error(error.message || "Google sign-in failed");
-        setLoading(false);
+      if (resolveGoogleAuthTransport() === "supabase") {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo, queryParams: GOOGLE_ACCOUNT_CHOICE },
+        });
+        if (error || !data.url) throw new Error("Google sign-in did not start.");
         return;
       }
-      if (data.url) return;
-      toast.error("Google sign-in did not start.");
-      setLoading(false);
-      return;
-    }
 
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectTo });
-    if (result.error) {
-      toast.error(result.error.message || "Google sign-in failed");
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectTo, extraParams: GOOGLE_ACCOUNT_CHOICE });
+      if (result.error) throw result.error;
+      if (!result.redirected) navigate({ to: "/auth", search: { redirect } });
+    } catch {
+      toast.error("Google sign-in could not start. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-    if (result.redirected) return;
-    navigate({ to: "/auth", search: { redirect } });
   }
 
   return (
@@ -140,12 +143,13 @@ function AuthPage() {
             />
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "recovery" ? "Reset your password" : mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "signin" ? "Sign in to continue exploring." : "Free forever. Upgrade anytime."}
+            {mode === "recovery" ? "Enter your Easy Erf account email." : mode === "signin" ? "Sign in to continue exploring." : "Free forever. Upgrade anytime."}
           </p>
           {user && unavailable && <p role="alert" className="mt-3 text-sm text-destructive">Your current access could not be verified. Sign in again to continue.</p>}
+          {signout === "unconfirmed" && <p role="alert" className="mt-3 text-sm text-destructive">This browser session was cleared, but server sign-out could not be confirmed. Other devices have not been signed out.</p>}
 
           <Button
             type="button"
@@ -172,19 +176,21 @@ function AuthPage() {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" />
             </div>
-            <div>
+            {mode !== "recovery" && <div>
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="mt-1" />
-            </div>
+            </div>}
             <Button type="submit" className="h-10 w-full rounded-full bg-gradient-brand" disabled={loading}>
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+              {loading ? "Please wait…" : mode === "recovery" ? "Send reset link" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
+          {notice && <p role="status" className="mt-3 text-sm">{notice}</p>}
+          {mode === "signin" && <button type="button" className="mt-4 text-sm underline" onClick={() => { setMode("recovery"); setNotice(null); setPassword(""); }}>Forgot password?</button>}
 
           <button
             type="button"
             className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setNotice(null); setPassword(""); }}
           >
             {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
           </button>

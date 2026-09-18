@@ -67,6 +67,30 @@ const responseSettlements = [];
 const assignmentRequests = [];
 const onboardingRequests = [];
 const mapRequests = [];
+const checksPatches = [];
+let allowChecksAcknowledgement = false;
+let acknowledgedProjection = null;
+let acknowledgedReads = 0;
+function investigationSnapshot(id) {
+  const row = rows.find((entry) => entry.id === id);
+  assert.ok(row, "Shared investigation read requires the selected complete order UUID");
+  return { schemaVersion: 1, orderId: id, customerId: row.user_id, parcelId: parcel,
+    revision: id === A ? 1 + checksPatches.length : 1, canWork: true, canApprove: true,
+    assets: [], siteProject: null,
+    userData: { erfNumber: "1570",
+      normalizedParcel: { id: parcel, source: "manual", sourceLabel: "Synthetic recorded fixture",
+        erfNumber: "1570", portion: "0", coordinates: { lng: 24.84226, lat: -34.17924 },
+        knownFields: [], missingFields: [] },
+      parcelRing: [[24.8421, -34.1791], [24.8424, -34.1791], [24.8424, -34.1794], [24.8421, -34.1794]],
+      investigationWork: { property_checks: {
+        source: "Synthetic recorded source", checkedAt: "2026-01-01T00:00:00.000Z",
+        result: activeUser.id === user.id ? row.review_content.bottomLine : "OTHER ACCOUNT ONLY",
+        reason: "Synthetic investigation relevance", limitation: "Synthetic remaining check", disposition: "reviewed",
+      } },
+      ...(id === A && acknowledgedProjection ? { easyErfInvestigation: acknowledgedProjection } : {}),
+    },
+  };
+}
 const WORKER = "77777777-7777-4777-8777-777777777777";
 const selectionAtRequest = new WeakMap();
 let notification = { ok: true, emailAccepted: true };
@@ -143,25 +167,32 @@ await context.route("**/*", async (route) => {
     return json({ ok: true });
   }
   if (url.pathname.startsWith("/auth/v1/")) return json(activeUser);
+  if (url.pathname === "/rest/v1/rpc/patch_order_investigation") {
+    assert.ok(allowChecksAcknowledgement, "No investigation writes outside the explicit Checks save");
+    assert.equal(activeUser.id, user.id);
+    assert.equal(new URL(request.frame().url()).hash, `#order-${A}`);
+    const body = request.postDataJSON();
+    assert.equal(body.p_order_id, A);
+    assert.equal(body.p_expected_revision, 1 + checksPatches.length);
+    assert.deepEqual(Object.keys(body.p_patch), ["easyErfInvestigation"]);
+    const projection = body.p_patch.easyErfInvestigation;
+    assert.equal(projection.parcelId, parcel);
+    assert.deepEqual(projection.investigation.acknowledgedTaskIds, ["property-checks"]);
+    assert.equal(projection.identityStatus, "none");
+    assert.equal(projection.sgDiagramAttachmentCount, 0);
+    assert.equal(projection.planning.userConfirmedZoneCode, null);
+    checksPatches.push(body);
+    acknowledgedProjection = structuredClone(projection);
+    return json(investigationSnapshot(A));
+  }
   if (["/rest/v1/rpc/read_order_investigation", "/rest/v1/rpc/read_investigation_review"].includes(url.pathname)) {
     const { p_order_id: id } = request.postDataJSON();
     assert.equal(new URL(request.frame().url()).hash, `#order-${id}`);
     const row = rows.find((entry) => entry.id === id);
     assert.ok(row, "Shared investigation read requires the selected complete order UUID");
     if (url.pathname.endsWith("read_investigation_review")) return json(null);
-    return json({ schemaVersion: 1, orderId: id, customerId: row.user_id, parcelId: parcel,
-      revision: 1, canWork: true, canApprove: true, assets: [], siteProject: null,
-      userData: { erfNumber: "1570",
-        normalizedParcel: { id: parcel, source: "manual", sourceLabel: "Synthetic recorded fixture",
-          erfNumber: "1570", portion: "0", coordinates: { lng: 24.84226, lat: -34.17924 },
-          knownFields: [], missingFields: [] },
-        parcelRing: [[24.8421, -34.1791], [24.8424, -34.1791], [24.8424, -34.1794], [24.8421, -34.1794]],
-        investigationWork: { property_checks: {
-        source: "Synthetic recorded source", checkedAt: "2026-01-01T00:00:00.000Z",
-        result: activeUser.id === user.id ? row.review_content.bottomLine : "OTHER ACCOUNT ONLY",
-        reason: "Synthetic investigation relevance", limitation: "Synthetic remaining check", disposition: "reviewed",
-      } } },
-    });
+    if (id === A && acknowledgedProjection) acknowledgedReads += 1;
+    return json(investigationSnapshot(id));
   }
   if (url.pathname === "/rest/v1/rpc/list_easy_erf_founder_queue") {
     assert.equal(request.method(), "POST");
@@ -766,12 +797,20 @@ try {
   });
   await check("empty Property Checks can continue without uploads or invented evidence", async () => {
     const before = requests.length;
+    const workBefore = structuredClone(investigationSnapshot(A).userData.investigationWork);
     await page.getByRole("navigation", { name: "Customer investigation steps" }).getByRole("button", { name: /Property Checks/i }).click();
     const step = page.locator("[data-property-checks-optional]");
     await step.getByText("No optional files added", { exact: true }).waitFor();
     await step.screenshot({ path: resolve(artifacts, "optional-property-checks.png") });
-    await step.getByRole("button", { name: "Continue to Market evidence", exact: true }).click();
-    await page.getByRole("button", { name: "Continue to Strategy", exact: true }).waitFor();
+    allowChecksAcknowledgement = true;
+    try {
+      await step.getByRole("button", { name: "Continue without additional documents", exact: true }).click();
+      await page.getByRole("button", { name: "Continue to Strategy", exact: true }).waitFor();
+    } finally { allowChecksAcknowledgement = false; }
+    assert.equal(checksPatches.length, 1, "Exactly one acknowledged workflow save");
+    assert.deepEqual(investigationSnapshot(A).userData.investigationWork, workBefore);
+    assert.deepEqual(investigationSnapshot(A).assets, []);
+    assert.ok(acknowledgedReads > 0, "Continue waits for persisted acknowledgement read-back");
     assert.equal(requests.length, before, "Continuing without files must not invent evidence or call a provider");
   });
   await check("report uses satellite-style map with recorded boundary on desktop and narrow screens", async () => {
