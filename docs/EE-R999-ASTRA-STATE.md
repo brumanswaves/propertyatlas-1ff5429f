@@ -1,5 +1,15 @@
 # EE-R999-01 Execution State
 
+## Selected-parcel boundary recovery, 2026-09-18
+
+- Active release EE-R999-01. Frozen outcome remains the same saved-property investigation, useful SG evidence and actionable report with Ask at the top. This tranche repairs missing public boundary loading only; SG/report refinement and genuine commercial acceptance remain unfinished.
+- Verified starting main: `ba4c03cb79aa193c4f700f4c5f4e2657922fcaff`. Sole source branch `codex/selected-parcel-boundary`, isolated checkout; original dirty worktree and live browser drafts untouched. Final candidate SHA and draft PR are recorded in the GitHub receipt.
+- VERIFIED root cause: exact registry search opens First Read from centroid-only identity before map polygons load. The selected property retained null geometry, preventing the existing deterministic Site Potential controls from receiving a boundary.
+- Repair reuses the existing public-layer loader and canonical LPI/parcel-key matching. It loads only the selected public polygon, rejects wrong/ambiguous/test/malformed geometry, ignores stale selection/account responses and enriches the current history entry without resetting its step or router state. No nearest-parcel substitution, evidence confirmation, draft write, formula change or new API.
+- VERIFIED local checks: focused 3 files / 22 tests; full Vitest 166 files / 1,684 tests; TypeScript, targeted lint and production build. Desktop/mobile synthetic browser checks cover delayed exact loading, history/reload, zero remote writes and stale/wrong-parcel responses. The existing complete Guided persistence fixture passes zoning, empty Checks, Strategy save/restore, Site Potential accept/save or skip, real concurrent-edit protection, offline retry, account switching and same-user renewal. Screenshots inspected; synthetic polygons are not live cadastral/provider proof.
+- During verification, an unnecessary account-switch navigation change broke the existing fixture and was removed. Existing account-switch behavior is preserved. Existing package/lock drift prevents npm ci locally; reused the available dependency tree without tracked dependency edits. Exact-head CI installs dependencies using the unchanged repository recipe.
+- Next gates: exact committed-head browser evidence and CI, independent review, then a separately approved merge/publication and live boundary acceptance. No production change, paid provider request, email, order/account action or purchase. $0 discretionary cap; actual account spend UNKNOWN. Process status is reported from inspected jobs, not inferred from this ledger.
+
 ## PR #183 pending password identity repair, 2026-09-17
 
 - Review 5238784821 reproduced a real cross-account pending-password defect at 6eeda19f0e27e88791346f1a794391864109732e. Remote head and main 2fe047e17de753add75bbade0fadde544c863a8d were rechecked; same sole-writer branch and draft PR retained.

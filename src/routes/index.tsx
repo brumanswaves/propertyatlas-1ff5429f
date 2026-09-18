@@ -39,6 +39,7 @@ import type { AddressMapTarget } from "@/components/map/SearchBar";
 import { useAuth } from "@/lib/auth/useAuth";
 import { readPropertyJourneyLocation, writePropertyJourneyLocation } from "@/lib/workbench/propertyJourneyHistory";
 import { resolvePropertyEntryTab } from "@/lib/workbench/propertyOverviewEntry";
+import { hasParcelBoundary, loadSelectedParcelBoundary } from "@/lib/parcels/selectedParcelBoundary";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -121,6 +122,24 @@ function AtlasHome() {
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
   }, [userId]);
+  useEffect(() => {
+    if (!selectedOfficial || hasParcelBoundary(selectedOfficial.geometry)) return;
+    let active = true;
+    const selection = selectedOfficial;
+    if (readPropertyJourneyLocation(userId)?.parcelId !== buildSelectedOfficialParcelId(selection)) return;
+    void loadSelectedParcelBoundary(selection).then((geometry) => {
+      if (!active || !geometry) return;
+      const hydrated = { ...selection, geometry };
+      setSelectedOfficial((current) => current === selection ? hydrated : current);
+      // Enrich only the current entry, retaining Guided position and router state.
+      const location = readPropertyJourneyLocation(userId);
+      if (location?.parcelId === buildSelectedOfficialParcelId(selection) &&
+          location.selection && !hasParcelBoundary(location.selection.geometry)) {
+        writePropertyJourneyLocation({ ...location, selection: { ...location.selection, geometry } }, true);
+      }
+    });
+    return () => { active = false; };
+  }, [selectedOfficial, userId]);
   const [requestedOfficialParcel, setRequestedOfficialParcel] =
     useState<OfficialParcelReopenRequest | null>(null);
   const [officialReopenStatus, setOfficialReopenStatus] =
