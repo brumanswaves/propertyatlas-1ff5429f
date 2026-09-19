@@ -6,7 +6,7 @@ import {
   REPORT_SECTIONS,
   type BuildReportInput,
 } from "@/lib/reports/buildReportViewModel";
-import { createEmptyErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
+import { createEmptyErfWorkspaceState, createEmptyStrategyWorkspace } from "@/lib/workbench/erfWorkspaceState";
 import type { NormalizedOfficialParcel } from "@/lib/parcels/officialParcelId";
 import type { SavedMarketEvidence } from "@/features/marketEvidence/types";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
@@ -380,6 +380,18 @@ describe("buildReportViewModel", () => {
     expect(vm.documents.assetCount).toBe(3);
     expect(vm.documents.sgDiagramCount).toBe(1);
     expect(vm.documents.uploadedReportCount).toBe(1);
+  });
+
+  it("carries accepted-envelope state into report gaps without upgrading planning evidence", () => {
+    const input = baseInput({ strategyWorkspace: {
+      ...createEmptyStrategyWorkspace("parcel:erf-224"), activeStrategy: "development_sell",
+    } });
+    const pending = buildReportViewModel(input);
+    const accepted = buildReportViewModel({ ...input, sitePotentialAccepted: true });
+    expect(pending.evidencePack?.gaps.some((gap) => gap.id === "selected-site-potential-concept-missing")).toBe(true);
+    expect(accepted.evidencePack?.gaps.some((gap) => gap.id === "selected-site-potential-concept-missing")).toBe(false);
+    expect(accepted.evidencePack?.gaps.some((gap) => gap.id === "development-planning-controls-unverified")).toBe(true);
+    expect(accepted.site.acceptedBuildEnvelope).toBe(true);
   });
 
   it("uses the deterministic envelope disclaimer without treating legacy concepts as report state", () => {

@@ -5,6 +5,7 @@ import {
   evidenceMarket,
   evidenceParcel,
   evidenceScenario,
+  evidenceWorkspace,
 } from "./propertyEvidenceTestUtils";
 
 describe("PropertyEvidencePack gaps", () => {
@@ -79,6 +80,28 @@ describe("PropertyEvidencePack gaps", () => {
     expect(pack.gaps.map((gap) => gap.id)).not.toContain(
       "selected-site-potential-concept-missing",
     );
+  });
+
+  it("uses accepted deterministic envelopes and explicit skips instead of generated concepts", () => {
+    const development = evidenceScenario({ strategy: "development_sell" });
+    const base = { chosenScenario: development, strategyScenarios: [development] };
+    const pending = buildEvidencePackFixture(base);
+    const gapId = "selected-site-potential-concept-missing";
+    const gap = pending.gaps.find((item) => item.id === gapId);
+    expect(gap?.nextAction).toContain("build envelope");
+    expect(gap?.nextAction).not.toContain("Generate");
+    expect(gap?.blocking).toBe(false);
+    // The default fixture includes a legacy selected concept. It is not acceptance.
+    expect(gap).toBeDefined();
+    const accepted = buildEvidencePackFixture({ ...base, sitePotentialAccepted: true });
+    const workspace = evidenceWorkspace();
+    const skipped = buildEvidencePackFixture({ ...base, workspaceState: {
+      ...workspace, sitePotential: { ...workspace.sitePotential, skipped: true },
+    } });
+    for (const pack of [accepted, skipped]) {
+      expect(pack.gaps.some((item) => item.id === gapId)).toBe(false);
+      expect(pack.gaps.some((item) => item.id === "development-planning-controls-unverified")).toBe(true);
+    }
   });
 
   it("creates document extraction gaps for critical documents without ready text", () => {

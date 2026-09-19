@@ -1,7 +1,7 @@
 # Report decision brief: design candidate
 
-Issue #181 item 8 only. Source base: `284a20cfeffb2c2560d428f4bd56e71743d3a704`.
-Branch: `codex/report-decision-brief-181`. No competing PR while #182 is frozen for review.
+Issue #181 item 8. Current source base: merged main `1fef6f66e1d911aaf492567f9e8c2f04eae13674`.
+Branch: `codex/report-decision-brief-181`. Original approved design `9762338c` is preserved on a local safety branch. The 19 September continuation remains local and unpublished; no competing PR or full CI rerun. See `REPORT_CURRENT_ACCEPTANCE_2026-09-19.md` for current evidence and gates. Historical verification below belongs to the earlier design candidate unless explicitly dated.
 
 ## Reader problems addressed
 

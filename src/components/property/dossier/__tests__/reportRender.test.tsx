@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReportOpening } from "../ReportOpening";
-import { ReportActionPlan } from "../ReportFindingsSection";
+import { ReportActionPlan, FindingCard } from "../ReportFindingsSection";
 import { ReportViewSelector } from "../ReportViewSelector";
 import { AssetExtractionStatusChip, ReportOwnershipSection } from "../ReportEvidenceUi";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
@@ -236,6 +236,17 @@ describe("ReportOpening (rendered)", () => {
     const tree = ReportActionPlan({ actions: actionable.actions, canonicalAction: actionable.nextBestAction, onOpenTab });
     const button = findButton(tree, "Open Sources and add the SG diagram");
 
+    expect(button).not.toBeNull();
+    button?.props.onClick?.();
+    expect(onOpenTab).toHaveBeenCalledWith("research", { anchorId: "sg-diagram-evidence" });
+  });
+
+  it("keeps the exact SG anchor when opening a task from a finding", () => {
+    const doc = buildGuidedActionDoc();
+    const action = doc.nextBestAction!;
+    const onOpenTab = vi.fn();
+    const tree = FindingCard({ finding: { ...doc.findings[0], actionIds: [action.id] }, actions: [action], onOpenTab });
+    const button = findButton(tree, "Open investigation research");
     expect(button).not.toBeNull();
     button?.props.onClick?.();
     expect(onOpenTab).toHaveBeenCalledWith("research", { anchorId: "sg-diagram-evidence" });

@@ -260,6 +260,8 @@ export interface BuildPropertyEvidencePackInput {
   selectedSiteDesign?: ErfAsset | null;
   sitePotentialProject?: SitePotentialProject | null;
   siteBrief?: string | null;
+  /** Derived from exact-input build-envelope acceptance, never from a generated concept. */
+  sitePotentialAccepted?: boolean;
   /** Canonical semantic planning state. assessedAt is deliberately not fingerprinted. */
   planningAssessment?: ParcelPlanningAssessment | null;
   now?: Date;

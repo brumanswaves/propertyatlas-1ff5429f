@@ -22,7 +22,7 @@ export function reportProfessionalSearch(action: ReportAction, location?: string
 export function reportEvidenceAnchor(tab: string, taskAnchor?: string) {
   if (taskAnchor === "sg-diagram-evidence") return "investigation-sg";
   const anchors: Record<string, string> = {
-    "zoning-build": "investigation-planning", market: "investigation-market", calculators: "investigation-strategy",
+    "zoning-build": "investigation-planning", market: "investigation-market", listings: "investigation-market", reports: "investigation-documents", calculators: "investigation-strategy",
     "site-potential": "investigation-site", "sg-diagram": "investigation-sg", "erf-file-vault": "investigation-documents",
     "title-deed": "investigation-title", "paid-reports": "investigation-title", overview: "investigation-identity",
     research: "investigation-findings", "property-checks": "investigation-site-risk",
@@ -32,7 +32,7 @@ export function reportEvidenceAnchor(tab: string, taskAnchor?: string) {
 
 export function reportTaskLabel(tab: string) {
   const labels: Record<string, string> = {
-    "zoning-build": "Open zoning task", market: "Open Market Evidence", calculators: "Open Strategy",
+    "zoning-build": "Open zoning task", market: "Open Market Evidence", listings: "Open Market Evidence", reports: "Open property documents", calculators: "Open Strategy",
     "site-potential": "Open Site Potential", "sg-diagram": "Open SG task", "erf-file-vault": "Open File Vault",
     "title-deed": "Open title task", "paid-reports": "Open property documents", overview: "Open property identity",
     research: "Open investigation research", "property-checks": "Open Property Checks",

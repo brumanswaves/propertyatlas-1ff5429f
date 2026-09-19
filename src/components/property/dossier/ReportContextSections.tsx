@@ -109,15 +109,15 @@ export function ReportContextSection({
 
       <p className="mt-4 text-[11px] leading-5 text-[#94A3B8]">{model.note}</p>
 
-      {model.nextStep && (
+      {model.nextStep && (onOpenTab && model.nextStepTab ? (
         <button
           type="button"
-          onClick={() => onOpenTab?.(model.nextStepTab)}
+          onClick={() => onOpenTab(model.nextStepTab)}
           className="report-no-print mt-4 inline-flex min-h-9 items-center gap-2 rounded-full bg-[#0D1B2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#142941]"
         >
           {model.nextStep} <ArrowRight className="h-3.5 w-3.5" />
         </button>
-      )}
+      ) : <p className="mt-4 text-xs text-muted-foreground">{model.nextStep} Investigation changes are unavailable in this report view.</p>)}
     </section>
   );
 }

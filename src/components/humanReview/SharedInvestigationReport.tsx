@@ -29,6 +29,7 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
   const returnLink = useRef<HTMLElement | null>(null);
   const printOnly = Boolean(openingControls?.printOnly);
   const openTask = version ? undefined : openingControls?.onOpenTab;
+  const openContextTask = openTask ? (tab: string | null) => { if (tab) openTask(tab); } : undefined;
   const sourceLabels = Object.fromEntries(assembly.pack.sources.map((source) => [source.id, source.label]));
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -198,9 +199,9 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     <ReportStrategySection anchorId="investigation-strategy" model={assembly.strategy} />
     </ReportEvidenceDetails>
     <ReportEvidenceDetails title="Property checks, services and location" printOnly={printOnly}>
-    <ReportContextSection anchorId="investigation-site-risk" eyebrow="Property checks" title="Physical and environmental evidence" model={assembly.siteRisk} />
-    <ReportMunicipalSection anchorId="investigation-services" model={assembly.municipal} />
-    <ReportContextSection anchorId="investigation-location" eyebrow="Location" title="Location context" model={assembly.location} />
+    <ReportContextSection anchorId="investigation-site-risk" eyebrow="Property checks" title="Physical and environmental evidence" model={assembly.siteRisk} onOpenTab={openContextTask} />
+    <ReportMunicipalSection anchorId="investigation-services" model={assembly.municipal} onOpenTab={openContextTask} />
+    <ReportContextSection anchorId="investigation-location" eyebrow="Location" title="Location context" model={assembly.location} onOpenTab={openContextTask} />
     </ReportEvidenceDetails>
     <ReportEvidenceDetails title="All findings, conflicts and follow-up actions" printOnly={printOnly}>
     <ReportFindingsBlock anchorId="investigation-findings" eyebrow="Evidence findings" title="Recorded findings and conflicts"

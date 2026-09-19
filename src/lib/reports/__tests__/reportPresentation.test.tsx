@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { groupReportActions, materialReportFindings, reportEvidenceAnchor, reportProfessionalSearch, safeReportSourceUrl } from "../reportPresentation";
+import { groupReportActions, materialReportFindings, reportEvidenceAnchor, reportProfessionalSearch, safeReportSourceUrl, reportTaskLabel } from "../reportPresentation";
 import { SharedInvestigationReport } from "@/components/humanReview/SharedInvestigationReport";
 import { FindingCard, ReportActionPlan } from "@/components/property/dossier/ReportFindingsSection";
 import { reportPreviewAssembly } from "../../../../scripts/fixtures/report-preview-data";
@@ -60,6 +60,9 @@ describe("decision brief presentation preserves canonical evidence", () => {
     const planner = document.actions.find((action) => action.professionalType === "Town planner")!;
     expect(reportEvidenceAnchor("zoning-build")).toBe("investigation-planning");
     expect(reportEvidenceAnchor("research", "sg-diagram-evidence")).toBe("investigation-sg");
+    expect(reportEvidenceAnchor("listings")).toBe("investigation-market");
+    expect(reportTaskLabel("listings")).toBe("Open Market Evidence");
+    expect(reportEvidenceAnchor("reports")).toBe("investigation-documents");
     const search = new URL(reportProfessionalSearch(planner, "St Francis Bay, Eastern Cape")!);
     expect(search.hostname).toBe("www.google.com");
     expect(search.searchParams.get("query")).toBe("Town planner near St Francis Bay, Eastern Cape");

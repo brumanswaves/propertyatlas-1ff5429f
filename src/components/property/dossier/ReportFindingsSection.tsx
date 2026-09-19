@@ -59,7 +59,7 @@ export function FindingCard({
 }: {
   finding: ReportFinding;
   actions?: ReportAction[];
-  onOpenTab?: (tab: string) => void;
+  onOpenTab?: (tab: string, options?: { anchorId?: string }) => void;
   sourceLabels?: Record<string, string>;
 }) {
   const linked = (actions ?? []).filter((action) => finding.actionIds.includes(action.id));
@@ -88,7 +88,7 @@ export function FindingCard({
             <li key={action.id}>
               {onOpenTab ? <button
                 type="button"
-                onClick={() => onOpenTab(action.targetTab)}
+                onClick={() => onOpenTab(action.targetTab, { anchorId: action.targetAnchorId })}
                 className="report-no-print flex w-full items-center justify-between gap-2 rounded-xl border border-[#FF6A00]/25 bg-white px-3 py-2 text-left text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/50 hover:bg-[#fffaf2]"
               >
                 {reportTaskLabel(action.targetTab)}
@@ -121,7 +121,7 @@ export function ReportFindingsBlock({
   intro?: string;
   findings: ReportFinding[];
   actions?: ReportAction[];
-  onOpenTab?: (tab: string) => void;
+  onOpenTab?: (tab: string, options?: { anchorId?: string }) => void;
   emptyMessage: string;
   children?: React.ReactNode;
   sourceLabels?: Record<string, string>;
@@ -170,7 +170,7 @@ export function ReportAreaReconciliation({
   officialAreaLabel: string | null;
   discrepancy: ReportFinding | null;
   actions?: ReportAction[];
-  onOpenTab?: (tab: string) => void;
+  onOpenTab?: (tab: string, options?: { anchorId?: string }) => void;
 }) {
   if (!identity.registeredExtent && !discrepancy) return null;
   return (

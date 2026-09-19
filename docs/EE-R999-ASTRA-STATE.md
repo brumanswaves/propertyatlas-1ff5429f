@@ -1,5 +1,14 @@
 # EE-R999-01 Execution State
 
+## PR #185 served-code diagnosis and report continuation, 2026-09-19
+
+- Current merged main is `1fef6f66e1d911aaf492567f9e8c2f04eae13674`. Fresh customer-domain and lovable.app SG module/worker bytes establish the new receipt/preview implementation is served. Existing publication `13f13e80-1983-4785-becb-e571f7aff497` was not repeated. Exact deployment/SHA attestation remains UNKNOWN.
+- The one approved zero-AI synthetic upload remains unconsumed. Chrome refused file selection before an upload request; owner extension file-URL access is the concrete blocker. TEST order and both original attachment fingerprints unchanged; non-auth draft contents preserved.
+- Same sole writer resumed `codex/report-decision-brief-181`, preserved original `9762338c` on a safety branch, and rebased approved design onto current main. Report action destinations, SG anchors, context no-ops and obsolete generated-concept gap corrected. Ask remains at top; no remote push, PR, merge/publication or full CI rerun.
+- Current focused checks: 566 evidence/report/investigation tests and 220 surrounding journey/auth/payment tests passed, plus TypeScript, build, workflow-style targeted lint, diff and synthetic desktop/mobile report checks. This does not complete real-route server-persisted journey acceptance.
+- Read-only live launch preflight: TEST mode, live OFF, Easy Erf business profile mismatch, signing-secret match unknown. No real checkout/configuration action.
+- Full evidence, hashes, dependency limitations, token-exposure follow-up and next steps: `docs/REPORT_CURRENT_ACCEPTANCE_2026-09-19.md`. $0 cap, actual account spend UNKNOWN. No unattended builder started.
+
 ## PR #185 review 5256387994 correction, 2026-09-19
 
 - Same sole-writer branch `codex/sg-receipt-preview-181`, draft PR #185. Reverified reviewed head `9f258c6c7944a1e593c636425c272c49b3940ea7` and unchanged main `3185ca05bff997cb224499ab17feac9672d45914`; no competing work or production action. Final revised SHA/CI/evidence belongs in the PR receipt.
