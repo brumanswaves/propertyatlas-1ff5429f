@@ -227,7 +227,9 @@ describe("guided vault evidence steps", () => {
 
   it("assigned investigators obtain the included report without a second customer purchase", () => {
     vaultFixture.investigationOrderId = "synthetic-order";
-    const html = renderToStaticMarkup(<GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />);
+    const html = renderToStaticMarkup(
+      <GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
+    );
     expect(html).toContain("Obtain and review the included property report");
     expect(html).toContain("Included evidence, no second customer charge");
     expect(html).toContain("provider license permits");
@@ -235,7 +237,9 @@ describe("guided vault evidence steps", () => {
     expect(html).not.toContain("Buy from WinDeed");
     expect(html).toContain("Upload paid report PDF");
     vaultFixture.investigationOrderId = undefined;
-    const customer = renderToStaticMarkup(<GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />);
+    const customer = renderToStaticMarkup(
+      <GuidedTitleStep parcel={parcel()} onContinue={vi.fn()} onOpenPaidReports={vi.fn()} />,
+    );
     expect(customer).toContain("Buy from Lightstone");
     expect(customer).toContain("Upload paid report PDF");
   });
@@ -303,10 +307,44 @@ describe("guided vault evidence steps", () => {
     );
 
     expect(html).toContain("Reviewing survey plan...");
-    expect(html).toContain("about 7 to 10 minutes");
-    expect(html).toContain("You can leave this page and come back");
+    expect(html).toContain("The original is saved and you can continue");
+    expect(html).toContain("Automatic checks pause after 90 seconds");
+    expect(html).toContain("This does not complete SG verification");
     expect(html).toContain("Check review");
     expect(html).not.toContain("Retry reading");
+  });
+
+  it.each(["not_started", "failed", "processing"])(
+    "allows navigation after receipt without promoting %s evidence",
+    (status) => {
+      vaultFixture.assets = [
+        asset({ metadata: { extractionStatus: status, aiProcessingAllowed: false } }),
+      ];
+      const html = renderToStaticMarkup(
+        <GuidedSgDiagramStep parcel={parcel()} userId="user-1" onContinue={vi.fn()} />,
+      );
+      expect(html).toContain("File stored, SG evidence not yet verified");
+      expect(html).toContain("AI processing is not permitted");
+      expect(html).toMatch(/<button type="button" class="[^"]*">Continue to Check title<\/button>/);
+      expect(html).not.toContain("SG diagram read and matched");
+      expect(extractionFixture.extract).not.toHaveBeenCalled();
+    },
+  );
+
+  it("stops automatic checks at the short observation deadline without a completion claim", async () => {
+    vi.useFakeTimers();
+    extractionFixture.extract.mockResolvedValue({ success: true, extractionStatus: "processing" });
+    const stop = startSgDiagramPolling({
+      assetId: "bounded",
+      parcelId: "fixture",
+      refreshVault: vaultFixture.refresh,
+      extract: extractionFixture.extract,
+    });
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(extractionFixture.extract).toHaveBeenCalledTimes(5);
+    expect(toastFixture.success).not.toHaveBeenCalled();
+    expect(toastFixture.error).not.toHaveBeenCalled();
+    stop();
   });
 
   it("polls a processing TIFF after eight seconds, then waits twenty seconds between checks", async () => {
@@ -418,7 +456,9 @@ describe("guided vault evidence steps", () => {
 
     expect(html).toContain("What Easy Erf found");
     expect(html).toContain("The document shows a cadastral diagram reference.");
-    expect(html).toContain("Easy Erf read this document, but it has not been automatically bound to this erf.");
+    expect(html).toContain(
+      "Easy Erf read this document, but it has not been automatically bound to this erf.",
+    );
     expect(html).toContain("parent context");
   });
 

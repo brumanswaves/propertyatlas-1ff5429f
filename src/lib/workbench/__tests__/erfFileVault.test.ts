@@ -148,7 +148,7 @@ describe("erfFileVault", () => {
 
     expect(source).toContain("const userBoundToThisErf = erfAssetIdentityUserConfirmed(asset)");
     expect(source).toContain('result.identityMatchStatus !== "matched" && !userBoundToThisErf');
-    expect(source).toContain('userConfirmed && identityStatus === "unverified" ? "user-attached"');
+    expect(source.replace(/\s+/g, " ")).toContain('userConfirmed && identityStatus === "unverified" ? "user-attached"');
     expect(source).toContain("The findings are ready to use as user-supplied evidence.");
   });
 

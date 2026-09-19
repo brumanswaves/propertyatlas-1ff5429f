@@ -1,5 +1,16 @@
 # EE-R999-01 Execution State
 
+## Issue #181 SG receipt/preview source tranche, 2026-09-19
+
+- Active release EE-R999-01. Frozen customer outcome remains a useful saved investigation and combined report with Ask at the top. This branch addresses item 7 only; report refinement and genuine commercial acceptance remain unfinished.
+- Verified current main/start: `3185ca05bff997cb224499ab17feac9672d45914`. Sole branch `codex/sg-receipt-preview-181`, isolated checkout `easy-erf-sg-receipt-preview`. No competing open PR at preflight. Final candidate SHA and draft PR are recorded in its GitHub receipt.
+- PR #184 receipt 5740479817 and review 5740547465 were read. Its publication and one live save are consumed. Original dirty workspace, owner browser drafts and separate report-design preview remain untouched.
+- Implemented: original receipt without automatic AI, deterministic bounded local TIFF preview, existing native PDF/image preview, navigation before interpretation without evidence promotion, explicit processing acknowledgement, duplicate-byte detection and coalesced requests, honest ambiguous/manual-review states and bounded polling.
+- VERIFIED development evidence: 106 focused tests across six files; isolated desktop/mobile receipt, preview pixels, original-byte preservation, duplicate prevention, reload, denied consent and delayed-reading continuation. Initial 7.3 MB synthetic TIFF: receipt about 1.1-1.2 seconds, pixels about 1.3-1.5 seconds. Not real SG performance. TypeScript, node-server build, targeted lint (zero errors, one existing Fast Refresh warning) and whitespace checks pass. First full local run: 1694 passed / one whitespace-sensitive source-string assertion failed; that assertion now ignores whitespace and its focused suite passes. Final full exact-head checks/artifacts belong in the PR receipt.
+- Remaining limitations and safety limits: `docs/SG_RECEIPT_PREVIEW_ACCEPTANCE.md`. No paid provider canary, commercial rights claim or production acceptance. Final candidate needs independent review before a separately approved rollout.
+- Next ranked actions: finish isolated malformed/oversized/permission-denied checks; full merge-readiness checks once; inspect exact-head CI/screenshots; independent review. Report item 8 remains next separately scoped source work, not blocked by a paid canary.
+- Owner gates/restrictions: no merge, publication, migration, production upload/save/processing, AI/provider call, email, account/order action, purchase, Lovable build or Vercel. Additional discretionary cap $0. Deterministic tooling only; no extra agents, API billing, credit purchases or paid services initiated. Actual account spend UNKNOWN. Process status must be inspected at final receipt.
+
 ## Selected-parcel boundary recovery, 2026-09-18
 
 - Active release EE-R999-01. Frozen outcome remains the same saved-property investigation, useful SG evidence and actionable report with Ask at the top. This tranche repairs missing public boundary loading only; SG/report refinement and genuine commercial acceptance remain unfinished.
