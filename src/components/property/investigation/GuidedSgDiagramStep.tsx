@@ -15,10 +15,7 @@ import { buildSgDocumentUrl } from "@/lib/research/sgDocument";
 import { CSG_VIEWER_URL, ONEMAP_PROPERTYMAP_URL } from "@/lib/external-urls";
 import { dispatchErfFileVaultUpdated, useErfFileVault } from "@/lib/workbench/useErfFileVault";
 import { buildErfAssetExpectedIdentityContext, type ErfAsset } from "@/lib/workbench/erfFileVault";
-import {
-  extractErfAsset,
-  type ExtractErfAssetResult,
-} from "@/lib/workbench/erfAssetExtraction";
+import { extractErfAsset, type ExtractErfAssetResult } from "@/lib/workbench/erfAssetExtraction";
 import {
   erfAssetCanConfirmIdentity,
   erfAssetExtractionLabel,
@@ -33,6 +30,9 @@ import {
 import { isTiffExtractionMimeType } from "../../../../supabase/functions/_shared/erfExtractionMedia";
 import { updateErfWorkspaceState } from "@/lib/workbench/erfWorkspaceState";
 import { cn } from "@/lib/utils";
+import { SgFilePreview } from "./SgFilePreview";
+import { requestSgReading, resolveSgReadingStatus } from "@/lib/workbench/sgReadingRequest";
+import { validateErfAssetFile } from "@/lib/workbench/erfFileVault";
 
 interface GuidedSgDiagramStepProps {
   parcel: NormalizedOfficialParcel;
@@ -69,7 +69,10 @@ interface SgDiagramPollingOptions {
   assetId: string;
   parcelId: string;
   refreshVault: () => Promise<void> | void;
-  extract?: (assetId: string, options: { expectedParcelId: string }) => Promise<ExtractErfAssetResult>;
+  extract?: (
+    assetId: string,
+    options: { expectedParcelId: string },
+  ) => Promise<ExtractErfAssetResult>;
   dispatchUpdated?: (parcelId: string) => void;
 }
 
@@ -93,15 +96,18 @@ export function startSgDiagramPolling({
   let delay = 8_000;
 
   const schedule = () => {
-    if (disposed || Date.now() - startedAt >= 15 * 60_000) return;
-    timer = setTimeout(() => void poll(), delay);
+    if (disposed || Date.now() - startedAt >= 90_000) return;
+    timer = setTimeout(() => void poll(), Math.min(delay, 90_000 - (Date.now() - startedAt)));
   };
 
   const poll = async () => {
-    if (disposed || inFlight) return;
+    if (disposed || inFlight || Date.now() - startedAt >= 90_000) return;
     inFlight = true;
     try {
-      const result = await extract(assetId, { expectedParcelId: parcelId, ...(investigationOrderId ? { investigationOrderId } : {}) });
+      const result = await extract(assetId, {
+        expectedParcelId: parcelId,
+        ...(investigationOrderId ? { investigationOrderId } : {}),
+      });
       if (disposed) return;
       if (result.success && result.extractionStatus === "processing") {
         delay = 20_000;
@@ -117,7 +123,10 @@ export function startSgDiagramPolling({
             ? "The diagram review completed, but it was not accepted for this erf."
             : "The SG diagram review completed. Check the findings below.",
         );
-      } else if (result.code === "SERVER_UNAVAILABLE") {
+      } else if (
+        result.requestOutcome !== "definitive" &&
+        (result.requestOutcome === "unknown" || result.code === "SERVER_UNAVAILABLE" || result.code === "REVIEW_STATUS_UNKNOWN")
+      ) {
         delay = 20_000;
         schedule();
       } else {
@@ -138,6 +147,28 @@ export function startSgDiagramPolling({
 }
 
 export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
+  return (
+    <ScopedSgDiagramStep
+      key={`${userId}:${parcel.id}`}
+      parcel={parcel}
+      userId={userId}
+      onContinue={onContinue}
+    />
+  );
+}
+
+function readingRevision(asset: ErfAsset) {
+  const metadata = asset.metadata;
+  return JSON.stringify([
+    erfAssetExtractionStatus(asset),
+    metadata.extractionStartedAt,
+    metadata.extractedAt,
+    metadata.openaiResponseId,
+    metadata.openaiBackgroundStartedAt,
+  ]);
+}
+
+function ScopedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiagramStepProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const vault = useErfFileVault(parcel.id, ["sg_diagram"]);
   const { refresh: refreshVault, signedIn } = vault;
@@ -145,6 +176,20 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
   const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
   const [confirmingAssetId, setConfirmingAssetId] = useState<string | null>(null);
   const [expandedFindings, setExpandedFindings] = useState<Set<string>>(() => new Set());
+  const [localFiles, setLocalFiles] = useState<Record<string, File>>({});
+  const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
+  const [processingConsent, setProcessingConsent] = useState(false);
+  const [unknownRequests, setUnknownRequests] = useState<Set<string>>(() => new Set());
+  const [uploading, setUploading] = useState(false);
+  const uploadLock = useRef(false);
+  const receivedHashes = useRef(new Set<string>());
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   const sgDocument = useMemo(
     () =>
@@ -171,29 +216,68 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
     (asset) => erfAssetIdentityMatchStatus(asset) === "parent_lineage_match",
   );
 
-  const processingAssetId = vault.assets.find(
-    (asset) => erfAssetExtractionStatus(asset) === "processing" && isTiffExtractionMimeType(asset.mime_type),
-  )?.id ?? null;
+  const processingAssetId =
+    vault.assets.find(
+      (asset) =>
+        erfAssetExtractionStatus(asset) === "processing" &&
+        isTiffExtractionMimeType(asset.mime_type) &&
+        typeof asset.metadata.openaiResponseId === "string" &&
+        Boolean(asset.metadata.openaiResponseId) &&
+        asset.metadata.aiProcessingAllowed !== false,
+    )?.id ?? null;
 
   useEffect(() => {
-    if (!signedIn || !processingAssetId) return;
+    if (!userId) return;
+    const settled = vault.assets.filter((asset) =>
+      resolveSgReadingStatus(
+        userId,
+        asset.id,
+        { expectedParcelId: parcel.id, investigationOrderId: vault.investigationOrderId },
+        erfAssetExtractionStatus(asset),
+        readingRevision(asset),
+      ),
+    );
+    setUnknownRequests((current) => {
+      if (!settled.some((asset) => current.has(asset.id))) return current;
+      const next = new Set(current);
+      for (const asset of settled) next.delete(asset.id);
+      return next;
+    });
+  }, [vault.assets, parcel.id, userId, vault.investigationOrderId]);
+
+  useEffect(() => {
+    if (!signedIn || !userId || !processingAssetId) return;
     return startSgDiagramPolling({
       assetId: processingAssetId,
       parcelId: parcel.id,
       refreshVault,
       investigationOrderId: vault.investigationOrderId,
+      extract: (assetId, options) =>
+        requestSgReading(userId, assetId, options, undefined, "", true),
     });
-  }, [parcel.id, processingAssetId, refreshVault, signedIn, vault.investigationOrderId]);
+  }, [parcel.id, processingAssetId, refreshVault, signedIn, userId, vault.investigationOrderId]);
 
   function syncAttachmentCount(count: number) {
     if (vault.investigationOrderId) return;
-    updateErfWorkspaceState(parcel.id, {
-      sgDiagramAttachmentCount: count,
-      dirty: true,
-    }, undefined, userId);
+    updateErfWorkspaceState(
+      parcel.id,
+      {
+        sgDiagramAttachmentCount: count,
+        dirty: true,
+      },
+      undefined,
+      userId,
+    );
   }
 
   async function readDiagram(asset: ErfAsset, retry = false) {
+    const checking = erfAssetExtractionStatus(asset) === "processing";
+    if (!userId || readingAssetId) return;
+    if (unknownRequests.has(asset.id)) {
+      await vault.refresh();
+      return;
+    }
+    if (asset.metadata.aiProcessingAllowed === false || (!checking && !processingConsent)) return;
     if (!isExtractableErfAsset(asset)) {
       toast.error(
         "This file type cannot be read. Upload a PDF, PNG, JPG, JPEG, TIF, or TIFF file.",
@@ -203,11 +287,28 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
 
     setReadingAssetId(asset.id);
     try {
-      const result = await extractErfAsset(asset.id, {
-        expectedParcelId: parcel.id,
-        retry,
-        ...(vault.investigationOrderId ? { investigationOrderId: vault.investigationOrderId } : {}),
-      });
+      const result = await requestSgReading(
+        userId,
+        asset.id,
+        {
+          expectedParcelId: parcel.id,
+          retry,
+          ...(vault.investigationOrderId
+            ? { investigationOrderId: vault.investigationOrderId }
+            : {}),
+        },
+        undefined,
+        readingRevision(asset),
+        checking &&
+          typeof asset.metadata.openaiResponseId === "string" &&
+          Boolean(asset.metadata.openaiResponseId),
+      );
+      if (!active.current) return;
+      if (!result.success && result.code === "REVIEW_STATUS_UNKNOWN") {
+        setUnknownRequests((current) => new Set(current).add(asset.id));
+        toast.warning(result.error);
+        return;
+      }
       await vault.refresh();
       dispatchErfFileVaultUpdated(parcel.id);
 
@@ -217,7 +318,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
       }
       if (result.extractionStatus === "processing") {
         toast.message(
-          "SG diagram review is running. This usually takes about 7 to 10 minutes. You can leave this page and come back.",
+          "The server acknowledged this review. Your original is saved; you can continue while interpretation is pending.",
         );
         return;
       }
@@ -249,22 +350,48 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The SG diagram could not be read.");
     } finally {
-      setReadingAssetId(null);
+      if (active.current) setReadingAssetId(null);
     }
   }
 
   async function uploadFiles(files: FileList | null) {
     const selectedFiles = Array.from(files ?? []);
-    if (!selectedFiles.length) return;
+    if (!selectedFiles.length || uploadLock.current) return;
     if (!vault.signedIn) {
       toast.error("Sign in to upload and securely store SG diagrams in the Erf File Vault.");
       return;
     }
 
+    uploadLock.current = true;
+    setUploading(true);
     let uploadedCount = 0;
-    const uploadedAssets: ErfAsset[] = [];
     for (const file of selectedFiles) {
+      if (!active.current) break;
       try {
+        const validation = validateErfAssetFile(file, "sg_diagram", file.name);
+        if (!validation.ok) {
+          toast.error(`${file.name}: ${validation.reason}`);
+          continue;
+        }
+        const bytes = await file.arrayBuffer();
+        const hash = Array.from(
+          new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+          (byte) => byte.toString(16).padStart(2, "0"),
+        ).join("");
+        if (!active.current) break;
+        const existing = vault.assets.find(
+          (asset) => asset.checksum_sha256 === hash || asset.metadata.sgReceiptSha256 === hash,
+        );
+        if (existing || receivedHashes.current.has(hash)) {
+          toast.message(
+            "This file is already attached to this erf. No duplicate upload or reading was started.",
+          );
+          if (existing) {
+            setLocalFiles((current) => ({ ...current, [existing.id]: file }));
+            setPreviewAssetId(existing.id);
+          }
+          continue;
+        }
         const result = await vault.upload({
           file,
           fileName: file.name,
@@ -274,6 +401,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           metadata: {
             source: "guided-sg-diagram-step",
             expectedIdentityContext: buildErfAssetExpectedIdentityContext(parcel),
+            sgReceiptSha256: hash,
           },
         });
         if (!result.ok) {
@@ -286,30 +414,36 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           }
           continue;
         }
-        if (result.asset) uploadedAssets.push(result.asset);
+        if (!active.current) break;
+        receivedHashes.current.add(hash);
+        if (result.asset) {
+          const id = result.asset.id;
+          setLocalFiles((current) => ({ ...current, [id]: file }));
+          setPreviewAssetId(id);
+        }
         uploadedCount += 1;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : `${file.name} could not be uploaded.`);
       }
     }
 
+    uploadLock.current = false;
+    if (!active.current) return;
+    setUploading(false);
     if (!uploadedCount) return;
     syncAttachmentCount(vault.assets.length + uploadedCount);
     toast.success(
       uploadedCount === 1
-        ? "SG diagram uploaded. Easy Erf is reading it now."
-        : `${uploadedCount} SG diagrams uploaded. Easy Erf is reading them now.`,
+        ? "Original SG file saved. Preview it now or continue; interpretation has not started."
+        : `${uploadedCount} original SG files saved. Interpretation has not started.`,
     );
-
-    for (const asset of uploadedAssets) {
-      await readDiagram(asset);
-    }
   }
 
   async function removeDiagram(asset: ErfAsset) {
     setRemovingAssetId(asset.id);
     try {
       await vault.remove(asset);
+      receivedHashes.current.delete(String(asset.metadata.sgReceiptSha256 ?? ""));
       syncAttachmentCount(Math.max(0, vault.assets.length - 1));
       toast.success("SG diagram removed from this erf file.");
     } catch (error) {
@@ -323,7 +457,9 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
     setConfirmingAssetId(asset.id);
     try {
       await vault.confirmIdentity(asset);
-      toast.success("Document attached as user-confirmed evidence. This is not official verification.");
+      toast.success(
+        "Document attached as user-confirmed evidence. This is not official verification.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The document could not be confirmed.");
     } finally {
@@ -412,12 +548,11 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
               3. Upload
             </div>
             <p className="mt-1 text-sm font-semibold text-[#0D1B2A]">
-              Easy Erf reads it for this erf
+              Store and preview the original
             </p>
             <p className="mt-1 text-xs leading-5 text-[#0D1B2A]/62">
-              Uploading here attaches the document to this selected erf. Easy Erf analyzes the file,
-              uses the confirmed property context, and rejects it if the document contradicts that
-              identity.
+              Uploading securely stores the original for this selected erf. Preview does not verify
+              identity. Optional interpretation is separate and rejects a conflicting property.
             </p>
           </li>
         </ol>
@@ -446,7 +581,7 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
           )}
           <button
             type="button"
-            disabled={!vault.signedIn}
+            disabled={!vault.signedIn || uploading}
             onClick={() => inputRef.current?.click()}
             className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#FF6A00] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-55"
           >
@@ -454,7 +589,8 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
             Upload SG diagram / General Plan
           </button>
           <p className="text-xs leading-5 text-[#0D1B2A]/62">
-            Large SG diagram review usually takes about 7 to 10 minutes.
+            Continue after receipt. Optional interpretation may take longer; it does not block the
+            next step.
           </p>
           {sgDocument.shown ? (
             <a
@@ -499,8 +635,9 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
         ) : (
           <p className="mt-3 rounded-xl bg-[#fff8ec] px-3 py-2 text-xs leading-5 text-[#0D1B2A]/66">
             A prepared official SG document search could not be built from this parcel record. Use
-            the CSG Property Viewer and search using Erf {parcel.erfNumber ?? "number not available"},
-            portion {parcel.portion ?? 0}, and the parcel identifiers shown in Step 1.
+            the CSG Property Viewer and search using Erf{" "}
+            {parcel.erfNumber ?? "number not available"}, portion {parcel.portion ?? 0}, and the
+            parcel identifiers shown in Step 1.
           </p>
         )}
         {!vault.signedIn && (
@@ -558,15 +695,15 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                 !parentLineageContext &&
                 (extractionStatus === "failed" ||
                   extractionStatus === "partial" ||
-                  extractionStatus === "unsupported" ||
-                  extractionStatus === "not_started" ||
-                  identityStatus === "unverified");
+                  extractionStatus === "unsupported");
               const readableEvidence =
                 usable ||
                 ((extractionStatus === "ready" || extractionStatus === "partial") &&
                   identityStatus === "unverified");
               const findings = erfAssetExtractedClaims(asset);
-              const visibleFindings = expandedFindings.has(asset.id) ? findings : findings.slice(0, 6);
+              const visibleFindings = expandedFindings.has(asset.id)
+                ? findings
+                : findings.slice(0, 6);
               const summary = extractionSummary(asset);
 
               return (
@@ -607,21 +744,47 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                               : erfAssetExtractionLabel(asset, "diagram")}
                         </span>
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D1B2A]/68">
-                          Identity: {userConfirmed && identityStatus === "unverified" ? "user-attached" : identityStatus}
+                          Identity:{" "}
+                          {userConfirmed && identityStatus === "unverified"
+                            ? "user-attached"
+                            : (identityStatus ?? "not reviewed")}
                         </span>
                       </div>
                       {reviewingLargeTiff ? (
                         <p className="mt-2 text-xs font-medium leading-5 text-amber-950">
-                          SG diagram review is running. This usually takes about 7 to 10 minutes.
-                          You can leave this page and come back.
+                          Interpretation is pending. The original is saved and you can continue.
+                          Automatic checks pause after 90 seconds on this page. Check review later
+                          or review the original manually.
                         </p>
+                      ) : null}
+                      {unknownRequests.has(asset.id) ? (
+                        <p role="status" className="mt-2 text-xs text-amber-950">
+                          Request outcome not confirmed. Refresh file status before another reading
+                          attempt; no automatic retry will start a new job.
+                        </p>
+                      ) : null}
+                      {asset.metadata.aiProcessingAllowed === false ? (
+                        <p className="mt-2 text-xs">
+                          AI processing is not permitted for this file. Preview and manual review
+                          remain available.
+                        </p>
+                      ) : null}
+                      {previewAssetId === asset.id ? (
+                        <SgFilePreview
+                          key={`${userId}:${parcel.id}:${asset.id}`}
+                          asset={asset}
+                          file={localFiles[asset.id]}
+                          delegated={Boolean(vault.investigationOrderId)}
+                        />
                       ) : null}
                       {readableEvidence ? (
                         <div className="mt-3 rounded-lg border border-[#D9E6F2] bg-white/80 p-3">
                           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#64748B]">
                             What Easy Erf found
                           </div>
-                          {summary ? <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/75">{summary}</p> : null}
+                          {summary ? (
+                            <p className="mt-2 text-xs leading-5 text-[#0D1B2A]/75">{summary}</p>
+                          ) : null}
                           {identityStatus === "unverified" ? (
                             <p className="mt-2 text-xs leading-5 text-amber-950">
                               {userConfirmed
@@ -632,20 +795,37 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                           {findings.length > 0 ? (
                             <ul className="mt-2 space-y-1.5">
                               {visibleFindings.map((finding) => (
-                                <li key={`${finding.label}-${finding.value}`} className="text-xs leading-5 text-[#0D1B2A]/75">
-                                  <span className="font-semibold">{finding.label}:</span> {finding.value}
-                                  <span className="ml-1 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">({finding.scope === "parent_plan" ? "parent context" : "subject"}, {finding.confidence})</span>
+                                <li
+                                  key={`${finding.label}-${finding.value}`}
+                                  className="text-xs leading-5 text-[#0D1B2A]/75"
+                                >
+                                  <span className="font-semibold">{finding.label}:</span>{" "}
+                                  {finding.value}
+                                  <span className="ml-1 text-[10px] uppercase tracking-[0.08em] text-[#64748B]">
+                                    (
+                                    {finding.scope === "parent_plan" ? "parent context" : "subject"}
+                                    , {finding.confidence})
+                                  </span>
                                 </li>
                               ))}
                             </ul>
                           ) : null}
                           {findings.length > 6 ? (
-                            <button type="button" onClick={() => setExpandedFindings((current) => {
-                              const next = new Set(current);
-                              if (next.has(asset.id)) next.delete(asset.id); else next.add(asset.id);
-                              return next;
-                            })} className="mt-2 text-xs font-semibold text-[#B24A00]">
-                              {expandedFindings.has(asset.id) ? "Show less" : `Show all ${findings.length} findings`}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedFindings((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(asset.id)) next.delete(asset.id);
+                                  else next.add(asset.id);
+                                  return next;
+                                })
+                              }
+                              className="mt-2 text-xs font-semibold text-[#B24A00]"
+                            >
+                              {expandedFindings.has(asset.id)
+                                ? "Show less"
+                                : `Show all ${findings.length} findings`}
                             </button>
                           ) : null}
                         </div>
@@ -665,23 +845,56 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                       )}
                       {canConfirm ? (
                         <div className="mt-3 rounded-lg border border-amber-300/55 bg-white/75 p-3 text-xs leading-5 text-amber-950">
-                          <p className="font-semibold">Read successfully - needs your confirmation</p>
-                          <p className="mt-1">Detected identity: Erf {identity?.erfNumber ?? "not stated"}, portion {identity?.portionNumber ?? "not stated"}, {identity?.suburbOrTown ?? identity?.municipality ?? "location not stated"}.</p>
-                          <button type="button" disabled={confirmingAssetId === asset.id} onClick={() => void confirmDiagramIdentity(asset)} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">
-                            Yes, this document is for or supports Erf {parcel.erfNumber ?? "this erf"}
+                          <p className="font-semibold">
+                            Read successfully - needs your confirmation
+                          </p>
+                          <p className="mt-1">
+                            Detected identity: Erf {identity?.erfNumber ?? "not stated"}, portion{" "}
+                            {identity?.portionNumber ?? "not stated"},{" "}
+                            {identity?.suburbOrTown ??
+                              identity?.municipality ??
+                              "location not stated"}
+                            .
+                          </p>
+                          <button
+                            type="button"
+                            disabled={confirmingAssetId === asset.id}
+                            onClick={() => void confirmDiagramIdentity(asset)}
+                            className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#0D1B2A] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                          >
+                            Yes, this document is for or supports Erf{" "}
+                            {parcel.erfNumber ?? "this erf"}
                           </button>
-                          <p className="mt-1 text-[11px]">Your confirmation is recorded as user-confirmed evidence, not official verification.</p>
+                          <p className="mt-1 text-[11px]">
+                            Your confirmation is recorded as user-confirmed evidence, not official
+                            verification.
+                          </p>
                         </div>
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewAssetId((current) => (current === asset.id ? null : asset.id))
+                        }
+                        className="inline-flex min-h-10 items-center gap-2 rounded-full border bg-white px-3 py-2 text-xs font-semibold"
+                      >
+                        <FileText className="h-3.5 w-3.5" />{" "}
+                        {previewAssetId === asset.id ? "Close preview" : "Preview file"}
+                      </button>
                       {isExtractableErfAsset(asset) &&
                       !usable &&
                       identityStatus !== "mismatch" &&
                       !parentLineageContext ? (
                         <button
                           type="button"
-                          disabled={reading}
+                          disabled={
+                            Boolean(readingAssetId) ||
+                            (!unknownRequests.has(asset.id) &&
+                              (asset.metadata.aiProcessingAllowed === false ||
+                                (!reviewingLargeTiff && !processingConsent)))
+                          }
                           onClick={() => void readDiagram(asset, retry)}
                           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#0D1B2A]/12 bg-white px-3 py-2 text-xs font-semibold text-[#0D1B2A] transition hover:border-[#FF6A00]/35 disabled:opacity-60"
                         >
@@ -692,11 +905,13 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
                           )}
                           {reading
                             ? "Checking"
-                            : reviewingLargeTiff
-                              ? "Check review"
-                              : retry
-                                ? "Retry reading"
-                                : "Read diagram"}
+                            : unknownRequests.has(asset.id)
+                              ? "Refresh file status"
+                              : reviewingLargeTiff
+                                ? "Check review"
+                                : retry
+                                  ? "Retry reading"
+                                  : "Read diagram"}
                         </button>
                       ) : null}
                       <button
@@ -731,10 +946,28 @@ export function GuidedSgDiagramStep({ parcel, userId, onContinue }: GuidedSgDiag
         )}
       </section>
 
+      {vault.assets.length > 0 ? (
+        <label className="flex items-start gap-2 text-xs leading-5">
+          <input
+            type="checkbox"
+            checked={processingConsent}
+            onChange={(event) => setProcessingConsent(event.target.checked)}
+            className="mt-1"
+          />
+          I have permission to send the documents I choose to read for AI interpretation. Upload and
+          preview alone do not send them to AI.
+        </label>
+      ) : null}
+      {!canContinue && vault.assets.length > 0 ? (
+        <p role="status" className="text-sm text-amber-950">
+          File stored, SG evidence not yet verified. Continue now and return for interpretation or
+          manual review. This does not complete SG verification.
+        </p>
+      ) : null}
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={!canContinue}
+          disabled={!canContinue && vault.assets.length === 0}
           onClick={onContinue}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FF6A00] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_-20px_rgba(255,106,0,0.9)] transition hover:bg-[#FF7D1F] disabled:cursor-not-allowed disabled:opacity-50"
         >

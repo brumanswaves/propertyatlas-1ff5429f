@@ -59,6 +59,11 @@ jobs:
       - name: Verify founder OAuth transport when enabled
         run: node scripts/verify-founder-oauth.mjs
 
+      - name: Build production bundle and generate routes
+        env:
+          NITRO_PRESET: node-server
+        run: npm run build
+
       - name: Verify public browser acceptance
         run: |
           BROWSER_TOOLS="${RUNNER_TEMP}/easy-erf-browser-tools"
@@ -85,6 +90,15 @@ jobs:
           git diff --exit-code
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 EASY_ERF_BROWSER_ARTIFACTS=artifacts/guided-cloud node scripts/verify-guided-cloud-persistence.mjs
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-selected-parcel-boundary.mjs
+          HOST=127.0.0.1 PORT=4185 SUPABASE_URL=http://127.0.0.1:55433 SUPABASE_PUBLISHABLE_KEY=synthetic-public-key node --import ./scripts/verify-shared-investigation-network.mjs .output/server/index.mjs > /tmp/easyerf-sg-server.log 2>&1 &
+          SG_SERVER_PID=$!
+          trap 'kill ${SERVER_PID} ${SG_SERVER_PID} 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4185/auth >/dev/null; then break; fi
+            if [ "$attempt" -eq 60 ]; then cat /tmp/easyerf-sg-server.log; exit 1; fi
+            sleep 1
+          done
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4185 node scripts/verify-sg-receipt-preview.mjs
 
       - name: Upload Guided cloud browser acceptance evidence
         if: always()
@@ -94,11 +108,9 @@ jobs:
           path: |
             artifacts/guided-cloud
             artifacts/selected-parcel-boundary
+            artifacts/sg-receipt-preview
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Build production bundle and generate routes
-        run: npm run build
 
       - name: Check TypeScript
         run: npx tsc --noEmit
