@@ -84,13 +84,16 @@ jobs:
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-erf1570-guided-start.mjs
           git diff --exit-code
           EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 EASY_ERF_BROWSER_ARTIFACTS=artifacts/guided-cloud node scripts/verify-guided-cloud-persistence.mjs
+          EASY_ERF_BROWSER_BASE_URL=http://127.0.0.1:4173 node scripts/verify-selected-parcel-boundary.mjs
 
       - name: Upload Guided cloud browser acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: guided-cloud-browser-${{ github.run_id }}
-          path: artifacts/guided-cloud
+          path: |
+            artifacts/guided-cloud
+            artifacts/selected-parcel-boundary
           if-no-files-found: warn
           retention-days: 14
 
