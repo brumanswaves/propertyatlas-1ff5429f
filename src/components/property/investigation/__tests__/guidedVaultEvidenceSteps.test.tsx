@@ -394,11 +394,12 @@ describe("guided vault evidence steps", () => {
     stop();
   });
 
-  it("retains a processing TIFF and retries quietly when the server is temporarily unavailable", async () => {
+  it.each(["SERVER_UNAVAILABLE", "WORKER_LIMIT", null])("retains a known processing TIFF and retries retrieval quietly after %s", async (code) => {
     vi.useFakeTimers();
     extractionFixture.extract.mockResolvedValue({
       success: false,
-      code: "SERVER_UNAVAILABLE",
+      code,
+      requestOutcome: "unknown",
       error: "Document reading is temporarily unavailable.",
       extractionStatus: "processing",
     });

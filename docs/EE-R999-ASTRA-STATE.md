@@ -1,5 +1,14 @@
 # EE-R999-01 Execution State
 
+## PR #185 review 5256387994 correction, 2026-09-19
+
+- Same sole-writer branch `codex/sg-receipt-preview-181`, draft PR #185. Reverified reviewed head `9f258c6c7944a1e593c636425c272c49b3940ea7` and unchanged main `3185ca05bff997cb224499ab17feac9672d45914`; no competing work or production action. Final revised SHA/CI/evidence belongs in the PR receipt.
+- Regression-first: the real extraction-client/request-wrapper path reproduced uncoded HTTP 503 and WORKER_LIMIT/invalid-body uncertainty escaping the guard. The actual pinned TIFF decoder returned correct known pixels, but the worker's stripped Group3Options produced an incorrect blank sheet. Five new assertions failed before repair.
+- Repair carries explicit transport outcome certainty, retains ambiguous starts across unchanged status refreshes and allows recovery on a newer authoritative result without automatic start retries. Definitive rejections/recorded results and known-job retrieval remain available. Server locks are unchanged.
+- Worker retains/validates Group3Options, rejects unsupported extension/reserved flags before decoding and retains existing byte/pixel/time limits. Original synthetic 2-D Group 3 fixture has 32 known pixels. No real document or provider.
+- Focused development check: 63 tests passed across the preview/request, real extraction client and Guided vault suites. Final built-app desktop/mobile delayed-failure/repeated-refresh and known-pixel evidence, TypeScript/build/lint/diff and exact-head CI must be inspected before review readiness.
+- Owner gates unchanged: no merge/publication/migration/production processing, account/report action, email, purchase or paid provider. Original dirty worktree and separate Ask-at-top report preview preserved. No new PR/agent/model escalation. Cap $0; actual account spend UNKNOWN. Report refinement remains separately scoped and unfinished.
+
 ## Issue #181 SG receipt/preview source tranche, 2026-09-19
 
 - Active release EE-R999-01. Frozen customer outcome remains a useful saved investigation and combined report with Ask at the top. This branch addresses item 7 only; report refinement and genuine commercial acceptance remain unfinished.

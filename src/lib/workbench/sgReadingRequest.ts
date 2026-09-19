@@ -49,7 +49,11 @@ export async function requestSgReading(
   if (!operation) {
     operation = extract(assetId, options)
       .then((result) => {
-        if (!result.success && result.code === "SERVER_UNAVAILABLE") {
+        if (
+          !result.success &&
+          (result.requestOutcome === "unknown" ||
+            (result.requestOutcome !== "definitive" && result.code === "SERVER_UNAVAILABLE"))
+        ) {
           if (knownBackgroundJob) return result;
           uncertain.set(key, revision);
           return SG_READING_UNKNOWN;

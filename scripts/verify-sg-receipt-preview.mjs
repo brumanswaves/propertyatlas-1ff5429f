@@ -68,6 +68,8 @@ for (let y = 200; y < 1400; y++)
   }
 const tiff = Buffer.from(UTIF.encodeImage(rgba, width, height));
 const hash = (data) => createHash("sha256").update(data).digest("hex");
+const group3 = JSON.parse(await readFile("scripts/fixtures/sg-group3-2d.json", "utf8"));
+const group3Bytes = Buffer.from(group3.base64, "base64");
 const result = {
   source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
   dirty: Boolean(
@@ -295,6 +297,9 @@ try {
     await page.goBack();
     await page.getByRole("button", { name: "Preview file", exact: true }).click();
     await preview.waitFor();
+    // Reproduce retrying an old failed extraction, not only a fresh upload.
+    assets[0].metadata.extractionStatus = "failed";
+    assets[0].metadata.extractedAt = at;
     await page.reload();
     await page.getByRole("button", { name: "Preview file", exact: true }).click();
     await preview.waitFor();
@@ -302,7 +307,7 @@ try {
     assert.equal(reads, 0);
     // Delayed interpretation is an intercepted synthetic request, never a provider call.
     await page.getByRole("checkbox", { name: /I have permission/ }).check();
-    await page.getByRole("button", { name: "Read diagram", exact: true }).click();
+    await page.getByRole("button", { name: "Retry reading", exact: true }).click();
     await page.waitForTimeout(100);
     assert.equal(reads, 1);
     assert.ok(
@@ -312,9 +317,38 @@ try {
     await page.getByRole("button", { name: "Refresh file status", exact: true }).waitFor();
     await page.getByRole("button", { name: "Refresh file status", exact: true }).click();
     assert.equal(reads, 1);
+    const lateResponse = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith("/extract-erf-asset"),
+    );
     holdReader();
+    await lateResponse;
     await page.waitForTimeout(200);
+    const refreshStatus = page.getByRole("button", { name: "Refresh file status", exact: true });
+    for (let click = 0; click < 3; click++) {
+      const refreshed = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith("/erf_assets") &&
+          response.request().method() === "GET",
+      );
+      await refreshStatus.click();
+      await refreshed;
+      await page.waitForTimeout(100);
+      assert.ok(
+        await refreshStatus.isVisible(),
+        "Unchanged failed metadata must not unlock another start",
+      );
+      assert.equal(
+        await page.getByRole("button", { name: "Retry reading", exact: true }).count(),
+        0,
+      );
+      assert.equal(reads, 1);
+    }
     await page.screenshot({ path: resolve(out, `reading-unacknowledged-${screen.width}.png`) });
+    // A genuinely newer authoritative result clears uncertainty without an automatic retry.
+    assets[0].metadata.extractedAt = "2026-09-19T00:01:00.000Z";
+    await refreshStatus.click();
+    await page.getByRole("button", { name: "Retry reading", exact: true }).waitFor();
+    assert.equal(reads, 1);
     await page.getByRole("button", { name: "Continue to Check title", exact: true }).click();
     await page.getByRole("button", { name: "Continue to Confirm zoning", exact: true }).waitFor();
     assert.equal(reads, 1);
@@ -330,7 +364,40 @@ try {
       .getByText("AI processing is not permitted for this file.", { exact: false })
       .waitFor();
     await page.getByRole("checkbox", { name: /I have permission/ }).check();
-    assert.ok(await page.getByRole("button", { name: "Read diagram", exact: true }).isDisabled());
+    assert.ok(await page.getByRole("button", { name: "Retry reading", exact: true }).isDisabled());
+    // The actual bundled worker must retain Group3Options, not render a blank 1-D interpretation.
+    const group3Start = performance.now();
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({
+        name: "SYNTHETIC-GROUP3-2D.tiff",
+        mimeType: "image/tiff",
+        buffer: group3Bytes,
+      });
+    const group3Preview = page
+      .locator("article")
+      .filter({ has: page.getByText("SYNTHETIC-GROUP3-2D.tiff", { exact: true }) })
+      .getByRole("img", { name: /SG file preview/ });
+    await group3Preview.waitFor();
+    await group3Preview.evaluate((img) => img.decode());
+    const group3Pixels = await group3Preview.evaluate((img) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      return Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
+    });
+    assert.deepEqual(
+      group3Pixels,
+      group3.rows.flatMap((row) =>
+        [...row].flatMap((bit) => (bit === "1" ? [0, 0, 0, 255] : [255, 255, 255, 255])),
+      ),
+    );
+    const group3PreviewMs = Math.round(performance.now() - group3Start);
+    assert.equal(hash([...files.values()][1]), hash(group3Bytes));
+    await group3Preview.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: resolve(out, `group3-known-pixels-${screen.width}.png`) });
     const failures = [];
     for (const [name, bytes] of [
       ["malformed.tiff", Buffer.from("synthetic malformed TIFF")],
@@ -360,8 +427,8 @@ try {
       .getByRole("button", { name: "Continue to Check title", exact: true })
       .scrollIntoViewIfNeeded();
     await page.screenshot({ path: resolve(out, `manual-fallback-continue-${screen.width}.png`) });
-    assert.equal(uploads, 3);
-    assert.equal(assets.length, 3);
+    assert.equal(uploads, 4);
+    assert.equal(assets.length, 4);
     assert.equal(reads, 1);
     assert.deepEqual(errors, []);
     assert.deepEqual(unexpected, []);
@@ -379,6 +446,9 @@ try {
       continuedUnread: true,
       reopenedPreview: true,
       deadlineDidNotRetry: true,
+      lateFailureUnchangedRefreshRepeatClickBlocked: true,
+      newerAuthoritativeResultReleasedWithoutRetry: true,
+      group3: { sha256: hash(group3Bytes), previewMs: group3PreviewMs, all32PixelsMatched: true },
       noIdentityPromotion: true,
       prohibitedProcessingRemainedDisabled: true,
     });

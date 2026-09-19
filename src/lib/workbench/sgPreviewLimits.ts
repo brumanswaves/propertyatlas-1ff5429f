@@ -34,10 +34,25 @@ export function checkSgPreviewSamples(samples: number, bits: number[]) {
   }
 }
 
-export function checkSgPreviewEncoding(compression: number, photometric: number, tiled: boolean) {
+export function checkSgPreviewEncoding(
+  compression: number,
+  photometric: number,
+  tiled: boolean,
+  group3Options: unknown = [0],
+) {
   // JPEG/Deflate and camera-specific decoders can allocate outside the TIFF
   // dimensions. This local path permits only bounded strip output formats.
   if (tiled || ![1, 3, 4, 32773].includes(compression) || ![0, 1, 2, 3].includes(photometric)) {
     throw new Error("Unsupported TIFF encoding. Open the original for manual review.");
+  }
+  // Bit 0 selects 2-D coding and bit 2 permits EOL fill bits. The pinned
+  // decoder does not support the bit 1 uncompressed extension or reserved bits.
+  if (
+    compression === 3 &&
+    (!Array.isArray(group3Options) ||
+      group3Options.length !== 1 ||
+      ![0, 1, 4, 5].includes(group3Options[0]))
+  ) {
+    throw new Error("Unsupported Group 3 options. Open the original for manual review.");
   }
 }

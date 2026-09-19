@@ -17,11 +17,12 @@ self.onmessage = async (event: MessageEvent<{ file: Blob; page: number }>) => {
       Number((original?.t259 as number[] | undefined)?.[0] ?? 1),
       Number((original?.t262 as number[] | undefined)?.[0] ?? 1),
       Boolean(original?.t322 || original?.t324),
+      original?.t292,
     );
     // Ignore camera/private tags which can override the decoder's compression
     // or allocation path. Preserve only standard strip/pixel interpretation.
     const ifd = Object.fromEntries(
-      [256, 257, 258, 259, 262, 266, 273, 277, 278, 279, 284, 317, 320, 338]
+      [256, 257, 258, 259, 262, 266, 273, 277, 278, 279, 284, 292, 317, 320, 338]
         .map((tag) => `t${tag}`)
         .filter((tag) => original?.[tag] !== undefined)
         .map((tag) => [tag, original[tag]]),
