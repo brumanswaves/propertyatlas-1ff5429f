@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkSgPreviewPage, checkSgPreviewSamples } from "../sgPreviewLimits";
+import {
+  checkSgPreviewPage,
+  checkSgPreviewSamples,
+  checkSgPreviewEncoding,
+} from "../sgPreviewLimits";
 import { renderLocalSgTiff, SG_PREVIEW_DEADLINE_MS } from "../sgLocalPreview";
 import {
   requestSgReading,
@@ -29,6 +33,12 @@ describe("deterministic SG preview boundaries", () => {
     }
     expect(() => checkSgPreviewSamples(64, [8])).toThrow();
     expect(() => checkSgPreviewSamples(1, [64])).toThrow();
+    for (const compression of [1, 3, 4, 32773])
+      expect(() => checkSgPreviewEncoding(compression, 1, false)).not.toThrow();
+    for (const compression of [5, 6, 7, 8, 32946, 34316])
+      expect(() => checkSgPreviewEncoding(compression, 1, false)).toThrow();
+    expect(() => checkSgPreviewEncoding(1, 32803, false)).toThrow();
+    expect(() => checkSgPreviewEncoding(1, 1, true)).toThrow();
   });
 
   it("terminates slow decoding after eight seconds without any provider fallback", async () => {

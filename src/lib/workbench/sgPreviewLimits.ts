@@ -26,9 +26,18 @@ export function checkSgPreviewSamples(samples: number, bits: number[]) {
     !Number.isInteger(samples) ||
     samples < 1 ||
     samples > 4 ||
+    bits.length < 1 ||
     bits.length > 4 ||
     bits.some((bit) => ![1, 2, 4, 8].includes(bit))
   ) {
     throw new Error("Unsupported TIFF pixel format. Open the original for manual review.");
+  }
+}
+
+export function checkSgPreviewEncoding(compression: number, photometric: number, tiled: boolean) {
+  // JPEG/Deflate and camera-specific decoders can allocate outside the TIFF
+  // dimensions. This local path permits only bounded strip output formats.
+  if (tiled || ![1, 3, 4, 32773].includes(compression) || ![0, 1, 2, 3].includes(photometric)) {
+    throw new Error("Unsupported TIFF encoding. Open the original for manual review.");
   }
 }
