@@ -418,6 +418,27 @@ describe("guided vault evidence steps", () => {
     stop();
   });
 
+  it("does not poll again after a definitive recorded server failure", async () => {
+    vi.useFakeTimers();
+    extractionFixture.extract.mockResolvedValue({
+      success: false,
+      code: "SERVER_UNAVAILABLE",
+      requestOutcome: "definitive",
+      error: "The review failed and its terminal status was saved.",
+      extractionStatus: "failed",
+    });
+    const stop = startSgDiagramPolling({
+      assetId: "terminal-sg",
+      parcelId: "parcel:test-fixture",
+      refreshVault: vaultFixture.refresh,
+    });
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(vaultFixture.refresh).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(extractionFixture.extract).toHaveBeenCalledOnce();
+    stop();
+  });
+
   it("clears the scheduled TIFF poll when the mounted step unmounts", async () => {
     vi.useFakeTimers();
     const stop = startSgDiagramPolling({

@@ -123,7 +123,10 @@ export function startSgDiagramPolling({
             ? "The diagram review completed, but it was not accepted for this erf."
             : "The SG diagram review completed. Check the findings below.",
         );
-      } else if (result.requestOutcome === "unknown" || result.code === "SERVER_UNAVAILABLE" || result.code === "REVIEW_STATUS_UNKNOWN") {
+      } else if (
+        result.requestOutcome !== "definitive" &&
+        (result.requestOutcome === "unknown" || result.code === "SERVER_UNAVAILABLE" || result.code === "REVIEW_STATUS_UNKNOWN")
+      ) {
         delay = 20_000;
         schedule();
       } else {
