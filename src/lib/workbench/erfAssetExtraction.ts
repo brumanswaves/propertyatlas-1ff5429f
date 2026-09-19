@@ -53,6 +53,8 @@ export type ExtractErfAssetResult =
       error: string;
       extractionStatus: ErfExtractionStatus | null;
       identityMatchStatus?: ErfIdentityMatchStatus | null;
+      /** Whether the transport established a rejection/recorded result, not just an HTTP error. */
+      requestOutcome?: "definitive" | "unknown";
     };
 
 export interface ExtractErfAssetOptions {
@@ -105,6 +107,7 @@ export async function extractErfAsset(
     return {
       success: false,
       code: "INVALID_REQUEST",
+      requestOutcome: "definitive",
       error: "The active erf could not be identified for this document.",
       extractionStatus: null,
     };
@@ -119,7 +122,7 @@ export async function extractErfAsset(
     accessToken = data.session?.access_token ?? "";
   }
   if (!accessToken) {
-    return { success: false, code: "AUTH_REQUIRED", error: "Sign in to read this document.", extractionStatus: null };
+    return { success: false, code: "AUTH_REQUIRED", requestOutcome: "definitive", error: "Sign in to read this document.", extractionStatus: null };
   }
 
   let response: Response;
@@ -142,6 +145,7 @@ export async function extractErfAsset(
     return {
       success: false,
       code: "SERVER_UNAVAILABLE",
+      requestOutcome: "unknown",
       error: DOCUMENT_READER_UNAVAILABLE_MESSAGE,
       extractionStatus: null,
     };
@@ -162,8 +166,14 @@ export async function extractErfAsset(
 
   if (!response.ok || !payload || payload.success !== true) {
     const serverUnavailable = response.status >= 500 && !payload?.error;
+    // Gateway errors can arrive after the server accepted a start. Only the
+    // extraction contract's explicit rejection or recorded terminal result settles it.
+    const rejected = response.status >= 400 && response.status < 500 &&
+      ["INVALID_REQUEST", "AUTH_REQUIRED", "REQUEST_TOO_LARGE", "ASSET_NOT_FOUND", "FORBIDDEN", "PARCEL_MISMATCH"].includes(payload?.code ?? "");
+    const recorded = ["ready", "partial", "failed", "unsupported"].includes(payload?.extractionStatus ?? "");
     return {
       success: false,
+      requestOutcome: payload?.success === false && (rejected || recorded) ? "definitive" : "unknown",
       code:
         typeof payload?.code === "string"
           ? payload.code

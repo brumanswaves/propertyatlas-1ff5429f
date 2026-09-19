@@ -214,7 +214,7 @@ describe("erf asset extraction client", () => {
     expect(result).toMatchObject({ success: false, code: "TIMEOUT", error: "Reading this document timed out." });
   });
 
-  it("turns a failed reader invocation into a specific retryable terminal result", async () => {
+  it("preserves uncertainty when a reader invocation fails without acknowledgement", async () => {
     const fetchImpl = vi.fn(async () => {
       throw new TypeError("Failed to fetch");
     });
@@ -227,6 +227,7 @@ describe("erf asset extraction client", () => {
     expect(result).toEqual({
       success: false,
       code: "SERVER_UNAVAILABLE",
+      requestOutcome: "unknown",
       error: DOCUMENT_READER_UNAVAILABLE_MESSAGE,
       extractionStatus: null,
     });
