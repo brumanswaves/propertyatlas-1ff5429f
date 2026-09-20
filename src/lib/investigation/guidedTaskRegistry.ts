@@ -122,7 +122,8 @@ export const GUIDED_TASK_DEFINITIONS: GuidedTaskDefinition[] = [
       "Open the Sources tab and scroll to the SG diagram section.",
       "Use the SG document link to download the diagram for this erf.",
       "Upload the file to the Erf File Vault.",
-      "Wait for Easy Erf to read the diagram so it becomes searchable evidence.",
+      "Confirm the original file was saved and review its preview. You can continue without AI interpretation.",
+      "If you choose AI interpretation, explicitly allow processing and start Read diagram. Review its result before relying on extracted evidence.",
     ],
     afterCompletion:
       "Easy Erf records readable cadastral evidence. A parent General Plan remains contextual evidence, and the individual subject SG diagram remains a confidence upgrade.",

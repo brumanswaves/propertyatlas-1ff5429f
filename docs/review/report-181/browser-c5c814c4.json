@@ -1,0 +1,63 @@
+{
+  "candidate": "c5c814c43b1c5bd71f6a3d6f4e9f8f51d78a62e8",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "evidence": "sparse",
+      "width": 390,
+      "height": 844,
+      "askBottom": 400,
+      "assessmentTop": 428,
+      "summaryActions": 3,
+      "evidenceSections": 6,
+      "overflow": false,
+      "materialConflictVisible": false
+    },
+    {
+      "evidence": "supported",
+      "width": 390,
+      "height": 844,
+      "askBottom": 400,
+      "assessmentTop": 428,
+      "summaryActions": 3,
+      "evidenceSections": 6,
+      "overflow": false,
+      "materialConflictVisible": true
+    },
+    {
+      "evidence": "sparse",
+      "width": 1440,
+      "height": 1000,
+      "askBottom": 372.5,
+      "assessmentTop": 400.5,
+      "summaryActions": 3,
+      "evidenceSections": 6,
+      "overflow": false,
+      "materialConflictVisible": false
+    },
+    {
+      "evidence": "supported",
+      "width": 1440,
+      "height": 1000,
+      "askBottom": 372.5,
+      "assessmentTop": 400.5,
+      "summaryActions": 3,
+      "evidenceSections": 6,
+      "overflow": false,
+      "materialConflictVisible": true
+    }
+  ],
+  "interactions": [
+    "market evidence reveal",
+    "return focus",
+    "exact-order hash retained",
+    "SG canonical tab and anchor callback",
+    "unsent Ask question preserved; no submit"
+  ],
+  "finalStableActionInterval": {
+    "httpRequests": 0,
+    "truncated": false,
+    "hasMore": false
+  },
+  "navigationNetworkCoverage": "Incomplete: earlier navigation buffers truncated. No continuous interval claim."
+}

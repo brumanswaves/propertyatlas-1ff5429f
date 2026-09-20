@@ -598,15 +598,23 @@ try {
   await customer.goto(`${appUrl}/orders?report=${orderA}`);
   await customer.locator(`[data-review-version="${approved.id}"]`).waitFor();
   assert((await customer.locator("body").innerText()).includes("SYNTHETIC_HUMAN_EDIT"));
-  assert((await customer.locator("body").innerText()).includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(await customer.getByText("Human-reviewed investigation.", { exact: true }).count(), 1);
   const report = customer.locator(`[data-review-version="${approved.id}"]`);
+  // Open the approved progressive-disclosure controls through the actual UI.
+  // Keep all existing evidence assertions; hidden text is not visible acceptance.
+  for (const title of ["Property identity, SG and title", "Planning and deterministic Site Potential",
+    "Market evidence and Strategy assumptions", "Property checks, services and location",
+    "All findings, conflicts and follow-up actions", "Documents, source references and investigation record"]) {
+    await report.locator("summary").filter({ hasText: title }).click();
+  }
+  assert((await report.innerText()).includes("SYNTHETIC_PERSISTED_CHECK"));
   for (const section of ["Property identity and address", "Zoning, planning and building controls", "Sources checked and remaining limitations"]) {
     await report.getByRole("heading", { name: section, exact: true }).waitFor();
   }
   assert((await report.innerText()).includes("T42/2026"));
   assert((await report.innerText()).includes("SYNTHETIC-sg_diagram.pdf"));
   assert.equal(await report.locator("#investigation-site svg").count() > 0, true);
+  await report.locator("summary").filter({ hasText: "Ask Easy Erf about this erf" }).click();
   await customer.getByPlaceholder("Example: What information is missing before I make an offer?", { exact: true }).fill("What evidence remains uncertain in this reviewed report?");
   const asked = customer.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "ask");
   await customer.getByRole("button", { name: "Ask", exact: true }).tap();

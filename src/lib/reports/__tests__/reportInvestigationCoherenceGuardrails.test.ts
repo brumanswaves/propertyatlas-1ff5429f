@@ -16,14 +16,15 @@ const guidedSitePotential = source("src/components/property/investigation/Guided
 const acceptedEnvelope = source("src/lib/sitePotential/acceptedBuildEnvelope.ts");
 
 describe("report and investigation coherence guardrails", () => {
-  it("places the report lens before Ask Easy Erf and Ask before the decision evidence", () => {
+  it("keeps the compact Ask entry above the assessment and perspectives below it", () => {
     const modeIndex = reportOpening.indexOf('id="report-view-mode"');
     const askIndex = reportOpening.indexOf('id="report-ask"');
     const decisionIndex = reportOpening.indexOf('id="report-decision"');
 
     expect(modeIndex).toBeGreaterThan(-1);
-    expect(askIndex).toBeGreaterThan(modeIndex);
-    expect(decisionIndex).toBeGreaterThan(askIndex);
+    expect(askIndex).toBeGreaterThan(reportOpening.indexOf('id="report-opening-header"'));
+    expect(askIndex).toBeLessThan(decisionIndex);
+    expect(decisionIndex).toBeLessThan(modeIndex);
   });
 
   it("keeps Guided free of the large Ask panel and composes it into the report", () => {
