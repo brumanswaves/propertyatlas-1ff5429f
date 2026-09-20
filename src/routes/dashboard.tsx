@@ -81,42 +81,62 @@ interface InvestigationSummary {
   lastActivityAt: string | null;
 }
 
+const EMPTY_SAVED: SavedRow[] = [];
+const EMPTY_NOTES: NoteRow[] = [];
+
 function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [saved, setSaved] = useState<SavedRow[]>([]);
-  const [notes, setNotes] = useState<NoteRow[]>([]);
-  const [loadingRows, setLoadingRows] = useState(true);
+  const userId = user?.id ?? null;
+  const [reloadRequest, setReloadRequest] = useState(0);
+  const [response, setResponse] = useState<{
+    userId: string;
+    saved: SavedRow[];
+    notes: NoteRow[];
+    failed: boolean;
+  } | null>(null);
+  // Hide the previous account's rows, counts and activity during the render
+  // before effect cleanup runs, as well as while the next request is pending.
+  const currentResponse = userId && response?.userId === userId ? response : null;
+  const saved = currentResponse?.saved ?? EMPTY_SAVED;
+  const notes = currentResponse?.notes ?? EMPTY_NOTES;
+  const loadingRows = loading || Boolean(userId && !currentResponse);
+  const countsAvailable = !loadingRows && !currentResponse?.failed;
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) navigate({ to: "/auth", search: {
+      redirect: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    } });
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!user) return;
-    let active = true;
-    setLoadingRows(true);
+    if (!userId || loading) return;
+    const request = new AbortController();
     void (async () => {
+      try {
       const [savedResult, notesResult] = await Promise.all([
         supabase
           .from("saved_properties")
           .select("parcel_id, created_at, research_status, status, tags, user_data")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase.from("property_notes").select("parcel_id, updated_at").eq("user_id", user.id),
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .abortSignal(request.signal),
+        supabase.from("property_notes").select("parcel_id, updated_at").eq("user_id", userId)
+          .abortSignal(request.signal),
       ]);
 
-      if (!active) return;
-      if (savedResult.error) toast.error("Could not load your saved properties.");
-      setSaved((savedResult.data ?? []) as SavedRow[]);
-      setNotes((notesResult.data ?? []) as NoteRow[]);
-      setLoadingRows(false);
+      if (request.signal.aborted) return;
+      if (savedResult.error || notesResult.error) throw new Error("Dashboard read failed");
+      setResponse({ userId, saved: (savedResult.data ?? []) as SavedRow[],
+        notes: (notesResult.data ?? []) as NoteRow[], failed: false });
+      } catch {
+        if (request.signal.aborted) return;
+        setResponse({ userId, saved: [], notes: [], failed: true });
+      }
     })();
 
-    return () => {
-      active = false;
-    };
-  }, [user]);
+    return () => request.abort();
+  }, [userId, loading, reloadRequest]);
 
   const rows = useMemo(
     () =>
@@ -188,7 +208,9 @@ function Dashboard() {
       toast.error(error.message);
       return;
     }
-    setSaved((current) => current.filter((row) => row.parcel_id !== parcelId));
+    setResponse((current) => current?.userId === user.id
+      ? { ...current, saved: current.saved.filter((row) => row.parcel_id !== parcelId) }
+      : current);
     toast.success("Saved property removed");
   }
 
@@ -206,10 +228,10 @@ function Dashboard() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard icon={<Bookmark className="h-4 w-4" />} label="Saved properties" value={counts.properties} />
-          <KpiCard icon={<PlayCircle className="h-4 w-4" />} label="Investigations started" value={counts.activeInvestigations} />
-          <KpiCard icon={<FileText className="h-4 w-4" />} label="Reports opened" value={counts.reportsOpened} />
-          <KpiCard icon={<Building2 className="h-4 w-4" />} label="Site Potential active" value={counts.sitePotentialActive} />
+          <KpiCard icon={<Bookmark className="h-4 w-4" />} label="Saved properties" value={countsAvailable ? counts.properties : "Not loaded"} />
+          <KpiCard icon={<PlayCircle className="h-4 w-4" />} label="Investigations started" value={countsAvailable ? counts.activeInvestigations : "Not loaded"} />
+          <KpiCard icon={<FileText className="h-4 w-4" />} label="Reports opened" value={countsAvailable ? counts.reportsOpened : "Not loaded"} />
+          <KpiCard icon={<Building2 className="h-4 w-4" />} label="Site Potential active" value={countsAvailable ? counts.sitePotentialActive : "Not loaded"} />
         </div>
 
         <section className="mt-10">
@@ -223,6 +245,14 @@ function Dashboard() {
               {[0, 1].map((item) => (
                 <div key={item} className="h-64 animate-pulse rounded-3xl border border-border bg-card" />
               ))}
+            </div>
+          ) : currentResponse?.failed ? (
+            <div role="alert" className="mt-4 rounded-2xl border border-border bg-card p-6 text-sm">
+              <p>We could not load your saved investigations. Your saved work has not been changed.</p>
+              <button type="button" className="mt-3 min-h-11 rounded-full border border-border px-5 py-2 font-semibold"
+                onClick={() => { setResponse(null); setReloadRequest((request) => request + 1); }}>
+                Try loading again
+              </button>
             </div>
           ) : rows.length === 0 ? (
             <EmptyCard
@@ -472,7 +502,9 @@ function InvestigationCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               {isOfficialParcelId(row.parcel_id) && (
-                <StatusChip tone="supported">Official parcel</StatusChip>
+                row.parcel_id.trim().toLowerCase().startsWith("manual:")
+                  ? <StatusChip tone="neutral">Manual parcel record</StatusChip>
+                  : <StatusChip tone="supported">Official parcel</StatusChip>
               )}
               {summary.source === "cloud" && <StatusChip tone="neutral">Saved status synced</StatusChip>}
               {projection?.identityStatus === "uncertain" && (
@@ -678,7 +710,7 @@ function SectionTitle({ icon, children }: { icon: ReactNode; children: ReactNode
   );
 }
 
-function KpiCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+function KpiCard({ icon, label, value }: { icon: ReactNode; label: string; value: number | string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
       <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

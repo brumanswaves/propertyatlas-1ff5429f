@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { Route as PricingRoute } from "@/routes/pricing";
 import { Route as OrdersRoute } from "@/routes/orders";
+import { Route as DashboardRoute } from "@/routes/dashboard";
 import { safeReturnPath } from "@/lib/navigation";
 import { fixtureSignIn } from "./pricing-handoff-auth";
 import { FixtureControls } from "./pricing-handoff-shell";
@@ -16,6 +17,7 @@ const rootRoute = createRootRoute();
 const router = createRouter({ routeTree: rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: "/pricing", component: PricingRoute.options.component }),
   createRoute({ getParentRoute: () => rootRoute, path: "/orders", component: OrdersRoute.options.component }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/dashboard", component: DashboardRoute.options.component }),
   createRoute({ getParentRoute: () => rootRoute, path: "/auth", component: SyntheticAuth }),
 ]) });
 createRoot(document.getElementById("root")!).render(<><RouterProvider router={router} /><FixtureControls /></>);
