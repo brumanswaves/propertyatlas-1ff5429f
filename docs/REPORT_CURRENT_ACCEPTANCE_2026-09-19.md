@@ -29,11 +29,11 @@ Prior served modules `index-BI1QdPDk.js` and `index-fkR-_VoC.js` have been repla
 
 ## Approved synthetic acceptance: blocked before upload, unconsumed
 
-Exact TEST order `fd14b0c1-410d-4aec-beaa-5b5d133e56cf`, canonical Erf 1570 parcel and owner were rechecked. Two original attachments were present; neither was automatically processing. Processing permissions were off. No automatic extraction poll was observed or eligible from their stored status.
+The exact owner-approved TEST order, canonical parcel and owner were rechecked; private identifiers are retained in the scoped acceptance record. Two original attachments were present; neither was automatically processing. Processing permissions were off. No automatic extraction poll was observed or eligible from their stored status.
 
 Local synthetic file only: `SYNTHETIC-QA-PR185-NOT-PROPERTY-EVIDENCE.tiff`, 7681000 bytes, SHA256 `95a80568c63a2779218ab268affbce2201898bc4345a1c118cb553dbf9171a5b`.
 
-The file chooser rejected `setFiles` with Not allowed before any storage/upload/extraction request. the one-shot has NOT been consumed. Chrome requires the owner to enable **Allow access to file URLs** on the ChatGPT browser extension. No bypass attempted. Same-bytes reselection, real stored-byte comparison, desktop/mobile persisted preview, continue/reopen and removal remain unperformed.
+The file chooser rejected `setFiles` with Not allowed before any storage/upload/extraction request. the one-shot has NOT been consumed. The tool selection was denied. Owner selection through the normal chooser is preferred; extension identity and any narrowly required permission must be verified before changing it. No bypass attempted. Same-bytes reselection, real stored-byte comparison, desktop/mobile persisted preview, continue/reopen and removal remain unperformed.
 
 Backend row fingerprints confirmed the TEST order and both original attachments unchanged at the end of the pass. Browser non-auth draft content was compared privately: 65 keys preserved; only the workspace updatedAt field changed during navigation. No draft conflict was resolved or overwritten.
 
@@ -68,7 +68,7 @@ Read-only `/admin/launch-readiness` at 2026-09-19 21:59:43 Africa/Johannesburg, 
 
 ## Remaining work and exact resume
 
-1. Owner enables the browser extension's file URL setting. Recheck one-shot consumption, exact owner/TEST order, draft/file baselines and no automatic polling. Then perform only the approved one synthetic upload, same bytes, desktop/mobile preview, continue/reopen, original-byte proof, no duplicates/extraction and application removal of only the new attachment. No production save/processing beyond that exact approval.
+1. Owner selects the prepared file through the normal application chooser. Recheck one-shot consumption, exact owner/TEST order, draft/file baselines and no automatic polling. Then perform only the approved one synthetic upload, same bytes, desktop/mobile preview, continue/reopen, original-byte proof, no duplicates/extraction and application removal of only the new attachment. No production save/processing beyond that exact approval.
 2. Report source is locally reviewable; no merge or publication. A later authorized review/CI/release step must use the exact candidate and preserve the single-writer workflow.
 3. Whole-site combined live customer acceptance remains unfinished. The user's desired map -> sign-in -> exact erf -> guided investigation -> report -> optional human takeover is the acceptance contract, not a completion claim.
 4. Correct Stripe business identity/configuration and prove signed event handling only under specific owner-controlled authority. TEST mode is not a live purchase.
