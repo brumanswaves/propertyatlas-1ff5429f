@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { safeReturnPath, staffNavigation } from "@/lib/navigation";
+import { authCallbackUrl, safeReturnPath, staffNavigation } from "@/lib/navigation";
 import { staffRoleFromRows } from "../StaffAccess";
 
 describe("Canonical staff dashboard entry", () => {
@@ -20,6 +20,15 @@ describe("Canonical staff dashboard entry", () => {
     expect(safeReturnPath("/?parcel=example")).toBe("/?parcel=example");
     for (const input of [undefined, "https://evil.invalid", "//evil.invalid", "/\\evil.invalid", "/auth", "/auth?redirect=/admin", "/\n/evil.invalid"]) {
       expect(safeReturnPath(input)).toBeNull();
+    }
+  });
+  it("retains the selected journey through confirmation and rejects unsafe callback destinations", () => {
+    const path = "/pricing?parcelId=synthetic%3Aerf42&handoffDraft=fixture-1234567890";
+    const callback = new URL(authCallbackUrl("https://easyerf.invalid", path));
+    expect(callback.pathname).toBe("/auth");
+    expect(callback.searchParams.get("redirect")).toBe(path);
+    for (const unsafe of [undefined, "https://evil.invalid", "//evil.invalid", "/auth?redirect=/pricing"]) {
+      expect(authCallbackUrl("https://easyerf.invalid", unsafe)).toBe("https://easyerf.invalid/auth");
     }
   });
   it("shares the existing exact-order work tools and keeps founder-only controls protected", () => {

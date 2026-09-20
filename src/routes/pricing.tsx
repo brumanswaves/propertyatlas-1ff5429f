@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -13,6 +13,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { HumanReviewProof } from "@/components/humanReview/HumanReviewProof";
 import { supabase } from "@/integrations/supabase/client";
+import { pricingReturnPath, restorePricingSignInDraft, savePricingSignInDraft } from "@/lib/humanReview/signInHandoff";
 import {
   DONE_FOR_YOU_INVESTIGATION_NAME,
   DONE_FOR_YOU_INVESTIGATION_TAGLINE,
@@ -61,6 +62,11 @@ function PricingPage() {
   const [sourceSurface, setSourceSurface] = useState<string | null>(null);
   const [selectionReady, setSelectionReady] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [signedInUserId, setSignedInUserId] = useState<string | null>(null);
+  const authOwner = useRef<string | null | undefined>(undefined);
+  const [handoffDraftId, setHandoffDraftId] = useState<string | null>(null);
+  const [signInReturnPath, setSignInReturnPath] = useState("/pricing");
+  const [handoffError, setHandoffError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -71,21 +77,32 @@ function PricingPage() {
     setParcelId(params.get("parcelId")?.trim() || null);
     setPropertyReferenceHint(params.get("propertyReference")?.trim() || "");
     setSourceSurface(params.get("source"));
+    setHandoffDraftId(params.get("handoffDraft"));
+    setSignInReturnPath(pricingReturnPath(window.location.search));
     setSelectionReady(true);
   }, []);
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getUser().then(({ data }) => {
+    let authEventObserved = false;
+    function applyUser(user: { id: string; email?: string } | null) {
       if (!active) return;
-      setSignedInEmail(data.user?.email ?? null);
+      const nextOwner = user?.id ?? null;
+      if (authOwner.current !== undefined && authOwner.current !== null && authOwner.current !== nextOwner) {
+        setFocus(null); setIntendedUse(null); setContext(""); setScopeAcknowledged(false);
+      }
+      authOwner.current = nextOwner;
+      setSignedInUserId(nextOwner);
+      setSignedInEmail(user?.email ?? null);
       setAuthReady(true);
+    }
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!authEventObserved) applyUser(data.user);
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      setSignedInEmail(session?.user?.email ?? null);
-      setAuthReady(true);
+      authEventObserved = true;
+      applyUser(session?.user ?? null);
     });
 
     return () => {
@@ -93,6 +110,35 @@ function PricingPage() {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authReady || !signedInUserId || !parcelId || !handoffDraftId) return;
+    try {
+      const draft = restorePricingSignInDraft(window.sessionStorage, handoffDraftId, parcelId, signedInUserId);
+      if (draft) {
+        setFocus(draft.focus); setIntendedUse(draft.intendedUse); setContext(draft.context);
+        setScopeAcknowledged(false);
+      } else {
+        setHandoffError("Your sign-in answers are unavailable in this tab. The selected property is retained; please check your questions before continuing.");
+      }
+    } catch {
+      setHandoffError("Your browser could not restore your sign-in answers. The selected property is retained.");
+    }
+    setHandoffDraftId(null);
+  }, [authReady, signedInUserId, parcelId, handoffDraftId]);
+
+  const signInHref = `/auth?redirect=${encodeURIComponent(signInReturnPath)}`;
+  function prepareSignIn(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!parcelId || (!focus && !context && !intendedUse)) return;
+    try {
+      const draftId = crypto.randomUUID();
+      savePricingSignInDraft(window.sessionStorage, draftId, { parcelId, ownerId: signedInUserId, focus, intendedUse, context });
+      event.currentTarget.href = `/auth?redirect=${encodeURIComponent(pricingReturnPath(window.location.search, draftId))}`;
+    } catch {
+      event.preventDefault();
+      setHandoffError("Your browser could not retain these answers for sign-in. Keep this page open and sign in in another tab before continuing.");
+    }
+  }
 
   useEffect(() => {
     if (focus !== "intended_use") setIntendedUse(null);
@@ -162,7 +208,7 @@ function PricingPage() {
   if (selectionReady && !hasConfirmedParcel) {
     return (
       <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
-        <TopNav />
+        <TopNav signInHref={signInHref} onSignIn={prepareSignIn} />
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-20 pt-28 sm:px-6">
           <header className="overflow-hidden rounded-[2rem] bg-[#0D1B2A] px-5 py-8 text-white shadow-[0_28px_80px_-55px_rgba(13,27,42,0.75)] sm:px-8 sm:py-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
@@ -223,7 +269,7 @@ function PricingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F7FBFF]">
-      <TopNav />
+      <TopNav signInHref={signInHref} onSignIn={prepareSignIn} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-28 sm:px-6">
         <header className="overflow-hidden rounded-[2rem] bg-[#0D1B2A] px-5 py-8 text-white shadow-[0_28px_80px_-55px_rgba(13,27,42,0.75)] sm:px-8 sm:py-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#FFB86B]">
@@ -261,11 +307,12 @@ function PricingPage() {
               </p>
             </div>
             {authReady && !signedInEmail ? (
-              <Link to="/auth" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-2 text-sm font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/40">
+              <a href={signInHref} onClick={prepareSignIn} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#0D1B2A]/10 bg-[#F7FBFF] px-4 py-2 text-sm font-semibold text-[#0D1B2A] hover:border-[#FF6A00]/40">
                 Sign in / create account
-              </Link>
+              </a>
             ) : null}
           </div>
+          {handoffError && <p role="alert" className="mt-3 text-sm text-destructive">{handoffError}</p>}
         </section>
 
         <section className="mt-5 rounded-[2rem] border border-[#0D1B2A]/10 bg-white p-5 shadow-soft sm:p-7">
@@ -392,7 +439,7 @@ function PricingPage() {
               {focus && (focus !== "intended_use" || intendedUse) && !scopeAcknowledged ? <p className="mt-2 text-xs text-[#64748B]">Acknowledge the investigation scope before checkout.</p> : null}
               {checkoutError ? <p className="mt-2 text-xs font-medium text-destructive">{checkoutError}</p> : null}
               {checkoutError === SIGN_IN_REQUIRED_MESSAGE ? (
-                <Link to="/auth" className="mt-2 inline-flex text-xs font-semibold text-[#0D1B2A] underline decoration-[#FF6A00]/40 underline-offset-4">Sign in, then return to this property</Link>
+                <a href={signInHref} onClick={prepareSignIn} className="mt-2 inline-flex text-xs font-semibold text-[#0D1B2A] underline decoration-[#FF6A00]/40 underline-offset-4">Sign in, then return to this property</a>
               ) : null}
               <p className="mt-3 text-[11px] leading-5 text-[#64748B]">
                 One-time R999 payment. No recurring subscription. Stripe handles payment only. Your confirmed property and investigation brief stay in Easy Erf. After payment you return to My Reports.

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 import { useState } from "react";
 import { Menu, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -18,9 +18,11 @@ interface TopNavProps {
   mobileCenter?: ReactNode;
   onLogoClick?: () => void;
   subtitle?: ReactNode;
+  signInHref?: string;
+  onSignIn?: MouseEventHandler<HTMLAnchorElement>;
 }
 
-export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavProps = {}) {
+export function TopNav({ center, mobileCenter, onLogoClick, subtitle, signInHref = "/auth", onSignIn }: TopNavProps = {}) {
   const { user } = useAuth();
   const { role } = useStaffAccess();
   const signedInLinks = [...staffNavigation(role), ...SIGNED_IN_NAV_LINKS];
@@ -123,10 +125,10 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
             </>
           ) : (
             <>
-              <Link to="/auth" className={navLinkBase}>
+              <a href={signInHref} onClick={onSignIn} className={navLinkBase}>
                 Sign in
-              </Link>
-              <Link to="/auth">
+              </a>
+              <a href={signInHref} onClick={onSignIn}>
                 <Button
                   size="sm"
                   className="h-8 rounded-full bg-accent text-[12px] font-semibold text-accent-foreground shadow-soft hover:bg-accent/90"
@@ -134,7 +136,7 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                   <Sparkles className="mr-1 h-3.5 w-3.5" />
                   Start free
                 </Button>
-              </Link>
+              </a>
             </>
           )}
         </nav>
@@ -223,20 +225,20 @@ export function TopNav({ center, mobileCenter, onLogoClick, subtitle }: TopNavPr
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    to="/auth"
-                    onClick={() => setOpen(false)}
+                  <a
+                    href={signInHref}
+                    onClick={(event) => { onSignIn?.(event); setOpen(false); }}
                     className="rounded-lg border border-border px-3 py-2 text-center text-xs font-medium"
                   >
                     Sign in
-                  </Link>
-                  <Link
-                    to="/auth"
-                    onClick={() => setOpen(false)}
+                  </a>
+                  <a
+                    href={signInHref}
+                    onClick={(event) => { onSignIn?.(event); setOpen(false); }}
                     className="rounded-lg bg-accent px-3 py-2 text-center text-xs font-semibold text-accent-foreground"
                   >
                     Start free
-                  </Link>
+                  </a>
                 </div>
               )}
             </div>

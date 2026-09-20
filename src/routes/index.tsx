@@ -24,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
   clearSavedOfficialReopenSearch,
+  buildSavedParcelMapHref,
   buildSelectedOfficialParcelId,
   parseOfficialParcelReopenSearch,
   type OfficialParcelReopenRequest,
@@ -364,6 +365,10 @@ function AtlasHome() {
         onSearchHighlightStatus={setSearchHighlightStatus}
       />
       <TopNav
+        signInHref={`/auth?redirect=${encodeURIComponent(buildSavedParcelMapHref(
+          selectedOfficial ? buildSelectedOfficialParcelId(selectedOfficial) : selectedId,
+          selectedOfficial ? { lng: selectedOfficial.lngLat[0], lat: selectedOfficial.lngLat[1], zoom: 18 } : {},
+        ))}`}
         onLogoClick={handleLogoHomeClick}
         center={
           <SearchBar
