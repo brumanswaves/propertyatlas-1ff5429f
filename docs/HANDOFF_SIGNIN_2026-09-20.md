@@ -57,3 +57,11 @@ After the owner selected the approved file, the one observed upload request retu
 The single upload attempt is now consumed/failed, not unused. Do not replay it. Dependent reselection/preview/continue/reopen/cleanup acceptance remains blocked. The runtime authentication cause is unknown; no supported runtime-log connector was available. Browser network events were truncated, so exhaustive absence of provider requests cannot be certified. No AI operation was initiated by the agent.
 
 Receipt: https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/185#issuecomment-5749260856
+
+## Canonical investigation backend repair, 20 September
+
+Further source diagnosis found that upload, document retrieval and review used generic hosting SUPABASE settings, whereas Founder Operations already used the validated EASY_ERF_SUPABASE credential set. VERIFIED read-only production comparison: /api/admin/support returned HTTP 200 for the same signed-in session whose upload returned 401. This supports, but does not alone prove, the backend-mismatch explanation. No secret values or token contents were inspected.
+
+The investigation routes now reuse the existing validated backend selector. One request-scoped configuration supplies authentication, privileged storage/finalization and downstream function destinations. Partial explicit configuration cannot borrow retired generic credentials. Existing exact-order, owner, assignment, permission, revision, byte-integrity and review gates remain in place. No production configuration was changed and the consumed upload was not repeated.
+
+Focused verification: 35 tests passed, including real SDK HTTP traffic against a local Auth/reservation/Storage/finalization fixture, exact original bytes/SHA, permissions off, complete credential selection, partial-config rejection across all three routes, and no token transmission to retired configuration. TypeScript and targeted lint passed. Broad exact-head CI will be recorded on the new development draft. Existing isolated SG verifier receives only the already-proven explicit-reading update from report PR 186; report disclosure changes are excluded because this branch remains based on main.

@@ -240,9 +240,40 @@ async function gatherSections(page) {
       // The provider original is licensed for worker review, not customer redistribution.
       await page.getByLabel("The document license permits sharing the original with this customer.", { exact: true }).uncheck();
     }
-    const extracted = page.waitForResponse((r) => r.url().endsWith("/functions/v1/extract-erf-asset") && r.request().method() === "POST");
     const input = category === "sg_diagram" ? page.locator('input[type="file"]').first() : page.locator(`input[type="file"][accept="${accept}"]`);
-    await input.setInputFiles({ name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() });
+    const file = { name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() };
+    const extractionResponse = () => page.waitForResponse((r) => r.url().endsWith("/functions/v1/extract-erf-asset") && r.request().method() === "POST");
+    let extracted;
+    if (category === "sg_diagram") {
+      // PR #185 deliberately separates receipt/preview from optional reading.
+      // This local-only fixture must prove that separation before asking its
+      // intercepted synthetic provider to interpret the stored evidence.
+      const extractionRequests = [];
+      const recordExtraction = (request) => {
+        if (request.url().endsWith("/functions/v1/extract-erf-asset") && request.method() === "POST") extractionRequests.push(request);
+      };
+      page.on("request", recordExtraction);
+      const providerCount = providerRequests.length;
+      await input.setInputFiles(file);
+      const read = page.getByRole("button", { name: "Read diagram", exact: true });
+      await read.waitFor();
+      assert.equal(await read.isEnabled(), false, "SG reading requires its separate explicit consent");
+      const received = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+      const receipt = received.assets.find((asset) => asset.asset_category === "sg_diagram");
+      assert(receipt, "SG receipt must persist before interpretation");
+      assert.equal(receipt.checksum_sha256, createHash("sha256").update(file.buffer).digest("hex"));
+      assert.equal(extractionRequests.length, 0, "SG upload must not start extraction");
+      assert.equal(providerRequests.length, providerCount, "SG receipt must not contact a provider");
+      await page.getByLabel("I have permission to send the documents I choose to read for AI interpretation. Upload and preview alone do not send them to AI.", { exact: true }).check();
+      extracted = extractionResponse();
+      await read.click();
+      await extracted;
+      assert.equal(extractionRequests.length, 1, "One deliberate reading must issue one extraction request");
+      page.off("request", recordExtraction);
+    } else {
+      extracted = extractionResponse();
+      await input.setInputFiles(file);
+    }
     const response = await extracted; assert.equal(response.status(), 200);
     const result = await response.json(); assert.equal(result.success, true, JSON.stringify(result)); assert.equal(result.identityMatchStatus, "unverified");
     if (category === "sg_diagram") {
