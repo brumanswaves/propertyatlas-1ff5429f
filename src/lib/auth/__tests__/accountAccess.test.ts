@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GOOGLE_ACCOUNT_CHOICE, requestPasswordRecovery, saveAccountPassword, signOutCurrentSession, verifyPasswordAccount } from "../accountAccess";
+import { saveAccountPreferences } from "../accountProfile";
 
 function fixture() {
   let listener: (event: string, session: { user: { id: string } } | null) => void = () => {};
@@ -25,6 +26,60 @@ function fixture() {
   return { auth, request, unsubscribe, emit: (id: string | null) => listener(id ? "SIGNED_IN" : "SIGNED_OUT", id ? { user: { id } } : null), client: { auth } as unknown as SupabaseClient };
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+const preferences = { first_name: "Synthetic", last_name: "Owner", display_name: "Synthetic Owner", full_name: "Synthetic Owner", phone: "", profile_type: "Buyer", default_market: "Kouga" };
+describe("account preference save ownership", () => {
+  it("sends only editable metadata with the verified original identity", async () => {
+    const f = fixture();
+    await saveAccountPreferences(f.client, "google-owner", { ...preferences, role: "admin", email: "wrong@example.invalid" } as typeof preferences);
+    expect(f.request).toHaveBeenCalledOnce();
+    const [url, request] = f.request.mock.calls[0];
+    expect(url).toBe("https://fixture.supabase.co/auth/v1/user");
+    expect(JSON.parse(request.body)).toEqual({ data: preferences });
+    expect(request.headers.Authorization).toBe("Bearer synthetic-owner-credential");
+    expect(request.redirect).toBe("error");
+    expect(f.auth.updateUser).not.toHaveBeenCalled();
+    expect(f.unsubscribe).toHaveBeenCalledOnce();
+  });
+  it.each(["other", null])("rejects account change during verification: %s", async id => {
+    const f = fixture();
+    f.auth.getUser.mockImplementationOnce(async () => {
+      f.emit(id);
+      return { data: { user: { id: "google-owner" } }, error: null };
+    });
+    await expect(saveAccountPreferences(f.client, "google-owner", preferences)).rejects.toThrow("account changed");
+    expect(f.request).not.toHaveBeenCalled();
+  });
+  it("never retargets an in-flight save or writes its response to shared auth", async () => {
+    const f = fixture();
+    f.request.mockImplementationOnce(async () => {
+      f.emit("other");
+      return Response.json({ id: "google-owner" });
+    });
+    await expect(saveAccountPreferences(f.client, "google-owner", preferences)).rejects.toThrow("account changed");
+    expect(f.request.mock.calls[0][1].headers.Authorization).toBe("Bearer synthetic-owner-credential");
+    expect(f.auth.updateUser).not.toHaveBeenCalled();
+    expect(f.request).toHaveBeenCalledOnce();
+  });
+  it("does not dispatch after the editor closes", async () => {
+    const f = fixture();
+    const controller = new AbortController();
+    f.auth.getUser.mockImplementationOnce(async () => {
+      controller.abort();
+      return { data: { user: { id: "google-owner" } }, error: null };
+    });
+    await expect(saveAccountPreferences(f.client, "google-owner", preferences, controller.signal)).rejects.toThrow("account changed");
+    expect(f.request).not.toHaveBeenCalled();
+  });
+  it("rejects mismatched identity responses and does not retry ambiguous writes", async () => {
+    const f = fixture();
+    f.request.mockResolvedValueOnce(Response.json({ id: "other" }));
+    await expect(saveAccountPreferences(f.client, "google-owner", preferences)).rejects.toThrow("could not be confirmed");
+    f.request.mockRejectedValueOnce(new Error("private service information"));
+    await expect(saveAccountPreferences(f.client, "google-owner", preferences)).rejects.toThrow("could not be confirmed");
+    expect(f.request).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("account access repair", () => {
   it("awaits current-session sign-out and verifies removal without signing out other browsers", async () => {

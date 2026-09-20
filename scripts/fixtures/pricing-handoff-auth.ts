@@ -59,8 +59,14 @@ export const supabase = {
   },
   auth: {
     updateUser: async () => { throw new Error("Synthetic account save failed. Your edits are still here."); },
-    getSession: async () => { const user = fixtureUser(); return { data: { session: user ? { user } : null }, error: null }; },
-    getUser: async () => ({ data: { user: fixtureUser() }, error: null }),
+    getSession: async () => { const user = fixtureUser(); return { data: { session: user ? { user, access_token: `synthetic-${user.id}` } : null }, error: null }; },
+    getUser: async (credential?: string) => {
+      const user = fixtureUser();
+      if (!user) return { data: { user: null }, error: null };
+      const response = await fetch("/auth/v1/user", { headers: { Authorization: `Bearer ${credential ?? `synthetic-${user.id}`}` } });
+      if (dashboardGate) await dashboardGate;
+      return { data: { user: response.ok ? await response.json() : null }, error: response.ok ? null : new Error("Synthetic account read failed") };
+    },
     onAuthStateChange: (listener: (event: string, session: { user: User } | null) => void) => {
       listeners.add(listener); return { data: { subscription: { unsubscribe: () => listeners.delete(listener) } } };
     },

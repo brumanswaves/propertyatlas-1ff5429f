@@ -30,7 +30,7 @@ describe("Easy Erf Account coherence guardrails", () => {
   it("keeps editable preferences in auth metadata instead of property evidence", () => {
     const source = routeSource();
 
-    expect(source).toContain("supabase.auth.updateUser");
+    expect(source).toContain("saveAccountPreferences(supabase, user.id");
     expect(source).toContain("profile_type: profileType");
     expect(source).toContain("default_market: defaultMarket.trim()");
     expect(source).toMatch(/do not alter property evidence or planning conclusions/i);

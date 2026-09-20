@@ -11,6 +11,9 @@ export function FixtureControls() {
     <button onClick={completeDashboardRead}>Complete dashboard reads</button>
     <button onClick={() => sessionStorage.setItem("fixture-dashboard-fail", "yes")}>Fail dashboard reads</button>
     <button onClick={() => sessionStorage.removeItem("fixture-dashboard-fail")}>Allow dashboard reads</button>
+    <button onClick={() => fetch("/__fixture/account/read", { method: "POST" })}>Fail account reads</button>
+    <button onClick={() => fetch("/__fixture/account/save", { method: "POST" })}>Fail account saves</button>
+    <button onClick={() => fetch("/__fixture/account/none", { method: "POST" })}>Allow account service</button>
   </aside>;
 }
 export function Footer() { return null; }

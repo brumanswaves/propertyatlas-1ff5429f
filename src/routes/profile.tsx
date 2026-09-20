@@ -20,6 +20,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/useAuth";
 import { StaffDashboardLinks } from "@/components/admin/StaffDashboardLinks";
 import { getUserDisplayName } from "@/lib/auth/profile";
+import { saveAccountPreferences } from "@/lib/auth/accountProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRAND } from "@/lib/brand";
@@ -73,7 +74,34 @@ function AccountPage() {
     } });
   }, [loading, navigate, user]);
   if (loading || !user) return null;
-  return <AccountEditor key={user.id} user={user} />;
+  return <AccountLoader key={user.id} ownerId={user.id} />;
+}
+
+function AccountLoader({ ownerId }: { ownerId: string }) {
+  const [account, setAccount] = useState<{ user: User | null } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!ownerId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await supabase.auth.getSession();
+        if (current.error || current.data.session?.user.id !== ownerId) throw new Error("Account changed");
+        const verified = await supabase.auth.getUser(current.data.session.access_token);
+        if (verified.error || verified.data.user?.id !== ownerId) throw new Error("Account unavailable");
+        if (!cancelled) setAccount({ user: verified.data.user });
+      } catch {
+        if (!cancelled) setAccount({ user: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ownerId, attempt]);
+  const loaded = account;
+  if (!loaded?.user) return <div className="min-h-screen bg-background"><TopNav /><main className="mx-auto max-w-5xl px-4 pt-28">
+    <h1 className="text-2xl font-semibold">Your Easy Erf account</h1>
+    {loaded ? <div role="alert" className="mt-4"><p>Your account details could not be loaded. Please try again.</p><Button className="mt-3" onClick={() => { setAccount(null); setAttempt(value => value + 1); }}>Try loading again</Button></div> : <p className="mt-4" role="status">Loading your account details...</p>}
+  </main></div>;
+  return <AccountEditor key={ownerId} user={loaded.user} />;
 }
 
 function AccountEditor({ user }: { user: User }) {
@@ -83,8 +111,8 @@ function AccountEditor({ user }: { user: User }) {
     const metadata = user.user_metadata ?? {};
     const fullName = metadataText(metadata.full_name) || metadataText(metadata.name);
     const [fallbackFirst = "", ...fallbackLast] = fullName.trim().split(/\s+/).filter(Boolean);
-    return { firstName: metadataText(metadata.first_name) || fallbackFirst,
-      lastName: metadataText(metadata.last_name) || fallbackLast.join(" "),
+    return { firstName: typeof metadata.first_name === "string" ? metadata.first_name : fallbackFirst,
+      lastName: typeof metadata.last_name === "string" ? metadata.last_name : fallbackLast.join(" "),
       displayName: metadataText(metadata.display_name) || getUserDisplayName(user),
       phone: metadataText(metadata.phone), profileType: metadataText(metadata.profile_type),
       defaultMarket: metadataText(metadata.default_market) };
@@ -99,9 +127,11 @@ function AccountEditor({ user }: { user: User }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const mounted = useRef(true);
   const savePending = useRef(false);
+  const lifetime = useRef<AbortController | null>(null);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    lifetime.current = new AbortController();
+    return () => { mounted.current = false; lifetime.current?.abort(); };
   }, []);
 
   useEffect(() => {
@@ -142,14 +172,7 @@ function AccountEditor({ user }: { user: User }) {
     const fullName = [cleanFirst, cleanLast].filter(Boolean).join(" ");
 
     try {
-    const { data: current, error: sessionError } = await supabase.auth.getSession();
-    if (!mounted.current) return;
-    if (sessionError || current.session?.user.id !== user.id) {
-      throw new Error("Your signed-in account changed. Reload before saving.");
-    }
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        ...(user?.user_metadata ?? {}),
+    await saveAccountPreferences(supabase, user.id, {
         first_name: cleanFirst,
         last_name: cleanLast,
         display_name: cleanDisplay || fullName,
@@ -157,10 +180,7 @@ function AccountEditor({ user }: { user: User }) {
         phone: phone.trim(),
         profile_type: profileType,
         default_market: defaultMarket.trim(),
-      },
-    });
-
-    if (error) throw error;
+    }, lifetime.current?.signal);
     if (mounted.current) toast.success("Account saved");
     } catch (error) {
       if (mounted.current) toast.error(error instanceof Error ? error.message : "Your account could not be saved. Your edits are still here.");
