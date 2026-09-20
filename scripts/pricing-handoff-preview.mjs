@@ -8,7 +8,7 @@ const server = await createServer({
   configFile: false, envFile: false, appType: "spa",
   plugins: [{ name: "pricing-fixture-routes", configureServer(server) {
     server.middlewares.use((req, _res, next) => {
-      if (/^\/(pricing|auth)(\?|$)/.test(req.url)) req.url = "/scripts/fixtures/pricing-handoff.html";
+      if (/^\/(pricing|auth|orders)(\?|$)/.test(req.url)) req.url = "/scripts/fixtures/pricing-handoff.html";
       next();
     });
   } }, react(), tailwind()],

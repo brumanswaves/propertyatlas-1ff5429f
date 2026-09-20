@@ -69,10 +69,12 @@ function CustomerOrdersPage() {
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(readSelectedReportId);
   const userId = user?.id ?? null;
+  const [reloadRequest, setReloadRequest] = useState(0);
   const [orderResponse, setOrderResponse] = useState<{
     userId: string;
     reportId: string | null;
     rows: ReportOrder[];
+    failed: boolean;
   } | null>(null);
   // Identity-bound state is hidden during the render before effect cleanup,
   // not only after the old request is aborted on selection/account changes.
@@ -80,9 +82,15 @@ function CustomerOrdersPage() {
     && orderResponse.reportId === selectedReportId);
   const orders = responseMatches ? orderResponse!.rows : EMPTY_ORDERS;
   const loadingOrders = loading || Boolean(userId && !responseMatches);
+  const ordersFailed = responseMatches && orderResponse!.failed;
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) {
+      navigate({
+        to: "/auth",
+        search: { redirect: `${window.location.pathname}${window.location.search}${window.location.hash}` },
+      });
+    }
   }, [loading, navigate, user]);
 
   useEffect(() => {
@@ -100,8 +108,8 @@ function CustomerOrdersPage() {
   useEffect(() => {
     if (!userId || loading) return;
     const request = new AbortController();
-    const settle = (rows: ReportOrder[]) => {
-      if (!request.signal.aborted) setOrderResponse({ userId, reportId: selectedReportId, rows });
+    const settle = (rows: ReportOrder[], failed = false) => {
+      if (!request.signal.aborted) setOrderResponse({ userId, reportId: selectedReportId, rows, failed });
     };
     void (async () => {
       // A malformed or empty report parameter must not become a bulk read.
@@ -132,14 +140,14 @@ function CustomerOrdersPage() {
         settle(rows as ReportOrder[]);
       } catch {
         if (request.signal.aborted) return;
-        settle([]);
+        settle([], true);
         toast.error(selectedReportId !== null
           ? "Could not open this exact report. No other order was opened."
           : "Could not load your done-for-you property investigations.");
       }
     })();
     return () => request.abort();
-  }, [loading, selectedReportId, userId]);
+  }, [loading, selectedReportId, userId, reloadRequest]);
 
   const newestOrder = useMemo(() => orders[0] ?? null, [orders]);
   const groupedOrders = useMemo(() => partitionCustomerReportOrders(orders), [orders]);
@@ -174,12 +182,26 @@ function CustomerOrdersPage() {
           </p>
         </div>
 
-        {paymentReceived ? <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} /> : null}
+        {paymentReceived && !ordersFailed ? <PaymentReceivedPanel order={newestOrder} loading={loadingOrders} /> : null}
 
         <section className="mt-8 space-y-6">
           {loadingOrders ? (
             <div className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
               Loading investigation status…
+            </div>
+          ) : ordersFailed ? (
+            <div role="alert" className="rounded-2xl border border-[#0D1B2A]/10 bg-white p-6 text-sm text-[#64748B]">
+              <p>We could not load your investigation status. Your saved reports have not been changed.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderResponse(null);
+                  setReloadRequest((request) => request + 1);
+                }}
+                className="mt-3 min-h-11 rounded-full border border-[#0D1B2A]/20 px-5 py-2 font-semibold text-[#0D1B2A]"
+              >
+                Try loading again
+              </button>
             </div>
           ) : selectedReportId !== null ? (
             selectedReport ? (

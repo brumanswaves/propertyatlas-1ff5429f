@@ -11,6 +11,21 @@ export function fixtureSignIn(actor: string | null) {
   listeners.forEach((listener) => listener("SIGNED_IN", user ? { user } : null));
 }
 export const supabase = {
+  from: (table: string) => {
+    if (table !== "report_orders") throw new Error("Only synthetic report reads are supported");
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: () => query,
+      abortSignal: async (signal: AbortSignal) => {
+        if (signal.aborted) throw new Error("Aborted synthetic read");
+        return sessionStorage.getItem("fixture-report-read") === "allow"
+          ? { data: [], error: null }
+          : { data: null, error: { message: "Synthetic report service unavailable" } };
+      },
+    };
+    return query;
+  },
   auth: {
     getSession: async () => { const user = fixtureUser(); return { data: { session: user ? { user } : null }, error: null }; },
     getUser: async () => ({ data: { user: fixtureUser() }, error: null }),

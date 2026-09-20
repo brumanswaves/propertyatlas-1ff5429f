@@ -27,3 +27,15 @@ The fixture uses actual customer components, synthetic promises and mock authent
 ## Remaining boundaries
 
 Production publication, deployed backend alignment, a fresh authorized SG acceptance and genuine commercial acceptance remain separate. The earlier SG upload allowance was consumed by its failed attempt; none was repeated here. No existing documents, owner drafts, orders or payment state were changed. No deployment, merge, email, Lovable builder, provider request or new service purchase was performed. Development account cost is not available from these checks.
+
+## Report access and failure recovery
+
+The actual `/orders` component was also checked in the isolated browser fixture. Before repair, a signed-out visit to `/orders?report=00000000-0000-4000-8000-000000000042` landed on `/auth` with the destination lost. It now carries the exact local return path through the existing auth route. Synthetic sign-in returned to that exact order URL. No real authentication, email or report content was accessed.
+
+A failed report-list read previously rendered the same empty-state purchase invitation as a successfully loaded account with no paid investigations. The response now carries an account-and-selection-bound failure state with an explicit retry. Failed reads show a persistent error, hide the empty-account claim and avoid presenting payment status from an unavailable result. Existing cancellation, ownership and exact-order checks are preserved.
+
+Browser verification used the fixture's deliberately failing report read, then **Allow synthetic report read**. Restoring the fixture service did not itself change the page. **Try loading again** performed the successful synthetic empty read and only then showed the empty-account state. This is a local component recovery check, not a claim about live orders or billing.
+
+For repeat verification, the pricing preview also serves `/orders`; its footer offers synthetic account and read-failure controls. The initial report read fails until explicitly allowed. The fixture never returns real report rows. Focused staff navigation, fulfillment UI, shared-report rendering and founder queue checks: 5 files / 69 tests passed. No unchanged full CI was rerun.
+
+The final local node-server production build, TypeScript check, targeted lint and whitespace check passed. The build used the repository's local-only network guard and did not deploy. Build output is retained locally in `artifacts/journey-recovery-build.log`.
