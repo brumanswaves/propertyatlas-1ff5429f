@@ -25,6 +25,12 @@ export function safeReturnPath(value: unknown): string | null {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+/** Confirmation and OAuth must return through auth before the selected journey. */
+export function authCallbackUrl(origin: string, destination: unknown): string {
+  const redirect = safeReturnPath(destination);
+  return `${origin}/auth${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
+}
+
 export const FOOTER_PRODUCT_LINKS = [
   { to: "/", label: "Find a Property" },
   { to: "/how-it-works", label: "How It Works" },

@@ -16,6 +16,7 @@ import type { InvestigationAssembly } from "@/lib/investigation/sharedInvestigat
 import { HUMAN_ONLY_REVIEW_MODEL, type InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
 import { readInvestigationAsset, requestInvestigationReview } from "@/lib/investigation/investigationClient";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
+import { ReportEvidenceDetails } from "@/components/property/dossier/ReportEvidenceDetails";
 
 export function SharedInvestigationReport({ assembly, version, orderId, onOpenAsset, openingControls, onPreviewSettlement }: {
   assembly: InvestigationAssembly; version?: InvestigationReviewVersion; orderId?: string; onOpenAsset?: (id: string) => void;
@@ -25,6 +26,11 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
   const scopedOrderId = version?.order_id ?? orderId;
   const versionId = version?.id;
   const fileRequest = useRef<AbortController | null>(null);
+  const returnLink = useRef<HTMLElement | null>(null);
+  const printOnly = Boolean(openingControls?.printOnly);
+  const openTask = version ? undefined : openingControls?.onOpenTab;
+  const openContextTask = openTask ? (tab: string | null) => { if (tab) openTask(tab); } : undefined;
+  const sourceLabels = Object.fromEntries(assembly.pack.sources.map((source) => [source.id, source.label]));
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   useEffect(() => () => fileRequest.current?.abort(), [scopedOrderId, versionId]);
@@ -86,14 +92,38 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     unknowns: "What we do not know yet",
     nextSteps: "What should be verified next",
   } as const;
-  return <article className="mx-auto max-w-6xl space-y-5 break-words" data-investigation-report={assembly.parcel.id} data-review-version={version?.id}>
-    <ReportOpening {...openingControls} doc={assembly.document}
+  return <article className="mx-auto max-w-6xl space-y-5 break-words bg-[#FFFDFA] p-4 sm:p-6 report-decision-brief" data-investigation-report={assembly.parcel.id} data-review-version={version?.id}
+    onClick={(event) => {
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
+      if (!link) return;
+      const target = event.currentTarget.querySelector<HTMLElement>(`[id="${CSS.escape(link.hash.slice(1))}"]`);
+      if (!target) return;
+      // Keep exact-order hashes intact. Reveal in-report evidence without changing selection.
+      event.preventDefault();
+      const destination = link.hasAttribute("data-report-return") && returnLink.current?.isConnected ? returnLink.current : target;
+      if (!link.hasAttribute("data-report-return")) returnLink.current = link;
+      let ancestor = destination.parentElement;
+      while (ancestor && ancestor !== event.currentTarget) {
+        if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+        ancestor = ancestor.parentElement;
+      }
+      // The staff shell pins the selected order above this same report.
+      const pinnedIdentity = event.currentTarget.closest("[data-order-id]")?.previousElementSibling;
+      const pinnedHeight = pinnedIdentity?.matches('header[aria-label="Selected order identity"]')
+        ? pinnedIdentity.getBoundingClientRect().height + 24 : 0;
+      destination.style.scrollMarginTop = `${Math.max(96, pinnedHeight)}px`;
+      destination.scrollIntoView({ block: "start" });
+      if (!destination.matches("a[href], button, input, select, textarea, summary, [tabindex]")) destination.tabIndex = -1;
+      destination.focus({ preventScroll: true });
+    }}>
+    <ReportOpening {...openingControls} doc={assembly.document} onOpenTab={openTask} hasEvidenceSections strategy={assembly.strategy}
+      reviewBottomLine={humanReview?.bottomLine ?? brief?.bottomLine.text}
       heroSlot={openingControls?.heroSlot ?? defaultHero}
       heroCaption={openingControls?.heroCaption ?? defaultHeroCaption}
       reviewIdentity={version ? <div>
         <p>{approved ? "Human-reviewed investigation." : humanOnly ? "Human-only review draft · Not approved." : "AI investigation draft · Not human reviewed."}</p>
         {approved && <p className="mt-1 text-xs font-normal">Reviewed by {version.approved_reviewer_label} on {new Date(version.approved_at!).toLocaleString("en-ZA")}.</p>}
-        <p className="mt-1 break-all text-xs font-normal">Version {version.id} · Evidence revision {version.evidence_revision} · Brief revision {version.brief_revision}</p>
+        <details className="mt-1 text-xs font-normal"><summary className="cursor-pointer">Version and evidence record</summary><p className="break-all">Version {version.id} · Evidence revision {version.evidence_revision} · Brief revision {version.brief_revision}</p></details>
         {version.currentEvidenceRevision !== version.evidence_revision && <p className="mt-2 text-xs">The working investigation has changed. This report preserves the evidence reviewed for this version.</p>}
       </div> : undefined}
       askSlot={askUnavailable ? <section id="report-ask-easy-erf" className="rounded-[1.75rem] border border-[#0D1B2A]/10 bg-[#F7FBFF] p-6">
@@ -140,7 +170,10 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
           </section>;
         })}
       </section> : undefined} />
-    <section aria-label="Recorded identity" className="border-y border-border py-5">
+    <section id="report-evidence" aria-label="Supporting evidence" className="scroll-mt-6 border-t border-border pt-6">
+    <h2 className="mb-2 text-xl font-semibold">The evidence behind the assessment</h2>
+    <ReportEvidenceDetails title="Property identity, SG and title" printOnly={printOnly}>
+    <section id="investigation-identity" aria-label="Recorded identity" className="border-y border-border py-5">
       <h2 className="text-xl font-semibold">Property identity and address</h2>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">{assembly.pack.claims.filter((c) => c.domain === "identity").map((claim) => <div key={claim.id}>
         <dt className="text-sm text-muted-foreground">{claim.label}</dt><dd className="font-medium">{claim.value === null ? "Not yet verified" : String(claim.value)}</dd>
@@ -148,24 +181,37 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
       </div>)}</dl>
     </section>
     <ReportSgLineageSection anchorId="investigation-sg" model={assembly.sg} onOpenAsset={openAsset} loadPreview={scopedOrderId ? loadPreview : undefined} onPreviewSettlement={onPreviewSettlement} />
-    <ReportOwnershipSection ownership={assembly.report.ownership} />
-    <section className="border-y border-border py-5" aria-label="Planning evidence">
+    <div id="investigation-title"><ReportOwnershipSection ownership={assembly.report.ownership} /></div>
+    </ReportEvidenceDetails>
+    <ReportEvidenceDetails title="Planning and deterministic Site Potential" printOnly={printOnly}>
+    <section id="investigation-planning" className="border-y border-border py-5" aria-label="Planning evidence">
       <h2 className="text-xl font-semibold">Zoning, planning and building controls</h2>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{assembly.report.planning.map((field) => <div key={field.label}>
         <dt className="text-sm text-muted-foreground">{field.label}</dt><dd>{field.value ?? "Not yet verified"}</dd>
         <EvidenceBadgeChip badge={field.value ? field.badge : "missing"} />
       </div>)}</dl>
     </section>
-    <ReportFindingsBlock anchorId="investigation-findings" eyebrow="Evidence findings" title="Recorded findings and conflicts"
-      findings={assembly.document.findings} actions={assembly.document.actions} emptyMessage="No supported findings are recorded yet." />
-    <ReportContextSection anchorId="investigation-site-risk" eyebrow="Property checks" title="Physical and environmental evidence" model={assembly.siteRisk} />
-    <ReportMunicipalSection anchorId="investigation-services" model={assembly.municipal} />
-    <ReportContextSection anchorId="investigation-location" eyebrow="Location" title="Location context" model={assembly.location} />
-    <ReportMarketSection anchorId="investigation-market" model={assembly.market} />
-    <ReportStrategySection anchorId="investigation-strategy" model={assembly.strategy} />
     <ReportSitePotentialSection anchorId="investigation-site" panel={assembly.site} capacityVisual={assembly.envelope
       ? <ReportBuildableAreaVisual ring={assembly.ring} result={assembly.envelope} /> : undefined} />
-    <ReportActionPlan actions={assembly.document.actions} />
+    </ReportEvidenceDetails>
+    <ReportEvidenceDetails title="Market evidence and Strategy assumptions" printOnly={printOnly}>
+    <ReportMarketSection anchorId="investigation-market" model={assembly.market} />
+    <ReportStrategySection anchorId="investigation-strategy" model={assembly.strategy} />
+    </ReportEvidenceDetails>
+    <ReportEvidenceDetails title="Property checks, services and location" printOnly={printOnly}>
+    <ReportContextSection anchorId="investigation-site-risk" eyebrow="Property checks" title="Physical and environmental evidence" model={assembly.siteRisk} onOpenTab={openContextTask} />
+    <ReportMunicipalSection anchorId="investigation-services" model={assembly.municipal} onOpenTab={openContextTask} />
+    <ReportContextSection anchorId="investigation-location" eyebrow="Location" title="Location context" model={assembly.location} onOpenTab={openContextTask} />
+    </ReportEvidenceDetails>
+    <ReportEvidenceDetails title="All findings, conflicts and follow-up actions" printOnly={printOnly}>
+    <ReportFindingsBlock anchorId="investigation-findings" eyebrow="Evidence findings" title="Recorded findings and conflicts"
+      findings={assembly.document.findings} sourceLabels={sourceLabels} emptyMessage="No supported findings are recorded yet." />
+    <section id="investigation-actions"><h3 className="text-lg font-semibold">All follow-up actions</h3>
+    <ReportActionPlan actions={assembly.document.actions} canonicalAction={assembly.document.nextBestAction} evidenceLinks
+      location={[assembly.parcel.town, assembly.parcel.municipality, assembly.parcel.province].filter(Boolean).join(", ")}
+      onOpenTab={openTask} printOnly={printOnly} /></section>
+    </ReportEvidenceDetails>
+    <ReportEvidenceDetails title="Documents, source references and investigation record" printOnly={printOnly}>
     <section aria-label="Recorded investigation checks and limitations" className="border-y border-border py-5">
       <h2 className="text-xl font-semibold">Sources checked and remaining limitations</h2>
       {assembly.work.length === 0 ? <p className="mt-3 text-sm">No source-check records have been saved yet.</p>
@@ -179,11 +225,6 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
           </dd></div>)}</dl>}
     </section>
     <ReportEvidenceAppendix anchorId="investigation-documents" rows={assembly.appendix} completenessPercent={assembly.report.documents.completenessPercent} onOpenAsset={openAsset} />
-    {fileError && <p role="alert" className="text-sm text-destructive">{fileError}</p>}
-    {fileUrl && <section aria-label="Selected report document" className="report-no-print border border-border p-3">
-      <button type="button" className="min-h-11 underline" onClick={() => { fileRequest.current?.abort(); setFileUrl(null); }}>Close document</button>
-      <object data={fileUrl} className="h-[65vh] w-full"><a href={fileUrl} download>Download selected document</a></object>
-    </section>}
     <section aria-label="Source references" className="border-t border-border py-5">
       <h2 className="text-xl font-semibold">Sources and provenance</h2>
       <ul className="mt-4 space-y-3">{assembly.pack.sources.map((source) => <li key={source.id} id={`investigation-source-${encodeURIComponent(source.id)}`} className="scroll-mt-6 text-sm">
@@ -194,5 +235,13 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
         {source.fragments.map((fragment, index) => <p key={index} className="mt-1 text-sm">{fragment}</p>)}
       </li>)}</ul>
     </section>
+    </ReportEvidenceDetails>
+    </section>
+    {fileError && <p role="alert" className="text-sm text-destructive">{fileError}</p>}
+    {fileUrl && <section aria-label="Selected report document" className="report-no-print border border-border p-3">
+      <button type="button" className="min-h-11 underline" onClick={() => { fileRequest.current?.abort(); setFileUrl(null); }}>Close document</button>
+      <object data={fileUrl} className="h-[65vh] w-full"><a href={fileUrl} download>Download selected document</a></object>
+    </section>}
+    <p className="border-t border-border pt-4 text-xs leading-5 text-muted-foreground">Report assembled {new Date(assembly.document.header.generatedAtLabel).toLocaleDateString("en-ZA")}. Property research, not municipal approval or professional legal, planning, engineering or valuation advice.</p>
   </article>;
 }

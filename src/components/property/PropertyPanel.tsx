@@ -321,12 +321,12 @@ export function PropertyPanel({ property, onClose }: Props) {
               <Row label="Lifestyle score" value={`${property.scores.lifestyle} / 100`} />
             </Section>
 
-            {/* Premium Investor modules — blurred previews + single CTA */}
+            {/* Illustrative modules do not represent a purchasable subscription. */}
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Investor modules</div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Lock className="h-2.5 w-2.5" /> Premium
+                  <Eye className="h-2.5 w-2.5" /> Demo only
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -342,11 +342,11 @@ export function PropertyPanel({ property, onClose }: Props) {
                 className="mt-3 flex items-center justify-center gap-2 rounded-full bg-gradient-premium px-4 py-2.5 text-xs font-semibold text-accent-foreground shadow-soft transition hover:opacity-95"
               >
                 <Crown className="h-3.5 w-3.5" />
-                Unlock full property intelligence · R199/month
+                See once-off investigation options
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
               <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-                Cancel anytime. Mock pilot data for demonstration.
+                Mock pilot data only. Select a real official parcel before purchasing an investigation.
               </p>
             </div>
           </div>
@@ -549,13 +549,12 @@ function LockedModule({
   icon, title, lines,
 }: { icon: React.ReactNode; title: string; lines: string[] }) {
   return (
-    <Link
-      to="/pricing"
-      className="group relative block overflow-hidden rounded-xl border border-border bg-background/60 p-2.5 text-left transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-soft"
+    <div
+      className="relative block overflow-hidden rounded-xl border border-border bg-background/60 p-2.5 text-left"
     >
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <span className="flex items-center gap-1">{icon}{title}</span>
-        <Lock className="h-3 w-3 text-muted-foreground group-hover:text-accent" />
+        <Eye className="h-3 w-3 text-muted-foreground" />
       </div>
       <div className="mt-1.5 space-y-0.5 select-none blur-[3.5px] saturate-75">
         {lines.map((l, i) => (
@@ -563,11 +562,11 @@ function LockedModule({
         ))}
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-8 items-end justify-center bg-gradient-to-t from-card via-card/85 to-transparent">
-        <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent opacity-0 transition-opacity group-hover:opacity-100">
-          Unlock →
+        <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Illustrative data
         </span>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -601,11 +600,11 @@ function Locked({ children, preview }: { children: React.ReactNode; preview?: st
         <Link to="/pricing"
           className="flex items-center gap-2 rounded-full bg-gradient-premium px-4 py-2 text-xs font-semibold text-accent-foreground shadow-soft hover:opacity-95">
           <Crown className="h-3.5 w-3.5" />
-          Unlock with Investor · R199/mo
+          See once-off investigation options
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
         <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-          <Lock className="h-3 w-3" /> Premium
+          <Eye className="h-3 w-3" /> Demo only
         </div>
       </div>
     </div>

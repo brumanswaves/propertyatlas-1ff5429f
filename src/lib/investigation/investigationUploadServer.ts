@@ -1,3 +1,4 @@
+import { investigationBackend } from "./investigationBackend.server";
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { investigationAssetSchema } from "./sharedInvestigation";
@@ -13,7 +14,8 @@ function fail(message: string, status: number) { return Response.json({ error: m
 export async function handleInvestigationUploadRequest(request: Request, deps: InvestigationUploadServerDeps = {}) {
   try {
     if (request.method !== "POST") return fail("Method not allowed.", 405);
-    const auth = await (deps.authenticate ?? authenticateApiRequest)(request);
+    const backend = investigationBackend(deps);
+    const auth = await backend.authenticate(request);
     // Bound multipart parsing before reading the file into memory.
     const reader = request.body?.getReader();
     if (!reader) return fail("No document was supplied.", 400);
@@ -39,7 +41,7 @@ export async function handleInvestigationUploadRequest(request: Request, deps: I
     const prefix = expectedPath.slice(0, expectedPath.lastIndexOf("/") + 1);
     const filename = asset.storage_path.slice(prefix.length);
     if (asset.storage_bucket !== "erf-files" || !asset.storage_path.startsWith(prefix) || !filename || /[\\/]/.test(filename) || filename.includes("..")) return fail("Upload path could not be verified.", 409);
-    const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+    const service = backend.serviceClient();
     const bytes = await file.arrayBuffer();
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const checksum = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");

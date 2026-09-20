@@ -1023,6 +1023,7 @@ export function buildReportViewModel(input: BuildReportInput): ReportViewModel {
       strategyScenarios: input.strategyScenarios,
       chosenScenario: input.chosenScenario,
       planningAssessment: input.planningAssessment,
+      sitePotentialAccepted: input.sitePotentialAccepted,
       now: input.now,
     });
   const identity = buildIdentityFromPack(evidencePack, input.parcel);

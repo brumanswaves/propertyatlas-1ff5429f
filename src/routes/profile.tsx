@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   BadgeCheck,
   CalendarDays,
@@ -19,6 +20,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth/useAuth";
 import { StaffDashboardLinks } from "@/components/admin/StaffDashboardLinks";
 import { getUserDisplayName } from "@/lib/auth/profile";
+import { saveAccountPreferences } from "@/lib/auth/accountProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRAND } from "@/lib/brand";
@@ -66,31 +68,71 @@ function providerLabel(provider: unknown) {
 function AccountPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [profileType, setProfileType] = useState("");
-  const [defaultMarket, setDefaultMarket] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) navigate({ to: "/auth", search: {
+      redirect: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    } });
   }, [loading, navigate, user]);
+  if (loading || !user) return null;
+  return <AccountLoader key={user.id} ownerId={user.id} />;
+}
 
+function AccountLoader({ ownerId }: { ownerId: string }) {
+  const [account, setAccount] = useState<{ user: User | null } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!user) return;
+    if (!ownerId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const current = await supabase.auth.getSession();
+        if (current.error || current.data.session?.user.id !== ownerId) throw new Error("Account changed");
+        const verified = await supabase.auth.getUser(current.data.session.access_token);
+        if (verified.error || verified.data.user?.id !== ownerId) throw new Error("Account unavailable");
+        if (!cancelled) setAccount({ user: verified.data.user });
+      } catch {
+        if (!cancelled) setAccount({ user: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ownerId, attempt]);
+  const loaded = account;
+  if (!loaded?.user) return <div className="min-h-screen bg-background"><TopNav /><main className="mx-auto max-w-5xl px-4 pt-28">
+    <h1 className="text-2xl font-semibold">Your Easy Erf account</h1>
+    {loaded ? <div role="alert" className="mt-4"><p>Your account details could not be loaded. Please try again.</p><Button className="mt-3" onClick={() => { setAccount(null); setAttempt(value => value + 1); }}>Try loading again</Button></div> : <p className="mt-4" role="status">Loading your account details...</p>}
+  </main></div>;
+  return <AccountEditor key={ownerId} user={loaded.user} />;
+}
+
+function AccountEditor({ user }: { user: User }) {
+  // A refreshed session must not overwrite edits. A different account receives
+  // a new keyed editor, so it cannot inherit this account's fields or pending save.
+  const [initial] = useState(() => {
     const metadata = user.user_metadata ?? {};
     const fullName = metadataText(metadata.full_name) || metadataText(metadata.name);
     const [fallbackFirst = "", ...fallbackLast] = fullName.trim().split(/\s+/).filter(Boolean);
-    setFirstName(metadataText(metadata.first_name) || fallbackFirst);
-    setLastName(metadataText(metadata.last_name) || fallbackLast.join(" "));
-    setDisplayName(metadataText(metadata.display_name) || getUserDisplayName(user));
-    setPhone(metadataText(metadata.phone));
-    setProfileType(metadataText(metadata.profile_type));
-    setDefaultMarket(metadataText(metadata.default_market));
-  }, [user]);
+    return { firstName: typeof metadata.first_name === "string" ? metadata.first_name : fallbackFirst,
+      lastName: typeof metadata.last_name === "string" ? metadata.last_name : fallbackLast.join(" "),
+      displayName: metadataText(metadata.display_name) || getUserDisplayName(user),
+      phone: metadataText(metadata.phone), profileType: metadataText(metadata.profile_type),
+      defaultMarket: metadataText(metadata.default_market) };
+  });
+  const [firstName, setFirstName] = useState(initial.firstName);
+  const [lastName, setLastName] = useState(initial.lastName);
+  const [displayName, setDisplayName] = useState(initial.displayName);
+  const [phone, setPhone] = useState(initial.phone);
+  const [profileType, setProfileType] = useState(initial.profileType);
+  const [defaultMarket, setDefaultMarket] = useState(initial.defaultMarket);
+  const [saving, setSaving] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const mounted = useRef(true);
+  const savePending = useRef(false);
+  const lifetime = useRef<AbortController | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    lifetime.current = new AbortController();
+    return () => { mounted.current = false; lifetime.current?.abort(); };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,14 +140,16 @@ function AccountPage() {
       setIsAdmin(false);
       return;
     }
-    void supabase
+    void Promise.resolve(supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
-      .maybeSingle()
+      .maybeSingle())
       .then(({ data }) => {
         if (!cancelled) setIsAdmin(Boolean(data));
+      }).catch(() => {
+        if (!cancelled) setIsAdmin(false);
       });
     return () => {
       cancelled = true;
@@ -119,15 +163,16 @@ function AccountPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savePending.current) return;
+    savePending.current = true;
     setSaving(true);
     const cleanFirst = firstName.trim();
     const cleanLast = lastName.trim();
     const cleanDisplay = displayName.trim();
     const fullName = [cleanFirst, cleanLast].filter(Boolean).join(" ");
 
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        ...(user?.user_metadata ?? {}),
+    try {
+    await saveAccountPreferences(supabase, user.id, {
         first_name: cleanFirst,
         last_name: cleanLast,
         display_name: cleanDisplay || fullName,
@@ -135,18 +180,15 @@ function AccountPage() {
         phone: phone.trim(),
         profile_type: profileType,
         default_market: defaultMarket.trim(),
-      },
-    });
-
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    }, lifetime.current?.signal);
+    if (mounted.current) toast.success("Account saved");
+    } catch (error) {
+      if (mounted.current) toast.error(error instanceof Error ? error.message : "Your account could not be saved. Your edits are still here.");
+    } finally {
+      savePending.current = false;
+      if (mounted.current) setSaving(false);
     }
-    toast.success("Account saved");
   }
-
-  if (loading || !user) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -270,7 +312,7 @@ function AccountPage() {
                 Easy Erf does not currently sell a recurring subscription. Third-party provider reports are not purchased through a live Easy Erf checkout today.
               </p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Site Potential beta access and generation allowances are shown in the property workflow where the real entitlement state is available. This account page does not invent a balance or payment history.
+                Your saved investigations and done-for-you reports are available in My Properties. Paid investigation status stays with its property. This account page does not invent a balance or payment history.
               </p>
               <Link
                 to="/pricing"

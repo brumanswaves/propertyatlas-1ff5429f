@@ -1,5 +1,14 @@
 # EE-R999-01 Execution State
 
+## PR #185 served-code diagnosis and report continuation, 2026-09-19
+
+- Current merged main is `1fef6f66e1d911aaf492567f9e8c2f04eae13674`. Fresh customer-domain and lovable.app SG module/worker bytes establish the new receipt/preview implementation is served. Existing publication `13f13e80-1983-4785-becb-e571f7aff497` was not repeated. Exact deployment/SHA attestation remains UNKNOWN.
+- The one approved zero-AI synthetic upload remains unconsumed. Chrome refused file selection before an upload request; owner extension file-URL access is the concrete blocker. TEST order and both original attachment fingerprints unchanged; non-auth draft contents preserved.
+- Same sole writer resumed `codex/report-decision-brief-181`, preserved original `9762338c` on a safety branch, and rebased approved design onto current main. Report action destinations, SG anchors, context no-ops and obsolete generated-concept gap corrected. Ask remains at top; no remote push, PR, merge/publication or full CI rerun.
+- Current focused checks: 566 evidence/report/investigation tests and 220 surrounding journey/auth/payment tests passed, plus TypeScript, build, workflow-style targeted lint, diff and synthetic desktop/mobile report checks. This does not complete real-route server-persisted journey acceptance.
+- Read-only live launch preflight: TEST mode, live OFF, Easy Erf business profile mismatch, signing-secret match unknown. No real checkout/configuration action.
+- Full evidence, hashes, dependency limitations, token-exposure follow-up and next steps: `docs/REPORT_CURRENT_ACCEPTANCE_2026-09-19.md`. $0 cap, actual account spend UNKNOWN. No unattended builder started.
+
 ## PR #185 review 5256387994 correction, 2026-09-19
 
 - Same sole-writer branch `codex/sg-receipt-preview-181`, draft PR #185. Reverified reviewed head `9f258c6c7944a1e593c636425c272c49b3940ea7` and unchanged main `3185ca05bff997cb224499ab17feac9672d45914`; no competing work or production action. Final revised SHA/CI/evidence belongs in the PR receipt.
@@ -85,6 +94,23 @@
 - Items 1-6 have source and isolated behavioral evidence, not production acceptance. SG first-useful-result (item 7) and concise report/actions (item 8) remain REQUIRED NEXT BATCHES in issue #181. Do not close the issue or claim those are completed by this repair.
 - Next ranked actions: collect and inspect committed browser evidence; push one draft PR and inspect exact-head workflows/artifacts; independent review. Class B rollout requires separate owner approval. No production mutation, deployment, invitation, provider call or purchase is authorized.
 - Spend cap $0. Deterministic local tooling only; no additional agents, API billing, credits or paid services initiated. Actual account spend UNKNOWN. Process status must be freshly inspected in the final receipt.
+## Report owner acceptance: Ask stays at the top, 2026-09-16
+
+- Owner accepted the report direction with the explicit condition that erf questions remain at the top. The existing report branch is retained; no competing PR or production action.
+- Narrow follow-up: move the same expandable Ask panel beneath the property heading and before the assessment. Question state, evidence grounding, frozen-version availability, model settings and provider execution remain unchanged.
+- VERIFIED follow-up: 4 focused files / 61 tests; TypeScript; targeted lint; node-server build. Four desktop/mobile sparse/supported browser cases pass first-viewport Ask visibility, opening the real question field and retaining an unsent question with zero AI/backend requests. Screenshots inspected. The preceding candidate's full-suite and built-app results below are not represented as a new full run. Exact final SHA and diff-check result belong to the follow-up receipt.
+- Remaining: independent review and coordinated PR entry after the separate frozen #182 batch. No merge/publication authorization is inferred from design acceptance. Project remains unfinished; spend cap $0, actual account spend UNKNOWN.
+
+## Issue #181 report decision brief: local design candidate, 2026-09-16
+
+- Active release: EE-R999-01. Frozen outcome for this bounded task: a readable existing report with useful assessment/numbers, visible material uncertainty and working source/task/professional destinations. The genuine commercial outcome remains unpassed.
+- VERIFIED main and starting source: `284a20cfeffb2c2560d428f4bd56e71743d3a704`. Sole-writer report branch: `codex/report-decision-brief-181`. Candidate SHA is the commit containing this entry and is pinned by the final browser receipts. No competing PR opened: draft #182 (`84bb2d29f696ddc78234697b5f917166c5c6979a`) is the separate frozen saving/history batch. Original dirty worktree remains untouched.
+- Implemented: a brief opening over canonical evidence; saved Strategy figures with assumptions; all material conflicts visible; three grouped next actions; six expandable evidence sections; source/professional links; property/order-preserving return focus; no enabled task buttons without a caller. Existing approval, frozen-version contents, AI permissions and calculations remain unchanged.
+- VERIFIED final local checks: 96 focused tests; full Vitest 163 files / 1649 tests; TypeScript; node-server build; targeted lint without errors/warnings; diff check. Synthetic sparse/supported report matrix passes at 1440/390 widths with zero backend/provider requests. Built-app Founder fixture passes 29 groups with mocked services and a nonblank deterministic map. Inspection found the pinned staff header could cover in-report destinations; the repaired measured scroll offset passes the built-browser visibility assertion at both widths. Exact candidate browser receipts and screenshots are retained locally; no remote CI result is claimed.
+- Reported but unverified: real-user comprehension, live satellite/provider availability and production appearance. Synthetic screenshots are not customer acceptance. There are no known automated source failures at this checkpoint. Design and independent review remain required.
+- Next ranked actions: verify the final candidate and inspect screenshots; owner reviews the design; after #182 coordination resolves, prepare one non-competing report PR for independent review. SG first-useful-result redesign remains outstanding, not included here.
+- Owner gates/restrictions: design acceptance before release; no merge, deploy, publish, backend/schema/permission change, production data, paid AI, report purchase, order/email action, credential access, Lovable work or new hosting.
+- Spend: existing session and deterministic local tools only; no additional agents, API billing, purchased credits or paid services initiated. Actual account spend UNKNOWN; additional discretionary cap $0. Model/reasoning UI setting is not observable to this task. Preview-server status is reported separately; a preview server is not an implementation worker.
 
 ## PR #180 same-user renewal repair, 2026-09-14
 

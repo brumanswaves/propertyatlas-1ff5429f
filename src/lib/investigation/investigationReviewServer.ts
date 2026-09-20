@@ -1,3 +1,4 @@
+import { investigationBackend } from "./investigationBackend.server";
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { readServerEnv } from "@/lib/sitePotential/runtimeEnv";
@@ -45,7 +46,8 @@ function approvalChecklist(assessment: ReturnType<typeof assessInvestigationSign
 export async function handleInvestigationReviewRequest(request: Request, deps: InvestigationReviewServerDeps = {}) {
   try {
     if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
-    const auth = await (deps.authenticate ?? authenticateApiRequest)(request);
+    const backend = investigationBackend(deps);
+    const auth = await backend.authenticate(request);
     const body = await request.text();
     const bodyBytes = new TextEncoder().encode(body).byteLength;
     if (bodyBytes > HUMAN_REVIEW_REQUEST_MAX_BYTES) return json({ error: "Request too large." }, 413);
@@ -58,7 +60,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
     const { data, error } = await auth.supabase.rpc("read_order_investigation", { p_order_id: input.orderId });
     checkError(error);
     const scope = orderInvestigationSchema.parse(data);
-    const env = deps.env ?? readServerEnv;
+    const env = backend.env;
     if (input.action === "generate") {
       if (!scope.canWork) return json({ error: "Assigned investigator access is required." }, 403);
       const assembly = assembleInvestigation(scope);
@@ -92,7 +94,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       const payload = z.object({ success: z.literal(true), brief: z.unknown(), model: z.literal(INVESTIGATION_BRIEF_MODEL) }).parse(await generated.json());
       const brief = validateInvestigationBrief(payload.brief, allowedSourceIds);
       if (!brief) return json({ error: "The generated review failed evidence validation. Nothing was approved." }, 502);
-      const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+      const service = backend.serviceClient();
       const recorded = await service.rpc("record_investigation_brief", {
         p_order_id: input.orderId, p_actor_id: auth.user.id, p_expected_revision: scope.revision,
         p_assembly: withModelEvidence(assembly, evidencePackage), p_manifest: investigationInputManifest(scope), p_assessment: assessInvestigationSignoff(scope, assembly),
@@ -122,7 +124,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       // evidence revision inside the database transaction and leaves the same
       // immutable audit trail used by the AI-assisted route. No AI transport is
       // involved because the reviewer-authored content is passed directly.
-      const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+      const service = backend.serviceClient();
       const recorded = await service.rpc("record_investigation_brief", {
         p_order_id: input.orderId,
         p_actor_id: auth.user.id,
@@ -187,7 +189,7 @@ export async function handleInvestigationReviewRequest(request: Request, deps: I
       risks: brief.risks.map((s) => s.text), unknowns: brief.unknowns.map((s) => s.text), nextSteps: brief.nextSteps.map((s) => s.text) };
     const validated = validateHumanReviewReportContent(content);
     if (!validated.ok) return json({ error: validated.error }, 409);
-    const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+    const service = backend.serviceClient();
     const approval = await service.rpc("approve_investigation_review", {
       p_order_id: input.orderId, p_version_id: input.versionId, p_actor_id: auth.user.id, p_expected_brief_revision: input.briefRevision,
       p_validated_content: { ...validated.content, investigationChecklist: approvalChecklist(assessment) },

@@ -125,7 +125,7 @@ export function buildPropertyEvidencePack(input: BuildPropertyEvidencePackInput)
   addSitePotentialEvidence(pack, input, assets, selectedSiteDesign, systemSourceId);
   addCrossParcelRejections(pack, input, systemSourceId);
   addContradictions(pack, input, savedMarketEvidence);
-  addGaps(pack, input, assets, savedMarketEvidence, strategyWorkspace, chosenScenario, selectedSiteDesign);
+  addGaps(pack, input, assets, savedMarketEvidence, strategyWorkspace, chosenScenario);
   addTimeline(pack, input, assets, savedMarketEvidence, strategyWorkspace, chosenScenario, selectedSiteDesign, builtAt);
 
   pack.sources.sort((a, b) => a.id.localeCompare(b.id));
@@ -1441,7 +1441,6 @@ function addGaps(
   evidence: SavedMarketEvidence[],
   workspace: ReturnType<typeof createEmptyStrategyWorkspace>,
   chosenScenario: ErfStrategyScenario | null,
-  selectedSiteDesign: ErfAsset | null,
 ) {
   const planningClaims = (key: string) => pack.claims.some((claim) => claim.domain === "planning" && claim.key === key && claim.status === "supported");
   const recordedPlanningClaim = (key: string) =>
@@ -1550,8 +1549,10 @@ function addGaps(
   if (development && ["zoning", "coverage", "far", "height", "setbacks", "permittedUses"].some((key) => !planningClaims(key))) {
     gap("development-planning-controls-unverified", "planning", "high", "Development strategy lacks verified planning controls", "A development-sensitive strategy is selected, but core planning controls are incomplete.", `strategy=${strategyName}`, "Verify planning controls before relying on development outputs.", "research", true);
   }
-  if (development && !selectedSiteDesign) {
-    gap("selected-site-potential-concept-missing", "site", "medium", "Selected Site Potential concept missing", "Development analysis can be strengthened by a selected Site Potential concept, but it is not a legal requirement.", `strategy=${strategyName}`, "Generate or select a Site Potential concept, or explicitly skip it.", "site-potential");
+  if (development && !input.sitePotentialAccepted && !input.workspaceState.sitePotential.skipped
+    && input.workspaceState.sitePotential.progressState !== "skipped") {
+    // Retain the recorded gap ID so saved action references remain stable.
+    gap("selected-site-potential-concept-missing", "site", "medium", "Site Potential build envelope not accepted", "An accepted indicative build envelope can strengthen development analysis. This optional step is not a planning approval and never blocks the report.", `strategy=${strategyName}`, "Review and accept the Site Potential build envelope, or explicitly skip this optional step.", "site-potential");
   }
   const questions = input.propertyNotes?.parcelId === input.parcel.id ? splitLines(input.propertyNotes.questions) : [];
   for (const [index, question] of questions.entries()) {

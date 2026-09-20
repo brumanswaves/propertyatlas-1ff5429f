@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReportOpening } from "../ReportOpening";
+import { ReportActionPlan, FindingCard } from "../ReportFindingsSection";
 import { ReportViewSelector } from "../ReportViewSelector";
 import { AssetExtractionStatusChip, ReportOwnershipSection } from "../ReportEvidenceUi";
 import { buildReportViewModel } from "@/lib/reports/buildReportViewModel";
@@ -149,6 +150,7 @@ describe("ReportOpening (rendered)", () => {
   it("renders exactly one opening and one Ask block, before the supporting sections", () => {
     expect(web.match(/class="report-opening /g)?.length ?? 0).toBe(1);
     expect(web.match(/id="report-ask"/g)?.length ?? 0).toBe(1);
+    expect(web.indexOf('id="report-ask"')).toBeGreaterThan(web.indexOf('id="report-opening-header"'));
     expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
     expect(web.indexOf('id="report-decision"')).toBeLessThan(
       web.indexOf('id="report-next-action"'),
@@ -157,9 +159,9 @@ describe("ReportOpening (rendered)", () => {
 
   it("starts with a canonical property summary, grounded Ask and evidence-ready decision framing", () => {
     expect(web).toContain("Property summary");
-    expect(web).toContain("Opportunity &amp; decision summary");
-    expect(web).toContain("Risks &amp; concerns");
-    expect(web).toContain("Evidence readiness:");
+    expect(web).toContain("The assessment");
+    expect(web).toContain("What could change the decision");
+    expect(web).toContain("Evidence readiness");
     expect(web).toContain("Official parcel identity");
     expect(web.indexOf('id="report-ask"')).toBeLessThan(web.indexOf('id="report-decision"'));
   });
@@ -208,7 +210,8 @@ describe("ReportOpening (rendered)", () => {
     const tabs = ["overview", "sources", "research", "market", "reports", "strategy", "site"];
     if (doc.nextBestAction) {
       expect(tabs).toContain(doc.nextBestAction.targetTab);
-      expect(web).toContain("Take this step");
+      expect(web).toContain("Investigation editing is unavailable in this report view");
+      expect(web).not.toContain("Take this step");
     }
   });
 
@@ -223,16 +226,27 @@ describe("ReportOpening (rendered)", () => {
     for (const step of sg.steps) expect(markup).toContain(step);
     expect(markup).toContain(`href="${sg.sourceUrl}"`);
     expect(markup).toContain(sg.sourceLabel);
-    expect(markup).toContain(sg.primaryActionLabel);
+    expect(markup).toContain("Steps and supporting sources");
     expect(actionable.nextBestAction?.targetAnchorId).toBe("sg-diagram-evidence");
   });
 
   it("routes the canonical action to its exact Guided tab and anchor", () => {
     const actionable = buildGuidedActionDoc();
     const onOpenTab = vi.fn();
-    const tree = ReportOpening({ doc: actionable, onOpenTab });
+    const tree = ReportActionPlan({ actions: actionable.actions, canonicalAction: actionable.nextBestAction, onOpenTab });
     const button = findButton(tree, "Open Sources and add the SG diagram");
 
+    expect(button).not.toBeNull();
+    button?.props.onClick?.();
+    expect(onOpenTab).toHaveBeenCalledWith("research", { anchorId: "sg-diagram-evidence" });
+  });
+
+  it("keeps the exact SG anchor when opening a task from a finding", () => {
+    const doc = buildGuidedActionDoc();
+    const action = doc.nextBestAction!;
+    const onOpenTab = vi.fn();
+    const tree = FindingCard({ finding: { ...doc.findings[0], actionIds: [action.id] }, actions: [action], onOpenTab });
+    const button = findButton(tree, "Open investigation research");
     expect(button).not.toBeNull();
     button?.props.onClick?.();
     expect(onOpenTab).toHaveBeenCalledWith("research", { anchorId: "sg-diagram-evidence" });
@@ -244,15 +258,17 @@ describe("ReportOpening (rendered)", () => {
 
     expect(identity.nextBestAction?.id).toBe("investigation-confirm-property-identity");
     expect(identity.nextBestAction?.sourceUrl).toBeUndefined();
-    expect(markup).not.toContain('target="_blank"');
+    // Other grouped actions can have real sources; identity itself has none.
+    const identityRow = markup.split('data-action-id="investigation-confirm-property-identity"')[1]?.split("</li>")[0];
+    expect(identityRow).not.toContain('target="_blank"');
   });
 
   it("keeps useful canonical guidance in print without interactive action controls", () => {
     const actionable = buildGuidedActionDoc();
     const markup = renderToStaticMarkup(<ReportOpening doc={actionable} printOnly />);
 
-    expect(markup).toContain("Why this matters");
-    expect(markup).toContain("How to do it");
+    expect(markup).toContain(actionable.nextBestAction!.reason);
+    expect(markup).toContain("Steps and supporting sources");
     expect(markup).toContain("Chief Surveyor-General document viewer");
     expect(markup).not.toContain("<button");
     expect(markup).not.toContain('target="_blank"');
@@ -457,7 +473,7 @@ describe("Report view selector (rendered)", () => {
       />,
     );
 
-  it("renders one obvious Report view control before Ask Easy Erf", () => {
+  it("keeps report perspectives secondary to the top Ask Easy Erf entry", () => {
     const web = render("standard");
     expect(web).toContain("Report view");
     expect(web).toContain("Buyer due diligence");
@@ -465,7 +481,7 @@ describe("Report view selector (rendered)", () => {
     expect(web.indexOf('id="report-view-mode"')).toBeGreaterThan(
       web.indexOf('id="report-opening-header"'),
     );
-    expect(web.indexOf('id="report-view-mode"')).toBeLessThan(web.indexOf('id="report-ask"'));
+    expect(web.indexOf('id="report-view-mode"')).toBeGreaterThan(web.indexOf('id="report-ask"'));
     expect(web.match(/aria-label="Report view"/g)?.length ?? 0).toBe(1);
   });
 

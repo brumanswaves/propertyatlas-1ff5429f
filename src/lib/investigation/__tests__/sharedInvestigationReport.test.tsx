@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SharedInvestigationReport } from "@/components/humanReview/SharedInvestigationReport";
 import { assembleInvestigation, investigationSnapshotSchema } from "../sharedInvestigation";
@@ -63,19 +63,35 @@ describe("shared complete investigation report", () => {
     expect(html).toContain("investigation-site");
     expect(html).not.toContain("Human-reviewed investigation.");
   });
-  it("paid rendering places Ask then source-linked approved brief above the same investigation", () => {
+  it("paid rendering keeps Ask at the top and the approved brief before detailed investigation evidence", () => {
     const { rawVersion } = fixture();
     const version = investigationReviewVersionSchema.parse(rawVersion);
     const html = renderToStaticMarkup(<SharedInvestigationReport assembly={version.report_assembly} version={version} />);
     expect(html).toContain("Human-reviewed investigation.");
     expect(html).toContain("Synthetic Reviewer");
     expect(html).toContain(version.id);
-    expect(html.indexOf('id="report-ask"')).toBeLessThan(html.indexOf('aria-label="Investigation brief"'));
+    expect(html.indexOf('id="report-ask"')).toBeLessThan(html.indexOf('id="report-decision"'));
     expect(html.indexOf('aria-label="Investigation brief"')).toBeLessThan(html.indexOf('aria-label="Recorded identity"'));
     expect(html).toContain("investigation-source-manual-parcel-record");
     expect(html).not.toContain("This self-service summary");
     expect(html).toContain("No Surveyor-General diagram has been read");
   });
+  it("only exposes context task buttons in editable working reports, never frozen reviews", () => {
+    const { assembly, rawVersion } = fixture();
+    const context = { ...assembly.siteRisk, nextStep: "Open synthetic checks", nextStepTab: "research" };
+    const current = { ...assembly, siteRisk: context };
+    const controls = { onOpenTab: vi.fn() };
+    const editable = renderToStaticMarkup(<SharedInvestigationReport assembly={current} openingControls={controls} />);
+    const readonly = renderToStaticMarkup(<SharedInvestigationReport assembly={current} />);
+    const frozen = renderToStaticMarkup(<SharedInvestigationReport assembly={current}
+      version={investigationReviewVersionSchema.parse(rawVersion)} openingControls={controls} />);
+    expect(editable).toMatch(/<button[^>]*>Open synthetic checks/);
+    for (const html of [readonly, frozen]) {
+      expect(html).not.toMatch(/<button[^>]*>Open synthetic checks/);
+      expect(html).toContain("Open synthetic checks Investigation changes are unavailable");
+    }
+  });
+
   it("an unapproved AI draft is never labelled human reviewed", () => {
     const { rawVersion } = fixture();
     const version = investigationReviewVersionSchema.parse({ ...rawVersion, approved_at: null, approved_by: null, approved_reviewer_label: null, delivered_at: null });

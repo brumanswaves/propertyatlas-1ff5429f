@@ -1,3 +1,4 @@
+import { investigationBackend } from "./investigationBackend.server";
 import { z } from "zod";
 import { ApiRequestError, authenticateApiRequest, createServiceRoleSupabaseClient } from "@/lib/sitePotential/serverAuth";
 import { investigationAssetSchema, orderInvestigationSchema } from "./sharedInvestigation";
@@ -17,7 +18,8 @@ function unavailable(status: number) { return Response.json({ error: "This docum
 export async function handleInvestigationAssetRequest(request: Request, deps: InvestigationAssetServerDeps = {}) {
   try {
     if (request.method !== "POST") return unavailable(405);
-    const auth = await (deps.authenticate ?? authenticateApiRequest)(request);
+    const backend = investigationBackend(deps);
+    const auth = await backend.authenticate(request);
     const text = await request.text();
     if (new TextEncoder().encode(text).byteLength > 4096) return unavailable(413);
     const input = inputSchema.parse(JSON.parse(text));
@@ -55,7 +57,7 @@ export async function handleInvestigationAssetRequest(request: Request, deps: In
     // A blob URL can execute active content even when its HTTP download used
     // Content-Disposition: attachment. Only passive document formats enter the viewer.
     if (!documentMimes.has(mime)) return unavailable(415);
-    const service = (deps.serviceClient ?? createServiceRoleSupabaseClient)();
+    const service = backend.serviceClient();
     const blob = await service.storage.from("erf-files").download(path);
     if (blob.error || !blob.data) return unavailable(404);
     if (!input.preview && asset.checksum_sha256) {

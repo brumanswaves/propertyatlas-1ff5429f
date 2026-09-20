@@ -155,14 +155,21 @@ try {
       if (!id || id === "partial") assert.equal(requests.length, before);
     }
   });
-  await check("failed selected read clears prior report without a bulk fallback", async () => {
+  await check("failed selected read clears prior report and retries only the selected report", async () => {
     await selectInCurrentDocument(A);
     await report().waitFor();
     failRead = true;
     await selectInCurrentDocument(B);
-    await unavailable();
+    await page.getByRole("alert").filter({ hasText: "We could not load your investigation status." }).waitFor();
+    assert.equal(await report().count(), 0);
     assert.ok(!(await page.locator("body").innerText()).includes(`PRIVATE_REPORT_${A}`));
     failRead = false;
+    const beforeRetry = requests.length;
+    await page.getByRole("button", { name: "Try loading again", exact: true }).click();
+    await report().waitFor();
+    assert.ok((await report().innerText()).includes(`PRIVATE_REPORT_${B}`));
+    assert.equal(requests.length, beforeRetry + 1);
+    assert.equal(requests.at(-1).id, B);
   });
   await check("delayed A cannot overwrite B after in-document report selection", async () => {
     let release, start, finish;

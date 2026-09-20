@@ -4,7 +4,7 @@ import {
   DONE_FOR_YOU_PROPERTY_DATA_REPORT_COPY,
   buildHumanReviewHref,
 } from "@/lib/humanReview/scope";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const HUMAN_REVIEW_BENEFITS = [
   "Easy Erf completes or reviews the standard property investigation for you",
@@ -23,15 +23,32 @@ interface TakeoverCardContentProps {
 function usePreparedNavigation(href: string, onPrepare?: () => Promise<void>) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pending = useRef<object | null>(null);
+  useEffect(() => {
+    pending.current = null;
+    setSaving(false);
+    setError(null);
+    return () => {
+      pending.current = null;
+    };
+  }, [href]);
   function navigate(event: React.MouseEvent<HTMLAnchorElement>) {
     if (!onPrepare) return;
     event.preventDefault();
-    if (saving) return;
+    if (pending.current) return;
+    const operation = {};
+    pending.current = operation;
     setSaving(true);
     setError(null);
-    void onPrepare()
-      .then(() => window.location.assign(href))
+    void Promise.resolve()
+      .then(onPrepare)
+      .then(() => {
+        // A finished save must not reopen a property the customer has left.
+        if (pending.current === operation) window.location.assign(href);
+      })
       .catch((failure: unknown) => {
+        if (pending.current !== operation) return;
+        pending.current = null;
         setError(
           failure instanceof Error
             ? failure.message

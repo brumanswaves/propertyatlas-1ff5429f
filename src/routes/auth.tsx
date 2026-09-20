@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useStaffAccess } from "@/lib/auth/StaffAccess";
-import { safeReturnPath } from "@/lib/navigation";
+import { authCallbackUrl, safeReturnPath } from "@/lib/navigation";
 import { AtlasPin } from "@/components/brand/AtlasPin";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -62,7 +62,7 @@ function AuthPage() {
           password,
           options: {
             data: { full_name: name },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: authCallbackUrl(window.location.origin, redirect),
           },
         });
         if (error) throw error;
@@ -83,7 +83,7 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/auth${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`;
+      const redirectTo = authCallbackUrl(window.location.origin, redirect);
 
       if (resolveGoogleAuthTransport() === "supabase") {
         const { data, error } = await supabase.auth.signInWithOAuth({
