@@ -49,3 +49,11 @@ The sole approved synthetic TIFF is prepared, 7,681,000 bytes, SHA-256 95a80568c
 - Production customer/admin completion is not established by isolated acceptance. Real charging, provider processing, email, account/security changes and release still require their applicable explicit authority.
 - The exposed preview URL was not reopened. Lovable documents deleting a single managed link through Share > Share preview > Your active links. Whether the exposed publisher link is that supported type and whether it was invalidated remain UNKNOWN. No unrelated credentials changed. Reference: https://docs.lovable.dev/features/share-project#manage-active-preview-links
 - Necessary development-model/CI use is owner-authorized for subsequent development. No live product AI, paid processing, Lovable builder use, purchases, new service or billing changes were performed. Exact account charges are UNKNOWN.
+
+## Follow-up: approved SG attempt failed
+
+After the owner selected the approved file, the one observed upload request returned HTTP 401. Canonical browser account checks returned HTTP 200 immediately before and after. No QA asset row or matching storage object was created. The TEST order and two original attachment fingerprints are unchanged. Normal Reload saved evidence restored revision 58 with all permission/reading controls unchecked.
+
+The single upload attempt is now consumed/failed, not unused. Do not replay it. Dependent reselection/preview/continue/reopen/cleanup acceptance remains blocked. The runtime authentication cause is unknown; no supported runtime-log connector was available. Browser network events were truncated, so exhaustive absence of provider requests cannot be certified. No AI operation was initiated by the agent.
+
+Receipt: https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/185#issuecomment-5749260856
