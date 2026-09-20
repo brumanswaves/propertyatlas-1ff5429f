@@ -240,9 +240,40 @@ async function gatherSections(page) {
       // The provider original is licensed for worker review, not customer redistribution.
       await page.getByLabel("The document license permits sharing the original with this customer.", { exact: true }).uncheck();
     }
-    const extracted = page.waitForResponse((r) => r.url().endsWith("/functions/v1/extract-erf-asset") && r.request().method() === "POST");
     const input = category === "sg_diagram" ? page.locator('input[type="file"]').first() : page.locator(`input[type="file"][accept="${accept}"]`);
-    await input.setInputFiles({ name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() });
+    const file = { name: `SYNTHETIC-${category}.pdf`, mimeType: "application/pdf", buffer: syntheticPdf() };
+    const extractionResponse = () => page.waitForResponse((r) => r.url().endsWith("/functions/v1/extract-erf-asset") && r.request().method() === "POST");
+    let extracted;
+    if (category === "sg_diagram") {
+      // PR #185 deliberately separates receipt/preview from optional reading.
+      // This local-only fixture must prove that separation before asking its
+      // intercepted synthetic provider to interpret the stored evidence.
+      const extractionRequests = [];
+      const recordExtraction = (request) => {
+        if (request.url().endsWith("/functions/v1/extract-erf-asset") && request.method() === "POST") extractionRequests.push(request);
+      };
+      page.on("request", recordExtraction);
+      const providerCount = providerRequests.length;
+      await input.setInputFiles(file);
+      const read = page.getByRole("button", { name: "Read diagram", exact: true });
+      await read.waitFor();
+      assert.equal(await read.isEnabled(), false, "SG reading requires its separate explicit consent");
+      const received = await rpc("a", "read_customer_investigation", { p_parcel_id: parcelA });
+      const receipt = received.assets.find((asset) => asset.asset_category === "sg_diagram");
+      assert(receipt, "SG receipt must persist before interpretation");
+      assert.equal(receipt.checksum_sha256, createHash("sha256").update(file.buffer).digest("hex"));
+      assert.equal(extractionRequests.length, 0, "SG upload must not start extraction");
+      assert.equal(providerRequests.length, providerCount, "SG receipt must not contact a provider");
+      await page.getByLabel("I have permission to send the documents I choose to read for AI interpretation. Upload and preview alone do not send them to AI.", { exact: true }).check();
+      extracted = extractionResponse();
+      await read.click();
+      await extracted;
+      assert.equal(extractionRequests.length, 1, "One deliberate reading must issue one extraction request");
+      page.off("request", recordExtraction);
+    } else {
+      extracted = extractionResponse();
+      await input.setInputFiles(file);
+    }
     const response = await extracted; assert.equal(response.status(), 200);
     const result = await response.json(); assert.equal(result.success, true, JSON.stringify(result)); assert.equal(result.identityMatchStatus, "unverified");
     if (category === "sg_diagram") {
@@ -567,15 +598,23 @@ try {
   await customer.goto(`${appUrl}/orders?report=${orderA}`);
   await customer.locator(`[data-review-version="${approved.id}"]`).waitFor();
   assert((await customer.locator("body").innerText()).includes("SYNTHETIC_HUMAN_EDIT"));
-  assert((await customer.locator("body").innerText()).includes("SYNTHETIC_PERSISTED_CHECK"));
   assert.equal(await customer.getByText("Human-reviewed investigation.", { exact: true }).count(), 1);
   const report = customer.locator(`[data-review-version="${approved.id}"]`);
+  // Open the approved progressive-disclosure controls through the actual UI.
+  // Keep all existing evidence assertions; hidden text is not visible acceptance.
+  for (const title of ["Property identity, SG and title", "Planning and deterministic Site Potential",
+    "Market evidence and Strategy assumptions", "Property checks, services and location",
+    "All findings, conflicts and follow-up actions", "Documents, source references and investigation record"]) {
+    await report.locator("summary").filter({ hasText: title }).click();
+  }
+  assert((await report.innerText()).includes("SYNTHETIC_PERSISTED_CHECK"));
   for (const section of ["Property identity and address", "Zoning, planning and building controls", "Sources checked and remaining limitations"]) {
     await report.getByRole("heading", { name: section, exact: true }).waitFor();
   }
   assert((await report.innerText()).includes("T42/2026"));
   assert((await report.innerText()).includes("SYNTHETIC-sg_diagram.pdf"));
   assert.equal(await report.locator("#investigation-site svg").count() > 0, true);
+  await report.locator("summary").filter({ hasText: "Ask Easy Erf about this erf" }).click();
   await customer.getByPlaceholder("Example: What information is missing before I make an offer?", { exact: true }).fill("What evidence remains uncertain in this reviewed report?");
   const asked = customer.waitForResponse((r) => r.url().endsWith("/api/investigations/review") && r.request().postDataJSON()?.action === "ask");
   await customer.getByRole("button", { name: "Ask", exact: true }).tap();

@@ -36,6 +36,14 @@ Retained limits: independent review outstanding; no report merge/publication; sy
 
 ## Security follow-up
 
+## Required integration-check follow-up
+
+The first exact-head isolated run [35503083101](https://github.com/brumanswaves/propertyatlas-1ff5429f/actions/runs/35503083101) failed in the existing browser fixture while waiting for automatic SG extraction. The merged PR #185 behavior intentionally requires separate consent and an explicit Read diagram action. The test now verifies the persisted original checksum and absence of extraction/provider activity after upload, then deliberately invokes only the local intercepted provider. Its delivered-report checks also open the approved evidence sections and Ask panel through their visible controls before asserting their content. All existing ownership, evidence, review, permission, immutable-version and delivery assertions remain. This changes only the isolated verification script, not product source or the live SG authorization. A corrected exact-head result is required; the failed result is not discarded or called product acceptance.
+
+The `src` tree remains identical to c5c814c4. The `scripts` tree identity above describes the packaging revision before this verification repair. Desktop/mobile component screenshots remain applicable because report implementation is unchanged.
+
+## Preview-link security status
+
 The exposed preview URL has not been reopened, copied here or used. Lovable's [official sharing documentation](https://docs.lovable.dev/features/share-project#manage-active-preview-links) describes deleting the single affected entry under Share > Share preview > Your active links; deletion is irreversible and can take up to one minute to propagate. This applies if the exposed URL corresponds to a managed shared preview link. No matching link has been inspected or deleted, and no expiry or invalidation is claimed. The owner must identify the affected entry without sharing its token and perform or specifically authorize that targeted operation. An unmatched publisher token requires Lovable's supported owner/support route; do not reset unrelated credentials.
 
 Immediate tranche: existing approved model and reasoning retained; actual UI selection and billed amount are not independently inspectable here. Additional discretionary cap $0. No paid product AI, purchase, live charge, settings change or new service initiated.
