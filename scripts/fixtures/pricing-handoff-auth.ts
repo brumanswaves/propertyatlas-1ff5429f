@@ -35,6 +35,7 @@ export const supabase = {
       };
       const query = {
         select: () => query,
+        maybeSingle: async () => ({ data: null, error: null }),
         eq: (column: string, value: unknown) => { if (column === "user_id") owner = value; return query; },
         order: () => query,
         abortSignal: () => query,
@@ -57,6 +58,7 @@ export const supabase = {
     return query;
   },
   auth: {
+    updateUser: async () => { throw new Error("Synthetic account save failed. Your edits are still here."); },
     getSession: async () => { const user = fixtureUser(); return { data: { session: user ? { user } : null }, error: null }; },
     getUser: async () => ({ data: { user: fixtureUser() }, error: null }),
     onAuthStateChange: (listener: (event: string, session: { user: User } | null) => void) => {

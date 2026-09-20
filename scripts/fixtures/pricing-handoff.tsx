@@ -4,6 +4,7 @@ import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tan
 import { Route as PricingRoute } from "@/routes/pricing";
 import { Route as OrdersRoute } from "@/routes/orders";
 import { Route as DashboardRoute } from "@/routes/dashboard";
+import { Route as ProfileRoute } from "@/routes/profile";
 import { safeReturnPath } from "@/lib/navigation";
 import { fixtureSignIn } from "./pricing-handoff-auth";
 import { FixtureControls } from "./pricing-handoff-shell";
@@ -18,6 +19,7 @@ const router = createRouter({ routeTree: rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: "/pricing", component: PricingRoute.options.component }),
   createRoute({ getParentRoute: () => rootRoute, path: "/orders", component: OrdersRoute.options.component }),
   createRoute({ getParentRoute: () => rootRoute, path: "/dashboard", component: DashboardRoute.options.component }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: ProfileRoute.options.component }),
   createRoute({ getParentRoute: () => rootRoute, path: "/auth", component: SyntheticAuth }),
 ]) });
 createRoot(document.getElementById("root")!).render(<><RouterProvider router={router} /><FixtureControls /></>);

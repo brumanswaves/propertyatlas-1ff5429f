@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   BadgeCheck,
   CalendarDays,
@@ -66,31 +67,42 @@ function providerLabel(provider: unknown) {
 function AccountPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [profileType, setProfileType] = useState("");
-  const [defaultMarket, setDefaultMarket] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) navigate({ to: "/auth", search: {
+      redirect: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    } });
   }, [loading, navigate, user]);
+  if (loading || !user) return null;
+  return <AccountEditor key={user.id} user={user} />;
+}
 
-  useEffect(() => {
-    if (!user) return;
+function AccountEditor({ user }: { user: User }) {
+  // A refreshed session must not overwrite edits. A different account receives
+  // a new keyed editor, so it cannot inherit this account's fields or pending save.
+  const [initial] = useState(() => {
     const metadata = user.user_metadata ?? {};
     const fullName = metadataText(metadata.full_name) || metadataText(metadata.name);
     const [fallbackFirst = "", ...fallbackLast] = fullName.trim().split(/\s+/).filter(Boolean);
-    setFirstName(metadataText(metadata.first_name) || fallbackFirst);
-    setLastName(metadataText(metadata.last_name) || fallbackLast.join(" "));
-    setDisplayName(metadataText(metadata.display_name) || getUserDisplayName(user));
-    setPhone(metadataText(metadata.phone));
-    setProfileType(metadataText(metadata.profile_type));
-    setDefaultMarket(metadataText(metadata.default_market));
-  }, [user]);
+    return { firstName: metadataText(metadata.first_name) || fallbackFirst,
+      lastName: metadataText(metadata.last_name) || fallbackLast.join(" "),
+      displayName: metadataText(metadata.display_name) || getUserDisplayName(user),
+      phone: metadataText(metadata.phone), profileType: metadataText(metadata.profile_type),
+      defaultMarket: metadataText(metadata.default_market) };
+  });
+  const [firstName, setFirstName] = useState(initial.firstName);
+  const [lastName, setLastName] = useState(initial.lastName);
+  const [displayName, setDisplayName] = useState(initial.displayName);
+  const [phone, setPhone] = useState(initial.phone);
+  const [profileType, setProfileType] = useState(initial.profileType);
+  const [defaultMarket, setDefaultMarket] = useState(initial.defaultMarket);
+  const [saving, setSaving] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const mounted = useRef(true);
+  const savePending = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,14 +110,16 @@ function AccountPage() {
       setIsAdmin(false);
       return;
     }
-    void supabase
+    void Promise.resolve(supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
-      .maybeSingle()
+      .maybeSingle())
       .then(({ data }) => {
         if (!cancelled) setIsAdmin(Boolean(data));
+      }).catch(() => {
+        if (!cancelled) setIsAdmin(false);
       });
     return () => {
       cancelled = true;
@@ -119,12 +133,20 @@ function AccountPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savePending.current) return;
+    savePending.current = true;
     setSaving(true);
     const cleanFirst = firstName.trim();
     const cleanLast = lastName.trim();
     const cleanDisplay = displayName.trim();
     const fullName = [cleanFirst, cleanLast].filter(Boolean).join(" ");
 
+    try {
+    const { data: current, error: sessionError } = await supabase.auth.getSession();
+    if (!mounted.current) return;
+    if (sessionError || current.session?.user.id !== user.id) {
+      throw new Error("Your signed-in account changed. Reload before saving.");
+    }
     const { error } = await supabase.auth.updateUser({
       data: {
         ...(user?.user_metadata ?? {}),
@@ -138,15 +160,15 @@ function AccountPage() {
       },
     });
 
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    if (error) throw error;
+    if (mounted.current) toast.success("Account saved");
+    } catch (error) {
+      if (mounted.current) toast.error(error instanceof Error ? error.message : "Your account could not be saved. Your edits are still here.");
+    } finally {
+      savePending.current = false;
+      if (mounted.current) setSaving(false);
     }
-    toast.success("Account saved");
   }
-
-  if (loading || !user) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -270,7 +292,7 @@ function AccountPage() {
                 Easy Erf does not currently sell a recurring subscription. Third-party provider reports are not purchased through a live Easy Erf checkout today.
               </p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Site Potential beta access and generation allowances are shown in the property workflow where the real entitlement state is available. This account page does not invent a balance or payment history.
+                Your saved investigations and done-for-you reports are available in My Properties. Paid investigation status stays with its property. This account page does not invent a balance or payment history.
               </p>
               <Link
                 to="/pricing"
