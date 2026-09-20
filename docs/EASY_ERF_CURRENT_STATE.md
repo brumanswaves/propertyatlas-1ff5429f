@@ -2,6 +2,18 @@
 
 _Last reconciled: 2026-09-09_
 
+## Source continuation checkpoint, 2026-09-20
+
+This checkpoint supersedes older release-position claims below for the named work. It does not establish production completion.
+
+- Sole-writer continuation PR #188, `codex/product-journey-completion`, is stacked on PR #187. Implementation commit `eb5b028408002f838c5c6467dd21ab985dea052f` prevents stale parcel/account handoffs, retains exact report links through sign-in, separates failed report reads from empty accounts with explicit retry, and removes the demo's obsolete monthly offer.
+- VERIFIED remote PR #187 branch remains `e31a7087b53dd95a0a9d1c4f4dffe794f8f596f6`; report PR #186 remains `565fd980c2519f0b836dd36c62a5237cfa9b3c7a`. Neither was merged or changed by this continuation. Ask-at-top report design is preserved.
+- VERIFIED local component browser cases, including mobile handoff, and focused handoff/report/admin/guided checks passed. Local node-server build, TypeScript, targeted lint and whitespace passed. Exact reproduction and scope: `JOURNEY_RECOVERY_ACCEPTANCE.md`. These are source and synthetic local checks, not live acceptance.
+- The earlier PR #185 synthetic upload allowance was consumed by a failed HTTP 401 attempt. It is not available for retry. No new attachment was created; prior receipt and preservation evidence remain in `HANDOFF_SIGNIN_2026-09-20.md`.
+- Remaining release work: independent review of #188; reconcile the three source candidates under one reviewed integration revision; release only under applicable explicit authorization; then a freshly authorized finite SG/product acceptance against the customer domain and canonical backend. No merge/publication, real payment, provider processing or customer email was performed here. Necessary development use is authorized; account charges are UNKNOWN.
+
+The immediate source review is PR #188: https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/188.
+
 ## Source follow-up: issue #179 (2026-09-14)
 
 The isolated `codex/founder-investigator-dashboards` candidate starts at canonical main `3f7ae873371792b52d343fc47afa92c5669a50bd`. It separates Founder landing/management from the investigator work dashboard using existing Auth roles and unchanged order permissions. It is source work, not a production rollout. Exact candidate checks and browser evidence are recorded in the PR receipt; older production statements below remain historical.
