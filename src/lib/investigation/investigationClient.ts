@@ -45,6 +45,8 @@ export async function prepareCustomerInvestigation(
   }, supabase, existing);
   await assertAccount();
   await flushSavedInvestigation(parcel.id, userId, !data ? stored : undefined);
+  // The final save can outlive the session that started this handoff.
+  await assertAccount();
 }
 export function requireInvestigationResult<T>(result: { data: T; error: { code?: string } | null }): T {
   if (result.error?.code === "40001") throw new Error("This investigation changed. Reload before saving; your changes were not applied.");
