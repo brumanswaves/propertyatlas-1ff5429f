@@ -1,0 +1,23 @@
+{
+  "source": "23ff503828db85b68d56ed5c15c8f5b6f1926ac7",
+  "result": "passed",
+  "proof": "Real isolated Auth/REST/Storage with synthetic external providers; not production acceptance",
+  "results": [
+    "Normal customer sign-in, exact parcel, synthetic SG receipt/reselection, navigation/reload, mobile and sparse report, then actual saved brief into SIMULATED checkout completed.",
+    "SIMULATED payment: signed local webhook persisted exact owner/parcel, duplicate was idempotent, invalid signature and unpaid/expired events created no paid order. No real Stripe checkout.",
+    "SIMULATED payment: signed local webhook persisted exact owner/parcel, duplicate was idempotent, invalid signature and unpaid/expired events created no paid order. No real Stripe checkout.",
+    "Actual five-user Auth and database delegation/cross-customer boundaries passed",
+    "Real local Auth invite accepted and password login verified; investigator role preserved without admin",
+    "Customer original preserved without granting delegated AI processing permission; human-only review selected.",
+    "Actual worker uploads/extraction with fixture provider, user-bound SG/paid evidence, working zoning, comparable, chosen Strategy and accepted deterministic Site Potential persisted in customer file",
+    "Assigned investigator completed saved work; customer cannot read an unapproved report and investigator cannot approve.",
+    "Delayed actual customer-file response cannot restore a workbench after ordinary Back to queue",
+    "Human-only report preserves Ask Easy Erf at the top with AI unavailable and no evidence sent for report generation.",
+    "Delivered customer Print / Save PDF prepared only the authorized frozen report with expanded evidence; its prepared document was exported to PDF locally.",
+    "Combined human-only report contains stored findings and envelope; customer original-sharing rights and exact-order asset route enforced",
+    "Actual approval, existing delivery, synthetic email receipt and duplicate protection; fresh customer combined report; later work cannot rewrite delivered version"
+  ],
+  "errors": [],
+  "productionAccess": false,
+  "liveProviderCalls": 0
+}

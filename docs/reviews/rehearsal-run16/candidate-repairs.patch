@@ -1,0 +1,572 @@
+diff --git a/src/components/humanReview/DeliveredInvestigationReport.tsx b/src/components/humanReview/DeliveredInvestigationReport.tsx
+index 9e539837..6d392817 100644
+--- a/src/components/humanReview/DeliveredInvestigationReport.tsx
++++ b/src/components/humanReview/DeliveredInvestigationReport.tsx
+@@ -1,35 +1,97 @@
+-import { useEffect, useState } from "react";
++import { useEffect, useRef, useState } from "react";
++import { printDeliveredReport } from "@/lib/reports/printDeliveredReport";
+ import { useAuth } from "@/lib/auth/useAuth";
+-import { investigationClient, requireInvestigationResult } from "@/lib/investigation/investigationClient";
+-import { investigationReviewVersionSchema, type InvestigationReviewVersion } from "@/lib/investigation/investigationReviewVersion";
++import {
++  investigationClient,
++  requireInvestigationResult,
++} from "@/lib/investigation/investigationClient";
++import {
++  investigationReviewVersionSchema,
++  type InvestigationReviewVersion,
++} from "@/lib/investigation/investigationReviewVersion";
+ import { SharedInvestigationReport } from "./SharedInvestigationReport";
+ 
+-export function DeliveredInvestigationReport({ orderId, versionId }: { orderId: string; versionId: string }) {
++export function DeliveredInvestigationReport({
++  orderId,
++  versionId,
++}: {
++  orderId: string;
++  versionId: string;
++}) {
+   const { user } = useAuth();
+-  return user ? <CustomerVersion key={`${user.id}:${orderId}:${versionId}`} orderId={orderId} versionId={versionId} userId={user.id} /> : null;
++  return user ? (
++    <CustomerVersion
++      key={`${user.id}:${orderId}:${versionId}`}
++      orderId={orderId}
++      versionId={versionId}
++      userId={user.id}
++    />
++  ) : null;
+ }
+ 
+-function CustomerVersion({ orderId, versionId, userId }: { orderId: string; versionId: string; userId: string }) {
++function CustomerVersion({
++  orderId,
++  versionId,
++  userId,
++}: {
++  orderId: string;
++  versionId: string;
++  userId: string;
++}) {
++  const reportRoot = useRef<HTMLDivElement>(null);
+   const [version, setVersion] = useState<InvestigationReviewVersion | null>(null);
+   const [error, setError] = useState(false);
+   useEffect(() => {
+     const controller = new AbortController();
+     async function load() {
+       try {
+-        const data = requireInvestigationResult(await investigationClient.rpc("read_investigation_review", {
+-          p_order_id: orderId, p_version_id: versionId,
+-        }).abortSignal(controller.signal));
++        const data = requireInvestigationResult(
++          await investigationClient
++            .rpc("read_investigation_review", {
++              p_order_id: orderId,
++              p_version_id: versionId,
++            })
++            .abortSignal(controller.signal),
++        );
+         const result = investigationReviewVersionSchema.parse(data);
+-        if (result.id !== versionId || result.order_id !== orderId || result.customer_id !== userId || !result.delivered_at || !result.approved_at) {
++        if (
++          result.id !== versionId ||
++          result.order_id !== orderId ||
++          result.customer_id !== userId ||
++          !result.delivered_at ||
++          !result.approved_at
++        ) {
+           throw new Error("Report version unavailable");
+         }
+         if (!controller.signal.aborted) setVersion(result);
+-      } catch { if (!controller.signal.aborted) { setVersion(null); setError(true); } }
++      } catch {
++        if (!controller.signal.aborted) {
++          setVersion(null);
++          setError(true);
++        }
++      }
+     }
+     void load();
+     return () => controller.abort();
+   }, [orderId, versionId, userId]);
+-  if (error) return <p role="alert">This delivered investigation version could not be loaded. No other report has been opened.</p>;
++  if (error)
++    return (
++      <p role="alert">
++        This delivered investigation version could not be loaded. No other report has been opened.
++      </p>
++    );
+   if (!version) return <p role="status">Loading your reviewed investigation...</p>;
+-  return <SharedInvestigationReport version={version} assembly={version.report_assembly} />;
++  return (
++    <div ref={reportRoot}>
++      <SharedInvestigationReport
++        version={version}
++        assembly={version.report_assembly}
++        openingControls={{
++          onPrint: () => {
++            if (reportRoot.current) void printDeliveredReport(reportRoot.current);
++          },
++        }}
++      />
++    </div>
++  );
+ }
+diff --git a/src/components/property/dossier/ReportParcelSatelliteMap.tsx b/src/components/property/dossier/ReportParcelSatelliteMap.tsx
+index e72f6186..6405d7df 100644
+--- a/src/components/property/dossier/ReportParcelSatelliteMap.tsx
++++ b/src/components/property/dossier/ReportParcelSatelliteMap.tsx
+@@ -48,7 +48,7 @@ export function ReportParcelSatelliteMap({
+   const usableCenter =
+     center && Number.isFinite(center.lng) && Number.isFinite(center.lat)
+       ? ([center.lng, center.lat] as Coordinate)
+-      : usableRing?.[0] ?? null;
++      : (usableRing?.[0] ?? null);
+ 
+   useEffect(() => {
+     if (!TOKEN || !containerRef.current || !usableCenter) return;
+@@ -61,6 +61,8 @@ export function ReportParcelSatelliteMap({
+       zoom: usableRing ? 16.5 : 18,
+       attributionControl: true,
+       interactive: true,
++      // The delivered-report print helper snapshots this already-rendered map.
++      preserveDrawingBuffer: true,
+     });
+ 
+     map.on("load", () => {
+@@ -100,17 +102,27 @@ export function ReportParcelSatelliteMap({
+         <MapPin className="h-6 w-6 text-[#FF6A00]" />
+         <p className="text-sm font-semibold text-white">{label ?? "Selected erf"}</p>
+         <p className="max-w-sm text-xs leading-5 text-white/60">
+-          Satellite context is unavailable for this saved property location. Easy Erf will not substitute generated imagery.
++          Satellite context is unavailable for this saved property location. Easy Erf will not
++          substitute generated imagery.
+         </p>
+       </div>
+     );
+   }
+ 
+   return (
+-    <div className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]" data-report-satellite-map>
+-      <div ref={containerRef} className="absolute inset-0 min-h-[260px] w-full" aria-label={`Satellite context for ${label ?? "selected erf"}`} />
++    <div
++      className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]"
++      data-report-satellite-map
++    >
++      <div
++        ref={containerRef}
++        className="absolute inset-0 min-h-[260px] w-full"
++        aria-label={`Satellite context for ${label ?? "selected erf"}`}
++      />
+       <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[#0D1B2A]/82 px-3 py-1.5 text-[10px] font-semibold text-white shadow">
+-        {usableRing ? "Satellite context · recorded parcel boundary" : "Satellite context · recorded property location"}
++        {usableRing
++          ? "Satellite context · recorded parcel boundary"
++          : "Satellite context · recorded property location"}
+       </div>
+     </div>
+   );
+diff --git a/src/lib/reports/printDeliveredReport.ts b/src/lib/reports/printDeliveredReport.ts
+new file mode 100644
+index 00000000..c87d1ab0
+--- /dev/null
++++ b/src/lib/reports/printDeliveredReport.ts
+@@ -0,0 +1,83 @@
++/** Print only the selected, already-authorized report, never the account page. */
++export async function printDeliveredReport(root: HTMLElement): Promise<void> {
++  const frame = document.createElement("iframe");
++  frame.title = "Printable delivered Easy Erf Report";
++  frame.setAttribute("aria-hidden", "true");
++  Object.assign(frame.style, {
++    position: "fixed",
++    width: "794px",
++    height: "1123px",
++    opacity: "0",
++    pointerEvents: "none",
++    left: "-10000px",
++  });
++  document.body.appendChild(frame);
++  const target = frame.contentDocument;
++  if (!target || !frame.contentWindow) {
++    frame.remove();
++    return;
++  }
++  target.title = "Easy Erf delivered report";
++  const style = target.createElement("style");
++  style.textContent =
++    "@page{size:A4;margin:14mm}body{margin:0;background:white;color:#0D1B2A}.report-no-print,button,input,textarea{display:none!important}.report-page{width:100%;max-width:none}details{display:block}summary{list-style:none}img{max-width:100%}";
++  const styles = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map(
++    (link) =>
++      new Promise<void>((resolve) => {
++        const copy = target.createElement("link");
++        copy.rel = "stylesheet";
++        copy.href = link.href;
++        copy.onload = copy.onerror = () => resolve();
++        target.head.appendChild(copy);
++      }),
++  );
++  for (const inline of document.querySelectorAll("style"))
++    target.head.appendChild(inline.cloneNode(true));
++  target.head.appendChild(style);
++  const report = root.cloneNode(true) as HTMLElement;
++  // Keep local images usable when the prepared document is exported separately.
++  for (const image of report.querySelectorAll("img")) {
++    image.src = new URL(image.getAttribute("src") ?? "", document.baseURI).href;
++  }
++  const originalCanvases = root.querySelectorAll("canvas");
++  for (const [index, canvas] of [...report.querySelectorAll("canvas")].entries()) {
++    const original = originalCanvases[index];
++    try {
++      const image = target.createElement("img");
++      image.src = original.toDataURL();
++      image.className = canvas.className;
++      image.style.cssText = canvas.style.cssText;
++      image.alt = original.getAttribute("aria-label") ?? "Recorded report map";
++      canvas.replaceWith(image);
++    } catch {
++      const unavailable = target.createElement("p");
++      unavailable.textContent = "Map image unavailable in this export. Refer to the saved report.";
++      canvas.replaceWith(unavailable);
++    }
++  }
++  for (const details of report.querySelectorAll("details")) details.open = true;
++  for (const control of report.querySelectorAll(
++    ".report-no-print, button, input, textarea, iframe, object",
++  ))
++    control.remove();
++  target.body.appendChild(report);
++  const images = [...target.images].map((img) =>
++    img.complete
++      ? Promise.resolve()
++      : new Promise<void>((resolve) => {
++          img.onload = img.onerror = () => resolve();
++        }),
++  );
++  await Promise.race([
++    Promise.all([...styles, ...images, target.fonts.ready]),
++    new Promise((resolve) => window.setTimeout(resolve, 8000)),
++  ]);
++  if (!frame.isConnected || !root.isConnected) {
++    frame.remove();
++    return;
++  }
++  frame.contentWindow.addEventListener("afterprint", () => frame.remove(), { once: true });
++  window.setTimeout(() => frame.remove(), 120000);
++  frame.contentWindow.focus();
++  frame.contentWindow.print();
++}
+diff --git a/src/lib/workbench/__tests__/investigationSyncBaseline.test.ts b/src/lib/workbench/__tests__/investigationSyncBaseline.test.ts
+index 535ef90e..0c14bd69 100644
+--- a/src/lib/workbench/__tests__/investigationSyncBaseline.test.ts
++++ b/src/lib/workbench/__tests__/investigationSyncBaseline.test.ts
+@@ -1,53 +1,158 @@
+ import { describe, expect, it } from "vitest";
+-import { investigationSyncDecision, preserveInvestigationConflict, readInvestigationSyncBaseline, writeInvestigationSyncBaseline } from "../investigationSyncBaseline";
++import {
++  investigationSyncDecision,
++  preserveInvestigationConflict,
++  readInvestigationSyncBaseline,
++  writeInvestigationSyncBaseline,
++} from "../investigationSyncBaseline";
+ 
+ function storage() {
+   const values = new Map<string, string>();
+-  return { values, getItem: (key: string) => values.get(key) ?? null,
+-    setItem: (key: string, value: string) => { values.set(key, value); },
+-    removeItem: (key: string) => { values.delete(key); } };
++  return {
++    values,
++    getItem: (key: string) => values.get(key) ?? null,
++    setItem: (key: string, value: string) => {
++      values.set(key, value);
++    },
++    removeItem: (key: string) => {
++      values.delete(key);
++    },
++  };
+ }
+ 
+ describe("account and parcel scoped investigation synchronization", () => {
++  it("retains a resumed draft when hydration normalizes an untouched envelope", () => {
++    const baseline = {
++      easyErfInvestigation: { currentStepId: "title" },
++      buildEnvelopeInputs: null,
++    };
++    const remote = { ...baseline, buildEnvelopeInputs: {} };
++    const local = {
++      easyErfInvestigation: { currentStepId: "sg-diagram" },
++      buildEnvelopeInputs: null,
++    };
++    expect(investigationSyncDecision(local, remote, baseline, true)).toBe("save-local");
++  });
++  it("normalizes legacy blank envelope overrides without ignoring real edits", () => {
++    const baseline = {
++      buildEnvelopeInputs: { secondaryStreetEdgeIndex: null, maxHeight: "", streetSetback: 5 },
++    };
++    expect(
++      investigationSyncDecision(
++        { buildEnvelopeInputs: { streetSetback: 5 } },
++        baseline,
++        null,
++        true,
++      ),
++    ).toBe("hydrate");
++    expect(
++      investigationSyncDecision(
++        { buildEnvelopeInputs: { streetSetback: 6 } },
++        { buildEnvelopeInputs: { streetSetback: 7 } },
++        baseline,
++        true,
++      ),
++    ).toBe("conflict");
++  });
+   it("retains offline edits when the cloud still matches the acknowledged baseline", () => {
+-    expect(investigationSyncDecision({ zone: "new" }, { zone: "old" }, { zone: "old" }, true)).toBe("save-local");
++    expect(investigationSyncDecision({ zone: "new" }, { zone: "old" }, { zone: "old" }, true)).toBe(
++      "save-local",
++    );
+   });
+   it("hydrates remote edits only when the browser has not changed since acknowledgement", () => {
+-    expect(investigationSyncDecision({ zone: "old" }, { zone: "new" }, { zone: "old" }, true)).toBe("hydrate");
++    expect(investigationSyncDecision({ zone: "old" }, { zone: "new" }, { zone: "old" }, true)).toBe(
++      "hydrate",
++    );
+   });
+   it("does not let a newer timestamp overwrite a genuine competing draft", () => {
+-    expect(investigationSyncDecision({ zone: "local", updatedAt: "2020" }, { zone: "remote", updatedAt: "2030" }, { zone: "base" }, true)).toBe("conflict");
+-    expect(investigationSyncDecision({ zone: "local" }, { zone: "remote" }, null, true)).toBe("conflict");
++    expect(
++      investigationSyncDecision(
++        { zone: "local", updatedAt: "2020" },
++        { zone: "remote", updatedAt: "2030" },
++        { zone: "base" },
++        true,
++      ),
++    ).toBe("conflict");
++    expect(investigationSyncDecision({ zone: "local" }, { zone: "remote" }, null, true)).toBe(
++      "conflict",
++    );
++  });
++  const strategy = (stamp: string, price = "900000") => ({
++    strategyWorkspace: {
++      parcelId: "parcel",
++      activeStrategy: "buy_hold",
++      draftInputs: { purchasePrice: price },
++      draftUpdatedAt: stamp,
++      chosenScenarioId: "chosen",
++      chosenScenarioUpdatedAt: stamp,
++      scenarios: [
++        { id: "chosen", inputs: { purchasePrice: price }, savedAt: "2026-01-01", updatedAt: stamp },
++      ],
++    },
+   });
+-  const strategy = (stamp: string, price = "900000") => ({ strategyWorkspace: {
+-    parcelId: "parcel", activeStrategy: "buy_hold", draftInputs: { purchasePrice: price },
+-    draftUpdatedAt: stamp, chosenScenarioId: "chosen", chosenScenarioUpdatedAt: stamp,
+-    scenarios: [{ id: "chosen", inputs: { purchasePrice: price }, savedAt: "2026-01-01", updatedAt: stamp }],
+-  } });
+   it("restores identical Strategy content despite draft, choice and scenario timestamp drift", () => {
+-    expect(investigationSyncDecision(strategy("2026-01-02"), strategy("2026-01-03"), null, true)).toBe("hydrate");
++    expect(
++      investigationSyncDecision(strategy("2026-01-02"), strategy("2026-01-03"), null, true),
++    ).toBe("hydrate");
+   });
+   it("compares actual edits against the acknowledged Strategy baseline despite timestamp drift", () => {
+-    expect(investigationSyncDecision(strategy("2026-01-03", "910000"), strategy("2026-01-04"),
+-      strategy("2026-01-01"), true)).toBe("save-local");
+-    expect(investigationSyncDecision(strategy("2026-01-03"), strategy("2026-01-04", "920000"),
+-      strategy("2026-01-01"), true)).toBe("hydrate");
+-    expect(investigationSyncDecision(strategy("2026-01-03", "910000"), strategy("2026-01-04", "920000"),
+-      strategy("2026-01-01"), true)).toBe("conflict");
++    expect(
++      investigationSyncDecision(
++        strategy("2026-01-03", "910000"),
++        strategy("2026-01-04"),
++        strategy("2026-01-01"),
++        true,
++      ),
++    ).toBe("save-local");
++    expect(
++      investigationSyncDecision(
++        strategy("2026-01-03"),
++        strategy("2026-01-04", "920000"),
++        strategy("2026-01-01"),
++        true,
++      ),
++    ).toBe("hydrate");
++    expect(
++      investigationSyncDecision(
++        strategy("2026-01-03", "910000"),
++        strategy("2026-01-04", "920000"),
++        strategy("2026-01-01"),
++        true,
++      ),
++    ).toBe("conflict");
+   });
+   it("retains Strategy choice, parcel, inputs and scenario content as substantive differences", () => {
+     const local = strategy("2026-01-02");
+     for (const change of [
+-      { activeStrategy: "flip" }, { chosenScenarioId: "other" }, { parcelId: "other" },
++      { activeStrategy: "flip" },
++      { chosenScenarioId: "other" },
++      { parcelId: "other" },
+       { draftInputs: { purchasePrice: "0" } },
+-      { scenarios: [{ ...local.strategyWorkspace.scenarios[0], inputs: { purchasePrice: "950000" } }] },
++      {
++        scenarios: [
++          { ...local.strategyWorkspace.scenarios[0], inputs: { purchasePrice: "950000" } },
++        ],
++      },
+     ]) {
+-      expect(investigationSyncDecision(local, { strategyWorkspace: { ...local.strategyWorkspace, ...change } }, null, true)).toBe("conflict");
++      expect(
++        investigationSyncDecision(
++          local,
++          { strategyWorkspace: { ...local.strategyWorkspace, ...change } },
++          null,
++          true,
++        ),
++      ).toBe("conflict");
+     }
+   });
+   it("does not ignore similarly named timestamps outside the Strategy workspace", () => {
+-    expect(investigationSyncDecision({ document: { draftUpdatedAt: "a" } },
+-      { document: { draftUpdatedAt: "b" } }, null, true)).toBe("conflict");
++    expect(
++      investigationSyncDecision(
++        { document: { draftUpdatedAt: "a" } },
++        { document: { draftUpdatedAt: "b" } },
++        null,
++        true,
++      ),
++    ).toBe("conflict");
+   });
+   it("scopes acknowledgements and preserves both conflict versions without replacing old backups", () => {
+     const store = storage();
+@@ -59,6 +164,9 @@ describe("account and parcel scoped investigation synchronization", () => {
+     preserveInvestigationConflict(store, "parcel", "A", { zone: "later" }, { zone: "cloud" });
+     const backup = [...store.values.entries()].find(([key]) => key.includes("conflict-backups"));
+     expect(JSON.parse(backup![1])).toHaveLength(2);
+-    expect(JSON.parse(backup![1])[0]).toMatchObject({ local: { zone: "local" }, remote: { zone: "cloud" } });
++    expect(JSON.parse(backup![1])[0]).toMatchObject({
++      local: { zone: "local" },
++      remote: { zone: "cloud" },
++    });
+   });
+ });
+diff --git a/src/lib/workbench/investigationSyncBaseline.ts b/src/lib/workbench/investigationSyncBaseline.ts
+index f0a873da..054d25c6 100644
+--- a/src/lib/workbench/investigationSyncBaseline.ts
++++ b/src/lib/workbench/investigationSyncBaseline.ts
+@@ -1,32 +1,76 @@
+ import { browserScopedParcelKey, type BrowserStorage } from "./erfWorkspaceState";
++import { parseStoredBuildEnvelopeInputs } from "../sitePotential/buildEnvelopeStore";
+ 
+ /** Bookkeeping only: never a second source of investigation facts. */
+-export function readInvestigationSyncBaseline(storage: BrowserStorage, parcelId: string, userId: string, namespace = "investigation") {
++export function readInvestigationSyncBaseline(
++  storage: BrowserStorage,
++  parcelId: string,
++  userId: string,
++  namespace = "investigation",
++) {
+   try {
+-    const value: unknown = JSON.parse(storage.getItem(browserScopedParcelKey(`${namespace}-sync-baseline`, parcelId, userId)) ?? "null");
+-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+-  } catch { return null; }
++    const value: unknown = JSON.parse(
++      storage.getItem(browserScopedParcelKey(`${namespace}-sync-baseline`, parcelId, userId)) ??
++        "null",
++    );
++    return value && typeof value === "object" && !Array.isArray(value)
++      ? (value as Record<string, unknown>)
++      : null;
++  } catch {
++    return null;
++  }
+ }
+ 
+-export function writeInvestigationSyncBaseline(storage: BrowserStorage, parcelId: string, userId: string, value: Record<string, unknown>, namespace = "investigation") {
+-  storage.setItem(browserScopedParcelKey(`${namespace}-sync-baseline`, parcelId, userId), JSON.stringify(value));
++export function writeInvestigationSyncBaseline(
++  storage: BrowserStorage,
++  parcelId: string,
++  userId: string,
++  value: Record<string, unknown>,
++  namespace = "investigation",
++) {
++  storage.setItem(
++    browserScopedParcelKey(`${namespace}-sync-baseline`, parcelId, userId),
++    JSON.stringify(value),
++  );
+ }
+ 
+ export function sameInvestigationContent(left: unknown, right: unknown): boolean {
+   const normalize = (value: unknown, path: string[] = []): unknown => {
++    // The persisted envelope parser treats null/empty legacy values as no
++    // overrides. Compare the same representation on both sides of a reload.
++    if (path.length === 1 && path[0] === "buildEnvelopeInputs") {
++      value = parseStoredBuildEnvelopeInputs(value) ?? {};
++    }
+     if (Array.isArray(value)) return value.map((item) => normalize(item, path));
+     if (!value || typeof value !== "object") return value;
+     // Strategy bookkeeping can drift without changing any financial assumption.
+     const strategyWorkspace = path.length === 1 && path[0] === "strategyWorkspace";
+-    return Object.fromEntries(Object.entries(value).filter(([key]) =>
+-      !["syncedAt", "workspaceUpdatedAt", "updatedAt", "lastViewedAt", "lastMeaningfulActionAt"].includes(key) &&
+-      !(strategyWorkspace && ["draftUpdatedAt", "chosenScenarioUpdatedAt"].includes(key)),
+-    ).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, normalize(item, [...path, key])]));
++    return Object.fromEntries(
++      Object.entries(value)
++        .filter(
++          ([key]) =>
++            ![
++              "syncedAt",
++              "workspaceUpdatedAt",
++              "updatedAt",
++              "lastViewedAt",
++              "lastMeaningfulActionAt",
++            ].includes(key) &&
++            !(strategyWorkspace && ["draftUpdatedAt", "chosenScenarioUpdatedAt"].includes(key)),
++        )
++        .sort(([a], [b]) => a.localeCompare(b))
++        .map(([key, item]) => [key, normalize(item, [...path, key])]),
++    );
+   };
+   return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
+ }
+ 
+-export function investigationSyncDecision(local: unknown, remote: unknown, baseline: unknown, hasLocal: boolean) {
++export function investigationSyncDecision(
++  local: unknown,
++  remote: unknown,
++  baseline: unknown,
++  hasLocal: boolean,
++) {
+   if (!hasLocal || sameInvestigationContent(local, remote)) return "hydrate";
+   if (baseline != null && sameInvestigationContent(local, baseline)) return "hydrate";
+   if (baseline != null && sameInvestigationContent(remote, baseline)) return "save-local";
+@@ -34,9 +78,19 @@ export function investigationSyncDecision(local: unknown, remote: unknown, basel
+ }
+ 
+ /** Keep both versions before an explicit restore, never silently discard a draft. */
+-export function preserveInvestigationConflict(storage: BrowserStorage, parcelId: string, userId: string, local: unknown, remote: unknown) {
++export function preserveInvestigationConflict(
++  storage: BrowserStorage,
++  parcelId: string,
++  userId: string,
++  local: unknown,
++  remote: unknown,
++) {
+   const key = browserScopedParcelKey("investigation-conflict-backups", parcelId, userId);
+   const previous: unknown = JSON.parse(storage.getItem(key) ?? "[]");
+-  if (!Array.isArray(previous)) throw new Error("The existing draft backup cannot be read. Nothing was replaced.");
+-  storage.setItem(key, JSON.stringify([...previous, { capturedAt: new Date().toISOString(), local, remote }]));
++  if (!Array.isArray(previous))
++    throw new Error("The existing draft backup cannot be read. Nothing was replaced.");
++  storage.setItem(
++    key,
++    JSON.stringify([...previous, { capturedAt: new Date().toISOString(), local, remote }]),
++  );
+ }
