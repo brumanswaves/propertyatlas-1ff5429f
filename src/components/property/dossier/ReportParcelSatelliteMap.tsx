@@ -48,7 +48,7 @@ export function ReportParcelSatelliteMap({
   const usableCenter =
     center && Number.isFinite(center.lng) && Number.isFinite(center.lat)
       ? ([center.lng, center.lat] as Coordinate)
-      : usableRing?.[0] ?? null;
+      : (usableRing?.[0] ?? null);
 
   useEffect(() => {
     if (!TOKEN || !containerRef.current || !usableCenter) return;
@@ -61,6 +61,8 @@ export function ReportParcelSatelliteMap({
       zoom: usableRing ? 16.5 : 18,
       attributionControl: true,
       interactive: true,
+      // The delivered-report print helper snapshots this already-rendered map.
+      preserveDrawingBuffer: true,
     });
 
     map.on("load", () => {
@@ -100,17 +102,27 @@ export function ReportParcelSatelliteMap({
         <MapPin className="h-6 w-6 text-[#FF6A00]" />
         <p className="text-sm font-semibold text-white">{label ?? "Selected erf"}</p>
         <p className="max-w-sm text-xs leading-5 text-white/60">
-          Satellite context is unavailable for this saved property location. Easy Erf will not substitute generated imagery.
+          Satellite context is unavailable for this saved property location. Easy Erf will not
+          substitute generated imagery.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]" data-report-satellite-map>
-      <div ref={containerRef} className="absolute inset-0 min-h-[260px] w-full" aria-label={`Satellite context for ${label ?? "selected erf"}`} />
+    <div
+      className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]"
+      data-report-satellite-map
+    >
+      <div
+        ref={containerRef}
+        className="absolute inset-0 min-h-[260px] w-full"
+        aria-label={`Satellite context for ${label ?? "selected erf"}`}
+      />
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[#0D1B2A]/82 px-3 py-1.5 text-[10px] font-semibold text-white shadow">
-        {usableRing ? "Satellite context · recorded parcel boundary" : "Satellite context · recorded property location"}
+        {usableRing
+          ? "Satellite context · recorded parcel boundary"
+          : "Satellite context · recorded property location"}
       </div>
     </div>
   );
