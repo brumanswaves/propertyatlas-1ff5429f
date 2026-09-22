@@ -29,7 +29,7 @@ try{for(const name of ['delayed','ready','image-failure','preview-failure','map-
    await page.screenshot({path:out+'/settled-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/settled-mobile.png',fullPage:true});
    const html=await frame.locator('html').evaluate(e=>e.outerHTML);const exportPage=await context.newPage();await exportPage.setContent(html,{waitUntil:'networkidle'});await exportPage.pdf({path:out+'/delayed-ready-export.pdf',format:'A4',printBackground:true});await exportPage.close();
    await page.evaluate(()=>window.change('signout'));
-   assert.equal(await page.locator('iframe[title="Printable delivered Easy Erf Report"]').count(),0,'Sign-out removes a prepared frame too');
+   await page.locator('iframe[title="Printable delivered Easy Erf Report"]').waitFor({state:'detached'});
   }
   results.push({case:name,result:'passed',assertion:'Settled SG/map or labelled terminal fallback captured once.'});
  }
