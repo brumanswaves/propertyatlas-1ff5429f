@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin } from "lucide-react";
@@ -35,11 +35,14 @@ export function ReportParcelSatelliteMap({
   ring,
   center,
   label,
+  onPreviewSettlement,
 }: {
   ring: Coordinate[] | null;
   center?: { lng: number; lat: number } | null;
   label?: string | null;
+  onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
+  const [unavailable, setUnavailable] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const usableRing = useMemo(
     () => (ring && ring.length >= 3 && ring.every(validCoordinate) ? closeRing(ring) : null),
@@ -53,50 +56,85 @@ export function ReportParcelSatelliteMap({
   useEffect(() => {
     if (!TOKEN || !containerRef.current || !usableCenter) return;
 
+    setUnavailable(false);
+    let settle = () => {};
+    const settlement = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    onPreviewSettlement?.(settlement);
+    let terminal = false;
+    let map: mapboxgl.Map | undefined;
+    const fail = () => {
+      if (terminal) return;
+      terminal = true;
+      setUnavailable(true);
+      settle();
+    };
+    const timer = window.setTimeout(fail, 8000);
     mapboxgl.accessToken = TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: usableCenter,
-      zoom: usableRing ? 16.5 : 18,
-      attributionControl: true,
-      interactive: true,
-      // The delivered-report print helper snapshots this already-rendered map.
-      preserveDrawingBuffer: true,
-    });
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/satellite-streets-v12",
+        center: usableCenter,
+        zoom: usableRing ? 16.5 : 18,
+        attributionControl: true,
+        interactive: true,
+        // The delivered-report print helper snapshots this already-rendered map.
+        preserveDrawingBuffer: true,
+      });
 
-    map.on("load", () => {
-      if (usableRing) {
-        map.addSource("report-parcel", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: { type: "Polygon", coordinates: [usableRing] },
-          },
+      const activeMap = map;
+      map.on("error", fail);
+      map.on("load", () => {
+        if (terminal) return;
+        const map = activeMap;
+        if (usableRing) {
+          map.addSource("report-parcel", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: { type: "Polygon", coordinates: [usableRing] },
+            },
+          });
+          map.addLayer({
+            id: "report-parcel-fill",
+            type: "fill",
+            source: "report-parcel",
+            paint: { "fill-color": "#FF6A00", "fill-opacity": 0.12 },
+          });
+          map.addLayer({
+            id: "report-parcel-outline",
+            type: "line",
+            source: "report-parcel",
+            paint: { "line-color": "#FF6A00", "line-width": 3 },
+          });
+          map.fitBounds(boundsFor(usableRing), { padding: 54, maxZoom: 19, duration: 0 });
+        } else {
+          new mapboxgl.Marker({ color: "#FF6A00" }).setLngLat(usableCenter).addTo(map);
+        }
+        map.once("idle", () => {
+          if (terminal) return;
+          terminal = true;
+          clearTimeout(timer);
+          settle();
         });
-        map.addLayer({
-          id: "report-parcel-fill",
-          type: "fill",
-          source: "report-parcel",
-          paint: { "fill-color": "#FF6A00", "fill-opacity": 0.12 },
-        });
-        map.addLayer({
-          id: "report-parcel-outline",
-          type: "line",
-          source: "report-parcel",
-          paint: { "line-color": "#FF6A00", "line-width": 3 },
-        });
-        map.fitBounds(boundsFor(usableRing), { padding: 54, maxZoom: 19, duration: 0 });
-      } else {
-        new mapboxgl.Marker({ color: "#FF6A00" }).setLngLat(usableCenter).addTo(map);
-      }
-    });
+        map.triggerRepaint();
+      });
+    } catch {
+      fail();
+    }
 
-    return () => map.remove();
-  }, [usableCenter?.[0], usableCenter?.[1], usableRing]);
+    return () => {
+      terminal = true;
+      clearTimeout(timer);
+      settle();
+      map?.remove();
+    };
+  }, [usableCenter?.[0], usableCenter?.[1], usableRing, onPreviewSettlement]);
 
-  if (!TOKEN || !usableCenter) {
+  if (!TOKEN || !usableCenter || unavailable) {
     return (
       <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-[#0D1B2A] p-8 text-center text-white/70">
         <MapPin className="h-6 w-6 text-[#FF6A00]" />

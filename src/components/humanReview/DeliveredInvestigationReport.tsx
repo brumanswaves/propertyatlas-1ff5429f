@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { printDeliveredReport } from "@/lib/reports/printDeliveredReport";
 import { useAuth } from "@/lib/auth/useAuth";
 import {
@@ -39,10 +39,17 @@ function CustomerVersion({
   userId: string;
 }) {
   const reportRoot = useRef<HTMLDivElement>(null);
+  const settlements = useRef<Promise<void>[]>([]);
+  const printController = useRef<AbortController | null>(null);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const registerPreview = useCallback((settlement: Promise<void>) => {
+    settlements.current.push(settlement);
+  }, []);
   const [version, setVersion] = useState<InvestigationReviewVersion | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
+    printController.current = controller;
     async function load() {
       try {
         const data = requireInvestigationResult(
@@ -83,12 +90,32 @@ function CustomerVersion({
   if (!version) return <p role="status">Loading your reviewed investigation...</p>;
   return (
     <div ref={reportRoot}>
+      {printError && (
+        <p role="alert" className="report-no-print">
+          {printError}
+        </p>
+      )}
       <SharedInvestigationReport
+        onPreviewSettlement={registerPreview}
         version={version}
         assembly={version.report_assembly}
         openingControls={{
           onPrint: () => {
-            if (reportRoot.current) void printDeliveredReport(reportRoot.current);
+            const root = reportRoot.current;
+            const signal = printController.current?.signal;
+            if (!root || !signal || signal.aborted) return;
+            setPrintError(null);
+            void printDeliveredReport(root, {
+              signal,
+              settlements: () => settlements.current,
+            }).catch((error: unknown) => {
+              if (!signal.aborted)
+                setPrintError(
+                  error instanceof Error
+                    ? error.message
+                    : "Report preparation failed. Nothing was printed.",
+                );
+            });
           },
         }}
       />
