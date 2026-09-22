@@ -345,7 +345,8 @@ describe("SG lineage section model", () => {
     expect(html).toContain("User-confirmed attachment, not official verification");
     expect(html).toContain("You attached this document to this erf. Its readable findings are user-supplied evidence; this does not replace official cadastral verification.");
     expect(html).toContain("parent context");
-    expect(html).toContain("No visual preview was generated for this diagram.");
+    expect(html).toContain("Loading authorized diagram preview");
+    expect(html).not.toContain("No visual preview was generated for this diagram.");
     expect(html).toContain("The document shows a cadastral diagram reference.");
   });
 

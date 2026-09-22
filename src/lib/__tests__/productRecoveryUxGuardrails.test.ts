@@ -60,7 +60,7 @@ describe("Easy Erf product recovery guardrails", () => {
     expect(satelliteMap).toContain("mapbox://styles/mapbox/satellite-streets-v12");
     expect(satelliteMap).toContain("data-report-satellite-map");
     expect(satelliteMap).toContain("recorded parcel boundary");
-    expect(satelliteMap).toContain("will not substitute generated imagery");
+    expect(satelliteMap.replace(/\s+/g, " ")).toContain("will not substitute generated imagery");
   });
 
   it("keeps human-only delivery language independent of AI generation", () => {

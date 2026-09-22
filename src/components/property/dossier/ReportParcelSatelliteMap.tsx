@@ -42,7 +42,7 @@ export function ReportParcelSatelliteMap({
   label?: string | null;
   onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
-  const [unavailable, setUnavailable] = useState(false);
+  const [unavailable, setUnavailable] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const usableRing = useMemo(
     () => (ring && ring.length >= 3 && ring.every(validCoordinate) ? closeRing(ring) : null),
@@ -53,10 +53,12 @@ export function ReportParcelSatelliteMap({
       ? ([center.lng, center.lat] as Coordinate)
       : (usableRing?.[0] ?? null);
 
+  const visualKey = JSON.stringify([usableCenter, usableRing]);
+
   useEffect(() => {
     if (!TOKEN || !containerRef.current || !usableCenter) return;
 
-    setUnavailable(false);
+    setUnavailable(null);
     let settle = () => {};
     const settlement = new Promise<void>((resolve) => {
       settle = resolve;
@@ -67,7 +69,7 @@ export function ReportParcelSatelliteMap({
     const fail = () => {
       if (terminal) return;
       terminal = true;
-      setUnavailable(true);
+      setUnavailable(visualKey);
       settle();
     };
     const timer = window.setTimeout(fail, 8000);
@@ -132,9 +134,9 @@ export function ReportParcelSatelliteMap({
       settle();
       map?.remove();
     };
-  }, [usableCenter?.[0], usableCenter?.[1], usableRing, onPreviewSettlement]);
+  }, [usableCenter?.[0], usableCenter?.[1], usableRing, onPreviewSettlement, visualKey]);
 
-  if (!TOKEN || !usableCenter || unavailable) {
+  if (!TOKEN || !usableCenter || unavailable === visualKey) {
     return (
       <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-[#0D1B2A] p-8 text-center text-white/70">
         <MapPin className="h-6 w-6 text-[#FF6A00]" />
