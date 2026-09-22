@@ -1,0 +1,675 @@
+
+ RUN  v4.1.11 [validation-checkout]
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > requires expectedParcelId
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"ab92110f-04e8-4fe1-843b-b028f46ba48a","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > never downloads or calls OpenAI when expectedParcelId is wrong
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"6ebb2908-a650-4d8c-a84e-8fb434f24924","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > never downloads or calls OpenAI when expectedParcelId is wrong
+{"fn":"extract-erf-asset","stage":"parcel_binding_rejected","requestId":"6ebb2908-a650-4d8c-a84e-8fb434f24924"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > rejects an oversized request body before parsing
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"8f0e2e65-9f84-43e7-8073-b718931622bc","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > refuses a paid report that is not a PDF without calling OpenAI
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"9e446473-da3a-494d-a094-e75060c1928d","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset request binding > refuses a paid report that is not a PDF without calling OpenAI
+{"fn":"extract-erf-asset","stage":"paid_report_not_pdf","requestId":"9e446473-da3a-494d-a094-e75060c1928d"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps PDF extraction on the existing synchronous Chat Completions path
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"9c73079f-67e1-426e-b796-b867f930d7f8","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps PDF extraction on the existing synchronous Chat Completions path
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"9c73079f-67e1-426e-b796-b867f930d7f8","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps PDF extraction on the existing synchronous Chat Completions path
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"9c73079f-67e1-426e-b796-b867f930d7f8","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"9c73079f-67e1-426e-b796-b867f930d7f8","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"9c73079f-67e1-426e-b796-b867f930d7f8","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > starts a private, expiring fast TIFF preprocessing job and returns processing
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"274f7f7d-e298-4fb2-a555-27c95769f8bf","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > starts a private, expiring fast TIFF preprocessing job and returns processing
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_started","requestId":"274f7f7d-e298-4fb2-a555-27c95769f8bf","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > polls a running TIFF job without downloading or restarting it
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"3c2eb255-b9e7-4911-b888-23d5fd576931","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_completed","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","imageCount":5}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"sg_fast_extract_started","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","imageCount":5}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"sg_fast_extract_completed","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","imageCount":5,"claimCount":0}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sends exactly five ordered preprocessed images through the normal extraction contract
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"270c8795-1e5e-46f1-8139-98b7612386ee","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses the deep Code Interpreter review only when the fast preprocessor has unusable images
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"a21b4989-8512-4902-8fb6-0a9bf157d8c3","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses the deep Code Interpreter review only when the fast preprocessor has unusable images
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_completed","requestId":"a21b4989-8512-4902-8fb6-0a9bf157d8c3","imageCount":4}
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_unusable","requestId":"a21b4989-8512-4902-8fb6-0a9bf157d8c3","imageCount":4,"reasonCode":"expected_five_images"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses the deep Code Interpreter review only when the fast preprocessor has unusable images
+{"fn":"extract-erf-asset","stage":"sg_deep_fallback_started","requestId":"a21b4989-8512-4902-8fb6-0a9bf157d8c3","reasonCode":"preprocess_images_unavailable"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > falls back to deep review when the fast preprocessing response fails
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"abe31fd0-d5d9-4691-a337-97822112e1db","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > falls back to deep review when the fast preprocessing response fails
+{"fn":"extract-erf-asset","stage":"sg_deep_fallback_started","requestId":"abe31fd0-d5d9-4691-a337-97822112e1db","reasonCode":"preprocess_failed"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > recovers an expired TIFF response (404) into a retryable failed asset
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"d83f8659-5eea-451d-8605-66697a72f74c","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > recovers an expired TIFF response (410) into a retryable failed asset
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"e826b8f5-c421-4be4-ac3d-c9e4a7c137e4","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps TIFF job metadata for a transient background retrieve failure
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"2868ca2f-07b9-4799-ad2c-1379b661a0f1","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps TIFF job metadata for a transient background retrieve failure
+{"fn":"extract-erf-asset","stage":"openai_background_poll_failed","requestId":"2868ca2f-07b9-4799-ad2c-1379b661a0f1","errorClass":"OpenAiTiffBackgroundError"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > can start a fresh TIFF review after recovering an expired response
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"58c2323c-dc0b-4da3-9652-4b784578d896","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > can start a fresh TIFF review after recovering an expired response
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"20d1a324-df25-4252-a1cd-85c75cb93e71","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > can start a fresh TIFF review after recovering an expired response
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_started","requestId":"20d1a324-df25-4252-a1cd-85c75cb93e71","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > normalizes a completed TIFF result through the canonical identity and claim gates
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"7663d111-8cd3-47e3-afd8-6cd24eb15ab7","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > normalizes a completed TIFF result through the canonical identity and claim gates
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"7663d111-8cd3-47e3-afd8-6cd24eb15ab7","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > normalizes a completed TIFF result through the canonical identity and claim gates
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"7663d111-8cd3-47e3-afd8-6cd24eb15ab7","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"7663d111-8cd3-47e3-afd8-6cd24eb15ab7","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > stores the temporary Code Interpreter image as a private derived preview
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"49513211-7189-4868-8818-75cdf402737e","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > stores the temporary Code Interpreter image as a private derived preview
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"49513211-7189-4868-8818-75cdf402737e","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > stores the temporary Code Interpreter image as a private derived preview
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"49513211-7189-4868-8818-75cdf402737e","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"49513211-7189-4868-8818-75cdf402737e","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > authenticates a temporary preview only when it is hosted by the OpenAI API
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"64be8c7b-cc9e-4af1-9aff-d4bd2b4be2e3","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > authenticates a temporary preview only when it is hosted by the OpenAI API
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"64be8c7b-cc9e-4af1-9aff-d4bd2b4be2e3","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > authenticates a temporary preview only when it is hosted by the OpenAI API
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"64be8c7b-cc9e-4af1-9aff-d4bd2b4be2e3","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"64be8c7b-cc9e-4af1-9aff-d4bd2b4be2e3","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sniffs a PNG overview when the temporary response has a generic MIME header
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"540b7f4a-7189-4083-8280-20ffaaea3c5f","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sniffs a PNG overview when the temporary response has a generic MIME header
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"540b7f4a-7189-4083-8280-20ffaaea3c5f","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > sniffs a PNG overview when the temporary response has a generic MIME header
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"540b7f4a-7189-4083-8280-20ffaaea3c5f","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"540b7f4a-7189-4083-8280-20ffaaea3c5f","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects invalid preview bytes without failing the completed TIFF extraction
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"62d3b283-91b5-4688-9a40-0b166afedec4","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects invalid preview bytes without failing the completed TIFF extraction
+{"fn":"extract-erf-asset","stage":"sg_preview_invalid_mime","requestId":"62d3b283-91b5-4688-9a40-0b166afedec4","mime":"application/octet-stream","bytes":4,"reasonCode":"unsupported_image"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects invalid preview bytes without failing the completed TIFF extraction
+{"fn":"extract-erf-asset","stage":"sg_preview_missing","requestId":"62d3b283-91b5-4688-9a40-0b166afedec4","reasonCode":"no_image_output"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects invalid preview bytes without failing the completed TIFF extraction
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"62d3b283-91b5-4688-9a40-0b166afedec4","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"62d3b283-91b5-4688-9a40-0b166afedec4","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps the five-megabyte preview limit non-fatal
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"a0b6af09-c645-4080-a780-607b880e2181","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps the five-megabyte preview limit non-fatal
+{"fn":"extract-erf-asset","stage":"sg_preview_too_large","requestId":"a0b6af09-c645-4080-a780-607b880e2181","bytes":5242881,"reasonCode":"max_5mb"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps the five-megabyte preview limit non-fatal
+{"fn":"extract-erf-asset","stage":"sg_preview_missing","requestId":"a0b6af09-c645-4080-a780-607b880e2181","reasonCode":"no_image_output"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps the five-megabyte preview limit non-fatal
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"a0b6af09-c645-4080-a780-607b880e2181","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"a0b6af09-c645-4080-a780-607b880e2181","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not fail a completed TIFF extraction when preview storage fails
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"af68d6cc-32bb-4bef-aade-da605cbe4743","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not fail a completed TIFF extraction when preview storage fails
+{"fn":"extract-erf-asset","stage":"sg_preview_upload_failed","requestId":"af68d6cc-32bb-4bef-aade-da605cbe4743","status":500,"mime":"image/png","bytes":8,"reasonCode":"storage_http_error"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not fail a completed TIFF extraction when preview storage fails
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"af68d6cc-32bb-4bef-aade-da605cbe4743","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"af68d6cc-32bb-4bef-aade-da605cbe4743","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a General Plan with the target erf visible confirmable and filters its claims safely
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"029f7471-d624-488b-ba0e-465de44f580e","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a General Plan with the target erf visible confirmable and filters its claims safely
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"029f7471-d624-488b-ba0e-465de44f580e","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a General Plan with the target erf visible confirmable and filters its claims safely
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"029f7471-d624-488b-ba0e-465de44f580e","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":132,"claimCount":2,"documentErfNumber":"1496","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"identity_requires_review","requestId":"029f7471-d624-488b-ba0e-465de44f580e","identityMatchStatus":"unverified"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses user-confirmed paid-report lineage as supporting provenance for a parent General Plan
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"66e98f02-bc88-4ca0-9a8f-01d9a2f7c8ca","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses user-confirmed paid-report lineage as supporting provenance for a parent General Plan
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"66e98f02-bc88-4ca0-9a8f-01d9a2f7c8ca","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > uses user-confirmed paid-report lineage as supporting provenance for a parent General Plan
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"66e98f02-bc88-4ca0-9a8f-01d9a2f7c8ca","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":61,"claimCount":1,"documentErfNumber":"1496","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":true,"knownGeneralPlanReferencePresent":true}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"66e98f02-bc88-4ca0-9a8f-01d9a2f7c8ca","status":"ready","claimCount":1,"identityMatchStatus":"parent_lineage_match","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not use stale user-confirmed mismatch metadata as parent-plan lineage
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"d2467835-5ab1-4584-a085-49c1efdec6ea","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not use stale user-confirmed mismatch metadata as parent-plan lineage
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"d2467835-5ab1-4584-a085-49c1efdec6ea","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > does not use stale user-confirmed mismatch metadata as parent-plan lineage
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"d2467835-5ab1-4584-a085-49c1efdec6ea","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":61,"claimCount":1,"documentErfNumber":"1496","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"identity_requires_review","requestId":"d2467835-5ab1-4584-a085-49c1efdec6ea","identityMatchStatus":"mismatch"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects free-form background prose and cleans up instead of bypassing the contract
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"3769034c-a99e-4e98-b803-5c8df8eca98c","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects free-form background prose and cleans up instead of bypassing the contract
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"3769034c-a99e-4e98-b803-5c8df8eca98c","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > rejects free-form background prose and cleans up instead of bypassing the contract
+{"fn":"extract-erf-asset","stage":"malformed_model_response","requestId":"3769034c-a99e-4e98-b803-5c8df8eca98c"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > attempts file cleanup when the background request cannot start
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"03499f3e-ec06-4838-9c01-b5477694847a","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > attempts file cleanup when the background request cannot start
+{"fn":"extract-erf-asset","stage":"sg_fast_preprocess_started","requestId":"03499f3e-ec06-4838-9c01-b5477694847a","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > attempts file cleanup when the background request cannot start
+{"fn":"extract-erf-asset","stage":"openai_background_start_failed","requestId":"03499f3e-ec06-4838-9c01-b5477694847a","errorClass":"OpenAiTiffBackgroundError"}
+{"fn":"extract-erf-asset","stage":"sg_deep_fallback_started","requestId":"03499f3e-ec06-4838-9c01-b5477694847a","reasonCode":"preprocess_start_failed"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a good canonical result when temporary resource cleanup fails
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"e435797d-5072-456f-b0d6-61745002de90","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a good canonical result when temporary resource cleanup fails
+{"fn":"extract-erf-asset","stage":"sg_preview_stored","requestId":"e435797d-5072-456f-b0d6-61745002de90","mime":"image/png","bytes":8}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a good canonical result when temporary resource cleanup fails
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"e435797d-5072-456f-b0d6-61745002de90","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":49,"claimCount":1,"documentErfNumber":"1570","documentSgCode":"GP12252","looksLikeGeneralPlan":true,"documentGeneralPlanReference":"GP12252","knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"e435797d-5072-456f-b0d6-61745002de90","status":"ready","claimCount":1,"identityMatchStatus":"matched","generalPlanSubjectSupport":true}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset TIFF background review > keeps a good canonical result when temporary resource cleanup fails
+{"fn":"extract-erf-asset","stage":"openai_cleanup_incomplete","requestId":"e435797d-5072-456f-b0d6-61745002de90"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > only lets one of two concurrent requests reach OpenAI
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"7a5334e7-b30d-43f2-b6d5-8da6fa634559","caller":"user"}
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"b4c16657-2c65-436f-9d50-e8d4140a62b8","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > only lets one of two concurrent requests reach OpenAI
+{"fn":"extract-erf-asset","stage":"lock_contended","requestId":"b4c16657-2c65-436f-9d50-e8d4140a62b8"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > only lets one of two concurrent requests reach OpenAI
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"7a5334e7-b30d-43f2-b6d5-8da6fa634559","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > only lets one of two concurrent requests reach OpenAI
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"7a5334e7-b30d-43f2-b6d5-8da6fa634559","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"7a5334e7-b30d-43f2-b6d5-8da6fa634559","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"7a5334e7-b30d-43f2-b6d5-8da6fa634559","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > returns 409 while a fresh processing lock is held
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"9c521660-251e-49f6-9a5c-b9f94ac7c0dc","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > returns 409 while a fresh processing lock is held
+{"fn":"extract-erf-asset","stage":"already_processing","requestId":"9c521660-251e-49f6-9a5c-b9f94ac7c0dc"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > recovers from a stale processing lock
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"8a5b6f7f-56eb-4822-b269-004dda14d1e5","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > recovers from a stale processing lock
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"8a5b6f7f-56eb-4822-b269-004dda14d1e5","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > recovers from a stale processing lock
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"8a5b6f7f-56eb-4822-b269-004dda14d1e5","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"8a5b6f7f-56eb-4822-b269-004dda14d1e5","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"8a5b6f7f-56eb-4822-b269-004dda14d1e5","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > does not reprocess a current matched ready asset
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"9d3fb42c-2242-4a64-b1ea-a65970da4984","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > does not reprocess a current matched ready asset
+{"fn":"extract-erf-asset","stage":"idempotent_ready","requestId":"9d3fb42c-2242-4a64-b1ea-a65970da4984"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > ignores a browser retry flag on a current matched ready asset
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"4141c269-66fa-481d-841a-2ed30840523d","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > ignores a browser retry flag on a current matched ready asset
+{"fn":"extract-erf-asset","stage":"idempotent_ready","requestId":"4141c269-66fa-481d-841a-2ed30840523d"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > surfaces a failed metadata write instead of pretending success
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"ba46f858-aef8-49e6-a134-907a5d44bc6e","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset concurrency and idempotency > surfaces a failed metadata write instead of pretending success
+{"fn":"extract-erf-asset","stage":"paid_report_not_pdf","requestId":"ba46f858-aef8-49e6-a134-907a5d44bc6e"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > uses upload-bound parcel context before an Erf File bookmark exists
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"f34ff845-5acb-4bc5-8911-7eba0d237312","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > uses upload-bound parcel context before an Erf File bookmark exists
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"f34ff845-5acb-4bc5-8911-7eba0d237312","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > uses upload-bound parcel context before an Erf File bookmark exists
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"f34ff845-5acb-4bc5-8911-7eba0d237312","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"f34ff845-5acb-4bc5-8911-7eba0d237312","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"f34ff845-5acb-4bc5-8911-7eba0d237312","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > preserves readable extraction when identity needs confirmation
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"2638c523-8e0f-4185-8573-55817dfa15eb","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > preserves readable extraction when identity needs confirmation
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"2638c523-8e0f-4185-8573-55817dfa15eb","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > preserves readable extraction when identity needs confirmation
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"2638c523-8e0f-4185-8573-55817dfa15eb","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"2638c523-8e0f-4185-8573-55817dfa15eb","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":41,"claimCount":1,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"identity_requires_review","requestId":"2638c523-8e0f-4185-8573-55817dfa15eb","identityMatchStatus":"unverified"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > keeps a readable wrong-property result for explanation but does not mark it matched
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"81e4c552-c8e2-48de-9c89-f3b1507eec4a","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > keeps a readable wrong-property result for explanation but does not mark it matched
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"81e4c552-c8e2-48de-9c89-f3b1507eec4a","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > keeps a readable wrong-property result for explanation but does not mark it matched
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"81e4c552-c8e2-48de-9c89-f3b1507eec4a","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"81e4c552-c8e2-48de-9c89-f3b1507eec4a","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":50,"claimCount":1,"documentErfNumber":"262","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"identity_requires_review","requestId":"81e4c552-c8e2-48de-9c89-f3b1507eec4a","identityMatchStatus":"mismatch"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > stores a matched document as searchable evidence
+{"fn":"extract-erf-asset","stage":"auth_ok","requestId":"3d47a329-17b1-4738-9c26-c221ef97b674","caller":"user"}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > stores a matched document as searchable evidence
+{"fn":"extract-erf-asset","stage":"openai_request_start","requestId":"3d47a329-17b1-4738-9c26-c221ef97b674","model":"gpt-4.1-mini","bytes":3}
+
+stdout | src/lib/evidence/__tests__/extractErfAssetFunction.test.ts > extract-erf-asset identity gate > stores a matched document as searchable evidence
+{"fn":"extract-erf-asset","stage":"openai_response","requestId":"3d47a329-17b1-4738-9c26-c221ef97b674","status":200}
+{"fn":"extract-erf-asset","stage":"identity_inputs","requestId":"3d47a329-17b1-4738-9c26-c221ef97b674","assetId":"6a8a1f2c-0000-4000-8000-000000000000","normalizedImageCount":0,"normalizedSourcePageCount":0,"normalizedPageSizes":[],"documentTypePresent":true,"extractedTextChars":23,"claimCount":0,"documentErfNumber":"1570","documentSgCode":null,"looksLikeGeneralPlan":false,"documentGeneralPlanReference":null,"knownParentErfPresent":false,"knownGeneralPlanReferencePresent":false}
+{"fn":"extract-erf-asset","stage":"extraction_ready","requestId":"3d47a329-17b1-4738-9c26-c221ef97b674","status":"partial","claimCount":0,"identityMatchStatus":"matched","generalPlanSubjectSupport":false}
+
+ ✓ src/lib/evidence/__tests__/extractErfAssetFunction.test.ts (37 tests) 491ms
+ ✓ src/lib/reports/__tests__/buildInvestorDecisionMode.test.ts (62 tests) 371ms
+ ✓ src/components/property/dossier/__tests__/reportRender.test.tsx (43 tests) 203ms
+ ✓ src/components/property/investigation/__tests__/guidedVaultEvidenceSteps.test.tsx (22 tests) 235ms
+ ✓ src/lib/auth/__tests__/accountAccess.test.ts (18 tests) 222ms
+ ✓ src/lib/investigation/__tests__/sharedInvestigation.test.ts (18 tests) 302ms
+ ✓ src/lib/investigation/__tests__/independentEvidence.test.ts (6 tests) 361ms
+ ✓ src/lib/admin/__tests__/founderSupportBackend.test.ts (16 tests) 253ms
+ ✓ src/lib/investigation/__tests__/investigationServers.test.ts (13 tests) 367ms
+ ✓ src/lib/reports/__tests__/askEasyErf.test.ts (58 tests) 775ms
+ ✓ src/lib/investigation/__tests__/humanOnlyReview.test.tsx (8 tests) 439ms
+ ✓ src/lib/reports/__tests__/askEasyErfCanonicalisation.test.ts (12 tests) 188ms
+ ✓ src/lib/evidence/__tests__/buildPropertyEvidencePack.test.ts (17 tests) 202ms
+ ✓ src/lib/reports/__tests__/reportPresentation.test.tsx (6 tests) 672ms
+ ✓ src/components/property/dossier/__tests__/propertyFirstRead.test.tsx (9 tests) 208ms
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounded answer for a broad risk question
+{"fn":"ask-easy-erf-openai","stage":"auth_ok","requestId":"fixture-request-id","caller":"internal"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounded answer for a broad risk question
+{"fn":"ask-easy-erf-openai","stage":"openai_request_start","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounded answer for a broad risk question
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":1}
+{"fn":"ask-easy-erf-openai","stage":"answer_ready","requestId":"fixture-request-id","referenceCount":2}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > performs exactly one repair retry when the first answer cites nothing
+{"fn":"ask-easy-erf-openai","stage":"auth_ok","requestId":"fixture-request-id","caller":"internal"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > performs exactly one repair retry when the first answer cites nothing
+{"fn":"ask-easy-erf-openai","stage":"openai_request_start","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > performs exactly one repair retry when the first answer cites nothing
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":1}
+{"fn":"ask-easy-erf-openai","stage":"attempt_rejected","requestId":"fixture-request-id","reason":"empty_references"}
+{"fn":"ask-easy-erf-openai","stage":"retry_started","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > performs exactly one repair retry when the first answer cites nothing
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":2}
+{"fn":"ask-easy-erf-openai","stage":"retry_succeeded","requestId":"fixture-request-id"}
+{"fn":"ask-easy-erf-openai","stage":"answer_ready","requestId":"fixture-request-id","referenceCount":1}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounding failure with request id and never retries twice
+{"fn":"ask-easy-erf-openai","stage":"auth_ok","requestId":"fixture-request-id","caller":"internal"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounding failure with request id and never retries twice
+{"fn":"ask-easy-erf-openai","stage":"openai_request_start","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounding failure with request id and never retries twice
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":1}
+{"fn":"ask-easy-erf-openai","stage":"attempt_rejected","requestId":"fixture-request-id","reason":"empty_references"}
+{"fn":"ask-easy-erf-openai","stage":"retry_started","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > returns a grounding failure with request id and never retries twice
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":2}
+{"fn":"ask-easy-erf-openai","stage":"retry_failed","requestId":"fixture-request-id","reason":"empty_references"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > does not retry a malformed-shape response
+{"fn":"ask-easy-erf-openai","stage":"auth_ok","requestId":"fixture-request-id","caller":"internal"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > does not retry a malformed-shape response
+{"fn":"ask-easy-erf-openai","stage":"openai_request_start","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > does not retry a malformed-shape response
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":1}
+{"fn":"ask-easy-erf-openai","stage":"attempt_rejected","requestId":"fixture-request-id","reason":"malformed_shape"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > sends a schema whose refs are limited to the submitted evidence
+{"fn":"ask-easy-erf-openai","stage":"auth_ok","requestId":"fixture-request-id","caller":"internal"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > sends a schema whose refs are limited to the submitted evidence
+{"fn":"ask-easy-erf-openai","stage":"openai_request_start","requestId":"fixture-request-id","model":"gpt-4.1-mini"}
+
+stdout | src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts > deployed Ask Easy Erf edge handler > sends a schema whose refs are limited to the submitted evidence
+{"fn":"ask-easy-erf-openai","stage":"openai_response","requestId":"fixture-request-id","status":200,"attempt":1}
+{"fn":"ask-easy-erf-openai","stage":"answer_ready","requestId":"fixture-request-id","referenceCount":1}
+
+ ✓ src/lib/reports/__tests__/askEasyErfServerGrounding.test.ts (14 tests) 93ms
+ ✓ src/lib/reports/__tests__/buildReportViewModel.test.ts (21 tests) 178ms
+ ✓ src/lib/sitePotential/__tests__/betaEntitlements.test.ts (19 tests) 177ms
+ ✓ src/lib/investigation/__tests__/sharedInvestigationReport.test.tsx (9 tests) 1214ms
+ ✓ src/lib/evidence/__tests__/selectPropertyEvidence.test.ts (14 tests) 136ms
+ ✓ src/lib/reports/__tests__/askEasyErfEdgePath.test.ts (11 tests) 75ms
+ ✓ src/lib/reports/__tests__/askEasyErfDeployedResponse.test.ts (5 tests) 88ms
+ ✓ src/lib/investigation/__tests__/investigationBackend.test.ts (6 tests) 183ms
+ ✓ src/components/property/investigation/__tests__/guidedZoningStep.test.tsx (12 tests) 137ms
+ ✓ src/lib/reports/__tests__/reportFindingsMatrix.test.ts (19 tests) 102ms
+ ✓ src/lib/reports/__tests__/buildDecisionIntelligence.test.ts (6 tests) 101ms
+ ✓ src/lib/evidence/__tests__/evidenceFingerprint.test.ts (11 tests) 115ms
+ ✓ src/components/property/investigation/__tests__/guidedComponents.test.tsx (10 tests) 190ms
+ ✓ src/lib/evidence/__tests__/parcelArea.test.ts (10 tests) 80ms
+ ✓ src/lib/evidence/__tests__/propertyEvidenceContradictions.test.ts (9 tests) 106ms
+ ✓ src/lib/search/__tests__/pilotParcelRegistry.test.ts (5 tests) 112ms
+ ✓ src/lib/reports/__tests__/reportSnapshots.test.ts (18 tests) 107ms
+ ✓ src/lib/localServices/__tests__/server.test.ts (15 tests) 47ms
+ ✓ src/lib/localServices/__tests__/customServiceSearch.test.ts (15 tests) 36ms
+ ✓ src/components/property/__tests__/dossierUx.test.ts (27 tests) 180ms
+ ❯ src/lib/providers/__tests__/publicDataLoader.test.ts (5 tests | 3 failed) 45ms
+     × returns edge proxy features without calling direct fetch 21ms
+     × falls back to direct fetch when the edge proxy returns zero features 8ms
+     × falls back to direct fetch when the edge proxy request fails 3ms
+     ✓ does not retry as JSON when GeoJSON is a valid zero-feature FeatureCollection 8ms
+     ✓ retries the same endpoint as JSON when GeoJSON is an ArcGIS error envelope 3ms
+ ✓ src/lib/evidence/__tests__/propertyEvidenceGaps.test.ts (9 tests) 111ms
+ ✓ src/lib/investigation/__tests__/investigation.test.ts (22 tests) 88ms
+ ✓ src/lib/evidence/__tests__/documentIdentityGate.test.ts (23 tests) 88ms
+ ✓ src/lib/workbench/__tests__/sgReceiptPreview.test.ts (24 tests) 114ms
+ ✓ src/lib/workbench/__tests__/erfAssetExtraction.test.ts (18 tests) 28ms
+ ✓ src/lib/listingImport/__tests__/listingImport.test.ts (10 tests) 62ms
+ ✓ src/lib/evidence/__tests__/parentLineageMatch.test.ts (36 tests) 56ms
+ ✓ src/lib/reports/__tests__/sitePotentialSection.test.ts (7 tests) 41ms
+ ✓ src/lib/sitePotential/__tests__/sitePotentialApiClient.test.ts (3 tests) 12ms
+ ✓ src/lib/sitePotential/__tests__/processWorkerRequest.test.ts (7 tests) 34ms
+ ✓ src/lib/evidence/__tests__/openAiTiffBackgroundOutputs.test.ts (4 tests) 23ms
+ ✓ src/lib/admin/__tests__/founderSupportClient.test.ts (4 tests) 20ms
+ ✓ src/lib/reports/__tests__/reportBodySections.test.ts (9 tests) 50ms
+ ✓ src/routes/api/__tests__/addressSuggestions.test.ts (2 tests) 27ms
+ ✓ src/lib/workbench/__tests__/sgPreviewRepair.test.ts (3 tests) 23ms
+ ✓ src/lib/sitePotential/__tests__/latestPaidPackRequest.test.ts (3 tests) 15ms
+ ✓ src/features/marketEvidence/__tests__/marketEvidence.test.ts (30 tests) 63ms
+ ✓ src/lib/search/__tests__/propertySearch.test.ts (13 tests) 44ms
+ ✓ src/lib/research/__tests__/calculators.test.ts (17 tests) 56ms
+ ✓ src/lib/reports/__tests__/contextSections.test.tsx (15 tests) 119ms
+ ✓ src/components/map/__tests__/searchBarResultMarkup.test.ts (4 tests) 50ms
+ ✓ src/lib/sitePotential/__tests__/sitePotentialEdgeApi.test.ts (2 tests) 23ms
+ ✓ src/components/property/__tests__/simplificationPassB.test.ts (10 tests) 48ms
+ ✓ src/components/property/strategy/__tests__/StrategyLab.test.ts (7 tests) 64ms
+ ✓ src/components/property/investigation/__tests__/guidedReportStep.test.tsx (3 tests) 37ms
+ ✓ src/lib/sitePotential/__tests__/sitePotentialRepair.test.ts (19 tests) 48ms
+ ✓ src/components/property/investigation/__tests__/guidedSitePotentialStep.test.tsx (2 tests) 39ms
+ ✓ src/components/property/investigation/__tests__/planningInvestigationPanel.test.tsx (1 test) 83ms
+ ✓ src/components/property/investigation/__tests__/guidedPropertyChecksStep.test.tsx (7 tests) 41ms
+ ✓ src/lib/sitePotential/__tests__/retryPack.test.ts (12 tests) 43ms
+ ✓ src/lib/workbench/__tests__/erfWorkspaceFiles.test.ts (7 tests) 34ms
+ ✓ src/lib/workbench/__tests__/erfWorkspaceState.test.ts (20 tests) 29ms
+ ✓ src/lib/investigation/__tests__/planningInvestigationJob.test.ts (5 tests) 38ms
+ ✓ src/components/property/investigation/__tests__/guidedMarketEvidenceStep.test.tsx (3 tests) 37ms
+ ✓ src/lib/workbench/__tests__/sgDenseGeneralPlan.test.ts (14 tests) 31ms
+ ✓ src/lib/workbench/__tests__/strategyCloudSaveQueue.test.ts (12 tests) 34ms
+ ✓ src/lib/sitePotential/__tests__/generationWorker.test.ts (12 tests) 49ms
+ ✓ src/lib/investigation/__tests__/masterPlan.test.ts (18 tests) 33ms
+ ✓ src/lib/providers/__tests__/contract.test.ts (45 tests) 28ms
+ ✓ src/lib/reports/__tests__/composeEasyErfReport.test.ts (11 tests) 65ms
+ ✓ src/components/property/dossier/__tests__/askEasyErfPanel.test.tsx (5 tests) 32ms
+ ✓ src/lib/reports/__tests__/reportFindings.test.ts (10 tests) 41ms
+ ✓ src/features/marketEvidence/__tests__/addressSuggestions.test.ts (4 tests) 19ms
+ ✓ src/lib/planning/__tests__/parcelPlanningAssessment.test.ts (14 tests) 23ms
+ ✓ src/lib/research/__tests__/publicSourceRegistry.test.ts (24 tests) 30ms
+ ✓ src/lib/workbench/__tests__/erfFileVault.test.ts (11 tests) 30ms
+ ✓ src/lib/sitePotential/__tests__/resolveSitePotentialInputs.test.ts (20 tests) 26ms
+ ✓ src/lib/vendors/__tests__/vendorRecords.test.ts (12 tests) 20ms
+ ✓ src/lib/admin/__tests__/investigatorOnboardingServer.test.ts (8 tests) 22ms
+ ✓ src/lib/humanReview/__tests__/founderQueueData.test.ts (22 tests) 33ms
+ ✓ src/lib/admin/__tests__/accountAccessServer.test.ts (10 tests) 26ms
+ ✓ src/lib/parcels/__tests__/shareOfficialProperty.test.ts (9 tests) 22ms
+ ✓ src/lib/sitePotential/__tests__/streetFrontage.test.ts (15 tests) 25ms
+ ✓ src/lib/__tests__/publicSiteTruthGuardrails.test.ts (9 tests) 32ms
+ ✓ src/lib/parcels/__tests__/officialParcelId.test.ts (22 tests) 17ms
+ ✓ src/lib/workbench/__tests__/savedPropertyUserData.test.ts (6 tests) 18ms
+ ✓ src/components/property/dossier/__tests__/reportBuildableAreaVisual.test.tsx (3 tests) 25ms
+ ✓ src/lib/investigation/__tests__/guidedJourney.test.ts (15 tests) 18ms
+ ✓ src/lib/evidence/__tests__/legalPortionToken.test.ts (13 tests) 18ms
+ ✓ src/lib/payments/__tests__/easyErfStripeFulfillmentGuardrails.test.ts (16 tests) 17ms
+ ✓ src/lib/payments/__tests__/easyErfHumanReviewScopeGuardrails.test.ts (15 tests) 25ms
+ ✓ src/lib/sitePotential/__tests__/packStatusPolling.test.ts (3 tests) 16ms
+ ✓ src/lib/auth/__tests__/investigatorInvite.test.ts (8 tests) 18ms
+ ✓ src/lib/workbench/__tests__/investigationSyncBaseline.test.ts (10 tests) 36ms
+ ✓ src/lib/reports/__tests__/reportInvestigationCoherenceGuardrails.test.ts (5 tests) 37ms
+ ✓ src/lib/__tests__/founderOperationsGuardrails.test.ts (5 tests) 19ms
+ ✓ src/lib/sitePotential/__tests__/acceptedBuildEnvelope.test.ts (5 tests) 18ms
+ ✓ src/lib/humanReview/__tests__/founderQueueSafety.test.ts (22 tests) 18ms
+ ✓ src/lib/payments/__tests__/easyErfFulfillmentUiGuardrails.test.ts (13 tests) 19ms
+ ✓ src/lib/workbench/__tests__/savedInvestigationProjection.test.ts (11 tests) 18ms
+ ✓ src/lib/planning/__tests__/municipalityPlanningRegistry.test.ts (9 tests) 15ms
+ ✓ src/lib/sitePotential/__tests__/selectionPersistence.test.ts (10 tests) 20ms
+ ✓ src/lib/localServices/__tests__/savedProviders.test.ts (3 tests) 14ms
+ ✓ src/lib/vendors/__tests__/vendorStore.test.ts (3 tests) 18ms
+ ✓ src/lib/investigation/__tests__/customerHandoff.test.ts (5 tests) 17ms
+ ✓ src/lib/payments/__tests__/easyErfCustomerNotificationGuardrails.test.ts (10 tests) 12ms
+ ✓ src/lib/sitePotential/__tests__/coverageFit.test.ts (9 tests) 15ms
+ ✓ src/lib/__tests__/commercialEntryVisibilityGuardrails.test.ts (4 tests) 15ms
+ ✓ src/lib/parcels/__tests__/selectedParcelBoundary.test.ts (7 tests) 15ms
+ ✓ src/lib/sitePotential/__tests__/sitePotentialEdgeRuntime.test.ts (3 tests) 34ms
+ ✓ src/lib/payments/__tests__/easyErfStripePaymentContract.test.ts (15 tests) 16ms
+ ✓ src/lib/payments/__tests__/easyErfR999LaunchReadiness.test.ts (11 tests) 15ms
+ ✓ src/lib/sitePotential/__tests__/generationProgress.test.ts (9 tests) 17ms
+ ✓ src/lib/payments/__tests__/easyErfFounderFulfillmentGuardrails.test.ts (11 tests) 12ms
+ ✓ src/lib/__tests__/founderEntitlementActionsGuardrails.test.ts (7 tests) 11ms
+ ❯ src/lib/auth/__tests__/canonicalBackendOwnership.test.ts (4 tests | 1 failed) 23ms
+     ✓ keeps local Supabase config neutral instead of pretending it selects a remote 5ms
+     ✓ documents the founder project as the explicit remote target 3ms
+     × allows the verified OAuth cutover config while keeping publication gated on real acceptance 6ms
+     ✓ does not tell engineers to create or connect a Lovable-owned backend 5ms
+ ✓ src/components/property/dossier/__tests__/investorWorkflow.test.ts (4 tests) 14ms
+ ✓ src/lib/sitePotential/__tests__/planningRuleAdapter.test.ts (11 tests) 16ms
+ ✓ src/lib/sitePotential/__tests__/freeAllowance.test.ts (10 tests) 13ms
+ ✓ src/lib/workbench/__tests__/browserStateIsolation.test.ts (4 tests) 13ms
+ ✓ src/lib/planning/__tests__/planningEvidenceSignals.test.ts (7 tests) 10ms
+ ✓ src/lib/reports/__tests__/reportComposition.test.ts (5 tests) 13ms
+ ✓ src/lib/research/__tests__/strategyInputs.test.ts (5 tests) 12ms
+ ✓ src/lib/workbench/__tests__/propertyOverviewEntry.test.ts (6 tests) 13ms
+ ✓ src/lib/humanReview/__tests__/signInHandoff.test.ts (6 tests) 13ms
+ ✓ src/lib/search/__tests__/erfSearchContext.test.ts (4 tests) 14ms
+ ✓ src/lib/geo/__tests__/reproject.test.ts (6 tests) 13ms
+ ✓ src/lib/__tests__/myInvestigationsGuardrails.test.ts (4 tests) 14ms
+ ✓ src/lib/__tests__/founderSupportGuardrails.test.ts (6 tests) 10ms
+ ✓ src/lib/workbench/__tests__/reportProgress.test.ts (4 tests) 13ms
+ ✓ src/lib/planning/__tests__/storedPlanningZone.test.ts (3 tests) 11ms
+ ✓ src/lib/workbench/__tests__/propertyJourneyHistory.test.ts (2 tests) 11ms
+ ✓ src/lib/sitePotential/__tests__/canonicalSitePotentialSnapshotSync.test.ts (4 tests) 11ms
+ ✓ src/lib/workbench/__tests__/propertyNotes.test.ts (5 tests) 10ms
+ ✓ src/lib/__tests__/brandNavigationGuardrails.test.ts (5 tests) 12ms
+ ✓ src/lib/payments/__tests__/humanReviewFunnelUxGuardrails.test.ts (7 tests) 11ms
+ ✓ src/components/property/dossier/__tests__/localPropertyTeamCustomSearch.test.ts (4 tests) 11ms
+ ✓ src/lib/sitePotential/__tests__/parcelContext.test.ts (5 tests) 10ms
+ ✓ src/components/map/__tests__/mapCanvasLoaderRejection.test.ts (2 tests) 8ms
+ ✓ src/components/property/__tests__/guidedTaskFirstUx.test.ts (3 tests) 9ms
+ ✓ src/lib/reports/__tests__/reportPrintLifecycle.test.ts (6 tests) 10ms
+ ✓ src/lib/auth/__tests__/staffNavigation.test.ts (4 tests) 16ms
+ ❯ src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts (3 tests | 2 failed) 14ms
+     × points browser runtime configuration at the canonical founder project through the branded vanity hostname 7ms
+     × activates founder auth and Site Potential transport together 1ms
+     ✓ keeps local Supabase config neutral instead of treating it as remote ownership proof 4ms
+ ✓ src/lib/reports/__tests__/askEasyErfContract.test.ts (4 tests) 12ms
+ ✓ src/lib/sitePotential/__tests__/sitePotentialSnapshotSync.test.ts (4 tests) 8ms
+ ✓ src/lib/payments/__tests__/easyErfReviewContentPersistenceGuardrails.test.ts (3 tests) 8ms
+ ✓ src/lib/auth/__tests__/googleAuthTransport.test.ts (4 tests) 12ms
+ ✓ src/lib/workbench/__tests__/savedPropertyPersistence.test.ts (2 tests) 8ms
+ ✓ src/lib/sitePotential/__tests__/generationEstimate.test.ts (10 tests) 9ms
+ ✓ src/lib/sitePotential/__tests__/guidedSitePotentialSync.test.ts (2 tests) 7ms
+ ✓ src/lib/planning/__tests__/kougaOfficialPlanningSources.test.ts (3 tests) 9ms
+ ✓ src/lib/localServices/__tests__/catalog.test.ts (5 tests) 9ms
+ ✓ src/lib/evidence/__tests__/documentTrustModel.test.ts (3 tests) 7ms
+ ✓ src/lib/payments/__tests__/easyErfFulfillmentStatusEnum.test.ts (2 tests) 7ms
+ ✓ src/components/humanReview/__tests__/humanReviewTakeoverCardTruth.test.ts (2 tests) 8ms
+ ✓ src/lib/payments/__tests__/easyErfAdminRouteGuardrails.test.ts (2 tests) 11ms
+ ✓ src/lib/providers/__tests__/publicDataClient.test.ts (2 tests) 7ms
+ ✓ src/lib/payments/__tests__/easyErfStripeLegacyPolicyCleanup.test.ts (2 tests) 6ms
+ ✓ src/lib/__tests__/accountCoherenceGuardrails.test.ts (4 tests) 14ms
+ ✓ src/lib/investigation/__tests__/journey.test.ts (3 tests) 10ms
+ ✓ src/lib/__tests__/productRecoveryUxGuardrails.test.ts (6 tests) 10ms
+ ✓ src/lib/evidence/__tests__/planApprovalMetadata.test.ts (2 tests) 6ms
+ ✓ src/features/marketEvidence/__tests__/addressSuggestionPath.test.ts (1 test) 8ms
+ ✓ src/lib/workbench/__tests__/sgUploadIdentityBinding.test.ts (4 tests) 9ms
+ ✓ src/lib/workbench/__tests__/workbenchTabProgress.test.ts (2 tests) 3ms
+
+ Test Files  3 failed | 168 passed (171)
+      Tests  6 failed | 1745 passed (1751)
+   Start at  09:56:37
+   Duration  13.87s (transform 26.41s, setup 0ms, import 50.32s, tests 12.22s, environment 37ms)
+
+stderr | src/lib/reports/__tests__/askEasyErf.test.ts > Ask Easy Erf server handler > rejects malformed model output safely
+[ask-easy-erf] malformed answer from edge function {"requestId":"ask-11chz65umucx24bd"}
+
+stderr | src/lib/reports/__tests__/askEasyErf.test.ts > Ask Easy Erf server handler > handles missing auth, missing config, rate limits, and stale parcels without exposing secrets
+[ask-easy-erf] edge function not configured {"requestId":"ask-33wwopn5mucx24br","hasUrl":false,"hasKey":false}
+
+stderr | src/lib/reports/__tests__/askEasyErf.test.ts > Ask Easy Erf server handler > handles missing auth, missing config, rate limits, and stale parcels without exposing secrets
+[ask-easy-erf] edge function request failed {"requestId":"ask-s58qp7a7mucx24bt","status":429,"code":"RATE_LIMITED"}
+
+stderr | src/lib/reports/__tests__/askEasyErf.test.ts > Ask Easy Erf server handler > rejects fake source references returned by the model
+[ask-easy-erf] malformed answer from edge function {"requestId":"ask-bg0zt7ksmucx24c0"}
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/auth/__tests__/canonicalBackendOwnership.test.ts > canonical Easy Erf backend ownership > allows the verified OAuth cutover config while keeping publication gated on real acceptance
+Error: ENOENT: no such file or directory, open '[validation-checkout]\.env'
+ ❯ read src/lib/auth/__tests__/canonicalBackendOwnership.test.ts:7:10
+      5|
+      6| function read(path: string) {
+      7|   return readFileSync(path, "utf8");
+       |          ^
+      8| }
+      9|
+ ❯ src/lib/auth/__tests__/canonicalBackendOwnership.test.ts:30:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts > founder-owned backend cutover config > points browser runtime configuration at the canonical founder project through the branded vanity hostname
+Error: ENOENT: no such file or directory, open '[validation-checkout]\.env'
+ ❯ read src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts:8:10
+      6|
+      7| function read(path: string) {
+      8|   return readFileSync(path, "utf8");
+       |          ^
+      9| }
+     10|
+ ❯ src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts:13:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts > founder-owned backend cutover config > activates founder auth and Site Potential transport together
+Error: ENOENT: no such file or directory, open '[validation-checkout]\.env'
+ ❯ read src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts:8:10
+      6|
+      7| function read(path: string) {
+      8|   return readFileSync(path, "utf8");
+       |          ^
+      9| }
+     10|
+ ❯ src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts:23:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/lib/providers/__tests__/publicDataLoader.test.ts > loadOfficialPublicLayer edge-first ordering > returns edge proxy features without calling direct fetch
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/lib/providers/__tests__/publicDataLoader.test.ts:60:29
+     58|
+     59|     const result = await loadOfficialPublicLayer("csg-parcels", BBOX);
+     60|     expect(result.features).toHaveLength(1);
+       |                             ^
+     61|     expect(result.fallbackUsed).toBe("edge");
+     62|     // No direct-fetch attempts occurred.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/lib/providers/__tests__/publicDataLoader.test.ts > loadOfficialPublicLayer edge-first ordering > falls back to direct fetch when the edge proxy returns zero features
+AssertionError: expected 0 to be greater than 0
+ ❯ src/lib/providers/__tests__/publicDataLoader.test.ts:81:26
+     79|
+     80|     const result = await loadOfficialPublicLayer("csg-parcels", BBOX);
+     81|     expect(directCalled).toBeGreaterThan(0);
+       |                          ^
+     82|     expect(result.features).toHaveLength(1);
+     83|     expect(result.fallbackUsed).toBe("direct");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/lib/providers/__tests__/publicDataLoader.test.ts > loadOfficialPublicLayer edge-first ordering > falls back to direct fetch when the edge proxy request fails
+AssertionError: expected 0 to be greater than 0
+ ❯ src/lib/providers/__tests__/publicDataLoader.test.ts:101:26
+     99|
+    100|     const result = await loadOfficialPublicLayer("csg-parcels", BBOX);
+    101|     expect(directCalled).toBeGreaterThan(0);
+       |                          ^
+    102|     expect(result.features).toHaveLength(1);
+    103|     // Attempts preserve execution order: edge first, then direct.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯

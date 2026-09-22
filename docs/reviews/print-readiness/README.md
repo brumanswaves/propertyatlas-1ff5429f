@@ -11,7 +11,7 @@ The selected account/order/version now registers authorized SG and map settlemen
 - Tests mount the actual DeliveredInvestigationReport, SharedInvestigationReport, SG preview and map React component. Auth/read transport and Mapbox rendering are explicitly controlled local fixtures. No real account, provider, map tiles, payment or production system is contacted. The OS print dialog is intercepted; evidence PDF captures the prepared same-origin document.
 - External browser requests: zero. No whole rehearsal or unchanged full CI rerun.
 
-[Results](results.json), [source hashes](source.json), [new PDF](delayed-ready-export.pdf), [desktop](settled-desktop.png), [mobile](settled-mobile.png), [SG pixels in PDF](export-sg-page.png), [all pages](contact-sheet.png). The PDF has 17 pages. A solid green canvas and orange SYNTHETIC SG image are intentional timing probes, not real imagery or property evidence.
+[Results](results.json), [source hashes](source.json), [new PDF](delayed-ready-export.pdf), [desktop](settled-desktop.png), [mobile](settled-mobile.png), [SG pixels in PDF](export-sg-page.png), [all pages](contact-sheet.png). The PDF has 18 pages. A solid green canvas and orange SYNTHETIC SG image are intentional timing probes, not real imagery or property evidence.
 
 ## Reproduce focused browser checks
 
@@ -27,3 +27,7 @@ The previous [run-16 packet](../rehearsal-run16/REHEARSAL.md) remains unchanged.
 For a reviewer using the Drive connector, request raw file download with include_base64=false. Do not treat a failed unauthenticated download as visual acceptance. No signed download URL or credential is retained in this packet.
 
 PR remains draft. No merge, publication, Stripe change/event, real email, paid AI, credential change or Vercel use. Additional discretionary spend $0. Independent review is next.
+
+## Release-check follow-up, 2026-09-22
+
+Independent review [5780415182](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/189#issuecomment-5780415182) cleared the prior export blocker and confirmed 18 pages. The PDF and historical ZIP are unchanged. [Remaining release checks and decision packet](../pr189-release-checks/README.md) record the successful local production build and the separate changed-file lint blocker. PR remains draft.

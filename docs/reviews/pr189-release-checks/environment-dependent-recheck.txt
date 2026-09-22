@@ -1,0 +1,11 @@
+
+ RUN  v4.1.11 [validation-checkout]
+
+ ✓ src/lib/auth/__tests__/canonicalBackendOwnership.test.ts (4 tests) 10ms
+ ✓ src/lib/auth/__tests__/founderBackendCutoverConfig.test.ts (3 tests) 7ms
+ ✓ src/lib/providers/__tests__/publicDataLoader.test.ts (5 tests) 12ms
+
+ Test Files  3 passed (3)
+      Tests  12 passed (12)
+   Start at  09:57:48
+   Duration  332ms (transform 179ms, setup 0ms, import 231ms, tests 28ms, environment 0ms)

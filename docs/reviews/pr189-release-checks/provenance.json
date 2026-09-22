@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-09-22T17:00:08.734Z",
+  "reviewedCandidate": "9dd0f100299c5b235c125395f1a958cc79eef64c",
+  "base": "84a6e99f7985ba7d5b1b3a29d2c19c76acae2b95",
+  "sourceTrees": {
+    "src": "74c4693a34827fe3a520cbf6b06fa5fc55dcf678",
+    "scripts": "fa9973794285ff50e613be72631e798b43a5b028",
+    "supabase": "932fcdae22940f8e9de08200d8474dce8c6420d4",
+    "workflows": "f47448f6efc80e72d54bfa6a70c74b387c03ac2c"
+  },
+  "node": "v24.16.0",
+  "dependencies": {
+    "vite": "7.3.6",
+    "vitest": "4.1.11",
+    "typescript": "5.9.3",
+    "eslint": "9.39.5",
+    "nitro": "3.0.260603-beta",
+    "@lovable.dev/vite-tanstack-config": "2.12.0"
+  },
+  "lockfiles": {
+    "package-lock.json": "5be14c37e58e970d8370b498a1ee91629870fde3a59c16cb97574ab859e54198",
+    "bun.lock": "224f63df49c6de1fe59d3d9b90b0039951328e217aabafbf2cf8922ee9428611"
+  },
+  "model": "gpt-6-astra",
+  "reasoning": "low",
+  "modelEvidence": "Current task turn_context inspected; no setting change",
+  "remoteWorkflowRuns": [],
+  "remoteRunInspection": "GitHub connector returned an empty workflow_runs collection for reviewedCandidate; no dispatch",
+  "originalDirtyStatus": "M src/routeTree.gen.ts\n?? artifacts/\n?? docs/reviews/pr189-release-checks/\n?? scripts/rehearsal-customer-entry.mjs\n?? scripts/serve-isolated-rehearsal.mjs\n?? scripts/verify-isolated-rehearsal-provider.ts\n?? scripts/verify-isolated-rehearsal.mjs\n?? scripts/verify-rehearsal-followup.mjs\n?? scripts/verify-rehearsal-interrupted-upload.mjs",
+  "validationDirtyStatus": "M src/routeTree.gen.ts\n?? artifacts/",
+  "notes": [
+    "Original routeTree.gen.ts reports modified due to line endings but git diff has no content changes. Untracked original scripts/artifacts are preserved.",
+    "Isolated worktree excluded original untracked work; dependency junction reused installed packages; no install or lockfile reconciliation performed.",
+    "49 evidence entries verified before README correction; 14 original source-file hashes match, then CRLF/LF-normalized contents match the reviewed Git blobs.",
+    "No unchanged browser cases or whole rehearsal rerun. Full suite first pass 1745/1751, then all 12 tests in three environment-dependent files passed after restoring tracked .env. No single green full-suite run is claimed.",
+    "Build target node-server, production mode, original tracked configuration and local network guard; this is not a hosted Lovable build or deployment."
+  ]
+}
