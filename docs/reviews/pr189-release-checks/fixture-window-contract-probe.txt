@@ -1,0 +1,26 @@
+const w = window as typeof window & {
+  fixture: {
+    account: string | null;
+    order: string;
+    version: string;
+    previewCalls: Array<{
+      orderId: string;
+      assetId: string;
+      versionId?: string;
+      preview?: boolean;
+    }>;
+    versionData: unknown;
+  };
+  change: (kind: string) => void;
+};
+w.fixture={account:'a',order:'o',version:'v',previewCalls:[],versionData:undefined};
+w.fixture.account=null;
+w.fixture.account='b';
+w.fixture.order='o2';
+w.fixture.version='v2';
+w.fixture.previewCalls.push({orderId:'o',assetId:'a',versionId:'v',preview:true});
+w.fixture.previewCalls.push({orderId:'o',assetId:'a'});
+w.fixture.versionData={opaque:true};
+w.change=(kind:string)=>{if(kind==='signout')w.fixture.account=null;};
+w.change('signout');
+export {};

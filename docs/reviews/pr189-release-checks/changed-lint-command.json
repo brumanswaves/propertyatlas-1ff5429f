@@ -1,0 +1,6 @@
+{
+  "command": "node node_modules/eslint/bin/eslint.js --no-warn-ignored --rule \"prettier/prettier: off\" scripts/fixtures/print-readiness/index.tsx src/components/humanReview/DeliveredInvestigationReport.tsx src/components/humanReview/SharedInvestigationReport.tsx src/components/property/dossier/ReportContextSections.tsx src/components/property/dossier/ReportParcelSatelliteMap.tsx src/lib/__tests__/productRecoveryUxGuardrails.test.ts src/lib/reports/__tests__/contextSections.test.tsx src/lib/reports/printDeliveredReport.ts src/lib/workbench/__tests__/investigationSyncBaseline.test.ts src/lib/workbench/investigationSyncBaseline.ts",
+  "startedAt": "2026-09-22T16:58:28.5156817Z",
+  "endedAt": "2026-09-22T16:58:31.3987600Z",
+  "exitCode": 1
+}

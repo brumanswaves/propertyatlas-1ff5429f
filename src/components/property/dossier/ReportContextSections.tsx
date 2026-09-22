@@ -233,7 +233,7 @@ function SgPreview({
   if (!url || failed) {
     return (
       <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#0D1B2A]/15 bg-[#F8FAFC] px-4 text-center text-xs font-semibold text-[#64748B]">
-        {url ? "Diagram preview unavailable" : "No visual preview was generated for this diagram."}
+        {failed ? "Diagram preview unavailable. Refer to the original document." : "Loading authorized diagram preview…"}
       </div>
     );
   }

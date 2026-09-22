@@ -1,0 +1,2105 @@
+{
+  "syntheticOnly": true,
+  "paymentTransport": "Locally signed simulated events. Not Stripe acceptance.",
+  "derivation": "Allowlisted paths and fields from original run-16 network capture. Auth bodies, Storage paths, URLs, report content, tokens and unrelated accounts excluded.",
+  "records": [
+    {
+      "originalIndex": 73,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 3,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "none",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 83,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 4,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 117,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 4,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 141,
+      "path": "/rest/v1/human_review_requests",
+      "method": "POST",
+      "status": 201,
+      "result": {
+        "id": "69259cf4-0e51-448a-9a3d-5c70c8034bbd"
+      }
+    },
+    {
+      "originalIndex": 143,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 400,
+      "result": {
+        "received": false,
+        "requestId": "9735ef2d-ee11-4d0b-a10b-e275a25fc866"
+      }
+    },
+    {
+      "originalIndex": 144,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": false,
+        "requestId": "dea2d807-c5e0-4aec-821f-99e688a23923"
+      }
+    },
+    {
+      "originalIndex": 145,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": false,
+        "requestId": "eca76262-a079-427c-9cc8-80c9692a89d3"
+      }
+    },
+    {
+      "originalIndex": 146,
+      "path": "/rest/v1/human_review_requests",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "rows": [
+          {
+            "id": "69259cf4-0e51-448a-9a3d-5c70c8034bbd",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "parcel_id": "csg:lpi:c00000000000004200000",
+            "property_reference_hint": "Erf 42 - 42 Synthetic Street"
+          }
+        ]
+      }
+    },
+    {
+      "originalIndex": 147,
+      "path": "/rest/v1/rpc/record_easy_erf_stripe_payment",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 148,
+      "path": "/rest/v1/rpc/attach_easy_erf_human_review_request",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 149,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": true,
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "requestId": "718d288a-4298-4763-9f64-50143f4b9bd5"
+      }
+    },
+    {
+      "originalIndex": 150,
+      "path": "/rest/v1/human_review_requests",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "rows": [
+          {
+            "id": "69259cf4-0e51-448a-9a3d-5c70c8034bbd",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "parcel_id": "csg:lpi:c00000000000004200000",
+            "property_reference_hint": "Erf 42 - 42 Synthetic Street"
+          }
+        ]
+      }
+    },
+    {
+      "originalIndex": 151,
+      "path": "/rest/v1/rpc/record_easy_erf_stripe_payment",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 152,
+      "path": "/rest/v1/rpc/attach_easy_erf_human_review_request",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 153,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": true,
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "requestId": "0eb01faa-a357-4d95-9b0b-25118f49f43c"
+      }
+    },
+    {
+      "originalIndex": 154,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 400,
+      "result": {
+        "received": false,
+        "requestId": "c8254f93-6c31-4472-9382-82389b9e21c9"
+      }
+    },
+    {
+      "originalIndex": 155,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": false,
+        "requestId": "168d76e2-93db-4ea8-ad61-5fe4a946fbe0"
+      }
+    },
+    {
+      "originalIndex": 156,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": false,
+        "requestId": "dda9d637-d639-4508-96a4-4f7e6d3d6eac"
+      }
+    },
+    {
+      "originalIndex": 158,
+      "path": "/rest/v1/rpc/record_easy_erf_stripe_payment",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 159,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": true,
+        "orderId": "00ff43b6-0737-4cbd-9342-87576827c498",
+        "requestId": "053b8d3c-7c47-40c6-81c7-973a94aca307"
+      }
+    },
+    {
+      "originalIndex": 161,
+      "path": "/rest/v1/rpc/record_easy_erf_stripe_payment",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 162,
+      "path": "/functions/v1/easy-erf-stripe-webhook",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "received": true,
+        "recorded": true,
+        "orderId": "00ff43b6-0737-4cbd-9342-87576827c498",
+        "requestId": "05688918-9daf-4101-b2e7-8009de962869"
+      }
+    },
+    {
+      "originalIndex": 166,
+      "path": "/functions/v1/easy-erf-founder-fulfillment",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "requestId": "f4df28b1-03be-4987-88b7-8aa7d69368c9",
+        "ok": true,
+        "order": {
+          "id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+          "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+          "parcel_id": "csg:lpi:c00000000000004200000",
+          "status": "processing",
+          "status_enum": "fulfilling"
+        }
+      }
+    },
+    {
+      "originalIndex": 170,
+      "path": "/functions/v1/easy-erf-founder-fulfillment",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "requestId": "1c87a974-8ee8-47d8-93e6-cd18739ac644",
+        "ok": true,
+        "order": {
+          "id": "00ff43b6-0737-4cbd-9342-87576827c498",
+          "user_id": "3d402e4c-a7ec-4d96-b720-a1300b3c28d4",
+          "parcel_id": "csg:lpi:c00000000000004300000",
+          "status": "processing",
+          "status_enum": "fulfilling"
+        }
+      }
+    },
+    {
+      "originalIndex": 171,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 173,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 6,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 174,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 175,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 176,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 217,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 6,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 218,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 220,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 7,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 222,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 8,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 223,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 8,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 224,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 8,
+        "assets": [
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 229,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 11,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 230,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 11,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 240,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 13,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 241,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 243,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 14,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 244,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 14,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 246,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 15,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 248,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 16,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 249,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 16,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ]
+        }
+      }
+    },
+    {
+      "originalIndex": 251,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 17,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 254,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 18,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": null,
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 257,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 19,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": null,
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 260,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 20,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 263,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 267,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 274,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 275,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 277,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 291,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": false,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 298,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": true,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 299,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "originalIndex": 309,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": true,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 310,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": true,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 315,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": null,
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 21,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 316,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": true,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 317,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "canApprove": true,
+        "canWork": true,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 318,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": null,
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 21,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 328,
+      "path": "/functions/v1/easy-erf-founder-customer-notification",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "requestId": "623cc6ee-4093-4692-94c0-c4d3d734204e",
+        "ok": true,
+        "alreadySent": false
+      }
+    },
+    {
+      "originalIndex": 329,
+      "path": "/functions/v1/easy-erf-founder-fulfillment",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "requestId": "623cc6ee-4093-4692-94c0-c4d3d734204e",
+        "ok": true,
+        "order": {
+          "id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+          "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+          "parcel_id": "csg:lpi:c00000000000004200000",
+          "status": "ready",
+          "status_enum": "complete"
+        },
+        "notification": {
+          "ok": true,
+          "alreadySent": false,
+          "receipt": {
+            "status": "sent",
+            "providerMessageId": "isolated-provider-receipt",
+            "sentAt": "2026-09-20T21:02:13.161Z"
+          }
+        }
+      }
+    },
+    {
+      "originalIndex": 336,
+      "path": "/functions/v1/easy-erf-founder-customer-notification",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "requestId": "000a6926-460d-4a5b-982c-e33d091d6592",
+        "ok": true,
+        "alreadySent": true
+      }
+    },
+    {
+      "originalIndex": 342,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 21,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 355,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 21,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 356,
+      "path": "/rest/v1/rpc/read_customer_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 21,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "looks_correct",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 358,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 22,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 360,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 22,
+        "canApprove": false,
+        "canWork": false,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "uncertain",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 361,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 362,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 22,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 364,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 22,
+        "canApprove": false,
+        "canWork": false,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "uncertain",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 365,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 366,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 22,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 368,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 370,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 372,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 374,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 376,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": "42501"
+      }
+    },
+    {
+      "originalIndex": 378,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 22,
+        "canApprove": false,
+        "canWork": false,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "uncertain",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 379,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 380,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 22,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 382,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 384,
+      "path": "/rest/v1/rpc/read_order_investigation",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "orderId": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "customerId": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "parcelId": "csg:lpi:c00000000000004200000",
+        "revision": 22,
+        "canApprove": false,
+        "canWork": false,
+        "assets": [
+          {
+            "id": "62cd08af-151a-4eed-ba0c-98679054c6bf",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "paid_report",
+            "checksum_sha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "identityBinding": "user_confirmed",
+              "identityMatchStatus": "unverified",
+              "aiProcessingAllowed": true
+            }
+          },
+          {
+            "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+            "user_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+            "asset_category": "sg_diagram",
+            "checksum_sha256": null,
+            "status": "uploaded_reference_only",
+            "metadata": {
+              "sgReceiptSha256": "5b68cfda40467fe24d2d82f552467f8bfecbaa17a2bff04cc5144b811224088e",
+              "identityBinding": "user_confirmed"
+            }
+          }
+        ],
+        "persistedWork": {
+          "identityStatus": "uncertain",
+          "sgAssetIds": [
+            "8a24d332-a8ca-4278-a891-1ace2d89a588"
+          ],
+          "chosenScenarioId": "84ab789d-9498-4af1-9a46-f227d1bcb86a",
+          "acceptedInputSignature": "{\"version\":3,\"parcelId\":\"csg:lpi:c00000000000004200000\",\"ring\":[[24.83,-34.16],[24.8303,-34.16],[24.8303,-34.1602],[24.83,-34.1602]],\"boundaryConfirmed\":true,\"streetFrontageConfirmedByUser\":true,\"streetEdgeIndex\":0,\"additionalStreetEdgeIndexes\":[],\"ruleSource\":\"registry\",\"zoneLabel\":\"Residential Zone 1 (single residential)\",\"streetSetbackM\":5,\"sideSetbackM\":3,\"rearSetbackM\":3,\"maxCoveragePercent\":50,\"maxHeightM\":8,\"dwellingUnits\":1,\"additionalDwellingRule\":\"One dwelling unit; an additional dwelling unit is subject to municipal consent (review-required candidate value).\",\"additionalDwellingRequiresConsent\":true,\"servitudeNotes\":null,\"recordedAreaM2\":600}",
+          "manualComparableCount": 1
+        }
+      }
+    },
+    {
+      "originalIndex": 385,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    },
+    {
+      "originalIndex": 386,
+      "path": "/rest/v1/rpc/read_investigation_review",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "1babfa1d-2e51-448f-93fc-9810ea1912b3",
+        "order_id": "354d398c-a45e-4df4-97a3-8eb5eecdad39",
+        "parcel_id": "csg:lpi:c00000000000004200000",
+        "approved_at": "2026-09-20T21:02:12.893503+00:00",
+        "approved_by": "c8addfa5-3440-43ae-b56f-89cad279cc31",
+        "customer_id": "e4331979-2e4d-4cce-84c3-43e6f12abf6b",
+        "delivered_at": "2026-09-20T21:02:13.053433+00:00",
+        "brief_revision": 1,
+        "provider_model": "human-only",
+        "evidence_revision": 21,
+        "currentEvidenceRevision": 22,
+        "reportAssemblySha256": "416752759aa1786f7f27b95b22cb1be37fd3eefef74d3b2709dc6298070f8067"
+      }
+    },
+    {
+      "originalIndex": 388,
+      "path": "/rest/v1/rpc/read_order_investigation_asset",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "id": "8a24d332-a8ca-4278-a891-1ace2d89a588",
+        "parcel_id": "csg:lpi:c00000000000004200000"
+      }
+    }
+  ]
+}

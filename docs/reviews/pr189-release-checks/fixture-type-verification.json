@@ -1,0 +1,56 @@
+{
+  "baseline": "1b4c74da51c745e92827a0b54831a1ae09c2004e",
+  "target": "scripts/fixtures/print-readiness/index.tsx",
+  "originalGitBlob": "f5edcbb6f3cd28aad9ec326c41839667d7ea84f0",
+  "correctedLfSha256": "d5483dd2473e45663939fa40e62ee9870c75c2c2d3e1fcbbfbcab88b9928136d",
+  "typeScriptVersion": "5.9.3",
+  "node": "v24.16.0",
+  "compilerOptions": {
+    "target": 9,
+    "module": 99,
+    "jsx": 4,
+    "sourceMap": false,
+    "removeComments": false
+  },
+  "emittedJavaScript": {
+    "byteIdentical": true,
+    "beforeSha256": "d5885769aa3beb095ca7a9de2926b8bd9d96ca6471e61e9d3fa3a9ac1b9b4988",
+    "afterSha256": "d5885769aa3beb095ca7a9de2926b8bd9d96ca6471e61e9d3fa3a9ac1b9b4988",
+    "diagnosticsBefore": 0,
+    "diagnosticsAfter": 0
+  },
+  "explicitAnyNodes": {
+    "before": 1,
+    "after": 0
+  },
+  "strictWindowContract": {
+    "diagnostics": 0,
+    "exitCode": 0,
+    "scope": "Introduced declaration plus null signout, selection reassignment, opaque versionData and optional preview fields; not whole-app typecheck"
+  },
+  "lint": {
+    "command": "node node_modules/eslint/bin/eslint.js --no-warn-ignored --rule \"prettier/prettier: off\" scripts/fixtures/print-readiness/index.tsx src/components/humanReview/DeliveredInvestigationReport.tsx src/components/humanReview/SharedInvestigationReport.tsx src/components/property/dossier/ReportContextSections.tsx src/components/property/dossier/ReportParcelSatelliteMap.tsx src/lib/__tests__/productRecoveryUxGuardrails.test.ts src/lib/reports/__tests__/contextSections.test.tsx src/lib/reports/printDeliveredReport.ts src/lib/workbench/__tests__/investigationSyncBaseline.test.ts src/lib/workbench/investigationSyncBaseline.ts",
+    "fileCount": 10,
+    "startedAt": "2026-09-22T17:42:24.875Z",
+    "endedAt": "2026-09-22T17:42:43.532Z",
+    "exitCode": 0,
+    "signal": null
+  },
+  "tsconfigScope": "Repository tsconfig includes src and root configuration, not scripts fixtures; prior full TypeScript evidence remains unchanged.",
+  "additionalDiscretionarySpend": 0,
+  "sourceCommit": "12ba4f807f5bb0c51ce22f248b88d32ffe431989",
+  "verificationCommand": "node artifacts/pr189-fixture-correction/verify.mjs",
+  "verificationExitCode": 0,
+  "sourceBinding": {
+    "baseline": "1b4c74da51c745e92827a0b54831a1ae09c2004e",
+    "productionTree": "74c4693a34827fe3a520cbf6b06fa5fc55dcf678",
+    "scriptsTreeBefore": "fa9973794285ff50e613be72631e798b43a5b028",
+    "scriptsTreeAfter": "4b95f3ba82caaef74a6dac4096643554e14fb762",
+    "changedFiles": [
+      "scripts/fixtures/print-readiness/index.tsx"
+    ],
+    "nonTargetEqualityCommand": "git diff --quiet 1b4c74da HEAD -- . :!scripts/fixtures/print-readiness/index.tsx",
+    "nonTargetEqualityExitCode": 0,
+    "wholeScriptsTreeUnchanged": false
+  }
+}

@@ -1,0 +1,10 @@
+
+[candidate-worktree]\scripts\fixtures\print-readiness\index.tsx
+  28:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+
+[candidate-worktree]\src\components\property\dossier\ReportParcelSatelliteMap.tsx
+  137:6   warning  React Hook useEffect has a missing dependency: 'usableCenter'. Either include it or remove the dependency array                           react-hooks/exhaustive-deps
+  137:7   warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked  react-hooks/exhaustive-deps
+  137:26  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked  react-hooks/exhaustive-deps
+
+✖ 4 problems (0 errors, 4 warnings)

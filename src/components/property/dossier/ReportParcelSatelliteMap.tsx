@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin } from "lucide-react";
@@ -35,11 +35,14 @@ export function ReportParcelSatelliteMap({
   ring,
   center,
   label,
+  onPreviewSettlement,
 }: {
   ring: Coordinate[] | null;
   center?: { lng: number; lat: number } | null;
   label?: string | null;
+  onPreviewSettlement?: (settlement: Promise<void>) => void;
 }) {
+  const [unavailable, setUnavailable] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const usableRing = useMemo(
     () => (ring && ring.length >= 3 && ring.every(validCoordinate) ? closeRing(ring) : null),
@@ -48,69 +51,118 @@ export function ReportParcelSatelliteMap({
   const usableCenter =
     center && Number.isFinite(center.lng) && Number.isFinite(center.lat)
       ? ([center.lng, center.lat] as Coordinate)
-      : usableRing?.[0] ?? null;
+      : (usableRing?.[0] ?? null);
+
+  const visualKey = JSON.stringify([usableCenter, usableRing]);
 
   useEffect(() => {
     if (!TOKEN || !containerRef.current || !usableCenter) return;
 
+    setUnavailable(null);
+    let settle = () => {};
+    const settlement = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    onPreviewSettlement?.(settlement);
+    let terminal = false;
+    let map: mapboxgl.Map | undefined;
+    const fail = () => {
+      if (terminal) return;
+      terminal = true;
+      setUnavailable(visualKey);
+      settle();
+    };
+    const timer = window.setTimeout(fail, 8000);
     mapboxgl.accessToken = TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: usableCenter,
-      zoom: usableRing ? 16.5 : 18,
-      attributionControl: true,
-      interactive: true,
-    });
+    try {
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/satellite-streets-v12",
+        center: usableCenter,
+        zoom: usableRing ? 16.5 : 18,
+        attributionControl: true,
+        interactive: true,
+        // The delivered-report print helper snapshots this already-rendered map.
+        preserveDrawingBuffer: true,
+      });
 
-    map.on("load", () => {
-      if (usableRing) {
-        map.addSource("report-parcel", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: { type: "Polygon", coordinates: [usableRing] },
-          },
+      const activeMap = map;
+      map.on("error", fail);
+      map.on("load", () => {
+        if (terminal) return;
+        const map = activeMap;
+        if (usableRing) {
+          map.addSource("report-parcel", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: { type: "Polygon", coordinates: [usableRing] },
+            },
+          });
+          map.addLayer({
+            id: "report-parcel-fill",
+            type: "fill",
+            source: "report-parcel",
+            paint: { "fill-color": "#FF6A00", "fill-opacity": 0.12 },
+          });
+          map.addLayer({
+            id: "report-parcel-outline",
+            type: "line",
+            source: "report-parcel",
+            paint: { "line-color": "#FF6A00", "line-width": 3 },
+          });
+          map.fitBounds(boundsFor(usableRing), { padding: 54, maxZoom: 19, duration: 0 });
+        } else {
+          new mapboxgl.Marker({ color: "#FF6A00" }).setLngLat(usableCenter).addTo(map);
+        }
+        map.once("idle", () => {
+          if (terminal) return;
+          terminal = true;
+          clearTimeout(timer);
+          settle();
         });
-        map.addLayer({
-          id: "report-parcel-fill",
-          type: "fill",
-          source: "report-parcel",
-          paint: { "fill-color": "#FF6A00", "fill-opacity": 0.12 },
-        });
-        map.addLayer({
-          id: "report-parcel-outline",
-          type: "line",
-          source: "report-parcel",
-          paint: { "line-color": "#FF6A00", "line-width": 3 },
-        });
-        map.fitBounds(boundsFor(usableRing), { padding: 54, maxZoom: 19, duration: 0 });
-      } else {
-        new mapboxgl.Marker({ color: "#FF6A00" }).setLngLat(usableCenter).addTo(map);
-      }
-    });
+        map.triggerRepaint();
+      });
+    } catch {
+      fail();
+    }
 
-    return () => map.remove();
-  }, [usableCenter?.[0], usableCenter?.[1], usableRing]);
+    return () => {
+      terminal = true;
+      clearTimeout(timer);
+      settle();
+      map?.remove();
+    };
+  }, [usableCenter?.[0], usableCenter?.[1], usableRing, onPreviewSettlement, visualKey]);
 
-  if (!TOKEN || !usableCenter) {
+  if (!TOKEN || !usableCenter || unavailable === visualKey) {
     return (
       <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-[#0D1B2A] p-8 text-center text-white/70">
         <MapPin className="h-6 w-6 text-[#FF6A00]" />
         <p className="text-sm font-semibold text-white">{label ?? "Selected erf"}</p>
         <p className="max-w-sm text-xs leading-5 text-white/60">
-          Satellite context is unavailable for this saved property location. Easy Erf will not substitute generated imagery.
+          Satellite context is unavailable for this saved property location. Easy Erf will not
+          substitute generated imagery.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]" data-report-satellite-map>
-      <div ref={containerRef} className="absolute inset-0 min-h-[260px] w-full" aria-label={`Satellite context for ${label ?? "selected erf"}`} />
+    <div
+      className="relative min-h-[260px] w-full overflow-hidden bg-[#0D1B2A]"
+      data-report-satellite-map
+    >
+      <div
+        ref={containerRef}
+        className="absolute inset-0 min-h-[260px] w-full"
+        aria-label={`Satellite context for ${label ?? "selected erf"}`}
+      />
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[#0D1B2A]/82 px-3 py-1.5 text-[10px] font-semibold text-white shadow">
-        {usableRing ? "Satellite context · recorded parcel boundary" : "Satellite context · recorded property location"}
+        {usableRing
+          ? "Satellite context · recorded parcel boundary"
+          : "Satellite context · recorded property location"}
       </div>
     </div>
   );

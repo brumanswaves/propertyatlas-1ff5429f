@@ -1,0 +1,38 @@
+{
+  "source": "9dd0f100299c5b235c125395f1a958cc79eef64c",
+  "environment": {
+    "NITRO_PRESET": "node-server",
+    "NODE_OPTIONS": "--import=./scripts/verify-shared-investigation-network.mjs",
+    "inheritedEnvironment": "Windows process essentials only",
+    "dotenv": "tracked .env temporarily held outside Vite dotenv filenames; no contents read"
+  },
+  "records": [
+    {
+      "name": "production-build",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/vite/bin/vite.js build",
+      "startedAt": "2026-09-22T16:54:24.216Z",
+      "endedAt": "2026-09-22T16:55:59.212Z",
+      "exitCode": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "name": "typecheck",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/typescript/bin/tsc --noEmit --pretty false",
+      "startedAt": "2026-09-22T16:55:59.217Z",
+      "endedAt": "2026-09-22T16:56:37.403Z",
+      "exitCode": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "name": "full-regression",
+      "command": "C:\\Program Files\\nodejs\\node.exe node_modules/vitest/vitest.mjs run",
+      "startedAt": "2026-09-22T16:56:37.403Z",
+      "endedAt": "2026-09-22T16:56:52.005Z",
+      "exitCode": 1,
+      "signal": null,
+      "error": null
+    }
+  ]
+}

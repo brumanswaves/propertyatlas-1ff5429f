@@ -1,0 +1,24 @@
+{
+  "repository": "brumanswaves/propertyatlas-1ff5429f",
+  "candidateSourceCommit": "e57160e7d1fbfaf25c9a41388804a592a30cb8d4",
+  "canonicalMain": "84a6e99f7985ba7d5b1b3a29d2c19c76acae2b95",
+  "recordedRun16Head": "23ff503828db85b68d56ed5c15c8f5b6f1926ac7",
+  "originalRun16Dirty": true,
+  "finalSourceFiles": {
+    "src/components/humanReview/DeliveredInvestigationReport.tsx": "eca9e2100367f7709827dcb3acb591ba42a5ba6e53733e2165f8507ad69661e9",
+    "src/lib/reports/printDeliveredReport.ts": "200b675d282cfc24317abfec5056671378f16cb721d099a4f2e7d14f5b4e7ed4",
+    "src/lib/workbench/investigationSyncBaseline.ts": "93c0427207984b21fe0ee9b21acd6e3e30d761d27c725a9f6f7374455ff472ab",
+    "src/lib/workbench/__tests__/investigationSyncBaseline.test.ts": "41d3b58633fbdaa6263b465dedd24535143fffe824c9ea44cb298dff12e5f873",
+    "src/components/property/dossier/ReportParcelSatelliteMap.tsx": "ff788eb1bf366cdc05f7d10bc7045498cfb172e9b79b4fdfd185b9134c56688a"
+  },
+  "postRun16Change": "ReportParcelSatelliteMap enables preserveDrawingBuffer plus formatting; verified by the final retained export/access follow-up, not the earlier whole-journey run.",
+  "binding": "All five candidate source files match the final retained source-environment.json SHA256 values byte-for-byte before git line-ending normalization. Run-16 receipt recorded HEAD only, not a contemporaneous dirty-tree hash. No historical committed SHA for those uncommitted repairs existed. Do not treat candidateSourceCommit as the commit that existed during run-16.",
+  "untouchedReportDesign": "SharedInvestigationReport is unchanged from main. Ask Easy Erf remains at the top.",
+  "recordedEnvironment": {
+    "project": "ee-r999-isolated",
+    "wsl": "podman-vc-pr68-auth",
+    "network": "ee-r999-investigation-test",
+    "api": "http://127.0.0.1:54321",
+    "walkthrough": "http://127.0.0.1:4178"
+  }
+}

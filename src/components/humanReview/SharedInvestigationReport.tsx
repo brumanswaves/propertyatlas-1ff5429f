@@ -69,7 +69,7 @@ export function SharedInvestigationReport({ assembly, version, orderId, onOpenAs
     : null;
   const parcelLabel = assembly.document.header.addressLine ?? assembly.document.header.officialLine ?? "Selected erf";
   const defaultHero = (
-    <ReportParcelSatelliteMap ring={assembly.ring} center={parcelCenter} label={parcelLabel} />
+    <ReportParcelSatelliteMap onPreviewSettlement={onPreviewSettlement} ring={assembly.ring} center={parcelCenter} label={parcelLabel} />
   );
   const defaultHeroCaption = assembly.ring
     ? "Satellite context with the recorded parcel boundary. The overlay is property context, not a survey or boundary confirmation."

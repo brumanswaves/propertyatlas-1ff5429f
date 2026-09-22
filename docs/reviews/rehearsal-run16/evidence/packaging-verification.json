@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-09-21T04:51:09.353Z",
+  "candidateSourceCommit": "e57160e7d1fbfaf25c9a41388804a592a30cb8d4",
+  "finalSourceManifestMatch": true,
+  "committedFilesMatchNormalizedBytes": true,
+  "deliveredVersionHashMatches": true,
+  "deliveryCompleteReceipt": true,
+  "denialResponsesPresent": true,
+  "textSecretAndSignedUrlScan": "passed",
+  "fullRehearsalRepeated": false,
+  "wholeCIRerun": false,
+  "previewChanged": false
+}
