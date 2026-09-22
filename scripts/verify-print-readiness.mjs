@@ -21,13 +21,13 @@ try{for(const name of ['delayed','ready','image-failure','preview-failure','map-
   assert.equal(await page.evaluate(()=>window.printCount),1,'Concurrent clicks must coalesce');
   const body=await frame.locator('body').innerText();assert(!body.includes('No visual preview was generated'));assert(!body.includes('Loading authorized diagram'));
   if(['image-failure','preview-failure'].includes(name))assert(body.includes('Diagram preview unavailable'));
-  else assert.equal(await frame.locator('img[alt="SYNTHETIC-SG.png visual preview"]').count(),1);
+  else assert(await frame.locator('img[alt="SYNTHETIC-SG.png visual preview"]').evaluate(img=>img.complete&&img.naturalWidth>0),'SG image must decode in the prepared document');
   if(['map-failure','map-timeout'].includes(name))assert(body.includes('Satellite context is unavailable'));
   else {const pixel=await frame.locator('img[alt="Recorded report map"]').evaluate(async img=>{await img.decode();const c=document.createElement('canvas');c.width=c.height=1;c.getContext('2d').drawImage(img,0,0,1,1);return [...c.getContext('2d').getImageData(0,0,1,1).data];});assert.deepEqual(pixel,[0,128,0,255]);}
   if(name==='delayed'){
    const ask=await page.locator('#report-ask').boundingBox(),assessment=await page.locator('#report-decision').boundingBox();assert(ask.y<assessment.y);
    await page.screenshot({path:out+'/settled-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/settled-mobile.png',fullPage:true});
-   const html=await frame.locator('html').evaluate(e=>e.outerHTML);const exportPage=await context.newPage();await exportPage.setContent(html,{waitUntil:'networkidle'});await exportPage.pdf({path:out+'/delayed-ready-export.pdf',format:'A4',printBackground:true});await exportPage.close();
+   const html=await frame.locator('html').evaluate(e=>e.outerHTML);const exportPage=await context.newPage();await exportPage.route('**/__print-evidence',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));await exportPage.goto('http://127.0.0.1:4189/__print-evidence');await exportPage.setContent(html,{waitUntil:'networkidle'});await exportPage.locator('img[alt="SYNTHETIC-SG.png visual preview"]').evaluate(img=>img.decode());await exportPage.pdf({path:out+'/delayed-ready-export.pdf',format:'A4',printBackground:true});await exportPage.close();
    await page.evaluate(()=>window.change('signout'));
    await page.locator('iframe[title="Printable delivered Easy Erf Report"]').waitFor({state:'detached'});
   }
