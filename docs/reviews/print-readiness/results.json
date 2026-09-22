@@ -1,0 +1,63 @@
+{
+  "source": "3016bb735f6e63baca493309c93ca454ddabeaed",
+  "synthetic": true,
+  "scope": "Actual DeliveredInvestigationReport, SharedInvestigationReport, SG preview and map component. Auth/read transport and Mapbox renderer are controlled local fixtures. Browser print intercepted; not live services or OS print acceptance.",
+  "externalRequests": 0,
+  "results": [
+    {
+      "case": "delayed",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "ready",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "image-failure",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "preview-failure",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "map-failure",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "map-timeout",
+      "result": "passed",
+      "assertion": "Settled SG/map or labelled terminal fallback captured once."
+    },
+    {
+      "case": "timeout",
+      "result": "passed",
+      "assertion": "Bounded timeout exposes explicit failure and does not print."
+    },
+    {
+      "case": "signout",
+      "result": "passed",
+      "assertion": "Selection change cancels pending print; no stale frame or print."
+    },
+    {
+      "case": "account",
+      "result": "passed",
+      "assertion": "Selection change cancels pending print; no stale frame or print."
+    },
+    {
+      "case": "order",
+      "result": "passed",
+      "assertion": "Selection change cancels pending print; no stale frame or print."
+    },
+    {
+      "case": "version",
+      "result": "passed",
+      "assertion": "Selection change cancels pending print; no stale frame or print."
+    }
+  ]
+}

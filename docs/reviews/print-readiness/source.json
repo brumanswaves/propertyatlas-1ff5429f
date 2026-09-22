@@ -1,0 +1,25 @@
+{
+  "testedHead": "3016bb735f6e63baca493309c93ca454ddabeaed",
+  "reviewedBase": "0e568c3e093b944272533843e66c2c442d20e2c2",
+  "model": "gpt-6-astra",
+  "reasoning": "low",
+  "sourceSha256": {
+    "scripts/fixtures/print-readiness/auth.mjs": "5d67a2079b3c49b9db56e251d8b457e1bc7f9980523ffb81791604def1b1d1d1",
+    "scripts/fixtures/print-readiness/client.mjs": "c3e69b44f868e1607a2b75847fa535d9c8f8e7d2c6941c23d488e324e55a40b7",
+    "scripts/fixtures/print-readiness/index.html": "aa39aff6615eb325145a04f033bed673517dc4cc3ba11f24c1ef5cccb79cf872",
+    "scripts/fixtures/print-readiness/index.tsx": "602c3aae4ca52ee15cdf40f7d7c2c50850db7abcd120a056658aba155d8d0bc7",
+    "scripts/fixtures/print-readiness/map.mjs": "bb425a833efbebede62b3bb7c9138731f51f24204967d03fbee83f016e8930fc",
+    "scripts/print-readiness-preview.mjs": "86b816332ad1b8110a5a23e14c01c39bca763a12bf300e9094742b25606e794a",
+    "scripts/verify-print-readiness.mjs": "8a9713a40310f6f52e8190b196cb06778a80800beb36d3bfcb17d143ac1ecb1b",
+    "src/components/humanReview/DeliveredInvestigationReport.tsx": "784d02d2e225ac035a68d7890d9776e918b46167f202c980043ab2bdcc00ad81",
+    "src/components/humanReview/SharedInvestigationReport.tsx": "827e16f7f11485adfc23a51a40d84735c5b87d97cff98a3f2bf7ce8a1b555fbc",
+    "src/components/property/dossier/ReportContextSections.tsx": "317bfd24e5c3d2e4cd68b87e92f9da612333e466d7ecac44f3396106e9b95721",
+    "src/components/property/dossier/ReportParcelSatelliteMap.tsx": "8097f6e41a8508e103f2bc97320134181aa2331b77f3ff4cea1be45d0bb000e2",
+    "src/lib/__tests__/productRecoveryUxGuardrails.test.ts": "99efeb2180d14e40ea183c2f7eaf943ba717f6407db4d19433fdd6f7414246bd",
+    "src/lib/reports/__tests__/contextSections.test.tsx": "0e74c9064e190a49d05b25757148609b1005d280792901c6982625ea0e1fc04a",
+    "src/lib/reports/printDeliveredReport.ts": "49e5068d0342daee6b2af03d30de9f90eb902cd5139dc9338e7521712f56ea54"
+  },
+  "providerCalls": 0,
+  "productionWrites": false,
+  "additionalDiscretionarySpend": 0
+}
