@@ -1,20 +1,22 @@
 # PR #189 exact-candidate release decision packet
 
-Prepared 2026-09-22. **Decision: HOLD. Do not approve merge or publication while the changed-file lint gate fails.** This packet is preparation only, not release authority.
+Updated 2026-09-22 after [review 5781108988](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/189#issuecomment-5781108988). **The local fixture-lint blocker is cleared. Release remains pending explicit owner authorization and any mandatory GitHub CI/protection gates.** This packet is preparation only, not release authority; no CI waiver or production acceptance is claimed.
 
 ## Candidate and change
 
 - Repository: [brumanswaves/propertyatlas-1ff5429f](https://github.com/brumanswaves/propertyatlas-1ff5429f).
 - Draft [PR #189](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/189), branch `codex/rehearsal-repairs-review`.
-- Exact reviewed and locally validated application candidate: `9dd0f100299c5b235c125395f1a958cc79eef64c`.
+- Exact corrected source commit: `12ba4f807f5bb0c51ce22f248b88d32ffe431989`.
+- Reused production-build candidate: `9dd0f100299c5b235c125395f1a958cc79eef64c`.
+- Pre-correction documentation head: `1b4c74da51c745e92827a0b54831a1ae09c2004e`.
 - Exact base: `84a6e99f7985ba7d5b1b3a29d2c19c76acae2b95`.
 - Tested repair parent: `3016bb735f6e63baca493309c93ca454ddabeaed`.
-- Application tree: `74c4693a34827fe3a520cbf6b06fa5fc55dcf678`; scripts tree: `fa9973794285ff50e613be72631e798b43a5b028`.
-- The commit adding this packet is a documentation-only successor. Its exact hash is the enclosing GitHub commit and the final candidate receipt distributed with this packet. Application, scripts, backend, workflows, dependencies and tracked environment must remain identical to the reviewed candidate. This equivalence does not waive the failed lint gate.
+- Application tree remains `74c4693a34827fe3a520cbf6b06fa5fc55dcf678`. Scripts tree changes from `fa9973794285ff50e613be72631e798b43a5b028` to `4b95f3ba82caaef74a6dac4096643554e14fb762`. Whole scripts-tree equality is not claimed.
+- The final packet commit is a documentation-only successor to the corrected source commit. Its exact hash is recorded in the updated PR body and final candidate receipt distributed with this packet. Only the approved fixture declaration changes source relative to `1b4c74da`; application, backend, workflows, dependencies/configuration and every non-target source file remain identical.
 
 The candidate normalizes legacy empty investigation inputs without hiding genuine save conflicts. Delivered-report printing waits for selected SG/map settlement, coalesces repeated requests and cancels stale account/order/version exports. Ask Easy Erf placement and report design remain preserved.
 
-## Verified checks and remaining blocker
+## Verified checks and remaining release gates
 
 Commands used existing local dependencies, Node 24.16.0 and the committed external-network guard. No package installation, remote runner dispatch, paid provider request or deployment was performed. Full command arguments, UTC start/end times and process exit codes are retained in the linked JSON receipts. Packaged logs normalize line endings/trailing whitespace, redact credential patterns and replace local home paths; empty TypeScript output is backed by its explicit exit-code receipt.
 
@@ -23,14 +25,19 @@ Commands used existing local dependencies, Node 24.16.0 and the committed extern
 | Final production-mode build | Exit 0, 2026-09-22 16:57:48Z to 16:59:05Z; `node node_modules/vite/bin/vite.js build`, `NITRO_PRESET=node-server`, original tracked configuration restored | [Commands](commands.json), [build output](production-build.txt), [output hashes](build-manifest.json) |
 | TypeScript | Exit 0; `node node_modules/typescript/bin/tsc --noEmit --pretty false` | [First-pass commands](isolated-first-pass-commands.json), [output](typecheck.txt) |
 | Full local regression coverage | First invocation exit 1: 171 files, 1,745 passed / 6 failed out of 1,751 tests. All failures were confined to three files requiring the withheld tracked `.env`. After restoring it, those three files passed all 12 tests, exit 0. Unaffected 168 files reused. This is split-run coverage, not a single green full-suite invocation | [Initial output](full-regression-initial.txt), [corrected-environment commands](commands.json), [12-test recheck](environment-dependent-recheck.txt) |
-| Changed TypeScript lint, same scope as Guided workflow | **Exit 1, BLOCKED:** `scripts/fixtures/print-readiness/index.tsx:12:19`, `@typescript-eslint/no-explicit-any`. Four warnings: one fixture fast-refresh warning plus three existing map hook warnings | [Command](changed-lint-command.json), [complete output](changed-lint.txt) |
+| Changed TypeScript lint, same original ten files | **Exit 0 after exact type-only fix, zero errors and four existing warnings.** Original command retained unchanged. | [New command/exit receipt](fixture-type-verification.json), [new lint output](changed-lint-after-type-fix.txt). [Prior failure](changed-lint.txt) and [prior command](changed-lint-command.json) remain historical |
+| Fixture type and runtime identity | Strict DOM window-contract probe: zero diagnostics, exit 0. Explicit-any nodes 1 to 0. Full fixture transpilation before/after is byte-identical with zero diagnostics | [Verification receipt](fixture-type-verification.json), [executed method](fixture-verification-method.txt), [strict probe](fixture-window-contract-probe.txt) |
 | Candidate whitespace | `git diff --check 84a6e99f7985ba7d5b1b3a29d2c19c76acae2b95 HEAD`, exit 0 before documentation update; documentation checked again at finalization | Final candidate receipt |
-| Reviewed source reuse | 14 original source hashes match retained source.json, and LF-normalized originals equal candidate Git blobs. Candidate and tested parent differ only in docs | [Verification](evidence-verification.json), [provenance](provenance.json) |
+| Reviewed source reuse | Historical 14-file binding remains the pre-correction record. Thirteen source files are unchanged; only the approved fixture typing differs. Exact before/after transpilation equality supports fixture browser-evidence reuse. Production and non-target source trees are unchanged | [Original verification](evidence-verification.json), [new source binding](fixture-type-verification.json), [historical provenance](provenance.json) |
 | Binary/evidence integrity | All 49 prior checksum entries verified before the README correction; historical ZIP/PDF unchanged | [Verification](evidence-verification.json) |
 | Backend/workflows/dependencies | `git diff --quiet 84a6e99f HEAD -- supabase .github package.json package-lock.json bun.lock`, exit 0 | [Tree identities](provenance.json) |
 | Exact-head remote CI | GitHub returned zero runs for reviewed head. No dispatch, CI pass or branch-protection waiver claimed | [Provenance](provenance.json) |
 
-**Required next engineering action:** a narrowly scoped correction to the fixture's explicit `any`, followed by changed-file lint and appropriate source-binding verification. It is intentionally not folded into this checks-and-packet-only pass. Any source successor must receive a new exact-candidate receipt; this packet is not transferable release authority.
+**Completed correction:** only `const w=window as any;` was replaced by the exact `typeof window` intersection contract in comment 5781108988. No runtime assignment, fixture value, transport, assertion, lint rule or production code changed. No suppression, broad index signature or double cast was added. Corrected LF fixture SHA256: `d5483dd2473e45663939fa40e62ee9870c75c2c2d3e1fcbbfbcab88b9928136d`. Both complete fixture versions emit JavaScript SHA256 `d5885769aa3beb095ca7a9de2926b8bd9d96ca6471e61e9d3fa3a9ac1b9b4988` using installed TypeScript 5.9.3 on Node 24.16.0. This independently matches the reviewer's emitted hash from TypeScript 5.8.3.
+
+Only the ten-file lint gate and checks invalidated by the new type declaration were executed in this continuation. Repository tsconfig excludes scripts fixtures, so rerunning full app TypeScript would not validate the introduced declaration; the strict DOM contract probe does. The production build, app TypeScript, split-run regressions, 11 component browser cases, 21 focused checks and independent visual evidence are reused with their original timestamps and limits. No full rehearsal, build, regression suite or browser rerun was performed.
+
+**Remaining release gates:** inspect mandatory GitHub CI/protection requirements before release; no exact-final-head remote CI success or protection waiver is claimed. Remote runner costs/isolation and publication costs must be established within an explicit allowance before those actions. Obtain owner approval naming the final candidate and combined scope below.
 
 The isolated checkout began at the exact reviewed commit. The original worktree's route generator has line-ending-only dirty status and untracked rehearsal scripts/artifacts; all were preserved. Local builds also regenerate route-file line endings without a content diff. Existing installed dependencies were reused, not freshly installed from the lockfile. Build warnings include ignored dependency `use client` directives and large chunks. This Node-server build does not prove a hosted Lovable build, served production bytes or runtime acceptance.
 
@@ -48,9 +55,9 @@ The new delayed-visual PDF has **18 pages**, SHA256 `369ea5bc732b5a80c4a0d95e6a9
 
 Run-16 used historical HEAD `23ff503828db85b68d56ed5c15c8f5b6f1926ac7` with uncommitted repairs, not a contemporaneous clean committed candidate. Its unaffected persistence/security evidence is reused with that limitation. Its old export does not validate the repaired readiness path. Green/orange map/SG assets are synthetic timing probes. Payments are simulated. Real Mapbox imagery, operating-system print dialog, genuine Stripe/Sandbox events, natural authentication expiry, paid-provider quality and production acceptance remain unverified.
 
-## One combined release boundary, pending a passing candidate and explicit approval
+## One combined release boundary, pending mandatory gates and explicit approval
 
-**Not executable for this failed-gate candidate.** Once the lint gate is resolved and a new exact candidate is verified, the owner may consider one combined authorization covering these related actions. Approval must name the replacement head; it must not silently carry forward from this document.
+**Prepared for an owner decision, not executed.** The local lint blocker is resolved. One combined authorization may cover the related actions below after mandatory CI/protection requirements and cost boundaries are satisfied. Approval must name the final candidate in the updated PR body and final candidate receipt; no prior release allowance carries forward.
 
 1. Recheck sole-writer status, exact PR head/base, GitHub protection requirements and source equivalence. Preserve draft status until explicit authorization includes marking it ready and merging. No forced merge or protection bypass. Stop if paid remote CI would be required without an approved allowance.
 2. If all gates and applicable approvals hold, merge only the approved candidate into `main`; record merge SHA and resulting application tree.
@@ -67,4 +74,4 @@ Stop on competing writer, head/base/source mismatch, unresolved gate, broader re
 
 ## Execution status
 
-Local build/check processes finished. No background builder, CI dispatch or publication was started by this pass. PR remains draft. Release is **BLOCKED by changed-file lint** and is not authorized. Next actor: the existing sole Codex writer under a bounded fixture-correction scope, then the owner for a new exact-candidate release decision. Model/reasoning inspected as GPT-6 Astra / low and unchanged; additional discretionary spend initiated $0, account charges UNKNOWN.
+Local correction/check processes finished. The exact fixture correction is committed, ten-file lint exits 0, and reused source evidence is explicitly bound. No background builder, CI dispatch or publication was started by this pass. PR remains draft. Release is not authorized; mandatory CI/protection gates remain preserved. Next actor: owner for the combined exact-candidate release decision, then the existing sole writer for only the approved preflight/actions. Model/reasoning inspected as GPT-6 Astra / low and unchanged; additional discretionary spend initiated $0, account charges UNKNOWN.

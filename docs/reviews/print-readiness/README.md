@@ -30,4 +30,4 @@ PR remains draft. No merge, publication, Stripe change/event, real email, paid A
 
 ## Release-check follow-up, 2026-09-22
 
-Independent review [5780415182](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/189#issuecomment-5780415182) cleared the prior export blocker and confirmed 18 pages. The PDF and historical ZIP are unchanged. [Remaining release checks and decision packet](../pr189-release-checks/README.md) record the successful local production build and the separate changed-file lint blocker. PR remains draft.
+Independent review [5780415182](https://github.com/brumanswaves/propertyatlas-1ff5429f/pull/189#issuecomment-5780415182) cleared the prior export blocker and confirmed 18 pages. The PDF and historical ZIP are unchanged. [Remaining release checks and decision packet](../pr189-release-checks/README.md) record the successful local production build. The later exact type-only fixture correction clears changed-file lint with exit 0; its emitted JavaScript is unchanged and the retained browser evidence is reused with explicit source binding. PR remains draft.
