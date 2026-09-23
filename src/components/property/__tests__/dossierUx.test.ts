@@ -107,7 +107,7 @@ describe("official dossier UX guardrails", () => {
     expect(search).not.toContain("Pilot demo example");
     expect(search).not.toContain("Official parcel search");
     expect(search).not.toContain("Searching inside visible map area");
-    expect(autocomplete).toContain('/api/address/suggestions');
+    expect(autocomplete).toContain("/api/address/suggestions");
     expect(autocomplete).not.toContain("VITE_GOOGLE_MAPS_API_KEY");
     expect(autocomplete).not.toContain("places.googleapis.com");
     expect(autocomplete).toContain("trimmed.length < 3");
@@ -353,7 +353,9 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain("sgDiagramAttachmentCount");
     expect(panel).toContain("markSourceOpened");
     expect(panel).toContain("markSourceReviewed");
-    expect(panel).toContain("window.localStorage.setItem(identityStatusKey(parcelId, userId), nextStatus)");
+    expect(panel).toContain(
+      "window.localStorage.setItem(identityStatusKey(parcelId, userId), nextStatus)",
+    );
     expect(panel).toContain("identityStatusToWorkspace");
     expect(panel).toContain("buildWorkbenchPageNextStep");
     expect(panel).toContain("Needs verification");
@@ -455,7 +457,9 @@ describe("official dossier UX guardrails", () => {
     const dossierSaveStart = panel.indexOf("function saveErfFile()");
     const dossierSaveEnd = panel.indexOf("async function shareErfFile()", dossierSaveStart);
     const dossierSave = panel.slice(dossierSaveStart, dossierSaveEnd);
-    const headerStart = panel.indexOf('<div className="flex shrink-0 items-center justify-end gap-1.5 md:max-w-full md:flex-wrap md:gap-2">');
+    const headerStart = panel.indexOf(
+      '<div className="flex shrink-0 items-center justify-end gap-1.5 md:max-w-full md:flex-wrap md:gap-2">',
+    );
     const headerEnd = panel.indexOf("{expertWorkspaceOpen ?", headerStart);
     const headerActions = panel.slice(headerStart, headerEnd);
 
@@ -553,8 +557,8 @@ describe("official dossier UX guardrails", () => {
     expect(panel).toContain('tab !== "calculators"');
     expect(panel).toContain('tab !== "site-potential"');
     expect(panel).toContain("{showWorkbenchNextStep && (");
-    expect(panel).toContain('guidedStrategyReturn=');
-    expect(panel).toContain('guidedReturn=');
+    expect(panel).toContain("guidedStrategyReturn=");
+    expect(panel).toContain("guidedReturn=");
     expect(panel).toContain("buildCanonicalNextAction");
     expect(panel).toContain("GUIDED_TASK_DEFINITIONS");
     expect(panel).toContain("deriveInvestigationFacts");
@@ -703,7 +707,9 @@ describe("official dossier UX guardrails", () => {
     expect(strategyLab).toContain("await completeGuidedStrategyScenario(async () => {");
     expect(strategyLab).toContain("await queue?.flush()");
     expect(strategyLab).toContain('queue?.getStatus().status !== "saved"');
-    expect(strategyLab).not.toContain("Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 8 of 10");
+    expect(strategyLab).not.toContain(
+      "Guided Investigation " + String.fromCharCode(0xc2, 0xb7) + " Step 8 of 10",
+    );
     expect(strategyLab).toContain("Guided completion · Strategy");
     expect(marketEvidence).toContain("Active listing for this erf");
     expect(marketEvidence).toContain("Import active listing for this erf");
@@ -794,7 +800,9 @@ describe("official dossier UX guardrails", () => {
     expect(sitePotentialIntegrityMigration).toContain("asset_row.parcel_id <> NEW.parcel_id");
     expect(sitePotential).not.toContain("GENERATION_UI_ENABLED");
     expect(sitePotential).not.toContain("generationAvailability.message");
-    expect(sitePotential).toContain("There are no AI house concepts, generated renders, or facade images");
+    expect(sitePotential).toContain(
+      "There are no AI house concepts, generated renders, or facade images",
+    );
     expect(read("src/routes/api/site-potential.generate.ts")).toContain(
       "queueSitePotentialGeneration",
     );
@@ -824,17 +832,18 @@ describe("official dossier UX guardrails", () => {
   });
 
   it("keeps My Investigations market evidence conditional and routes property work into canonical surfaces", () => {
-  const dashboard = read("src/routes/dashboard.tsx");
+    const dashboard = read("src/routes/dashboard.tsx");
 
-  expect(dashboard).toContain("marketEvidence.length > 0");
-  expect(dashboard).not.toContain("No listing evidence saved yet");
-  expect(dashboard).not.toContain("Calculators live inside each property dossier");
-  expect(dashboard).not.toContain("Run calculator");
-  expect(dashboard).not.toContain("tab=calc");
-  expect(dashboard).toContain("Continue Investigation");
-  expect(dashboard).toContain('withTab(href, "investigation")');
-  expect(dashboard).toContain('withTab(href, "stoep-report")');
-});
+    expect(dashboard).toContain("Open Market evidence");
+    expect(dashboard).not.toContain("savedMarketEvidence(");
+    expect(dashboard).not.toContain("No listing evidence saved yet");
+    expect(dashboard).not.toContain("Calculators live inside each property dossier");
+    expect(dashboard).not.toContain("Run calculator");
+    expect(dashboard).not.toContain("tab=calc");
+    expect(dashboard).toContain("Continue Investigation");
+    expect(dashboard).toContain('withTab(href, "investigation")');
+    expect(dashboard).toContain('withTab(href, "stoep-report")');
+  });
 
   it("keeps saved comps storage compatible with saved market evidence", () => {
     const hook = read("src/features/marketEvidence/hooks/useSavedMarketEvidence.ts");
@@ -1060,14 +1069,16 @@ describe("Local Property Team MVP guardrails", () => {
     expect(sitePotential).toContain("VacantLandBuildEnvelope");
     expect(sitePotential).toContain("StreetSideBuildEnvelope");
     expect(sitePotential).toContain("Confirm the site inputs");
-    expect(sitePotential).toContain("There are no AI house concepts, generated renders, or facade images");
+    expect(sitePotential).toContain(
+      "There are no AI house concepts, generated renders, or facade images",
+    );
     expect(sitePotential).not.toContain("buildSitePotentialRuntimeProgress");
     expect(sitePotential).not.toContain("Site Potential generation progress");
     expect(sitePotential).not.toContain("Refresh status");
     expect(sitePotential).not.toContain("Retry current pack");
     expect(sitePotential).not.toContain("fetchSitePotentialApi");
     expect(sitePotentialApi).toContain('"retry-pack"');
-    expect(sitePotentialApi).toContain('`/api/site-potential/${input.route}`');
+    expect(sitePotentialApi).toContain("`/api/site-potential/${input.route}`");
   });
 });
 
