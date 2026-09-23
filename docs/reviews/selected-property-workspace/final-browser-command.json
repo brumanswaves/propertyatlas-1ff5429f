@@ -1,0 +1,8 @@
+{
+  "source": "71735d001326df094389851339442125ed7d98bf",
+  "command": "node scripts/verify-workspace-scope.mjs",
+  "startedAt": "2026-09-23T03:58:30.097Z",
+  "endedAt": "2026-09-23T03:59:44.789Z",
+  "exitCode": 0,
+  "note": "Fresh server after isolated build completed; no concurrent source or build-copy changes."
+}

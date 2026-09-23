@@ -23,5 +23,7 @@
   "reasoning": "low",
   "workingTree": "src/routeTree.gen.ts remains reported modified with no content diff; unrelated rehearsal files preserved",
   "srcTree": "f0c0b637756fc5031e851f56c11b2489f6beea3e",
-  "scriptsTree": "40006704a2e4b34e44dec22904471203657ca282"
+  "scriptsTree": "40006704a2e4b34e44dec22904471203657ca282",
+  "finalBrowserHead": "71735d001326df094389851339442125ed7d98bf",
+  "finalBrowserSourceEquality": "git diff 98684f4783a00d9838d6ff4a9da945fa04ba7298 71735d001326df094389851339442125ed7d98bf -- src scripts: empty"
 }

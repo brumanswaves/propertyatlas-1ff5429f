@@ -4,6 +4,7 @@ Implements [corrected package comment 5786992038](https://github.com/brumanswave
 
 - Base: `5026ba639ba19bc2b9b9fec6f41301e18c5d4be9`.
 - Exact tested application and fixture source: `98684f4783a00d9838d6ff4a9da945fa04ba7298`.
+- Final fresh-server browser verification at `71735d001326df094389851339442125ed7d98bf`: all 35 cases passed again after the isolated build finished. Its `src` and `scripts` trees are byte-identical to the implementation source above. [Final command receipt](final-browser-command.json).
 - Branch: `codex/selected-property-workspace`. The review head may contain a later evidence-only commit; the PR body identifies that full head. No application or fixture changes follow this tested source.
 - Actual session selection verified from its turn metadata: `gpt-6-astra`, reasoning `low`, unchanged. Sole writer; no delegated agent.
 
