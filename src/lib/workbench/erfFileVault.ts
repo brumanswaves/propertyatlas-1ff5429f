@@ -89,8 +89,8 @@ export function buildErfAssetExpectedIdentityContext(parcel: NormalizedOfficialP
     province: parcel.province,
     town: parcel.suburbOrArea ?? parcel.town,
     streetAddress:
-      parcel.knownFields.find((field) => /working address|street address/i.test(field.label))?.value ??
-      null,
+      parcel.knownFields.find((field) => /working address|street address/i.test(field.label))
+        ?.value ?? null,
   };
 }
 
@@ -103,8 +103,7 @@ export interface VaultMigrationResult {
 }
 
 export type ErfAssetValidation =
-  | { ok: true }
-  | { ok: false; reason: "too_large" | "unsupported_type" | "empty_file" };
+  { ok: true } | { ok: false; reason: "too_large" | "unsupported_type" | "empty_file" };
 
 export function buildErfAssetUploadMetadata(
   input: Pick<UploadErfAssetInput, "parcelId" | "category" | "metadata">,
@@ -329,8 +328,14 @@ export async function currentVaultUserId() {
   return data.user.id;
 }
 
-export async function listErfAssets(parcelId: string, categories?: ErfAssetCategory[]) {
-  const userId = await currentVaultUserId();
+export async function listErfAssets(
+  parcelId: string,
+  categories?: ErfAssetCategory[],
+  scope?: import("./workspaceRequestScope").WorkspaceRequestScope,
+) {
+  scope?.assertCurrent();
+  const userId = scope ? scope.userId : await currentVaultUserId();
+  scope?.assertCurrent();
   let query = supabase
     .from("erf_assets")
     .select("*")
@@ -339,8 +344,12 @@ export async function listErfAssets(parcelId: string, categories?: ErfAssetCateg
     .neq("status", "deleted")
     .order("created_at", { ascending: false });
   if (categories?.length) query = query.in("asset_category", categories);
+  if (scope) query = query.abortSignal(scope.signal);
   const { data, error } = await query;
+  scope?.assertCurrent();
   if (error) throw new Error(error.message);
+  if (data?.some((row) => row.user_id !== userId || row.parcel_id !== parcelId))
+    throw new Error("Property evidence identity mismatch.");
   return (Array.isArray(data) ? data : []).map(normalizeAsset);
 }
 
@@ -420,12 +429,15 @@ const PREVIEW_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export async function createErfAssetPreviewSignedUrl(asset: ErfAsset) {
   const previewPath = asset.metadata.sgPreviewStoragePath;
-  const mimeType = String(asset.metadata.sgPreviewMimeType ?? asset.mime_type).split(";")[0].toLowerCase();
-  const path = typeof previewPath === "string" && previewPath.trim()
-    ? previewPath.trim()
-    : PREVIEW_MIME_TYPES.has(mimeType)
-      ? asset.storage_path
-      : null;
+  const mimeType = String(asset.metadata.sgPreviewMimeType ?? asset.mime_type)
+    .split(";")[0]
+    .toLowerCase();
+  const path =
+    typeof previewPath === "string" && previewPath.trim()
+      ? previewPath.trim()
+      : PREVIEW_MIME_TYPES.has(mimeType)
+        ? asset.storage_path
+        : null;
   if (!path) return null;
   const candidates = erfAssetStoragePathCandidates(path);
   for (const candidate of candidates) {
@@ -466,10 +478,7 @@ export async function deleteErfAsset(asset: ErfAsset) {
     .from(asset.storage_bucket || ERF_FILE_BUCKET)
     .remove(erfAssetStoragePathCandidates(asset.storage_path));
   if (removeError) throw new Error(removeError.message);
-  const { error: deleteError } = await supabase
-    .from("erf_assets")
-    .delete()
-    .eq("id", asset.id);
+  const { error: deleteError } = await supabase.from("erf_assets").delete().eq("id", asset.id);
   if (deleteError) throw new Error(deleteError.message);
 }
 

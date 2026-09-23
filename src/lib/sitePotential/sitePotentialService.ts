@@ -4,6 +4,7 @@ import type { TablesInsert } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth/useAuth";
 import type { ErfAsset } from "@/lib/workbench/erfFileVault";
 import { toSupabaseJson } from "@/lib/supabase/json";
+import type { WorkspaceRequestScope } from "@/lib/workbench/workspaceRequestScope";
 import type { SitePotentialProject, SitePotentialProjectPatch } from "./types";
 
 export type { SitePotentialProjectPatch } from "./types";
@@ -44,16 +45,23 @@ function normalizeProject(row: Record<string, unknown>): SitePotentialProject {
   };
 }
 
-export async function readSitePotentialProject(parcelId: string) {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) return null;
-  const { data, error } = await supabase
+export async function readSitePotentialProject(parcelId: string, scope?: WorkspaceRequestScope) {
+  scope?.assertCurrent();
+  const auth = scope ? null : await supabase.auth.getUser();
+  const userId = scope ? scope.userId : auth?.error ? null : auth?.data.user?.id;
+  if (!userId) return null;
+  scope?.assertCurrent();
+  let query = supabase
     .from("erf_site_projects")
     .select("*")
-    .eq("user_id", userData.user.id)
-    .eq("parcel_id", parcelId)
-    .maybeSingle();
+    .eq("user_id", userId)
+    .eq("parcel_id", parcelId);
+  if (scope) query = query.abortSignal(scope.signal);
+  const { data, error } = await query.maybeSingle();
+  scope?.assertCurrent();
   if (error) throw new Error(error.message);
+  if (data && (data.user_id !== userId || data.parcel_id !== parcelId))
+    throw new Error("Site Potential identity mismatch.");
   return data ? normalizeProject(data) : null;
 }
 
